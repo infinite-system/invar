@@ -285,6 +285,9 @@ class $Bootstrap {
         editorSurfaceContents,
         paneRuntimes,
         visiblePaneOfKind: (kind) => panelHost.visibleContentOfKind(kind),
+        releasePane: (identifier) => {
+          if (panelHost.has(identifier)) panelHost.removeContent(identifier);
+        },
         editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
         dismissEditorSuggestions: () => dismissEditorSuggestions(),
         bindingHint: (action, context) =>
@@ -2105,6 +2108,12 @@ class $Bootstrap {
         // whether it claims the resolved action right now. A declined action falls through to raw
         // input — that is how a terminal without a selection still sends Ctrl+C as SIGINT. The host
         // reads no pane type and no action vocabulary.
+        //
+        // Only bindings SCOPED to the pane's own context may be dispatched here. `resolve` lets
+        // global bindings match inside any context, and a focused pane owning a real surface must
+        // NOT swallow them: Ctrl+P/Ctrl+F/Ctrl+S and Ctrl+, have to reach the child as bytes, and a
+        // reserved frame chord has already fired above. That is what `resolution.context` guards.
+        // invariant: A focused pane consumes only its own scoped bindings (src/modules/ui/ui.invariants.md)
         const contextOwningPane: PaneContent | null = panelHost.focusedContent;
         const paneKeybindingContext = contextOwningPane?.keybindingContext;
         if (contextOwningPane && paneKeybindingContext) {
@@ -2122,6 +2131,7 @@ class $Bootstrap {
           const paneContextAction = paneContextResolution.action;
           if (
             paneContextAction &&
+            paneContextResolution.context === paneKeybindingContext &&
             (contextOwningPane.claimsContextAction?.(paneContextAction) ?? true)
           ) {
             dispatchAction(paneContextAction, key);

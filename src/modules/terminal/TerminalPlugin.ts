@@ -97,9 +97,16 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
   disposeApplication(): void {
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
+    // Release the panes BEFORE dropping the host port: a withdrawn runtime must leave no live pane
+    // rendering or holding keyboard focus. Snapshot the identifiers first — each release calls back
+    // into `paneRemoved`, which mutates this map.
+    const ownedPaneIdentifiers = [...this.panes.keys()];
+    for (const identifier of ownedPaneIdentifiers) {
+      this.hostPort?.releasePane(identifier);
+    }
+    this.panes.clear();
     this.hostPort?.dispose();
     this.hostPort = null;
-    this.panes.clear();
     this.application = null;
   }
 

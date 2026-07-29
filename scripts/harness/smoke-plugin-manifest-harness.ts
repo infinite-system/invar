@@ -619,8 +619,18 @@ try {
     'uninstalling the Terminal runtime withdraws its status projection',
     (status) => status.terminalObservedEventCount === undefined,
   );
+  // Uninstall must leave NO live pane behind. An orphaned pane keeps rendering and holding the
+  // panel's keyboard focus, so it swallows chords on behalf of a runtime that no longer exists.
+  await driver.awaitGridCondition(
+    'the uninstalled runtime leaves no pane in the panel',
+    () =>
+      !(
+        HarnessSmoke.Class.readStatus(statusPath).panelCellIds as
+          string[] | undefined
+      )?.includes('terminal'),
+  );
   HarnessSmoke.Class.pass(
-    'the Terminal runtime uninstalls and its status projection disappears',
+    'the Terminal runtime uninstalls, releasing its pane and its status projection',
   );
 
   driver.sendKeys('Control+Shift+j');

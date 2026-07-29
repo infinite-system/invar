@@ -28,6 +28,10 @@ export interface PaneRuntime {
 export interface PaneRuntimeHostPort {
   /** The runtime's currently visible pane, or null when none of its kind is on screen. */
   visiblePane(): PaneContent | null;
+  /** Take one of this runtime's panes out of the panel. A runtime being uninstalled MUST release
+   *  every pane it built: withdrawing its registrations while a live pane keeps rendering and
+   *  holding keyboard focus leaves an orphan that answers for a runtime that no longer exists. */
+  releasePane(identifier: string): void;
   dispose(): void;
 }
 

@@ -2245,6 +2245,10 @@ records above; what a specific runtime starts is that runtime's own record.
   defaults behind.
 - Symmetric absence — with no runtime registered for a kind, creation returns null and every
   affordance for it degrades to inert: no crash, no silent half-open pane.
+- Released panes — a runtime being withdrawn releases every pane it built through
+  `PaneRuntimeHostPort.releasePane`, so uninstall leaves no live pane rendering or holding the
+  panel's keyboard focus. An orphaned pane is not merely untidy: it keeps consuming keystrokes on
+  behalf of a runtime that no longer exists.
 
 **Mechanism:** A runtime registers during `activateApplication`; the registration disposer is the
 plugin's, so uninstall withdraws the kind, its keybinding layer, and its status contribution
@@ -2266,12 +2270,61 @@ runtime's configuration vocabulary.
 `scripts/harness/smoke-plugin-manifest-harness.ts` (Terminal runtime disable leaves the host live).
 
 **Impossible if true:** a host file importing a pane runtime's module; a pane kind built by two
-different routes; a disabled runtime still projecting status; a panel affordance for an
-uninstalled kind crashing or half-opening a pane.
+different routes; a disabled runtime still projecting status; a disabled runtime's pane still
+occupying the panel; a panel affordance for an uninstalled kind crashing or half-opening a pane.
 
 **Verification:** `bun test src/modules/ui/PaneRuntimes.test.ts
 src/modules/terminal/TerminalPlugin.test.ts && bun
 scripts/harness/smoke-plugin-manifest-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-28
+
+### A focused pane consumes only its own scoped bindings
+
+**Invariant:** If a focused pane declares a keybinding context, then the host dispatches a resolved
+action from that branch ONLY when the matched binding declared that same context. A binding that
+matched because it is global falls through to the pane as raw input, so a pane that owns a real
+surface never swallows a chord the rest of the application owns.
+
+**Scope:** `KeybindingRegistry.resolve`'s reported `Resolution.context`, and the panel pane-context
+branch in `Bootstrap.keyTick`. Reserved global chords are resolved earlier and are outside this
+rule; the primary-dock branch is deliberately unchanged, because a dock pane has no raw-byte sink
+to pass a keystroke to.
+
+**Mechanism:** `inContext` lets a binding whose context is `global` match inside every context —
+that is what makes one canonical layer serve every surface. The consequence is that an action alone
+cannot say whether a binding is the pane's or everyone's, so `resolve` reports the matched
+binding's declared context (`'global'` for one that applies everywhere, the context name for a
+scoped one, null for no match). The pane branch requires
+`resolution.context === pane.keybindingContext` before dispatching, then asks the pane whether it
+claims the action at all.
+
+**Generates:** Ctrl+P, Ctrl+F, Ctrl+S, Ctrl+R, Ctrl+U, Ctrl+W and Ctrl+, reaching a focused
+terminal's child as the exact bytes a real terminal sends; a task pane keeping surface-scoped
+Ctrl+, while reserved Ctrl+Alt+B still reaches the host; a new pane kind that can declare a context
+without silently capturing the global chord set.
+
+**Rejected alternatives:** Prefix-match the resolved action against the context name
+(`terminal.*`) — that was the pre-extraction shape. It couples the host to each pane's action
+vocabulary and breaks the moment a scoped binding is named for what it does rather than where it
+lives.
+
+**Evidence:** `src/modules/keybindings/KeybindingRegistry.ts`;
+`src/modules/keybindings/KeybindingRegistry.test.ts` `a resolution reports whether its binding was
+scoped or global`; `src/modules/terminal/TerminalPlugin.test.ts`;
+`scripts/harness/smoke-reserved-chord-harness.ts` `focused task content keeps surface-scoped Ctrl+,
+while reserved Ctrl+Alt+B reaches the host`; `scripts/smoke-keyboard-invariant.sh` section D
+(sent-vs-received byte table).
+
+**Impossible if true:** a focused pane swallowing a global chord that the pass-through table
+requires the child to receive; a host branch prefix-matching an action name to decide ownership; a
+pane's scoped binding failing to fire because it was mistaken for a global one.
+
+**Verification:** `bun test src/modules/keybindings/KeybindingRegistry.test.ts
+src/modules/terminal/TerminalPlugin.test.ts && bun
+scripts/harness/smoke-reserved-chord-harness.ts && bash scripts/smoke-keyboard-invariant.sh`
 
 **Status:** provisional
 

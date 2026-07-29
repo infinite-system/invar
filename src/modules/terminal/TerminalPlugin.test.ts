@@ -48,6 +48,7 @@ function keyboardEvent(name: string, modifiers: { alt?: boolean } = {}) {
 }
 
 function activatedTerminalPlugin(visiblePane: () => PaneContent | null) {
+  const releasedPaneIdentifiers: string[] = [];
   const settings = new Settings.Class();
   const keybindings = new KeybindingRegistry.Class();
   const workspaceSet = new WorkspaceSet.Class(settings);
@@ -64,6 +65,10 @@ function activatedTerminalPlugin(visiblePane: () => PaneContent | null) {
     paneRuntimes,
     statusProjectionContributions,
     visiblePaneOfKind: () => visiblePane(),
+    releasePane: (identifier: string) => {
+      releasedPaneIdentifiers.push(identifier);
+      paneRuntimes.paneRemoved({ id: identifier, kind: 'terminal' } as never);
+    },
     primaryDockHost: {
       register() {},
       removeContent() {},
@@ -76,6 +81,7 @@ function activatedTerminalPlugin(visiblePane: () => PaneContent | null) {
     keybindings,
     paneRuntimes,
     statusProjectionContributions,
+    releasedPaneIdentifiers,
   };
 }
 
@@ -97,6 +103,44 @@ test('the terminal registers as a runtime and withdraws it symmetrically', () =>
   expect(
     context.statusProjectionContributions.snapshot().terminalObservedEventCount,
   ).toBe(0);
+  // Every contributed binding is SCOPED to the terminal context. A focused pane dispatches only
+  // scoped bindings, so a chord that leaked in as global would be swallowed instead of reaching
+  // the child as bytes — the #114 Wave B regression the reserved-chord and keyboard-invariant
+  // smokes caught.
+  for (const ownedChord of [
+    keyboardEvent('left', { alt: true }),
+    keyboardEvent('right', { alt: true }),
+    keyboardEvent('b', { alt: true }),
+    keyboardEvent('f', { alt: true }),
+    keyboardEvent('backspace', { alt: true }),
+  ]) {
+    expect(context.keybindings.resolve(ownedChord, 'terminal', 0).context).toBe(
+      'terminal',
+    );
+  }
+  expect(
+    context.keybindings.resolve(
+      { name: 'c', ctrl: true, shift: false, option: false, super: false },
+      'terminal',
+      0,
+    ).context,
+  ).toBe('terminal');
+  // Chords the terminal must NOT own: they have to pass through to the child as raw bytes.
+  for (const passThroughChord of ['p', 'f', 's', 'r', 'u', 'w']) {
+    expect(
+      context.keybindings.resolve(
+        {
+          name: passThroughChord,
+          ctrl: true,
+          shift: false,
+          option: false,
+          super: false,
+        },
+        'terminal',
+        0,
+      ).context,
+    ).not.toBe('terminal');
+  }
 
   context.manager.setEnabled('terminal', false);
 
@@ -164,6 +208,13 @@ test('the runtime builds panes and publishes the visible one as current', () => 
 
   runtimePlugin.paneRemoved(first as PaneContent);
   expect(runtime.currentPane()?.id).toBe('terminal-2');
+
+  // Uninstall releases every pane the runtime still owns — a withdrawn runtime must leave no live
+  // pane rendering or holding keyboard focus. The declared task carries its own kind and is not
+  // one of them.
+  context.manager.setEnabled('terminal', false);
+  expect(context.releasedPaneIdentifiers).toEqual(['terminal-2']);
+  expect(runtime.currentPane()).toBeNull();
 
   // Prompt policy is the runtime's, not the host's: the interactive shell gets the themed clean
   // prompt, a declared task keeps its own.

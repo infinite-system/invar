@@ -90,6 +90,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         registrationDisposers.push(unregister);
         return {
           visiblePane: () => this.options.visiblePaneOfKind(runtime.kind),
+          releasePane: (identifier) => this.options.releasePane(identifier),
           dispose: unregister,
         };
       },
@@ -164,6 +165,8 @@ export type ApplicationContributionsOptions = Omit<
   paneRuntimes: PaneRuntimes.Model;
   /** The one panel question a runtime cannot answer for itself. */
   visiblePaneOfKind: (kind: string) => PaneContent | null;
+  /** Take a runtime-owned pane out of the panel, so uninstall leaves no orphan behind. */
+  releasePane: (identifier: string) => void;
 };
 
 interface ActiveContribution {

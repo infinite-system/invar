@@ -157,14 +157,18 @@ class $KeybindingRegistry {
         if (stepIndex + 1 >= (binding.steps?.length ?? 0)) {
           this.pendingChord = null;
           this.chordArmed.value = false;
-          return { action: binding.action, chordPending: false };
+          return {
+            action: binding.action,
+            chordPending: false,
+            context: binding.context ?? 'global',
+          };
         }
         this.pendingChord = {
           binding,
           stepIndex: stepIndex + 1,
           armedAtMs: nowMs,
         };
-        return { action: null, chordPending: true };
+        return { action: null, chordPending: true, context: null };
       }
       this.pendingChord = null; // wrong key or timeout breaks the chord; resolve this event normally
       this.chordArmed.value = false;
@@ -202,9 +206,17 @@ class $KeybindingRegistry {
       if (matchedGuardedSingle || matchedSingle || matchedChordStart) break;
     }
     if (matchedGuardedSingle)
-      return { action: matchedGuardedSingle.action, chordPending: false };
+      return {
+        action: matchedGuardedSingle.action,
+        chordPending: false,
+        context: matchedGuardedSingle.context ?? 'global',
+      };
     if (matchedSingle)
-      return { action: matchedSingle.action, chordPending: false };
+      return {
+        action: matchedSingle.action,
+        chordPending: false,
+        context: matchedSingle.context ?? 'global',
+      };
     if (matchedChordStart) {
       this.pendingChord = {
         binding: matchedChordStart,
@@ -212,9 +224,9 @@ class $KeybindingRegistry {
         armedAtMs: nowMs,
       };
       this.chordArmed.value = true;
-      return { action: null, chordPending: true };
+      return { action: null, chordPending: true, context: null };
     }
-    return { action: null, chordPending: false };
+    return { action: null, chordPending: false, context: null };
   }
 
   /**
@@ -423,6 +435,12 @@ export interface Resolution {
   action: string | null;
   /** True when this event STARTED or ADVANCED a multi-step chord (caller shows the armed hint). */
   chordPending: boolean;
+  /** The context the matched binding DECLARED — `'global'` for one that applies everywhere, the
+   *  context name for one scoped to it, null when nothing matched. A caller that owns a surface
+   *  must dispatch only bindings scoped to that surface: `resolve` deliberately lets global
+   *  bindings match inside any context, so without this a surface-scoped branch would swallow
+   *  every global chord that should have passed through to it as raw input. */
+  context: string | null;
 }
 
 interface Layer {
