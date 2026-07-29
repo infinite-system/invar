@@ -56,6 +56,18 @@ because everything still looks rigorous.
 4. **One verification pass at the END.**
 5. Judge by observation of the real path. **Assertions PREVENT REGRESSION; they do not DISCOVER FIXES.**
 
+**Every brief carries a literal `## Invariants in scope` section — the
+feedback loop, explicit.** Not "update the records your change implicates" —
+an enumerated list, one row per record: the record's NAME, its root-relative
+path, and one line on why it binds this task. The builder verifies against
+that enumerated list and its READY report answers it record by record: upheld,
+violated, or needs refinement — plus any record the list MISSED, which is a
+finding about the conductor's map. At landing the conductor diffs the same
+list (`git diff --stat -- '*.invariants.md'`). Outbound the conductor names
+the contracts; inbound the builder reports against them; the miss-list keeps
+the conductor's map honest. A task that truly implicates no record writes
+`## Invariants in scope: none`, and the builder's report may refute that too.
+
 A test in the inner loop causes two failures, and the second is worse. Each refinement costs
 minutes instead of seconds, so the builder takes fewer swings. And the builder starts to
 optimize for making an assertion pass instead of making it right. For felt qualities such as
