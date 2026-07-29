@@ -6,10 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #233 wrap-contract-red-settings-leak  [building]
+## IN-PROGRESS (3)
+- #244 sdk-binary-extraction-leak-fills-disk  [building]
+  `tmux attach -t invar/244-sdk-binary-extraction-leak-fills-disk`
+- #233 wrap-contract-red-settings-leak  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/233-wrap-contract-red-settings-leak`
-- #35 structure-navigator-plugin-pane  [building]
+- #35 structure-navigator-plugin-pane  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/35-structure-navigator-plugin-pane`
 
 ## USER-DIRECTED (6)

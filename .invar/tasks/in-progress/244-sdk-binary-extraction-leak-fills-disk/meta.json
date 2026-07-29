@@ -1,0 +1,15 @@
+{
+  "task": 244,
+  "slug": "sdk-binary-extraction-leak-fills-disk",
+  "branch": "fleet/244-sdk-binary-extraction-leak-fills-disk",
+  "worktree": ".invar/worktrees/244-sdk-binary-extraction-leak-fills-disk",
+  "tmuxSession": "invar/244-sdk-binary-extraction-leak-fills-disk",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-244-sdk-binary-extraction-leak-fills-disk.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "0b7c8dd4cf1bc17b577742de86159e67ba255a92",
+  "startedAt": "2026-07-29T03:00:59-04:00"
+}
