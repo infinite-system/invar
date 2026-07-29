@@ -2,9 +2,10 @@
 // impossible when there is one source). A track occupies exactly the trailing edge of its region's
 // CONTENT rect (right column for vertical, bottom row for horizontal), derived per frame from the
 // region's ACTUAL rendered layout — never cached boot-time numbers, never hardcoded guesses. The
-// corner cell where two bars would meet stays free. Thumbs have a minimum size; because inflating
-// the thumb shrinks the reported range, the mapping carries a scale so positions round-trip to the
-// TRUE scroll range with exact extremes.
+// corner cell where two bars meet belongs to the vertical bar: the vertical track uses the full
+// height, while the horizontal track ends one cell before the vertical column. Thumbs have a
+// minimum size; because inflating the thumb shrinks the reported range, the mapping carries a scale
+// so positions round-trip to the TRUE scroll range with exact extremes.
 //
 // invariant: A scrollbar track is derived per frame from its region rect (src/modules/ui/ui.invariants.md)
 import { Static } from 'ivue/extras';
@@ -23,7 +24,7 @@ class $ScrollbarGeometry {
       return null;
     const trackLength = Math.max(
       1,
-      (orientation === 'vertical' ? region.height : region.width) - 1,
+      orientation === 'vertical' ? region.height : region.width - 1,
     );
     const trackTop =
       orientation === 'vertical' ? region.top : region.top + region.height - 1;

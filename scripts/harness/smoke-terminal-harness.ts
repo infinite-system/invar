@@ -8,6 +8,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -36,53 +37,35 @@ function terminalThumbRowCount(
   panelRectangle: Rectangle,
 ): number {
   const rightBorderColumn = panelRectangle.left + panelRectangle.width - 1;
+  const thumbBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.dim.slice(1),
+    16,
+  );
   for (
     let scrollBarColumn = rightBorderColumn - 1;
     scrollBarColumn >= rightBorderColumn - 4;
     scrollBarColumn -= 1
   ) {
-    const backgrounds: Array<number | null> = [];
+    let longestThumbRun = 0;
+    let currentThumbRun = 0;
     for (
-      let row = panelRectangle.top + 1;
-      row < panelRectangle.top + panelRectangle.height - 1;
+      let row = panelRectangle.top;
+      row < panelRectangle.top + panelRectangle.height;
       row += 1
     ) {
       const cell = snapshot.cell(row, scrollBarColumn);
-      backgrounds.push(
-        cell?.characters === ' ' && cell.isBackgroundRgb
-          ? cell.background
-          : null,
-      );
-    }
-    const backgroundCounts = new Map<number, number>();
-    for (const background of backgrounds) {
-      if (background === null) continue;
-      backgroundCounts.set(
-        background,
-        (backgroundCounts.get(background) ?? 0) + 1,
-      );
-    }
-    const paneBackground = [...backgroundCounts.entries()].sort(
-      (firstBackground, secondBackground) =>
-        secondBackground[1] - firstBackground[1],
-    )[0]?.[0];
-    let longestThumbRun = 0;
-    let currentThumbRun = 0;
-    let currentThumbBackground: number | null = null;
-    for (const background of [...backgrounds, null]) {
       if (
-        background !== null &&
-        background !== paneBackground &&
-        background === currentThumbBackground
+        cell?.characters === ' ' &&
+        cell.isBackgroundRgb &&
+        cell.background === thumbBackground
       ) {
         currentThumbRun += 1;
       } else {
         longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
-        currentThumbBackground =
-          background !== paneBackground ? background : null;
-        currentThumbRun = currentThumbBackground === null ? 0 : 1;
+        currentThumbRun = 0;
       }
     }
+    longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
     if (longestThumbRun >= 2) {
       return longestThumbRun;
     }

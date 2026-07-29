@@ -8,6 +8,7 @@ import { mkdirSync, mkdtempSync, renameSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { Settings } from '../../src/modules/settings/Settings';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -480,34 +481,15 @@ function sidebarDividerColumn(snapshot: HarnessSnapshot.Model): number {
 }
 
 function paintedScrollbarColumnCount(snapshot: HarnessSnapshot.Model): number {
-  const fillCounts = new Map<number, number>();
-  for (let row = 2; row < Math.min(34, snapshot.rows); row++) {
-    for (let column = 24; column < Math.min(32, snapshot.columns); column++) {
-      const cell = snapshot.cell(row, column);
-      if (!cell?.isBackgroundRgb) continue;
-      fillCounts.set(
-        cell.background,
-        (fillCounts.get(cell.background) ?? 0) + 1,
-      );
-    }
-  }
-  let sidebarBackground = -1;
-  let largestFillCount = -1;
-  for (const [background, count] of fillCounts) {
-    if (count > largestFillCount) {
-      sidebarBackground = background;
-      largestFillCount = count;
-    }
-  }
+  const thumbBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.dim.slice(1),
+    16,
+  );
   const paintedRowsByColumn = new Map<number, number>();
   for (let row = 2; row < Math.min(34, snapshot.rows); row++) {
     for (let column = 24; column < Math.min(32, snapshot.columns); column++) {
       const cell = snapshot.cell(row, column);
-      if (
-        cell?.isBackgroundRgb &&
-        cell.background !== 0 &&
-        cell.background !== sidebarBackground
-      ) {
+      if (cell?.isBackgroundRgb && cell.background === thumbBackground) {
         paintedRowsByColumn.set(
           column,
           (paintedRowsByColumn.get(column) ?? 0) + 1,
@@ -516,7 +498,7 @@ function paintedScrollbarColumnCount(snapshot: HarnessSnapshot.Model): number {
     }
   }
   return [...paintedRowsByColumn.values()].filter(
-    (paintedRows) => paintedRows > 20,
+    (paintedRows) => paintedRows >= 2,
   ).length;
 }
 

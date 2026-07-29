@@ -1,7 +1,6 @@
 import {
   type BoxRenderable,
   type CliRenderer,
-  type ColorInput,
   type ScrollBarRenderable,
 } from '@opentui/core';
 import { Reactive } from 'ivue';
@@ -38,10 +37,6 @@ class $ScrollbarSync {
       identifier: string,
       orientation: 'vertical' | 'horizontal',
       onChange: (position: number) => void,
-      trackOptions?: {
-        backgroundColor: ColorInput;
-        foregroundColor: ColorInput;
-      },
     ): SolidThumbScrollBar.Model =>
       new SolidThumbScrollBar.Class(dependencies.renderer, {
         id: identifier,
@@ -51,7 +46,10 @@ class $ScrollbarSync {
           ? { width: dependencies.scrollbarThicknessCells() }
           : { height: dependencies.scrollbarThicknessCells() }),
         showArrows: false,
-        ...(trackOptions ? { trackOptions } : {}),
+        trackOptions: {
+          backgroundColor: dependencies.theme.palette.panel,
+          foregroundColor: dependencies.theme.palette.dim,
+        },
         onChange: (position) => {
           if (!this.applying) onChange(position);
         },
@@ -78,10 +76,6 @@ class $ScrollbarSync {
           position,
         );
       },
-      {
-        backgroundColor: dependencies.theme.palette.bg,
-        foregroundColor: dependencies.theme.palette.accent,
-      },
     );
     this.primaryDockVerticalBar = makeBar(
       'primary-dock-scrollbar-v',
@@ -103,10 +97,6 @@ class $ScrollbarSync {
         content?.scrollToColumn?.(
           this.truePosition(this.primaryDockHorizontalBar, position),
         );
-      },
-      {
-        backgroundColor: dependencies.theme.palette.panel,
-        foregroundColor: dependencies.theme.palette.accent,
       },
     );
     this.rightDockVerticalBar = makeBar(

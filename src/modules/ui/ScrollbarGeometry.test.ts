@@ -1,5 +1,6 @@
-// Property tests over the ONE scrollbar-geometry source: track within the region, corner free,
-// exact extremes, min-thumb — across region shapes (split positions, tiny panes, huge content).
+// Property tests over the ONE scrollbar-geometry source: track within the region, vertical-owned
+// corner, exact extremes, min-thumb — across region shapes (split positions, tiny panes, huge
+// content).
 import { test, expect, describe } from 'bun:test';
 import { ScrollbarGeometry, type RegionRect } from './ScrollbarGeometry';
 
@@ -28,8 +29,7 @@ describe('track placement', () => {
       expect(geometry).not.toBeNull();
       expect(geometry!.trackLeft).toBe(region.left + region.width - 1);
       expect(geometry!.trackTop).toBe(region.top);
-      expect(geometry!.trackLength).toBeLessThanOrEqual(region.height - 1); // corner cell free
-      expect(geometry!.trackLength).toBeGreaterThanOrEqual(1);
+      expect(geometry!.trackLength).toBe(region.height);
     });
     test(`horizontal track hugs the bottom edge within the region (${name})`, () => {
       const geometry = ScrollbarGeometry.Class.scrollbarGeometry(
@@ -40,7 +40,10 @@ describe('track placement', () => {
       expect(geometry).not.toBeNull();
       expect(geometry!.trackTop).toBe(region.top + region.height - 1);
       expect(geometry!.trackLeft).toBe(region.left);
-      expect(geometry!.trackLength).toBeLessThanOrEqual(region.width - 1);
+      expect(geometry!.trackLength).toBe(region.width - 1);
+      expect(geometry!.trackLeft + geometry!.trackLength).toBe(
+        region.left + region.width - 1,
+      );
     });
   }
 });
