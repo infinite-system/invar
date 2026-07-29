@@ -670,7 +670,12 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
   return Number.isNaN(seconds) ? null : seconds * 1000;
 }
 
-function live(tasksRoot: string): number {
+// The spinner belongs to WORK IN MOTION only: building tasks spin, READY ones
+// hold still. One glyph per task, not per line — motion marks the task, the
+// details stay readable.
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+function live(tasksRoot: string, spinnerFrame?: number): number {
   const records = readTaskRecords(tasksRoot)
     .filter((record) => record.directoryState === 'in-progress')
     .sort(byNumberDescending);
@@ -681,9 +686,13 @@ function live(tasksRoot: string): number {
   console.log(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
     const ready = record.reportCount > 0;
+    const buildingGlyph =
+      spinnerFrame === undefined
+        ? '●'
+        : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? '●');
     const statusBadge = ready
       ? green('◉ READY — awaiting landing')
-      : yellow('● building');
+      : yellow(`${buildingGlyph} building`);
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const runningFor =
       startedAt === null
@@ -775,6 +784,37 @@ function printCompleted(
   }
 }
 
+// tasks:watch — the live view as a dashboard: spinners on building tasks,
+// READY rows still, durations ticking. Redraws every 2 s; Ctrl+C exits.
+// Motion means work; stillness means a report is waiting for the conductor.
+async function watchLenses(tasksRoot: string): Promise<number> {
+  let frame = 0;
+  for (;;) {
+    process.stdout.write('\x1b[2J\x1b[H');
+    const clock = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    console.log(
+      `${bold('INVAR TASKS')} ${dim(`· ${clock} · refresh 2s · Ctrl+C to exit`)}`,
+    );
+    console.log('');
+    live(tasksRoot, frame);
+    console.log('');
+    const records = readTaskRecords(tasksRoot);
+    const completedCount = records.filter(
+      (record) => record.directoryState === 'completed',
+    ).length;
+    const activeCount = records.filter(
+      (record) => record.directoryState === 'active',
+    ).length;
+    console.log(
+      dim(
+        `◫ ${activeCount} active (bun run tasks:active) · ✔ ${completedCount} completed (bun run tasks:done)`,
+      ),
+    );
+    frame += 1;
+    await Bun.sleep(2000);
+  }
+}
+
 // tasks:all — the whole system in one screenful: live, active, completed(15).
 function allLenses(tasksRoot: string): number {
   live(tasksRoot);
@@ -797,6 +837,10 @@ function allLenses(tasksRoot: string): number {
 const repositoryRoot = join(import.meta.dir, '..', '..');
 
 const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
+
+if (process.argv.includes('watch')) {
+  await watchLenses(tasksRoot);
+}
 
 process.exit(
   process.argv.includes('--self-test')

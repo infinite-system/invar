@@ -33,6 +33,7 @@
     "tasks:active": "bun scripts/tasks/tasks-status.ts active",
     "tasks:done": "bun scripts/tasks/tasks-status.ts completed",
     "tasks:all": "bun scripts/tasks/tasks-status.ts all",
+    "tasks:watch": "bun scripts/tasks/tasks-status.ts watch",
     "build": "bun build --compile --minify --external web-tree-sitter src/main.ts --outfile dist/iv",
     "build:prod": "bun run build",
     "typecheck": "tsc --noEmit",

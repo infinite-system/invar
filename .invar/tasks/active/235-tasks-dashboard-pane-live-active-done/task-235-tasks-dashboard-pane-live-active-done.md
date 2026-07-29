@@ -52,3 +52,12 @@ Per AGENTS.md's taxonomy, all seven categories. The READY report carries
 - User goal message 2026-07-29 (~02:1x), verbatim in the session; briefing
   entry of the same time.
 - `scripts/tasks/tasks-status.ts` — the shared generator.
+
+### Reactive refinement (user, 2026-07-29 ~02:2x)
+
+Motion semantics, decided for the CLI watch and binding here too: the spinner
+belongs to WORK IN MOTION only — building tasks spin (one glyph per task, not
+per line), READY tasks hold STILL (stillness = a report waits for the
+conductor). Active-duration updates reactively every minute while a task
+runs. The CLI prototype is `bun run tasks:watch` (2s redraw, braille frames);
+the pane does it natively through ivue reactivity instead of redraw polling.
