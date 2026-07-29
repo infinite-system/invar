@@ -21,6 +21,15 @@ positive control: the .txt drive settles fast, AND a genuinely-loading
 structure still holds the settle (both polarities). Never widen the
 timeout.
 
+## Two more family members (from #278's landing, 2026-07-29 13:0x)
+
+- #278 reproduced the 100k-quiescence hold twice (frame complete, all
+  glyphs painted, settle never finished — did not widen the timeout).
+- New member shape: `settingsOpen=true` published BEFORE the settings
+  labels painted — a text click missed. The settle/status contract must
+  not publish an interactable state before its interactables paint.
+  Decide whether this is the same registry condition or its own arm.
+
 ## Invariants in scope
 
 - harness.invariants.md — #266's "Drive settled observations include
