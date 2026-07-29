@@ -1685,7 +1685,8 @@ source; every non-overflowing axis has no bar. The configured cross-axis cell co
 target on both axes. A vertical bar fills those cells, while a horizontal bar paints only the lower
 half of its trailing row so both orientations have the same apparent weight in a terminal cell grid.
 The vertical track uses the full content height. The horizontal track ends one column before the
-vertical track, so their corner cell belongs to the vertical bar.
+vertical track, so their corner cell belongs to the vertical bar. Each visible track and thumb
+derives its colours from the active theme during that frame.
 
 **Scope:** every scrollbar (editor vertical + horizontal, file tree vertical + horizontal, git
 changes vertical + horizontal, git commit log vertical + horizontal, agent transcript, terminal
@@ -1694,17 +1695,21 @@ scrollback, the rendered Markdown preview, the structure right dock, and any fut
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
 fits. `ScrollbarSync.applyBar` applies the configured cross-axis cell count; every bar is a
-`SolidThumbScrollBar`. It keeps the full configured rect as OpenTUI's native drag geometry, then
-chooses the axis-specific paint inside that rect. The geometry gives the full region height to a
-vertical track and gives `region.width - 1` columns to a horizontal track. The reported viewport and
-position use those track lengths, so paint and drag mapping change together.
+`SolidThumbScrollBar`. The same call reads the live theme and applies its `panel` and `dim` pair.
+Other scrollbar consumers also apply their live colour pair during frame synchronization. The
+painter keeps the full configured rect as OpenTUI's native drag geometry, then chooses the
+axis-specific paint inside that rect. The geometry gives the full region height to a vertical track
+and gives `region.width - 1` columns to a horizontal track. The reported viewport and position use
+those track lengths, so paint and drag mapping change together.
 
 **Generates:** a bar on every overflowing axis; aligned tracks across split positions; reachable
-clipped content; grabbable thumbs; no phantom bars; equal apparent weight across axes.
+clipped content; grabbable thumbs; no phantom bars; equal apparent weight across axes; live theme
+switches that repaint every visible bar without reconstruction.
 
 **Evidence:** `src/modules/ui/ScrollbarGeometry.test.ts` (17 region/property cases);
 `scripts/harness/smoke-scrollbars-harness.ts` (narrow tree/changes/log overflow, raw SGR reveal,
-both rendered Markdown preview axes, continuous preview thumb drag, and preview track click);
+both rendered Markdown preview axes, continuous preview thumb drag, preview track click, and live
+dark-to-light-to-dark scrollbar colour derivation at 500 and 100,000 lines);
 `scripts/harness/smoke-plugin-manifest-harness.ts` (overflowing structure rows, live right-dock
 geometry, track click, and keyboard parity);
 `scripts/harness/smoke-terminal-harness.ts` (long terminal scrollback and solid vertical thumb),
@@ -1714,7 +1719,7 @@ wired in `scripts/merge-gate.sh`.
 reached; a bar visible with nothing to scroll; a full-cell horizontal bar that reads twice as thick
 as its vertical peer; a thin paint row that shrinks the horizontal pointer target; two bars deriving
 placement from different math; a horizontal bar painting the two-axis corner; a vertical bar ending
-above the horizontal row.
+above the horizontal row; a visible bar retaining the old palette after a live theme switch.
 
 **Verification:** `bun test src/modules/ui/ScrollbarGeometry.test.ts && bun
 scripts/harness/smoke-scrollbars-harness.ts && bun
@@ -1814,10 +1819,10 @@ with the drawn thumb.
 block-element glyphs in vertical bars, contiguous multi-cell bg-fill vertical thumb runs, lower-half
 cells only in horizontal bars, and per-completed-frame editor wrap-off, editor wrap-on, and diff
 probes that record constant viewport/total inputs, moving scroll positions, and byte-identical thumb
-extents. At 500 and 100,000 lines under dark and a live switch to light, the corner cell contains
-vertical background paint, the horizontal endpoint is one column before it, and both axes expose the
-same two colours. At both scales, its real PTY drag probe records a new scroll position after every
-pressed-pointer move on both editor axes, both Markdown preview axes, and the structure right-dock
+extents. At 500 and 100,000 lines through a live dark-to-light-to-dark switch, the corner cell
+contains vertical background paint, the horizontal endpoint is one column before it, and both axes
+expose only the active pair. At both scales, its real PTY drag probe records a new scroll position
+after every pressed-pointer move on both editor axes, both Markdown preview axes, and the structure right-dock
 bar. A preview vertical drag and track click both claim preview leadership and move the synchronized
 source. Its agent probe holds
 `viewportRows=14` and `contentRows=181` while 20 changing positions all paint a 2-row thumb.

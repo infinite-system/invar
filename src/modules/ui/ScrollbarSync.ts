@@ -46,10 +46,7 @@ class $ScrollbarSync {
           ? { width: dependencies.scrollbarThicknessCells() }
           : { height: dependencies.scrollbarThicknessCells() }),
         showArrows: false,
-        trackOptions: {
-          backgroundColor: dependencies.theme.palette.panel,
-          foregroundColor: dependencies.theme.palette.dim,
-        },
+        visible: false,
         onChange: (position) => {
           if (!this.applying) onChange(position);
         },
@@ -177,7 +174,10 @@ class $ScrollbarSync {
       return;
     }
     const thickness = this.dependencies.scrollbarThicknessCells();
+    const palette = this.dependencies.theme.palette;
     bar.visible = true;
+    bar.slider.backgroundColor = palette.panel;
+    bar.slider.foregroundColor = palette.dim;
     bar.top =
       orientation === 'vertical'
         ? geometry.trackTop
