@@ -288,6 +288,35 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     );
   }
 
+  /** The logical document line at the top of the current visual-row viewport. */
+  lineAtViewportTop(): number {
+    return EditorWrap.Class.lineSegmentAtVisualRow(
+      this.document,
+      this.viewport.scrollTop.value,
+      this.visualWrapWidth(),
+      this.collapsedFoldRanges,
+    ).lineIndex;
+  }
+
+  /** Place a logical document line at the top of the visual-row viewport without moving the cursor. */
+  scrollLineToViewportTop(lineIndex: number): void {
+    this.viewport.haltScrollMomentum();
+    const targetVisualRow = EditorWrap.Class.visualRowOfLine(
+      this.document,
+      lineIndex,
+      this.visualWrapWidth(),
+      this.collapsedFoldRanges,
+    );
+    const maximumScrollTop = Math.max(
+      0,
+      this.totalVisualRows() - this.viewport.height.value,
+    );
+    this.viewport.scrollTop.value = Math.max(
+      0,
+      Math.min(targetVisualRow, maximumScrollTop),
+    );
+  }
+
   toggleWordWrap(): void {
     this.wordWrap.value = !this.wordWrap.value;
     if (!this.hasDocument.value) return;

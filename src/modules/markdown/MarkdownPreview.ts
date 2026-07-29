@@ -39,6 +39,12 @@ class $MarkdownPreview {
 
   protected renderTarget: RenderTarget | null = null;
   protected documentOptions: MarkdownDocumentOptions = {};
+  protected positionMapRevision = -1;
+  protected positionMapWidth = -1;
+  protected positionMapValue: MarkdownSourcePositionMap = {
+    sourceLines: [],
+    renderedRows: [],
+  };
 
   get document() {
     return shallowRef<MarkdownDocument.Model | null>(null);
@@ -131,10 +137,50 @@ class $MarkdownPreview {
     sourceLine: number,
     width: number,
   ): number | null {
+    const positionMap = this.sourcePositionMap(width);
+    if (positionMap.sourceLines.length === 0) return null;
+    const anchorIndex = this.lowerAnchorIndex(
+      sourceLine,
+      positionMap.sourceLines,
+    );
+    return positionMap.renderedRows[anchorIndex] ?? null;
+  }
+
+  /** Map a source line to its continuous rendered reading position between block anchors. */
+  renderedRowForSourceLine(sourceLine: number, width: number): number | null {
+    const positionMap = this.sourcePositionMap(width);
+    return this.interpolatePosition(
+      sourceLine,
+      positionMap.sourceLines,
+      positionMap.renderedRows,
+    );
+  }
+
+  /** Map a rendered row back to its continuous source reading position between block anchors. */
+  sourceLineForRenderedRow(renderedRow: number, width: number): number | null {
+    const positionMap = this.sourcePositionMap(width);
+    return this.interpolatePosition(
+      renderedRow,
+      positionMap.renderedRows,
+      positionMap.sourceLines,
+    );
+  }
+
+  protected sourcePositionMap(width: number): MarkdownSourcePositionMap {
+    const normalizedWidth = Math.max(1, Math.floor(width));
+    if (
+      this.positionMapRevision === this.parsedRevision &&
+      this.positionMapWidth === normalizedWidth
+    ) {
+      return this.positionMapValue;
+    }
+
     const stylesheet = MarkdownStylesheet.Class;
-    const rowWidth = Math.max(1, Math.floor(width));
+    const sourceLines: number[] = [];
+    const renderedRows: number[] = [];
     let rowIndex = 0;
     let previousSelector: MarkdownElementSelector | null = null;
+    let finalSourceLine = 0;
 
     for (const block of this.blocks) {
       if (block.kind === 'list') continue;
@@ -142,14 +188,73 @@ class $MarkdownPreview {
       rowIndex += stylesheet.spacingBetween(previousSelector, selector);
       previousSelector = selector;
       if (
-        sourceLine >= block.range.startLine &&
-        sourceLine < block.range.endLine
+        sourceLines.length === 0 ||
+        block.range.startLine > sourceLines[sourceLines.length - 1]!
       ) {
-        return rowIndex;
+        sourceLines.push(block.range.startLine);
+        renderedRows.push(rowIndex);
       }
-      rowIndex += this.rowCountForBlock(block, rowWidth);
+      rowIndex += this.rowCountForBlock(block, normalizedWidth);
+      finalSourceLine = Math.max(finalSourceLine, block.range.endLine);
     }
-    return null;
+    if (previousSelector !== null) {
+      rowIndex += stylesheet.spacingBetween(previousSelector, null);
+    }
+    if (
+      sourceLines.length > 0 &&
+      finalSourceLine > sourceLines[sourceLines.length - 1]!
+    ) {
+      sourceLines.push(finalSourceLine);
+      renderedRows.push(rowIndex);
+    }
+
+    this.positionMapRevision = this.parsedRevision;
+    this.positionMapWidth = normalizedWidth;
+    this.positionMapValue = { sourceLines, renderedRows };
+    return this.positionMapValue;
+  }
+
+  protected interpolatePosition(
+    position: number,
+    inputAnchors: readonly number[],
+    outputAnchors: readonly number[],
+  ): number | null {
+    if (
+      inputAnchors.length === 0 ||
+      inputAnchors.length !== outputAnchors.length
+    )
+      return null;
+    const lowerAnchorIndex = this.lowerAnchorIndex(position, inputAnchors);
+    const upperAnchorIndex = Math.min(
+      inputAnchors.length - 1,
+      lowerAnchorIndex + 1,
+    );
+    const lowerInput = inputAnchors[lowerAnchorIndex]!;
+    const lowerOutput = outputAnchors[lowerAnchorIndex]!;
+    if (upperAnchorIndex === lowerAnchorIndex) return lowerOutput;
+    const upperInput = inputAnchors[upperAnchorIndex]!;
+    const upperOutput = outputAnchors[upperAnchorIndex]!;
+    if (upperInput === lowerInput) return lowerOutput;
+    const interpolation =
+      (Math.max(lowerInput, Math.min(upperInput, position)) - lowerInput) /
+      (upperInput - lowerInput);
+    return Math.round(
+      lowerOutput + (upperOutput - lowerOutput) * interpolation,
+    );
+  }
+
+  protected lowerAnchorIndex(
+    position: number,
+    anchors: readonly number[],
+  ): number {
+    let lowerBound = 0;
+    let upperBound = Math.max(0, anchors.length - 1);
+    while (lowerBound < upperBound) {
+      const middle = Math.ceil((lowerBound + upperBound) / 2);
+      if (anchors[middle]! <= position) lowerBound = middle;
+      else upperBound = middle - 1;
+    }
+    return lowerBound;
   }
 
   /** Reveal the rendered block for a source jump at the shared reading position. */
@@ -894,6 +999,11 @@ interface WrappedVisitOptions {
   readonly role: PreviewRowRole;
   readonly breakProfile: WrapBreakProfile;
   readonly fillWidth: boolean;
+}
+
+interface MarkdownSourcePositionMap {
+  readonly sourceLines: readonly number[];
+  readonly renderedRows: readonly number[];
 }
 
 type EmitRow = (

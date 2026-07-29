@@ -326,6 +326,23 @@ test('an explicit reveal places a jump at the reading position', () => {
   expect(editor.viewport.scrollTop.value).toBe(48);
 });
 
+test('the viewport top maps between visual rows and document lines without moving the cursor', () => {
+  const editor = openWith(
+    Array.from(
+      { length: 100 },
+      (_unusedValue, lineIndex) => `line ${lineIndex}`,
+    ).join('\n'),
+  );
+  editor.viewport.setSize(80, 15);
+  editor.cursor.set(7, 0);
+
+  editor.scrollLineToViewportTop(50);
+
+  expect(editor.viewport.scrollTop.value).toBe(50);
+  expect(editor.lineAtViewportTop()).toBe(50);
+  expect(editor.cursor.line.value).toBe(7);
+});
+
 test('undo back to the saved content reads as UNCHANGED (dirty clears, redo re-dirties)', () => {
   const editor = openWith('a'); // loaded content "a" is the clean baseline
   editor.cursor.set(0, 1);

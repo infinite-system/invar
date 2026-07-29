@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
-// Byte-level Markdown split-preview contract: the auto-opened LEFT preview, per-document
-// hand-close memory, the contributed side setting, rendered links, persisted splitter,
-// edge-selection autoscroll/copy/paste, and independent source/preview find all cross the real PTY.
+// Byte-level Markdown split-preview contract: the auto-opened LEFT preview, bidirectional
+// user-led scroll sync and its contributed switch, per-document hand-close memory, the
+// contributed side setting, rendered links, persisted splitter, edge-selection
+// autoscroll/copy/paste, and independent source/preview find all cross the real PTY.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -243,14 +244,23 @@ async function driveTerminalShrinkAtScale(
       ? Math.max(3, Math.floor(fixtureLineCount * 0.4))
       : Math.floor(fixtureLineCount * 0.75);
   const jumpMarker = `Jump ${fixtureLineCount}`;
+  const scrollDepths = [0.2, 0.45, 0.65].map((depthRatio, depthIndex) => ({
+    sourceLine: Math.max(3, Math.floor(fixtureLineCount * depthRatio)),
+    marker: `Depth ${depthIndex + 1} ${fixtureLineCount}`,
+  }));
+  const scrollMarkerBySourceLine = new Map(
+    scrollDepths.map((depth) => [depth.sourceLine, depth.marker]),
+  );
   const scaleFixtureLines = Array.from(
     { length: fixtureLineCount },
-    (_unusedValue, lineIndex) =>
-      lineIndex === 0
-        ? `# Scale fixture ${fixtureLineCount}`
-        : lineIndex === jumpSourceLine
-          ? `## ${jumpMarker}`
-          : `Scale line ${String(lineIndex + 1).padStart(6, '0')} content`,
+    (_unusedValue, lineIndex) => {
+      if (lineIndex === 0) return `# Scale fixture ${fixtureLineCount}`;
+      if (lineIndex === jumpSourceLine) return `## ${jumpMarker}`;
+      const scrollMarker = scrollMarkerBySourceLine.get(lineIndex);
+      return scrollMarker
+        ? `## ${scrollMarker}`
+        : `Scale line ${String(lineIndex + 1).padStart(6, '0')} content`;
+    },
   );
   await Bun.write(
     join(scaleFixtureRoot, 'README.md'),
@@ -304,7 +314,8 @@ async function driveTerminalShrinkAtScale(
         status.markdownPreviewOpen === true &&
         status.markdownParsing === false &&
         status.structureStatus === 'ready' &&
-        Number(status.structureRows) === 2,
+        Number(status.structureRows) === 5 &&
+        status.markdownPreviewScrollSync === true,
       60_000,
     );
     const tocSnapshot = await scaleDriver.awaitGridCondition(
@@ -362,6 +373,101 @@ async function driveTerminalShrinkAtScale(
       followedPreview.row,
       previewBorder(followedSnapshot).column,
       `${fixtureLineCount}-line preview target`,
+    );
+
+    console.log(
+      `== harness markdown: ${fixtureLineCount}-line source wheel leads at three depths ==`,
+    );
+    for (const scrollDepth of scrollDepths) {
+      const depthSnapshot = scaleDriver.snapshot();
+      const depthMarker = structureMarkerPosition(
+        depthSnapshot,
+        scrollDepth.marker,
+      );
+      clickCell(scaleDriver, depthMarker.column, depthMarker.row);
+      await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line depth ${scrollDepth.marker} lands before wheel input`,
+        (status) =>
+          Number(status.cursorLineIndex) === scrollDepth.sourceLine &&
+          status.markdownPaneFocus === 'source',
+      );
+      const scrollPositionBefore =
+        HarnessSmoke.Class.readStatus(scaleStatusPath);
+      const sourceSnapshot = scaleDriver.snapshot();
+      for (let wheelNotch = 0; wheelNotch < 4; wheelNotch++) {
+        scaleDriver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          direction: 'down',
+          column: sourceBorderColumn(sourceSnapshot) + 5,
+          row: previewBorder(sourceSnapshot).row + 5,
+        });
+      }
+      await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line source wheel moves both panes at ${scrollDepth.marker}`,
+        (status) =>
+          status.markdownPaneFocus === 'source' &&
+          Number(status.editorScrollTop) >
+            Number(scrollPositionBefore.editorScrollTop) &&
+          Number(status.markdownPreviewScrollTop) >
+            Number(scrollPositionBefore.markdownPreviewScrollTop),
+      );
+      const settledScrollStatus = await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line source-led wheel settles at ${scrollDepth.marker}`,
+        (status) =>
+          status.workspaceScrollMomentumAtRest === true &&
+          status.contributedSurfaceAnimationAtRest === true,
+      );
+      HarnessSmoke.Class.pass(
+        `${fixtureLineCount}-line source wheel moved source ` +
+          `${String(scrollPositionBefore.editorScrollTop)} to ` +
+          `${String(settledScrollStatus.editorScrollTop)} and preview ` +
+          `${String(scrollPositionBefore.markdownPreviewScrollTop)} to ` +
+          `${String(settledScrollStatus.markdownPreviewScrollTop)} at ${scrollDepth.marker}`,
+      );
+    }
+
+    const previewLedPositionBefore =
+      HarnessSmoke.Class.readStatus(scaleStatusPath);
+    const previewLedSnapshot = scaleDriver.snapshot();
+    for (let wheelNotch = 0; wheelNotch < 4; wheelNotch++) {
+      scaleDriver.sendMouseWithoutFrameExpectation({
+        kind: 'wheel',
+        direction: 'up',
+        column: previewBorder(previewLedSnapshot).column + 5,
+        row: previewBorder(previewLedSnapshot).row + 5,
+      });
+    }
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line preview wheel moves both panes`,
+      (status) =>
+        status.markdownPaneFocus === 'preview' &&
+        Number(status.markdownPreviewScrollTop) <
+          Number(previewLedPositionBefore.markdownPreviewScrollTop) &&
+        Number(status.editorScrollTop) <
+          Number(previewLedPositionBefore.editorScrollTop),
+    );
+    const previewLedSettledStatus = await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line preview-led wheel settles`,
+      (status) =>
+        status.workspaceScrollMomentumAtRest === true &&
+        status.contributedSurfaceAnimationAtRest === true,
+    );
+    HarnessSmoke.Class.pass(
+      `${fixtureLineCount}-line preview wheel moved preview ` +
+        `${String(previewLedPositionBefore.markdownPreviewScrollTop)} to ` +
+        `${String(previewLedSettledStatus.markdownPreviewScrollTop)} and source ` +
+        `${String(previewLedPositionBefore.editorScrollTop)} to ` +
+        `${String(previewLedSettledStatus.editorScrollTop)}`,
     );
     scaleDriver.resize(120, 40);
     await HarnessSmoke.Class.awaitStatus(
@@ -441,7 +547,7 @@ async function driveTerminalShrinkAtScale(
 console.log(
   '== harness markdown: terminal shrink reflows the split at small and large scale ==',
 );
-await driveTerminalShrinkAtScale(10);
+await driveTerminalShrinkAtScale(500);
 await driveTerminalShrinkAtScale(100_000);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-markdown-harness-'));
@@ -1302,7 +1408,8 @@ try {
   for (
     let navigationStep = 0;
     navigationStep < 60 &&
-    settingsStatus.settingsSelectedLabel !== 'Preview side';
+    settingsStatus.settingsSelectedLabel !==
+      'Scroll source and preview together';
     navigationStep += 1
   ) {
     const previousLabel = settingsStatus.settingsSelectedLabel;
@@ -1310,13 +1417,131 @@ try {
     settingsStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      'settings navigation advances toward Preview side',
+      'settings navigation advances toward Markdown scroll sync',
       (candidate) => candidate.settingsSelectedLabel !== previousLabel,
     );
   }
   HarnessSmoke.Class.requireCondition(
-    settingsStatus.settingsSelectedLabel === 'Preview side',
-    'Preview side is contributed to the live settings schema',
+    settingsStatus.settingsSelectedLabel ===
+      'Scroll source and preview together',
+    'Markdown scroll sync is contributed to the live settings schema',
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the contributed Markdown scroll-sync setting turns off',
+    (status) => status.markdownPreviewScrollSync === false,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes with Markdown scroll sync disabled',
+    (status) =>
+      status.settingsOpen === false &&
+      status.markdownPreviewOpen === true &&
+      status.markdownPreviewScrollSync === false,
+  );
+
+  snapshot = await driver.awaitGridCondition(
+    'Settings paint clears before the disabled scroll probes',
+    (candidate) =>
+      candidate.findText('Settings') === null &&
+      candidate.findText('╭─Preview') !== null,
+  );
+  const disabledSourcePositionBefore =
+    HarnessSmoke.Class.readStatus(statusPath);
+  for (let wheelNotch = 0; wheelNotch < 4; wheelNotch++) {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      direction: 'down',
+      column: sourceBorderColumn(snapshot) + 5,
+      row: previewBorder(snapshot).row + 5,
+    });
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the source wheel still moves its own pane while sync is off',
+    (status) =>
+      status.markdownPaneFocus === 'source' &&
+      Number(status.editorScrollTop) >
+        Number(disabledSourcePositionBefore.editorScrollTop),
+  );
+  const disabledSourceSettled = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the independent source wheel settles',
+    (status) =>
+      status.workspaceScrollMomentumAtRest === true &&
+      status.contributedSurfaceAnimationAtRest === true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(disabledSourceSettled.markdownPreviewScrollTop) ===
+      Number(disabledSourcePositionBefore.markdownPreviewScrollTop),
+    'markdownPreviewScrollSync=false leaves the preview fixed during source wheel input',
+  );
+
+  const disabledPreviewPositionBefore =
+    HarnessSmoke.Class.readStatus(statusPath);
+  const focusedPreviewSnapshot = driver.snapshot();
+  for (let wheelNotch = 0; wheelNotch < 4; wheelNotch++) {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      direction: 'down',
+      column: previewBorder(focusedPreviewSnapshot).column + 5,
+      row: previewBorder(focusedPreviewSnapshot).row + 5,
+    });
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the preview wheel still moves its own pane while sync is off',
+    (status) =>
+      status.markdownPaneFocus === 'preview' &&
+      Number(status.markdownPreviewScrollTop) >
+        Number(disabledPreviewPositionBefore.markdownPreviewScrollTop),
+  );
+  const disabledPreviewSettled = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the independent preview wheel settles',
+    (status) =>
+      status.workspaceScrollMomentumAtRest === true &&
+      status.contributedSurfaceAnimationAtRest === true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(disabledPreviewSettled.editorScrollTop) ===
+      Number(disabledPreviewPositionBefore.editorScrollTop),
+    'markdownPreviewScrollSync=false leaves the source fixed during preview wheel input',
+  );
+  HarnessSmoke.Class.pass(
+    'the contributed setting disables scroll follow in both directions',
+  );
+
+  driver.sendKeys('Control+,');
+  settingsStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings reopens on the Markdown scroll-sync row',
+    (status) =>
+      status.settingsOpen === true &&
+      status.settingsSelectedLabel === 'Scroll source and preview together',
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the contributed Markdown scroll-sync setting turns back on',
+    (status) => status.markdownPreviewScrollSync === true,
+  );
+  driver.sendKeys('Up');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'settings navigation returns to Preview side',
+    (status) => status.settingsSelectedLabel === 'Preview side',
   );
   driver.sendKeys('Right');
   await HarnessSmoke.Class.awaitStatus(
@@ -1337,7 +1562,7 @@ try {
     'the right-side preview paints rendered content beside its source',
     (candidate) =>
       candidate.findText('╭─Preview') !== null &&
-      previewHasMarker(candidate, 'Rendered heading'),
+      previewHasMarker(candidate, 'Section 01'),
   );
   const rightPreview = previewBorder(rightSnapshot);
   const firstBoxCorner = rightSnapshot.rowText(rightPreview.row).indexOf('╭');

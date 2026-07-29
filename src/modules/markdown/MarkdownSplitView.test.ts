@@ -115,6 +115,7 @@ test('a source reveal waits for the preview revision that matches the source', (
   const revealedLines: number[] = [];
   const previewState = {
     parsedRevision: 6,
+    scrollTop: ref(0),
     revealSourceLine: (lineIndex: number) => {
       revealedLines.push(lineIndex);
       return true;
@@ -130,6 +131,7 @@ test('a source reveal waits for the preview revision that matches the source', (
         source: {
           revision: ref(7),
         },
+        sourceScrollTop: () => 0,
       },
     },
     pendingSourceRevealLine: { value: null, writable: true },
@@ -200,4 +202,82 @@ test('an unresolved authored link stays a reference; unresolved backtick text do
     '/root/src/main.ts',
   ).referenceAtForTest(0, 0);
   expect(resolvedCode?.path).toBe('/root/src/main.ts');
+});
+
+test('the pane receiving input leads one-way scroll follow and the setting disables both directions', () => {
+  class $ProbedMarkdownSplitView extends MarkdownSplitView.$Class {
+    synchronizeScrollFollowerForTest(): boolean {
+      return this.synchronizeScrollFollower();
+    }
+
+    protected override previewViewportWidth(): number {
+      return 40;
+    }
+
+    protected override previewViewportHeight(): number {
+      return 15;
+    }
+  }
+
+  let sourceScrollTop = 10;
+  let sourceLineAtViewportTop = 10;
+  const previewScrollTop = ref(0);
+  const previewState = {
+    scrollTop: previewScrollTop,
+    parsedRevision: 1,
+    renderedRowForSourceLine: (sourceLine: number) => sourceLine * 2,
+    sourceLineForRenderedRow: (renderedRow: number) =>
+      Math.round(renderedRow / 2),
+    scrollTo: (renderedRow: number) => {
+      previewScrollTop.value = renderedRow;
+    },
+  };
+  const splitView = Object.create(
+    $ProbedMarkdownSplitView.prototype,
+  ) as $ProbedMarkdownSplitView;
+  Object.defineProperties(splitView, {
+    preview: { value: previewState },
+    focusedPane: { value: ref<'source' | 'preview'>('source') },
+    verticalScrollMomentum: { value: ref({ velocity: 0 }) },
+    scrollSyncSetting: {
+      value: {
+        value: ref(true),
+      },
+    },
+    options: {
+      value: {
+        source: { revision: ref(1) },
+        sourceScrollTop: () => sourceScrollTop,
+        sourceLineAtViewportTop: () => sourceLineAtViewportTop,
+        scrollSourceLineToViewportTop: (lineIndex: number) => {
+          sourceScrollTop = lineIndex;
+          sourceLineAtViewportTop = lineIndex;
+        },
+      },
+    },
+  });
+
+  expect(splitView.synchronizeScrollFollowerForTest()).toBe(true);
+  expect(previewScrollTop.value).toBe(20);
+
+  splitView.focusedPane.value = 'preview';
+  previewScrollTop.value = 30;
+  expect(splitView.synchronizeScrollFollowerForTest()).toBe(true);
+  expect(sourceScrollTop).toBe(15);
+
+  (
+    splitView as unknown as {
+      scrollSyncSetting: { value: { value: boolean } };
+    }
+  ).scrollSyncSetting.value.value = false;
+  splitView.focusedPane.value = 'source';
+  sourceScrollTop = 25;
+  sourceLineAtViewportTop = 25;
+  splitView.synchronizeScrollFollowerForTest();
+  expect(previewScrollTop.value).toBe(30);
+
+  splitView.focusedPane.value = 'preview';
+  previewScrollTop.value = 40;
+  splitView.synchronizeScrollFollowerForTest();
+  expect(sourceScrollTop).toBe(25);
 });

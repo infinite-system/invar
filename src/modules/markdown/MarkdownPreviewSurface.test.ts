@@ -46,6 +46,20 @@ function createSurface(
     save() {},
     dispose() {},
   };
+  const scrollSyncReads: number[] = [];
+  const scrollSync = ref(true);
+  Object.defineProperty(scrollSync, 'value', {
+    configurable: true,
+    get() {
+      scrollSyncReads.push(1);
+      return true;
+    },
+  });
+  const scrollSyncSetting = {
+    value: scrollSync,
+    save() {},
+    dispose() {},
+  };
   const created: EditorSurfaceContentContext[] = [];
   class TestSurface extends MarkdownPreviewSurface.$Class {
     protected override createContent(
@@ -63,9 +77,11 @@ function createSurface(
       () => markdownWorkspace,
       splitRatioSetting,
       previewSideSetting,
+      scrollSyncSetting,
     ),
     splitRatioReads,
     previewSideReads,
+    scrollSyncReads,
     created,
   };
 }
@@ -165,10 +181,12 @@ describe('MarkdownPreviewSurface', () => {
     expect(surface.previewContent).toBeNull();
   });
 
-  it('subscribes the persisted split ratio and side so their changes repaint the host', () => {
-    const { surface, splitRatioReads, previewSideReads } = createSurface(null);
+  it('subscribes the split settings so their changes repaint the host', () => {
+    const { surface, splitRatioReads, previewSideReads, scrollSyncReads } =
+      createSurface(null);
     surface.observePaintSignals();
     expect(splitRatioReads.length).toBe(1);
     expect(previewSideReads.length).toBe(1);
+    expect(scrollSyncReads.length).toBe(1);
   });
 });

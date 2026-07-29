@@ -18,6 +18,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
     protected readonly activeWorkspace: () => MarkdownWorkspace.Model | null,
     protected readonly splitRatioSetting: RegisteredSetting<number>,
     protected readonly previewSideSetting: RegisteredSetting<string>,
+    protected readonly scrollSyncSetting: RegisteredSetting<boolean>,
   ) {}
 
   readonly identifier = 'markdown.preview';
@@ -49,6 +50,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
   observePaintSignals(): void {
     void this.splitRatioSetting.value.value;
     void this.previewSideSetting.value.value;
+    void this.scrollSyncSetting.value.value;
   }
 
   create(context: EditorSurfaceContentContext): EditorSurfaceContent {
@@ -71,6 +73,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
       context,
       this.splitRatioSetting,
       this.previewSide(),
+      this.scrollSyncSetting,
     );
   }
 }

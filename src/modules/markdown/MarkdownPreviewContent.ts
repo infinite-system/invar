@@ -27,6 +27,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
     protected readonly context: EditorSurfaceContentContext,
     protected readonly splitRatioSetting: RegisteredSetting<number>,
     protected readonly previewSide: MarkdownPreviewSide = 'left',
+    protected readonly scrollSyncSetting?: RegisteredSetting<boolean>,
   ) {
     this.view = this.createSplitView();
   }
@@ -42,8 +43,13 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
       parentRenderable: context.container,
       settings: context.settings,
       splitRatioSetting: this.splitRatioSetting,
+      scrollSyncSetting: this.scrollSyncSetting,
       previewSide: this.previewSide,
       findBar: context.findBar,
+      sourceScrollTop: () => workspace.editor.viewport.scrollTop.value,
+      sourceLineAtViewportTop: () => workspace.editor.lineAtViewportTop(),
+      scrollSourceLineToViewportTop: (lineIndex) =>
+        workspace.editor.scrollLineToViewportTop(lineIndex),
       resolveReference: (reference) =>
         workspace.resolveFileReference(reference),
       // Open + focus, the #235 open-seam pattern: the user asked for the file, so the keyboard

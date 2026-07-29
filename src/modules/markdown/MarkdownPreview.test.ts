@@ -101,6 +101,34 @@ test('reveals the block for a source line at the shared reading position', async
   expect(targetRow! - preview.scrollTop.value).toBe(2);
 });
 
+test('one block-anchor map converts source and rendered reading positions both ways', async () => {
+  const preview = new MarkdownPreview.Class();
+  preview.open(
+    createSource(
+      '# First\n\nline one\nline two\nline three\nline four\n\n## Second\n\nend',
+    ),
+    null,
+    { debounceMs: 0 },
+  );
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const headingSourceLine = 7;
+  const headingRenderedRow = preview.firstRenderedRowForSourceLine(
+    headingSourceLine,
+    80,
+  );
+  expect(preview.renderedRowForSourceLine(headingSourceLine, 80)).toBe(
+    headingRenderedRow,
+  );
+
+  const interpolatedRenderedRow = preview.renderedRowForSourceLine(4, 80);
+  expect(interpolatedRenderedRow).not.toBeNull();
+  expect(preview.sourceLineForRenderedRow(interpolatedRenderedRow!, 80)).toBe(
+    4,
+  );
+});
+
 // invariant: Markdown panes keep independent find state (src/modules/markdown/markdown.invariants.md)
 test('exposes the complete rendered row domain for preview find and selection mapping', async () => {
   const preview = new MarkdownPreview.Class();

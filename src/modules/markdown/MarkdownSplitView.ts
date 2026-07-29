@@ -36,12 +36,18 @@ class $MarkdownSplitView {
   protected readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
   protected readonly previewSelectionDragBehavior: SelectionDragBehavior.Model;
   protected readonly splitRatioSetting: RegisteredSetting<number>;
+  protected readonly scrollSyncSetting: RegisteredSetting<boolean>;
   protected lastLaidOutWidth = -1;
   protected renderedPreviewText = '';
   protected renderedPreviewRevision = -1;
   protected renderedPreviewWidth = -1;
   protected renderedPreviewBorderSignature = '';
   protected pendingSourceRevealLine: number | null = null;
+  protected lastScrollSyncLeader: MarkdownSplitPane | null = null;
+  protected lastSynchronizedSourceScrollTop = -1;
+  protected lastSynchronizedPreviewScrollTop = -1;
+  protected lastSynchronizedPreviewRevision = -1;
+  protected lastSynchronizedPreviewWidth = -1;
 
   get focusedPane() {
     return ref<MarkdownSplitPane>('source');
@@ -72,6 +78,8 @@ class $MarkdownSplitView {
   ) {
     this.splitRatioSetting =
       options.splitRatioSetting ?? this.createTransientSplitRatioSetting();
+    this.scrollSyncSetting =
+      options.scrollSyncSetting ?? this.createTransientScrollSyncSetting();
     this.rootRenderable = new BoxRenderable(renderer, {
       id: 'markdown-split-view',
       width: '100%',
@@ -186,6 +194,14 @@ class $MarkdownSplitView {
     };
   }
 
+  protected createTransientScrollSyncSetting(): RegisteredSetting<boolean> {
+    return {
+      value: ref(true),
+      save: () => {},
+      dispose: () => {},
+    };
+  }
+
   protected createSelectionDragBehavior(): SelectionDragBehavior.Model {
     // invariant: Markdown preview selection reuses shared drag behavior (src/modules/markdown/markdown.invariants.md)
     return new SelectionDragBehavior.Class({
@@ -275,7 +291,8 @@ class $MarkdownSplitView {
 
   update(): void {
     this.synchronizePaneGeometry();
-    this.applyPendingSourceReveal();
+    const explicitSourceRevealApplied = this.applyPendingSourceReveal();
+    if (!explicitSourceRevealApplied) this.synchronizeScrollFollower();
     const palette = this.theme.palette;
     this.rootRenderable.backgroundColor = palette.bg;
     this.previewPaneRenderable.backgroundColor = palette.bg;
@@ -300,13 +317,13 @@ class $MarkdownSplitView {
     this.update();
   }
 
-  protected applyPendingSourceReveal(): void {
+  protected applyPendingSourceReveal(): boolean {
     const sourceLine = this.pendingSourceRevealLine;
     if (
       sourceLine === null ||
       this.preview.parsedRevision !== this.options.source.revision.value
     ) {
-      return;
+      return false;
     }
     this.pendingSourceRevealLine = null;
     this.preview.revealSourceLine(
@@ -314,6 +331,8 @@ class $MarkdownSplitView {
       this.previewViewportWidth(),
       this.previewViewportHeight(),
     );
+    this.captureSynchronizedScrollState();
+    return true;
   }
 
   /** Frame hook for preview momentum, edge autoscroll, async parse landing, and first-layout sizing. */
@@ -336,14 +355,87 @@ class $MarkdownSplitView {
     const laidOutWidth = Number(this.rootRenderable.width) || 0;
     const layoutChanged = laidOutWidth !== this.lastLaidOutWidth;
     if (layoutChanged) this.lastLaidOutWidth = laidOutWidth;
-    if (momentumStep.rows !== 0 || selectionAutoscrolling || layoutChanged) {
+    const scrollFollowerChanged = this.synchronizeScrollFollower();
+    if (
+      momentumStep.rows !== 0 ||
+      selectionAutoscrolling ||
+      layoutChanged ||
+      scrollFollowerChanged
+    ) {
       this.update();
     }
     return (
       Momentum.Class.isMoving(momentumStep.momentum) ||
       selectionAutoscrolling ||
-      layoutChanged
+      layoutChanged ||
+      scrollFollowerChanged
     );
+  }
+
+  protected synchronizeScrollFollower(): boolean {
+    const sourceScrollTop = this.options.sourceScrollTop();
+    const previewScrollTop = this.preview.scrollTop.value;
+    const previewWidth = this.previewViewportWidth();
+    const previewRevision = this.preview.parsedRevision;
+    if (!this.scrollSyncSetting.value.value) {
+      this.captureSynchronizedScrollState();
+      return false;
+    }
+    if (previewRevision !== this.options.source.revision.value) return false;
+
+    const leader = this.focusedPane.value;
+    const synchronizationIsCurrent =
+      this.lastScrollSyncLeader === leader &&
+      this.lastSynchronizedSourceScrollTop === sourceScrollTop &&
+      this.lastSynchronizedPreviewScrollTop === previewScrollTop &&
+      this.lastSynchronizedPreviewRevision === previewRevision &&
+      this.lastSynchronizedPreviewWidth === previewWidth;
+    if (synchronizationIsCurrent) return false;
+
+    let followerChanged = false;
+    if (leader === 'source') {
+      const targetRenderedRow =
+        sourceScrollTop === 0
+          ? 0
+          : this.preview.renderedRowForSourceLine(
+              this.options.sourceLineAtViewportTop(),
+              previewWidth,
+            );
+      if (
+        targetRenderedRow !== null &&
+        targetRenderedRow !== this.preview.scrollTop.value
+      ) {
+        this.verticalScrollMomentum.value = Momentum.Class.halt();
+        this.preview.scrollTo(
+          targetRenderedRow,
+          previewWidth,
+          this.previewViewportHeight(),
+        );
+        followerChanged = true;
+      }
+    } else {
+      const targetSourceLine =
+        previewScrollTop === 0
+          ? 0
+          : this.preview.sourceLineForRenderedRow(
+              previewScrollTop,
+              previewWidth,
+            );
+      if (targetSourceLine !== null) {
+        this.options.scrollSourceLineToViewportTop(targetSourceLine);
+        followerChanged = this.options.sourceScrollTop() !== sourceScrollTop;
+      }
+    }
+    this.captureSynchronizedScrollState();
+    return followerChanged;
+  }
+
+  protected captureSynchronizedScrollState(): void {
+    this.lastScrollSyncLeader = this.focusedPane.value;
+    this.lastSynchronizedSourceScrollTop = this.options.sourceScrollTop();
+    this.lastSynchronizedPreviewScrollTop = this.preview.scrollTop.value;
+    this.lastSynchronizedPreviewRevision = this.preview.parsedRevision;
+    this.lastSynchronizedPreviewWidth = this.previewViewportWidth();
   }
 
   moveByKeyboardRows(rowDelta: number): void {
@@ -631,9 +723,13 @@ export interface MarkdownSplitViewOptions {
   parentRenderable: BoxRenderable;
   settings: Settings.Instance;
   splitRatioSetting?: RegisteredSetting<number>;
+  scrollSyncSetting?: RegisteredSetting<boolean>;
   /** Which side of the source the rendered pane occupies. Defaults to 'left'. */
   previewSide?: MarkdownPreviewSide;
   findBar: FindBar.Instance;
+  sourceScrollTop(): number;
+  sourceLineAtViewportTop(): number;
+  scrollSourceLineToViewportTop(lineIndex: number): void;
   resolveReference(reference: string): string | null;
   openReference(path: string): void;
   showReferenceTooltip(
