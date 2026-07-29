@@ -1,6 +1,6 @@
 # 281 — structure pane round two: no imports, visibility/$cache marks, override detection, in-pane depth gear
 
-State: IN-PROGRESS
+State: COMPLETED — 35151464 — Structure round two: no import/heritage noise, visibility+cache+override+getter marks, own ⛭ depth gear in-pane
 Created: 2026-07-29
 Engine: codex
 Environment: linux

@@ -21,59 +21,73 @@ Commits:
 - `05777485d2176b5d2690bacfa391c9a590eea491` — bidirectional scroll sync and contributed setting.
 - `6bfbdc6fd17063ab9c1c236eb39659d5ba3fa858` — shared preview scrollbars and gated drag arm.
 
-The round-three merge resolution remains staged. The worktree is not clean because the required
-normal pre-commit gate blocked the merge commit. I did not bypass or rerun the failed gate.
+The current-main merge resolution remains staged. The worktree is not clean because the required
+normal pre-commit gate blocked the merge commit. I did not bypass the gate.
 
 ## Round 3 merge and gate outcome
 
-I read the [round-three brief](brief-289-3-3.md) and merged `main`. The merge command resolved
-`main` as `a50059dae26a3012d51fbb929d56bae5fb521ac3`, which contains the brief's
-`2a51fb31` target. The merge base was `d40bc38862b8d9b29e109302b438479b2fa3146a`.
+I read the [round-three brief](brief-289-3-3.md). After the conductor moved `main` again, I aborted
+only the uncommitted older merge and merged current `main` at
+`24dc254229b1f47c4b6289a7a1ffaf4f61966ce5`. This revision includes
+[#286 (TOC click drives preview scroll into view)](../../completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md),
+[#287 (preview renders header block as block)](../../completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md),
+[#291 (task links survive state moves)](../../completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md),
+[#279 (drive settle supports files without structure)](../../completed/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md),
+and
+[#292 (drive action status waits for paint)](../../active/292-drive-action-status-waits-for-paint/task-292-drive-action-status-waits-for-paint.md).
 
-The two expected conflicts were resolved as a union:
+Four conflicts were resolved as a union:
 
 - [smoke-markdown-harness.ts](../../../../scripts/harness/smoke-markdown-harness.ts): the conflict
-  was in the file contract comment. The resolved harness keeps main's task-metadata line-break and
-  dark/light H1/H2 arms, the existing table-of-contents jump arms, and this branch's 500-line and
-  100,000-line scroll-sync and sync-off arms.
+  kept main's task-metadata, heading-style, dead-link paint, moved-state link, and TOC arms. It also
+  kept this branch's 500-line and 100,000-line scroll-sync and sync-off arms. The combined watcher
+  repair now waits until `Control+Home` publishes source row zero before it judges the synchronized
+  preview paint.
+- [MarkdownSplitView.ts](../../../../src/modules/markdown/MarkdownSplitView.ts): the resolved
+  controller keeps this branch's scroll-leader state and main's dead-link verdict revision cache.
+- [MarkdownSplitView.test.ts](../../../../src/modules/markdown/MarkdownSplitView.test.ts): the
+  resolved test file keeps the user-input scroll-lead contract and main's link-verdict cache
+  contract.
 - [markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md): the stylesheet
-  record keeps main's keyword-colored, bold, non-underlined H1 rule and this branch's horizontally
-  reachable long physical code rows. Main's `Metadata fields preserve authored lines` record and
-  this branch's expanded `A Markdown file offers a live source preview split` record both survive.
-  A heading inventory found no chosen record from either merge stage missing in the result.
+  record keeps main's keyword-colored, bold, non-underlined H1 and dead-link rules and this branch's
+  horizontally reachable long physical code rows. Main's `Metadata fields preserve authored
+  lines` record and this branch's expanded `A Markdown file offers a live source preview split`
+  record both survive. A heading inventory found no chosen record from either merge stage missing
+  in the result.
 
 The UI invariant file merged without a conflict. Its scrollbar painter and shared scroll-surface
 records retain the preview additions.
 
 Post-resolution checks passed:
 
-- Invariant checker: 1,125 annotations, 221 lattice links, 0 problems.
-- Markdown harness: ALL-PASS, including metadata fields, dark/light H1 and H2 styling, TOC jumps,
-  bidirectional sync, and disabled-sync independence.
+- Invariant checker: 1,129 annotations, 221 lattice links, 0 problems.
+- Typecheck and 31 targeted Markdown tests passed.
+- Markdown harness: ALL-PASS, including metadata fields, dark/light H1 and H2 styling, dead-link
+  painting and repair, TOC jumps, bidirectional sync, and disabled-sync independence.
 - Scrollbar harness: ALL-PASS, including both preview axes at 500 and 100,000 lines.
 
-I then ran the merge commit through the normal pre-commit hook. The hook ran for 4m01s. Conventions,
-formatting, invariants, coverage, reactive-observation checks, unit tests, the Markdown smoke, the
-scrollbar smoke, the behavioral contracts, and the serial tail passed. Two unrelated parallel
-smokes failed both their first attempt and their one quiet retry:
+I then ran the merge commit through the normal pre-commit hook on the quiet host. The hook ran for
+4m03s. Conventions, formatting, invariants, coverage, reactive-observation checks, unit tests, the
+Markdown smoke, the scrollbar smoke, the behavioral contracts, and the serial tail passed.
+Panel chrome timed out on its first attempt and passed its quiet retry. This is the known
+intermittent
+[#214 (panel chrome agent close intermittent)](../../active/214-panel-chrome-agent-close-intermittent/task-214-panel-chrome-agent-close-intermittent.md).
+The activity-bar smoke reproduced its earlier timeout on the built-in quiet retry:
 
 > error: Timed out waiting for the Structure dock-side setting is selected at its default at
-> /tmp/tui-activitybar-harness-home-H9guc6/status.json
-
-> error: Timed out waiting for the Terminal 2 list close removes only that instance at
-> /tmp/invar-panel-chrome-YX4PDD/status.json
+> /tmp/tui-activitybar-harness-home-thzwUh/status.json
 
 The gate ended with:
 
-> RETRY TALLY: 2 step(s) RETRIED AND STILL FAILED
+> RETRY TALLY: 1 step(s) RETRIED AND STILL FAILED — the retry did not rescue it
 >
 > merge-gate: FAILURES — commit/merge BLOCKED
 >
 > GATE_EXIT=1
 
-Both attempts are preserved in `/tmp/merge-gate-failures.281891`. The hook did not create the merge
-commit. The brief orders a stop on an unrelated red, so I left the resolved merge staged for the
-conductor.
+Both activity-bar attempts are preserved in `/tmp/merge-gate-failures.380351`. The hook did not
+create the merge commit. The conductor ordered a stop if either earlier red reproduced on the quiet
+run, so I left the resolved current-main merge staged.
 
 ## Driven evidence
 
@@ -165,18 +179,20 @@ gated gesture is in
 
 ## Verification
 
-- `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — PASS after merge,
-  1,125 annotations, 221 lattice links, 0 problems.
+- `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — PASS after the
+  current-main merge, 1,129 annotations, 221 lattice links, 0 problems.
 - `bun run typecheck` — PASS.
-- `bun test` — PASS, 1,905 tests, 0 failures, 68,499 expectations across 293 files.
+- `bun test src/modules/markdown/MarkdownSplitView.test.ts
+  src/modules/markdown/MarkdownPreview.test.ts src/modules/markdown/MarkdownRenderable.test.ts
+  src/modules/markdown/MarkdownPlugin.test.ts` — PASS, 31 tests and 105 expectations.
 - `bash scripts/smoke-markdown.sh` — ALL-PASS.
 - `bun scripts/harness/smoke-markdown-harness.ts` — ALL-PASS.
 - `bun scripts/harness/smoke-scrollbars-harness.ts` — ALL-PASS.
 - `bash scripts/conventions-gate.sh` — PASS.
 - `git diff --check` — PASS.
-- Normal pre-commit merge gate — BLOCKED by the two unrelated timeout-class reds quoted in
-  [Round 3 merge and gate outcome](#round-3-merge-and-gate-outcome). The Markdown and scrollbar
-  gate jobs passed.
+- Normal pre-commit merge gate — BLOCKED by the reproduced activity-bar timeout quoted in
+  [Round 3 merge and gate outcome](#round-3-merge-and-gate-outcome). Panel chrome passed its retry.
+  The Markdown and scrollbar gate jobs passed.
 
 ## Bycatch
 
@@ -198,8 +214,8 @@ gated gesture is in
 - The round-one pre-commit merge gate saw one starvation-class timeout in the panel-split harness.
   Its one quiet retry passed cleanly, so the fault did not reproduce on the second run. I did not
   change that unrelated harness.
-- The round-three normal merge gate saw reproducible timeout-class reds in the activity-bar and
-  panel-chrome harnesses. Each failed its first attempt and one quiet retry. The exact failures and
-  preserved log path appear in
+- The current-main normal merge gate saw a reproducible timeout-class red in the activity-bar
+  harness. It failed its first attempt and one quiet retry. Panel chrome failed once and passed its
+  retry. The exact reproduced failure and preserved log path appear in
   [Round 3 merge and gate outcome](#round-3-merge-and-gate-outcome). I stopped without changing
   either unrelated seam.
