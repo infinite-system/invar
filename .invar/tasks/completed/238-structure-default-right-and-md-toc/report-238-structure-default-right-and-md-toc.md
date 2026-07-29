@@ -1,7 +1,88 @@
 # READY — #238: structure shows by default on the right, and markdown gets a TOC
 
 Branch: `fleet/238-structure-default-right-and-md-toc`. Round-1 commit: `f32a17e6`.
-Round-2 merge commit: `31874403` (main absorbed, #237 included). Tree clean.
+Round-2 merge commit: `31874403` (main absorbed, #237 included).
+Round-3 commits: `bb493851` (merge of main's docs/tasks wave) + `ed6caf2f` (grammar fix and
+the smoke-fleet adaptation) + `c2d19ad3` (narrow-drag wait coherence fixup). Tree clean.
+**Full merge-gate, run twice in this worktree by me:** first run exit 1 — one failure, the
+markdown narrow-drag arm flaking under gate load (fixed by `c2d19ad3`: the wait now requires
+a coherent narrow frame — junction row ending exactly on the pane border — before the
+border-intact assertion samples it); second run **exit 0, ALL-PASS, "no step passed only on
+retry — this run's green is a clean green"**, total 3m12s
+(`/tmp/claude-1000/238-r3-gate2.log`).
+
+## Round 3 — the smoke fleet holds at default-ON; file grammar cleared
+
+**File grammar.** `MarkdownStructureSource.ts` moved its `OpenHeading` interface below the
+eponymous class and the namespace manifest. `bun scripts/check-file-grammar.ts` — PASS, 0
+violations, exit 0.
+
+**The seven smokes.** Per #268's doctrine the smokes adapt to the app's real defaults; the
+default stays ON. Two shared helpers carry the adaptation (one seam each, not six copies):
+
+- `HarnessSnapshot.findEditorText` / `isEditorCell` — locate text inside the editor SOURCE
+  pane by its line-number-gutter shape, walking past fold-range guides but never across a
+  pane border. The structure outline and the markdown preview echo the same document text
+  and symbol names, so a whole-grid `findText` anchored smokes on the wrong pane.
+- `HarnessSmoke.concealAutoRevealedRightDock` — close the auto-revealed dock through the
+  user's own Ctrl+Alt+B, for smokes whose PROPERTIES need the editor width the dock
+  occupies. It waits for the reveal first so the toggle cannot race the policy.
+
+Per smoke (each label kept; each verified ALL-PASS in this worktree, exit 0):
+
+- `smoke-editor-harness`: grafted #268's measured arms from the combined gate tree at
+  `/tmp/gate-tree-268-238` (their branch has not landed; the graft makes this branch carry
+  the union — named for the conductor to reconcile at landing). On top: the `Fixture`
+  anchor moved to `findEditorText` (the TOC lists that heading above the source row), and
+  the edge-hold drag targets the measured pane border instead of fixed column 117.
+- `smoke-diagnostics-harness`: the gutter/underline helpers and the `farBadValue`
+  present/absent waits anchored to the source pane — the outline lists every
+  `combinedLineNNN`/`farBadValue` symbol, which had made the absent-checks unsatisfiable.
+- `smoke-code-folding-harness`: fold needles (`hiddenNeedle`, `anotherHidden`), header
+  anchors, and the `deepLineNNN` census pane-scoped; a collapsed fold can now be told from
+  the outline still listing the hidden symbols.
+- `smoke-scrollbars-harness`: editor thumb scans bounded by the measured pane columns;
+  conceal for both wrap probes and the overflow driver (wrap-on halves thumb movement per
+  wheel burst in the narrowed pane); the thumb wait requires the live right-edge column
+  because the concealed dock leaves the old scrollbar column's stale paint for a frame.
+- `smoke-horizontal-extent-harness`, `smoke-inline-rewrite-harness`: conceal — the
+  widest-line reveals and the rewrite ghost need the width the dock occupies.
+- `smoke-markdown-harness`: conceal plus a preview remount through the user's own toggle,
+  because the split keeps its stale narrow CONTENT viewport when the editor column grows
+  back (#263's family — bycatch below); `previewPaneRightColumn` takes the last closing
+  corner before the source pane so one stale `╮` cannot truncate every preview scan; the
+  reopen click waits for the toggle button at its settled dock-free position (it rides the
+  editor column's right edge as the dock auto-hides).
+
+**Positive controls, planted and reverted.** Disabling `findEditorText`'s pane test
+(whole-grid fallback) reddens code-folding at the gate's exact arm ("re-enabled code
+folding restores the closed gutter control"); removing the inline-rewrite conceal reddens
+"the first rewrite candidate is visible". Both reverted; both preserved in
+`/tmp/claude-1000/238-r3-control1.log` and `238-r3-control2.log`. The pre-fix red runs of
+every other fix are the recorded controls for those (first local runs, same arms as the
+gate logs).
+
+**Round-3 verification:** all seven smokes ALL-PASS exit 0 in this worktree;
+`bun test` 1852 pass, 0 fail, exit 0; `bunx tsc --noEmit` exit 0;
+`bun scripts/check-file-grammar.ts` exit 0. Full merge-gate: exit 0, ALL-PASS, clean green
+(second run; the first run's one flake and its fix are described at the top of this
+section).
+
+**Round-3 bycatch:**
+
+- Stale scrollbar column: after the right dock conceals, the narrow editor's old scrollbar
+  column keeps its track/thumb backgrounds until a later repaint (caught by the scrollbars
+  smoke's geometry proofs; #257/#263 paint-residue family).
+- Stale preview corner: the markdown split's border row keeps a `╮` from the narrower
+  layout for a frame after the dock conceals (same family).
+- Markdown split stale content viewport on GROW: #263 is filed for terminal SHRINK; the
+  dock-conceal grow case reproduces the same frozen-handshake shape (content stays at the
+  old width inside widened boxes) — extends #263's scope.
+- Editor drag beyond its right border over the dock does not continue the edge-hold
+  autoscroll (the drag is not captured across the pane boundary); previously unreachable
+  because the editor ended at the screen edge. Suspect app-level capture gap.
+- The tab-strip editor-title buttons ride the editor column's right edge; any smoke that
+  clicks them from a pre-relayout snapshot lands on empty cells (a #269 sweep member).
 
 ## Round 2 — main merged, conflicts resolved
 

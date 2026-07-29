@@ -1,6 +1,6 @@
 # 238 — structure pane: enabled by default, right of files that need it, md table of contents
 
-State: IN-PROGRESS
+State: COMPLETED — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
 Created: 2026-07-29
 Engine: claude
 Environment: linux
