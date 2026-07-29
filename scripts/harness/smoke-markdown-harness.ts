@@ -789,7 +789,32 @@ try {
     '== harness markdown: an unresolvable link states why, never silently ==',
   );
   // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
-  const externalLinkPosition = previewMarkerPosition(snapshot, 'the docs');
+  // Anchor on a RESOLVABLE hover first: layout may still be shifting after the tab return (the
+  // structure dock re-reveals for the markdown TOC), and hovered-reference status is the one
+  // signal that proves the measured grid coordinates are live before any click is spent.
+  const anchorPosition = previewMarkerPosition(driver.snapshot(), 'the target');
+  driver.sendMouse({
+    kind: 'move',
+    column: anchorPosition.column,
+    row: anchorPosition.row,
+    button: 'none',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the hover anchor resolves before the unresolvable-link clicks',
+    (status) => String(status.markdownHoveredReference).endsWith('/target.ts'),
+  );
+  const externalLinkPosition = previewMarkerPosition(
+    driver.snapshot(),
+    'the docs',
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: externalLinkPosition.column,
+    row: externalLinkPosition.row,
+    button: 'none',
+  });
   driver.sendMouse({
     kind: 'press',
     column: externalLinkPosition.column,

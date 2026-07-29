@@ -46,7 +46,13 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
       findBar: context.findBar,
       resolveReference: (reference) =>
         workspace.resolveFileReference(reference),
-      openReference: (path) => workspace.openFileInTab(path),
+      // Open + focus, the #235 open-seam pattern: the user asked for the file, so the keyboard
+      // follows it — without the focus move, editor-context chords (Back/Forward) stay dead
+      // after a click-open.
+      openReference: (path) => {
+        workspace.openFileInTab(path);
+        workspace.focus.value = 'editor';
+      },
       showReferenceTooltip: (path, screenColumn, screenRow) => {
         const label = Files.Class.relative(workspace.root, path);
         const bindingHint = context.keybindings.bindingHint(
