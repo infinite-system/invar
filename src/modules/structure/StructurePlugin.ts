@@ -1,5 +1,5 @@
 // The structure navigator plugin: an ordinary contribution — a manifest row, a right-dock pane,
-// keybindings, commands, a contributed setting, and a status projection — registered through the
+// keybindings, commands, contributed settings, and a status projection — registered through the
 // same seams every other citizen uses. It consumes a StructureSource another plugin registers; it
 // starts no process and owns no protocol. The pane sits in the RIGHT dock beside the file it
 // outlines, and its default-visibility policy shows it unbidden for documents a source answers.
@@ -10,6 +10,7 @@
 // reinstall rebuilds all of it from the same context — nothing is retained between lives.
 //
 // invariant: The structure navigator is a pane content citizen (src/modules/structure/structure.invariants.md)
+// invariant: The outline projection has one depth and filter policy (src/modules/structure/structure.invariants.md)
 // invariant: The host canvas is complete without plugins (project.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 import type {
@@ -17,6 +18,8 @@ import type {
   ApplicationContributor,
 } from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
+import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { Workspace } from '../workspace/Workspace';
 import type {
   WorkspaceContribution,
@@ -34,15 +37,18 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     Workspace.Model,
     StructureWorkspace.Model
   >();
+  protected readonly activeWorkspaces = new Set<StructureWorkspace.Model>();
   protected application: ApplicationContributionContext | null = null;
   protected paneContent: StructurePaneContent.Model | null = null;
   protected defaultVisibility: StructureDefaultVisibility.Model | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
+  protected defaultDepthSetting: RegisteredSetting<number> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const structureWorkspace = this.createWorkspaceContribution(workspace);
     this.workspaces.set(workspace, structureWorkspace);
+    this.activeWorkspaces.add(structureWorkspace);
     return structureWorkspace;
   }
 
@@ -70,10 +76,38 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         context: 'structure',
       },
       {
-        chord: { key: 'space' },
-        action: 'structure.activate',
+        chord: { key: 'left' },
+        action: 'structure.fold',
         context: 'structure',
       },
+      {
+        chord: { key: 'right' },
+        action: 'structure.unfold',
+        context: 'structure',
+      },
+      {
+        chord: { key: 'up', ctrl: true },
+        action: 'structure.decreaseDepth',
+        context: 'structure',
+      },
+      {
+        chord: { key: 'down', ctrl: true },
+        action: 'structure.increaseDepth',
+        context: 'structure',
+      },
+      {
+        chord: { key: '0', ctrl: true },
+        action: 'structure.resetDepth',
+        context: 'structure',
+      },
+      {
+        chord: { key: 'escape' },
+        action: 'structure.clearFilter',
+        context: 'structure',
+      },
+      ...KeybindingDefaults.Class.textInputBindings('structure', {
+        hostOwnedPlainKeys: ['left', 'right'],
+      }),
     ]);
     this.paneContent = this.createPaneContent(context);
     context.registerRightDockContent(this.paneContent);
@@ -83,6 +117,20 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       section: this.name,
       defaultValue: true,
       spec: { kind: 'boolean' },
+    });
+    this.defaultDepthSetting = context.registerSetting({
+      identifier: 'structureDefaultDepth',
+      label: 'Default symbol depth',
+      section: this.name,
+      defaultValue: 1,
+      spec: {
+        kind: 'number',
+        step: 1,
+        minimum: 0,
+        maximum: 8,
+        decimals: 0,
+      },
+      changed: () => this.refreshDepthProjection(),
     });
     this.defaultVisibility = this.createDefaultVisibility(
       context,
@@ -99,9 +147,20 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
   protected createWorkspaceContribution(
     workspace: Workspace.Model,
   ): StructureWorkspace.Model {
-    return new StructureWorkspace.Class(workspace, () =>
-      this.paneIsObserved(workspace),
+    let structureWorkspace: StructureWorkspace.Model;
+    structureWorkspace = new StructureWorkspace.Class(
+      workspace,
+      () => this.paneIsObserved(workspace),
+      () => this.defaultDepthSetting?.value.value ?? 1,
+      () => this.activeWorkspaces.delete(structureWorkspace),
     );
+    return structureWorkspace;
+  }
+
+  protected refreshDepthProjection(): void {
+    for (const workspace of this.activeWorkspaces) {
+      workspace.outline.refreshProjection();
+    }
   }
 
   protected createPaneContent(
@@ -145,6 +204,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     this.disposeCommands = null;
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
+    this.defaultDepthSetting = null;
     this.application = null;
   }
 
@@ -219,6 +279,58 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         },
       },
       {
+        id: 'structure.fold',
+        title: 'Structure: Fold Symbol',
+        category: 'Structure',
+        run: () => {
+          active().haltVerticalScroll();
+          const outline = active().outline;
+          if (
+            outline.rows.value[outline.selectedIndex.value]?.childrenVisible
+          ) {
+            outline.toggleSelectedFold();
+          }
+        },
+      },
+      {
+        id: 'structure.unfold',
+        title: 'Structure: Unfold Symbol',
+        category: 'Structure',
+        run: () => {
+          active().haltVerticalScroll();
+          const outline = active().outline;
+          if (
+            !outline.rows.value[outline.selectedIndex.value]?.childrenVisible
+          ) {
+            outline.toggleSelectedFold();
+          }
+        },
+      },
+      {
+        id: 'structure.decreaseDepth',
+        title: 'Structure: Decrease Depth for This File',
+        category: 'Structure',
+        run: () => active().outline.adjustDepthForActiveFile(-1),
+      },
+      {
+        id: 'structure.increaseDepth',
+        title: 'Structure: Increase Depth for This File',
+        category: 'Structure',
+        run: () => active().outline.adjustDepthForActiveFile(1),
+      },
+      {
+        id: 'structure.resetDepth',
+        title: 'Structure: Reset Depth for This File',
+        category: 'Structure',
+        run: () => active().outline.resetDepthForActiveFile(),
+      },
+      {
+        id: 'structure.clearFilter',
+        title: 'Structure: Clear Filter',
+        category: 'Structure',
+        run: () => active().outline.clearFilter(),
+      },
+      {
         id: 'structure.refresh',
         title: 'Structure: Refresh Outline',
         category: 'Structure',
@@ -239,6 +351,9 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       structureNotice: outline.notice.value,
       structureTruncated: outline.truncated.value,
       structureRequests: outline.requestCount.value,
+      structureDepth: outline.depth,
+      structureDepthIsOverridden: outline.depthIsOverridden,
+      structureFilter: outline.filterInput.value,
     };
   }
 }
