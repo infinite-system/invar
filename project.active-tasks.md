@@ -6,10 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #266 drive-settle-ignores-debounced-parse  [building]
-  `tmux attach -t invar/266-drive-settle-ignores-debounced-parse`
-- #263 terminal-shrink-markdown-split-frozen  [building]
+## IN-PROGRESS (2)
+- #263 terminal-shrink-markdown-split-frozen  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/263-terminal-shrink-markdown-split-frozen`
 - #235 tasks-dashboard-pane-live-active-done  [building]
   `tmux attach -t invar/235-tasks-dashboard-pane-live-active-done`
@@ -86,8 +84,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 50 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 51 — full log: project.tasks-completed.md)
 - #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
+- #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 boot-save-erases-unregistered-settings — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
 - #259 right-dock-click-leaves-double-focus — 587eed67 — one focus-set owner across docks; click path double-focus fixed
 - #254 gate-workers-validated-after-side-effects — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
@@ -101,4 +100,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #237 markdown-preview-left-and-auto-open — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
 - #236 markdown-terminal-stylesheet-readable — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
 - #233 wrap-contract-red-settings-leak — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
-- #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242

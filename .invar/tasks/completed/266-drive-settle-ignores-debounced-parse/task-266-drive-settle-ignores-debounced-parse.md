@@ -1,6 +1,6 @@
 # 266 — the drive's settled frame still shows "Parsing Markdown…"
 
-State: IN-PROGRESS
+State: COMPLETED — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 Created: 2026-07-29
 Engine: codex
 Environment: linux
