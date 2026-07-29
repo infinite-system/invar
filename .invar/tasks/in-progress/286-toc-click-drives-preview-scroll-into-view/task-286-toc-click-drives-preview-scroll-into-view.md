@@ -1,6 +1,6 @@
 # 286 — structure TOC click drives the PREVIEW too, and jumps scroll INTO VIEW for reading
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
