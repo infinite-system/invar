@@ -1,9 +1,10 @@
-# project.active-tasks.md — GENERATED ABOVE THE MARKER, DO NOT EDIT
+# project.active-tasks.md — AUTO-GENERATED, NEVER EDIT BY HAND
 
-Regenerate with `bun scripts/tasks/tasks-status.ts write-active`. Hand edits ABOVE the
-priority-log marker WILL be overwritten — the backlog is a BYPRODUCT of the instrument,
-never a record an agent must remember to update. Detail: `.invar/tasks/<state>/<folder>/`.
-Below the marker is the hand-written priority log: write-active PRESERVES it verbatim.
+Every byte of this file is written by `bun scripts/tasks/tasks-status.ts write-active`,
+derived from the Priority: field in each task file. Any hand edit is destroyed on the next
+regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING is
+hand-written in the sibling file `project.active-priority-tasks.md`.
+Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## USER-DIRECTED (3)
 - #199 find-reveal-blank-target-line  [TODO — not yet diagnosed]
@@ -58,10 +59,3 @@ Below the marker is the hand-written priority log: write-active PRESERVES it ver
 - #59 prettier-format-gate-and-reformat  [TODO — deliberately LAST]
 - #62 parameter-count-ports-object-sweep
 
-
----
-
-## Priority log — hand-written below this line; write-active preserves it
-
-(append dated entries here — e.g. "2026-07-28: #202 jumps the queue, the user drives at 500k daily")
-2026-07-28: #202 outranks #199 — the user drives 500k files daily; find-reveal is cosmetic.

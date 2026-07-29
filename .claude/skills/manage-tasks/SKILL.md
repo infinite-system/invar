@@ -171,12 +171,13 @@ bun scripts/tasks/tasks-status.ts backlog      # the active backlog, grouped by 
 bun scripts/tasks/tasks-status.ts write-active # regenerate project.active-tasks.md
 ```
 
-`project.active-tasks.md` has TWO ZONES with one owner each. ABOVE the priority-log marker is
-GENERATED from each task file's `Priority:` field — never hand-edited; `dispatch.sh` and the
-step 5/6 moves regenerate it, and a hand edit there is destroyed on the next regeneration. BELOW
-the marker is the hand-written PRIORITY LOG — dated reasons for the current ordering,
-re-prioritisation decisions, holds. `write-active` preserves it verbatim, and the staleness check
-exempts it, so writing a log entry never reads as drift and regenerating never destroys thought.
+Two sibling files, one owner each — named so they sit together in a file viewer:
+
+- `project.active-tasks.md` — GENERATED from each task file's `Priority:` field; never
+  hand-edited. `dispatch.sh` and the step 5/6 moves regenerate it; a hand edit is destroyed on
+  the next regeneration and reads as STALE-ACTIVE-VIEW until then.
+- `project.active-priority-tasks.md` — HAND-WRITTEN priority log (named to sit beside its generated sibling in a file viewer): dated reasons for the current
+  ordering, re-prioritisation decisions, holds. No tooling reads or writes it.
 
 Act on findings: REPORT-IN-OPEN → run step 5 or explain why not (a multi-wave task like #114
 legitimately holds a report while later waves are open — leave the signal firing rather than mute a
