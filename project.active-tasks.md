@@ -52,7 +52,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (5)
+## ARCHITECTURE-HYGIENE (8)
+- #220 editor-registers-as-contributor-with-manifest
+- #219 source-text-view-onto-pane-content-seam
+- #218 workspace-buffer-splits-document-from-view
 - #217 split-geometry-aggregates-invariant
 - #136 shared-scale-fixture-corpus-cache
 - #62 parameter-count-ports-object-sweep
