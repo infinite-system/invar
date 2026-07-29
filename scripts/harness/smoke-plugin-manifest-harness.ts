@@ -51,11 +51,18 @@ const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-plugin-manifest-home-'));
 
 const statusPath = join(homeDirectory, 'status.json');
 
-mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+const settingsDirectory = join(homeDirectory, '.config', 'invar');
+
+const settingsPath = join(settingsDirectory, 'settings.json');
+
+mkdirSync(settingsDirectory, { recursive: true });
 
 await Bun.write(
-  join(homeDirectory, '.config', 'invar', 'settings.json'),
-  JSON.stringify({ 'inlineRewrite.enabled': true }),
+  settingsPath,
+  JSON.stringify({
+    'inlineRewrite.enabled': true,
+    markdownPreviewSide: 'right',
+  }),
 );
 
 await Bun.write(join(fixtureRoot, 'manifest.ts'), 'manifest-line\n');
@@ -174,6 +181,17 @@ try {
     },
   );
   const initialTreeRows = Number(initialStatus.treeRows);
+  const persistedSettings = JSON.parse(
+    await Bun.file(settingsPath).text(),
+  ) as Record<string, unknown>;
+  HarnessSmoke.Class.requireCondition(
+    initialStatus.markdownPreviewSide === 'right',
+    'the late Markdown contribution applies its stored right-side value',
+  );
+  HarnessSmoke.Class.requireCondition(
+    persistedSettings.markdownPreviewSide === 'right',
+    'the boot-time save preserves the not-yet-registered Markdown setting',
+  );
   driver.sendKeys('Control+,');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -1351,7 +1369,7 @@ try {
     (status) =>
       String(status.activeBuffer).endsWith('/z-auto-notes.md') &&
       status.markdownPreviewOpen === true &&
-      status.markdownPreviewSide === 'left',
+      status.markdownPreviewSide === 'right',
   );
   await driver.awaitGridCondition(
     'the auto-opened preview pane is painted',

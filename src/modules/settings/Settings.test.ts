@@ -138,6 +138,28 @@ describe('Settings', () => {
     expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
   });
 
+  test('save preserves unrecognized user settings verbatim', () => {
+    const futurePluginValue = {
+      enabled: true,
+      modes: ['first', 'second'],
+    };
+    const { settings, store } = makeStore({
+      [USER_PATH]: JSON.stringify({
+        futurePlugin: futurePluginValue,
+        sidebarWidth: 'wide',
+      }),
+    });
+
+    settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+    settings.save();
+
+    const persistedSettings = JSON.parse(
+      store.get(USER_PATH) as string,
+    ) as Record<string, unknown>;
+    expect(persistedSettings.futurePlugin).toEqual(futurePluginValue);
+    expect(persistedSettings.sidebarWidth).toBe(32);
+  });
+
   test('persisted content orders reject invalid values and deduplicate ids', () => {
     const { settings } = makeStore({
       [USER_PATH]: JSON.stringify({

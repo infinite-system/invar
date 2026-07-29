@@ -73,6 +73,38 @@ a row in Settings; a plugin heading special-cased in the overlay.
 
 **Last refined:** 2026-07-26
 
+### Persistence preserves unrecognized user settings
+
+**Invariant:** If `Settings.save` persists a loaded user file, then every key outside the current
+host and contributed schemas keeps its parsed JSON value.
+
+**Scope:** `Settings.persistenceSnapshot` and `storedUserRecord`. Project settings remain outside
+user persistence. Registered host and contributed settings use their current sanitized values.
+
+**Mechanism:** `persistenceSnapshot` starts with `storedUserRecord`, then overlays the host snapshot
+and every active contributed setting. Known values replace their stored forms while unknown keys
+pass through unchanged.
+
+**Generates:** forward-compatible settings files; boot saves that cannot erase settings from
+not-yet-registered plugins; disable and later re-enable symmetry for contributed settings.
+
+**Rejected alternatives:** Delay saves until plugin activation completes — plugins can register
+after boot, so ordering cannot protect settings that are unknown at a later save.
+
+**Evidence:** `Settings.ts` `persistenceSnapshot`; `Settings.test.ts` "save preserves unrecognized
+user settings verbatim"; `scripts/harness/smoke-plugin-manifest-harness.ts` preserves and applies
+`markdownPreviewSide` through a boot-time save.
+
+**Impossible if true:** booting before a plugin registers removes that plugin's stored setting; an
+older Invar version erases a setting written by a newer version when it saves another field.
+
+**Verification:** `bun test src/modules/settings && bun
+scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Every setting is a reactive cell read through its value ref
 
 **Invariant:** If a consumer reads a setting, then it reads `Settings.Class.<field>.value` — each
