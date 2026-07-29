@@ -993,6 +993,10 @@ const EXPLORING_RAMP = [
   '38;5;60',
 ];
 
+// Exploring's icon is a compass needle sweeping the points — a builder
+// finding its bearings before the first edit.
+const EXPLORING_GLYPHS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+
 // The gate flows gold — a torii's color, and unmistakably not a builder.
 // Three motions, three currents: teal builds, white-navy reads, gold judges.
 const GATE_RAMP = [
@@ -1099,14 +1103,15 @@ function live(
     const phaseRamp = exploring ? EXPLORING_RAMP : GRADIENT_RAMP;
     const phaseGlyph =
       breath === null
-        ? paint(exploring ? '38;5;153' : '38;5;45', '●')
-        : paint(
-            exploring
-              ? (EXPLORING_RAMP[(spinnerFrame ?? 0) % EXPLORING_RAMP.length] ??
-                  '38;5;153')
-              : breath[1],
-            breath[0],
-          );
+        ? paint(exploring ? '38;5;153' : '38;5;45', exploring ? '➤' : '●')
+        : exploring
+          ? paint(
+              EXPLORING_RAMP[(spinnerFrame ?? 0) % EXPLORING_RAMP.length] ??
+                '38;5;153',
+              EXPLORING_GLYPHS[(spinnerFrame ?? 0) % EXPLORING_GLYPHS.length] ??
+                '➤',
+            )
+          : paint(breath[1], breath[0]);
     const statusBadge = ready
       ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
       : `${phaseGlyph} ${
