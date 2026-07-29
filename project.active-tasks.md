@@ -27,7 +27,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (13)
+## FLAKE-EVIDENCE (14)
+- #214 panel-chrome-agent-close-intermittent
 - #213 drive-quit-key-post-quit-frame-wait
 - #212 markdown-100k-paste-focus-wait
 - #200 input-byte-latency-above-baseline
