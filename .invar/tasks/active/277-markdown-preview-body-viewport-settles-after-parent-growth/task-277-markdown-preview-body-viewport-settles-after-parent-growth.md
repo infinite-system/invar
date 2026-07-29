@@ -1,4 +1,4 @@
-# 272 — Markdown preview body viewport stays stale after parent growth
+# 277 — Markdown preview body viewport stays stale after parent growth
 
 State: ACTIVE
 Created: 2026-07-29
