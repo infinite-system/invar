@@ -30,6 +30,16 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 02:3x — #230 LANDED (c669256f): ui.lattice.md, all 61 records woven,
+  77->217 resolved links, five generators + three recurring shapes + eight
+  compositions. Its bycatch ran the full new taxonomy: six findings ->
+  #239 (citation repairs, DISPATCHED into the freed lane), #240 (Momentum
+  record placement), #241/#242 (Engine: user decision tasks for you: split
+  ui.invariants along the lattice families? promote the shared paint-and-hit
+  rule to a project record?). tasks:watch shipped (spinners on motion, READY
+  still, ticking durations); #235 names the CLI lenses as its primitive per
+  your instruction. Building: #35 (proof), #233 (leak), #239 (repairs).
+
 - 02:1x — THE CAPSTONE LANDED (#220 -> 219f160a, 53m). The modularity umbrella
   is complete: git, filetree, markdown, LSP, terminal, text primitives, and
   the editor itself — uninstallable, reversible, honest censuses. Its report
