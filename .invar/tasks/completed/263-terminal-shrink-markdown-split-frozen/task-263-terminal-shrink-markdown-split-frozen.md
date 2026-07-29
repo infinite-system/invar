@@ -1,6 +1,6 @@
 # 263 — a terminal shrink never re-lays-out the markdown split until a mouse event
 
-State: IN-PROGRESS
+State: COMPLETED — facc262b — terminal shrink reflows the split; layout reads live renderer dims
 Created: 2026-07-29
 Engine: codex
 Environment: linux

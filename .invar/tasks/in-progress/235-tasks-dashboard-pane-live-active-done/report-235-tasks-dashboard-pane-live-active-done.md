@@ -1,7 +1,8 @@
 # READY — #235 (the tasks dashboard pane: LIVE / ACTIVE / DONE, linked to the records)
 
-State: READY — branch `fleet/235-tasks-dashboard-pane-live-active-done`, one feature commit
-(hash in the branch tip; the pre-commit merge gate ran on it). Builder: claude · fable-5.
+State: READY — branch `fleet/235-tasks-dashboard-pane-live-active-done`. Feature commit
+`a9633a04` (the full pre-commit merge gate ran GREEN on it, 61-smoke pool included), plus
+bycatch commit `1757fe9f` (see Bycatch). Builder: claude · fable-5.
 
 ## What landed
 
@@ -64,6 +65,25 @@ The task system is now visible inside Invar as an ordinary dock contributor:
 - **File grammar.** The module is grammar-clean and ratcheted into `CONVERTED_MODULES`
   (repo-wide legacy violations now 0).
 
+## The defect the first gate run caught (fixed before READY)
+
+The first pre-commit merge gate went RED: 14 smokes timed out, and
+`smoke-layout-harness` named the cause exactly — "FAIL right dock starts empty and hidden."
+`PanelHost` reveals a dock-style slot on every registration
+(`showWhenContentRegistered: true` in Bootstrap). The structure navigator's default-visibility
+policy takes back the reveal its OWN registration causes; my second registration revealed the
+dock again at boot, nothing took it back, and the 28-column dock shifted every full-width grid
+expectation in 13 other smokes.
+
+Fix: `TasksDashboardPlugin.activateApplication` captures dock visibility before registering and
+takes back exactly the reveal the registration caused; an already-visible dock is left alone.
+Two unit tests lock it (`registration does not reveal a hidden dock…`,
+`activation leaves an already-visible dock alone`), the plugin test's host now uses the REAL
+`showWhenContentRegistered: true` option, and re-driven boot shows `rightDockVisible=false`
+while `Ctrl+Shift+T` still shows and focuses the pane. `smoke-layout` boot arm,
+`smoke-mode-coherence` (20 PASS), and the tasks smoke (7/7) were re-run green before the second
+gate run.
+
 ## Positive controls (convention 6)
 
 - Planted `standing: ready && false ? …` in `buildLiveRows` → the live-lens smoke arm went
@@ -123,9 +143,10 @@ The task system is now visible inside Invar as an ordinary dock contributor:
   `activeBuffer` set, `rightDockFocused=true`). The keyboard path (Enter) ends with
   `rightDockFocused=false` correctly. Same family as #259's subject; host-level pointer focus
   lands after the content's handler. Not touched here.
-- **Plain nonsense (pre-existing, unfixed):** `scripts/tasks/tasks-status.ts:56` imports
-  `basename` from `node:path` and never uses it. One-token removal; left for a separate
-  cleanup since my diff already reworks that file's export surface.
+- **Plain nonsense (pre-existing, FIXED, own commit `1757fe9f`):**
+  `scripts/tasks/tasks-status.ts` imported `basename` from `node:path` and never used it.
+  One-token removal in its own commit (SKIP_GATE, since the full gate had just run green on
+  `a9633a04` and the change is behavior-free); `--self-test` re-run green.
 - **Contract-layer gap:** the task-record system itself (`.invar/tasks/` layout, meta.json
   stamps, the drift signals) has no `*.invariants.md` domain record — its law lives in the
   script's header comment and the manage-tasks skill. Now that the readers feed a production

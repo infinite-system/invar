@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #274 structure-scrollbar-depth-filter  [building]
   `tmux attach -t invar/274-structure-scrollbar-depth-filter`
-- #263 terminal-shrink-markdown-split-frozen  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/263-terminal-shrink-markdown-split-frozen`
 - #235 tasks-dashboard-pane-live-active-done  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/235-tasks-dashboard-pane-live-active-done`
 
@@ -88,10 +86,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 51 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 52 — full log: project.tasks-completed.md)
 - #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 boot-save-erases-unregistered-settings — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
+- #263 terminal-shrink-markdown-split-frozen — facc262b — terminal shrink reflows the split; layout reads live renderer dims
 - #259 right-dock-click-leaves-double-focus — 587eed67 — one focus-set owner across docks; click path double-focus fixed
 - #254 gate-workers-validated-after-side-effects — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
 - #253 ui-contract-systematic-citation-sweep — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
@@ -103,4 +102,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #238 structure-default-right-and-md-toc — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
 - #237 markdown-preview-left-and-auto-open — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
 - #236 markdown-terminal-stylesheet-readable — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
-- #233 wrap-contract-red-settings-leak — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash

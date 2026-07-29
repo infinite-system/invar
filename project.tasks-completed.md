@@ -8,6 +8,7 @@ task file’s State line. Completion chronology in full detail: `git log -- .inv
 - #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 boot-save-erases-unregistered-settings — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
+- #263 terminal-shrink-markdown-split-frozen — facc262b — terminal shrink reflows the split; layout reads live renderer dims
 - #259 right-dock-click-leaves-double-focus — 587eed67 — one focus-set owner across docks; click path double-focus fixed
 - #254 gate-workers-validated-after-side-effects — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
 - #253 ui-contract-systematic-citation-sweep — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
