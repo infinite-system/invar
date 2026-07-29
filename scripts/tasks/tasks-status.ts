@@ -426,6 +426,7 @@ function report(tasksRoot: string): number {
     0,
   );
   console.log(`  highest task number: #${highestNumber}`);
+  console.log(`  ${statsLine(tasksRoot)}`);
 
   // STALE-ACTIVE-VIEW: a task moved states and nobody regenerated the derived view — a done task
   // still listed as active, or a filed task missing. Detected by byte-diff against a fresh render,
@@ -784,12 +785,111 @@ function printCompleted(
   }
 }
 
+// ---- Stats: velocity, commits, code size --------------------------------
+// Cheap facts a glance deserves. Each is one spawn; the watch loop samples
+// the expensive ones once a minute, not per frame.
+
+function gitNumber(args: string[]): number | null {
+  const result = Bun.spawnSync(['git', ...args], {
+    cwd: join(import.meta.dir, '..', '..'),
+  });
+  const value = Number.parseInt(result.stdout.toString().trim(), 10);
+  return Number.isNaN(value) ? null : value;
+}
+
+function commitsToday(): number | null {
+  return gitNumber(['rev-list', '--count', '--since=00:00', 'HEAD']);
+}
+
+function sourceLineCount(): number | null {
+  const files = Bun.spawnSync(['git', 'ls-files', 'src'], {
+    cwd: join(import.meta.dir, '..', '..'),
+  })
+    .stdout.toString()
+    .split('\n')
+    .filter((line) => line.endsWith('.ts'));
+  let total = 0;
+  for (const file of files) {
+    try {
+      const text = readFileSync(
+        join(import.meta.dir, '..', '..', file),
+        'utf8',
+      );
+      total += text.split('\n').length;
+    } catch {
+      // a file listed but unreadable does not sink the count
+    }
+  }
+  return files.length === 0 ? null : total;
+}
+
+function landedTodayStats(tasksRoot: string): {
+  landedToday: number;
+  medianMinutes: number | null;
+} {
+  const today = new Date().toISOString().slice(0, 10);
+  const durations: number[] = [];
+  let landedToday = 0;
+  for (const record of readTaskRecords(tasksRoot)) {
+    if (record.directoryState !== 'completed') continue;
+    const metaPath = join(
+      tasksRoot,
+      'completed',
+      record.folderName,
+      'meta.json',
+    );
+    if (!existsSync(metaPath)) continue;
+    try {
+      const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as {
+        landedAt?: string;
+        durationMinutes?: number;
+      };
+      if (meta.landedAt?.slice(0, 10) === today) {
+        landedToday += 1;
+        if (typeof meta.durationMinutes === 'number')
+          durations.push(meta.durationMinutes);
+      }
+    } catch {
+      // unreadable meta: skip
+    }
+  }
+  durations.sort((left, right) => left - right);
+  const medianMinutes =
+    durations.length === 0
+      ? null
+      : (durations[Math.floor(durations.length / 2)] ?? null);
+  return { landedToday, medianMinutes };
+}
+
+function statsLine(tasksRoot: string): string {
+  const { landedToday, medianMinutes } = landedTodayStats(tasksRoot);
+  const commits = commitsToday();
+  const lines = sourceLineCount();
+  const parts = [
+    `⚡${landedToday} landed today${medianMinutes === null ? '' : ` (median ${medianMinutes}m)`}`,
+    commits === null ? null : `⎘ ${commits} commits today`,
+    lines === null ? null : `≡ ${lines.toLocaleString('en-US')} src lines`,
+  ].filter((part): part is string => part !== null);
+  return parts.join(dim('  ·  '));
+}
+
 // tasks:watch — the live view as a dashboard: spinners on building tasks,
 // READY rows still, durations ticking. Redraws every 2 s; Ctrl+C exits.
 // Motion means work; stillness means a report is waiting for the conductor.
 async function watchLenses(tasksRoot: string): Promise<number> {
   let frame = 0;
+  // Deltas are measured against the moment the watch started: "what grew
+  // while you were looking". The expensive samples refresh once a minute.
+  const baselineCommits = commitsToday();
+  const baselineLines = sourceLineCount();
+  const baselineLanded = landedTodayStats(tasksRoot).landedToday;
+  let sampledCommits = baselineCommits;
+  let sampledLines = baselineLines;
   for (;;) {
+    if (frame % 30 === 0 && frame > 0) {
+      sampledCommits = commitsToday();
+      sampledLines = sourceLineCount();
+    }
     process.stdout.write('\x1b[2J\x1b[H');
     const clock = new Date().toLocaleTimeString('en-GB', { hour12: false });
     console.log(
@@ -805,10 +905,19 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     const activeCount = records.filter(
       (record) => record.directoryState === 'active',
     ).length;
+    const { landedToday } = landedTodayStats(tasksRoot);
+    const delta = (now: number | null, base: number | null): string =>
+      now !== null && base !== null && now > base
+        ? green(` +${now - base}`)
+        : '';
     console.log(
-      dim(
-        `◫ ${activeCount} active (bun run tasks:active) · ✔ ${completedCount} completed (bun run tasks:done)`,
-      ),
+      dim(`◫ ${activeCount} active · ✔ ${completedCount} completed`) +
+        dim('  ·  ') +
+        `⚡${landedToday} landed today${delta(landedToday, baselineLanded)}` +
+        dim('  ·  ') +
+        `⎘ ${sampledCommits ?? '?'} commits${delta(sampledCommits, baselineCommits)}` +
+        dim('  ·  ') +
+        `≡ ${sampledLines?.toLocaleString('en-US') ?? '?'} src lines${delta(sampledLines, baselineLines)}`,
     );
     frame += 1;
     await Bun.sleep(2000);
