@@ -6,6 +6,7 @@ import {
 
 const overlayNames: readonly ExclusiveOverlayName[] = [
   'findBar',
+  'goToLine',
   'quickOpen',
   'commandPalette',
   'settingsPanel',
@@ -25,6 +26,7 @@ describe('OverlayCoordinator', () => {
       };
     const closeActions: Record<ExclusiveOverlayName, () => void> = {
       findBar: closeOverlay('findBar'),
+      goToLine: closeOverlay('goToLine'),
       quickOpen: closeOverlay('quickOpen'),
       commandPalette: closeOverlay('commandPalette'),
       settingsPanel: closeOverlay('settingsPanel'),
@@ -61,6 +63,7 @@ describe('OverlayCoordinator', () => {
       findBar: () => {
         findBarCloseCount += 1;
       },
+      goToLine: () => {},
       quickOpen: () => {},
       commandPalette: () => {},
       settingsPanel: () => {},

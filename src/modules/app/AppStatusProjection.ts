@@ -19,6 +19,7 @@ import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { StatusProjectionContributions } from './StatusProjectionContributions';
+import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 
 class $AppStatusProjection {
   static publish(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
@@ -31,6 +32,7 @@ class $AppStatusProjection {
     const editor = ports.workspaceSet.active.editor;
     const openInputOverlays = [
       ...(ports.findBar.open.value ? ['findBar'] : []),
+      ...(ports.goToLinePrompt.open.value ? ['goToLine'] : []),
       ...(ports.quickOpen.open.value ? ['quickOpen'] : []),
       ...(ports.commands.open.value ? ['commandPalette'] : []),
       ...(ports.settingsPanel.open.value ? ['settingsPanel'] : []),
@@ -104,6 +106,9 @@ class $AppStatusProjection {
           ?.path ?? null,
       quickOpenMode: ports.quickOpen.mode.value,
       quickOpenPathOpenable: ports.quickOpen.workspacePathOpenable.value,
+      goToLineOpen: ports.goToLinePrompt.open.value,
+      goToLineValue: ports.goToLinePrompt.input.value,
+      goToLineNotice: ports.goToLinePrompt.notice.value,
       paletteOpen: ports.commands.open.value,
       paletteQuery: ports.commands.open.value ? ports.commands.query.value : '',
       paletteMatches: ports.commands.open.value
@@ -401,6 +406,10 @@ export interface AppStatusProjectionPorts {
     | 'fileEnumerationMessage'
     | 'mode'
     | 'workspacePathOpenable'
+  >;
+  readonly goToLinePrompt: Pick<
+    GoToLinePrompt.Model,
+    'open' | 'input' | 'notice'
   >;
   readonly settingsPanel: Pick<
     InstanceType<typeof SettingsPanel.Class>,

@@ -7,6 +7,7 @@ class $OverlayCoordinator {
   protected static get $exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
     const exclusiveOverlayNamesValue: readonly ExclusiveOverlayName[] = [
       'findBar',
+      'goToLine',
       'quickOpen',
       'commandPalette',
       'settingsPanel',
@@ -47,6 +48,7 @@ export namespace OverlayCoordinator {
 // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
 export type ExclusiveOverlayName =
   | 'findBar'
+  | 'goToLine'
   | 'quickOpen'
   | 'commandPalette'
   | 'settingsPanel'

@@ -94,6 +94,7 @@ import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 import { ApplicationContributions } from './ApplicationContributions';
 import { TaskLauncher } from '../tasks/TaskLauncher';
 import { Tasks } from '../tasks/Tasks';
+import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 
 class $Bootstrap {
   protected static awaitProjectedFrame(
@@ -268,6 +269,7 @@ class $Bootstrap {
     const settingsPanel = new SettingsPanel.Class(settings);
     const findBar = new FindBar.Class();
     const quickOpen = new QuickOpen.Class();
+    const goToLinePrompt = new GoToLinePrompt.Class();
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     // The bottom panel slot: a generic, content-agnostic host. Its occupants come from contributed
     // RUNTIMES, built lazily on first toggle so nothing is started until the panel is opened.
@@ -307,6 +309,7 @@ class $Bootstrap {
 
     const overlayCoordinator = new OverlayCoordinator.Class({
       findBar: () => findBar.close(),
+      goToLine: () => goToLinePrompt.close(),
       quickOpen: () => quickOpen.close(),
       commandPalette: () => commands.closePalette(),
       settingsPanel: () => settingsPanel.close(),
@@ -437,6 +440,11 @@ class $Bootstrap {
           );
       }
     };
+    const submitGoToLine = (): void => {
+      const target = goToLinePrompt.parse();
+      if (!target) return;
+      if (workspaceSet.active.goToLine(target)) goToLinePrompt.close();
+    };
 
     const view = RootView.Class.buildRootView(
       renderer,
@@ -453,6 +461,7 @@ class $Bootstrap {
       settingsPanel,
       findBar,
       quickOpen,
+      goToLinePrompt,
       shortcutHelp,
       overlayCoordinator,
       panelHost,
@@ -980,6 +989,7 @@ class $Bootstrap {
       commands,
       findBar,
       quickOpen,
+      goToLinePrompt,
       settingsPanel,
       contextMenu,
       boundedListPopup,
@@ -1354,6 +1364,10 @@ class $Bootstrap {
         overlayCoordinator.openExclusiveOverlay('quickOpen', () =>
           quickOpen.showWorkspacePath(workspaceSet.active.root),
         ),
+      openGoToLine: () =>
+        overlayCoordinator.openExclusiveOverlay('goToLine', () =>
+          goToLinePrompt.show(),
+        ),
       quit: () => void shutdown(),
       requestRender: () => app.requestRender(),
       toggleActivityBar: () => {
@@ -1561,6 +1575,10 @@ class $Bootstrap {
         commands.applyQueryInputAction(action);
         return;
       }
+      if (goToLinePrompt.open.value) {
+        goToLinePrompt.applyInputAction(action);
+        return;
+      }
       const primaryDockTextInput = primaryDockHost.focused.value
         ? primaryDockHost.focusedContent?.capability?.<PaneTextInputPort>(
             'text-input',
@@ -1650,6 +1668,8 @@ class $Bootstrap {
       'palette.run': () => commands.runSelected(),
       'palette.previous': () => commands.moveSelection(-1),
       'palette.next': () => commands.moveSelection(1),
+      'goToLine.close': () => goToLinePrompt.close(),
+      'goToLine.submit': submitGoToLine,
       'textInput.moveLeft': () => applyTextInputAction('moveLeft'),
       'textInput.moveRight': () => applyTextInputAction('moveRight'),
       'textInput.moveWordLeft': () => applyTextInputAction('moveWordLeft'),
@@ -1964,6 +1984,7 @@ class $Bootstrap {
       'find.open',
       'find.replace',
       'quickopen.open',
+      'editor.goToLine',
       'workspace.openFolder',
       'palette.open',
       'settings.toggle',
@@ -2394,11 +2415,13 @@ class $Bootstrap {
           ? 'settings'
           : commands.open.value
             ? 'palette'
-            : quickOpen.open.value
-              ? 'quickopen'
-              : findBar.open.value
-                ? 'find'
-                : workspaceSet.active.focus.value;
+            : goToLinePrompt.open.value
+              ? 'goToLine'
+              : quickOpen.open.value
+                ? 'quickopen'
+                : findBar.open.value
+                  ? 'find'
+                  : workspaceSet.active.focus.value;
 
       // Ctrl+H is the ASCII Backspace control byte (0x08); OpenTUI correctly decodes that legacy byte
       // as {name:'backspace', ctrl:false}. A physical Backspace is DEL (0x7f), so the byte sequences are
@@ -2449,6 +2472,20 @@ class $Bootstrap {
           quickOpen.insertQuery(key.sequence);
           return;
         }
+        return;
+      }
+
+      if (context === 'goToLine') {
+        const goToLineResolution = keybindings.resolve(
+          normalizedChordEvent,
+          'goToLine',
+          Date.now(),
+        );
+        if (goToLineResolution.action) {
+          dispatchAction(goToLineResolution.action, key);
+          return;
+        }
+        if (isTypedCharacter(key)) goToLinePrompt.append(key.sequence);
         return;
       }
 
@@ -2570,6 +2607,10 @@ class $Bootstrap {
         quickOpen.insertQuery(singleLine);
         return;
       }
+      if (goToLinePrompt.open.value) {
+        goToLinePrompt.append(singleLine);
+        return;
+      }
       if (findBar.open.value) {
         findBar.append(singleLine);
         return;
@@ -2578,6 +2619,7 @@ class $Bootstrap {
       // paste never drives the editor hidden beneath an open overlay.
       if (
         commands.open.value ||
+        goToLinePrompt.open.value ||
         settingsPanel.open.value ||
         shortcutHelp.open.value ||
         contextMenu.open.value

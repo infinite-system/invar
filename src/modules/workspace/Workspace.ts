@@ -5,6 +5,7 @@ import {
   NavigationHistory,
   type Location,
 } from '../navigation/NavigationHistory';
+import type { GoToLineTarget } from '../navigation/GoToLinePrompt';
 import { Files } from '../system/Files';
 import { TaskStatePath } from '../system/TaskStatePath';
 import { ImageDecoders } from '../image/ImageDecoders';
@@ -35,6 +36,7 @@ import type {
   SourceTextViewProvider,
 } from './SourceTextView.interface';
 import type { TextDocument } from '../text/TextDocument';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { ProviderRegistry } from '../plugins/ProviderRegistry';
 
 // A workspace: one project root with its open buffers, documents, and generic contribution
@@ -652,6 +654,29 @@ class $Workspace {
   navigateForward(): void {
     const location = this.navigationHistory.forward();
     if (location) this.restoreNavigationLocation(location);
+  }
+
+  /** Jump to a one-based line and column, clamped to the active document, and record both ends. */
+  goToLine(target: GoToLineTarget): boolean {
+    // invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
+    const editor = this.editor;
+    if (!editor.hasDocument.value) return false;
+    const lineIndex = Math.max(
+      0,
+      Math.min(target.line - 1, editor.document.lineCount - 1),
+    );
+    const lineText = editor.document.line(lineIndex);
+    const graphemeColumn = Math.max(
+      0,
+      Math.min(
+        target.column - 1,
+        TextCoordinates.Class.graphemeCount(lineText),
+      ),
+    );
+    this.recordCurrentLocation();
+    this.revealSourceLocation(lineIndex, graphemeColumn);
+    this.recordCurrentLocation();
+    return true;
   }
 
   /** Open `path` as a tab: focus its tab if already open, else add a new active one. Records the

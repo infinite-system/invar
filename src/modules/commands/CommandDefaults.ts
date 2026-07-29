@@ -220,6 +220,13 @@ class $CommandDefaults {
         run: () => void context.workspaceSet.active.goToDefinition(),
       },
       {
+        id: 'editor.goToLine',
+        title: 'Editor: Go to Line',
+        category: 'Editor',
+        when: hasDocument,
+        run: context.openGoToLine,
+      },
+      {
         id: 'go.top',
         title: 'Go: Top of File',
         category: 'Go',
@@ -258,6 +265,7 @@ export interface CommandContext {
   workspaceSet: WorkspaceSet.Instance;
   theme: Theme.Instance;
   openWorkspaceFolder: () => void;
+  openGoToLine: () => void;
   quit: () => void;
   requestRender: () => void;
   toggleActivityBar: () => void;

@@ -62,6 +62,7 @@ import type { ShortcutHelp } from './ShortcutHelp';
 import type { Tooltip } from './Tooltip';
 import type { Theme } from '../theme/Theme';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
+import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 
 class $OverlayLayer {
   get paintRevision() {
@@ -72,6 +73,7 @@ class $OverlayLayer {
     return (
       this.dependencies.commands.open.value ||
       this.dependencies.findBar.open.value ||
+      this.dependencies.goToLinePrompt.open.value ||
       this.dependencies.quickOpen.open.value ||
       this.dependencies.contextMenu.open.value ||
       this.dependencies.boundedListPopup.open.value ||
@@ -91,6 +93,9 @@ class $OverlayLayer {
   protected readonly quickOpenInput: TextRenderable;
   protected readonly quickOpenList: TextRenderable;
   protected readonly quickOpenDismissal: ModalOverlayDismissal.Model;
+  protected readonly goToLineBox: BoxRenderable;
+  protected readonly goToLineText: TextRenderable;
+  protected readonly goToLineDismissal: ModalOverlayDismissal.Model;
   protected readonly confirmBox: BoxRenderable;
   protected readonly confirmText: TextRenderable;
   protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
@@ -265,6 +270,30 @@ class $OverlayLayer {
       () => {
         this.requestPaint();
       },
+    );
+    this.goToLineBox = new BoxRenderable(renderer, {
+      id: 'go-to-line',
+      position: 'absolute',
+      left: '30%',
+      top: 3,
+      width: '40%',
+      border: true,
+      borderStyle: 'rounded',
+      title: 'Go to Line',
+      visible: false,
+      zIndex: 110,
+    });
+    this.goToLineText = new TextRenderable(renderer, {
+      id: 'go-to-line-text',
+      content: '',
+    });
+    this.goToLineBox.add(this.goToLineText);
+    root.add(this.goToLineBox);
+    this.goToLineDismissal = this.createModalDismissal(
+      'go-to-line',
+      109,
+      111,
+      () => dependencies.goToLinePrompt.close(),
     );
     // Destructive-action confirmation (discard / close-dirty-tab) — a small modal strip.
     this.confirmBox = new BoxRenderable(renderer, {
@@ -905,6 +934,7 @@ class $OverlayLayer {
       commandPalette: this.dialogBoundsByName.get('commandPalette') ?? null,
       findBar: this.dialogBoundsByName.get('findBar') ?? null,
       quickOpen: this.dialogBoundsByName.get('quickOpen') ?? null,
+      goToLine: this.dialogBoundsByName.get('goToLine') ?? null,
       confirmation: this.dialogBoundsByName.get('confirmation') ?? null,
       settingsPanel: this.dialogBoundsByName.get('settingsPanel') ?? null,
       shortcutHelp: this.dialogBoundsByName.get('shortcutHelp') ?? null,
@@ -967,6 +997,7 @@ class $OverlayLayer {
       commands,
       findBar,
       quickOpen,
+      goToLinePrompt,
       workspaceSet,
       settingsPanel,
       shortcutHelp,
@@ -1191,6 +1222,42 @@ class $OverlayLayer {
       this.previousQuickOpenSelectedIndex = -1;
     }
     this.previousQuickOpenOpen = quickOpen.open.value;
+    if (goToLinePrompt.open.value) {
+      this.updateOverlayDialog(
+        this.goToLineBox,
+        this.goToLineDismissal,
+        palette,
+        {
+          dialogName: 'goToLine',
+          title: 'Go to Line',
+          desiredTop: 3,
+          desiredWidth: Math.max(24, Math.floor(renderer.width * 0.4)),
+          desiredHeight: goToLinePrompt.notice.value ? 4 : 3,
+          borderColor: goToLinePrompt.notice.value
+            ? palette.warning
+            : palette.borderActive,
+        },
+      );
+      // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
+      const chunks = TextFieldPainter.Class.paint({
+        prefix: ' Line: ',
+        input: goToLinePrompt.input,
+        tone: TextFieldPainter.Class.toneFor(palette, 'focused'),
+        surfaceBackground: palette.panel,
+        caretVisible: true,
+        width: null,
+      }).chunks;
+      if (goToLinePrompt.notice.value) {
+        chunks.push(fg(palette.warning)(`\n ${goToLinePrompt.notice.value}`));
+      }
+      this.goToLineText.content = new StyledText(chunks);
+    } else {
+      this.hideOverlayDialog(
+        'goToLine',
+        this.goToLineBox,
+        this.goToLineDismissal,
+      );
+    }
     // Confirmation overlay for closing a dirty tab.
     const pendingCloseTabIndex = workspaceSet.active.pendingCloseTabIndex.value;
     if (pendingCloseTabIndex >= 0) {
@@ -1517,6 +1584,7 @@ type OverlayDialogName =
   | 'commandPalette'
   | 'findBar'
   | 'quickOpen'
+  | 'goToLine'
   | 'confirmation'
   | 'settingsPanel'
   | 'shortcutHelp'
@@ -1534,6 +1602,7 @@ export interface OverlayLayerDependencies {
   commands: CommandRegistry.Instance;
   findBar: FindBar.Instance;
   quickOpen: QuickOpen.Instance;
+  goToLinePrompt: GoToLinePrompt.Instance;
   contextMenu: ContextMenu.Instance;
   boundedListPopup: BoundedListPopup.Instance;
   settingsPanel: SettingsPanel.Instance;

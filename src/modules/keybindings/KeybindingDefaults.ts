@@ -341,6 +341,12 @@ class $KeybindingDefaults {
         action: 'navigation.forward',
         context: 'editor',
       },
+      // Ctrl+G and Ctrl+Shift+G belong to the Git contribution. Alt+G keeps the go-to mnemonic.
+      {
+        chord: { key: 'g', alt: true },
+        action: 'editor.goToLine',
+        context: 'editor',
+      },
 
       // --- palette (captures input while open) ---
       { chord: { key: 'escape' }, action: 'palette.close', context: 'palette' },
@@ -351,6 +357,17 @@ class $KeybindingDefaults {
 
       // --- text inputs (query editing stays intent-addressed even though typed characters are residuals) ---
       ...this.textInputBindings('quickopen'),
+      {
+        chord: { key: 'escape' },
+        action: 'goToLine.close',
+        context: 'goToLine',
+      },
+      {
+        chord: { key: 'return' },
+        action: 'goToLine.submit',
+        context: 'goToLine',
+      },
+      ...this.textInputBindings('goToLine'),
       ...this.textInputBindings('find'),
       // Case-sensitivity toggle (VS Code's Alt+C in the find widget) — flips the engine + re-runs the query.
       {
@@ -671,6 +688,7 @@ export namespace KeybindingDefaults {
 export type TextInputBindingContext =
   | 'palette'
   | 'quickopen'
+  | 'goToLine'
   | 'find'
   | 'agent'
   | 'listPopup'
