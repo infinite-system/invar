@@ -6,17 +6,18 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
 - #284 [scrollbar-theme-captured-at-construction](.invar/tasks/in-progress/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)  [building]
   `tmux attach -t invar/284-scrollbar-theme-captured-at-construction`
+- #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/in-progress/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)  [building]
+  `tmux attach -t invar/277-markdown-preview-body-viewport-settles-after-parent-growth`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (20)
-- #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/active/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)
+## VERIFICATION-INTEGRITY (19)
 - #269 [smokes-assume-editor-geometry-sweep](.invar/tasks/active/269-smokes-assume-editor-geometry-sweep/task-269-smokes-assume-editor-geometry-sweep.md)
 - #261 [drive-harness-drops-shifted-control-chords](.invar/tasks/active/261-drive-harness-drops-shifted-control-chords/task-261-drive-harness-drops-shifted-control-chords.md)
 - #240 [momentum-records-placement-call](.invar/tasks/active/240-momentum-records-placement-call/task-240-momentum-records-placement-call.md)

@@ -1,6 +1,6 @@
 # 277 — Markdown preview body viewport stays stale after parent growth
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

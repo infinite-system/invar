@@ -1,0 +1,15 @@
+{
+  "task": 277,
+  "slug": "markdown-preview-body-viewport-settles-after-parent-growth",
+  "branch": "fleet/277-markdown-preview-body-viewport-settles-after-parent-growth",
+  "worktree": ".invar/worktrees/277-markdown-preview-body-viewport-settles-after-parent-growth",
+  "tmuxSession": "invar/277-markdown-preview-body-viewport-settles-after-parent-growth",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-277-markdown-preview-body-viewport-settles-after-parent-growth.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "8e926a12028484b718e05d40ebd8dd1d39d0a8c7",
+  "startedAt": "2026-07-29T16:18:27-04:00"
+}
