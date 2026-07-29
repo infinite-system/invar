@@ -42,3 +42,17 @@ it reads `None observed`.
 ## Sources
 
 - User message 2026-07-29 ~17:2x (verbatim above).
+
+## Third arm (user, 2026-07-29 ~17:3x, verbatim)
+
+"in nerd font mode, the invar agent button on bottom pane should be
+improved, it's not a good one"
+
+3. **Agent button glyph (Nerd tier)**: pick a better Nerd Font glyph
+   for the Invar agent button in the bottom pane — current one reads
+   poorly. Candidates from the robot/sparkle/terminal-assistant family
+   (e.g. nf-md-robot, nf-md-robot_outline, nf-fa-magic — builder
+   evaluates rendering in the REAL terminal at both font sizes and
+   shows the chosen cell in the report). Unicode and ASCII tiers stay
+   unless they share the same weakness — state the check either way.
+   The mark-ownership census gains the chosen glyph's owner row.
