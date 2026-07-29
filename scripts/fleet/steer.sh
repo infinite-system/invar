@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# steer.sh — deliver a conductor message to a builder tmux session, VERIFIED.
+#
+# WHY: tmux send-keys "msg" Enter sometimes leaves the message sitting in the
+# codex composer unsubmitted (2026-07-29: #289 lost one steer, #281 sat idle
+# ~25 minutes on a stuck round-2 notification). A steer that is not verified
+# delivered is a steer that silently did not happen — the same class as an
+# unread gate verdict. This script sends, then PROVES the composer cleared,
+# retrying Enter up to 5 times before failing loudly.
+#
+# Usage: scripts/fleet/steer.sh <task-folder-name> <message...>
+set -euo pipefail
+
+if [ "$#" -lt 2 ]; then
+  echo "usage: $0 <task-folder-name> <message...>" >&2
+  exit 2
+fi
+
+task_folder_name="$1"
+shift
+message="$*"
+session_name="invar/${task_folder_name}"
+
+if ! tmux has-session -t "$session_name" 2>/dev/null; then
+  echo "steer: REFUSING — no tmux session '$session_name'" >&2
+  exit 3
+fi
+
+# A distinctive tail fragment of the message, to detect it lingering in the
+# composer. Use the last 40 characters — long enough to be unambiguous.
+message_tail="${message: -40}"
+
+tmux send-keys -t "$session_name" "$message"
+tmux send-keys -t "$session_name" Enter
+
+for attempt in 1 2 3 4 5; do
+  sleep 2
+  pane_text="$(tmux capture-pane -p -t "$session_name")"
+  # Strongest signal: the builder is processing (spinner present).
+  if printf '%s' "$pane_text" | grep -qE 'esc to interrupt|• Working'; then
+    echo "steer: DELIVERED to $session_name — builder is processing (attempt $attempt)"
+    exit 0
+  fi
+  # Second signal: the composer tail no longer shows the message (codex
+  # echoes submitted messages higher in the transcript, so only the last
+  # lines near the prompt count as "still in the composer").
+  pane_tail="$(printf '%s' "$pane_text" | tail -8)"
+  if ! printf '%s' "$pane_tail" | grep -qF -- "$message_tail"; then
+    echo "steer: DELIVERED to $session_name — composer cleared (attempt $attempt)"
+    exit 0
+  fi
+  # Message still visible near the prompt — likely stuck in the composer.
+  tmux send-keys -t "$session_name" Enter
+done
+
+echo "steer: FAILED — message still in the composer of $session_name after 5 Enter attempts; attach and submit by hand: tmux attach -t $session_name" >&2
+exit 4
