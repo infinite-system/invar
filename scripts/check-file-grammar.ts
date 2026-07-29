@@ -70,6 +70,7 @@ export const CONVERTED_MODULES = new Set<string>([
   'storage',
   'system',
   'syntax',
+  'tasks-dashboard',
   'terminal',
   'theme',
   'ui',

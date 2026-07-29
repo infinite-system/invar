@@ -18,6 +18,7 @@ test('the shipped application registers its built in contributions', () => {
     ['inline-rewrite', 'Inline Rewrite'],
     ['source-text-editor', 'Source Text Editor'],
     ['structure-navigator', 'Structure Navigator'],
+    ['tasks-dashboard', 'Tasks Dashboard'],
     ['database-consumer', 'Database Explorer'],
     ['extensions', 'Extensions'],
   ]);
@@ -40,6 +41,7 @@ test('the shipped application registers its built in contributions', () => {
     true,
     false,
     true,
+    false,
     true,
     false,
   ]);
