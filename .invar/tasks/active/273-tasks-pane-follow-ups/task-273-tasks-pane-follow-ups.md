@@ -2,9 +2,9 @@
 
 State: ACTIVE
 Created: 2026-07-29
-Engine: claude
+Engine: codex
 Environment: linux
-Model: fable-5
+Model: 5.6-sol
 Effort: medium
 Priority: user-roadmap-extension
 
