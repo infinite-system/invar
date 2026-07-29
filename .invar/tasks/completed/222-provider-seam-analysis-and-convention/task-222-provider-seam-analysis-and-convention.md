@@ -1,6 +1,6 @@
 # 222 — provider-seam analysis: where the getter seam is owed, and the convention text
 
-State: IN-PROGRESS
+State: COMPLETED — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 Created: 2026-07-29
 Engine: claude
 Environment: linux

@@ -41,3 +41,12 @@ before merge, session archived at land.
 - 00:28 — #216 dispatched (codex). Session link resolved late (codex creates
   its rollout lazily; the in-dispatch check fires too early — known wrinkle,
   folded into #215's scope). Briefing file created.
+- 01:1x — #222 landed docs-only (a666159). Its analysis corrected the brief twice
+  (Momentum impure, Processes unneeded) and shrank #223's conversion to 3 files.
+  Bycatch filed: #224 (Momentum ambient clock), #225 (rotted system contract),
+  #226 (Clock.freeze deletion + first getter conversion), #227 (dispatch cuts
+  worktree after record commit — the rename wrinkle from this landing). The
+  task-folder-as-durable-workspace pattern is now doctrine in manage-tasks.
+  Recovery note: concluding the conflicted merge without SKIP_GATE fired a
+  hook gate beside a live builder; killed by pid via cwd; my own pgrep then
+  self-matched (family 2) before I read the enumeration properly.

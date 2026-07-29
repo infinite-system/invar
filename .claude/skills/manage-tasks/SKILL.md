@@ -49,6 +49,12 @@ first two rounds unreadable.
 
 Transcripts are not stored here. They are gitignored under `tmp/transcripts/`.
 
+**The task folder is the builder's durable workspace.** A builder that authors
+a one-off census, a proposed checker, or an analysis document commits it into
+its OWN task folder on its branch. It rides the merge home and outlives the
+worktree. Tooling written to `/tmp` dies; tooling written to the task folder
+is part of the record (#222 is the founding example).
+
 ## Counting the task system
 
 ```

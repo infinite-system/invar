@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 - #218 workspace-buffer-splits-document-from-view — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
 - #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a

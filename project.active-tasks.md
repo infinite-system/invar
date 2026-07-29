@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #222 provider-seam-analysis-and-convention  [building]
-  `tmux attach -t invar/222-provider-seam-analysis-and-convention`
+## IN-PROGRESS (2)
 - #219 source-text-view-onto-pane-content-seam  [building]
   `tmux attach -t invar/219-source-text-view-onto-pane-content-seam`
 - #216 drive-onramp-quick-open-blind-enumeration  [READY delivered — builder idle, awaiting landing]
@@ -18,7 +16,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (13)
+## VERIFICATION-INTEGRITY (15)
+- #227 dispatch-cuts-worktree-after-record-commit
+- #225 system-invariants-rotted-enumeration
 - #221 editor-owns-no-view-state-uncited
 - #215 agent-tmux-send-confirm-false-negative
 - #210 mutation-probes-for-semantic-weakening
@@ -60,7 +60,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (7)
+## ARCHITECTURE-HYGIENE (9)
+- #226 clock-freeze-hook-and-getter-conversion
+- #224 momentum-ambient-clock-default-parameter
 - #223 database-plugin-proves-provider-seam
 - #220 editor-registers-as-contributor-with-manifest
 - #217 split-geometry-aggregates-invariant
@@ -69,7 +71,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 28 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 29 — full log: project.tasks-completed.md)
+- #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 - #218 workspace-buffer-splits-document-from-view — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
 - #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
@@ -84,4 +87,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #196 editor-flyweight-edit-path
 - #195 start-script-drops-path-argument — fb199cb
 - #194 reserved-chord-fixture-self-contained — d3721b2
-- #192 residual-harness-wait-audit
