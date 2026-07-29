@@ -33,3 +33,10 @@ n/a — decision task.
 ## Sources
 
 - `report-230-...md`, "ui.invariants.md is due a split".
+
+## Evidence from #243 (2026-07-29)
+
+The contract-layer gap made concrete: `ui.invariants.md`'s header claims it
+governs `src/modules/ui/`, but the repaired records now cite owners in
+`editor`, `filetree`, and `git` — the contract boundary has not followed the
+pane extractions. This strengthens the split question this task decides.
