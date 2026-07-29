@@ -1,6 +1,6 @@
 # 239 — repair ui.invariants.md: dead symbols, wrong paths, duplicated paragraph
 
-State: IN-PROGRESS
+State: COMPLETED — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
 Created: 2026-07-29
 Engine: codex
 Environment: linux

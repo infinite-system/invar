@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #239 ui-contract-citation-repairs  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/239-ui-contract-citation-repairs`
+## IN-PROGRESS (2)
 - #233 wrap-contract-red-settings-leak  [building]
   `tmux attach -t invar/233-wrap-contract-red-settings-leak`
 - #35 structure-navigator-plugin-pane  [building]
@@ -82,7 +80,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 35 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 36 — full log: project.tasks-completed.md)
+- #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
 - #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 - #221 editor-owns-no-view-state-uncited — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
@@ -97,4 +96,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #207 silently-discarded-user-input — fb199cb
 - #206 gate-retry-population-repair — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
 - #204 drive-tool-step-model-and-targeting — merged 7aa3a7c
-- #203 folded-editing-scale-invariance — e479b98
