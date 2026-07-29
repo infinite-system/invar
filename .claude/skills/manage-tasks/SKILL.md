@@ -148,6 +148,7 @@ git mv .invar/tasks/live/<n>-<slug> .invar/tasks/done/
 sed -i '0,/^State: .*/s//State: DONE — <merge-commit-sha>/' .invar/tasks/done/<n>-<slug>/task-<n>-<slug>.md
 git tag finished/<branch> <merge-sha>
 $EDITOR .invar/tasks/done/<n>-<slug>/summary-<n>-<slug>.md   # what ACTUALLY happened, incl. refutations
+bun scripts/tasks/tasks-status.ts write-active               # the landed task leaves the active view
 ```
 
 The `State:` line MUST name the commit — a bare `DONE` is the tracker's DONE-NO-EVIDENCE signal, and
@@ -159,6 +160,7 @@ eight of those were created in one evening by writing the SHA into the body inst
 git mv .invar/tasks/todo/<n>-<slug> .invar/tasks/retired/
 sed -i '0,/^State: .*/s//State: RETIRED — <why, or SUPERSEDED BY #m>/' .invar/tasks/retired/<n>-<slug>/task-<n>-<slug>.md
 git tag -a retired/<branch> -m '<why>' # only if a branch with unique commits exists
+bun scripts/tasks/tasks-status.ts write-active  # the retired task leaves the active view
 ```
 
 **7. AUDIT** — every reconciliation sweep, and before claiming the backlog state to the user:

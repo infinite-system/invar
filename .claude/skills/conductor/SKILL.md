@@ -70,9 +70,14 @@ as a SHAPE, not against a threshold. `3,3,3,3` glides; `5,1,5,1` stumbles at the
 **`.invar/tasks/<state>/<number>-<descriptive-name>/`.** States: `todo`, `live`, `done`, `retired`. A
 task is MOVED between them; a folder is never deleted. The protocol is the
 `manage-tasks` SKILL (`.claude/skills/manage-tasks/SKILL.md`) — shared with Invar users; this section
-is the conductor's operative summary. The priority ordering is `.invar/tasks/backlog.md` (state,
-living with each task's Priority: field). `project.active-tasks.md` is GENERATED from those fields
-(`tasks-status.ts write-active`) — never hand-edited. The old root docs are retired
+is the conductor's operative summary.
+
+**The ONLY hand-written record is the task file itself.** Priority lives as a `Priority:` field in
+each task's header (user-directed | verification-integrity | flake-evidence | performance-behaviour |
+architecture-hygiene). Everything else is DERIVED: `project.active-tasks.md` is GENERATED from those
+fields by `tasks-status.ts write-active` and is never hand-edited — an agent cannot forget to update
+a file no agent updates. The old root docs (`project.tasks.md`, `project.ledger.md`,
+`project.tasks-ledger.md`, `backlog.md`) are all retired.
 
 | file | shape |
 |---|---|
@@ -107,23 +112,27 @@ task. The transcript carries agent identity so three runs by three agents produc
 **Run the tracker instead of reading the folders:**
 
 ```
-bun scripts/tasks/tasks-status.ts             # counts + drift signals
-bun scripts/tasks/tasks-status.ts --self-test # before trusting a clean run
+bun scripts/tasks/tasks-status.ts              # counts + drift signals
+bun scripts/tasks/tasks-status.ts backlog      # the active backlog, grouped by Priority
+bun scripts/tasks/tasks-status.ts write-active # regenerate project.active-tasks.md
+bun scripts/tasks/tasks-status.ts --self-test  # before trusting a clean run
 ```
 
-Signals, strongest first: **REPORT-IN-OPEN** (a delivered report in `todo`/`live` — this is how a
-finished task sat unfiled), **STATE-MISMATCH**, **DONE-NO-EVIDENCE**, **THIN**. It reports; it never
-moves anything. Moving is the conductor's judgement, made with the lifecycle below.
+Five signals, strongest first: **REPORT-IN-OPEN** (a delivered report in `todo`/`live` — this is how
+a finished task sat unfiled), **STATE-MISMATCH**, **DONE-NO-EVIDENCE**, **THIN**, and
+**STALE-ACTIVE-VIEW** (the generated view disagrees with the folders — a move happened and
+`write-active` did not run; the repair is always that one command, never a hand edit to entries). It
+reports; it never moves anything. Moving is the conductor's judgement, made with the lifecycle below.
 
 ### The lifecycle — seven steps; the commands live in the `manage-tasks` skill
 
-1. **FILE** — folder + task file with the header block; next number above the tracker's highest.
-2. **DISPATCH** — `DRY_RUN=1` first, then `dispatch.sh` (moves to `live/`, commits the brief BEFORE launching).
+1. **FILE** — folder + task file with the header block (incl. `Priority:`); next number above the tracker's highest.
+2. **DISPATCH** — `DRY_RUN=1` first, then `dispatch.sh` (moves to `live/`, commits the brief BEFORE launching, regenerates the active view as a byproduct).
 3. **STEER** — a NEW brief at the next count; a brief is read at LAUNCH.
 4. **DELIVER** — copy the READY report verbatim; convert `## Bycatch` BEFORE merging.
-5. **LAND** — `git mv` to `done/` + `State: DONE — <sha>` + `finished/` tag + summary, in the SAME action as the merge.
-6. **RETIRE** — `git mv` to `retired/` + reason + `retired/` tag when a branch exists.
-7. **AUDIT** — `tasks-status.ts` every sweep; act on each signal or say why not.
+5. **LAND** — `git mv` to `done/` + `State: DONE — <sha>` + `finished/` tag + summary + `write-active`, in the SAME action as the merge.
+6. **RETIRE** — `git mv` to `retired/` + reason + `retired/` tag when a branch exists + `write-active`.
+7. **AUDIT** — `tasks-status.ts` every sweep; act on each signal or say why not (a STALE-ACTIVE-VIEW is always `write-active`).
 
 Load `.claude/skills/manage-tasks/SKILL.md` for the literal commands — it is the single source, and
 Invar users manage their own repos with the same skill. One task, one folder, forever: `git mv`
