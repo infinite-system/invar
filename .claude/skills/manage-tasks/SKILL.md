@@ -141,13 +141,17 @@ command to the user.
 $EDITOR .invar/tasks/in-progress/<n>-<slug>/brief-<n>-2-<slug>.md   # then send it; a brief is read at LAUNCH
 ```
 
-**4. DELIVER** — when the builder reports READY, copy the report verbatim into the folder:
+**4. DELIVER** — the report is born in the task folder. `dispatch.sh` points the builder at
+`.invar/tasks/in-progress/<n>-<slug>/report-<n>-<slug>.md` (absolute path), so delivery
+normally needs no copy. Verify the file is there. If the builder used the /tmp fallback
+(it says so in the report), copy it in:
 
 ```
 cp /tmp/<n>-*-READY.md .invar/tasks/in-progress/<n>-<slug>/report-<n>-<slug>.md
 ```
 
 Read its `## Bycatch` section now. Convert each item to a new task (step 1) before you merge.
+A follow-up round's report is a NEW numbered file, like a follow-up brief.
 
 **5. LAND** — gate green, merge, then move the record in the same action as the merge:
 
