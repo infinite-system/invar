@@ -674,18 +674,24 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // The spinner belongs to WORK IN MOTION only: building tasks spin, READY ones
 // hold still. One glyph per task, not per line — motion marks the task, the
 // details stay readable.
-// A calm breath in cool light: a medium dot swells to full and settles (no small dot) while its colour
+// A calm breath in cool light: the dot swells through three sizes and settles while its colour
 // glides teal -> cyan -> blue and back — the Claude Code gradient feel.
-// Eight frames advancing every fifth paint at 30 fps; one breath ~1.3 s.
+// Twelve frames advancing every fifth paint at 30 fps; one breath ~2 s —
+// small to medium to full and back, each size holding through two or three
+// colour steps so nothing jumps.
 const SPINNER_FRAMES: Array<[string, string]> = [
-  ['•', '38;5;30'],
+  ['·', '38;5;30'],
+  ['·', '38;5;37'],
   ['•', '38;5;37'],
   ['•', '38;5;44'],
+  ['•', '38;5;51'],
   ['●', '38;5;51'],
   ['●', '38;5;45'],
   ['●', '38;5;39'],
-  ['●', '38;5;44'],
+  ['●', '38;5;45'],
+  ['•', '38;5;44'],
   ['•', '38;5;37'],
+  ['·', '38;5;30'],
 ];
 const SPINNER_PAINTS_PER_STEP = 5;
 
