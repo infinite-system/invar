@@ -164,35 +164,6 @@ caret cell matches the native cursor, and toggling wrap off restores consecutive
 
 **Last refined:** 2026-07-21
 
-### The editor owns no view state
-
-**Invariant:** If the editor holds state, then it is document/cursor/selection/viewport model
-state only — never terminal geometry or rendering artifacts; the view pulls from the editor and
-writes nothing back into it.
-
-**Scope:** `Editor`, `Cursor`, `Viewport` vs `ui/RootView`.
-
-**Mechanism:** The editor exposes model state; `RootView.update()` reads it to build renderables
-and holds no model state. Realizes *ivue owns state, OpenTUI owns projection* and *Data flows one
-way* at the editor boundary.
-
-**Generates:** the stateless renderable in `RootView`; the viewport as model state the view reads.
-
-**Evidence:** `RootView.ts:211` holds no model state and pulls each `update()` — upheld. One edge
-to watch: `Bootstrap.ts:78` writes `viewport.setSize(view.…())` from frame geometry into model
-state — controlled (outside any render pass) but it is projection→model flow; keep it the only
-such edge and out of the reactive frame effect.
-
-**Impossible if true:** a renderable that is the source of scroll/selection truth; the editor
-storing terminal width/height as anything but a viewport input.
-
-**Verification:** grep/review — renderables hold no model fields; the only projection→model write
-is the single `setSize` edge, asserted not to run inside the frame effect.
-
-**Status:** provisional
-
-**Last refined:** 2026-07-21
-
 ### One generator owns document-line-to-visual-row
 
 **Invariant:** If document lines are projected into editor visual rows, then the `EditorWrap`
@@ -463,3 +434,18 @@ participating in a match on the same line.
 **Status:** provisional
 
 **Last refined:** 2026-07-23
+
+## Folded records
+
+**The editor owns no view state** formerly stood between *Word wrap is a pure view mapping* and
+*One generator owns document-line-to-visual-row*. The state/projection split now lives in
+[*ivue owns state and OpenTUI owns projection*](../../../project.invariants.md#ivue-owns-state-and-opentui-owns-projection).
+The ban on model truth in renderables and on render-time model writes lives in
+[*Renderables hold no model state*](../ui/ui.invariants.md#renderables-hold-no-model-state) and
+[*Data flows one way*](../../../project.invariants.md#data-flows-one-way). The source-text
+projection boundary lives in
+[*The source text editor is a pane content citizen*](../ui/ui.invariants.md#the-source-text-editor-is-a-pane-content-citizen).
+Persistent fold state now belongs to the stable document handle under
+[*Document identity survives document instance replacement*](../workspace/workspace.invariants.md#document-identity-survives-document-instance-replacement).
+The cursor and viewport ownership correction is recorded in
+[`project.decisions.md`](../../../project.decisions.md#the-cursor-and-the-scroll-window-are-text-primitives-not-view-parts-218-2026-07-29).

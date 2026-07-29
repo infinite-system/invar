@@ -13,32 +13,39 @@ a referenced resource stays alive) rather than adding its own._
 ### Document identity survives document instance replacement
 
 **Invariant:** If a logical open document is dehydrated and later rehydrated, then every document
-lifecycle event carries the same stable `DocumentHandle`; contributions key document state by that
-handle, never by one workspace-global active-document slot.
+lifecycle event and replacement view use the same stable `DocumentHandle`; document-adjacent state
+stays on that handle, and contributions key document state by it rather than by one
+workspace-global active-document slot.
 
-**Scope:** `OpenBufferSet`, `DocumentHandle`, `DocumentLifecycle`, the language-client document
-sync contribution, and the source-control head-text contribution.
+**Scope:** `OpenBufferSet`, `DocumentHandle`, `DocumentFoldState`,
+`SourceTextView.attachFoldState`, `DocumentLifecycle`, the language-client document sync
+contribution, and the source-control head-text contribution.
 
 **Mechanism:** Each `BufferEntry` creates one `DocumentHandle` that outlives its replaceable editor
 document. Hydration attaches the current document instance, deactivation detaches it, and
-`DocumentLifecycle` broadcasts opened, became-active, and closed with the handle.
+`DocumentLifecycle` broadcasts opened, became-active, and closed with the handle. The handle owns
+the document-line fold set, and `Workspace.createBufferSet` attaches that same set to every
+replacement `SourceTextView`.
 
-**Generates:** Per-document contribution state that survives flyweight replacement; one lifecycle
-vocabulary shared by language sync and repository head tracking.
+**Generates:** Per-document contribution state and collapsed fold regions that survive flyweight
+replacement; one lifecycle vocabulary shared by language sync and repository head tracking.
 
 **Evidence:** `DocumentHandle.ts`; `DocumentLifecycle.ts`; `OpenBufferSet.ts`;
+`DocumentFoldState.interface.ts`; `Workspace.ts` (`attachFoldState`);
+`OpenBufferSet.test.ts` (`document fold state survives rehydration and is dropped on close`);
 `GitDocumentState.ts`; `GitDocumentState.test.ts`; the compile-time unkeyed-projection rejection
 in `GitWorkspace.test.ts`.
 
 **Impossible if true:** The stale-head cross-document bug class: a head-text result stored in one
-workspace-global active slot and then projected onto a different document after a tab switch.
+workspace-global active slot and then projected onto a different document after a tab switch. A
+collapsed region disappearing when a clean view is dehydrated and rebuilt is also impossible.
 
 **Verification:** `bun test src/modules/git/GitDocumentState.test.ts
 src/modules/workspace/OpenBufferSet.test.ts`.
 
 **Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### One provider creates every workspace buffer view
 
