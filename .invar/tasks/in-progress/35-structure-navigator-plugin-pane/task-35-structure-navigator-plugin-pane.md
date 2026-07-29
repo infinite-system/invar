@@ -1,11 +1,11 @@
 # 35 — structure navigator pane
 
-State: ACTIVE — sequenced after the #114/#122 capstone
+State: IN-PROGRESS
 Created: 2026-07-28
-Engine: codex
+Engine: claude
 Environment: linux
-Model: 5.6-sol
-Effort: default
+Model: fable-5
+Effort: medium
 Priority: architecture-hygiene
 
 ## Outline

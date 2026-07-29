@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #35 structure-navigator-plugin-pane  [building]
+  `tmux attach -t invar/35-structure-navigator-plugin-pane`
+
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
@@ -57,7 +61,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (10)
+## ARCHITECTURE-HYGIENE (9)
 - #234 navigation-getters-and-hop-depth-ratchet
 - #228 source-text-keys-through-pane-context
 - #226 clock-freeze-hook-and-getter-conversion
@@ -66,7 +70,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #217 split-geometry-aggregates-invariant
 - #136 shared-scale-fixture-corpus-cache
 - #62 parameter-count-ports-object-sweep
-- #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
 ## RECENTLY COMPLETED (last 15 of 34 — full log: project.tasks-completed.md)

@@ -1,0 +1,15 @@
+{
+  "task": 35,
+  "slug": "structure-navigator-plugin-pane",
+  "branch": "fleet/35-structure-navigator-plugin-pane",
+  "worktree": ".invar/worktrees/35-structure-navigator-plugin-pane",
+  "tmuxSession": "invar/35-structure-navigator-plugin-pane",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-35-structure-navigator-plugin-pane.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "b8525832c3c3005a994a4462eda93993b3ff2b52",
+  "startedAt": "2026-07-29T01:51:27-04:00"
+}
