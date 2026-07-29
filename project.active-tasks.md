@@ -6,8 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #284 [scrollbar-theme-captured-at-construction](.invar/tasks/in-progress/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)  [building]
+## IN-PROGRESS (4)
+- #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/in-progress/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md)  [building]
+  `tmux attach -t invar/294-lsp-structure-dead-in-secondary-workspace`
+- #284 [scrollbar-theme-captured-at-construction](.invar/tasks/in-progress/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/284-scrollbar-theme-captured-at-construction`
 - #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/in-progress/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)  [building]
   `tmux attach -t invar/277-markdown-preview-body-viewport-settles-after-parent-growth`

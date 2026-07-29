@@ -1,0 +1,15 @@
+{
+  "task": 294,
+  "slug": "lsp-structure-dead-in-secondary-workspace",
+  "branch": "fleet/294-lsp-structure-dead-in-secondary-workspace",
+  "worktree": ".invar/worktrees/294-lsp-structure-dead-in-secondary-workspace",
+  "tmuxSession": "invar/294-lsp-structure-dead-in-secondary-workspace",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-294-lsp-structure-dead-in-secondary-workspace.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "a4a9e4037ca865334c03bcf119c420ef2a881f9b",
+  "startedAt": "2026-07-29T16:30:23-04:00"
+}

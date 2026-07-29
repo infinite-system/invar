@@ -1,6 +1,6 @@
 # 294 — LSP + structure never load for a TS file in a secondary workspace
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
