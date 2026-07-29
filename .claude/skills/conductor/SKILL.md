@@ -565,7 +565,7 @@ looks identical to that tool in a text search over command lines.**
   `/tmp/fleet-watch-gates`. Self-test before trusting: `fleet-watch.sh --self-test`.
 - **The watcher is also the SPRAWL sentinel, and dispatch enforces it.** Each cycle
   stamps `/tmp/fleet-watch.heartbeat` and samples disk-free + /tmp entry count; it emits
-  `SPRAWL:` on a floor breach (<10G), a rapid fill (>1G/cycle — the #244 leak measured
+  `SPRAWL:` on a floor breach (<10G), a rapid fill (>600MB/cycle) or a sustained fill (>2G across a 5m window — the #244 leak measured
   ~1.3G/cycle and filled the disk twice in one night), or an entry surge (>300/cycle),
   throttled to one alert per 5m, WITH the top recent growers named in the event.
   `dispatch.sh` REFUSES to launch while the heartbeat is stale (>3m) — a builder never

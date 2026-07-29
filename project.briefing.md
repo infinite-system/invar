@@ -58,7 +58,7 @@ before merge, session archived at land.
 ## Log (latest first)
 
 - 03:1x — THE SPRAWL SENTINEL IS MECHANICAL (your directive, encoded).
-  fleet-watch gained the SPRAWL arm (floor <10G, fill >1G/cycle — calibrated
+  fleet-watch gained the SPRAWL arm (floor <10G, fill >600MB/cycle + sustained >2G/5min-window — calibrated
   against the leak's measured 1.3G/cycle — entry surge >300/cycle, 5m
   throttle, top growers named in the event) plus a per-cycle heartbeat;
   dispatch.sh now REFUSES to launch a builder while the heartbeat is stale

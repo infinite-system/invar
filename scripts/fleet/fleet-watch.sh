@@ -41,10 +41,16 @@ transcripts_directory="${repository_root}/tmp/transcripts"
 SILENT_MINUTES="${SILENT_MINUTES:-20}"
 CYCLE_SECONDS="${CYCLE_SECONDS:-30}"
 SPRAWL_FLOOR_GB="${SPRAWL_FLOOR_GB:-10}"
-# Rate calibration: the #244 leak measured ~1.3G per 30s cycle and STILL filled the
-# disk twice in a night; a healthy gate churns hundreds of MB, not gigabytes. 1G per
-# cycle sits between the two with margin on both sides.
-SPRAWL_RATE_GB="${SPRAWL_RATE_GB:-1}"
+# Rate calibration (both arms, deliberately): the #244 leak measured ~1.3G per 30s
+# cycle; a healthy gate churns hundreds of MB; a worktree bun install can spike ~500MB
+# in one cycle. The single-cycle bar sits at 600MB — just above the biggest healthy
+# spike — and the SUSTAINED arm (2G across a 5-minute window) catches slow leaks that
+# never spike at all. The 5m throttle plus named-growers analysis makes a rare false
+# alarm cost one dismissable notification; a missed leak costs the disk.
+SPRAWL_RATE_MB="${SPRAWL_RATE_MB:-600}"
+SPRAWL_WINDOW_SAMPLES="${SPRAWL_WINDOW_SAMPLES:-10}"
+SPRAWL_WINDOW_GB="${SPRAWL_WINDOW_GB:-2}"
+SPRAWL_HISTORY_FILE="${SPRAWL_HISTORY_FILE:-/tmp/fleet-watch-disk.history}"
 SPRAWL_ENTRY_RATE="${SPRAWL_ENTRY_RATE:-300}"
 SPRAWL_THROTTLE_MINUTES="${SPRAWL_THROTTLE_MINUTES:-5}"
 SPRAWL_STATE_FILE="${SPRAWL_STATE_FILE:-/tmp/fleet-watch-disk.prev}"
@@ -151,22 +157,35 @@ emit_sprawl_events() {
   [ -f "$SPRAWL_STATE_FILE" ] && read -r previous_kb previous_entries < "$SPRAWL_STATE_FILE"
   echo "${available_kb} ${entry_count}" > "$SPRAWL_STATE_FILE"
 
+  # The sustained window: a rolling file of the last N samples. The oldest sample
+  # anchors the window; the drop across it catches slow leaks no single cycle shows.
+  local window_anchor_kb=""
+  if [ -f "$SPRAWL_HISTORY_FILE" ]; then
+    window_anchor_kb="$(head -1 "$SPRAWL_HISTORY_FILE")"
+  fi
+  { [ -f "$SPRAWL_HISTORY_FILE" ] && tail -n "$((SPRAWL_WINDOW_SAMPLES - 1))" "$SPRAWL_HISTORY_FILE"; echo "$available_kb"; } > "${SPRAWL_HISTORY_FILE}.next"
+  mv "${SPRAWL_HISTORY_FILE}.next" "$SPRAWL_HISTORY_FILE"
+
   # One alert per throttle window: a sustained fill must not shout every cycle.
   if [ -n "$(find "$SPRAWL_THROTTLE_STAMP" -mmin "-${SPRAWL_THROTTLE_MINUTES}" 2>/dev/null)" ]; then
     return 0
   fi
 
   local floor_kb=$((SPRAWL_FLOOR_GB * 1024 * 1024))
-  local rate_kb=$((SPRAWL_RATE_GB * 1024 * 1024))
+  local rate_kb=$((SPRAWL_RATE_MB * 1024))
   local reasons=""
   if [ "$available_kb" -lt "$floor_kb" ]; then
     reasons="disk floor breached: $((available_kb / 1024 / 1024))G free < ${SPRAWL_FLOOR_GB}G"
   fi
   if [ -n "$previous_kb" ] && [ $((previous_kb - available_kb)) -gt "$rate_kb" ]; then
-    reasons="${reasons:+${reasons}; }rapid fill: $(((previous_kb - available_kb) / 1024 / 1024))G consumed in one cycle"
+    reasons="${reasons:+${reasons}; }rapid fill: $(((previous_kb - available_kb) / 1024))MB consumed in one cycle"
   fi
   if [ -n "$previous_entries" ] && [ $((entry_count - previous_entries)) -gt "$SPRAWL_ENTRY_RATE" ]; then
     reasons="${reasons:+${reasons}; }/tmp entry surge: +$((entry_count - previous_entries)) entries in one cycle"
+  fi
+  local window_kb=$((SPRAWL_WINDOW_GB * 1024 * 1024))
+  if [ -n "$window_anchor_kb" ] && [ $((window_anchor_kb - available_kb)) -gt "$window_kb" ]; then
+    reasons="${reasons:+${reasons}; }sustained fill: $(((window_anchor_kb - available_kb) / 1024 / 1024))G consumed across the ${SPRAWL_WINDOW_SAMPLES}-sample window"
   fi
   if [ -n "$reasons" ]; then
     echo "SPRAWL: ${reasons} — top recent growers (analysis only, nothing deleted):"
@@ -197,6 +216,7 @@ if [ "${1:-}" = "--self-test" ]; then
   # is never disturbed.
   SPRAWL_STATE_FILE="$sandbox/disk.prev"
   SPRAWL_THROTTLE_STAMP="$sandbox/sprawl.throttle"
+  SPRAWL_HISTORY_FILE="$sandbox/disk.history"
   # PRESENT arm: a planted floor breach must fire.
   first="$(SPRAWL_TEST_AVAIL_KB=1048576 SPRAWL_TEST_ENTRY_COUNT=100 emit_sprawl_events | grep -c SPRAWL || true)"
   [ "$first" = "1" ] || { echo "FAIL sprawl floor arm (got $first)"; failures=1; }
@@ -213,8 +233,20 @@ if [ "${1:-}" = "--self-test" ]; then
   echo "52428800 100" > "$SPRAWL_STATE_FILE"
   fourth="$(SPRAWL_TEST_AVAIL_KB=52428800 SPRAWL_TEST_ENTRY_COUNT=600 emit_sprawl_events | grep -c SPRAWL || true)"
   [ "$fourth" = "1" ] || { echo "FAIL sprawl entry-surge arm (got $fourth)"; failures=1; }
+  # SUSTAINED arm: ten slow samples, each under the single-cycle bar, must still
+  # fire when the window's total drop crosses SPRAWL_WINDOW_GB. 400MB per sample
+  # x 9 steps = 3.5G across the window; no single step exceeds 1G.
+  rm -f "$SPRAWL_THROTTLE_STAMP" "$SPRAWL_HISTORY_FILE" "$SPRAWL_STATE_FILE"
+  sustained_fired=0
+  sample_kb=52428800
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    fired="$(SPRAWL_TEST_AVAIL_KB=$sample_kb SPRAWL_TEST_ENTRY_COUNT=100 emit_sprawl_events | grep -c "sustained fill" || true)"
+    [ "$fired" != "0" ] && sustained_fired=1
+    sample_kb=$((sample_kb - 409600))
+  done
+  [ "$sustained_fired" = "1" ] || { echo "FAIL sprawl sustained arm — slow leak never fired"; failures=1; }
   # ABSENT arm for sprawl: healthy values must stay silent.
-  rm -f "$SPRAWL_THROTTLE_STAMP"
+  rm -f "$SPRAWL_THROTTLE_STAMP" "$SPRAWL_HISTORY_FILE"
   echo "52428800 100" > "$SPRAWL_STATE_FILE"
   calm="$(SPRAWL_TEST_AVAIL_KB=52428800 SPRAWL_TEST_ENTRY_COUNT=110 emit_sprawl_events | grep -c . || true)"
   [ "$calm" = "0" ] || { echo "FAIL sprawl absent arm — events while healthy: $calm"; failures=1; }

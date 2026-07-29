@@ -294,7 +294,7 @@ including what the agent was told not to do. Guards go first or they are not gua
 
 **The sprawl corollary (user directive, 07-29).** The filesystem is fleet
 infrastructure and gets a standing instrument: fleet-watch's SPRAWL arm (floor <10G,
-fill >1G/cycle, entries >300/cycle, 5m throttle) plus the heartbeat that `dispatch.sh`
+fill >600MB/cycle, sustained >2G across a 5m window, entries >300/cycle, 5m throttle) plus the heartbeat that `dispatch.sh`
 requires before any launch — a builder never runs unwatched. The sentinel ANALYZES and
 never deletes: on a breach it names the top growers; the responder kills the growth
 SOURCE, and deletion is reserved for patterns the fleet provably owns. An unknown file
