@@ -694,34 +694,45 @@ defect and then reproducing it is worse than missing it.
 So each fire, before re-arming, ask: **is this loop still the best-worded instrument for its
 job, or has something replaced it?** If replaced, stop the chain rather than forward the text.
 
-### The 30-minute RECONCILIATION SWEEP (cron `11,41 * * * *`) — replaced the 10-minute liveness poll on 2026-07-26
+### THE TWO-PER-HOUR DESIGN (user, 2026-07-29: "less is more") + RE-ARM ON RESTART
 
-The old ten-minute check polled builder liveness. Two changes made that cadence wasteful:
-per-builder commit-count-or-silence Monitors now fire the moment work is committed (or a
-codex log goes silent), and the codex fleet leaves durable evidence (logs, worktrees,
-branches) that a sweep can reconcile lazily. What Monitors structurally CANNOT catch is
-drift between components: a green gate nobody landed, a dead builder with a dirty tree, a
-monitor watching a finished subject, a checkout that fell behind. That is what the sweep
-checks, at half-hour cadence, acting rather than narrating.
+Exactly TWO crons, evenly spaced — the hourly ORCHESTRATION loop at :07 and
+the hourly RECONCILIATION sweep at :37 — so the session hears a clock twice
+an hour, thirty minutes apart. Event wakes (fleet-watch's Monitor) do the
+real-time work; the crons catch drift and direction. The old 30-minute
+sweep cadence and the /loop ScheduleWakeup chain are RETIRED in favor of
+this pair (2026-07-29); do not re-arm either.
+
+**RE-ARM ON RESTART — the full set is THREE actions, no more:**
+
+1. `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`
+   — the ONE event watcher (READY/DEAD/QUIET/GATE_DONE/SPRAWL + the
+   heartbeat dispatch requires).
+2. `CronCreate(cron: "7 * * * *", recurring: true, prompt: <the hourly
+   orchestration prompt below, verbatim>)`.
+3. `CronCreate(cron: "37 * * * *", recurring: true, prompt: <the sweep
+   prompt below, verbatim>)`.
+
+Crons are session-only and die with the session; the words here are the
+durable artifact. On 2026-07-29 the user caught a restart that re-armed
+only the Monitor — this list exists so that cannot recur.
+
+### Hourly RECONCILIATION SWEEP — `37 * * * *`
 
 VERBATIM PROMPT:
-Reconciliation sweep (every 30 min, bounded per fire — NOT a liveness poll; per-builder commit-count
-Monitors are the primary wake signal, this sweep catches what they structurally cannot). Check in
-order, act on findings, report in a few lines: (1) GREEN-UNLANDED — any /tmp/*-gate.log with
-GATE_EXIT=0 whose branch is not merged+pushed to origin/main: land it now (push, park with
-finished/<branch> tag). (2) DEAD-WITH-DIRTY — for each /tmp/conductor-* worktree with an active
-task: if its codex log is silent >20 min AND the tree is dirty with no new commit, the builder
-likely died mid-write — preserve the tree as a WIP commit on its branch, read the log tail to
-diagnose (quota? crash?), and either relaunch codex with a resume brief or take over. Never kill
-anything; never treat user Invar instances (/home/parallels/dev/tui-editor, /tmp/tui-demo,
-/tmp/wt-*) as builders. (3) STALE-MONITOR — TaskList: any Monitor watching a log/worktree whose
-subject already completed or aborted: TaskStop it; any builder WITHOUT a live monitor: arm the
-commit-count-or-silence monitor. (4) CHECKOUT-SYNC — user's checkout /home/parallels/dev/tui-editor
-must be clean and equal to origin/main (ff after landings; rebase their local doc commits on top
-when present). (5) CONFLICT-QUEUE — any finished branch whose merge into main conflicted and is
-awaiting a resolution round: confirm a codex is actually on it (log advancing), else dispatch one
-with the standard merge-resolution brief. If everything reconciles clean, say so in one line and
-stop — this sweep exists for drift, not for narration.
+Reconciliation sweep (hourly at :37, bounded per fire — NOT a liveness poll; fleet-watch's
+Monitor events are the primary wake signal, this sweep catches what they structurally cannot).
+Check in order, act on findings, report in a few lines: (1) GREEN-UNLANDED — any registered
+gate log with GATE_EXIT=0 whose branches are not landed: land now via land.sh.
+(2) DEAD-WITH-DIRTY — for each .invar/worktrees/* with an in-progress task: if its transcript
+is silent >20 min AND the tree is dirty with no new commit, the builder likely died mid-write —
+preserve the tree as a WIP commit on its branch, read the transcript tail to diagnose, and
+either relaunch with a resume round-brief or take over. Never kill anything; never treat user
+Invar instances as builders. (3) STALE-MONITOR — TaskList: fleet-watch missing? re-arm it (one
+idempotent Monitor). (4) CHECKOUT-SYNC — the user's checkout /home/parallels/dev/tui-editor
+must be clean; main moves only by landings. (5) CONFLICT-QUEUE — any finished branch
+mid-conflict-resolution: confirm a builder is on it, else round-brief one. If everything
+reconciles clean, say so in one line and stop — this sweep exists for drift, not narration.
 
 These are the exact prompts driving this session's loops, recorded here so we can improve
 them deliberately. **This skill may refine them** (step 4 above). But a cron is a
