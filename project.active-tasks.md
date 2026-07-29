@@ -57,7 +57,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (7)
+## ARCHITECTURE-HYGIENE (9)
+- #223 database-plugin-proves-provider-seam
+- #222 provider-seam-analysis-and-convention
 - #220 editor-registers-as-contributor-with-manifest
 - #219 source-text-view-onto-pane-content-seam
 - #217 split-geometry-aggregates-invariant
