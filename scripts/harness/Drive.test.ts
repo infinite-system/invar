@@ -47,6 +47,27 @@ class TestDrive extends Drive.$Class {
       temporaryWorkspaceRoot: target.temporaryWorkspaceRoot,
     };
   }
+
+  static pendingStatusNames(
+    status: Readonly<Record<string, unknown>>,
+  ): readonly string[] {
+    return this.pendingSettledStatusNames(status);
+  }
+
+  static publishedStatus(output: string): Readonly<Record<string, unknown>> {
+    const marker = '--- published status/probe keys';
+    const markerIndex = output.lastIndexOf(marker);
+    if (markerIndex < 0) throw new Error('Drive output has no status marker');
+    const status: Record<string, unknown> = {};
+    for (const line of output.slice(markerIndex).split('\n').slice(1)) {
+      const separatorIndex = line.indexOf('=');
+      if (separatorIndex <= 0) continue;
+      status[line.slice(0, separatorIndex)] = JSON.parse(
+        line.slice(separatorIndex + 1),
+      );
+    }
+    return status;
+  }
 }
 
 async function snapshotForRows(
@@ -132,6 +153,74 @@ describe('Drive action completion', () => {
       'must follow --key, --wheel, or --click',
     );
   });
+});
+
+describe('Drive settled observations', () => {
+  test('names pending Markdown and structure work', () => {
+    expect(
+      TestDrive.pendingStatusNames({
+        activeBuffer: '/tmp/README.md',
+        bufferRevision: 4,
+        markdownActive: true,
+        markdownParsing: true,
+        markdownRevision: 3,
+        structureStatus: 'no-document',
+      }),
+    ).toEqual([
+      'markdownParsing=true',
+      'markdownRevision differs from bufferRevision',
+      'structureStatus has not refreshed the active file',
+    ]);
+    expect(
+      TestDrive.pendingStatusNames({
+        activeBuffer: '/tmp/README.md',
+        bufferRevision: 4,
+        markdownActive: true,
+        markdownParsing: false,
+        markdownRevision: 4,
+        structureStatus: 'ready',
+      }),
+    ).toEqual([]);
+    expect(
+      TestDrive.pendingStatusNames({
+        activeBuffer: null,
+        structureStatus: 'no-document',
+      }),
+    ).toEqual([]);
+  });
+
+  test('prints a large Markdown file only after preview and structure work settle', async () => {
+    const repositoryRoot = resolve(import.meta.dir, '../..');
+    const driveProcess = Bun.spawn(
+      [
+        process.execPath,
+        resolve(import.meta.dir, 'Drive.ts'),
+        '--open',
+        resolve(repositoryRoot, 'project.conductor.archive.md'),
+      ],
+      {
+        cwd: repositoryRoot,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    const [output, errorOutput, exitCode] = await Promise.all([
+      new Response(driveProcess.stdout).text(),
+      new Response(driveProcess.stderr).text(),
+      driveProcess.exited,
+    ]);
+    if (exitCode !== 0) {
+      throw new Error(`Drive exited ${exitCode}\n${errorOutput}\n${output}`);
+    }
+
+    const status = TestDrive.publishedStatus(output);
+    expect(output).not.toContain('Parsing Markdown…');
+    expect(output).not.toContain('No file is open.');
+    expect(status.markdownParsing).toBe(false);
+    expect(status.markdownRevision).toBe(status.bufferRevision);
+    expect(status.structureStatus).toBe('ready');
+    expect(status.structureRequests).toBe(1);
+  }, 30_000);
 });
 
 describe('Drive role and text click targeting', () => {

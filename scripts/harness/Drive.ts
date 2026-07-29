@@ -8,6 +8,7 @@
 // invariant: Async-published state is always awaited (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 // invariant: Drive clicks resolve from roles and text (scripts/harness/harness.invariants.md)
+// invariant: Drive settled observations include declared debounced work (scripts/harness/harness.invariants.md)
 import {
   copyFileSync,
   existsSync,
@@ -39,6 +40,31 @@ class $Drive {
     return 15_000;
   }
 
+  protected static get $settledStatusRules(): readonly DriveSettledStatusRule[] {
+    return Object.freeze([
+      {
+        pendingName: 'markdownParsing=true',
+        isPending: (status) =>
+          'markdownParsing' in status && status.markdownParsing !== false,
+      },
+      {
+        pendingName: 'markdownRevision differs from bufferRevision',
+        isPending: (status) =>
+          status.markdownActive === true &&
+          (!Number.isFinite(Number(status.markdownRevision)) ||
+            Number(status.markdownRevision) !== Number(status.bufferRevision)),
+      },
+      {
+        pendingName: 'structureStatus has not refreshed the active file',
+        isPending: (status) =>
+          Boolean(status.activeBuffer) &&
+          'structureStatus' in status &&
+          (status.structureStatus === 'no-document' ||
+            status.structureStatus === 'loading'),
+      },
+    ]);
+  }
+
   static async main(argumentsList: readonly string[]): Promise<void> {
     const repositoryRoot = resolve(import.meta.dir, '../..');
     const options = this.parseOptions(argumentsList);
@@ -63,20 +89,9 @@ class $Drive {
     });
 
     try {
-      await driver.awaitGridCondition(
-        'the application to publish ready and render-quiescent state',
-        () => {
-          try {
-            const status = HarnessSmoke.Class.readStatus(statusPath);
-            return (
-              status.ready === true &&
-              status.renderQuiescent === true &&
-              Boolean(status.activeWorkspace)
-            );
-          } catch {
-            return false;
-          }
-        },
+      await this.awaitSettledObservation(
+        driver,
+        statusPath,
         options.timeoutMilliseconds,
       );
       await driver.awaitScreenChange(options.timeoutMilliseconds);
@@ -86,6 +101,11 @@ class $Drive {
           driver,
           statusPath,
           target.filePath,
+          options.timeoutMilliseconds,
+        );
+        await this.awaitSettledObservation(
+          driver,
+          statusPath,
           options.timeoutMilliseconds,
         );
       }
@@ -455,6 +475,38 @@ class $Drive {
 
   protected static createHomeDirectory(): string {
     return mkdtempSync(join(tmpdir(), 'invar-drive-home-'));
+  }
+
+  protected static async awaitSettledObservation(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    timeoutMilliseconds: number,
+  ): Promise<void> {
+    await driver.awaitGridCondition(
+      'the application and the drive quiescence registry to settle',
+      () => {
+        try {
+          const status = HarnessSmoke.Class.readStatus(statusPath);
+          return (
+            status.ready === true &&
+            status.renderQuiescent === true &&
+            Boolean(status.activeWorkspace) &&
+            this.pendingSettledStatusNames(status).length === 0
+          );
+        } catch {
+          return false;
+        }
+      },
+      timeoutMilliseconds,
+    );
+  }
+
+  protected static pendingSettledStatusNames(
+    status: Readonly<Record<string, unknown>>,
+  ): readonly string[] {
+    return this.$settledStatusRules
+      .filter((rule) => rule.isPending(status))
+      .map((rule) => rule.pendingName);
   }
 
   protected static async openFile(
@@ -855,6 +907,11 @@ interface DriveOptions {
   readonly timeoutMilliseconds: number;
   readonly actions: readonly DriveAction[];
   readonly showHelp: boolean;
+}
+
+interface DriveSettledStatusRule {
+  readonly pendingName: string;
+  readonly isPending: (status: Readonly<Record<string, unknown>>) => boolean;
 }
 
 type DriveAction =
