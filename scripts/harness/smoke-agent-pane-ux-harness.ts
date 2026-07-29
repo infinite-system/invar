@@ -809,6 +809,34 @@ try {
     'composer copy emits selected bytes through raw OSC 52',
   );
 
+  driver.sendKeys('End');
+  driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'copy without an agent selection publishes zero characters',
+    (candidate) => candidate.lastCopyChars === 0,
+  );
+  driver.sendKeys('Shift+Left');
+  driver.sendKeys('Shift+Left');
+  const keyboardSelectionClipboardCount = emittedClipboardTexts(driver).length;
+  driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+  const keyboardSelectionCopyStatus =
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'the agent composer copies two keyboard-selected characters',
+      (candidate) => candidate.lastCopyChars === 2,
+    );
+  HarnessSmoke.Class.requireCondition(
+    keyboardSelectionCopyStatus.lastCopyChars === 2,
+    'Shift+Left selects through the shared composer input',
+  );
+  await awaitClipboardEmission(driver, keyboardSelectionClipboardCount, 'xt');
+  HarnessSmoke.Class.pass(
+    'composer Shift-selection and unselected copy use the shared input model',
+  );
+
   console.log('== harness agent pane UX: composer word operations ==');
   for (let deletion = 0; deletion < 30; deletion++) {
     driver.sendKeysWithoutFrameExpectation('Backspace');

@@ -356,7 +356,7 @@ test('every adopted text input receives the same complete binding table', () => 
       ),
   );
 
-  expect(signaturesByContext[0]).toHaveLength(18);
+  expect(signaturesByContext[0]).toHaveLength(30);
   for (const signatures of signaturesByContext.slice(1)) {
     expect(signatures).toEqual(signaturesByContext[0]!);
   }
@@ -366,6 +366,33 @@ test('every adopted text input receives the same complete binding table', () => 
       chord: { key: 'delete', alt: true },
     }),
   );
+  expect(signaturesByContext[0]).toContain(
+    JSON.stringify({
+      action: 'textInput.selectLeft',
+      chord: { key: 'left', shift: true },
+    }),
+  );
+  expect(signaturesByContext[0]).toContain(
+    JSON.stringify({
+      action: 'textInput.copy',
+      chord: { key: 'c', ctrl: true },
+    }),
+  );
+});
+
+test('agent copy keeps transcript ownership while Shift arrows reach the composer input', () => {
+  const registry = registryWithCanonicalLayer();
+  expect(
+    registry.resolve({ ...unmodifiedEvent, name: 'c', ctrl: true }, 'agent', 0)
+      .action,
+  ).toBe('agent.copy');
+  expect(
+    registry.resolve(
+      { ...unmodifiedEvent, name: 'left', shift: true },
+      'agent',
+      0,
+    ).action,
+  ).toBe('textInput.selectLeft');
 });
 
 test('Alt+G opens go-to-line without taking the Git chords', () => {
@@ -418,7 +445,8 @@ test('the popup search field gets the same table minus the keys the popup owns',
       .filter((binding) => {
         const chord = binding.chord;
         if (!chord) return true;
-        const unmodified = !chord.ctrl && !chord.alt && !chord.super;
+        const unmodified =
+          !chord.ctrl && !chord.alt && !chord.super && chord.shift !== true;
         return !(unmodified && unmodifiedHostKeys.has(chord.key));
       })
       .map((binding) =>
@@ -430,6 +458,7 @@ test('the popup search field gets the same table minus the keys the popup owns',
     listPopupTextInputBindings.map((binding) => binding.action),
   );
   expect([...listPopupActions].sort()).toEqual([
+    'textInput.copy',
     'textInput.deleteForward',
     'textInput.deleteLine',
     'textInput.deleteNextWord',
@@ -438,6 +467,13 @@ test('the popup search field gets the same table minus the keys the popup owns',
     'textInput.moveHome',
     'textInput.moveWordLeft',
     'textInput.moveWordRight',
+    'textInput.selectAll',
+    'textInput.selectEnd',
+    'textInput.selectHome',
+    'textInput.selectLeft',
+    'textInput.selectRight',
+    'textInput.selectWordLeft',
+    'textInput.selectWordRight',
   ]);
 });
 
@@ -472,6 +508,20 @@ test('popup navigation keys win over the text field while modified chords reach 
   );
   expect(resolveInPopup({ ...unmodified, name: 'left', option: true })).toBe(
     'textInput.moveWordLeft',
+  );
+  expect(resolveInPopup({ ...unmodified, name: 'left', shift: true })).toBe(
+    'textInput.selectLeft',
+  );
+  expect(
+    resolveInPopup({
+      ...unmodified,
+      name: 'right',
+      option: true,
+      shift: true,
+    }),
+  ).toBe('textInput.selectWordRight');
+  expect(resolveInPopup({ ...unmodified, name: 'c', ctrl: true })).toBe(
+    'textInput.copy',
   );
   expect(resolveInPopup({ ...unmodified, name: 'right', option: true })).toBe(
     'textInput.moveWordRight',

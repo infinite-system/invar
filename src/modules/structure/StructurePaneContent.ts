@@ -84,6 +84,7 @@ class $StructurePaneContent implements PaneContent {
       outline.viewportWidth.value,
       outline.filterInput.text.value,
       outline.filterInput.caret.value,
+      outline.filterInput.selectionAnchor.value,
       outline.depth,
       outline.depthIsOverridden,
     ].join(':');
@@ -131,6 +132,10 @@ class $StructurePaneContent implements PaneContent {
 
   applyInputAction(action: TextInputAction): void {
     this.activeWorkspace().outline.applyFilterInputAction(action);
+  }
+
+  copyInputSelection(): Promise<number> {
+    return this.activeWorkspace().outline.filterInput.copySelection();
   }
 
   handleKey(key: KeyEvent): boolean {

@@ -21,17 +21,27 @@ class $KeybindingDefaults {
     const hostOwnedPlainKeys = new Set(options.hostOwnedPlainKeys ?? []);
     const bindings: Keybinding[] = [
       {
-        chord: { key: 'left' },
+        chord: { key: 'left', shift: false },
         action: 'textInput.moveLeft',
         context,
       },
       {
-        chord: { key: 'right' },
+        chord: { key: 'right', shift: false },
         action: 'textInput.moveRight',
         context,
       },
       {
-        chord: { key: 'left', alt: true },
+        chord: { key: 'left', shift: true },
+        action: 'textInput.selectLeft',
+        context,
+      },
+      {
+        chord: { key: 'right', shift: true },
+        action: 'textInput.selectRight',
+        context,
+      },
+      {
+        chord: { key: 'left', alt: true, shift: false },
         action: 'textInput.moveWordLeft',
         context,
       },
@@ -41,7 +51,7 @@ class $KeybindingDefaults {
         context,
       },
       {
-        chord: { key: 'right', alt: true },
+        chord: { key: 'right', alt: true, shift: false },
         action: 'textInput.moveWordRight',
         context,
       },
@@ -51,33 +61,83 @@ class $KeybindingDefaults {
         context,
       },
       {
-        chord: { key: 'left', ctrl: true },
+        chord: { key: 'left', alt: true, shift: true },
+        action: 'textInput.selectWordLeft',
+        context,
+      },
+      {
+        chord: { key: 'right', alt: true, shift: true },
+        action: 'textInput.selectWordRight',
+        context,
+      },
+      {
+        chord: { key: 'left', ctrl: true, shift: false },
         action: 'textInput.moveWordLeft',
         context,
       },
       {
-        chord: { key: 'right', ctrl: true },
+        chord: { key: 'right', ctrl: true, shift: false },
         action: 'textInput.moveWordRight',
         context,
       },
       {
-        chord: { key: 'left', super: true },
+        chord: { key: 'left', ctrl: true, shift: true },
+        action: 'textInput.selectWordLeft',
+        context,
+      },
+      {
+        chord: { key: 'right', ctrl: true, shift: true },
+        action: 'textInput.selectWordRight',
+        context,
+      },
+      {
+        chord: { key: 'left', super: true, shift: false },
         action: 'textInput.moveHome',
         context,
       },
       {
-        chord: { key: 'right', super: true },
+        chord: { key: 'right', super: true, shift: false },
         action: 'textInput.moveEnd',
         context,
       },
       {
-        chord: { key: 'home' },
+        chord: { key: 'left', super: true, shift: true },
+        action: 'textInput.selectHome',
+        context,
+      },
+      {
+        chord: { key: 'right', super: true, shift: true },
+        action: 'textInput.selectEnd',
+        context,
+      },
+      {
+        chord: { key: 'home', shift: false },
         action: 'textInput.moveHome',
         context,
       },
       {
-        chord: { key: 'end' },
+        chord: { key: 'end', shift: false },
         action: 'textInput.moveEnd',
+        context,
+      },
+      {
+        chord: { key: 'home', shift: true },
+        action: 'textInput.selectHome',
+        context,
+      },
+      {
+        chord: { key: 'end', shift: true },
+        action: 'textInput.selectEnd',
+        context,
+      },
+      {
+        chord: { key: 'a', ctrl: true },
+        action: 'textInput.selectAll',
+        context,
+      },
+      {
+        chord: { key: 'c', ctrl: true },
+        action: 'textInput.copy',
         context,
       },
       {
@@ -115,7 +175,8 @@ class $KeybindingDefaults {
     return bindings.filter((binding) => {
       const chord = binding.chord;
       if (!chord) return true;
-      const unmodified = !chord.ctrl && !chord.alt && !chord.super;
+      const unmodified =
+        !chord.ctrl && !chord.alt && !chord.super && chord.shift !== true;
       return !(unmodified && hostOwnedPlainKeys.has(chord.key));
     });
   }
@@ -400,12 +461,12 @@ class $KeybindingDefaults {
         context: 'listPopup',
       },
       {
-        chord: { key: 'right' },
+        chord: { key: 'right', shift: false },
         action: 'listPopup.drill',
         context: 'listPopup',
       },
       {
-        chord: { key: 'left' },
+        chord: { key: 'left', shift: false },
         action: 'listPopup.navigateBackward',
         context: 'listPopup',
       },
@@ -604,15 +665,16 @@ class $KeybindingDefaults {
         action: 'editor.copy',
         context: 'editor',
       },
-      // Copy the agent pane's transcript/composer selection (the focused agent pane owns Ctrl+C).
-      {
-        chord: { key: 'c', ctrl: true },
-        action: 'agent.copy',
-        context: 'agent',
-      },
       {
         chord: { key: 'escape' },
         action: 'agent.cancelTurn',
+        context: 'agent',
+      },
+      // Transcript copy remains the first owner of Ctrl+C. Its handler also delegates to the
+      // shared composer input when the composer has the active selection.
+      {
+        chord: { key: 'c', ctrl: true },
+        action: 'agent.copy',
         context: 'agent',
       },
       // Cycle the agent's terminal-follow MODE (M for Mode). Replaces F6.

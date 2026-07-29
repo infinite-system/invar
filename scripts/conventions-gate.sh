@@ -44,6 +44,19 @@ fi
 
 # 1.5) EDITABLE-TEXT CENSUS: every one-line input now composes TextInputModel, so the structural
 #      census is an enforced zero-count ratchet.
+text_input_positive_control_output=''
+if text_input_positive_control_output=$(
+  "$bun_binary" scripts/ast-query.ts text-input-census \
+    --path scripts/fixtures/text-input-census-positive-control \
+    --require-zero 2>&1
+); then
+  echo "CONVENTIONS FAIL: editable text census accepted its known-bad positive control"
+  fail=1
+elif ! grep -q 'class \$IndependentFilterInput' <<<"$text_input_positive_control_output"; then
+  echo "CONVENTIONS FAIL: editable text census rejected its positive control for the wrong reason"
+  echo "$text_input_positive_control_output"
+  fail=1
+fi
 if ! "$bun_binary" scripts/ast-query.ts text-input-census --require-zero; then
   echo "CONVENTIONS FAIL: editable text field outside TextInputModel"
   fail=1

@@ -120,6 +120,7 @@ class $FindBarRenderer {
         context.palette,
         focused ? 'focused' : 'idle',
       ),
+      selectionTone: TextFieldPainter.Class.selectionToneFor(context.palette),
       surfaceBackground: context.palette.panel,
       caretVisible: focused,
       width: null,

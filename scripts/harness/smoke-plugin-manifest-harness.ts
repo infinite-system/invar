@@ -5,8 +5,12 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 import { mkdirSync, mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
+import { TextFieldPainter } from '../../src/modules/ui/TextFieldPainter';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -1149,6 +1153,82 @@ try {
   );
   HarnessSmoke.Class.pass(
     'the in-pane gear is a second surface on the contributed depth setting',
+  );
+
+  console.log(
+    '== plugin harness: structure filter inherits selection, copy, and word deletion ==',
+  );
+  const structureSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
+  const structureFocusedTone = TextFieldPainter.Class.toneFor(
+    ThemePalettes.Class.DARK,
+    'focused',
+  );
+  await driver.awaitGridCondition(
+    'the focused structure filter has one leading cell in the shared active tone',
+    (snapshot) => {
+      const searchPosition = snapshot.findText(structureSearchGlyph);
+      if (!searchPosition || searchPosition.column === 0) return false;
+      const leadingCell = snapshot.cell(
+        searchPosition.row,
+        searchPosition.column - 1,
+      );
+      return (
+        leadingCell?.characters === ' ' &&
+        leadingCell.background ===
+          Number.parseInt(
+            (structureFocusedTone.background ?? '#000000').slice(1),
+            16,
+          )
+      );
+    },
+  );
+  driver.sendText('alpha beta');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the structure filter receives the capability probe text',
+    (status) => status.structureFilter === 'alpha beta',
+  );
+  driver.sendKeys('Control+c');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'copy without a structure-filter selection publishes zero characters',
+    (status) => status.lastCopyChars === 0,
+  );
+  driver.sendKeys('Shift+Left');
+  driver.sendKeys('Shift+Left');
+  driver.sendKeys('Control+c');
+  const structureSelectionHash = createHash('sha256')
+    .update('ta', 'utf8')
+    .digest('hex');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the structure filter copies the exact Shift-selected suffix',
+    (status) =>
+      status.lastCopyChars === 2 &&
+      status.lastCopyHash === structureSelectionHash,
+  );
+  driver.sendKeys('End');
+  driver.sendRawInput('\x1b\x7f');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Alt+Backspace removes one structure-filter word and keeps the field',
+    (status) => status.structureFilter === 'alpha ',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Escape clears the structure capability probe',
+    (status) =>
+      status.structureFilter === '' &&
+      Number(status.structureRows) === initialStructureRows,
+  );
+  HarnessSmoke.Class.pass(
+    'structure selection copies exactly and Alt+Backspace removes one word',
   );
 
   const requireSemanticLabel = async (

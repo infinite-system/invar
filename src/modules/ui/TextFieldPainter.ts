@@ -35,6 +35,13 @@ class $TextFieldPainter {
     return { background: palette.border, foreground: palette.dim };
   }
 
+  static selectionToneFor(palette: Palette): TextFieldTone {
+    return {
+      background: palette.selection,
+      foreground: palette.accent,
+    };
+  }
+
   /**
    * Paint one field. The caret cell is always emitted — only its colours depend on
    * `caretVisible` — so a field's painted width and text window are identical in every state.
@@ -43,11 +50,35 @@ class $TextFieldPainter {
    */
   static paint(context: TextFieldPaintContext): TextFieldPaintResult {
     const editorCoordinates = TextCoordinates.Class;
-    const leadText = context.prefix + context.input.valueBeforeCaret;
-    const afterCaretText = context.input.valueAfterCaret;
-    const caretGraphemeEnd = editorCoordinates.graphemeToU16(afterCaretText, 1);
-    const caretText = afterCaretText.slice(0, caretGraphemeEnd) || ' ';
-    const trailText = afterCaretText.slice(caretGraphemeEnd);
+    const inputGraphemes = editorCoordinates.graphemes(context.input.value);
+    const caret = Math.max(
+      0,
+      Math.min(context.input.caret.value, inputGraphemes.length),
+    );
+    const selection = context.input.selectionRange();
+    const leadSegments: TextFieldPaintSegment[] = [];
+    this.pushSegment(leadSegments, context.prefix, context.tone);
+    for (let graphemeIndex = 0; graphemeIndex < caret; graphemeIndex += 1) {
+      this.pushSegment(
+        leadSegments,
+        inputGraphemes[graphemeIndex] ?? '',
+        this.toneForGrapheme(context, selection, graphemeIndex),
+      );
+    }
+    const trailSegments: TextFieldPaintSegment[] = [];
+    for (
+      let graphemeIndex = caret + 1;
+      graphemeIndex < inputGraphemes.length;
+      graphemeIndex += 1
+    ) {
+      this.pushSegment(
+        trailSegments,
+        inputGraphemes[graphemeIndex] ?? '',
+        this.toneForGrapheme(context, selection, graphemeIndex),
+      );
+    }
+    const caretText = inputGraphemes[caret] ?? ' ';
+    const caretTone = this.toneForGrapheme(context, selection, caret);
     const fieldWidth =
       context.width === null ? null : Math.max(1, Math.floor(context.width));
     const measuredCaretWidth = editorCoordinates.lineWidth(caretText);
@@ -55,37 +86,37 @@ class $TextFieldPainter {
     const caretFits = fieldWidth === null || measuredCaretWidth <= fieldWidth;
     const paintedCaretText = caretFits ? caretText : ' ';
     const caretWidth = caretFits ? measuredCaretWidth : 1;
-    const visibleLead =
+    const visibleLeadSegments =
       fieldWidth === null
-        ? leadText
-        : this.trailingColumnWindow(leadText, fieldWidth - caretWidth);
-    const caretColumn = editorCoordinates.lineWidth(visibleLead);
+        ? leadSegments
+        : this.segmentWindowFromEnd(leadSegments, fieldWidth - caretWidth);
+    const caretColumn = this.segmentWidth(visibleLeadSegments);
     const trailBudget =
       fieldWidth === null ? null : fieldWidth - caretColumn - caretWidth;
-    const visibleTrail =
+    const visibleTrailSegments =
       trailBudget === null
-        ? trailText
+        ? trailSegments
         : trailBudget <= 0
-          ? ''
-          : editorCoordinates.displayColumnWindow(trailText, 0, trailBudget);
+          ? []
+          : this.segmentWindow(trailSegments, 0, trailBudget);
     const contentWidth =
-      caretColumn + caretWidth + editorCoordinates.lineWidth(visibleTrail);
+      caretColumn + caretWidth + this.segmentWidth(visibleTrailSegments);
     const padding =
       fieldWidth === null
         ? ''
         : ' '.repeat(Math.max(0, fieldWidth - contentWidth));
     const chunks: TextChunk[] = [];
-    this.pushToned(chunks, visibleLead, context.tone);
+    this.paintSegments(chunks, visibleLeadSegments);
     chunks.push(
       context.caretVisible
-        ? bg(context.tone.foreground)(
-            fg(context.tone.background ?? context.surfaceBackground)(
+        ? bg(caretTone.foreground)(
+            fg(caretTone.background ?? context.surfaceBackground)(
               paintedCaretText,
             ),
           )
-        : this.toned(paintedCaretText, context.tone),
+        : this.toned(paintedCaretText, caretTone),
     );
-    this.pushToned(chunks, visibleTrail, context.tone);
+    this.paintSegments(chunks, visibleTrailSegments);
     this.pushToned(chunks, padding, context.tone);
     return {
       chunks,
@@ -93,6 +124,97 @@ class $TextFieldPainter {
       caretWidth,
       paintedWidth: contentWidth + padding.length,
     };
+  }
+
+  protected static toneForGrapheme(
+    context: TextFieldPaintContext,
+    selection: { start: number; end: number } | null,
+    graphemeIndex: number,
+  ): TextFieldTone {
+    return selection &&
+      graphemeIndex >= selection.start &&
+      graphemeIndex < selection.end
+      ? context.selectionTone
+      : context.tone;
+  }
+
+  protected static pushSegment(
+    segments: TextFieldPaintSegment[],
+    text: string,
+    tone: TextFieldTone,
+  ): void {
+    if (text.length === 0) return;
+    const lastSegment = segments[segments.length - 1];
+    if (
+      lastSegment &&
+      lastSegment.tone.background === tone.background &&
+      lastSegment.tone.foreground === tone.foreground
+    ) {
+      lastSegment.text += text;
+      return;
+    }
+    segments.push({ text, tone });
+  }
+
+  protected static paintSegments(
+    chunks: TextChunk[],
+    segments: readonly TextFieldPaintSegment[],
+  ): void {
+    for (const segment of segments) {
+      chunks.push(this.toned(segment.text, segment.tone));
+    }
+  }
+
+  protected static segmentWidth(
+    segments: readonly TextFieldPaintSegment[],
+  ): number {
+    return segments.reduce(
+      (width, segment) => width + TextCoordinates.Class.lineWidth(segment.text),
+      0,
+    );
+  }
+
+  protected static segmentWindowFromEnd(
+    segments: readonly TextFieldPaintSegment[],
+    width: number,
+  ): TextFieldPaintSegment[] {
+    const totalWidth = this.segmentWidth(segments);
+    return this.segmentWindow(
+      segments,
+      Math.max(0, totalWidth - Math.max(0, width)),
+      width,
+    );
+  }
+
+  protected static segmentWindow(
+    segments: readonly TextFieldPaintSegment[],
+    startColumn: number,
+    width: number,
+  ): TextFieldPaintSegment[] {
+    if (width <= 0) return [];
+    const windowEndColumn = startColumn + width;
+    const visibleSegments: TextFieldPaintSegment[] = [];
+    let segmentStartColumn = 0;
+    for (const segment of segments) {
+      const segmentWidth = TextCoordinates.Class.lineWidth(segment.text);
+      const segmentEndColumn = segmentStartColumn + segmentWidth;
+      const visibleStartColumn = Math.max(startColumn, segmentStartColumn);
+      const visibleEndColumn = Math.min(windowEndColumn, segmentEndColumn);
+      if (visibleStartColumn < visibleEndColumn) {
+        this.pushSegment(
+          visibleSegments,
+          TextCoordinates.Class.displayColumnWindow(
+            segment.text,
+            visibleStartColumn - segmentStartColumn,
+            visibleEndColumn - visibleStartColumn,
+          ),
+          segment.tone,
+        );
+      }
+      segmentStartColumn = segmentEndColumn;
+      if (segmentStartColumn >= windowEndColumn) break;
+    }
+    return visibleSegments;
   }
 
   protected static toned(text: string, tone: TextFieldTone): TextChunk {
@@ -108,19 +230,6 @@ class $TextFieldPainter {
   ): void {
     if (text.length === 0) return;
     chunks.push(this.toned(text, tone));
-  }
-
-  /** Keep the LAST `budget` display columns of `text` (a caret past the field's right edge pulls
-   *  its own window). Returns whole graphemes only, so no wide glyph is cut in half. */
-  protected static trailingColumnWindow(text: string, budget: number): string {
-    if (budget <= 0) return '';
-    const totalWidth = TextCoordinates.Class.lineWidth(text);
-    if (totalWidth <= budget) return text;
-    return TextCoordinates.Class.displayColumnWindow(
-      text,
-      totalWidth - budget,
-      budget,
-    );
   }
 }
 
@@ -148,6 +257,8 @@ export interface TextFieldPaintContext {
   /** The caret authority. The painted caret position is read from this model, never re-derived. */
   input: TextInputModel.Model;
   tone: TextFieldTone;
+  /** The shared active-selection tone. Only selected input graphemes receive it; prefixes do not. */
+  selectionTone: TextFieldTone;
   /** The background the field is drawn on — the caret's own glyph colour when the field has no well. */
   surfaceBackground: string;
   caretVisible: boolean;
@@ -162,4 +273,9 @@ export interface TextFieldPaintResult {
   /** Display cells the caret cell covers — 2 over a wide glyph. */
   caretWidth: number;
   paintedWidth: number;
+}
+
+interface TextFieldPaintSegment {
+  text: string;
+  readonly tone: TextFieldTone;
 }

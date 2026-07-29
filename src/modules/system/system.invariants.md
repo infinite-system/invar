@@ -165,13 +165,13 @@ status channel or logger.
 
 ### Copy reaches the host terminal
 
-**Invariant:** If the user copies selected text from Settings, the terminal pane, agent transcript,
-or agent composer, then the exact selected UTF-8 text is emitted as OSC 52 through Invar stdout so
-the host terminal receives it across cmux, SSH, or a VM boundary.
+**Invariant:** If the user copies selected text from Settings, a `TextInputModel` field, the terminal
+pane, agent transcript, or agent composer, then the exact selected UTF-8 text is emitted as OSC 52
+through Invar stdout so the host terminal receives it across cmux, SSH, or a VM boundary.
 
-**Scope:** `Clipboard.copy`, Settings selection, terminal-pane selection, agent-transcript
-selection, and agent-composer selection. Clipboard reads remain local-tool or in-app-buffer
-operations because OSC 52 is write-only.
+**Scope:** `Clipboard.copy`, every selected `TextInputModel`, Settings selection, terminal-pane
+selection, agent-transcript selection, and agent-composer selection. Clipboard reads remain
+local-tool or in-app-buffer operations because OSC 52 is write-only.
 
 **Mechanism:** Every selectable surface reconstructs text grapheme-safely, then calls the one
 `Clipboard.copy` seam. That seam buffers in-app, submits one complete

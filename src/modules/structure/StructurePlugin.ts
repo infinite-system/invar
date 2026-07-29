@@ -78,12 +78,12 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         context: 'structure',
       },
       {
-        chord: { key: 'left' },
+        chord: { key: 'left', shift: false },
         action: 'structure.fold',
         context: 'structure',
       },
       {
-        chord: { key: 'right' },
+        chord: { key: 'right', shift: false },
         action: 'structure.unfold',
         context: 'structure',
       },

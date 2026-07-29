@@ -103,19 +103,23 @@ src/modules/git/GitPaneContent.test.ts && bash scripts/smoke-activitybar.sh`.
 ### One painter draws every single-line text field
 
 **Invariant:** If a single-line text field is painted, then `TextFieldPainter` draws its visible text
-window, its caret cell, and its state tone: the caret sits at the field's `TextInputModel` caret and
-is drawn by INVERTING the cell it occupies, and the tone is one of `idle`, `focused`, or `hovered`,
-with the focus tone quieter than the hover tone.
+window, its selection, its caret cell, and its state tone: the caret sits at the field's
+`TextInputModel` caret and is drawn by INVERTING the cell it occupies, selected graphemes use the
+shared selection tone, and the field tone is one of `idle`, `focused`, or `hovered`, with the focus
+tone quieter than the hover tone.
 
 **Scope:** `BoundedListPopup`'s search row, the command-palette and Quick Open inputs in
 `OverlayLayer`, the query and replacement fields in `FindBarRenderer`, and the database connection
-path in `DatabasePaneContent`. The editor body caret (projected as the terminal's own hardware
-cursor) and the multi-line wrapping `AgentComposer` are outside this rule — a wrapping surface
-resolves its caret through a row mapping, not a one-line window.
+path in `DatabasePaneContent`, and the structure filter in `StructurePaneRenderer`. The editor body
+caret (projected as the terminal's own hardware cursor) and the multi-line wrapping `AgentComposer`
+are outside this rule — a wrapping surface resolves its caret through a row mapping, not a one-line
+window.
 
 **Components:**
 - *Caret cell* — `TextInputModel.valueBeforeCaret` measured by `TextCoordinates.lineWidth` gives the
   caret's display column; the grapheme at the caret (a space at end-of-text) is the inverted cell.
+- *Selection tone* — `TextInputModel.selectionRange` supplies one grapheme range;
+  `TextFieldPainter.selectionToneFor` maps it to the theme selection and accent colours.
 - *State tone* — `TextFieldPainter.toneFor` maps `idle`/`focused`/`hovered` to one palette pair;
   `stateFor` decides that hover outranks focus.
 - *Fixed geometry* — the caret cell is always emitted and only recoloured, so a field's painted width
@@ -123,17 +127,19 @@ resolves its caret through a row mapping, not a one-line window.
 
 **Mechanism:** `TextFieldPainter.paint` takes the input MODEL, never a caret index, so a painted caret
 cannot be re-derived from string length; every column it computes goes through `TextCoordinates`, so
-a wide or East-Asian grapheme moves the caret by display cells. Inverting a cell costs no column and
-needs no glyph, so the caret shifts nothing and adds no appearance literal — the same reduction
+a wide or East-Asian grapheme moves the caret by display cells. It segments the visible window at
+selection boundaries without changing its width. Inverting a cell costs no column and needs no
+glyph, so the caret shifts nothing and adds no appearance literal — the same reduction
 `SolidThumbScrollBar` made for thumbs. `toneFor` reads `border`/`dim`, `cursorLine`/`fg`, and
 `accent`/`panel`: idle recesses below `panel`, focus lifts one step above it while brightening the
 text, and only hover uses the theme's vivid colour, so hierarchy stays carried by text brightness as
 `ThemePalettes` documents. The caret is STEADY — a blinking caret would request frames forever and
 break the `idle-quiescence` contract in `scripts/behavioral-contracts.sh`.
 
-**Generates:** A visible caret in every one-line field; a focused field distinguishable from an idle
-one; hover retained where a field is a pointer target; one caret implementation instead of four; a
-field that can gain a state without touching its consumers.
+**Generates:** A visible caret and selection in every one-line field; a focused field distinguishable
+from an idle one; hover retained where a field is a pointer target; one caret and selection painter
+instead of per-surface implementations; a field that can gain a state without touching its
+consumers.
 
 **Rejected alternatives:** Insert a bar glyph at the caret (what the palette, Quick Open, and Find bar
 did) — it shifts every cell after the caret and mints a glyph literal outside the theme. Blink the
@@ -143,8 +149,9 @@ two of the three states would be unreachable decoration.
 
 **Evidence:** `src/modules/ui/TextFieldPainter.ts`; `src/modules/ui/TextFieldPainter.test.ts` (caret at
 the model offset, end-of-text caret, wide-glyph columns, identical geometry across the three states,
-tone ordering); consumers `src/modules/ui/BoundedListPopup.ts`, `src/modules/ui/OverlayLayer.ts`,
-`src/modules/ui/FindBarRenderer.ts`, `src/modules/database/DatabasePaneContent.ts`;
+tone ordering, selection range); consumers `src/modules/ui/BoundedListPopup.ts`,
+`src/modules/ui/OverlayLayer.ts`, `src/modules/ui/FindBarRenderer.ts`,
+`src/modules/database/DatabasePaneContent.ts`, `src/modules/structure/StructurePaneRenderer.ts`;
 `scripts/harness/smoke-field-caret-harness.ts` (caret at the
 published `boundedListPopupQueryCaretCell` through typing, word movement, word deletion, and a pasted
 wide-glyph query; three distinct observed backgrounds);
@@ -154,7 +161,8 @@ and find).
 **Impossible if true:** A focusable one-line field with no visible caret; a focused field painted
 identically to an idle one; a hover highlight lost because a field became focusable; a caret column
 derived from string length drifting on a wide glyph or emoji; a caret that widens its field or shifts
-the text after it; a caret that requests frames while the app is at rest.
+the text after it; a selected input range that paints as ordinary field text; a caret that requests
+frames while the app is at rest.
 
 **Verification:** `bun test src/modules/ui/TextFieldPainter.test.ts && bun
 scripts/harness/smoke-field-caret-harness.ts && bun scripts/harness/smoke-text-input-harness.ts &&

@@ -7,6 +7,7 @@
 // invariant: Editable text fields share one input model (project.invariants.md)
 // invariant: The open-project path input is a live directory navigator (src/modules/search/search.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
@@ -25,6 +26,11 @@ interface DiscoveredInputPosition {
 // same theme data the app paints from, never a literal.
 const caretCellBackground = Number.parseInt(
   ThemePalettes.Class.DARK.fg.slice(1),
+  16,
+);
+
+const selectionCellBackground = Number.parseInt(
+  ThemePalettes.Class.DARK.selection.slice(1),
   16,
 );
 
@@ -73,6 +79,57 @@ async function exerciseSharedInput(
     row: valuePosition.row,
     column: valuePosition.column,
   };
+
+  driver.sendKeys('Control+c');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${surfaceName} publishes zero copied characters without a selection`,
+    (status) => status.lastCopyChars === 0,
+  );
+  HarnessSmoke.Class.pass(`${surfaceName} unselected copy is inert`);
+
+  driver.sendKeys('Shift+Left');
+  driver.sendKeys('Shift+Left');
+  snapshot = await driver.awaitGridCondition(
+    `${surfaceName} paints the active selection`,
+    (candidate) =>
+      candidate.cell(
+        inputPosition.row,
+        inputPosition.column + inputValue.length - 1,
+      )?.background === selectionCellBackground,
+  );
+  HarnessSmoke.Class.requireCondition(
+    snapshot.cell(
+      inputPosition.row,
+      inputPosition.column + inputValue.length - 1,
+    )?.background === selectionCellBackground,
+    `${surfaceName} selection uses the shared active-selection tone`,
+  );
+  driver.sendKeys('Control+c');
+  const expectedSelectedText = 'tz';
+  const expectedSelectionHash = createHash('sha256')
+    .update(expectedSelectedText, 'utf8')
+    .digest('hex');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${surfaceName} copies exactly the Shift-selected graphemes`,
+    (status) =>
+      status.lastCopyChars === expectedSelectedText.length &&
+      status.lastCopyHash === expectedSelectionHash,
+  );
+  HarnessSmoke.Class.pass(
+    `${surfaceName} Shift+Left selection copies exact text`,
+  );
+  driver.sendKeys('End');
+  await awaitInputValue(
+    driver,
+    inputPosition,
+    inputValue,
+    '',
+    `${surfaceName} End clears the selection at the input end`,
+  );
 
   driver.sendKeys('Left');
   snapshot = await awaitInputValue(

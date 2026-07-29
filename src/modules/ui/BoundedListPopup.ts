@@ -468,12 +468,21 @@ class $BoundedListPopup {
    * had the model's word movement and word deletion and dropped them at the input boundary.
    * invariant: Editable text fields share one input model (project.invariants.md)
    */
-  applyQueryInputAction(action: TextInputAction): void {
+  applyInputAction(action: TextInputAction): void {
     if (!this.searchEnabled) return;
     const originalQuery = this.queryInput.value;
     const actionChangedState = this.queryInput.apply(action);
     if (this.queryInput.value !== originalQuery) this.refilter();
     else if (actionChangedState) this.requestPaint();
+  }
+
+  applyQueryInputAction(action: TextInputAction): void {
+    this.applyInputAction(action);
+  }
+
+  copyInputSelection(): Promise<number> {
+    if (!this.searchEnabled) return Promise.resolve(0);
+    return this.queryInput.copySelection();
   }
 
   moveSelection(direction: 1 | -1): void {
@@ -579,6 +588,7 @@ class $BoundedListPopup {
             hovered: this.searchHovered,
           }),
         ),
+        selectionTone: TextFieldPainter.Class.selectionToneFor(palette),
         surfaceBackground: palette.panel,
         caretVisible: queryFocused,
         width: geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,

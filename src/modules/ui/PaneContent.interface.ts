@@ -164,6 +164,7 @@ export interface PaneTextSelectionPort {
 /** The `text-input` capability: a pane-owned one-line input that uses the shared input model. */
 export interface PaneTextInputPort {
   applyInputAction(action: TextInputAction): void;
+  copyInputSelection(): Promise<number>;
 }
 
 export interface PaneContentSplitter {

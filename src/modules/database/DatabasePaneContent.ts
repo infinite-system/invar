@@ -89,6 +89,11 @@ class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
     if (this.pathInput.apply(action)) this.version.value++;
   }
 
+  copyInputSelection(): Promise<number> {
+    if (!this.inputActive.value) return Promise.resolve(0);
+    return this.pathInput.copySelection();
+  }
+
   capability<Port>(identifier: string): Port | null {
     if (identifier === 'text-input' && this.inputActive.value) {
       return this as unknown as Port;
@@ -106,6 +111,7 @@ class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
       this.inputActive.value,
       this.pathInput.text.value,
       this.pathInput.caret.value,
+      this.pathInput.selectionAnchor.value,
     ].join(':');
   }
 
@@ -164,6 +170,7 @@ class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
       prefix: '',
       input: this.pathInput,
       tone: TextFieldPainter.Class.toneFor(context.palette, 'focused'),
+      selectionTone: TextFieldPainter.Class.selectionToneFor(context.palette),
       surfaceBackground: context.palette.panel,
       caretVisible: context.focused,
       width: Math.max(1, context.width - 6),

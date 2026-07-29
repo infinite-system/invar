@@ -163,8 +163,9 @@ fails at the backspace step.
 
 **Scope:** `TextEditing`, `Editor.moveWordHorizontal`, `Editor.deletePreviousWord`, and every present
 text input through `TextInputModel`: command-palette query, `QuickOpen.query`, both `FindBar` fields,
-and `AgentComposer`. A settings or find-in-files text field inherits this rule when one exists; the
-current settings panel has no text field and the current search view is not mounted.
+`BoundedListPopup.query`, `GoToLinePrompt.input`, `StructureOutline.filterInput`, the database
+connection path, and `AgentComposer`. A settings or find-in-files text field inherits this rule when
+one exists; the current settings panel has no text field and the current search view is not mounted.
 
 **Mechanism:** `TextEditing.deletePreviousWord` calls `wordLeft`; `deleteNextWord` calls
 `wordRight`; both return the deletion range plus edited text. Editor navigation consumes the same
@@ -175,15 +176,15 @@ boundaries; editor deletion consumes the previous-word range through `TextDocume
 punctuation, and line-boundary behavior across editor and text inputs; one undo step per editor word
 deletion.
 
-**Evidence:** `src/modules/editor/TextEditing.ts`; `src/modules/editor/TextInputModel.ts`;
-`src/modules/editor/Editor.ts`; `src/modules/editor/TextEditing.test.ts`;
-`src/modules/editor/TextInputModel.test.ts`; `scripts/smoke-word-delete.sh`.
+**Evidence:** `src/modules/text/TextEditing.ts`; `src/modules/text/TextInputModel.ts`;
+`src/modules/editor/Editor.ts`; `src/modules/text/TextEditing.test.ts`;
+`src/modules/text/TextInputModel.test.ts`; `scripts/smoke-word-delete.sh`.
 
 **Impossible if true:** word navigation jumping to one position while word deletion starts at another;
 Alt+Delete closing a buffer; a find, replace, quick-open, or palette query deleting a different span
 than the editor for the same text and cursor position.
 
-**Verification:** `bun test src/modules/editor/TextEditing.test.ts src/modules/editor/TextInputModel.test.ts && bash scripts/smoke-word-delete.sh`
+**Verification:** `bun test src/modules/text/TextEditing.test.ts src/modules/text/TextInputModel.test.ts && bash scripts/smoke-word-delete.sh`
 
 **Status:** provisional
 

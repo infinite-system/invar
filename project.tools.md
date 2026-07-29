@@ -30,6 +30,10 @@ KNOWN RESULT (2026-07-29): commit `bb7ce7bb` moved the editor horizontal positio
 `0→13→11→25` and vertical position `0→48→97→145`; commit `ce748915` made both sequences flat.
 The repaired 500-line path moves `0→23→47→70` and `0→48→97→145`; the 100,000-line path moves
 `0→25→50→75` and `0→10341→20683→31024`.
+Pass `filter-input` as the fourth argument to drive the structure filter on the same generated
+fixture. It prints unselected-copy count, selected-copy count, and the text left by
+Alt+Backspace. Compare 500 and 100000 lines for input scale parity without creating another
+fixture generator.
 
 ### `bun scripts/harness/measure-scroll-smoothness.ts`
 Per-frame glide behaviour on the real app through the PTY. Generates 2k, 26,635, and 100k-line
