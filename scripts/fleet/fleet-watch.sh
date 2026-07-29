@@ -94,9 +94,12 @@ emit_silent_events() {
     folder_name="$(basename "$task_folder")"
     # A delivered report means idle-by-design; silence is then expected, not a death.
     ls "$task_folder"report-* >/dev/null 2>&1 && continue
-    transcript="$(ls "$transcripts_directory"/transcript-*-"$folder_name".md 2>/dev/null | head -1)"
+    # `|| true` is load-bearing under set -euo pipefail: a matchless glob makes
+    # ls exit 2, which killed the whole watcher twice on 2026-07-29 — each time
+    # a cycle caught a freshly dispatched folder before its transcript existed.
+    transcript="$(ls "$transcripts_directory"/transcript-*-"$folder_name".md 2>/dev/null | head -1 || true)"
     [ -n "$transcript" ] || continue
-    recent="$(find "$transcript" -mmin "-${SILENT_MINUTES}" 2>/dev/null)"
+    recent="$(find "$transcript" -mmin "-${SILENT_MINUTES}" 2>/dev/null || true)"
     if [ -z "$recent" ]; then
       # Two distinct events. DEAD: the session is gone, the builder cannot recover
       # on its own. QUIET: the session lives but nothing is written — a hang, a
