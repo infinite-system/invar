@@ -118,7 +118,7 @@ if [ ! -f "$report_file" ]; then
 fi
 report_link_source="$(ls "$task_directory"/report-* 2>/dev/null | tail -1)"
 if [ -n "$report_link_source" ] &&
-   ! bun scripts/tasks/lint-task-links.ts "$report_link_source"; then
+   ! PATH="$HOME/.bun/bin:$PATH" bun scripts/tasks/lint-task-links.ts "$report_link_source"; then
   echo "land: WARNING — the report has dead or bare document references." >&2
   echo "  Landing continues because legacy task records can contain old references." >&2
 fi

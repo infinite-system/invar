@@ -41,7 +41,7 @@ grep -q "^## Invariants in scope" "$brief_file" || {
   echo "round-brief: REFUSING — the brief has no '## Invariants in scope' section." >&2; exit 2; }
 grep -q "^## Bycatch expected" "$brief_file" || {
   echo "round-brief: REFUSING — the brief has no '## Bycatch expected' section." >&2; exit 2; }
-if ! bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
+if ! PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
      --base-directory "$task_folder" "$brief_file"; then
   echo "round-brief: REFUSING — the brief has dead or bare document references." >&2
   echo "  Fix them, or run: bun scripts/tasks/lint-task-links.ts --fix --base-directory ${task_folder} ${brief_file}" >&2

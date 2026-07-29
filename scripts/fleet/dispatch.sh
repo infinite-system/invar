@@ -68,7 +68,7 @@ if ! grep -q "^## Bycatch expected" "$brief_file"; then
   echo "  must carry '## Bycatch' even when it reads 'None observed'." >&2
   exit 2
 fi
-if ! bun "${script_repository_root}/scripts/tasks/lint-task-links.ts" \
+if ! PATH="$HOME/.bun/bin:$PATH" bun "${script_repository_root}/scripts/tasks/lint-task-links.ts" \
      --base-directory "$brief_link_directory" "$brief_file"; then
   echo "dispatch: REFUSING — the brief has dead or bare document references." >&2
   echo "  Fix them, or run: bun scripts/tasks/lint-task-links.ts --fix --base-directory ${brief_link_directory} ${brief_file}" >&2
