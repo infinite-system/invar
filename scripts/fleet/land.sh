@@ -212,4 +212,24 @@ SKIP_GATE=1 git -c commit.gpgsign=false commit -q \
   -- .invar/tasks project.active-tasks.md project.tasks-completed.md
 
 echo "land: OK #${task_number} ${slug} -> ${merge_commit} (${duration_minutes}m dispatch-to-landing)"
-echo "  worktree and tmux session left in place — remove/close deliberately, never as a side effect."
+
+# Retire the workspace WITH the landing (KEEP_WORKSPACE=1 to skip). Landing is
+# itself the deliberate act; by now the branch is merged + tagged and the
+# session is archived, so neither the worktree nor the tmux session is a
+# recovery point any longer. Bought on 2026-07-29: 31 idle sessions of landed
+# tasks pinned 62 of 128 inotify instances and redded workspace-tabs on every
+# pooled gate. Non-force: a dirty worktree refuses and is LEFT for a human.
+if [ "${KEEP_WORKSPACE:-0}" != "1" ]; then
+  if [ -d "$worktree_path" ]; then
+    git worktree remove "$worktree_path" 2>/dev/null \
+      && echo "land: worktree removed (branch + tag + archive are the record)" \
+      || echo "land: worktree DIRTY or busy — left in place at ${worktree_path}" >&2
+  fi
+  if tmux has-session -t "$tmux_session" 2>/dev/null; then
+    tmux kill-session -t "$tmux_session" \
+      && echo "land: tmux session closed (transcript archived)" \
+      || echo "land: WARNING — could not close ${tmux_session}" >&2
+  fi
+else
+  echo "  KEEP_WORKSPACE=1 — worktree and tmux session left in place."
+fi
