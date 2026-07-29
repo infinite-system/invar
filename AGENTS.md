@@ -88,6 +88,30 @@ A SMALL-AND-OBVIOUS fix is allowed, under all four conditions, and it is still r
    conductor reviews it instead of discovering it.
 Everything larger: the conductor triages bycatch into tasks. Yours is to see and to say.
 
+## Your scratch tooling — the task folder, named and explained
+
+Any script, census, probe, or analysis you author during a task goes in **your
+own task folder** (`.invar/tasks/*/<n>-<slug>/`), committed on your branch. It
+rides the merge home and outlives your worktree. Tooling written to `/tmp`
+dies with the machine; tooling in the task folder becomes part of the record
+(#222's censuses and proposed checker are the founding example).
+
+Three requirements, so the conductor and the user can pick your tools up cold:
+
+1. **Descriptive names, full words** — the same naming law as code (convention
+   3 below): `census-222-getter-sites.ts`, never `chk.ts` or `tmp2.ts`. Lead
+   with your task number so the folder sorts by task.
+2. **A header comment atop every script**, in plain English (STE): what the
+   script finds out, how to run it (the exact command), and how to read its
+   output. The header is the script's contract — a scratch nobody can rerun is
+   an assertion nobody can check. Do NOT write a sibling `.behaviour.md` for a
+   script; two files drift apart, and the header travels with the code. A
+   separate `.md` is only for documents that ARE the deliverable (analysis,
+   design).
+3. **Say what the numbers mean, not just what they are.** A census that prints
+   `42` explains in its header what 42 counts and what a change in it would
+   mean.
+
 ## Where durable knowledge goes — the REPO, never a private memory
 
 **NEVER write a lesson, convention, correction, or project fact into an agent's private
