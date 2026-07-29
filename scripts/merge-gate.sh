@@ -6,9 +6,10 @@
 # violating project.requirements.md "MEASURED != ENFORCED". This wrapper runs them all; ANY non-zero
 # exit fails the gate. Slow (many app launches) — it is the MERGE gate, not the every-keystroke check;
 # conventions-gate.sh stays the fast inner loop (and is step 1 here).
-# The dependency preflight runs before any step or setup side effect. It proves that node_modules is
-# non-empty. It also proves that every local provider binary used by the real-provider smokes is linked.
-# Missing dependency ground truth exits 3 and names the frozen-lockfile repair.
+# The gate preflight runs before any step or setup side effect. It proves that INVAR_GATE_WORKERS is
+# a positive integer and that node_modules is non-empty. It also proves that every local provider
+# binary used by the real-provider smokes is linked. An invalid worker count exits 2. Missing
+# dependency ground truth exits 3 and names the frozen-lockfile repair.
 #
 # Usage: bash scripts/merge-gate.sh                 (run everything)
 #        bash scripts/merge-gate.sh --dependency-preflight
@@ -68,6 +69,14 @@ esac
 if ! run_dependency_preflight; then
   exit "$dependency_preflight_exit_code"
 fi
+
+gate_worker_count="${INVAR_GATE_WORKERS:-6}"
+case "$gate_worker_count" in
+  ''|*[!0-9]*|0)
+    echo "merge-gate: INVAR_GATE_WORKERS must be a positive integer (received '$gate_worker_count')" >&2
+    exit 2
+    ;;
+esac
 
 export PATH="$HOME/.bun/bin:$PATH"
 export INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1
@@ -404,13 +413,6 @@ reporting_step() {
 # parked when their gated harness twin is declared as the replacement in project.coverage-deltas.md.
 # Contract: harness.invariants.md "The conformance corpus replaces the tmux ring".
 FULL_TMUX_SKIPPED=0
-gate_worker_count="${INVAR_GATE_WORKERS:-6}"
-case "$gate_worker_count" in
-  ''|*[!0-9]*|0)
-    echo "merge-gate: INVAR_GATE_WORKERS must be a positive integer (received '$gate_worker_count')" >&2
-    exit 2
-    ;;
-esac
 
 declare -a parallel_smoke_names=()
 declare -a parallel_smoke_commands=()
