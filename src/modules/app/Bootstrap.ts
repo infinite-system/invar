@@ -5,6 +5,7 @@
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Rendering is one coarse frame effect (app.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
+// invariant: SDK extraction cleanup stays bounded (src/modules/agent/agent.invariants.md)
 import {
   createCliRenderer,
   type CliRenderer,
@@ -58,6 +59,7 @@ import type {
 } from '../ui/PaneContent.interface';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
 import { AgentFactory } from '../agent/AgentFactory';
+import { SdkBinaryExtraction } from '../agent/SdkBinaryExtraction';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import { TextCoordinates } from '../text/TextCoordinates';
@@ -100,6 +102,7 @@ class $Bootstrap {
 
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
     Logging.Class.info('Boot start');
+    this.reapSdkBinaryExtractions();
 
     const renderer = await createCliRenderer({
       exitOnCtrlC: false,
@@ -115,6 +118,7 @@ class $Bootstrap {
     Kernel.Class.instance.assertSealed();
 
     const app = new App.Class();
+    app.onDispose(() => this.reapSdkBinaryExtractions());
     app.attach(renderer);
     // OpenTUI owns stdout and may flush frames from a native render thread. Its OSC 52 writer shares
     // that serialization authority, so clipboard bytes can only land between complete frame writes.
@@ -2632,6 +2636,18 @@ class $Bootstrap {
       render,
       shutdown,
     };
+  }
+
+  protected static reapSdkBinaryExtractions(): void {
+    const result = SdkBinaryExtraction.Class.reapStaleSiblings();
+    if (result.processScanFailed || result.failedDirectories.length > 0) {
+      Logging.Class.error(
+        `SDK extraction cleanup skipped ${result.failedDirectories.length} path(s)` +
+          (result.processScanFailed
+            ? ' because the process census failed'
+            : ''),
+      );
+    }
   }
 }
 

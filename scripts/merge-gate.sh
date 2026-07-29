@@ -830,6 +830,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # affordance. Kept additive to the pane-specific smokes above.
   parallel_safe_smoke "smoke: layout harness" bun scripts/harness/smoke-layout-harness.ts
   # wave 3
+  parallel_safe_smoke "smoke: SDK extraction harness" bun scripts/harness/smoke-sdk-extraction-harness.ts
   parallel_safe_smoke "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
   parallel_safe_smoke "smoke: agent skill popup harness" bun scripts/harness/smoke-agent-skill-popup-harness.ts
   parallel_safe_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts

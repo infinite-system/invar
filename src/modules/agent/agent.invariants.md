@@ -197,6 +197,73 @@ scripts/harness/smoke-terminal-follow-harness.ts && bash scripts/behavioral-cont
 
 **Last refined:** 2026-07-26
 
+### SDK runtime loads on first turn
+
+**Invariant:** If no Claude SDK agent turn starts, then Invar does not import the Claude Agent SDK
+runtime or extract its embedded binary.
+
+**Scope:** `SdkStreamBackend` construction, agent pane construction and visibility, app boot, and
+the first `AgentBackend.send` call. Type-only SDK imports are outside the runtime boundary.
+
+**Mechanism:** `SdkStreamBackend.send` starts `startTurn`, and `startTurn` awaits
+`loadSdkModule` before it builds tools or calls `query`. The module promise is cached for later turns.
+Pane construction and visibility do not call this seam.
+
+**Generates:** An unused agent pane with no SDK import or binary extraction; one first-use load
+boundary shared by headless and visible sessions; cached SDK module identity across later turns.
+
+**Rejected alternatives:** Gate SDK loading on pane visibility — a visible idle pane is not a user
+request, and a headless session has no visibility state.
+
+**Evidence:** `src/modules/agent/SdkStreamBackend.ts`;
+`src/modules/agent/SdkStreamBackend.test.ts` `the SDK module loads only when the first turn starts`;
+`.invar/tasks/active/244-sdk-binary-extraction-leak-fills-disk/244-drive-compiled-app-extraction.ts`.
+
+**Impossible if true:** App boot, agent pane construction, or pane visibility importing the SDK
+runtime; `query` running before the first real turn; two SDK module evaluations for later turns.
+
+**Verification:** `bun test src/modules/agent/SdkStreamBackend.test.ts && bun
+scripts/harness/smoke-sdk-extraction-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### SDK extraction cleanup stays bounded
+
+**Invariant:** If Invar sweeps stale Claude Agent SDK extractions at boot or exit, then it removes
+only matching temporary sibling directories older than one hour whose binary is not a live process
+executable.
+
+**Scope:** Direct children of the operating-system temporary directory matching
+`.<hex>-<counter>.claude-agent-sdk*`; the Linux `/proc/<pid>/exe` census; app boot and disposal.
+Other temporary files and young or live extraction directories are outside removal authority.
+
+**Mechanism:** `SdkBinaryExtraction.reapStaleSiblings` validates each direct-child name, checks age,
+and compares the resolved directory with each same-user process executable. It falls back to absolute
+command-line paths when `/proc/<pid>/exe` is protected. A failed process census removes nothing.
+`Bootstrap.boot` calls the sweep before renderer construction and registers the same sweep after
+owned resources dispose.
+
+**Generates:** A narrow stale-extraction backstop; safe concurrent app instances; cleanup that fails
+closed when process ownership cannot be checked.
+
+**Rejected alternatives:** Sweep general temporary directories — unrelated application data enters
+the deletion boundary. Remove every unheld fresh extraction — another app can be between extraction
+and process spawn.
+
+**Evidence:** `src/modules/agent/SdkBinaryExtraction.ts`;
+`src/modules/agent/SdkBinaryExtraction.test.ts`; `src/modules/app/Bootstrap.ts`.
+
+**Impossible if true:** The reaper deleting a non-SDK directory, a directory younger than one hour,
+or a directory containing a live process executable; a failed `/proc` scan authorizing deletion.
+
+**Verification:** `bun test src/modules/agent/SdkBinaryExtraction.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Queued agent messages preserve order
 
 **Invariant:** If the user submits messages while an agent turn is active, then those messages
