@@ -1,6 +1,6 @@
 # 285 — the preview's LAST body row is hit-test dead
 
-State: IN-PROGRESS
+State: COMPLETED — 5d9f0a1a — Preview last-row hit test: #289's seam change confirmed as generator fix by red control; workaround removed; boundary gated; deep-hover stall filed #293
 Created: 2026-07-29
 Engine: codex
 Environment: linux
