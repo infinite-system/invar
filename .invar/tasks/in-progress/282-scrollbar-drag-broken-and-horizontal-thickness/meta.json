@@ -1,0 +1,15 @@
+{
+  "task": 282,
+  "slug": "scrollbar-drag-broken-and-horizontal-thickness",
+  "branch": "fleet/282-scrollbar-drag-broken-and-horizontal-thickness",
+  "worktree": ".invar/worktrees/282-scrollbar-drag-broken-and-horizontal-thickness",
+  "tmuxSession": "invar/282-scrollbar-drag-broken-and-horizontal-thickness",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-282-scrollbar-drag-broken-and-horizontal-thickness.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "419d51543d3a30d5c34f8927ad7c5ef4c1425ae4",
+  "startedAt": "2026-07-29T10:39:53-04:00"
+}
