@@ -1,9 +1,31 @@
 # READY — #276 (task views emit md links; links are walkable by click)
 
-State: READY. Branch `fleet/276-task-md-links-walkable`, head `8b3fa8a1`
-(merge of main after #274/#275 landed), tree clean. Commits:
-`1d52ca4e` (WIP checkpoint), `53f1586e` (walkability + records + drive),
-`8b3fa8a1` (merge main; views regenerated).
+State: READY (round 2 complete). Branch `fleet/276-task-md-links-walkable`,
+head `188c2807` (merge of main through #284), tree clean.
+**Own full merge-gate, non-skipped: `GATE_EXIT=0`, `merge-gate: ALL-PASS`**
+(log: /tmp/276-merge-gate-r2.log). Commits: `1d52ca4e` (WIP checkpoint),
+`53f1586e` (walkability + records + drive), `8b3fa8a1` (merge main),
+`fcab0518` (round 2 conventions fix), `188c2807` (merge main through #284).
+
+## Round 2 — both briefed defects resolved
+
+1. **Conventions hard fail — FIXED (`fcab0518`).** Mechanism: the
+   Ctrl+click routing guard's COMMENT in `Bootstrap.ts` named the
+   markdown preview (two lines, including a markdown `// invariant:`
+   annotation) — host core naming a plugin. The guard code itself was
+   host-neutral. Fix: the comment now states the generic mechanism (any
+   modified-click consumer receives the down again); the annotation was
+   removed from the host — the markdown record keeps citing Bootstrap
+   from ITS side, the allowed direction. `conventions-gate: PASS`, and the
+   full gate's conventions step is green.
+2. **workspace-tabs red — ENVIRONMENTAL, per the conductor's correction
+   (inotify instances exhausted by idle sessions), corroborated by my own
+   controls before the correction arrived:** boot-duration A/B main vs my
+   tree = 229–243ms vs 233–249ms (parity); 6/6 green on BOTH trees under
+   identical 3-parallel self-load on a quiet box. My round-2 gate now
+   shows `OK smoke: workspace tabs harness` with no retry.
+3. **scrollbars (brief item 3):** `OK smoke: scrollbars harness` —
+   clean, no retry, 21s.
 
 ## What was delivered
 
@@ -109,7 +131,19 @@ Checker: `--all --refs` → **0 problems** (1106 annotations resolved).
 - Merge of main: only the two GENERATED views conflicted; resolved by
   regeneration (the documented repair; same as land.sh).
 
-## Bycatch
+## Bycatch (round 2 additions first)
+
+- **Flake evidence — panel-split harness passed only on retry** in my
+  round-2 gate (timeout-class first attempt, clean retry; the gate's own
+  tally flags it). Logs preserved by the gate run; recorded in
+  `.perf-history/gate-retries.ndjson`. Not my area; same starvation
+  class as the inotify family main just documented (`853caebd`).
+- **Housekeeping:** my A/B control worktree `/tmp/276-main-control`
+  (detached at `419d5154`) could not be removed — `git worktree remove`
+  was permission-denied in this session. It is mine to delete; nothing
+  else uses it.
+- After the final merge (main through #284): views regenerated again —
+  82/82 active and 55/55 completed lines linked.
 
 - **SUSPECT — last preview body row is hit-test dead.** With a link's
   line sitting on the LAST body row of the preview pane (row 37 of a

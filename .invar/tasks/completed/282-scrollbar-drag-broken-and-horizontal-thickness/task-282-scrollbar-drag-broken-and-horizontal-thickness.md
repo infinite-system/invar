@@ -1,6 +1,6 @@
 # 282 — BUG: scrollbar thumb dragging broke (both axes); horizontal bar too thick
 
-State: IN-PROGRESS
+State: COMPLETED — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
 Created: 2026-07-29
 Engine: codex
 Environment: linux
