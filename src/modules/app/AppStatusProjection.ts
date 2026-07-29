@@ -257,6 +257,7 @@ class $AppStatusProjection {
         .cellSpans(ports.view.panelViewportColumns())
         .map((span) => span.columns),
       primaryDockVisible: ports.primaryDockHost.visible.value,
+      primaryDockFocused: ports.primaryDockHost.focused.value,
       rightDockVisible: ports.rightDockHost.visible.value,
       rightDockFocused: ports.rightDockHost.focused.value,
       rightDockActiveContent: ports.rightDockHost.activeId.value,
@@ -443,7 +444,7 @@ export interface AppStatusProjectionPorts {
   >;
   readonly primaryDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,
-    'visible' | 'activeId' | 'orderedContents'
+    'visible' | 'focused' | 'activeId' | 'orderedContents'
   >;
   readonly pluginPrimaryDockContentIdentifiers: readonly string[];
   readonly statusProjectionContributions: Pick<

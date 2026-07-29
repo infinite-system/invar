@@ -7,6 +7,7 @@
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 // invariant: The active activity item determines the sidebar content (src/modules/ui/ui.invariants.md)
+// invariant: One panel host owns keyboard focus (src/modules/ui/ui.invariants.md)
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -195,6 +196,11 @@ const statusPath = join(homeDirectory, 'status.json');
 
 await Bun.write(join(fixtureRoot, 'tree-marker.txt'), 'unchanged tree file\n');
 
+await Bun.write(
+  join(fixtureRoot, 'focus-sample.ts'),
+  'export function focusTarget(): string { return "focus"; }\n',
+);
+
 await Bun.write(join(fixtureRoot, 'change-me.txt'), 'original\n');
 
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
@@ -375,6 +381,26 @@ try {
     'git badge shows one change in column 1 above the icon',
   );
 
+  clickCell(driver, 1, filesRow);
+  const focusSamplePosition = await driver
+    .awaitGridCondition(
+      'the Explorer paints the focus fixture before the cross-dock drive',
+      (candidate) => candidate.findText('focus-sample.ts') !== null,
+    )
+    .then((candidate) => candidate.findText('focus-sample.ts'));
+  HarnessSmoke.Class.requireCondition(
+    focusSamplePosition !== null,
+    'the focus fixture has a painted pointer target',
+  );
+  clickCell(driver, focusSamplePosition!.column, focusSamplePosition!.row);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the structure row is ready before the cross-dock focus drive',
+    (status) =>
+      status.structureStatus === 'ready' && Number(status.structureRows) > 0,
+  );
+
   clickCell(driver, 1, extensionsRow);
   snapshot = await driver.awaitGridCondition(
     'Extensions content and active accent render after its click',
@@ -397,7 +423,79 @@ try {
     snapshot.findText('tree-marker.txt') === null,
     'the file tree is gone while Extensions is shown',
   );
+  let structureHeadingPosition: { row: number; column: number } | null = null;
+  const rightHalfStartColumn = Math.floor(snapshot.columns / 2);
+  for (let row = 0; row < snapshot.rows; row++) {
+    const column = snapshot
+      .rowText(row)
+      .indexOf('Structure', rightHalfStartColumn);
+    if (column < 0) continue;
+    structureHeadingPosition = { row, column };
+    break;
+  }
+  HarnessSmoke.Class.requireCondition(
+    structureHeadingPosition !== null,
+    'the right-dock heading has a painted pointer target',
+  );
+  clickCell(
+    driver,
+    structureHeadingPosition!.column,
+    structureHeadingPosition!.row,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the right-dock heading click leaves only the right dock focused',
+    (status) =>
+      status.primaryDockFocused === false &&
+      status.rightDockFocused === true &&
+      status.terminalFocused === false,
+  );
+  HarnessSmoke.Class.pass(
+    'a right-dock click withdrew primary and bottom-panel focus',
+  );
+
+  const structureRowPosition = await driver
+    .awaitGridCondition(
+      'the right dock paints focusTarget for the structure-row drive',
+      (candidate) => candidate.findText('focusTarget') !== null,
+    )
+    .then((candidate) => candidate.findText('focusTarget'));
+  HarnessSmoke.Class.requireCondition(
+    structureRowPosition !== null,
+    'the structure row has a painted pointer target',
+  );
+  clickCell(driver, structureRowPosition!.column, structureRowPosition!.row);
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Enter on the focused structure row returns focus to its editor target',
+    (status) =>
+      status.focus === 'editor' &&
+      status.cursor?.line === 0 &&
+      status.cursor.col === 16 &&
+      status.primaryDockFocused === false &&
+      status.rightDockFocused === false &&
+      status.terminalFocused === false,
+  );
+  HarnessSmoke.Class.pass(
+    'Enter routed through the right dock instead of the primary dock',
+  );
+
   clickCell(driver, 1, filesRow);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the primary-dock click leaves only the primary dock focused',
+    (status) =>
+      status.primaryDockFocused === true &&
+      status.rightDockFocused === false &&
+      status.terminalFocused === false,
+  );
+  HarnessSmoke.Class.pass(
+    'a primary-dock click withdrew right and bottom-panel focus',
+  );
   await driver.awaitGridCondition(
     'the Explorer tree returns after its activity item is clicked',
     (candidate) => candidate.findText('tree-marker.txt') !== null,

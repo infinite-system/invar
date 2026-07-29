@@ -397,12 +397,10 @@ class $RootView {
     });
     rightDockBox.add(rightDockBody);
     rightDockBox.onMouseDown = () => {
-      panelHost.blur();
       rightDockHost.focus();
       renderer.requestRender();
     };
     rightDockBody.onMouseDown = (event: MouseEvent) => {
-      panelHost.blur();
       rightDockHost.focus();
       rightDockHost.activeContent?.onPointerDown?.(
         Number(event.x) - Number(rightDockBody.x),
@@ -724,8 +722,6 @@ class $RootView {
       // small manual drag), grabbing pointer capture so the drag routes here wherever it travels; a BARE
       // click (no drag) toggles a collapsed tool row on mouse-up. Other panes keep the click hit-test.
       heading.onMouseDown = (event) => {
-        primaryDockHost.blur();
-        rightDockHost.blur();
         panelHost.focus();
         panelHost.focusCell(index);
         const view = panelCellViews[index];
@@ -777,8 +773,6 @@ class $RootView {
         tooltip.clear();
       };
       body.onMouseDown = (event: MouseEvent) => {
-        primaryDockHost.blur();
-        rightDockHost.blur();
         panelHost.focus();
         panelHost.focusCell(index);
         const agent = agentAtCell();
@@ -975,8 +969,6 @@ class $RootView {
     let panelControlBarProjection: PanelHeadingProjection | null = null;
     let hoveredPanelControlBarAction: PanelHeadingAction | null = null;
     panelControlBarRenderable.onMouseDown = (event) => {
-      primaryDockHost.blur();
-      rightDockHost.blur();
       panelHost.focus();
       const action = panelControlBarProjection
         ? PanelHeading.Class.controlAtColumn(
@@ -1024,7 +1016,6 @@ class $RootView {
     // Clicking the panel focuses it (focus-follows-click). Blur-on-outside is handled in Bootstrap's
     // global mouse handler via panelContainsPoint.
     panelBox.onMouseDown = () => {
-      rightDockHost.blur();
       panelHost.focus();
       renderer.requestRender();
     };

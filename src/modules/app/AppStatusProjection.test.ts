@@ -338,6 +338,7 @@ describe('AppStatusProjection', () => {
       },
     ]);
     expect(StatusChannel.Class.snapshot.agentTitle).toBe('Codex (working…)');
+    expect(StatusChannel.Class.snapshot.primaryDockFocused).toBe(false);
 
     panelHost.dispose();
     rightDockHost.dispose();
