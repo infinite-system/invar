@@ -179,7 +179,7 @@ try {
     15_000,
   );
   driver.sendKeys('Enter');
-  await HarnessSmoke.Class.awaitStatus(
+  const openedMarkdownStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: String(status.activeBuffer).endsWith('/README.md') && status.markdownPreviewOpen === false",
@@ -194,16 +194,23 @@ try {
   );
   let button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
-  snapshot = await driver.awaitSnapshot(
-    (candidate) =>
-      candidate.findText('╭─Preview') !== null &&
-      previewHasMarker(candidate, 'Rendered heading'),
-  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the tab button publishes the Markdown preview as open',
-    (status) => status.markdownPreviewOpen === true,
+    'the preview publishes the current source revision as parsed',
+    (status) =>
+      status.markdownPreviewOpen === true &&
+      status.markdownParsing === false &&
+      Number(status.markdownRevision) ===
+        Number(openedMarkdownStatus.bufferRevision) &&
+      Number(status.bufferRevision) ===
+        Number(openedMarkdownStatus.bufferRevision),
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the current Markdown revision paints content after the malformed tables',
+    (candidate) =>
+      candidate.findText('╭─Preview') !== null &&
+      previewHasMarker(candidate, 'Rendered row 01'),
   );
   HarnessSmoke.Class.pass('tab button mounts the preview pane');
   const renderedHeading = previewMarkerPosition(snapshot, 'Rendered heading');
