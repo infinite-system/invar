@@ -5,6 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,6 +26,8 @@ const homeDirectory = mkdtempSync(
 const statusPath = join(homeDirectory, 'status.json');
 
 const regressionFileName = 'JpegDecoder.test.ts';
+
+const openingViewportTail = "jpeg-js's own encoder (deterministic,";
 
 const widestLineMarker = 'contract shape: dims plus rgba';
 
@@ -79,6 +82,10 @@ try {
     filesHeadingPosition !== null,
     'the Files heading is visible before horizontal input',
   );
+  requireCondition(
+    openingSnapshot.findText(openingViewportTail) === null,
+    `the opening comment tail "${openingViewportTail}" is hidden before horizontal input`,
+  );
 
   console.log(
     '== harness horizontal extent: Alt-wheel clamps against the opening viewport ==',
@@ -121,8 +128,8 @@ try {
     },
   });
   await driver.awaitGridCondition(
-    'the opening viewport reveals the end of the visible encodeBandsJpeg declaration',
-    (candidate) => candidate.findText('[]): Uint8Array {') !== null,
+    `the opening viewport reveals its comment tail "${openingViewportTail}"`,
+    (candidate) => candidate.findText(openingViewportTail) !== null,
   );
   const openingClampStatus = await awaitStatusPublication(
     statusPath,
