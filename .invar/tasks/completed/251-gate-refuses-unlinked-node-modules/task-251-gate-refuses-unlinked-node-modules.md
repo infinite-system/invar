@@ -1,6 +1,6 @@
 # 251 — the gate ran 60 smokes on an EMPTY node_modules and reported 57 green
 
-State: IN-PROGRESS
+State: COMPLETED — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
 Created: 2026-07-29
 Engine: codex
 Environment: linux

@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #251 gate-refuses-unlinked-node-modules  [building]
-  `tmux attach -t invar/251-gate-refuses-unlinked-node-modules`
+## IN-PROGRESS (2)
 - #245 provider-seam-open-or-bless-decision  [building]
   `tmux attach -t invar/245-provider-seam-open-or-bless-decision`
 - #236 markdown-terminal-stylesheet-readable  [building]
@@ -81,7 +79,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 40 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 41 — full log: project.tasks-completed.md)
+- #251 gate-refuses-unlinked-node-modules — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
 - #244 sdk-binary-extraction-leak-fills-disk — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 - #243 ui-contract-sibling-rot-round-two — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
@@ -96,4 +95,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #215 agent-tmux-send-confirm-false-negative — 7968d49f — claude confirm keys on the bottom composer frame (structure, not strings); codex signature kept; dispatch waits 15s for the cwd-derived session file; planted false-positive shape reds the contract; bycatch filed as #231
 - #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
-- #208 git-commit-collapse-wiring-gap — merged 15f51dc
