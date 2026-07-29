@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #222 provider-seam-analysis-and-convention  [building]
+  `tmux attach -t invar/222-provider-seam-analysis-and-convention`
 - #219 source-text-view-onto-pane-content-seam  [building]
   `tmux attach -t invar/219-source-text-view-onto-pane-content-seam`
 
@@ -57,9 +59,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (8)
+## ARCHITECTURE-HYGIENE (7)
 - #223 database-plugin-proves-provider-seam
-- #222 provider-seam-analysis-and-convention
 - #220 editor-registers-as-contributor-with-manifest
 - #217 split-geometry-aggregates-invariant
 - #136 shared-scale-fixture-corpus-cache

@@ -1,0 +1,15 @@
+{
+  "task": 222,
+  "slug": "provider-seam-analysis-and-convention",
+  "branch": "fleet/222-provider-seam-analysis-and-convention",
+  "worktree": ".invar/worktrees/222-provider-seam-analysis-and-convention",
+  "tmuxSession": "invar/222-provider-seam-analysis-and-convention",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-high-222-provider-seam-analysis-and-convention.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "19cc2aec1213cc9ff57ad0fa5558bc885493cca3",
+  "startedAt": "2026-07-29T00:23:10-04:00"
+}

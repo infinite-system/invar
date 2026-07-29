@@ -1,6 +1,6 @@
 # 222 — provider-seam analysis: where the getter seam is owed, and the convention text
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux
