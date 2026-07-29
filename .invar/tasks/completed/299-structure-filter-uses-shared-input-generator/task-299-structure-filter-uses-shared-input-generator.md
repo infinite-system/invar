@@ -1,6 +1,6 @@
 # 299 — the structure filter is not a real input: no selection, no Alt+Backspace — use the shared generator
 
-State: IN-PROGRESS
+State: COMPLETED — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
 Created: 2026-07-29
 Engine: codex
 Environment: linux
