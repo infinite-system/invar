@@ -1146,7 +1146,9 @@ function live(
     console.log(
       `      ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
     );
-    console.log(dim(`      tmux attach -t invar/${record.folderName}`));
+    console.log(
+      paint('38;5;240', `  tmux attach -t invar/${record.folderName}`),
+    );
   }
   return 0;
 }
