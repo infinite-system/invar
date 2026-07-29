@@ -1,0 +1,15 @@
+{
+  "task": 300,
+  "slug": "eight-ui-nitpicks-bundled",
+  "branch": "fleet/300-eight-ui-nitpicks-bundled",
+  "worktree": ".invar/worktrees/300-eight-ui-nitpicks-bundled",
+  "tmuxSession": "invar/300-eight-ui-nitpicks-bundled",
+  "transcript": "tmp/transcripts/transcript-codex-unknown-default-300-eight-ui-nitpicks-bundled.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "unknown",
+  "effort": "default",
+  "heldFromMain": false,
+  "baseCommit": "297b8a841e5827dae6b3abad9c243daf8fe89b11",
+  "startedAt": "2026-07-29T17:49:46-04:00"
+}

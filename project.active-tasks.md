@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #305 [unknown-task-variables-pass-through](.invar/tasks/in-progress/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md)  [building]
   `tmux attach -t invar/305-unknown-task-variables-pass-through`
+- #300 eight-ui-nitpicks-bundled  [building]
+  `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/in-progress/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md)  [building]
   `tmux attach -t invar/299-structure-filter-uses-shared-input-generator`
 
