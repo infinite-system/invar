@@ -1,6 +1,6 @@
 # 289 — preview scroll syncs with editor scroll (setting, default ON)
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

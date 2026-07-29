@@ -1,0 +1,15 @@
+{
+  "task": 289,
+  "slug": "preview-scroll-sync-setting",
+  "branch": "fleet/289-preview-scroll-sync-setting",
+  "worktree": ".invar/worktrees/289-preview-scroll-sync-setting",
+  "tmuxSession": "invar/289-preview-scroll-sync-setting",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-289-preview-scroll-sync-setting.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "932373a1a20e73c2ba51c6de5cd098bb47ed10d0",
+  "startedAt": "2026-07-29T12:24:54-04:00"
+}
