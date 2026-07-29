@@ -6,11 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #291 [task-links-survive-state-moves](.invar/tasks/in-progress/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md)  [building]
   `tmux attach -t invar/291-task-links-survive-state-moves`
 - #289 [preview-scroll-sync-setting](.invar/tasks/in-progress/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/289-preview-scroll-sync-setting`
+- #281 [structure-pane-round-two-refinements](.invar/tasks/in-progress/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md)  [building]
+  `tmux attach -t invar/281-structure-pane-round-two-refinements`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)

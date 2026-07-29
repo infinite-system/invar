@@ -1,6 +1,6 @@
 # 281 — structure pane round two: no imports, visibility/$cache marks, override detection, in-pane depth gear
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

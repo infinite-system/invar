@@ -1,0 +1,15 @@
+{
+  "task": 281,
+  "slug": "structure-pane-round-two-refinements",
+  "branch": "fleet/281-structure-pane-round-two-refinements",
+  "worktree": ".invar/worktrees/281-structure-pane-round-two-refinements",
+  "tmuxSession": "invar/281-structure-pane-round-two-refinements",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-281-structure-pane-round-two-refinements.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "2a51fb31834d190830407b17324d70b531ce7aea",
+  "startedAt": "2026-07-29T13:27:04-04:00"
+}
