@@ -1,6 +1,6 @@
 # 268 — MAIN IS RED: editor smoke's wrap-off rows displaced by #237's auto-open
 
-State: IN-PROGRESS
+State: COMPLETED — 5c9965a4 — editor smoke measures the pane; red main cleared
 Created: 2026-07-29
 Engine: claude
 Environment: linux

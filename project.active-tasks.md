@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #268 editor-smoke-vs-auto-open-red-main  [building]
-  `tmux attach -t invar/268-editor-smoke-vs-auto-open-red-main`
+## IN-PROGRESS (1)
 - #238 structure-default-right-and-md-toc  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/238-structure-default-right-and-md-toc`
 
@@ -21,7 +19,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (20)
+## VERIFICATION-INTEGRITY (21)
+- #269 smokes-assume-editor-geometry-sweep
 - #266 drive-settle-ignores-debounced-parse
 - #265 status-projection-drops-plugin-keys
 - #261 drive-harness-drops-shifted-control-chords
@@ -88,7 +87,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 46 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 47 — full log: project.tasks-completed.md)
+- #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #254 gate-workers-validated-after-side-effects — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
 - #253 ui-contract-systematic-citation-sweep — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
 - #251 gate-refuses-unlinked-node-modules — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
@@ -103,4 +103,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 - #221 editor-owns-no-view-state-uncited — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
 - #220 editor-registers-as-contributor-with-manifest — 219f160a — eighth DefaultPlugins contributor with uninstall symmetry; release goes THROUGH the buffer set (the fourth-verse reversibility fix); EditorColumnDefault beside EditorSurfaceContents; empty column states its affordance; censuses honest; fingerprints unchanged; ran at medium
-- #219 source-text-view-onto-pane-content-seam — 43b6002 — PaneContent grew native-surface (who paints); editor is a citizen via SourceTextPaneContent + PaneProjection; paint-then-selection ordering became a tested invariant; release path ready for #220; fingerprints unchanged at 10/100k/500k; boundaries filed as #228, #229
