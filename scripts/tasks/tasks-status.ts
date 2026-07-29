@@ -674,7 +674,11 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // The spinner belongs to WORK IN MOTION only: building tasks spin, READY ones
 // hold still. One glyph per task, not per line — motion marks the task, the
 // details stay readable.
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+// Four dots, one lap: a single dot walking the cell's corners (user's call —
+// four over the six-dot braille cell). At 30 fps the walk advances every
+// third paint, one lap ≈ 400 ms.
+const SPINNER_FRAMES = ['▖', '▘', '▝', '▗'];
+const SPINNER_PAINTS_PER_STEP = 3;
 
 function live(
   tasksRoot: string,
@@ -926,7 +930,7 @@ async function watchLenses(tasksRoot: string): Promise<number> {
       `${bold('INVAR TASKS')} ${dim(`· ${clock} · 30fps · Ctrl+C to exit`)}`,
     );
     console.log('');
-    live(tasksRoot, frame, cachedRecords);
+    live(tasksRoot, Math.floor(frame / SPINNER_PAINTS_PER_STEP), cachedRecords);
     console.log('');
     const completedCount = cachedRecords.filter(
       (record) => record.directoryState === 'completed',
