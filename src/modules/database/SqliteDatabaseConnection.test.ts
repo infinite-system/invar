@@ -8,6 +8,7 @@ test('SQLite queries stay row-bounded and schema descriptions load by parent', a
       'CREATE TABLE items (identifier INTEGER, label TEXT)',
       0,
     );
+    await connection.query('CREATE INDEX items_label_index ON items(label)', 0);
     await connection.query(
       "INSERT INTO items VALUES (1, 'one'), (2, 'two'), (3, 'three')",
       0,
@@ -47,6 +48,13 @@ test('SQLite queries stay row-bounded and schema descriptions load by parent', a
         name: 'label',
         kind: 'column',
         detail: 'TEXT',
+        mayHaveChildren: false,
+      },
+      {
+        reference: 'index:items:items_label_index',
+        name: 'items_label_index',
+        kind: 'index',
+        detail: null,
         mayHaveChildren: false,
       },
     ]);

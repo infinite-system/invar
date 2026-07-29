@@ -1236,16 +1236,14 @@ try {
     'the database consumer resolves the installed SQLite provider',
     (status) =>
       status.sidebarView === 'database' &&
-      status.databaseConsumerStatus === 'ready' &&
-      status.databaseProviderIdentifier === 'sqlite' &&
-      status.databaseQueryValue === '42',
+      status.databaseConsumerStatus === 'disconnected' &&
+      status.databaseProviderIdentifier === 'sqlite',
   );
   await driver.awaitGridCondition(
-    'the database pane paints the bounded query and lazy schema results',
+    'the database pane asks for a user-selected database file',
     (snapshot) =>
-      snapshot.findText('Provider: sqlite') !== null &&
-      snapshot.findText('Query value: 42') !== null &&
-      snapshot.findText('Schema: provider_seam_probe') !== null,
+      snapshot.findText('No database is connected.') !== null &&
+      snapshot.findText('Database: Connect') !== null,
   );
 
   await selectExtensionsRow('[x] SQLite Provider');
@@ -1283,9 +1281,8 @@ try {
     'the database consumer resolves the reinstalled provider',
     (status) =>
       status.sidebarView === 'database' &&
-      status.databaseConsumerStatus === 'ready' &&
+      status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite' &&
-      status.databaseQueryValue === '42' &&
       status.databaseProviderPluginActive === true,
   );
 
@@ -1298,9 +1295,20 @@ try {
     (status) =>
       !(status.sidebarViewIdentifiers as string[]).includes('database') &&
       status.databaseConsumerStatus === undefined &&
+      status.databaseConsumerVersion === undefined &&
       status.databaseProviderIdentifier === undefined &&
+      status.databaseFilePath === undefined &&
+      status.databasePathInputActive === undefined &&
+      status.databasePathInputValue === undefined &&
       status.databaseQueryValue === undefined &&
       status.databaseSchemaObjectNames === undefined &&
+      status.databaseSchemaObjectKinds === undefined &&
+      status.databaseSelectedSchemaIndex === undefined &&
+      status.databasePreviewTableName === undefined &&
+      status.databasePreviewPageIndex === undefined &&
+      status.databasePreviewRowCount === undefined &&
+      status.databasePreviewHasMoreRows === undefined &&
+      status.databasePreviewFirstRow === undefined &&
       status.databaseConsumerFailure === undefined &&
       status.databaseProviderPluginActive === true,
   );
@@ -1335,9 +1343,8 @@ try {
     'the reinstalled database consumer resolves SQLite again',
     (status) =>
       status.sidebarView === 'database' &&
-      status.databaseConsumerStatus === 'ready' &&
-      status.databaseProviderIdentifier === 'sqlite' &&
-      status.databaseQueryValue === '42',
+      status.databaseConsumerStatus === 'disconnected' &&
+      status.databaseProviderIdentifier === 'sqlite',
   );
   HarnessSmoke.Class.pass(
     'the database provider and consumer uninstall and reinstall symmetrically',

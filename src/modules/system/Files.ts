@@ -60,6 +60,11 @@ class $Files {
     return resolve(path);
   }
 
+  /** Resolve a path from an explicit base. Absolute paths stay absolute. */
+  static resolveFrom(basePath: string, path: string): string {
+    return resolve(basePath, path);
+  }
+
   static extname(path: string): string {
     return extname(path);
   }

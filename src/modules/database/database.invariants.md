@@ -22,23 +22,67 @@ or streaming transport.
 The connection accepts `maximumRowCount`, iterates only through the first excluded row, and
 returns `hasMoreRows`.
 
-**Generates:** The bounded query argument; `hasMoreRows`; no use of eager `all()` for user
-query results; lazy `describe(parentReference)`.
+**Generates:** The bounded query argument; `hasMoreRows`; 20-row preview pages; no use of eager
+`all()` for user query results; lazy `describe(parentReference)`.
 
 **Evidence:** `src/modules/database/DatabaseProvider.interface.ts`;
 `src/modules/database/SqliteDatabaseConnection.ts`;
-`src/modules/database/SqliteDatabaseConnection.test.ts`.
+`src/modules/database/DatabaseConsumerWorkspace.ts`;
+`src/modules/database/SqliteDatabaseConnection.test.ts`;
+`scripts/harness/smoke-database-harness.ts`.
 
 **Impossible if true:** A user query materialized in full before the row limit is applied; a
 truncated result that claims it is complete.
 
-**Verification:** `bun test src/modules/database/SqliteDatabaseConnection.test.ts`.
+**Verification:** `bun test src/modules/database/SqliteDatabaseConnection.test.ts && bun
+scripts/harness/smoke-database-harness.ts`.
 
 **Status:** provisional
 
 **Last refined:** 2026-07-29
 
 ## Chosen invariants
+
+### Database files are user selected
+
+**Invariant:** If the SQLite provider opens a file connection, then the user selected that path
+through `Database: Connect`. The pane states the path, lifecycle state, schema, rows, or exact
+connection error.
+
+**Scope:** The database Command Palette actions, the path field, SQLite file connections, schema
+navigation, row preview, reconnect, disconnect, and in-pane errors. PostgreSQL and MySQL are outside
+this SQLite provider.
+
+**Mechanism:** `DatabaseConsumerPlugin` registers connect, reconnect, and disconnect commands.
+`DatabasePaneContent` edits the path with `TextInputModel` and `TextFieldPainter`.
+`DatabaseConsumerWorkspace` resolves relative paths from the workspace, owns one observed
+connection, asks for tables, columns, and indexes lazily, and keeps failures in reactive pane state.
+`SqliteDatabaseProvider` rejects missing paths before SQLite can create an accidental empty file.
+
+**Generates:** A user-selected file instead of the provider-seam memory proof; explicit open, close,
+and reconnect actions; tables, columns, indexes, and pages in one pane; visible bad-path, locked-file,
+and not-a-database failures. PostgreSQL and MySQL can implement the consumer-owned
+`DatabaseProvider` seam without host changes.
+
+**Rejected alternatives:** A fixed fixture path or `:memory:` connection on pane open — proves the
+provider but cannot browse the user's database. A database path in settings — adds persistence and
+stale-path policy when the Command Palette already supplies the direct gesture.
+
+**Evidence:** `src/modules/database/DatabaseConsumerPlugin.ts`;
+`src/modules/database/DatabasePaneContent.ts`;
+`src/modules/database/DatabaseConsumerWorkspace.ts`;
+`src/modules/database/SqliteDatabaseProvider.ts`;
+`scripts/harness/smoke-database-harness.ts`.
+
+**Impossible if true:** Opening the pane creates a proof table; a connection opens a path the user
+did not choose; a corrupt file leaves a blank pane; disconnect retains an open connection; reconnect
+silently changes the selected path; a password or network secret is written to settings.
+
+**Verification:** `bun scripts/harness/smoke-database-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
 
 ### Database providers meet through the host registry
 

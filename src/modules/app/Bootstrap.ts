@@ -56,6 +56,7 @@ import { PanelHostFocusSet } from '../ui/PanelHostFocusSet';
 import { PanelAddPopup } from '../ui/PanelAddPopup';
 import type {
   PaneContent,
+  PaneTextInputPort,
   PaneTextSelectionPort,
 } from '../ui/PaneContent.interface';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
@@ -1496,6 +1497,15 @@ class $Bootstrap {
       }
       if (commands.open.value) {
         commands.applyQueryInputAction(action);
+        return;
+      }
+      const primaryDockTextInput = primaryDockHost.focused.value
+        ? primaryDockHost.focusedContent?.capability?.<PaneTextInputPort>(
+            'text-input',
+          )
+        : null;
+      if (primaryDockTextInput) {
+        primaryDockTextInput.applyInputAction(action);
         return;
       }
       const focusedContent = panelHost.focusedContent;

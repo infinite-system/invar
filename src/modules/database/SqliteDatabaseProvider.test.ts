@@ -16,3 +16,12 @@ test('the SQLite provider opens an independent connection', async () => {
     connection.dispose();
   }
 });
+
+test('the SQLite provider rejects a missing file instead of creating an empty database', async () => {
+  await expect(
+    SqliteDatabaseProvider.Class.connect({
+      identifier: 'missing',
+      filePath: '/tmp/invar-database-file-that-does-not-exist.sqlite',
+    }),
+  ).rejects.toThrow('SQLite database file does not exist');
+});

@@ -108,10 +108,10 @@ is drawn by INVERTING the cell it occupies, and the tone is one of `idle`, `focu
 with the focus tone quieter than the hover tone.
 
 **Scope:** `BoundedListPopup`'s search row, the command-palette and Quick Open inputs in
-`OverlayLayer`, and the query and replacement fields in `FindBarRenderer`. The editor body caret
-(projected as the terminal's own hardware cursor) and the multi-line wrapping `AgentComposer` are
-outside this rule — a wrapping surface resolves its caret through a row mapping, not a one-line
-window.
+`OverlayLayer`, the query and replacement fields in `FindBarRenderer`, and the database connection
+path in `DatabasePaneContent`. The editor body caret (projected as the terminal's own hardware
+cursor) and the multi-line wrapping `AgentComposer` are outside this rule — a wrapping surface
+resolves its caret through a row mapping, not a one-line window.
 
 **Components:**
 - *Caret cell* — `TextInputModel.valueBeforeCaret` measured by `TextCoordinates.lineWidth` gives the
@@ -144,7 +144,8 @@ two of the three states would be unreachable decoration.
 **Evidence:** `src/modules/ui/TextFieldPainter.ts`; `src/modules/ui/TextFieldPainter.test.ts` (caret at
 the model offset, end-of-text caret, wide-glyph columns, identical geometry across the three states,
 tone ordering); consumers `src/modules/ui/BoundedListPopup.ts`, `src/modules/ui/OverlayLayer.ts`,
-`src/modules/ui/FindBarRenderer.ts`; `scripts/harness/smoke-field-caret-harness.ts` (caret at the
+`src/modules/ui/FindBarRenderer.ts`, `src/modules/database/DatabasePaneContent.ts`;
+`scripts/harness/smoke-field-caret-harness.ts` (caret at the
 published `boundedListPopupQueryCaretCell` through typing, word movement, word deletion, and a pasted
 wide-glyph query; three distinct observed backgrounds);
 `scripts/harness/smoke-text-input-harness.ts` (the inverted caret cell in open-project, the palette,
@@ -157,11 +158,11 @@ the text after it; a caret that requests frames while the app is at rest.
 
 **Verification:** `bun test src/modules/ui/TextFieldPainter.test.ts && bun
 scripts/harness/smoke-field-caret-harness.ts && bun scripts/harness/smoke-text-input-harness.ts &&
-bash scripts/behavioral-contracts.sh`
+bun scripts/harness/smoke-database-harness.ts && bash scripts/behavioral-contracts.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### Bounded list popups share paint and hit geometry
 
