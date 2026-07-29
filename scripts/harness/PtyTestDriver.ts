@@ -10,6 +10,9 @@
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Stable regions stay byte-identical across actions (scripts/harness/harness.invariants.md)
 // invariant: Harness output history stays bounded (scripts/harness/harness.invariants.md)
+// invariant: Harness app homes are complete and isolated (scripts/harness/harness.invariants.md)
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { OpenPty } from '../../src/modules/terminal/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import {
@@ -805,7 +808,25 @@ class $PtyTestDriver {
     environment.TERM = 'xterm-256color';
     environment.COLORTERM = 'truecolor';
     environment.INVAR_TEST_SUPPRESS_BUILT_IN_TASK = '1';
-    if (options.homeDirectory) environment.HOME = options.homeDirectory;
+    if (options.homeDirectory) {
+      const configHome = join(options.homeDirectory, '.config');
+      const dataHome = join(options.homeDirectory, '.local', 'share');
+      const stateHome = join(options.homeDirectory, '.local', 'state');
+      const cacheHome = join(options.homeDirectory, '.cache');
+      for (const directoryPath of [
+        join(configHome, 'invar'),
+        join(dataHome, 'invar'),
+        stateHome,
+        cacheHome,
+      ]) {
+        mkdirSync(directoryPath, { recursive: true });
+      }
+      environment.HOME = options.homeDirectory;
+      environment.XDG_CONFIG_HOME = configHome;
+      environment.XDG_DATA_HOME = dataHome;
+      environment.XDG_STATE_HOME = stateHome;
+      environment.XDG_CACHE_HOME = cacheHome;
+    }
     for (const [key, value] of Object.entries(options.environment ?? {})) {
       if (value === undefined) delete environment[key];
       else environment[key] = value;

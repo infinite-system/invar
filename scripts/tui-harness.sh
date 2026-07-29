@@ -22,9 +22,12 @@ frame_path()  { echo "$ROOT/artifacts/frame-$1.json"; }
 STATUS="$ROOT/artifacts/status.json" # legacy fallback for single-arg field/status
 BUN="${BUN:-$HOME/.bun/bin/bun}"
 BUN_BIN="$(dirname "$BUN")"          # real bun dir, captured BEFORE we isolate HOME below
-# Per-worktree isolated HOME: each ROOT (worktree) gets its OWN ~/.config/invar/settings.json, so
-# concurrent gate runs in different worktrees never share it (or clobber the real ~/.config).
-HARNESS_HOME="$ROOT/artifacts/home"
+# A behavioral-contract run supplies a fresh home. The fallback keeps direct manual calls compatible.
+HARNESS_HOME="${INVAR_HARNESS_HOME:-$ROOT/artifacts/home}"
+HARNESS_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HARNESS_HOME/.config}"
+HARNESS_XDG_DATA_HOME="${XDG_DATA_HOME:-$HARNESS_HOME/.local/share}"
+HARNESS_XDG_STATE_HOME="${XDG_STATE_HOME:-$HARNESS_HOME/.local/state}"
+HARNESS_XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HARNESS_HOME/.cache}"
 
 # Capture pane descendants BEFORE tmux tears down the shell. Some terminal app processes survive the
 # pane HUP and are reparented to pid 1; once that happens the session no longer identifies them and a
@@ -72,11 +75,27 @@ case "$cmd" in
     kill_session_and_descendants "$session"
     rm -f "$STATUS"
     tmux new-session -d -s "$session" -x "$cols" -y "$rows"
+    # invariant: Declared harness geometry reaches Invar (scripts/harness/harness.invariants.md)
+    # The tmux server defaults to `window-size latest`, which silently replaces -x/-y with the most
+    # recent attached client's size. Pin this test window before the app starts.
+    tmux set-window-option -t "$session:0" window-size manual
+    tmux resize-window -t "$session:0" -x "$cols" -y "$rows"
+    actual_size="$(tmux display-message -p -t "$session:0.0" '#{pane_width}x#{pane_height}')"
+    if [ "$actual_size" != "$size" ]; then
+      echo "launch: requested $size but tmux created $actual_size" >&2
+      kill_session_and_descendants "$session"
+      exit 1
+    fi
     rm -f "$(status_path "$session")" "$(frame_path "$session")"
-    mkdir -p "$HARNESS_HOME/.config/invar"
-    # Run inside the repo with a WORKTREE-LOCAL HOME (isolated ~/.config, never shared/clobbered),
-    # the real bun on PATH (captured before isolation), and a session-scoped side channel.
-    tmux send-keys -t "$session" "cd '$ROOT' && HOME='$HARNESS_HOME' PATH='$BUN_BIN':\"\$PATH\" INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1 TUI_STATUS_PATH='$(status_path "$session")' TUI_FRAME_PATH='$(frame_path "$session")' $* " C-m
+    mkdir -p \
+      "$HARNESS_XDG_CONFIG_HOME/invar" \
+      "$HARNESS_XDG_DATA_HOME/invar" \
+      "$HARNESS_XDG_STATE_HOME" \
+      "$HARNESS_XDG_CACHE_HOME"
+    # invariant: Harness app homes are complete and isolated (scripts/harness/harness.invariants.md)
+    # Run inside the repo with the caller's isolated user directories, the real Bun captured before
+    # isolation, the first-run convenience task suppressed, and a session-scoped side channel.
+    tmux send-keys -t "$session" "cd '$ROOT' && HOME='$HARNESS_HOME' XDG_CONFIG_HOME='$HARNESS_XDG_CONFIG_HOME' XDG_DATA_HOME='$HARNESS_XDG_DATA_HOME' XDG_STATE_HOME='$HARNESS_XDG_STATE_HOME' XDG_CACHE_HOME='$HARNESS_XDG_CACHE_HOME' PATH='$BUN_BIN':\"\$PATH\" INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1 TUI_STATUS_PATH='$(status_path "$session")' TUI_FRAME_PATH='$(frame_path "$session")' $* " C-m
     echo "launched $session ($cols x $rows): $*"
     ;;
   ready|settle)
