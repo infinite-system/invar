@@ -26,6 +26,16 @@ record's geometry component; both themes; positive control: assert the
 corner cell paints vertical-bar content and the horizontal track's last
 column is vertical-track minus one — break the layout, red.
 
+## Second arm (user, 13:1x): color parity
+
+The horizontal bar's colors must MATCH the vertical bar's grey/white —
+today the horizontal thumb reads accent-blue while the vertical reads
+grey. One color pair per theme, BOTH axes, chosen at the shared painter
+(and derived live from the theme — coordinate with
+[#284](../284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)'s
+capture-at-construction fix if it has not landed; do not duplicate its
+work, but your assertion must hold under a theme switch).
+
 ## Invariants in scope
 
 - The scrollbar records (#282's painter record — extend its geometry);
