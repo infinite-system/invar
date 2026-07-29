@@ -1,6 +1,6 @@
 # 294 — LSP + structure never load for a TS file in a secondary workspace
 
-State: IN-PROGRESS
+State: COMPLETED — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
 Created: 2026-07-29
 Engine: codex
 Environment: linux
