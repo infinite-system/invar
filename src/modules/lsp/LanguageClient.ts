@@ -9,6 +9,11 @@ import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { StatusChannel } from '../system/StatusChannel';
 import { CompletionItemKinds } from './CompletionItemKinds';
+import { SymbolKinds } from './SymbolKinds';
+import type {
+  StructureOutlineResult,
+  StructureSymbol,
+} from '../structure/StructureSource.interface';
 import type {
   LanguageCompletionContext,
   LanguageCompletionItem,
@@ -36,6 +41,7 @@ class $LanguageClient {
       hover: false,
       references: false,
       completion: false,
+      documentSymbols: false,
     });
     return noCapabilities;
   }
@@ -81,6 +87,8 @@ class $LanguageClient {
   protected disposed = false;
   protected publishedPid: number | null = null;
 
+  protected readonly maxDocumentSymbolsPerDocument: number;
+
   constructor(options: LanguageClientOptions = {}) {
     this.rootPath = options.rootPath ?? this.defaultRootPath();
     // Set BEFORE createProviders() — the default TypeScript provider reads it at construction.
@@ -98,6 +106,10 @@ class $LanguageClient {
     this.maxReferencesPerRequest = Math.max(
       1,
       options.maxReferencesPerRequest ?? 5_000,
+    );
+    this.maxDocumentSymbolsPerDocument = Math.max(
+      1,
+      options.maxDocumentSymbolsPerDocument ?? 10_000,
     );
   }
 
@@ -430,6 +442,33 @@ class $LanguageClient {
   }
 
   /**
+   * The active document's symbol outline (`textDocument/documentSymbol`), or null when no
+   * provider claims the capability, the server never advertised `documentSymbolProvider`, the
+   * document is size-suppressed, or the text advanced past the request. Both wire shapes parse —
+   * hierarchical `DocumentSymbol[]` and flat `SymbolInformation[]` — into one consumer record.
+   */
+  async documentSymbols(
+    document: LanguageDocument,
+  ): Promise<StructureOutlineResult | null> {
+    if (!this.supports('documentSymbols')) return null;
+    const requestRevision = document.revision.value;
+    const transport = await this.transportFor(document, requestRevision);
+    if (!transport) return null;
+    if (!this.serverProvidesDocumentSymbols) return null;
+    try {
+      const result = await transport.request<unknown>(
+        'textDocument/documentSymbol',
+        { textDocument: { uri: this.uriFor(document.path) } },
+      );
+      if (document.revision.value !== requestRevision) return null;
+      return this.parseDocumentSymbols(result, this.uriFor(document.path));
+    } catch (reason) {
+      this.containFailure(reason);
+      return null;
+    }
+  }
+
+  /**
    * Attempt the protocol shutdown handshake, then unconditionally release transport,
    * process, diagnostics, and ivue effects.
    *
@@ -579,6 +618,10 @@ class $LanguageClient {
               contentFormat: ['markdown', 'plaintext'],
             },
             references: { dynamicRegistration: false },
+            documentSymbol: {
+              dynamicRegistration: false,
+              hierarchicalDocumentSymbolSupport: true,
+            },
             completion: {
               dynamicRegistration: false,
               completionItem: { insertReplaceSupport: false },
@@ -859,6 +902,72 @@ class $LanguageClient {
     }
     this.diagnosticBatches.set(uri, { version, items });
     this.bumpDiagnostics();
+  }
+
+  /** True when the server advertised `documentSymbolProvider` on initialize — only then is
+   *  `textDocument/documentSymbol` sent, so a server without the feature is never asked. */
+  protected get serverProvidesDocumentSymbols(): boolean {
+    return Boolean(this.serverCapabilities.documentSymbolProvider);
+  }
+
+  /**
+   * Parse a `textDocument/documentSymbol` result. Hierarchical `DocumentSymbol` nodes carry
+   * `selectionRange` (the name — where a jump lands) beside `range` (the full extent) and
+   * `children`; flat `SymbolInformation` rows carry one `location.range`, which then serves as
+   * both. The count of kept nodes (nested included) is capped, and the cap is STATED through
+   * `truncated`, never silent.
+   */
+  protected parseDocumentSymbols(
+    value: unknown,
+    uri: string,
+  ): StructureOutlineResult {
+    const candidates = Array.isArray(value) ? value : [];
+    const budget = {
+      remaining: this.maxDocumentSymbolsPerDocument,
+      truncated: false,
+    };
+    const symbols = this.parseSymbolList(candidates, uri, budget);
+    return { symbols, truncated: budget.truncated };
+  }
+
+  protected parseSymbolList(
+    values: readonly unknown[],
+    uri: string,
+    budget: { remaining: number; truncated: boolean },
+  ): StructureSymbol[] {
+    const symbols: StructureSymbol[] = [];
+    for (const rawSymbol of values) {
+      if (budget.remaining <= 0) {
+        budget.truncated = true;
+        break;
+      }
+      const candidate = this.objectValue(rawSymbol);
+      if (!candidate || typeof candidate.name !== 'string') continue;
+      const locationRange = this.objectValue(candidate.location)?.range;
+      const selectionRange = this.parseRange(
+        candidate.selectionRange ?? locationRange ?? candidate.range,
+        uri,
+      );
+      const fullRange = this.parseRange(candidate.range ?? locationRange, uri);
+      if (!selectionRange || !fullRange) continue;
+      budget.remaining -= 1;
+      const children = Array.isArray(candidate.children)
+        ? this.parseSymbolList(candidate.children, uri, budget)
+        : [];
+      symbols.push({
+        name: candidate.name,
+        symbolClass: SymbolKinds.Class.symbolClassFor(
+          typeof candidate.kind === 'number' && Number.isFinite(candidate.kind)
+            ? Math.trunc(candidate.kind)
+            : null,
+        ),
+        line: selectionRange.start.line,
+        column: selectionRange.start.column,
+        endLine: fullRange.end.line,
+        children,
+      });
+    }
+    return symbols;
   }
 
   /** True when the server advertised a pull-model `diagnosticProvider` on initialize (tsgo does;
@@ -1221,6 +1330,8 @@ export interface LanguageClientOptions {
   transportFactory?: (process: LspProcessLike) => LspTransport.Model;
   maxDiagnosticsPerDocument?: number;
   maxReferencesPerRequest?: number;
+  /** Outline symbols kept per document (nested nodes counted); the parse states truncation. */
+  maxDocumentSymbolsPerDocument?: number;
   /** Late-read of the `typescriptServer` setting, threaded to the default TypeScript provider so the
    *  chosen server (or 'auto') is honoured when a document activates. */
   preferredTypeScriptServer?: () => string;

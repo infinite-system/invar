@@ -97,8 +97,8 @@ text but drifts by the surrogate/cluster width once an emoji or combining mark p
 one `LanguageProvider` through the existing application manifest and workspace
 contribution registry; the host never imports or names the LSP module.
 
-**Scope:** Completion, diagnostics, definition, hover, document synchronization,
-language settings, language keybindings, workspace lifecycle, and plugin
+**Scope:** Completion, diagnostics, definition, hover, document symbols, document
+synchronization, language settings, language keybindings, workspace lifecycle, and plugin
 install/uninstall.
 
 **Components:**
@@ -106,7 +106,11 @@ install/uninstall.
   `WorkspaceContributor` through `ApplicationContributor`.
 - `LspWorkspaceProvider` — registers itself in
   `WorkspaceContribution.providers`, owns one `LanguageClient`, and adapts
-  protocol results to `LanguageProvider`.
+  protocol results to `LanguageProvider`. It additionally registers itself as a
+  `StructureSource` in the consumer-owned per-workspace registry
+  (`src/modules/structure/structure.invariants.md` governs that seam) and
+  withdraws it on disposal — a peer-plugin port, not a host surface, so the
+  host-never-imports-LSP clause is untouched.
 - `Workspace` — resolves a provider by capability identifier from its existing
   contribution list and returns neutral results when none is installed.
 

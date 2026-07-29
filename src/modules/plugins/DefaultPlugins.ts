@@ -10,6 +10,7 @@ import { TerminalPlugin } from '../terminal/TerminalPlugin';
 import {
   InlineRewriteContributor,
 } from '../inline-rewrite/InlineRewriteContributor';
+import { StructurePlugin } from '../structure/StructurePlugin';
 import { ExtensionsPlugin } from './ExtensionsPlugin';
 
 class $DefaultPlugins {
@@ -22,6 +23,7 @@ class $DefaultPlugins {
       new TerminalPlugin.Class(),
       new InlineRewriteContributor.Class(),
       new EditorPlugin.Class(),
+      new StructurePlugin.Class(),
       new ExtensionsPlugin.Class(),
     ];
   }

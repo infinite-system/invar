@@ -85,6 +85,9 @@ await Bun.write(
 
 await Bun.write(join(fixtureRoot, '.hidden-marker'), 'hidden\n');
 
+// A file no structure source supports — the structure arm proves the stated degrade on it.
+await Bun.write(join(fixtureRoot, 'notes.txt'), 'plain notes\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'manifest.ts']);
@@ -852,6 +855,249 @@ try {
   );
   HarnessSmoke.Class.pass(
     'Extensions reinstall restores the editor column and its views',
+  );
+
+  console.log(
+    '== plugin manifest: the structure navigator outlines, jumps, degrades, and reinstalls ==',
+  );
+  // Walk the Extensions selection to a named row by LOOKING for it (the list grows as plugins
+  // are contributed; an ordinal Down would silently land on a neighbour).
+  const selectExtensionsRow = async (rowLabel: string): Promise<void> => {
+    driver.sendKeys('Control+Shift+x');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Extensions opens before selecting ${rowLabel}`,
+      (status) => status.sidebarView === 'extensions',
+    );
+    driver.sendKeysWithoutFrameExpectation(
+      ...Array.from({ length: 12 }, () => 'Up'),
+    );
+    await driver.awaitGridCondition(
+      'the Extensions selection is anchored on its first row',
+      (snapshot) => snapshot.findText('› [x] File Tree') !== null,
+    );
+    for (
+      let selectionStep = 0;
+      selectionStep < 12 &&
+      driver.snapshot().findText(`› ${rowLabel}`) === null;
+      selectionStep++
+    ) {
+      driver.sendKeys('Down');
+      await driver.awaitScreenChange();
+    }
+    if (driver.snapshot().findText(`› ${rowLabel}`) === null) {
+      throw new Error(`Extensions row is not reachable: ${rowLabel}`);
+    }
+  };
+
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens before the structure drive',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('z-language.ts');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the language fixture for the structure drive',
+    (status) => Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the language fixture opens before the structure pane shows',
+    (status) =>
+      status.quickOpenOpen === false &&
+      String(status.activeBuffer).endsWith('/z-language.ts'),
+  );
+  driver.sendKeys('Control+Shift+u');
+  const outlineReadyStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the structure pane shows and the real server answers an outline',
+    (status) =>
+      status.sidebarView === 'structure' &&
+      status.focus === 'structure' &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) > 0,
+  );
+  await driver.awaitGridCondition(
+    'the structure pane paints the outline rows',
+    (snapshot) =>
+      snapshot.findText('Structure') !== null &&
+      snapshot.findText('languageProbe :1') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'the structure pane lists the real documentSymbol outline',
+  );
+
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'activating the selected symbol jumps the editor to its name',
+    (status) => {
+      const cursor = status.cursor as { line: number; col: number } | null;
+      return (
+        status.focus === 'editor' &&
+        cursor !== null &&
+        cursor.line === 0 &&
+        cursor.col === 13
+      );
+    },
+  );
+  HarnessSmoke.Class.pass(
+    'Enter jumps the editor to the symbol through the view contract',
+  );
+
+  const requestsAfterOutline = Number(
+    HarnessSmoke.Class.readStatus(statusPath).structureRequests,
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens for the unsupported-file degrade',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('notes.txt');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the unsupported fixture',
+    (status) => Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the structure pane states the unsupported-file degrade',
+    (status) =>
+      status.sidebarView === 'structure' &&
+      status.structureStatus === 'unavailable' &&
+      String(status.structureNotice).includes('file type'),
+  );
+  await driver.awaitGridCondition(
+    'the unsupported degrade is painted, never a blank pane',
+    (snapshot) => snapshot.findText('No structure available.') !== null,
+  );
+  const requestsAfterUnsupported = Number(
+    HarnessSmoke.Class.readStatus(statusPath).structureRequests,
+  );
+  HarnessSmoke.Class.requireCondition(
+    requestsAfterUnsupported === requestsAfterOutline,
+    'an unsupported file costs zero structure requests',
+  );
+  HarnessSmoke.Class.pass(
+    'an unsupported file states its affordance at zero request cost',
+  );
+
+  // Cross-plugin symmetry: uninstalling Language Intelligence withdraws the SOURCE while the
+  // PANE stays installed — it must degrade to a stated notice, and come back on reinstall.
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens before the source-withdrawal drive',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('z-language.ts');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the language fixture again',
+    (status) => Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await selectExtensionsRow('[x] Language Intelligence');
+  driver.sendKeys('Space');
+  await driver.awaitGridCondition(
+    'Language Intelligence uninstalls under the structure pane',
+    (snapshot) => snapshot.findText('› [ ] Language Intelligence') !== null,
+  );
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the pane without a source states it, never a blank',
+    (status) =>
+      status.sidebarView === 'structure' &&
+      status.structureStatus === 'unavailable' &&
+      String(status.structureNotice).includes('No structure source'),
+  );
+  await selectExtensionsRow('[ ] Language Intelligence');
+  driver.sendKeys('Space');
+  await driver.awaitGridCondition(
+    'Language Intelligence reinstalls under the structure pane',
+    (snapshot) => snapshot.findText('› [x] Language Intelligence') !== null,
+  );
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the reinstalled source feeds the pane an outline again',
+    (status) =>
+      status.sidebarView === 'structure' &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) > 0,
+  );
+  HarnessSmoke.Class.pass(
+    'the pane degrades and recovers with the source plugin lifecycle',
+  );
+
+  // The plugin's own uninstall symmetry, with the reinstall arm — the fourth-verse lesson.
+  await selectExtensionsRow('[x] Structure Navigator');
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstall removes the structure pane and withdraws its projection',
+    (status) =>
+      !(status.sidebarViewIdentifiers as string[]).includes('structure') &&
+      status.structureStatus === undefined,
+  );
+  driver.sendKeysWithoutFrameExpectation('Control+Shift+u');
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the removed structure chord cannot switch away before Settings opens',
+    (status) =>
+      status.settingsOpen === true && status.sidebarView === 'extensions',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes back onto Extensions before the structure reinstall',
+    (status) => status.settingsOpen === false && status.focus === 'extensions',
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall restores the structure pane registration',
+    (status) =>
+      (status.sidebarViewIdentifiers as string[]).includes('structure'),
+  );
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the reinstalled structure pane outlines the fixture again',
+    (status) =>
+      status.sidebarView === 'structure' &&
+      status.focus === 'structure' &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) === Number(outlineReadyStatus.structureRows),
+  );
+  HarnessSmoke.Class.pass(
+    'the structure navigator uninstalls and reinstalls symmetrically',
   );
 } finally {
   await driver.dispose();
