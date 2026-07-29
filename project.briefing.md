@@ -385,3 +385,28 @@ before merge, session archived at land.
 - 00:28 — #216 dispatched (codex). Session link resolved late (codex creates
   its rollout lazily; the in-dispatch check fires too early — known wrinkle,
   folded into #215's scope). Briefing file created.
+
+---
+
+## RESUME ANCHOR 7 — 2026-07-29 ~15:5x (post-#289 landing batch; context 57%)
+
+USER PRESENT earlier (lunch return unknown). Codex/5.6-sol default; fable = conductor only. Context window now 400k (user reduced it; track via ibr scripts/context-usage.sh — anchor BEFORE 85%).
+
+LANDED TODAY (21): anchor-6's 15, then #273 cockpit (6ad6acc6, 41m), #291 state-proof links (41aa3654, 55m), #279 drive settle (bfa860d8, 13m), #281 structure round-2 (35151464, 79m), #265 status-keys-absent (eb4879b0, 18m), #289 scroll-sync+preview-bars (7c65b3e8, 163m). Main GREEN at 805e0d77.
+
+BUILDING NOW: #290 scrollbar corner+color parity (painter seam; #284 queued BEHIND it, same seam — coordinate note in brief); #285 preview last-row hit-test (markdown seam; must reproduce against current main first; removes #276's extra-scroll workaround as the tell).
+
+QUEUE: #284 (after #290) -> #280 (comment drift; now holds Workspace.ts + PaneContent folds) -> #283 vue rc2 (deps; prefer solo lane) -> #272 (record system; holds 316-bare-refs fold) -> #277, #267, #269, #270 (record-only), #271 (session-link UNRESOLVED recurring — EVERY landing today needed by-hand rollout repair), #255-#258, #260-#262, #266?no—landed, #292 (NEW: drive action status waits for painted target; bycatch of #278 via #279; possibly-related note re #281's gear red was RESOLVED as glyph collision — treat #292 standalone). WAIT FOR USER: #241, #242; capsule HELD.
+
+MECHANICAL SINCE ANCHOR 6:
+- land.sh/dispatch.sh now run #291's lint --fix --moved-only on acted-on records (14ms).
+- steer.sh (72a8a63e): ALL builder messages via scripts/fleet/steer.sh — send-keys left messages unsubmitted in the codex composer twice (#289 lost a steer; #281 idle 25m). Verified delivery: spinner or composer-cleared, 5 Enter retries, loud exit 4.
+- tasks-status.ts delta fix (4c43c25a): merge-base recomputed per tick; MERGE_HEAD present -> committed-only diff (user caught #289 reading +5,037 vs true +1,331).
+- 4 stale worktrees retired (203/204/207/208); 200-pool + 205-flake-population left — NO completed record (numerals collide with different active tasks); user dispositions.
+- inotify was 59/128 after cleanup.
+
+VERDICT PRECEDENTS THIS SESSION: enforcing-hook-chain accepted with transcript quote + existing commit (truncated tool output OK if OK-cascade quoted); builder self-run merge-gate with last-sentinels GATE_EXIT=0 accepted; SKIP_GATE commits by builders REQUIRE conductor gate or hook re-run (bit twice: #289 round-2, #281 round-1). Gate-while-builders-live exceptions taken deliberately, written each time; red under load needs solo + main control before blame (editor-harness red -> #281's glyph collision; activitybar red -> ordinal-locator harness defect, fixed by-label in #289 round-4).
+
+WATCHERS: fleet-watch Monitor bhf49rr8i (re-armed after exit-2 when simultaneous landings removed its watch targets — transient, script healthy); cron 86218567 :07/:37 '/loop keep going till all tasks are done'; loop = dynamic mode, no ScheduleWakeup (cron is pacer).
+
+SESSION-LINK REPAIR RECIPE (until #271): grep -l "<commit-or-slug>" ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl -> write path into tmp/transcripts/session-link-<task>.txt -> archive-session.sh <task>.
