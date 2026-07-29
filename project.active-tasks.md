@@ -6,17 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
-- #254 gate-workers-validated-after-side-effects  [building]
+## IN-PROGRESS (3)
+- #254 gate-workers-validated-after-side-effects  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/254-gate-workers-validated-after-side-effects`
-- #253 ui-contract-systematic-citation-sweep  [building]
+- #253 ui-contract-systematic-citation-sweep  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/253-ui-contract-systematic-citation-sweep`
-- #245 provider-seam-open-or-bless-decision  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/245-provider-seam-open-or-bless-decision`
-- #236 markdown-terminal-stylesheet-readable  [building]
+- #236 markdown-terminal-stylesheet-readable  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/236-markdown-terminal-stylesheet-readable`
 
-## USER-DIRECTED (5)
+## USER-DIRECTED (6)
+- #256 editor-stray-glyph-after-emoji
 - #238 structure-default-right-and-md-toc
 - #237 markdown-preview-left-and-auto-open
 - #235 tasks-dashboard-pane-live-active-done
@@ -42,7 +41,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (16)
+## FLAKE-EVIDENCE (17)
+- #257 last-row-right-border-blank-cell
 - #255 extensions-row-locator-wrapped-label
 - #252 activitybar-smoke-pre-satisfied-waits
 - #214 panel-chrome-agent-close-intermittent
@@ -83,8 +83,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 41 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 42 — full log: project.tasks-completed.md)
 - #251 gate-refuses-unlinked-node-modules — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
+- #245 provider-seam-open-or-bless-decision — b2bd2e57 — one registry census-proven; SQLite+fake+consumer proof; both workarounds deleted
 - #244 sdk-binary-extraction-leak-fills-disk — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 - #243 ui-contract-sibling-rot-round-two — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
@@ -98,4 +99,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #216 drive-onramp-quick-open-blind-enumeration — 03b61df — Quick Open publishes degraded (never a false complete) with a recovery message; drive fixtures in system temp outside the ignored path; codex-ships-ripgrep caught by PATH surgery; one-sighting probed 3x, no repro, parked
 - #215 agent-tmux-send-confirm-false-negative — 7968d49f — claude confirm keys on the bottom composer frame (structure, not strings); codex signature kept; dispatch waits 15s for the cwd-derived session file; planted false-positive shape reds the contract; bycatch filed as #231
 - #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
-- #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a

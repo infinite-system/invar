@@ -1,6 +1,6 @@
 # 245 — open the provider seam: one host registry, consumer-owned interfaces, proven by the database plugin
 
-State: IN-PROGRESS
+State: COMPLETED — b2bd2e57 — one registry census-proven; SQLite+fake+consumer proof; both workarounds deleted
 Created: 2026-07-29
 Decided: 2026-07-29 by the user (converted from decision to build; #223 folded in)
 Engine: codex
