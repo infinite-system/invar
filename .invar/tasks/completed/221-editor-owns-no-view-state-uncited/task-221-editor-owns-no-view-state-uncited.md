@@ -1,6 +1,6 @@
 # 221 — the record "The editor owns no view state" has no citing annotation
 
-State: IN-PROGRESS
+State: COMPLETED — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
 Created: 2026-07-29
 Engine: codex
 Environment: linux

@@ -95,6 +95,12 @@ Bycatch explicitly includes the CONTRACT LAYER, not only runtime defects:
   computed and thrown away, a check that checks nothing, a setting nothing reads. Say WHAT it
   is and WHY it cannot be right. If you only suspect, say "suspect" — a labeled hypothesis is
   bycatch too; silent bafflement is not.
+- **Contract-layer gaps**: a domain you worked in that has NO `<domain>.invariants.md`; a
+  behavior the code plainly promises that no record claims; or a family of records with no
+  LATTICE unifying them where one is owed (`scroll.lattice.md` is the model — it records how
+  the scroll records derive from and constrain each other). Name the domain, what exists, and
+  what is missing. Do not author the missing record or lattice inside your task; the gap is
+  the report.
 
 These reports feed later cleanup tasks. A drifted comment you silently pass is a trap set
 for the next reader; a named one is a task someone can dispatch.
