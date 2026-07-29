@@ -1,8 +1,13 @@
 import { Static } from 'ivue/extras';
+import { homedir } from 'node:os';
 // System environment capability — static, allocation-free (namespace pattern).
 // invariant: Imported dependencies are read late (project.invariants.md)
 
 class $Environment {
+  static get userHome(): string {
+    return homedir();
+  }
+
   static get cwd(): string {
     return process.cwd();
   }

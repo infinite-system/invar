@@ -1,12 +1,36 @@
 import { Static } from 'ivue/extras';
 import { Files } from '../system/Files';
+import { Environment } from '../system/Environment';
 
 class $TaskConfiguration {
   protected static get Files() {
     return Files.Class;
   }
 
-  static resolve(workspaceRoot: string): TaskConfigurationResult {
+  protected static get Environment() {
+    return Environment.Class;
+  }
+
+  protected static get supportedVariables(): string {
+    return [
+      '${workspaceFolder}',
+      '${workspaceFolderBasename}',
+      '${file}',
+      '${fileBasename}',
+      '${fileDirname}',
+      '${fileExtname}',
+      '${relativeFile}',
+      '${cwd}',
+      '${pathSeparator}',
+      '${userHome}',
+      '${env:NAME}',
+    ].join(', ');
+  }
+
+  static resolve(
+    workspaceRoot: string,
+    activeDocumentPath: string | null = null,
+  ): TaskConfigurationResult {
     // invariant: One task source controls each workspace (src/modules/tasks/tasks.invariants.md)
     const builtInConfiguration = this.builtInConfiguration();
     const invarPath = this.Files.join(workspaceRoot, '.invar', 'tasks.json');
@@ -17,7 +41,12 @@ class $TaskConfiguration {
     );
     if (this.Files.exists(invarPath)) {
       return this.reportDisplacedBuiltIns(
-        this.readConfiguration(workspaceRoot, invarPath, '.invar/tasks.json'),
+        this.readConfiguration(
+          workspaceRoot,
+          activeDocumentPath,
+          invarPath,
+          '.invar/tasks.json',
+        ),
         builtInConfiguration.tasks,
       );
     }
@@ -25,6 +54,7 @@ class $TaskConfiguration {
       return this.reportDisplacedBuiltIns(
         this.readConfiguration(
           workspaceRoot,
+          activeDocumentPath,
           visualStudioCodePath,
           '.vscode/tasks.json',
         ),
@@ -87,6 +117,7 @@ class $TaskConfiguration {
 
   protected static readConfiguration(
     workspaceRoot: string,
+    activeDocumentPath: string | null,
     configurationPath: string,
     source: TaskConfigurationSource,
   ): TaskConfigurationResult {
@@ -136,6 +167,7 @@ class $TaskConfiguration {
     ) {
       const taskResult = this.normalizeTask(
         workspaceRoot,
+        activeDocumentPath,
         configurationIndex,
         rawTasks[configurationIndex],
       );
@@ -147,6 +179,7 @@ class $TaskConfiguration {
 
   protected static normalizeTask(
     workspaceRoot: string,
+    activeDocumentPath: string | null,
     configurationIndex: number,
     rawTask: unknown,
   ): TaskDefinition | TaskConfigurationIssue {
@@ -200,12 +233,17 @@ class $TaskConfiguration {
     }
 
     try {
-      const command = this.substituteWorkspaceFolder(
+      const command = this.substituteTaskVariables(
         task.command,
         workspaceRoot,
+        activeDocumentPath,
       );
       const argumentsList = (task.args ?? []).map((argument) =>
-        this.substituteWorkspaceFolder(argument, workspaceRoot),
+        this.substituteTaskVariables(
+          argument,
+          workspaceRoot,
+          activeDocumentPath,
+        ),
       );
       // problemMatcher is deliberately accepted and ignored. It is a
       // diagnostics parser contract, not a process-launch contract.
@@ -234,15 +272,61 @@ class $TaskConfiguration {
     }
   }
 
-  protected static substituteWorkspaceFolder(
+  protected static substituteTaskVariables(
     value: string,
     workspaceRoot: string,
+    activeDocumentPath: string | null,
   ): string {
     return value.replace(/\$\{([^}]+)\}/g, (_match, variableName: string) => {
-      if (variableName === 'workspaceFolder') return workspaceRoot;
+      switch (variableName) {
+        case 'workspaceFolder':
+        case 'cwd':
+          return workspaceRoot;
+        case 'workspaceFolderBasename':
+          return this.Files.basename(workspaceRoot);
+        case 'pathSeparator':
+          return this.Files.pathSeparator;
+        case 'userHome':
+          return this.Environment.userHome;
+        case 'file':
+          return this.requireActiveDocument(activeDocumentPath, variableName);
+        case 'fileBasename':
+          return this.Files.basename(
+            this.requireActiveDocument(activeDocumentPath, variableName),
+          );
+        case 'fileDirname':
+          return this.Files.dirname(
+            this.requireActiveDocument(activeDocumentPath, variableName),
+          );
+        case 'fileExtname':
+          return this.Files.extname(
+            this.requireActiveDocument(activeDocumentPath, variableName),
+          );
+        case 'relativeFile':
+          return this.Files.relative(
+            workspaceRoot,
+            this.requireActiveDocument(activeDocumentPath, variableName),
+          );
+      }
+      if (variableName.startsWith('env:') && variableName.length > 4) {
+        return this.Environment.env(variableName.slice(4)) ?? '';
+      }
       // invariant: Unsupported variables fail before the shell (src/modules/tasks/tasks.invariants.md)
-      throw new Error(`Unsupported task variable: \${${variableName}}`);
+      throw new Error(
+        `Unsupported task variable: \${${variableName}}. ` +
+          `Supported task variables: ${this.supportedVariables}`,
+      );
     });
+  }
+
+  protected static requireActiveDocument(
+    activeDocumentPath: string | null,
+    variableName: string,
+  ): string {
+    if (activeDocumentPath) return activeDocumentPath;
+    throw new Error(
+      `Task variable \${${variableName}} requires an active document`,
+    );
   }
 }
 
