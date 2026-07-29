@@ -1,0 +1,15 @@
+{
+  "task": 237,
+  "slug": "markdown-preview-left-and-auto-open",
+  "branch": "fleet/237-markdown-preview-left-and-auto-open",
+  "worktree": ".invar/worktrees/237-markdown-preview-left-and-auto-open",
+  "tmuxSession": "invar/237-markdown-preview-left-and-auto-open",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-237-markdown-preview-left-and-auto-open.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "681c21287adc63d9eb5dfe0073307b86b192c497",
+  "startedAt": "2026-07-29T05:11:30-04:00"
+}
