@@ -70,11 +70,26 @@ emit_silent_events() {
     transcript="$(ls "$transcripts_directory"/transcript-*-"$folder_name".md 2>/dev/null | head -1)"
     [ -n "$transcript" ] || continue
     recent="$(find "$transcript" -mmin "-${SILENT_MINUTES}" 2>/dev/null)"
-    if [ -z "$recent" ] && ! tmux has-session -t "invar/${folder_name}" 2>/dev/null; then
-      if [ ! -f "/tmp/fleet-watch-silent-${folder_name}.seen" ]; then
-        echo "SILENT: ${folder_name} — transcript quiet >${SILENT_MINUTES}m and no tmux session"
-        touch "/tmp/fleet-watch-silent-${folder_name}.seen"
+    if [ -z "$recent" ]; then
+      # Two distinct events. DEAD: the session is gone, the builder cannot recover
+      # on its own. QUIET: the session lives but nothing is written — a hang, a
+      # stuck composer, or a very long quiet tool run; the conductor peeks before
+      # judging. A hang with a live session was invisible under the old
+      # session-gone-only condition.
+      if ! tmux has-session -t "invar/${folder_name}" 2>/dev/null; then
+        if [ ! -f "/tmp/fleet-watch-dead-${folder_name}.seen" ]; then
+          echo "DEAD: ${folder_name} — transcript quiet >${SILENT_MINUTES}m and no tmux session"
+          touch "/tmp/fleet-watch-dead-${folder_name}.seen"
+        fi
+      else
+        if [ ! -f "/tmp/fleet-watch-quiet-${folder_name}.seen" ]; then
+          echo "QUIET: ${folder_name} — session alive, transcript quiet >${SILENT_MINUTES}m; peek before judging"
+        touch "/tmp/fleet-watch-quiet-${folder_name}.seen"
+        fi
       fi
+    else
+      # Output resumed: clear the quiet stamp so a LATER quiet period fires again.
+      rm -f "/tmp/fleet-watch-quiet-${folder_name}.seen"
     fi
   done
 }
