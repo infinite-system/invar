@@ -20,11 +20,23 @@ import {
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
+// Read the gutter number of `row` by MEASURING the editor pane, not by assuming
+// its columns: scan left from a column known to sit inside the pane (the typed
+// glyph) to the pane's `│` border, then take the first digit run after it — the
+// gutter renders digits immediately inside the border, before any content. A
+// fixed column window broke when #237's markdown preview began auto-opening
+// LEFT of the source and moved the editor pane.
 function gutterNumber(
   snapshot: HarnessSnapshot.Model,
   row: number,
+  editorPaneColumn: number,
 ): number | null {
-  const match = snapshot.rowText(row).slice(37, 44).match(/\d+/);
+  const rowText = snapshot.rowText(row);
+  const paneBorderColumn = rowText.lastIndexOf('│', editorPaneColumn);
+  if (paneBorderColumn < 0) return null;
+  const match = rowText
+    .slice(paneBorderColumn + 1, paneBorderColumn + 8)
+    .match(/\d+/);
   return match ? Number(match[0]) : null;
 }
 
@@ -119,10 +131,15 @@ try {
     typedPosition !== null,
     'typed glyph paints in the emulator grid',
   );
-  const typedGutterNumber = gutterNumber(snapshot, typedPosition.row);
+  const typedGutterNumber = gutterNumber(
+    snapshot,
+    typedPosition.row,
+    typedPosition.column,
+  );
   requireCondition(
     typedGutterNumber !== null &&
-      gutterNumber(snapshot, typedPosition.row + 1) === typedGutterNumber + 1,
+      gutterNumber(snapshot, typedPosition.row + 1, typedPosition.column) ===
+        typedGutterNumber + 1,
     'wrap-off keeps consecutive logical lines on consecutive terminal rows',
   );
 
@@ -256,28 +273,53 @@ try {
   pass('mouse click is published by the real input path');
 
   console.log('== harness editor: End reveals the long line end ==');
+  // findEditorText, not findText: at defaults the structure dock lists this same heading
+  // ('Fixture Project — …') ABOVE the source row, so a whole-grid search anchors on the outline
+  // pane and every wait below reads the wrong row forever.
   snapshot = await driver.awaitGridCondition(
     'the long fixture line is visible before moving to its end',
-    (candidate) => candidate.findText('Fixture') !== null,
+    (candidate) => candidate.findEditorText('Fixture') !== null,
   );
-  const longLineHead = snapshot.findText('Fixture');
+  const longLineHead = snapshot.findEditorText('Fixture');
   requireCondition(longLineHead !== null, 'long fixture line is visible');
+  // Measure the editor pane's left border from a cell known to sit inside it.
+  // The auto-opened markdown preview (left of the source since #237) paints the
+  // SAME fixture text, so every editor-content wait below must look right of
+  // this border or it is satisfied before the editor does any work.
+  const editorPaneBorderColumn = snapshot
+    .rowText(longLineHead.row)
+    .lastIndexOf('│', longLineHead.column);
+  requireCondition(
+    editorPaneBorderColumn >= 0,
+    'editor pane border is measurable left of the long fixture line',
+  );
   clickCell(driver, longLineHead.column, longLineHead.row);
   await driver.awaitScreenChange();
   driver.sendKeys('End');
   await driver.awaitSnapshot(
-    (candidate) => candidate.findText('desync)') !== null,
+    (candidate) =>
+      candidate
+        .rowText(longLineHead.row)
+        .indexOf('desync)', editorPaneBorderColumn) >= 0,
   );
   pass('line end is visible at maximum horizontal scroll');
 
   console.log('== harness editor: rightward drag includes the release cell ==');
   driver.sendKeys('Home');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Fixture') !== null,
+    (candidate) =>
+      candidate
+        .rowText(longLineHead.row)
+        .indexOf('Fixture', editorPaneBorderColumn) >= 0,
   );
-  const fixturePosition = snapshot.findText('Fixture');
+  const fixturePosition = {
+    row: longLineHead.row,
+    column: snapshot
+      .rowText(longLineHead.row)
+      .indexOf('Fixture', editorPaneBorderColumn),
+  };
   requireCondition(
-    fixturePosition !== null,
+    fixturePosition.column >= 0,
     'Fixture marker returned at the line head',
   );
   await dragBetweenCells(
@@ -319,9 +361,13 @@ try {
   const horizontalScrollBefore = Number(
     horizontalScrollBaseline.editorScrollLeft,
   );
+  // SGR wheel coordinates are 1-based; aim at the measured fixture cell so the
+  // wheel lands in the editor pane wherever the split layout puts it. The old
+  // fixed column 44 pointed at the full-width editor and now hits the preview.
   const wheelRow = fixturePosition.row;
+  const wheelColumn = fixturePosition.column + 1;
   for (let wheelEvent = 1; wheelEvent <= 6; wheelEvent++) {
-    driver.sendRawInput(`\x1b[<75;44;${wheelRow + 1}M`);
+    driver.sendRawInput(`\x1b[<75;${wheelColumn};${wheelRow + 1}M`);
   }
   await awaitStatusPublication(
     statusPath,
@@ -330,7 +376,9 @@ try {
   );
   pass('Option-wheel routes to horizontal scroll');
   for (let wheelEvent = 1; wheelEvent <= 8; wheelEvent++) {
-    driver.sendRawInputWithoutFrameExpectation(`\x1b[<74;44;${wheelRow + 1}M`);
+    driver.sendRawInputWithoutFrameExpectation(
+      `\x1b[<74;${wheelColumn};${wheelRow + 1}M`,
+    );
   }
   await HarnessSmoke.Class.awaitScrollPosition(
     driver,
@@ -354,6 +402,17 @@ try {
   console.log(
     '== harness editor: held right-edge drag auto-scrolls and extends selection ==',
   );
+  // The edge-hold target is MEASURED: at defaults the structure dock occupies the columns right
+  // of the editor, so the old fixed column 117 would carry the pointer out of the editor pane and
+  // the edge engine would never see the hold.
+  const editorRightBorderColumn = driver
+    .snapshot()
+    .rowText(fixturePosition.row)
+    .indexOf('│', fixturePosition.column);
+  requireCondition(
+    editorRightBorderColumn > fixturePosition.column,
+    'editor pane right border is measurable for the edge hold',
+  );
   driver.sendMouseWithoutFrameExpectation({
     kind: 'press',
     column: fixturePosition.column + 10,
@@ -362,7 +421,7 @@ try {
   });
   driver.sendMouseWithoutFrameExpectation({
     kind: 'move',
-    column: 117,
+    column: editorRightBorderColumn - 1,
     row: fixturePosition.row,
     button: 'left',
   });
@@ -374,7 +433,7 @@ try {
   const edgeScrollLeft = Number(edgeScrollStatus.editorScrollLeft);
   driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
-    column: 117,
+    column: editorRightBorderColumn - 1,
     row: fixturePosition.row,
     button: 'left',
   });

@@ -18,7 +18,7 @@ function diagnosticRangeCellCount(
   snapshot: HarnessSnapshot.Model,
   sourceMarker: string,
 ): number {
-  const errorLinePosition = snapshot.findText(sourceMarker);
+  const errorLinePosition = snapshot.findEditorText(sourceMarker);
   if (!errorLinePosition) return 0;
   let rangeCellCount = 0;
   for (const cell of snapshot.rowCells(errorLinePosition.row)) {
@@ -41,7 +41,7 @@ function gutterCharacter(
   snapshot: HarnessSnapshot.Model,
   sourceMarker: string,
 ): string | null {
-  const sourcePosition = snapshot.findText(sourceMarker);
+  const sourcePosition = snapshot.findEditorText(sourceMarker);
   if (!sourcePosition || sourcePosition.column === 0) return null;
   const rowCells = snapshot.rowCells(sourcePosition.row);
   for (let column = sourcePosition.column - 1; column >= 0; column -= 1) {
@@ -233,7 +233,7 @@ async function runServerCase(
       `[${serverName}] error also paints a red overview pip`,
     );
 
-    const deletionPlacementPosition = snapshot.findText('badValue');
+    const deletionPlacementPosition = snapshot.findEditorText('badValue');
     if (!deletionPlacementPosition)
       throw new Error('Deletion placement marker disappeared');
     const deletionGutterColumn = snapshot
@@ -280,7 +280,7 @@ async function runServerCase(
     );
     const farSnapshot = await driver.awaitSnapshot(
       (candidate) =>
-        candidate.findText('farBadValue') === null &&
+        candidate.findEditorText('farBadValue') === null &&
         visibleFarLinesHaveNoGutterMark(candidate) &&
         overviewErrorCells(candidate).some(
           (cell) => cell.row > candidate.rows * 0.65,
@@ -288,7 +288,7 @@ async function runServerCase(
       55_000,
     );
     HarnessSmoke.Class.requireCondition(
-      farSnapshot.findText('farBadValue') === null,
+      farSnapshot.findEditorText('farBadValue') === null,
       `[${serverName}] the only error is below the viewport`,
     );
     HarnessSmoke.Class.requireCondition(
@@ -305,7 +305,7 @@ async function runServerCase(
     driver.sendKeys('Control+End');
     const farErrorSnapshot = await driver.awaitSnapshot(
       (candidate) =>
-        candidate.findText('farBadValue') !== null &&
+        candidate.findEditorText('farBadValue') !== null &&
         diagnosticRangeCellCount(candidate, 'farBadValue') >= 1,
       20_000,
     );
@@ -318,8 +318,8 @@ async function runServerCase(
 
     driver.sendMouse({
       kind: 'move',
-      column: farErrorSnapshot.findText('farBadValue')?.column ?? 0,
-      row: farErrorSnapshot.findText('farBadValue')?.row ?? 0,
+      column: farErrorSnapshot.findEditorText('farBadValue')?.column ?? 0,
+      row: farErrorSnapshot.findEditorText('farBadValue')?.row ?? 0,
       button: 'none',
     });
     await driver.awaitSnapshot(diagnosticCardVisible, 30_000);

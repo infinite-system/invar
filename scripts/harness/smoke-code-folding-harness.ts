@@ -83,7 +83,7 @@ function foldControlPosition(
   expectedGlyph: string,
   headerText = 'function foldedBlock() {',
 ): { row: number; column: number } | null {
-  const headerPosition = snapshot.findText(headerText);
+  const headerPosition = snapshot.findEditorText(headerText);
   if (!headerPosition || headerPosition.column < 2) return null;
   const position = {
     row: headerPosition.row,
@@ -103,9 +103,9 @@ function collapsedGrid(snapshot: HarnessSnapshot.Model): boolean {
   if (!controlPosition) return false;
   const headerRow = snapshot.rowText(controlPosition.row);
   return (
-    snapshot.findText('hiddenNeedle') === null &&
-    snapshot.findText('anotherHidden') === null &&
-    snapshot.findText('const afterFold = true;') !== null &&
+    snapshot.findEditorText('hiddenNeedle') === null &&
+    snapshot.findEditorText('anotherHidden') === null &&
+    snapshot.findEditorText('const afterFold = true;') !== null &&
     Array.from(headerRow).filter(
       (character) => character === unicodeVocabulary.foldClosed,
     ).length >= 2
@@ -115,19 +115,25 @@ function collapsedGrid(snapshot: HarnessSnapshot.Model): boolean {
 function expandedGrid(snapshot: HarnessSnapshot.Model): boolean {
   return (
     foldControlPosition(snapshot, unicodeVocabulary.foldOpen) !== null &&
-    snapshot.findText('hiddenNeedle') !== null &&
-    snapshot.findText('anotherHidden') !== null
+    snapshot.findEditorText('hiddenNeedle') !== null &&
+    snapshot.findEditorText('anotherHidden') !== null
   );
 }
 
 function topmostDeepLine(snapshot: HarnessSnapshot.Model): number | null {
   let topmostLine: number | null = null;
-  for (const rowText of snapshot.textRows()) {
-    const match = /deepLine(\d{3})/.exec(rowText);
-    if (!match) continue;
-    const lineIndex = Number(match[1]);
-    topmostLine =
-      topmostLine === null ? lineIndex : Math.min(topmostLine, lineIndex);
+  for (let row = 0; row < snapshot.rows; row++) {
+    const rowText = snapshot.rowText(row);
+    // Editor cells only: at defaults the structure outline lists the same deepLineNNN symbol
+    // names in the right dock, and counting those would pin the "topmost" line to the outline's
+    // scroll position instead of the editor's.
+    const rowMatches = rowText.matchAll(/deepLine(\d{3})/g);
+    for (const match of rowMatches) {
+      if (!snapshot.isEditorCell(row, match.index ?? 0)) continue;
+      const lineIndex = Number(match[1]);
+      topmostLine =
+        topmostLine === null ? lineIndex : Math.min(topmostLine, lineIndex);
+    }
   }
   return topmostLine;
 }
@@ -259,7 +265,7 @@ try {
   snapshot = await driver.awaitGridCondition(
     'disabled code folding shows the body without an open or closed control',
     (candidate) =>
-      candidate.findText('hiddenNeedle') !== null &&
+      candidate.findEditorText('hiddenNeedle') !== null &&
       foldControlPosition(candidate, unicodeVocabulary.foldOpen) === null &&
       foldControlPosition(candidate, unicodeVocabulary.foldClosed) === null,
   );
@@ -358,7 +364,7 @@ try {
   );
   await driver.awaitGridCondition(
     'the navigated hidden line is visible in the editor grid',
-    (candidate) => candidate.findText('const hiddenNeedle = 1;') !== null,
+    (candidate) => candidate.findEditorText('const hiddenNeedle = 1;') !== null,
   );
   HarnessSmoke.Class.pass('navigation into a folded body auto-unfolds it');
   driver.sendKeys('Escape');
@@ -391,7 +397,7 @@ try {
   );
   snapshot = await driver.awaitGridCondition(
     'the companion TypeScript document paints after the file switch',
-    (candidate) => candidate.findText('companionValue = 2') !== null,
+    (candidate) => candidate.findEditorText('companionValue = 2') !== null,
   );
   HarnessSmoke.Class.clickText(driver, snapshot, 'code.ts');
   await awaitActiveBuffer(
@@ -430,7 +436,7 @@ try {
   snapshot = await driver.awaitGridCondition(
     'the deep fold header is visible around document line 530',
     (candidate) =>
-      candidate.findText('function deepFold() {') !== null &&
+      candidate.findEditorText('function deepFold() {') !== null &&
       foldControlPosition(
         candidate,
         unicodeVocabulary.foldOpen,
@@ -439,7 +445,7 @@ try {
   );
   const pointerAnchorBefore = topmostDeepLine(snapshot);
   const pointerHeaderRowBefore =
-    snapshot.findText('function deepFold() {')?.row ?? -1;
+    snapshot.findEditorText('function deepFold() {')?.row ?? -1;
   HarnessSmoke.Class.requireCondition(
     pointerAnchorBefore !== null && pointerAnchorBefore >= 490,
     `the pointer drive starts deep in the document (top line ${String(pointerAnchorBefore)})`,
@@ -469,7 +475,7 @@ try {
   );
   HarnessSmoke.Class.requireCondition(
     topmostDeepLine(snapshot) === pointerAnchorBefore &&
-      snapshot.findText('function deepFold() {')?.row ===
+      snapshot.findEditorText('function deepFold() {')?.row ===
         pointerHeaderRowBefore,
     'pointer folding preserves the topmost document line and fold-header row',
   );
@@ -482,7 +488,7 @@ try {
   snapshot = await driver.awaitGridCondition(
     'pointer unfolding restores the deep fold body',
     (candidate) =>
-      candidate.findText('deepHiddenNeedle') !== null &&
+      candidate.findEditorText('deepHiddenNeedle') !== null &&
       foldControlPosition(
         candidate,
         unicodeVocabulary.foldOpen,
@@ -534,7 +540,7 @@ try {
   );
   snapshot = await driver.awaitGridCondition(
     'the keyboard-unfolded deep body is visible',
-    (candidate) => candidate.findText('deepHiddenNeedle') !== null,
+    (candidate) => candidate.findEditorText('deepHiddenNeedle') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     topmostDeepLine(snapshot) === keyboardAnchorBefore,

@@ -188,15 +188,39 @@ function verticalScrollBarProof(
   };
 }
 
+/** The editor SOURCE pane's column range, measured from a gutter row at call time. At the app's
+ *  defaults the structure dock occupies the columns right of the editor, so the old fixed
+ *  columns-to-screen-edge scans would crown a dock column as the editor's own scrollbar. The
+ *  gutter row anchors the pane's left border; the next `│` is its right border (the scrollbar
+ *  fixtures fold nothing, so no fold-range guide can sit in between). */
+function editorPaneColumnBounds(
+  snapshot: HarnessSnapshot.Model,
+): { startColumn: number; endColumnExclusive: number } | null {
+  for (let row = 0; row < snapshot.rows; row++) {
+    const text = snapshot.rowText(row);
+    const gutterStart = /\u2502(?=\s*\d+[ \u258E\u258F\u203A\u2304])/.exec(
+      text,
+    );
+    if (!gutterStart) continue;
+    const startColumn = gutterStart.index + 1;
+    const endColumnExclusive = text.indexOf('\u2502', startColumn);
+    if (endColumnExclusive > startColumn) {
+      return { startColumn, endColumnExclusive };
+    }
+  }
+  return null;
+}
+
 function dominantEditorBackground(
   snapshot: HarnessSnapshot.Model,
 ): number | null {
   const backgroundCounts = new Map<number, number>();
-  const editorStartColumn = Math.min(30, snapshot.columns - 2);
+  const paneBounds = editorPaneColumnBounds(snapshot);
+  if (!paneBounds) return null;
   for (let row = 4; row < snapshot.rows - 3; row++) {
     for (
-      let column = editorStartColumn;
-      column < snapshot.columns - 1;
+      let column = paneBounds.startColumn;
+      column < paneBounds.endColumnExclusive;
       column++
     ) {
       const cell = snapshot.cell(row, column);
@@ -222,14 +246,19 @@ function verticalEditorScrollBarProof(
 ): VerticalScrollBarProof | null {
   const editorBackground = dominantEditorBackground(snapshot);
   if (editorBackground === null) return null;
-  const editorStartColumn = Math.min(30, snapshot.columns - 2);
+  const paneBounds = editorPaneColumnBounds(snapshot);
+  if (!paneBounds) return null;
   let bestColumn = -1;
   let bestPaintedRows: Array<{
     row: number;
     background: number;
     characters: string;
   }> = [];
-  for (let column = editorStartColumn; column < snapshot.columns; column++) {
+  for (
+    let column = paneBounds.startColumn;
+    column < paneBounds.endColumnExclusive;
+    column++
+  ) {
     const paintedRows: Array<{
       row: number;
       background: number;
@@ -462,11 +491,10 @@ function horizontalScrollBarRowCount(snapshot: HarnessSnapshot.Model): number {
 function horizontalEditorScrollBarProof(
   snapshot: HarnessSnapshot.Model,
 ): HorizontalScrollBarProof | null {
-  const editorStartColumn = Math.min(30, snapshot.columns - 2);
-  const editorEndColumnExclusive = Math.max(
-    editorStartColumn,
-    snapshot.columns - 2,
-  );
+  const paneBounds = editorPaneColumnBounds(snapshot);
+  if (!paneBounds) return null;
+  const editorStartColumn = paneBounds.startColumn;
+  const editorEndColumnExclusive = paneBounds.endColumnExclusive;
   const editorBackgroundCounts = new Map<number, number>();
   for (let row = 4; row < snapshot.rows - 3; row++) {
     for (const cell of snapshot
@@ -988,6 +1016,26 @@ async function proveVerticalEditorThumbStability(
       `the ${modeLabel} probe focuses the opened editor`,
       (status) => status.focus === 'editor',
     );
+    // The thumb-stability properties were sized for the editor width these fixtures had before
+    // the structure dock's default-ON: with the dock open, wrap-on doubles the virtual rows and
+    // a wheel burst no longer moves the thumb a full cell. Concealing the dock through the
+    // user's own gesture restores the measured geometry without touching the default.
+    await HarnessSmoke.Class.concealAutoRevealedRightDock(
+      driver,
+      probeStatusPath,
+    );
+    // The status flips before the relayout paints; baselines captured against the still-narrow
+    // frame would disagree on the thumb column with every later frame.
+    await driver.awaitGridCondition(
+      `the ${modeLabel} editor reclaims the concealed dock's columns`,
+      (candidate) => {
+        const paneBounds = editorPaneColumnBounds(candidate);
+        return (
+          paneBounds !== null &&
+          paneBounds.endColumnExclusive >= candidate.columns - 3
+        );
+      },
+    );
     if (wordWrapEnabled) {
       driver.sendKeys('Alt+z');
       await driver.awaitScreenChange();
@@ -998,7 +1046,19 @@ async function proveVerticalEditorThumbStability(
     // solo, and it fails HARD rather than timing out, so retry-once cannot even mask it.
     await driver.awaitGridCondition(
       `the ${modeLabel} editor vertical thumb is painted`,
-      (candidate) => verticalEditorScrollBarProof(candidate) !== null,
+      (candidate) => {
+        // The thumb must sit at the pane's right edge: for a short window after the dock
+        // conceals, the narrow editor's old scrollbar column keeps its stale track and thumb
+        // backgrounds, and a proof that crowns the stale column poisons every geometry
+        // comparison below (bycatch: the stale column is a real paint artifact, reported).
+        const candidateThumbProof = verticalEditorScrollBarProof(candidate);
+        const paneBounds = editorPaneColumnBounds(candidate);
+        return (
+          candidateThumbProof !== null &&
+          paneBounds !== null &&
+          candidateThumbProof.column >= paneBounds.endColumnExclusive - 2
+        );
+      },
     );
     const unmarkedSnapshot = driver.snapshot();
     const unmarkedThumbProof = verticalEditorScrollBarProof(unmarkedSnapshot);
@@ -1508,6 +1568,23 @@ try {
   snapshot = await overflowDriver.awaitGridCondition(
     'the mixed-width stability fixture is open in the editor',
     (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
+  );
+  // Every horizontal-extent arm below was sized for the editor width this fixture had before
+  // the structure dock's default-ON; conceal the dock through the user's own gesture and let
+  // the editor reclaim its columns before any geometry baseline is captured.
+  await HarnessSmoke.Class.concealAutoRevealedRightDock(
+    overflowDriver,
+    statusPath,
+  );
+  await overflowDriver.awaitGridCondition(
+    'the overflow editor reclaims the concealed dock columns',
+    (candidate) => {
+      const paneBounds = editorPaneColumnBounds(candidate);
+      return (
+        paneBounds !== null &&
+        paneBounds.endColumnExclusive >= candidate.columns - 3
+      );
+    },
   );
 
   // Same correction as the vertical thumb above: await the thumb the claim reads, never the file text

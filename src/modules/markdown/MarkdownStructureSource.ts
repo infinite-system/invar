@@ -20,15 +20,6 @@ import type {
 } from '../structure/StructureSource.interface';
 import { MarkdownParser } from './MarkdownParser';
 
-/** A heading row under construction: children stay mutable until its section closes. */
-interface OpenHeading {
-  readonly name: string;
-  readonly level: number;
-  readonly line: number;
-  endLine: number;
-  readonly children: OpenHeading[];
-}
-
 class $MarkdownStructureSource implements StructureSource {
   /** The one markdown-ness test this module applies to a path (shared with the workspace). */
   static isMarkdownPath(path: string): boolean {
@@ -118,4 +109,13 @@ export namespace MarkdownStructureSource {
   export const $Class = Static($MarkdownStructureSource);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+/** A heading row under construction: children stay mutable until its section closes. */
+interface OpenHeading {
+  readonly name: string;
+  readonly level: number;
+  readonly line: number;
+  endLine: number;
+  readonly children: OpenHeading[];
 }
