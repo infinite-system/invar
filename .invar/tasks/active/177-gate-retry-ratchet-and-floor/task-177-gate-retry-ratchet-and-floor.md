@@ -53,3 +53,10 @@ exists to avoid.
 ## Sources
 
 None in this folder. Detail above recovered from the session transcript (`faf7e858-…jsonl`).
+
+### Sightings 2026-07-29 (gate integrate/218, log /tmp/gate-integrate-218.log)
+
+- scrollbars harness and panel-split harness each PASSED ONLY ON RETRY on the #218
+  combined tree. Single sighting each in this gate. Note: #218 moved
+  TextCursor/TextViewport and recompiled ScrollbarSync against the new seam, so
+  the scrollbars retry deserves a second look if it recurs on post-#218 main.
