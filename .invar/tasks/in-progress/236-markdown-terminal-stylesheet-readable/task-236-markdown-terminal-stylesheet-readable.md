@@ -1,6 +1,6 @@
 # 236 — a terminal stylesheet for markdown: padding, tables, blockquotes, readable
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux

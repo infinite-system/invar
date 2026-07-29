@@ -6,16 +6,17 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #245 provider-seam-open-or-bless-decision  [building]
   `tmux attach -t invar/245-provider-seam-open-or-bless-decision`
 - #243 ui-contract-sibling-rot-round-two  [building]
   `tmux attach -t invar/243-ui-contract-sibling-rot-round-two`
+- #236 markdown-terminal-stylesheet-readable  [building]
+  `tmux attach -t invar/236-markdown-terminal-stylesheet-readable`
 
-## USER-DIRECTED (6)
+## USER-DIRECTED (5)
 - #238 structure-default-right-and-md-toc
 - #237 markdown-preview-left-and-auto-open
-- #236 markdown-terminal-stylesheet-readable
 - #235 tasks-dashboard-pane-live-active-done
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
