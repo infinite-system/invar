@@ -32,6 +32,19 @@ ignores debounced parse) — if #266 lands first, its quiescence keys may
 make this reproduction impossible, which IS the fix; verify and close with
 that evidence.
 
+## Update 2026-07-29 08:5x (conductor)
+
+#266 LANDED (2dd57fee): the Drive settle now requires
+`markdownRevision === bufferRevision`, so the settled-frame REPRODUCTION
+of this defect is impossible at the instrument. What remains of this task
+is ONLY the record question: the markdown split record's
+Impossible-if-true clause says "editing source while the visible preview
+remains on an older revision" — decide whether that means indefinitely
+stale (then the record stands and the debounced one-frame lag needs the
+record to name its bound) or whether the wording must be sharpened.
+#266 explicitly did not edit the record. Scope shrank: record
+reconciliation only, no instrument work.
+
 ## Invariants in scope
 
 - `src/modules/markdown/markdown.invariants.md` — the split record's
