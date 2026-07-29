@@ -634,7 +634,7 @@ whose content *begins with* `/compact <focus>`.
 the METHOD, not the live state. Read in order:
 
 1. `CLAUDE.md` → `AGENTS.md` → this skill → `project.conductor.md`
-2. `project.handoff.md` (top anchor = current status) → the `manage-tasks` skill → `.invar/tasks/` (+ `backlog.md`)
+2. `project.handoff.md` (top anchor = current status) → the `manage-tasks` skill → `.invar/tasks/` + `project.active-tasks.md`
 3. `project.brief.md`, `project.requirements.md`, `project.architecture.md`, and `/ibr`, `/ivue`,
    `/invariants`
 4. **Ground-truth the docs against reality** — docs lag, git is authoritative:

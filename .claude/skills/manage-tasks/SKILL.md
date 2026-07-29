@@ -1,5 +1,5 @@
 ---
-name: tasks
+name: manage-tasks
 description: >-
   Operate the durable task system: one folder per task under .invar/tasks/, moved between
   todo/live/done/retired and never deleted. Use when filing, dispatching, steering, landing,
