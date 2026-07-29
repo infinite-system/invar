@@ -42,3 +42,5 @@ before treating them as two defects.
   normalise before tolerating (gate-what-humans-cannot-see rule).
 - 2026-07-29 #298 amend gate: scrollbars smoke + panel-split smoke both
   starvation-timeout, both passed on retry (5th/6th pool-only today).
+- 2026-07-29 #296 gate: panel-chrome (pool starvation) + overlay-dialog
+  (serial tail) each timed out once, quiet retry passed (7th/8th today).

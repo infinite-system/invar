@@ -49,3 +49,6 @@ The worktree-root TASK.md dispatched for #295 carried a contract link
 relative to the external task folder; the invariant checker rejected it and
 the builder hand-corrected the local copy. Third confirmed instance of the
 dispatch TASK.md pointer defect this record owns.
+- 2026-07-29 #296: worktree task-record copy carried a task-folder-relative
+  contract path resolving outside the repo + missing anchor; builder fixed
+  the local copy. 4th instance.
