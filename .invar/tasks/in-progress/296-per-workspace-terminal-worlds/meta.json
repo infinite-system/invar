@@ -1,0 +1,15 @@
+{
+  "task": 296,
+  "slug": "per-workspace-terminal-worlds",
+  "branch": "fleet/296-per-workspace-terminal-worlds",
+  "worktree": ".invar/worktrees/296-per-workspace-terminal-worlds",
+  "tmuxSession": "invar/296-per-workspace-terminal-worlds",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-296-per-workspace-terminal-worlds.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "4d833ab9fddd00733681cbea0f8cd340cfd8b45e",
+  "startedAt": "2026-07-29T16:58:58-04:00"
+}

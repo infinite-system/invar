@@ -1,6 +1,6 @@
 # 296 — terminals double on workspace open; design: each workspace owns its terminal world
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
