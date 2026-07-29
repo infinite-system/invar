@@ -395,6 +395,7 @@ function report(tasksRoot: string): number {
       signal: 'STALE-ACTIVE-VIEW',
       taskNumber: 0,
       folderName: 'project.active-tasks.md',
+      directoryState: 'active',
       detail:
         'the generated view disagrees with the folders — run `bun scripts/tasks/tasks-status.ts write-active`',
     });

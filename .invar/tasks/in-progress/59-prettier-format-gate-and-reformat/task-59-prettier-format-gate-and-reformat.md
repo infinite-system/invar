@@ -1,6 +1,6 @@
 # 59 — prettier on commit, format gate, one-shot reformat
 
-State: ACTIVE — deliberately LAST
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: codex
 Environment: linux
