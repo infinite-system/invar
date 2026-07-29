@@ -6,13 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #238 structure-default-right-and-md-toc  [building]
+  `tmux attach -t invar/238-structure-default-right-and-md-toc`
 - #237 markdown-preview-left-and-auto-open  [building]
   `tmux attach -t invar/237-markdown-preview-left-and-auto-open`
 
-## USER-DIRECTED (5)
+## USER-DIRECTED (4)
 - #256 editor-stray-glyph-after-emoji
-- #238 structure-default-right-and-md-toc
 - #235 tasks-dashboard-pane-live-active-done
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
