@@ -36,3 +36,10 @@ reads `None observed`.
 ## Sources
 
 - `report-235-...md`, Bycatch 2-3.
+
+## Bycatch fold (2026-07-29, from #291)
+
+The #291 sweep left 316 non-mechanically-fixable bare references and one
+illustrative dead link across 48 legacy records (no unique target — the
+linter refuses to choose). Manual triage belongs to this task's record-
+system pass.
