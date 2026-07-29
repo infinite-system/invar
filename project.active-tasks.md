@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #299 [structure-filter-uses-shared-input-generator](.invar/tasks/in-progress/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md)  [building]
+  `tmux attach -t invar/299-structure-filter-uses-shared-input-generator`
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/in-progress/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md)  [building]
   `tmux attach -t invar/298-breadcrumbs-drop-nav-arrows-lighten-separators`
 - #296 [per-workspace-terminal-worlds](.invar/tasks/in-progress/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md)  [building]

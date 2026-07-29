@@ -1,6 +1,6 @@
 # 299 — the structure filter is not a real input: no selection, no Alt+Backspace — use the shared generator
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
