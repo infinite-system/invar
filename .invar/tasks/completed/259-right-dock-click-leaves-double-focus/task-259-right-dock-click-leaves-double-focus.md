@@ -1,6 +1,6 @@
 # 259 — a right-dock click can leave BOTH docks focused
 
-State: IN-PROGRESS
+State: COMPLETED — 587eed67 — one focus-set owner across docks; click path double-focus fixed
 Created: 2026-07-29
 Engine: codex
 Environment: linux
