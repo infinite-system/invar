@@ -404,6 +404,10 @@ async function driveTerminalShrinkAtScale(
       if (lineIndex === 3) return '[dead scale link](missing-scale.md)';
       if (lineIndex === 5)
         return '[external scale link](https://example.com/docs)';
+      if (lineIndex === 7) return '| Left | Center | Right |';
+      if (lineIndex === 8) return '| :--- | :---: | ---: |';
+      if (lineIndex === 9) return '| alpha | middle | 7 |';
+      if (lineIndex === 10) return '';
       if (lineIndex === jumpSourceLine) return `## [${jumpMarker}](README.md)`;
       const scrollMarker = scrollMarkerBySourceLine.get(lineIndex);
       return scrollMarker
@@ -417,7 +421,7 @@ async function driveTerminalShrinkAtScale(
   );
   const scaleDriver = new PtyTestDriver.Class({
     workspaceRoot: scaleFixtureRoot,
-    columns: 140,
+    columns: 120,
     rows: 40,
     homeDirectory: scaleHomeDirectory,
     environment: {
@@ -439,17 +443,17 @@ async function driveTerminalShrinkAtScale(
       `${fixtureLineCount}-line no-input resize publishes 60 by 25`,
       (status) => status.width === 60 && status.height === 25,
     );
-    scaleDriver.resize(140, 40);
+    scaleDriver.resize(120, 40);
     await HarnessSmoke.Class.awaitStatus(
       scaleDriver,
       scaleStatusPath,
-      `${fixtureLineCount}-line no-input resize restores 140 by 40`,
-      (status) => status.width === 140 && status.height === 40,
+      `${fixtureLineCount}-line no-input resize restores 120 by 40`,
+      (status) => status.width === 120 && status.height === 40,
     );
     await scaleDriver.awaitGridCondition(
-      `${fixtureLineCount}-line file tree returns inside 140 columns`,
+      `${fixtureLineCount}-line file tree settles inside 120 columns`,
       (candidate) =>
-        candidate.columns === 140 &&
+        candidate.columns === 120 &&
         candidate.rows === 40 &&
         candidate.findText('README.md') !== null,
     );
@@ -457,18 +461,108 @@ async function driveTerminalShrinkAtScale(
     await HarnessSmoke.Class.awaitStatus(
       scaleDriver,
       scaleStatusPath,
-      `${fixtureLineCount}-line Markdown preview opens and finishes parsing`,
+      `${fixtureLineCount}-line Markdown preview opens`,
       (status) =>
         String(status.activeBuffer).endsWith('/README.md') &&
-        status.markdownPreviewOpen === true &&
-        status.markdownParsing === false &&
-        status.structureStatus === 'ready' &&
-        Number(status.structureRows) === 5 &&
-        status.markdownPreviewScrollSync === true,
+        status.markdownPreviewOpen === true,
       60_000,
     );
-    const tocSnapshot = await scaleDriver.awaitGridCondition(
-      `${fixtureLineCount}-line deep heading appears in the structure pane`,
+    const dockVisibleStatus = await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line parent-growth arm starts with the right dock visible`,
+      (status) =>
+        status.width === 120 &&
+        status.height === 40 &&
+        status.rightDockVisible === true &&
+        Number(status.markdownPreviewViewportColumns) > 0 &&
+        Number(status.markdownPreviewViewportColumns) < 30,
+    );
+    const dockVisiblePreviewColumns = Number(
+      dockVisibleStatus.markdownPreviewViewportColumns,
+    );
+    await HarnessSmoke.Class.concealAutoRevealedRightDock(
+      scaleDriver,
+      scaleStatusPath,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line preview finishes parsing after parent growth`,
+      (status) =>
+        status.rightDockVisible === false && status.markdownParsing === false,
+    );
+    const dockConcealedSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line table reflows after parent growth without a preview remount`,
+      (candidate) =>
+        previewHasMarker(candidate, 'Left') &&
+        previewHasMarker(candidate, 'alpha'),
+    );
+    const dockConcealedPreviewColumns =
+      previewPaneRightColumn(dockConcealedSnapshot) -
+      previewBorder(dockConcealedSnapshot).column -
+      1;
+    const currentScaleLink = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'current scale link',
+    );
+    const deadScaleLink = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'dead scale link',
+    );
+    const externalScaleLink = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'external scale link',
+    );
+    HarnessSmoke.Class.requireCondition(
+      dockConcealedSnapshot.cell(currentScaleLink.row, currentScaleLink.column)
+        ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
+        dockConcealedSnapshot.cell(deadScaleLink.row, deadScaleLink.column)
+          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error) &&
+        dockConcealedSnapshot.cell(
+          externalScaleLink.row,
+          externalScaleLink.column,
+        )?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent),
+      `${fixtureLineCount}-line preview paints dead links red without changing current or external links`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      dockConcealedPreviewColumns > dockVisiblePreviewColumns,
+      `${fixtureLineCount}-line parent growth widens the live preview body viewport`,
+    );
+    scaleDriver.sendKeys('Control+Alt+b');
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line right dock restoration shrinks the preview viewport`,
+      (status) => status.rightDockVisible === true,
+    );
+    const dockRestoredSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line table reflows after parent shrink`,
+      (candidate) =>
+        previewHasMarker(candidate, 'Left') &&
+        previewHasMarker(candidate, 'alph') &&
+        !previewHasMarker(candidate, 'alpha'),
+    );
+    const dockRestoredPreviewColumns =
+      previewPaneRightColumn(dockRestoredSnapshot) -
+      previewBorder(dockRestoredSnapshot).column -
+      1;
+    HarnessSmoke.Class.requireCondition(
+      dockRestoredPreviewColumns < dockConcealedPreviewColumns,
+      `${fixtureLineCount}-line parent shrink narrows the live preview body viewport`,
+    );
+    HarnessSmoke.Class.pass(
+      `${fixtureLineCount}-line preview body tracks parent growth and shrink without remounting`,
+    );
+    scaleDriver.resize(140, 40);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line TOC arm restores 140 by 40`,
+      (status) => status.width === 140 && status.height === 40,
+    );
+    const restoredScaleSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line structure pane returns after the viewport contract`,
       (candidate) => {
         if (candidate.columns !== 140) return false;
         try {
@@ -479,25 +573,10 @@ async function driveTerminalShrinkAtScale(
         }
       },
     );
-    const currentScaleLink = previewMarkerPosition(
-      tocSnapshot,
-      'current scale link',
+    const tocMarker = structureMarkerPosition(
+      restoredScaleSnapshot,
+      jumpMarker,
     );
-    const deadScaleLink = previewMarkerPosition(tocSnapshot, 'dead scale link');
-    const externalScaleLink = previewMarkerPosition(
-      tocSnapshot,
-      'external scale link',
-    );
-    HarnessSmoke.Class.requireCondition(
-      tocSnapshot.cell(currentScaleLink.row, currentScaleLink.column)
-        ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
-        tocSnapshot.cell(deadScaleLink.row, deadScaleLink.column)
-          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error) &&
-        tocSnapshot.cell(externalScaleLink.row, externalScaleLink.column)
-          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent),
-      `${fixtureLineCount}-line preview paints dead links red without changing current or external links`,
-    );
-    const tocMarker = structureMarkerPosition(tocSnapshot, jumpMarker);
     clickCell(scaleDriver, tocMarker.column, tocMarker.row);
     const followedStatus = await HarnessSmoke.Class.awaitStatus(
       scaleDriver,
@@ -925,24 +1004,6 @@ try {
   // assert. Those properties were sized for the two-pane split; conceal the dock through the
   // user's own gesture and keep the property labels unchanged.
   await HarnessSmoke.Class.concealAutoRevealedRightDock(driver, statusPath);
-  // Known defect, not masked: the split's CONTENT viewports keep their pre-conceal width when
-  // the editor column grows back (#263's resize-handshake family — reported as bycatch from
-  // this arm). Remount the split at the final width through the user's own preview toggle so
-  // the arms below measure the geometry they were written for.
-  driver.sendKeys('Control+Shift+v');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the preview toggles off before the width-true remount',
-    (status) => status.markdownPreviewOpen === false,
-  );
-  driver.sendKeys('Control+Shift+v');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the preview remounts at the dock-free width',
-    (status) => status.markdownPreviewOpen === true,
-  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
