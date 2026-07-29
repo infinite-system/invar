@@ -12,6 +12,51 @@ is deliberately PORTABLE — it is the product; the editor is the cockpit.
 (Related: the capsule/populate-a-repo skill remains HELD by the user until
 architecture refinement — do not start it unprompted.)
 
+## RESUME ANCHOR 6 (13:0x 07-29 — pre-compaction; supersedes ANCHOR 5)
+
+- USER IS PRESENT and rapid-firing refinements; his direction IS the
+  backlog. Codex/5.6-sol for ALL builders (fable = conductor only).
+- LANDED TODAY (15): #268 #238 #264 #259 #266 #263 #235 #274 #275 #282
+  #288 #276 #286 #278 #287. Main GREEN. All landings need a READ verdict:
+  GATE_LOG with GATE_EXIT=0 (merge-gate now stamps its own sentinel) or
+  written GATE_OVERRIDE (enforcing-hook-chain: hook refuses on red +
+  commit exists + report/transcript quote = legitimate).
+- BUILDING NOW: #289 scroll-sync + preview scrollbars (round-2 addendum
+  folded: preview pane gets bars via shared painter, gated drag);
+  #273 tasks-pane cockpit (watch-parity animation via imported ramp
+  tables, tmux-attach PTY, row action icons, honest fleet-extra scoping,
+  show-by-default setting).
+- QUEUE ORDER: #290 scrollbar corner+color parity (AFTER #289 — same
+  painter seam; vertical owns bottom corner, horizontal ends at its
+  edge, grey/white both axes) -> #291 state-proof task links (name is
+  identity, state dir is wildcard — ONLY for .invar/tasks paths, no
+  general path magic; moved-vs-dead lint split; preview paints dead
+  links RED cached per revision; --fix --moved-only auto at land/
+  dispatch ONLY on acted-on records, <100ms or drop it; retro-sweep
+  once) -> #281 structure round two (no imports; public/private +
+  $cache + override marks; getter glyph+color; inheritance line
+  removed-or-setting; in-pane depth gear) -> #285 #284 #279(3 members)
+  #280 #283(vue rc1->rc2) #272 #277 #265 #267 #269 #270(record-only)
+  #271 #255-#258 #260-#261. WAIT FOR USER: #241 #242.
+- MECHANICAL SINCE ANCHOR 5: merge-gate stamps GATE_EXIT itself (full
+  runs only; aborts stay sentinel-less deliberately). land.sh:
+  auto-resolves generated-view conflicts by regeneration; rename-follows
+  the landing task's own active/->in-progress files; refuses other
+  conflicts (exit 5) and no-MERGE_HEAD; retires worktree+session at
+  landing (KEEP_WORKSPACE=1 to keep) — freed inotify (31 idle sessions
+  had pinned 62/128 instances and redded pooled gates; family 3 row).
+  dispatch.sh: record commits FIRST then worktree cuts FROM the record
+  commit (builders born seeing in-progress/); brief snapshot before
+  record move; link-lint guard (PATH-prefixed bun — bare bun refused
+  clean briefs). round-brief.sh lint-guards briefs too. #288's
+  lint-task-links.ts: dead links + bare refs, --fix, both-polarity
+  self-test; it corrects the conductor hourly — obey its suggestions.
+- NORTH STAR (user): InvarOS — portable fleet discipline, terminal-
+  native moat, self-repairing editor, democratized engineer-grade PRs.
+  Capsule/populate-a-repo still HELD by user.
+- WATCHERS: fleet-watch Monitor + crons :07/:37 (re-arm all three on
+  restart; verbatim prompts in conductor SKILL.md).
+
 ## RESUME ANCHOR 5 (09:5x — MACHINE SHUTDOWN EXPECTED; supersedes ANCHOR 4)
 
 - User went to work ~10:0x; machine off for a while. NO NEW DISPATCHES
