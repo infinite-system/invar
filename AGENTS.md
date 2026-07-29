@@ -132,7 +132,7 @@ rule in place instead of adding a section beside it.
 - **`.claude/skills/generator-audit/SKILL.md`** — the independent review-as-reduction procedure. Use when asked to review/audit the codebase or a module.
 - **`.claude/skills/conductor/SKILL.md`** — fleet orchestration doctrine (conductor sessions; builders may read the clearance/verification sections to understand the gate protocol they operate under).
 - **`.claude/skills/manage-tasks/SKILL.md`** — the task-system protocol: one folder per task under `.invar/tasks/` (active/in-progress/completed/retired), the seven-step lifecycle, number-first file naming, and the tracker (`bun scripts/tasks/tasks-status.ts`). Load when filing, dispatching, landing, or auditing tasks.
-- **`.claude/skills/ste-writing/SKILL.md`** — plain prose rules (Simplified Technical English, adapted). Applies to replies, briefs, task files, reports, and script messages — never to code or invariant records. Linter: `python3 .claude/skills/ste-writing/scripts/ste-lint.py <file.md>`.
+- **`.claude/skills/ste-expression/SKILL.md`** — plain prose rules (Simplified Technical English, adapted). Applies to replies, briefs, task files, reports, and script messages — never to code or invariant records. Linter: `python3 .claude/skills/ste-expression/scripts/ste-lint.py <file.md>`.
 
 ## Instruments index — `project.tools.md`
 Optional measuring tools exist that are NOT wired into the gate: scroll-smoothness, completion-list

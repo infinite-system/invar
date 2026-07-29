@@ -1,9 +1,9 @@
 ---
-name: ste-writing
-description: Write prose in Simplified Technical English (ASD-STE100, adapted for Invar). Applies to replies, briefs, task files, reports, and script messages — never to code. Use when writing any prose for this project, or when asked to make text plain.
+name: ste-expression
+description: Express yourself in Simplified Technical English (ASD-STE100, adapted for Invar). Applies to replies, briefs, task files, reports, and script messages — never to code. Use when writing any prose for this project, or when asked to make text plain.
 ---
 
-# ste-writing — plain prose for Invar
+# ste-expression — plain prose for Invar
 
 Write short, direct sentences. The reader is busy and the text often steers an
 agent. Adapted from ASD-STE100 (asd-ste100.org). Cross-model tests in the
@@ -71,7 +71,7 @@ than a dense one that is exact.
 ## The linter
 
 ```
-python3 .claude/skills/ste-writing/scripts/ste-lint.py <file.md>
+python3 .claude/skills/ste-expression/scripts/ste-lint.py <file.md>
 ```
 
 Score is violations per 100 words. Lower is cleaner. Use it as a delta signal
