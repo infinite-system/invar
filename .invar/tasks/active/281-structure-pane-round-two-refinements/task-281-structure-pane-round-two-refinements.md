@@ -26,6 +26,10 @@ User refinements on the landed #274 pane, verbatim-derived:
    inheritance line — REMOVE it, or keep behind an optional setting
    (default off). User said either; prefer the setting if it is one flag
    on the existing settings seam, else remove.
+6a. **Getters get their own glyph** (and a touch of color): getter/setter
+   accessors read distinctly from methods and fields in the outline —
+   their own glyph, subtle color per the pane vocabulary, both themes.
+
 6. **Depth control in-pane.** The depth/indent selector reachable from a
    gear affordance in the pane itself (tooltip/gear row near the filter
    field), not only via settings. Same setting underneath — the gear is
