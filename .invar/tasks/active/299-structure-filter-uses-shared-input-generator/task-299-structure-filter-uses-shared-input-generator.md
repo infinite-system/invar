@@ -51,3 +51,34 @@ it reads `None observed`.
 ## Sources
 
 - User message 2026-07-29 ~17:1x (verbatim above).
+
+## Scope extension (user, 2026-07-29 ~17:1x, verbatim)
+
+"it is also not copyable but should be copyable everywhere, also
+shift + arrows should allow selection like editor, so i think we have a
+primitive but it must be applied everywhere in all text inputs to make
+uniform, like breadcrumb search also is not copyable thought you can do
+alt+backspace to delete, also I like the active search state of
+structure better, it should be ported to the breadcrumb search but with
+input capabilities extended/fixed"
+
+This RAISES the census arm from name-them to FIX-THEM-ALL:
+
+4. **One primitive, applied everywhere.** Every single-line text input
+   in the app (structure filter, breadcrumb search, find, go-to-line
+   prompt, settings edit fields, quick open — census finds the full
+   set) rides the ONE shared generator and therefore uniformly has:
+   selection via Shift+arrows (editor-like), copy of the selection,
+   Alt+Backspace word-delete, plain edit keys. The capability set is
+   asserted ONCE at the generator's contract and each input's driven
+   arm proves wiring, not re-implementation.
+5. **Breadcrumb search specifically**: currently Alt+Backspace works
+   but copy does not — it joins the generator. AND the user prefers
+   the structure filter's ACTIVE SEARCH STATE (its engaged visual
+   state); port that state to the breadcrumb search while extending
+   its input capabilities. One visual vocabulary for "search is
+   active" across both.
+
+Both polarities everywhere: copy copies exactly the selection;
+inputs that legitimately differ (multi-line editor) are OUT of the
+single-line census.
