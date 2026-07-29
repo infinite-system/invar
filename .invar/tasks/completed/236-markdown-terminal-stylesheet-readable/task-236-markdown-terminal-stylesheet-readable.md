@@ -1,6 +1,6 @@
 # 236 — a terminal stylesheet for markdown: padding, tables, blockquotes, readable
 
-State: IN-PROGRESS
+State: COMPLETED — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
 Created: 2026-07-29
 Engine: claude
 Environment: linux

@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #254 gate-workers-validated-after-side-effects  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/254-gate-workers-validated-after-side-effects`
 - #253 ui-contract-systematic-citation-sweep  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/253-ui-contract-systematic-citation-sweep`
-- #236 markdown-terminal-stylesheet-readable  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/236-markdown-terminal-stylesheet-readable`
 
 ## USER-DIRECTED (6)
 - #256 editor-stray-glyph-after-emoji
@@ -83,12 +81,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 42 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 43 — full log: project.tasks-completed.md)
 - #251 gate-refuses-unlinked-node-modules — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
 - #245 provider-seam-open-or-bless-decision — b2bd2e57 — one registry census-proven; SQLite+fake+consumer proof; both workarounds deleted
 - #244 sdk-binary-extraction-leak-fills-disk — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 - #243 ui-contract-sibling-rot-round-two — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
+- #236 markdown-terminal-stylesheet-readable — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
 - #233 wrap-contract-red-settings-leak — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
 - #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
@@ -98,4 +97,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #218 workspace-buffer-splits-document-from-view — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
 - #216 drive-onramp-quick-open-blind-enumeration — 03b61df — Quick Open publishes degraded (never a false complete) with a recovery message; drive fixtures in system temp outside the ignored path; codex-ships-ripgrep caught by PATH surgery; one-sighting probed 3x, no repro, parked
 - #215 agent-tmux-send-confirm-false-negative — 7968d49f — claude confirm keys on the bottom composer frame (structure, not strings); codex signature kept; dispatch waits 15s for the cwd-derived session file; planted false-positive shape reds the contract; bycatch filed as #231
-- #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
