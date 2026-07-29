@@ -14,6 +14,10 @@ import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
+import {
+  deriveScrollbarThumbDragTargets,
+  dragScrollbarThumb,
+} from './ScrollbarThumbDrag';
 
 interface VerticalScrollBarProof {
   column: number;
@@ -96,6 +100,124 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
     throw new Error(
       `git ${commandArguments.join(' ')} failed: ${new TextDecoder().decode(result.stderr)}`,
     );
+  }
+}
+
+async function proveContinuousScrollbarThumbDrag(
+  lineCount: number,
+): Promise<void> {
+  const fixtureRoot = mkdtempSync(
+    join(tmpdir(), `tui-scrollbar-drag-${lineCount}-`),
+  );
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-scrollbar-drag-home-${lineCount}-`),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const symbolLineCount = Math.min(500, lineCount);
+  const lines = Array.from({ length: lineCount }, (_unusedValue, lineIndex) => {
+    if (lineIndex >= symbolLineCount) return '// scale filler';
+    const symbolName = `symbol${String(lineIndex).padStart(6, '0')}`;
+    return `export const ${symbolName} = "${'x'.repeat(180)}";`;
+  });
+  await Bun.write(
+    join(fixtureRoot, 'scrollbar-drag-scale.ts'),
+    `${lines.join('\n')}\n`,
+  );
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+    },
+  });
+  try {
+    await driver.awaitGridCondition(
+      `${lineCount}-line drag fixture workspace paints`,
+      (snapshot) => snapshot.findText('Files') !== null,
+    );
+    driver.sendKeys('Control+p');
+    await driver.awaitGridCondition(
+      `${lineCount}-line drag fixture opens Quick Open`,
+      (snapshot) => snapshot.findText('Go to File') !== null,
+    );
+    driver.sendText('scrollbar-drag-scale');
+    await driver.awaitScreenChange();
+    driver.sendKeys('Enter');
+    await driver.awaitGridCondition(
+      `${lineCount}-line drag fixture paints in the editor`,
+      (snapshot) => snapshot.findText('symbol000000') !== null,
+      60_000,
+    );
+    const status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line drag fixture publishes both editor extents and structure rows`,
+      (candidate) =>
+        Number(candidate.editorMaximumScrollTop) > 0 &&
+        Number(candidate.editorMaximumScrollLeft) > 0 &&
+        Number(candidate.structureRows) > Number(candidate.rightDockRows),
+      60_000,
+    );
+    const snapshot = await driver.awaitGridCondition(
+      `${lineCount}-line drag fixture paints editor and structure rows together`,
+      (candidate) =>
+        candidate.findText('symbol000000 :1') !== null &&
+        candidate.findText('export const symbol000000') !== null,
+      60_000,
+    );
+    const targets = deriveScrollbarThumbDragTargets(snapshot, status);
+    requireCondition(
+      targets.map((target) => target.name).join(',') ===
+        'editorHorizontal,editorVertical,rightDockVertical',
+      `${lineCount}-line drive finds both editor axes and the right-dock bar`,
+    );
+    const horizontalTarget = targets[0];
+    requireCondition(
+      horizontalTarget !== undefined &&
+        snapshot
+          .rowCells(horizontalTarget.pressRow)
+          .filter((cell) => cell.characters === '▄').length >= 10 &&
+        snapshot
+          .rowCells(horizontalTarget.pressRow)
+          .every((cell) => cell.characters !== '█' && cell.characters !== '▀'),
+      `${lineCount}-line editor horizontal bar is lower-half cells only`,
+    );
+    for (const target of targets) {
+      const positions = await dragScrollbarThumb(driver, statusPath, target);
+      requireCondition(
+        positions.length === 4 &&
+          positions.every(
+            (position, positionIndex) =>
+              positionIndex === 0 ||
+              position > (positions[positionIndex - 1] ?? position),
+          ),
+        `${lineCount}-line ${target.name} drag advances after every pressed-pointer move ` +
+          `(${positions.join('→')})`,
+      );
+    }
+    const finalStatus = HarnessSmoke.Class.readStatus(statusPath);
+    requireCondition(
+      !(
+        finalStatus.primaryDockFocused === true &&
+        finalStatus.rightDockFocused === true
+      ) &&
+        !(
+          finalStatus.primaryDockFocused === true &&
+          finalStatus.terminalFocused === true
+        ) &&
+        !(
+          finalStatus.rightDockFocused === true &&
+          finalStatus.terminalFocused === true
+        ),
+      `${lineCount}-line scrollbar drags leave one panel host focused`,
+    );
+    driver.sendKeys('Control+q');
+  } finally {
+    await driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   }
 }
 
@@ -459,30 +581,26 @@ function editorOverviewMarkIsPainted(
 }
 
 function horizontalScrollBarRowCount(snapshot: HarnessSnapshot.Model): number {
-  const paneBackground = dominantSidebarBackground(snapshot);
-  if (paneBackground === null) return 0;
   let barRowCount = 0;
   for (let row = 0; row < snapshot.rows; row++) {
     if (!snapshot.rowText(row).startsWith('│')) continue;
     const sidebarCells = snapshot
       .rowCells(row)
       .slice(1, Math.min(27, snapshot.columns));
-    if (sidebarCells.some((cell) => cell.characters.trim().length > 0))
-      continue;
-    let longestBackgroundRun = 0;
-    let currentBackgroundRun = 0;
+    let longestLowerHalfRun = 0;
+    let currentLowerHalfRun = 0;
     for (const cell of sidebarCells) {
-      if (cell.isBackgroundRgb && cell.background !== paneBackground) {
-        currentBackgroundRun++;
-        longestBackgroundRun = Math.max(
-          longestBackgroundRun,
-          currentBackgroundRun,
+      if (cell.characters === '▄') {
+        currentLowerHalfRun++;
+        longestLowerHalfRun = Math.max(
+          longestLowerHalfRun,
+          currentLowerHalfRun,
         );
       } else {
-        currentBackgroundRun = 0;
+        currentLowerHalfRun = 0;
       }
     }
-    if (longestBackgroundRun >= 4 && longestBackgroundRun < sidebarCells.length)
+    if (longestLowerHalfRun >= 4 && longestLowerHalfRun < sidebarCells.length)
       barRowCount++;
   }
   return barRowCount;
@@ -495,44 +613,37 @@ function horizontalEditorScrollBarProof(
   if (!paneBounds) return null;
   const editorStartColumn = paneBounds.startColumn;
   const editorEndColumnExclusive = paneBounds.endColumnExclusive;
-  const editorBackgroundCounts = new Map<number, number>();
-  for (let row = 4; row < snapshot.rows - 3; row++) {
-    for (const cell of snapshot
-      .rowCells(row)
-      .slice(editorStartColumn, editorEndColumnExclusive)) {
-      if (!cell.isBackgroundRgb) continue;
-      editorBackgroundCounts.set(
-        cell.background,
-        (editorBackgroundCounts.get(cell.background) ?? 0) + 1,
-      );
-    }
-  }
-  const editorBackground = [...editorBackgroundCounts.entries()].sort(
-    (firstBackground, secondBackground) =>
-      secondBackground[1] - firstBackground[1],
-  )[0]?.[0];
-  if (editorBackground === undefined) return null;
-
   const barCells = snapshot
     .rowCells(snapshot.rows - 3)
     .slice(editorStartColumn, editorEndColumnExclusive);
+  const foregroundCounts = new Map<number, number>();
+  for (const cell of barCells) {
+    if (cell.characters !== '▄') continue;
+    foregroundCounts.set(
+      cell.foreground,
+      (foregroundCounts.get(cell.foreground) ?? 0) + 1,
+    );
+  }
+  if (foregroundCounts.size !== 2) return null;
+  const thumbForeground = [...foregroundCounts.entries()].sort(
+    (firstForeground, secondForeground) =>
+      firstForeground[1] - secondForeground[1],
+  )[0]?.[0];
+  if (thumbForeground === undefined) return null;
   let longestThumbStartColumn = -1;
   let longestThumbLength = 0;
   let currentThumbStartColumn = -1;
   let currentThumbLength = 0;
-  let currentThumbBackground: number | null = null;
   for (const cell of barCells) {
     const isThumbCell =
-      cell.isBackgroundRgb && cell.background !== editorBackground;
-    if (isThumbCell && cell.background === currentThumbBackground) {
+      cell.characters === '▄' && cell.foreground === thumbForeground;
+    if (isThumbCell && currentThumbLength > 0) {
       currentThumbLength++;
     } else if (isThumbCell) {
       currentThumbStartColumn = cell.column;
       currentThumbLength = 1;
-      currentThumbBackground = cell.background;
     } else {
       currentThumbLength = 0;
-      currentThumbBackground = null;
     }
     if (currentThumbLength > longestThumbLength) {
       longestThumbStartColumn = currentThumbStartColumn;
@@ -561,15 +672,15 @@ function diffHorizontalScrollbarFrame(
     .slice(horizontalBarStartColumn, verticalProof.column);
   if (
     horizontalBarCells.length < 10 ||
-    horizontalBarCells.some((cell) => cell.characters !== ' ')
+    horizontalBarCells.some((cell) => cell.characters !== '▄')
   ) {
     return null;
   }
-  const firstBackground = horizontalBarCells[0]?.background;
-  if (firstBackground === undefined) return null;
+  const firstForeground = horizontalBarCells[0]?.foreground;
+  if (firstForeground === undefined) return null;
   let thumbLength = 0;
   for (const cell of horizontalBarCells) {
-    if (!cell.isBackgroundRgb || cell.background !== firstBackground) {
+    if (!cell.isForegroundRgb || cell.foreground !== firstForeground) {
       break;
     }
     thumbLength += 1;
@@ -1449,6 +1560,20 @@ const homeDirectory = mkdtempSync(
 
 const statusPath = join(homeDirectory, 'status.json');
 
+console.log(
+  '== harness scrollbars: thumb drags advance continuously at both scales ==',
+);
+await proveContinuousScrollbarThumbDrag(500);
+await proveContinuousScrollbarThumbDrag(100_000);
+
+if (process.env.INVAR_SCROLLBAR_DRAG_PROBE_ONLY === '1') {
+  await HarnessSmoke.Class.removeTemporaryDirectory(overflowFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(fitsFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  console.log('smoke-scrollbars-harness drag probe: ALL-PASS');
+  process.exit(0);
+}
+
 await buildOverflowFixture(overflowFixtureRoot);
 
 await buildFitsFixture(fitsFixtureRoot);
@@ -1551,7 +1676,7 @@ try {
   );
   requireCondition(
     horizontalScrollBarRowCount(snapshot) === 1,
-    'overflowing tree paints one horizontal background bar row',
+    'overflowing tree paints one lower-half horizontal bar row',
   );
 
   console.log(

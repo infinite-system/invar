@@ -1632,7 +1632,9 @@ drag-select INCLUDES the char under the release cell" case asserts a 7-char word
 
 **Invariant:** If a pane overflows on an axis, then that axis has a scrollbar whose track occupies
 the trailing inner edge of the pane's CONTENT rect, derived each frame through the ONE geometry
-source; every non-overflowing axis has no bar, and scrollbar visual thickness is axis-independent.
+source; every non-overflowing axis has no bar. The configured cross-axis cell count is the pointer
+target on both axes. A vertical bar fills those cells, while a horizontal bar paints only the lower
+half of its trailing row so both orientations have the same apparent weight in a terminal cell grid.
 
 **Scope:** every scrollbar (editor vertical + horizontal, file tree vertical + horizontal, git
 changes vertical + horizontal, git commit log vertical + horizontal, agent transcript, terminal
@@ -1641,11 +1643,11 @@ scrollback, the structure right dock, and any future pane).
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
 fits. `ScrollbarSync.applyBar` applies the configured cross-axis cell count; every bar is a
-`SolidThumbScrollBar` (both axes render plain at the settings thickness, keeping OpenTUI's native
-drag geometry).
+`SolidThumbScrollBar`. It keeps the full configured rect as OpenTUI's native drag geometry, then
+chooses the axis-specific paint inside that rect.
 
 **Generates:** a bar on every overflowing axis; aligned tracks across split positions; reachable
-clipped content; grabbable thumbs; no phantom bars; equal visual thickness across axes.
+clipped content; grabbable thumbs; no phantom bars; equal apparent weight across axes.
 
 **Evidence:** `src/modules/ui/ScrollbarGeometry.test.ts` (17 region/property cases);
 `scripts/harness/smoke-scrollbars-harness.ts` (narrow tree/changes/log overflow, raw SGR reveal,
@@ -1655,8 +1657,9 @@ geometry, track click, and keyboard parity);
 wired in `scripts/merge-gate.sh`.
 
 **Impossible if true:** an overflowing tree, changes, or log row whose clipped tail cannot be
-reached; a bar visible with nothing to scroll; a horizontal thumb that reads twice as thick as the
-same configured vertical thumb; two bars deriving placement from different math.
+reached; a bar visible with nothing to scroll; a full-cell horizontal bar that reads twice as thick
+as its vertical peer; a thin paint row that shrinks the horizontal pointer target; two bars deriving
+placement from different math.
 
 **Verification:** `bun test src/modules/ui/ScrollbarGeometry.test.ts && bun
 scripts/harness/smoke-scrollbars-harness.ts && bun
@@ -1716,52 +1719,60 @@ bun scripts/harness/smoke-scrollbars-harness.ts`
 
 **Last refined:** 2026-07-26
 
-### A scrollbar thumb is painted as background fill, never block glyphs
+### One scrollbar painter gives each axis equal visual weight
 
-**Invariant:** Every scrollbar thumb (and track) renders as BACKGROUND colour on blank cells — no
-cell of a scrollbar ever carries a block-element glyph (U+2580–U+259F) — the painted thumb rect is
-the same rect the slider's mouse hit-test uses, and fixed viewport/content inputs produce a fixed
-whole-cell thumb length at every scroll position.
+**Invariant:** Every vertical scrollbar thumb and track renders as BACKGROUND colour on blank cells.
+Every horizontal scrollbar thumb and track renders with the lower-half block `▄` and a transparent
+background. The whole-cell thumb rect is the same rect the slider's mouse hit-test uses, and fixed
+viewport/content inputs produce a fixed whole-cell thumb length at every scroll position.
 
 **Scope:** every scrollbar in the app: the pane bars built by `ScrollbarSync`, the optional
 `PaneContent` scroll bars (terminal scrollback), both `ScrollableTextViewport` bars (hover card,
 agent transcript, markdown preview), and the two `DiffView` bars.
 
 **Mechanism:** all scrollbar construction goes through ONE class, `SolidThumbScrollBar`
-(`src/modules/ui/SolidThumbScrollBar.ts`), which repaints OpenTUI's slider cells with two `fillRect`
-calls (track, then a normalized whole-cell thumb rect in the thumb colour). The normalized rect
-reads OpenTUI's virtual half-cell size and start, rounds the position-independent size once, and
-clamps the rounded start to the track with the shared two-cell minimum. It replaces the slider
-instance's `getThumbRect`, so the same normalized rect also drives the native mouse hit-test.
-Foreground block glyphs
-(`█ ▀ ▄`) are rasterized with inter-line gaps by macOS Terminal.app — a glyph-built thumb shows dark
-horizontal lines through it — while a background fill covers every pixel of the cell, so the artifact
-is impossible by construction. The same seam re-asserts `slider.viewPortSize` after each scroll-state
-write, healing OpenTUI's stale-max clamp (which otherwise pins the viewport at its 0.01 floor and
-collapses every thumb to a half-cell).
+(`src/modules/ui/SolidThumbScrollBar.ts`). It uses two background `fillRect` calls for a vertical
+track and thumb. It uses `▄` for a horizontal track and thumb, with the supplied track and thumb
+colours as foreground and transparent background. The lower half anchors the bar to the pane's
+trailing edge; the upper half stays open. This reads at half the height without weakening the
+whole-cell hit target. The glyph has the same shape with the dark and light palette colour pairs.
+The normalized rect reads OpenTUI's virtual half-cell size and start, rounds the
+position-independent size once, and clamps the rounded start to the track with the shared two-cell
+minimum. It replaces the slider instance's `getThumbRect`, so the same normalized rect also drives
+the native mouse hit-test.
 
-**Generates:** thumbs that render solid in every terminal (no glyph-tiling artifacts); proportional
-thumb length; drag positions that agree with the drawn thumb.
+The class gives every bar at least z-index 1. Lazy source-pane content can therefore paint later at
+the default layer without covering the already-constructed editor bars in the pointer hit grid.
+An explicit stronger caller priority remains unchanged. The same seam re-asserts
+`slider.viewPortSize` after each scroll-state write, healing OpenTUI's stale-max clamp (which
+otherwise pins the viewport at its 0.01 floor and collapses every thumb to a half-cell).
+
+**Generates:** seamless vertical thumbs; thinner horizontal bars; proportional thumb length; a
+visible bar that receives its own press and every pressed-pointer move; drag positions that agree
+with the drawn thumb.
 
 **Evidence:** driven frame assertions in `scripts/harness/smoke-scrollbars-harness.ts`: zero
-block-element glyphs in the solid bars, contiguous multi-cell bg-fill thumb runs, and per-completed-
-frame editor wrap-off, editor wrap-on, and diff probes that record constant viewport/total inputs,
-moving scroll positions, and byte-identical thumb extents. Its agent probe additionally holds
+block-element glyphs in vertical bars, contiguous multi-cell bg-fill vertical thumb runs, lower-half
+cells only in horizontal bars, and per-completed-frame editor wrap-off, editor wrap-on, and diff
+probes that record constant viewport/total inputs, moving scroll positions, and byte-identical thumb
+extents. At 500 and 100,000 lines, its real PTY drag probe records a new scroll position after every
+pressed-pointer move on both editor axes and the structure right-dock bar. Its agent probe holds
 `viewportRows=14` and `contentRows=181` while 20 changing positions all paint a 2-row thumb.
 `scripts/harness/smoke-terminal-harness.ts` proves the same solid multi-cell thumb on real terminal
 scrollback. `src/modules/ui/SolidThumbScrollBar.test.ts` exhausts half-cell start parity and the
-two-cell minimum. Live drag was verified against the same rect.
+two-cell minimum, preserves caller z-index, and paints the horizontal shape with both palette pairs.
 
-**Impossible if true:** a thumb showing horizontal seams in Terminal.app; a scrollbar cell holding
-`█`/`▀`/`▄`; a half-cell thumb on an overflowing pane; a drag grab-point disagreeing with the drawn
-thumb.
+**Impossible if true:** a vertical thumb showing horizontal seams in Terminal.app; a vertical bar
+cell holding `█`/`▀`/`▄`; a horizontal bar cell holding `█` or `▀`; a half-cell-long thumb on an
+overflowing pane; a visible scrollbar whose press reaches later default-layer content; a drag
+grab-point disagreeing with the drawn thumb.
 
 **Verification:** `bun test src/modules/ui/SolidThumbScrollBar.test.ts && bun
 scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-terminal-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-29
 
 ### Selection is item-anchored click-set keyboard-moved and stays
 

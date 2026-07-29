@@ -1208,9 +1208,9 @@ class $RootView {
     root.add(column);
     // Scale map (reported->true position per bar) + intended thickness (cells; NEVER read back from
     // layout — pre-layout reads return 0).
-    // ONE configured thickness for every pane and axis. Vertical bars use that many columns; horizontal
-    // bars use that many rows painted with half-height glyphs, compensating for the terminal cell's
-    // roughly 2:1 height:width aspect ratio. The setting therefore changes visual thickness uniformly.
+    // ONE configured hit thickness for every pane and axis. Vertical bars fill that many columns.
+    // Horizontal bars keep that many hit rows but the shared painter draws one lower-half trailing row,
+    // compensating for the terminal cell's roughly 2:1 height:width aspect ratio.
     const scrollbarThicknessCells = (): number =>
       Math.max(1, Math.round(settings.scrollbarThickness.value));
     // True while applyBarGeometry is ASSIGNING scrollPosition: the widget fires onChange for
