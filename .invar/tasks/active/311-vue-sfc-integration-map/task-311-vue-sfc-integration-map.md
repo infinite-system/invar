@@ -55,3 +55,17 @@ The map lands as `project.vue-integration-map.md` in the task folder
 (record commit only, no src changes), with every claim about current
 behaviour backed by a driven quote and every ecosystem claim cited.
 The user reviews the map BEFORE #312 dispatches.
+
+## User's follow-up (verbatim, GOVERNS — added 2026-07-29)
+
+> also full lsp support must be there, etc, so it's not a trivial one
+> but will test our plugability for these kinds of features, so it must
+> be cleanly pluggable as well
+
+Map consequence: the map MUST include a **pluggability section** — Vue
+support ships as a clean plugin through the existing plugin records
+(runtime plugin seams, per-workspace LspWorkspaceProvider lifecycle, no
+core special-casing for .vue anywhere). The map names every seam the
+plugin attaches to and flags any seam that would force a core hack —
+those seam gaps become explicit pre-work items in the phasing. Full LSP
+support is in scope for #312's end state, phased per the map.
