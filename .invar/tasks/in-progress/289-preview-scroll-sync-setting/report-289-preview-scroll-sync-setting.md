@@ -1,4 +1,4 @@
-# READY — preview scroll sync setting #289
+# READY — preview scroll sync and scrollbars #289
 
 ## Outcome
 
@@ -10,15 +10,24 @@ interpolation.
 The Markdown plugin contributes `markdownPreviewScrollSync`. Its default is `true`. Turning it off
 leaves both panes independent.
 
-Commit: `05777485d2176b5d2690bacfa391c9a590eea491`
+The [round-two addendum](brief-289-2-2.md) is complete. The preview now composes
+`ScrollableTextViewport`. Vertical overflow paints a shared background-fill bar. Long physical
+fenced-code rows stay intact and create horizontal overflow, which paints the shared lower-half
+`▄` bar. Wheel, native thumb drag, and track click use the same viewport offsets. Bar input makes
+the preview the scroll leader.
+
+Commits:
+
+- `05777485d2176b5d2690bacfa391c9a590eea491` — bidirectional scroll sync and contributed setting.
+- `6bfbdc6fd17063ab9c1c236eb39659d5ba3fa858` — shared preview scrollbars and gated drag arm.
 
 The worktree is clean.
 
 ## Driven evidence
 
-The baseline had no continuous follow. Two source Page Down inputs moved the source from `0` to
-`4` to `18` while the preview stayed at `0`. Two preview Page Down inputs moved the preview from
-`0` to `15` to `30` while the source stayed at `0`.
+The sync baseline had no continuous follow. Two source Page Down inputs moved the source from `0`
+to `4` to `18` while the preview stayed at `0`. Two preview Page Down inputs moved the preview
+from `0` to `15` to `30` while the source stayed at `0`.
 
 The final [Markdown PTY contract](../../../../scripts/harness/smoke-markdown-harness.ts) drove the
 default setting at small and large scale:
@@ -39,50 +48,98 @@ only the source. Preview wheel input moved only the preview. It then toggled the
 The existing table-of-contents jump kept both targets in the reading position at 500 and 100,000
 lines.
 
-## Positive control
+The final [scrollbar PTY contract](../../../../scripts/harness/smoke-scrollbars-harness.ts) opened a
+Markdown fixture with vertical overflow and one 191-cell fenced-code row. It found both preview
+bars and proved that the horizontal row contains only lower-half cells. Every pressed-pointer move
+advanced both axes:
 
-I temporarily returned before source-to-preview follow. The real PTY contract went red:
+- 500 lines: horizontal `0→42→84→127`; vertical `0→49→98→148`.
+- 100,000 lines: horizontal `0→42→84→127`; vertical
+  `0→10342→20684→31028`.
+
+The vertical drag changed focus from source to preview and moved the synchronized source. A later
+preview track click moved the preview again and led another source follow. The contract also kept
+the existing editor and structure bar fingerprints green at both scales.
+
+The bordered preview host initially painted the bars but clipped their hit-grid cells. Removing its
+redundant overflow scissor armed native drag and track clicks; `MarkdownRenderable` still clips the
+content. Large-scale driving then exposed two repeated extent/projection costs.
+`MarkdownPreview.totalRows` now caches by parsed revision and viewport width, and
+`MarkdownSplitView` no longer refreshes the renderable a second time in the same frame.
+
+## Positive controls
+
+For scroll sync, I temporarily returned before source-to-preview follow. The real PTY contract went
+red:
 
 > Timed out waiting for 500-line source wheel moves both panes at Depth 1 500
 
-I removed the planted defect. The final contract then passed.
+For the scrollbar arm, I temporarily returned from the preview horizontal bar's native
+`onChange`. The gated drag probe exited 1:
+
+> FAIL 500-line markdownPreviewHorizontal drag advances after every pressed-pointer move
+> (0→0→0→0)
+
+I removed both planted defects. The final contracts passed.
 
 ## Invariant review
 
-I extended [A Markdown file offers a live source preview split](../../../../src/modules/markdown/markdown.invariants.md#a-markdown-file-offers-a-live-source-preview-split)
-with input leadership, one shared position map, bidirectional follow, and symmetric disabled
-behavior.
+I extended
+[A Markdown file offers a live source preview split](../../../../src/modules/markdown/markdown.invariants.md#a-markdown-file-offers-a-live-source-preview-split)
+with input leadership, one shared position map, bidirectional follow, symmetric disabled behavior,
+and the shared preview viewport.
 
-I refined [Explicit jumps use one reading position](../../../../src/modules/text/text.invariants.md#explicit-jumps-use-one-reading-position)
+I refined
+[Explicit jumps use one reading position](../../../../src/modules/text/text.invariants.md#explicit-jumps-use-one-reading-position)
 to state that explicit jumps and continuous follow consume the same anchor map.
 
-The contributed setting follows [Plugin settings live in contributed schema](../../../../src/modules/settings/settings.invariants.md#plugin-settings-live-in-contributed-schema).
+The contributed setting follows
+[Plugin settings live in contributed schema](../../../../src/modules/settings/settings.invariants.md#plugin-settings-live-in-contributed-schema).
 The host settings schema does not name it.
+
+I added the preview to
+[A scrollable text surface is drag-selectable with edge auto-scroll](../../../../src/modules/ui/ui.invariants.md#a-scrollable-text-surface-is-drag-selectable-with-edge-auto-scroll),
+[A scrollbar track is derived per frame from its region rect](../../../../src/modules/ui/ui.invariants.md#a-scrollbar-track-is-derived-per-frame-from-its-region-rect),
+and
+[One scrollbar painter gives each axis equal visual weight](../../../../src/modules/ui/ui.invariants.md#one-scrollbar-painter-gives-each-axis-equal-visual-weight).
 
 The main implementation is in
 [MarkdownSplitView.ts](../../../../src/modules/markdown/MarkdownSplitView.ts),
-[MarkdownPreview.ts](../../../../src/modules/markdown/MarkdownPreview.ts), and
-[MarkdownPlugin.ts](../../../../src/modules/markdown/MarkdownPlugin.ts). The source viewport
-capability is declared in
-[SourceTextView.interface.ts](../../../../src/modules/workspace/SourceTextView.interface.ts).
+[MarkdownPreview.ts](../../../../src/modules/markdown/MarkdownPreview.ts),
+[MarkdownRenderable.ts](../../../../src/modules/markdown/MarkdownRenderable.ts), and
+[ScrollableTextViewport.ts](../../../../src/modules/ui/ScrollableTextViewport.ts). The shared
+gated gesture is in
+[ScrollbarThumbDrag.ts](../../../../scripts/harness/ScrollbarThumbDrag.ts).
 
 ## Verification
 
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — PASS,
-  1,113 annotations, 218 lattice links, 0 problems.
+  1,114 annotations, 218 lattice links, 0 problems.
 - `bun run typecheck` — PASS.
-- `bun test` — PASS, 1,905 tests, 0 failures, 68,504 expectations across 293 files.
+- `bun test` — PASS, 1,905 tests, 0 failures, 68,499 expectations across 293 files.
 - `bash scripts/smoke-markdown.sh` — ALL-PASS.
 - `bun scripts/harness/smoke-markdown-harness.ts` — ALL-PASS.
+- `bun scripts/harness/smoke-scrollbars-harness.ts` — ALL-PASS.
 - `bash scripts/conventions-gate.sh` — PASS.
-- The automatic pre-commit merge gate — ALL-PASS.
+- `git diff --check` — PASS.
 
 ## Bycatch
 
+- FIXED in the task commit: the record
+  [A scrollable text surface is drag-selectable with edge auto-scroll](../../../../src/modules/ui/ui.invariants.md#a-scrollable-text-surface-is-drag-selectable-with-edge-auto-scroll)
+  already governed every scrollable text surface, but `MarkdownSplitView` reassembled preview
+  momentum and selection and exposed no shared bars. The addendum put this generator drift in
+  scope. Commit `6bfbdc6fd17063ab9c1c236eb39659d5ba3fa858` migrated the preview to the shared
+  viewport.
+- A default `bun run drive --open` drive of
+  [project.invariants.md](../../../../project.invariants.md) with `--geometry 120x40` twice showed
+  `Parsing Markdown…` in the settled preview while status already reported
+  `markdownParsing=false`. A later input repainted the content. I did not change this unrelated
+  status-row paint.
 - The ignored worktree dispatch brief linked to the explicit-jump contract with no anchor and with
   a path valid only from the task folder. The invariant checker exposed both faults. I corrected
   the ignored local dispatch copy. It is not part of the branch. The final checker found 0
   problems.
-- The automatic pre-commit merge gate saw one starvation-class timeout in the panel-split harness.
+- The round-one pre-commit merge gate saw one starvation-class timeout in the panel-split harness.
   Its one quiet retry passed cleanly, so the fault did not reproduce on the second run. I did not
   change that unrelated harness.
