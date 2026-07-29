@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #239 ui-contract-citation-repairs  [building]
+- #239 ui-contract-citation-repairs  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/239-ui-contract-citation-repairs`
 - #233 wrap-contract-red-settings-leak  [building]
   `tmux attach -t invar/233-wrap-contract-red-settings-leak`
@@ -22,7 +22,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (17)
+## VERIFICATION-INTEGRITY (18)
+- #243 ui-contract-sibling-rot-round-two
 - #240 momentum-records-placement-call
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
