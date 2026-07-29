@@ -9,7 +9,8 @@ import type { DecodedImage } from './ImageDecoders';
 
 function redImage(width: number, height: number): DecodedImage {
   const rgba = new Uint8Array(width * height * 4);
-  for (let offset = 0; offset < rgba.length; offset += 4) rgba.set([255, 0, 0, 255], offset);
+  for (let offset = 0; offset < rgba.length; offset += 4)
+    rgba.set([255, 0, 0, 255], offset);
   return { width, height, rgba };
 }
 

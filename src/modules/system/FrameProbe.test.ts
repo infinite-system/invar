@@ -6,7 +6,12 @@ import { FrameProbe } from './FrameProbe';
 function fakeRenderer(
   width: number,
   height: number,
-  cells: { x: number; y: number; character: string; bg?: [number, number, number, number] }[],
+  cells: {
+    x: number;
+    y: number;
+    character: string;
+    bg?: [number, number, number, number];
+  }[],
 ) {
   const size = width * height;
   const char = new Uint32Array(size);
@@ -18,7 +23,13 @@ function fakeRenderer(
     char[cell] = cellSpec.character.codePointAt(0) ?? 0;
     if (cellSpec.bg) bg.set(cellSpec.bg, cell * 4);
   }
-  return { currentRenderBuffer: { width, height, buffers: { char, fg, bg, attributes } } };
+  return {
+    currentRenderBuffer: {
+      width,
+      height,
+      buffers: { char, fg, bg, attributes },
+    },
+  };
 }
 
 describe('FrameProbe.read', () => {
@@ -40,11 +51,17 @@ describe('FrameProbe.read', () => {
   test('a bg change is detected on the correct cell (no stride aliasing)', () => {
     // Regression for the stride bug: reading bg with stride 1 aliased one cell's change across
     // four, producing phantom period-4 groups. With the 4-lane layout, exactly cell (2,0) differs.
-    const rendererA = fakeRenderer(6, 1, [{ x: 2, y: 0, character: 'a', bg: [0, 0, 0, 0] }]);
-    const rendererB = fakeRenderer(6, 1, [{ x: 2, y: 0, character: 'a', bg: [69, 71, 90, 255] }]);
+    const rendererA = fakeRenderer(6, 1, [
+      { x: 2, y: 0, character: 'a', bg: [0, 0, 0, 0] },
+    ]);
+    const rendererB = fakeRenderer(6, 1, [
+      { x: 2, y: 0, character: 'a', bg: [69, 71, 90, 255] },
+    ]);
     const backgroundA = FrameProbe.Class.read(rendererA).rows[0]!.bg;
     const backgroundB = FrameProbe.Class.read(rendererB).rows[0]!.bg;
-    const changed = backgroundA.map((value, index) => (value !== backgroundB[index] ? index : -1)).filter((index) => index >= 0);
+    const changed = backgroundA
+      .map((value, index) => (value !== backgroundB[index] ? index : -1))
+      .filter((index) => index >= 0);
     expect(changed).toEqual([2]); // one cell, not four
   });
 

@@ -154,11 +154,15 @@ async function assertSheetStatus(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-shortcut-help-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-shortcut-help-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 await Bun.write(join(fixtureRoot, 'document.txt'), 'alpha\nbeta\ngamma\n');
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,

@@ -1,7 +1,7 @@
-import { expect, test } from "bun:test";
-import { Cursor } from "./Cursor";
+import { expect, test } from 'bun:test';
+import { Cursor } from './Cursor';
 
-test("selection range normalizes anchor and cursor order", () => {
+test('selection range normalizes anchor and cursor order', () => {
   const cursor = new Cursor.Class();
   cursor.set(2, 3);
   cursor.setAnchorHere();

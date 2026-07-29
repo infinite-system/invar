@@ -11,11 +11,15 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-quickopen-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-quickopen-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 for (const fileName of [
   'alpha.txt',
   'beta.txt',
@@ -25,7 +29,9 @@ for (const fileName of [
 ]) {
   await Bun.write(join(fixtureRoot, fileName), 'x\n');
 }
+
 mkdirSync(join(fixtureRoot, 'src'));
+
 await Bun.write(join(fixtureRoot, 'src', 'widget.txt'), 'content\n');
 
 const driver = new PtyTestDriver.Class({

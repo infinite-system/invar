@@ -16,6 +16,7 @@ import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { QuickOpen } from '../search/QuickOpen';
+
 class $QuickOpenRenderer {
   public static contentRowCount(quickOpen: QuickOpen.Instance): number {
     return (
@@ -143,10 +144,12 @@ class $QuickOpenRenderer {
     };
   }
 }
+
 export namespace QuickOpenRenderer {
   export const $Class = Static($QuickOpenRenderer);
   export let Class = $Class;
 }
+
 export interface QuickOpenRenderContext {
   quickOpen: QuickOpen.Instance;
   palette: Palette;
@@ -157,6 +160,7 @@ export interface QuickOpenRenderContext {
   /** Optional shared-scroll-surface window. When absent, selection-centered legacy placement applies. */
   firstVisible?: number;
 }
+
 /**
  * The rendered list plus how many hit-testable match rows it drew (0 for the message/empty states) and
  * the model index of the FIRST drawn row (the scroll window's top). A pointer row maps to the match
@@ -167,6 +171,7 @@ export interface QuickOpenRenderResult {
   rowCount: number;
   firstVisible: number;
 }
+
 /** The scroll window a render draws: the top model index and how many rows fit. */
 export interface QuickOpenWindow {
   firstVisible: number;

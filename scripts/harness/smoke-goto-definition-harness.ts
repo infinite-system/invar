@@ -41,12 +41,14 @@ function tabPosition(
 }
 
 const repositoryRoot = process.cwd();
+
 const serverBinary = join(
   repositoryRoot,
   'node_modules',
   '.bin',
   'typescript-language-server',
 );
+
 if (
   !Bun.file(serverBinary).size ||
   !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json'))
@@ -59,24 +61,30 @@ if (
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-goto-definition-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-goto-definition-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 symlinkSync(
   join(repositoryRoot, 'node_modules'),
   join(fixtureRoot, 'node_modules'),
 );
+
 await Bun.write(
   join(fixtureRoot, 'tsconfig.json'),
   '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", ' +
     '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
 );
+
 await Bun.write(
   join(fixtureRoot, 'foo.ts'),
   'export function greetWidget(name: string): string {\n' +
     '  return `hello ${name}`;\n}\n',
 );
+
 await Bun.write(
   join(fixtureRoot, 'bar.ts'),
   "import { greetWidget } from './foo';\n\n" +

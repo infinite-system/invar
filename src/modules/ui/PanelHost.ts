@@ -20,6 +20,7 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import type { KeyEvent } from '@opentui/core';
 import type { PaneContent } from './PaneContent.interface';
+
 class $PanelHost {
   protected get PanelHost() {
     return PanelHost.Class as unknown as typeof $PanelHost;
@@ -620,27 +621,32 @@ class $PanelHost {
     this.expanded.value = false;
   }
 }
+
 export namespace PanelHost {
   export const $Class = Static($PanelHost);
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 /** One cell of the split layout: which registered content occupies it and its share of the width. */
 export interface PanelCell {
   readonly id: string;
   readonly ratio: number;
 }
+
 /** A resolved cell — the content plus its (normalized) share — ready to lay out. */
 export interface ResolvedPanelCell {
   readonly content: PaneContent;
   readonly ratio: number;
 }
+
 /** A cell's converged pixel-region: which content, how many columns, and its share. */
 export interface PanelCellSpan {
   readonly content: PaneContent;
   readonly columns: number;
   readonly ratio: number;
 }
+
 export interface PanelHostOptions {
   showWhenContentRegistered?: boolean;
   contentOrder?: Ref<string[]>;

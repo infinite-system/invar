@@ -17,13 +17,19 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-code-folding-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-code-folding-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const codePath = join(fixtureRoot, 'code.ts');
+
 const companionPath = join(fixtureRoot, 'companion.ts');
+
 const deepCodePath = join(fixtureRoot, 'deep.ts');
+
 const unicodeVocabulary =
   ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
 
@@ -40,16 +46,23 @@ await Bun.write(
     '',
   ].join('\n'),
 );
+
 await Bun.write(companionPath, 'export const companionValue = 2;\n');
+
 const deepCodeLines = Array.from(
   { length: 600 },
   (_unusedValue, lineIndex) =>
     `const deepLine${String(lineIndex).padStart(3, '0')} = ${lineIndex};`,
 );
+
 deepCodeLines[530] = 'function deepFold() {';
+
 deepCodeLines[531] = '  const deepHiddenNeedle = 1;';
+
 deepCodeLines[532] = '  const deepHiddenSecond = 2;';
+
 deepCodeLines[533] = '}';
+
 await Bun.write(deepCodePath, `${deepCodeLines.join('\n')}\n`);
 
 function foldedLineStartsEqual(

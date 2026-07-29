@@ -4,7 +4,11 @@
 // sweep everything on dispose. A fake terminal captures payloads; a fake encoder makes them legible.
 // invariant: A pixel tier places and deletes graphics explicitly (src/modules/image/image.invariants.md)
 import { describe, test, expect } from 'bun:test';
-import { PixelImageMount, type PixelMountContext, type PixelMountTerminal } from './PixelImageMount';
+import {
+  PixelImageMount,
+  type PixelMountContext,
+  type PixelMountTerminal,
+} from './PixelImageMount';
 import type { PixelEncoder } from './ImageRenderers';
 import type { DecodedImage } from './ImageDecoders';
 
@@ -13,7 +17,10 @@ function testImage(width: number, height: number): DecodedImage {
 }
 
 /** A terminal whose settle promises are resolved manually, so tests control emission timing. */
-function manualTerminal(): PixelMountTerminal & { written: string[]; settle(): Promise<void> } {
+function manualTerminal(): PixelMountTerminal & {
+  written: string[];
+  settle(): Promise<void>;
+} {
   const pendingSettles: Array<() => void> = [];
   return {
     written: [],
@@ -33,7 +40,8 @@ function manualTerminal(): PixelMountTerminal & { written: string[]; settle(): P
 
 /** An encoder whose payloads are readable markers instead of escape bytes. */
 const markerEncoder: PixelEncoder = {
-  place: (context) => `PLACE[${context.imageId}:${context.columns}x${context.rows}]`,
+  place: (context) =>
+    `PLACE[${context.imageId}:${context.columns}x${context.rows}]`,
   remove: (imageId) => `REMOVE[${imageId}]`,
   removeAll: () => 'REMOVE-ALL',
 };
@@ -45,7 +53,9 @@ const paintOnlyEncoder: PixelEncoder = {
   removeAll: () => '',
 };
 
-function contextWith(overrides: Partial<PixelMountContext> = {}): PixelMountContext {
+function contextWith(
+  overrides: Partial<PixelMountContext> = {},
+): PixelMountContext {
   return {
     tier: 'kitty',
     encoder: markerEncoder,
@@ -87,7 +97,9 @@ describe('PixelImageMount', () => {
     expect(terminal.written.length).toBe(2);
     const replacement = terminal.written[1]!;
     expect(replacement.indexOf('REMOVE[7001]')).toBeGreaterThanOrEqual(0);
-    expect(replacement.indexOf('REMOVE[7001]')).toBeLessThan(replacement.indexOf('PLACE[7002:'));
+    expect(replacement.indexOf('REMOVE[7001]')).toBeLessThan(
+      replacement.indexOf('PLACE[7002:'),
+    );
   });
 
   test('a superseded in-flight placement is cancelled by generation — only the latest emits', async () => {

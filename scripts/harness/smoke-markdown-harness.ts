@@ -111,8 +111,11 @@ function clickCell(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-markdown-harness-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-markdown-harness-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const markdownLines = [
   '# Rendered heading',
   '',
@@ -134,6 +137,7 @@ const markdownLines = [
   '| row | has | extra |',
   '',
 ];
+
 for (let sectionNumber = 1; sectionNumber < 90; sectionNumber++) {
   markdownLines.push(
     `## Section ${String(sectionNumber).padStart(2, '0')}`,
@@ -141,11 +145,14 @@ for (let sectionNumber = 1; sectionNumber < 90; sectionNumber++) {
     '',
   );
 }
+
 markdownLines.push('TRUE MARKDOWN TAIL');
+
 await Bun.write(
   join(fixtureRoot, 'README.md'),
   `${markdownLines.join('\n')}\n`,
 );
+
 await Bun.write(
   join(fixtureRoot, 'target.ts'),
   'export const openedFromMarkdown = true;\n',

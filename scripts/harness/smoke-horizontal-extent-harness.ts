@@ -17,13 +17,19 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 const repositoryRoot = process.cwd();
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-horizontal-extent-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const regressionFileName = 'JpegDecoder.test.ts';
+
 const widestLineMarker = 'contract shape: dims plus rgba';
+
 const widestLineTail = "length width*height*4', () => {";
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: repositoryRoot,
   repositoryRoot,

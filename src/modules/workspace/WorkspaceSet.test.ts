@@ -13,6 +13,7 @@ import { WorkspaceSet } from './WorkspaceSet';
 import { GitPlugin } from '../git/GitPlugin';
 
 let temporaryRoot = '';
+
 let workspaceRoots: string[] = [];
 
 beforeEach(() => {

@@ -6,7 +6,9 @@ import { SpeakableText } from './SpeakableText';
 const speak = (markdown: string) => SpeakableText.Class.forSpeech(markdown);
 
 test('a fenced code block becomes a spoken placeholder, not the source', () => {
-  expect(speak('Here is the fix:\n```ts\nconst x = 1;\n```\nDone.')).toBe('Here is the fix: code block Done.');
+  expect(speak('Here is the fix:\n```ts\nconst x = 1;\n```\nDone.')).toBe(
+    'Here is the fix: code block Done.',
+  );
 });
 
 test('inline code keeps code expressions and paths verbatim while removing the backticks', () => {
@@ -24,7 +26,9 @@ test('inline code keeps identifiers verbatim while removing the backticks', () =
 });
 
 test('a bare absolute path in prose is read as its last segment (no slash-spelling)', () => {
-  expect(speak('I committed to /tmp/wt-voice and pushed')).toBe('I committed to wt-voice and pushed');
+  expect(speak('I committed to /tmp/wt-voice and pushed')).toBe(
+    'I committed to wt-voice and pushed',
+  );
 });
 
 test('a single-slash word like and/or is NOT treated as a path', () => {
@@ -32,15 +36,21 @@ test('a single-slash word like and/or is NOT treated as a path', () => {
 });
 
 test('headings, bullets, and blockquotes drop their leading markers', () => {
-  expect(speak('# Summary\n- first\n- second\n> a note')).toBe('Summary first second a note');
+  expect(speak('# Summary\n- first\n- second\n> a note')).toBe(
+    'Summary first second a note',
+  );
 });
 
 test('emphasis wrappers are removed', () => {
-  expect(speak('this is **bold** and *italic* and __also__ and _more_')).toBe('this is bold and italic and also and more');
+  expect(speak('this is **bold** and *italic* and __also__ and _more_')).toBe(
+    'this is bold and italic and also and more',
+  );
 });
 
 test('a link is read as its visible text', () => {
-  expect(speak('see [the docs](https://example.com/a/b/c) for details')).toBe('see the docs for details');
+  expect(speak('see [the docs](https://example.com/a/b/c) for details')).toBe(
+    'see the docs for details',
+  );
 });
 
 test('plain prose passes through unchanged (whitespace normalized)', () => {
@@ -49,7 +59,8 @@ test('plain prose passes through unchanged (whitespace normalized)', () => {
 });
 
 test('the first reported babble case reads cleanly (paths + filenames)', () => {
-  const input = 'I ran `/tmp/wt-voice/scripts/merge-gate.sh` and it passed. See `SpeakableText.ts`.';
+  const input =
+    'I ran `/tmp/wt-voice/scripts/merge-gate.sh` and it passed. See `SpeakableText.ts`.';
   expect(speak(input)).toBe(
     'I ran /tmp/wt-voice/scripts/merge-gate.sh and it passed. See SpeakableText.ts.',
   );
@@ -81,7 +92,8 @@ test('hostile inline-code shapes restore every extracted span exactly once', () 
     },
     {
       description: 'bold link text and list transforms',
-      markdown: '**`boldCode`** [`linkCode`](https://example.com)\n- `listCode`',
+      markdown:
+        '**`boldCode`** [`linkCode`](https://example.com)\n- `listCode`',
       expectedSpokenText: 'boldCode linkCode listCode',
     },
     {
@@ -110,10 +122,9 @@ test('hostile inline-code shapes restore every extracted span exactly once', () 
     const speechPreparation = SpeakableText.Class.prepareForSpeech(
       hostileCase.markdown,
     );
-    expect(
-      speechPreparation.text,
-      hostileCase.description,
-    ).toBe(hostileCase.expectedSpokenText);
+    expect(speechPreparation.text, hostileCase.description).toBe(
+      hostileCase.expectedSpokenText,
+    );
     expect(
       speechPreparation.usedOriginalFallback,
       hostileCase.description,
@@ -148,9 +159,15 @@ test('user content matching the initial token alphabet remains content, not a re
 });
 
 test('bare (un-backticked) prose: paths + filenames + multi-word identifiers, but brand words spared', () => {
-  expect(speak('committed to /tmp/wt-voice/Editor.ts today')).toBe('committed to Editor today');
-  expect(speak('the attachWordWrap helper')).toBe('the attach Word Wrap helper'); // 2 humps → split
-  expect(speak('built with GitHub and JavaScript on iPhone')).toBe('built with GitHub and JavaScript on iPhone'); // 1 hump each → spared
+  expect(speak('committed to /tmp/wt-voice/Editor.ts today')).toBe(
+    'committed to Editor today',
+  );
+  expect(speak('the attachWordWrap helper')).toBe(
+    'the attach Word Wrap helper',
+  ); // 2 humps → split
+  expect(speak('built with GitHub and JavaScript on iPhone')).toBe(
+    'built with GitHub and JavaScript on iPhone',
+  ); // 1 hump each → spared
 });
 
 test('empty / whitespace-only input yields empty string', () => {
@@ -159,20 +176,32 @@ test('empty / whitespace-only input yields empty string', () => {
 });
 
 test('babble tokens become spoken stand-ins: hashes, UUIDs, colors, base64, escapes', () => {
-  expect(speak('landed in commit `f11d070` after 4cd1bd7')).toBe('landed in commit hash after hash');
-  expect(speak('session faf7e858-c256-4735-9bbd-ba8dca8023dd done')).toBe('session identifier done');
+  expect(speak('landed in commit `f11d070` after 4cd1bd7')).toBe(
+    'landed in commit hash after hash',
+  );
+  expect(speak('session faf7e858-c256-4735-9bbd-ba8dca8023dd done')).toBe(
+    'session identifier done',
+  );
   expect(speak('background #1e1e2e here')).toBe('background color here');
-  expect(speak('payload QUNUSVZFLVRSQU5TQ1JJUFQ= arrived')).toBe('payload encoded data arrived');
-  expect(speak('send \\x1b[27;6;97~ to open')).toBe('send escape sequence to open');
+  expect(speak('payload QUNUSVZFLVRSQU5TQ1JJUFQ= arrived')).toBe(
+    'payload encoded data arrived',
+  );
+  expect(speak('send \\x1b[27;6;97~ to open')).toBe(
+    'send escape sequence to open',
+  );
 });
 
 test('shell operators and option flags read as words', () => {
-  expect(speak('run `bunx tsc --noEmit && bun test` now')).toBe('run bunx tsc no Emit and bun test now');
+  expect(speak('run `bunx tsc --noEmit && bun test` now')).toBe(
+    'run bunx tsc no Emit and bun test now',
+  );
   expect(speak('true || false')).toBe('true or false');
 });
 
 test('markdown tables lose pipe walls and separator rows', () => {
-  expect(speak('| column | value |\n|---|---|\n| width | 120 |')).toBe('column, value, width, 120');
+  expect(speak('| column | value |\n|---|---|\n| width | 120 |')).toBe(
+    'column, value, width, 120',
+  );
 });
 
 test('emphasis spanning a line break still sheds its markers', () => {
@@ -180,7 +209,9 @@ test('emphasis spanning a line break still sheds its markers', () => {
 });
 
 test('bare URLs speak as their host, not spelled segments', () => {
-  expect(speak('see https://github.com/infinite-system/invar/pull/42 for details')).toBe('see github.com link for details');
+  expect(
+    speak('see https://github.com/infinite-system/invar/pull/42 for details'),
+  ).toBe('see github.com link for details');
 });
 
 test('a bare version number stays a number, brand words stay intact', () => {

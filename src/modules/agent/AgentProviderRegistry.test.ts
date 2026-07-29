@@ -10,7 +10,8 @@ describe('AgentProviderRegistry — the one provider authority (review B6)', () 
   test('resolve() returns a CONCRETE engine with its binary (auto prefers claude on this box)', () => {
     const resolved = AgentProviderRegistry.Class.resolve('auto');
     expect(['claude', 'codex', 'echo']).toContain(resolved.engine);
-    if (resolved.engine !== 'echo') expect(resolved.binaryPath.length).toBeGreaterThan(0);
+    if (resolved.engine !== 'echo')
+      expect(resolved.binaryPath.length).toBeGreaterThan(0);
     expect(resolved.fellBack).toBe(false); // 'auto' never "falls back" — it never named an engine
   });
 
@@ -30,7 +31,10 @@ describe('AgentProviderRegistry — the one provider authority (review B6)', () 
 
   test('INVAR_AGENT_ENGINES forces the available list; nextEngine cycles it and wraps', () => {
     process.env.INVAR_AGENT_ENGINES = 'claude,codex';
-    expect(AgentProviderRegistry.Class.availableEngines()).toEqual(['claude', 'codex']);
+    expect(AgentProviderRegistry.Class.availableEngines()).toEqual([
+      'claude',
+      'codex',
+    ]);
     expect(AgentProviderRegistry.Class.nextEngine('claude')).toBe('codex');
     expect(AgentProviderRegistry.Class.nextEngine('codex')).toBe('claude');
   });

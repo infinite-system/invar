@@ -15,8 +15,11 @@ import { createCliRenderer } from '@opentui/core';
 import { TerminalCapabilities } from '../src/modules/theme/TerminalCapabilities';
 
 const reportFilePath = '/tmp/invar-graphics-report.txt';
+
 const probeWindowMilliseconds = 3000;
+
 const collectedReportLines: string[] = [];
+
 let capabilitiesEventCount = 0;
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false });
@@ -39,6 +42,7 @@ const collectObservation = (label: string): void => {
 };
 
 collectObservation('at-start');
+
 renderer.on('capabilities', () => {
   capabilitiesEventCount = capabilitiesEventCount + 1;
   collectObservation(`after-probe-reply-${capabilitiesEventCount}`);

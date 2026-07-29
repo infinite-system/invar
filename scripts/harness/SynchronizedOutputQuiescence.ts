@@ -104,5 +104,7 @@ export namespace SynchronizedOutputQuiescence {
 }
 
 const synchronizedOutputMarkerPrefix = [27, 91, 63, 50, 48, 50, 54] as const;
+
 const synchronizedOutputBeginFinalByte = 104;
+
 const synchronizedOutputEndFinalByte = 108;

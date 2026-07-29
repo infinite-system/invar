@@ -52,11 +52,17 @@ if (process.env.INPUT_BYTE_FLUSH_MODE === 'scale-edit') {
 }
 
 const latencySampleCount = Number(process.env.LATENCY_SAMPLE_COUNT ?? 20);
+
 const measurementRoot = mkdtempSync(join(tmpdir(), 'invar-byte-flush-'));
+
 const isolatedHomeDirectory = join(measurementRoot, 'home');
+
 const isolatedWorkspaceRoot = join(measurementRoot, 'workspace');
+
 mkdirSync(isolatedHomeDirectory, { recursive: true });
+
 mkdirSync(isolatedWorkspaceRoot, { recursive: true });
+
 await Bun.write(
   join(isolatedWorkspaceRoot, 'latency.txt'),
   'abcdefghijklmnopqrstuvwxyz\n',

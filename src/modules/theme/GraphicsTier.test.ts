@@ -18,7 +18,9 @@ const managedKeys = [
   'KITTY_WINDOW_ID',
   'TERM_PROGRAM',
 ] as const;
+
 type ManagedKey = (typeof managedKeys)[number];
+
 const originalValues = new Map<ManagedKey, string | undefined>(
   managedKeys.map((key) => [key, process.env[key]]),
 );
@@ -58,11 +60,13 @@ const reportedAll: ReportedGraphicsCapabilities = {
   sixel: true,
   multiplexer: 'none',
 };
+
 const reportedSixelOnly: ReportedGraphicsCapabilities = {
   kitty_graphics: false,
   sixel: true,
   multiplexer: 'none',
 };
+
 const reportedNone: ReportedGraphicsCapabilities = {
   kitty_graphics: false,
   sixel: false,

@@ -8,7 +8,9 @@ import { VoiceDiscovery } from './VoiceDiscovery';
 import { SystemTtsBackend } from './SystemTtsBackend';
 
 let dataHome = '';
+
 const savedXdg = process.env.XDG_DATA_HOME;
+
 const savedPiper = process.env.INVAR_PIPER_MODEL;
 
 beforeEach(() => {
@@ -33,20 +35,38 @@ afterEach(() => {
 });
 
 test('discover finds every *.onnx across the dir AND library/, ignoring non-onnx, sorted by name', () => {
-  expect(VoiceDiscovery.Class.names()).toEqual(['de_DE-thorsten-high', 'en_GB-alan-low', 'en_US-amy-medium']);
+  expect(VoiceDiscovery.Class.names()).toEqual([
+    'de_DE-thorsten-high',
+    'en_GB-alan-low',
+    'en_US-amy-medium',
+  ]);
 });
 
 test('options prepend "" (auto) to the discovered names', () => {
-  expect(VoiceDiscovery.Class.options()).toEqual(['', 'de_DE-thorsten-high', 'en_GB-alan-low', 'en_US-amy-medium']);
+  expect(VoiceDiscovery.Class.options()).toEqual([
+    '',
+    'de_DE-thorsten-high',
+    'en_GB-alan-low',
+    'en_US-amy-medium',
+  ]);
 });
 
 test('resolvePath returns the selected voice, including one inside library/', () => {
-  expect(VoiceDiscovery.Class.resolvePath('en_US-amy-medium')).toBe(join(dataHome, 'piper-voices', 'en_US-amy-medium.onnx'));
-  expect(VoiceDiscovery.Class.resolvePath('de_DE-thorsten-high')).toBe(join(dataHome, 'piper-voices', 'library', 'de_DE-thorsten-high.onnx'));
+  expect(VoiceDiscovery.Class.resolvePath('en_US-amy-medium')).toBe(
+    join(dataHome, 'piper-voices', 'en_US-amy-medium.onnx'),
+  );
+  expect(VoiceDiscovery.Class.resolvePath('de_DE-thorsten-high')).toBe(
+    join(dataHome, 'piper-voices', 'library', 'de_DE-thorsten-high.onnx'),
+  );
 });
 
 test('resolvePath falls back to the first discovered voice when the selection is empty or unknown', () => {
-  const first = join(dataHome, 'piper-voices', 'library', 'de_DE-thorsten-high.onnx'); // sorts first
+  const first = join(
+    dataHome,
+    'piper-voices',
+    'library',
+    'de_DE-thorsten-high.onnx',
+  ); // sorts first
   expect(VoiceDiscovery.Class.resolvePath('')).toBe(first);
   expect(VoiceDiscovery.Class.resolvePath('no-such-voice')).toBe(first);
 });
@@ -57,11 +77,17 @@ test('resolvePath returns null when no voices are installed', () => {
 });
 
 test('SystemTtsBackend.resolvePiperModel honors the selected voice, else first-found', () => {
-  expect(SystemTtsBackend.Class.resolvePiperModel('en_GB-alan-low')).toBe(join(dataHome, 'piper-voices', 'en_GB-alan-low.onnx'));
-  expect(SystemTtsBackend.Class.resolvePiperModel('')).toBe(join(dataHome, 'piper-voices', 'library', 'de_DE-thorsten-high.onnx'));
+  expect(SystemTtsBackend.Class.resolvePiperModel('en_GB-alan-low')).toBe(
+    join(dataHome, 'piper-voices', 'en_GB-alan-low.onnx'),
+  );
+  expect(SystemTtsBackend.Class.resolvePiperModel('')).toBe(
+    join(dataHome, 'piper-voices', 'library', 'de_DE-thorsten-high.onnx'),
+  );
 });
 
 test('SystemTtsBackend.resolvePiperModel: an explicit INVAR_PIPER_MODEL overrides discovery', () => {
   process.env.INVAR_PIPER_MODEL = '/custom/voice.onnx';
-  expect(SystemTtsBackend.Class.resolvePiperModel('en_US-amy-medium')).toBe('/custom/voice.onnx');
+  expect(SystemTtsBackend.Class.resolvePiperModel('en_US-amy-medium')).toBe(
+    '/custom/voice.onnx',
+  );
 });

@@ -22,18 +22,26 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repositoryRoot = new URL('..', import.meta.url).pathname;
+
 const argumentList = process.argv.slice(2);
+
 const includeTests = argumentList.includes('--tests');
+
 const requireZeroMatches = argumentList.includes('--require-zero');
+
 const pathFlagIndex = argumentList.indexOf('--path');
+
 const searchRoot =
   pathFlagIndex >= 0 ? argumentList[pathFlagIndex + 1] : 'src/modules';
+
 const positional = argumentList.filter(
   (argument, index) =>
     !argument.startsWith('--') &&
     (pathFlagIndex < 0 || index !== pathFlagIndex + 1),
 );
+
 const queryMode = positional[0];
+
 const queryName = positional[1];
 
 if (!queryMode) {
@@ -304,10 +312,12 @@ const predicateByMode: Record<string, MatchPredicate> = {
 };
 
 const predicate = predicateByMode[queryMode];
+
 if (!predicate) {
   console.error(`unknown mode: ${queryMode}`);
   process.exit(2);
 }
+
 if (
   ['calls', 'named-calls', 'news', 'identifiers', 'members'].includes(
     queryMode,
@@ -319,6 +329,7 @@ if (
 }
 
 let matchCount = 0;
+
 for (const relativePath of new Bun.Glob(`${searchRoot}/**/*.ts`).scanSync({
   cwd: repositoryRoot,
 })) {
@@ -343,7 +354,9 @@ for (const relativePath of new Bun.Glob(`${searchRoot}/**/*.ts`).scanSync({
   };
   visit(sourceFile);
 }
+
 console.log(
   `ast-query ${queryMode}${queryName ? ' ' + queryName : ''}: ${matchCount} match(es)`,
 );
+
 if (requireZeroMatches && matchCount > 0) process.exit(1);

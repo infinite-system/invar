@@ -39,6 +39,7 @@ const FIXTURE_LINE_COUNTS = (
   .split(',')
   .map((lineCountText) => Number(lineCountText.trim()))
   .filter((lineCount) => Number.isInteger(lineCount) && lineCount >= 100);
+
 const SURFACES = (process.env.SMOOTHNESS_SURFACES ?? 'editor,diff')
   .split(',')
   .map((surfaceText) => surfaceText.trim())
@@ -46,6 +47,7 @@ const SURFACES = (process.env.SMOOTHNESS_SURFACES ?? 'editor,diff')
     (surfaceText): surfaceText is ScrollSurface =>
       surfaceText === 'editor' || surfaceText === 'diff',
   );
+
 const FIXTURE_SHAPES = (process.env.SMOOTHNESS_FIXTURES ?? 'flat')
   .split(',')
   .map((fixtureShapeText) => fixtureShapeText.trim())
@@ -53,6 +55,7 @@ const FIXTURE_SHAPES = (process.env.SMOOTHNESS_FIXTURES ?? 'flat')
     (fixtureShapeText): fixtureShapeText is FixtureShape =>
       fixtureShapeText === 'flat' || fixtureShapeText === 'fold-dense',
   );
+
 const CODE_FOLDING_MODES = (process.env.SMOOTHNESS_CODE_FOLDING ?? 'on')
   .split(',')
   .map((codeFoldingModeText) => codeFoldingModeText.trim())
@@ -60,35 +63,45 @@ const CODE_FOLDING_MODES = (process.env.SMOOTHNESS_CODE_FOLDING ?? 'on')
     (codeFoldingModeText): codeFoldingModeText is CodeFoldingMode =>
       codeFoldingModeText === 'on' || codeFoldingModeText === 'off',
   );
+
 const VERSION_CONTROL_MARKS_ENABLED =
   process.env.SMOOTHNESS_VERSION_CONTROL_MARKS !== 'off';
+
 const APPLICATION_REPOSITORY_ROOT =
   process.env.SMOOTHNESS_REPOSITORY_ROOT ?? process.cwd();
+
 const VERTICAL_FLING_CEILING = Number(
   process.env.SMOOTHNESS_VERTICAL_FLING_CEILING ?? '220',
 );
+
 const MAXIMUM_GLIDE_DURATION_MILLISECONDS = Number(
   process.env.SMOOTHNESS_MAXIMUM_GLIDE_DURATION ?? '900',
 );
+
 const GLIDE_CAP_EASING_DURATION_MILLISECONDS = 900;
+
 // Bootstrap caps every animation integration step at 100 milliseconds. A
 // delayed frame can therefore carry up to this much motion; target FPS is not
 // a maximum frame duration.
 const MAXIMUM_ANIMATION_DELTA_TIME_SECONDS = Number(
   process.env.SMOOTHNESS_MAXIMUM_ANIMATION_DELTA_TIME_SECONDS ?? '0.1',
 );
+
 // A hard human flick: twelve notches creates a sustained fast segment without relying on PTY write
 // splitting. The accumulation probe repeats this exact physical gesture; the ordinary smoothness
 // cases use it to expose per-frame cadence and distance. Overridable for shorter-ramp probes.
 const WHEEL_NOTCHES_PER_GESTURE = Number(
   process.env.SMOOTHNESS_NOTCHES ?? '12',
 );
+
 const ACCUMULATION_FLICK_COUNT = Number(
   process.env.SMOOTHNESS_ACCUMULATION_FLICKS ?? '3',
 );
+
 const ACCUMULATION_PAUSE_MILLISECONDS = Number(
   process.env.SMOOTHNESS_ACCUMULATION_PAUSE ?? '200',
 );
+
 const CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS = (
   process.env.SMOOTHNESS_BURST_DURATIONS ?? ''
 )
@@ -98,25 +111,33 @@ const CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS = (
     (durationMilliseconds) =>
       Number.isInteger(durationMilliseconds) && durationMilliseconds > 0,
   );
+
 const CONTINUOUS_INPUT_WINDOW_MILLISECONDS = Number(
   process.env.SMOOTHNESS_BURST_WINDOW ?? '100',
 );
+
 const CONTINUOUS_INPUT_NOTCHES_PER_WINDOW = Number(
   process.env.SMOOTHNESS_BURST_NOTCHES ?? '12',
 );
+
 const CONTINUOUS_INPUT_FRAME_PROGRESS_REQUIRED =
   process.env.SMOOTHNESS_REQUIRE_FRAME_PROGRESS === '1';
+
 const CONTINUOUS_INPUT_COALESCING_REQUIRED =
   process.env.SMOOTHNESS_REQUIRE_INPUT_COALESCING === '1';
+
 // Trials, not samples of one trial: the fling that follows an idle app and the fling that follows a
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
 // each and manual measurement wants a third to see which of the two a run landed on.
 const GESTURE_REPEAT_COUNT = Number(process.env.SMOOTHNESS_GESTURES ?? '3');
+
 const MINIMUM_GLIDE_MOVING_FRAME_COUNT = 10;
+
 const DEFAULT_CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS = [
   Math.ceil(MINIMUM_GLIDE_MOVING_FRAME_COUNT / 2),
   MINIMUM_GLIDE_MOVING_FRAME_COUNT,
 ];
+
 const CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS = (
   process.env.SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES ??
   DEFAULT_CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS.join(',')
@@ -127,25 +148,38 @@ const CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS = (
     (movingFrameCount) =>
       Number.isInteger(movingFrameCount) && movingFrameCount > 0,
   );
+
 const DEPTH_GESTURE_TARGET_ROWS = Number(
   process.env.SMOOTHNESS_DEPTH_GESTURE_ROWS ?? '1000',
 );
+
 const DEPTH_REFERENCE_FRAMES_PER_SECOND = Number(
   process.env.SMOOTHNESS_DEPTH_REFERENCE_FPS ?? 'NaN',
 );
+
 const DEPTH_CHECKPOINT_TARGETS = [75_000] as const;
+
 const DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES = 80_000;
+
 const DEPTH_CHECKPOINT_FPS_FLOOR = 28;
+
 const DEPTH_GESTURE_REFRESH_FRAME_INTERVAL = 6;
+
 const TERMINAL_COLUMNS = 120;
+
 const TERMINAL_ROWS = 40;
+
 const EDITOR_WHEEL_COLUMN = 80;
+
 const EDITOR_WHEEL_ROW = 12;
+
 // Preserve the existing continuous-input deadline margin while observing the published rest state.
 const CONTINUOUS_INPUT_REST_TIMEOUT_MARGIN_MILLISECONDS = 700;
 
 type ScrollSurface = 'editor' | 'diff';
+
 type FixtureShape = 'flat' | 'fold-dense';
+
 type CodeFoldingMode = 'on' | 'off';
 
 interface GestureFrameSample {
@@ -2178,15 +2212,19 @@ async function measureSurface(
 if (FIXTURE_LINE_COUNTS.length === 0) {
   throw new Error('SMOOTHNESS_LINE_COUNTS must name at least one line count');
 }
+
 if (SURFACES.length === 0) {
   throw new Error('SMOOTHNESS_SURFACES must name editor, diff, or both');
 }
+
 if (FIXTURE_SHAPES.length === 0) {
   throw new Error('SMOOTHNESS_FIXTURES must name flat, fold-dense, or both');
 }
+
 if (CODE_FOLDING_MODES.length === 0) {
   throw new Error('SMOOTHNESS_CODE_FOLDING must name on, off, or both');
 }
+
 if (
   !Number.isInteger(ACCUMULATION_FLICK_COUNT) ||
   ACCUMULATION_FLICK_COUNT < 0
@@ -2195,6 +2233,7 @@ if (
     'SMOOTHNESS_ACCUMULATION_FLICKS must be a non-negative integer',
   );
 }
+
 if (
   !Number.isInteger(CONTINUOUS_INPUT_WINDOW_MILLISECONDS) ||
   CONTINUOUS_INPUT_WINDOW_MILLISECONDS <= 0
@@ -2203,12 +2242,14 @@ if (
     'SMOOTHNESS_BURST_WINDOW must be a positive integer number of milliseconds',
   );
 }
+
 if (
   !Number.isInteger(CONTINUOUS_INPUT_NOTCHES_PER_WINDOW) ||
   CONTINUOUS_INPUT_NOTCHES_PER_WINDOW <= 0
 ) {
   throw new Error('SMOOTHNESS_BURST_NOTCHES must be a positive integer');
 }
+
 if (
   !Number.isFinite(MAXIMUM_ANIMATION_DELTA_TIME_SECONDS) ||
   MAXIMUM_ANIMATION_DELTA_TIME_SECONDS <= 0
@@ -2217,6 +2258,7 @@ if (
     'SMOOTHNESS_MAXIMUM_ANIMATION_DELTA_TIME_SECONDS must be positive',
   );
 }
+
 if (
   !Number.isInteger(DEPTH_GESTURE_TARGET_ROWS) ||
   DEPTH_GESTURE_TARGET_ROWS < 1_000 ||
@@ -2226,6 +2268,7 @@ if (
     'SMOOTHNESS_DEPTH_GESTURE_ROWS must be an integer from 1000 to 5000',
   );
 }
+
 const depthCheckpointRequested =
   CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS.length === 0 &&
   SURFACES.includes('editor') &&
@@ -2236,6 +2279,7 @@ const depthCheckpointRequested =
     (fixtureLineCount) =>
       fixtureLineCount >= DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES,
   );
+
 if (
   depthCheckpointRequested &&
   (!Number.isFinite(DEPTH_REFERENCE_FRAMES_PER_SECOND) ||
@@ -2245,10 +2289,13 @@ if (
     'SMOOTHNESS_DEPTH_REFERENCE_FPS must name the measured 100k top FPS',
   );
 }
+
 const foldDensePositiveControl = foldDenseFixtureLines(101);
+
 const parsedFoldDensePositiveControl = JSON.parse(
   foldDensePositiveControl.join('\n'),
 ) as unknown;
+
 if (
   foldDensePositiveControl.length !== 101 ||
   typeof parsedFoldDensePositiveControl !== 'object' ||
@@ -2257,37 +2304,49 @@ if (
 ) {
   throw new Error('fold-dense fixture positive control failed');
 }
+
 const depthCheckpointFloorPositiveControl = proveDepthCheckpointFloorCanFail();
+
 console.error(
   `depth-floor positive control RED (expected): ` +
     depthCheckpointFloorPositiveControl,
 );
+
 const editorScaleInvariancePositiveControl =
   proveEditorScaleInvarianceCanFail();
+
 console.error(
   `scale-invariance positive control RED (expected): ` +
     editorScaleInvariancePositiveControl,
 );
+
 const continuousInputCoalescingPositiveControl =
   proveContinuousInputCoalescingCanFail();
+
 console.error(
   `rapid-input coalescing positive control RED (expected): ` +
     continuousInputCoalescingPositiveControl,
 );
+
 const continuousInputScaleTravelPositiveControl =
   proveContinuousInputScaleTravelCanFail();
+
 console.error(
   `rapid-input scale-travel positive control RED (expected): ` +
     continuousInputScaleTravelPositiveControl,
 );
+
 const continuationBoundaryPositiveControl = proveContinuationBoundaryCanFail();
+
 console.error(
   `live-glide continuation positive control RED (expected): ` +
     continuationBoundaryPositiveControl,
 );
 
 const measurementRunStartMilliseconds = performance.now();
+
 const surfaceMeasurements: SurfaceMeasurement[] = [];
+
 for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
   for (const fixtureShape of FIXTURE_SHAPES) {
     for (const codeFolding of CODE_FOLDING_MODES) {
@@ -2341,19 +2400,24 @@ for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
 
 const wallClockMilliseconds =
   performance.now() - measurementRunStartMilliseconds;
+
 const depthCheckpointWallClockMilliseconds = surfaceMeasurements.reduce(
   (sum, measurement) => sum + measurement.depthCheckpointWallClockMilliseconds,
   0,
 );
+
 const editorScaleInvariance = measureEditorScaleInvariance(surfaceMeasurements);
+
 const continuousInputCoalescingFailureMessage =
   continuousInputCoalescingFailure(surfaceMeasurements);
+
 if (
   CONTINUOUS_INPUT_COALESCING_REQUIRED &&
   continuousInputCoalescingFailureMessage
 ) {
   throw new Error(continuousInputCoalescingFailureMessage);
 }
+
 if (editorScaleInvariance) {
   console.error(
     `scale-invariance counts: ` +
@@ -2384,6 +2448,7 @@ if (editorScaleInvariance) {
     );
   }
 }
+
 const report = {
   commit: (
     await Bun.$`git -C ${APPLICATION_REPOSITORY_ROOT} rev-parse --short HEAD`
@@ -2434,4 +2499,5 @@ const report = {
       : 0,
   cases: surfaceMeasurements,
 };
+
 console.log(JSON.stringify(report, null, 2));

@@ -1,9 +1,9 @@
-import type { FindBarTarget } from "../search/FindBar";
-import type { FindInBufferMatch } from "../search/FindInBuffer";
-import { Clipboard } from "../system/Clipboard";
-import { Cursor } from "./Cursor";
-import { EditorCoordinates } from "./EditorCoordinates";
-import { TextDocument } from "./TextDocument";
+import type { FindBarTarget } from '../search/FindBar';
+import type { FindInBufferMatch } from '../search/FindInBuffer';
+import { Clipboard } from '../system/Clipboard';
+import { Cursor } from './Cursor';
+import { EditorCoordinates } from './EditorCoordinates';
+import { TextDocument } from './TextDocument';
 
 // The shared model for text surfaces whose generator is document reading, cursor selection,
 // clipboard copy, and find-target exposure. Editing, undo, persistence, and viewport behavior live
@@ -32,7 +32,7 @@ class $ReadOnlyTextBuffer {
   }
 
   replaceText(text: string): void {
-    this.document.replaceAll(text.split("\n"));
+    this.document.replaceAll(text.split('\n'));
     this.cursor.clearSelection();
   }
 
@@ -48,7 +48,7 @@ class $ReadOnlyTextBuffer {
     const selectionRange = this.cursor.selectionRange();
     return selectionRange
       ? this.document.sliceRange(selectionRange.start, selectionRange.end)
-      : "";
+      : '';
   }
 
   selectAll(): void {
@@ -120,7 +120,7 @@ class $ReadOnlyTextBuffer {
   }
 
   dispose(): void {
-    this.document.loadFromText("", "");
+    this.document.loadFromText('', '');
     this.cursor.set(0, 0);
     this.cursor.clearSelection();
   }

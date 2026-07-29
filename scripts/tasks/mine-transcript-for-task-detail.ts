@@ -23,8 +23,11 @@ import { createInterface } from 'node:readline';
 
 const transcriptPath =
   '/home/parallels/.claude/projects/-home-parallels-dev-ibr/faf7e858-c256-4735-9bbd-ba8dca8023dd.jsonl';
+
 const outputDirectory = process.argv[2];
+
 const wantedNumbers = new Set(process.argv.slice(3));
+
 mkdirSync(outputDirectory, { recursive: true });
 
 interface Passage {
@@ -33,9 +36,11 @@ interface Passage {
 }
 
 const passagesByNumber = new Map<string, Map<string, Passage>>();
+
 for (const number of wantedNumbers) passagesByNumber.set(number, new Map());
 
 let linesRead = 0;
+
 let parseFailures = 0;
 
 function collectText(content: unknown, sink: string[]): void {
@@ -129,7 +134,9 @@ for await (const line of readline) {
 }
 
 let tasksWithEvidence = 0;
+
 const empty: string[] = [];
+
 for (const [number, passages] of [...passagesByNumber].sort(
   (left, right) => Number(left[0]) - Number(right[0]),
 )) {
@@ -155,7 +162,9 @@ for (const [number, passages] of [...passagesByNumber].sort(
 }
 
 console.log(`lines read ${linesRead}, parse failures ${parseFailures}`);
+
 console.log(
   `evidence for ${tasksWithEvidence}/${wantedNumbers.size} task numbers`,
 );
+
 console.log(`NO EVIDENCE (${empty.length}): ${empty.join(' ')}`);

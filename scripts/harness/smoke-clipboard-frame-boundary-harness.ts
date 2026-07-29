@@ -17,11 +17,15 @@ import { PtyTestDriver } from './PtyTestDriver';
 import type { ClipboardEmission } from './TerminalOutputAudit';
 
 const activeCopyRunCount = 5;
+
 const idleCopyRunCount = 5;
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-clipboard-boundary-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(process.cwd(), 'fixtures'),
   columns: 110,

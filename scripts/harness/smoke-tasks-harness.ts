@@ -127,11 +127,17 @@ async function awaitTaskStatus(
 const workspaceRoot = mkdtempSync(
   join(tmpdir(), 'invar-tasks-harness-workspace-'),
 );
+
 const visualStudioCodeDirectory = join(workspaceRoot, '.vscode');
+
 const invarDirectory = join(workspaceRoot, '.invar');
+
 mkdirSync(visualStudioCodeDirectory);
+
 mkdirSync(invarDirectory);
+
 await Bun.write(join(workspaceRoot, 'small.txt'), 'small\n');
+
 await Bun.write(
   join(visualStudioCodeDirectory, 'tasks.json'),
   taskConfiguration([
@@ -141,6 +147,7 @@ await Bun.write(
 );
 
 const homeDirectories: string[] = [];
+
 let driver: PtyTestDriver.Model | null = null;
 
 async function nextDriver(environment: Record<string, string> = {}): Promise<{

@@ -194,20 +194,31 @@ function createMockClaudeExecutable(binaryDirectory: string): string {
 }
 
 const repositoryRoot = process.cwd();
+
 const temporaryDirectory = mkdtempSync(
   join(tmpdir(), 'tui-agent-cancel-harness-'),
 );
+
 const homeDirectory = join(temporaryDirectory, 'home');
+
 const binaryDirectory = join(temporaryDirectory, 'bin');
+
 const workspaceDirectory = join(temporaryDirectory, 'workspace');
+
 const statusPath = join(temporaryDirectory, 'status.json');
+
 const promptLogPath = join(temporaryDirectory, 'prompts.jsonl');
+
 const processLogPath = join(temporaryDirectory, 'processes.jsonl');
+
 mkdirSync(homeDirectory, { recursive: true });
+
 mkdirSync(binaryDirectory, { recursive: true });
+
 mkdirSync(join(workspaceDirectory, '.claude', 'skills', 'resolver-smoke'), {
   recursive: true,
 });
+
 writeFileSync(
   join(workspaceDirectory, '.claude', 'skills', 'resolver-smoke', 'SKILL.md'),
   [
@@ -220,8 +231,11 @@ writeFileSync(
     '',
   ].join('\n'),
 );
+
 createMockClaudeExecutable(binaryDirectory);
+
 appendFileSync(promptLogPath, '');
+
 appendFileSync(processLogPath, '');
 
 const driver = new PtyTestDriver.Class({

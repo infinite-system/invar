@@ -1,4 +1,5 @@
 import { Static } from 'ivue/extras';
+
 class $OverlayCoordinator {
   protected get OverlayCoordinator() {
     return OverlayCoordinator.Class as unknown as typeof $OverlayCoordinator;
@@ -33,11 +34,13 @@ class $OverlayCoordinator {
     openOverlay();
   }
 }
+
 export namespace OverlayCoordinator {
   export const $Class = Static($OverlayCoordinator);
   export let Class = $Class;
   export type Instance = InstanceType<typeof Class>;
 }
+
 // The single modal slot for every input-capturing overlay. Overlay models keep their own focused
 // state, while this coordinator owns the cross-overlay rule: opening one closes every sibling first.
 //
@@ -51,6 +54,7 @@ export type ExclusiveOverlayName =
   | 'boundedListPopup'
   | 'completionPopup'
   | 'shortcutHelp';
+
 export type ExclusiveOverlayCloseActions = Readonly<
   Record<ExclusiveOverlayName, () => void>
 >;

@@ -15,6 +15,7 @@
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+
 class $WrapText {
   protected static cellWidthOf(cluster: string): number {
     return cluster === '\t'
@@ -171,10 +172,12 @@ class $WrapText {
     return prefix;
   }
 }
+
 export namespace WrapText {
   export const $Class = Static($WrapText);
   export let Class = $Class;
 }
+
 /** One wrapped visual row, with the geometry that generated it. */
 export interface WrapSegment {
   /** The row's text (whole grapheme clusters). */
@@ -190,6 +193,7 @@ export interface WrapSegment {
   /** Display cells this row occupies. */
   readonly displayWidth: number;
 }
+
 /** A caret/selection position in wrapped visual space: row index + DISPLAY-CELL column. */
 export interface VisualPosition {
   readonly line: number;

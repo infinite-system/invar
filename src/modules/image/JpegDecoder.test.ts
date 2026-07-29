@@ -9,7 +9,11 @@ import { encode as encodeJpeg } from 'jpeg-js';
 import { JpegDecoder } from './JpegDecoder';
 
 /** Encode a solid-colour-bands RGBA frame as a JPEG at high quality (small loss, big tolerance). */
-function encodeBandsJpeg(width: number, height: number, bands: [number, number, number][]): Uint8Array {
+function encodeBandsJpeg(
+  width: number,
+  height: number,
+  bands: [number, number, number][],
+): Uint8Array {
   const frame = new Uint8Array(width * height * 4);
   const bandHeight = height / bands.length;
   for (let y = 0; y < height; y++) {
@@ -82,13 +86,19 @@ describe('JpegDecoder', () => {
     expect(bottomBand[2]).toBeGreaterThan(255 - tolerance);
     expect(bottomBand[0]).toBeLessThan(tolerance);
     // Every fourth byte is alpha and must be fully opaque (formatAsRGBA straight-alpha contract).
-    for (let alphaOffset = 3; alphaOffset < image.rgba.length; alphaOffset += 400) {
+    for (
+      let alphaOffset = 3;
+      alphaOffset < image.rgba.length;
+      alphaOffset += 400
+    ) {
       expect(image.rgba[alphaOffset]).toBe(255);
     }
   });
 
   test('undecodable bytes throw a clear Error instead of crashing', () => {
-    const notAJpeg = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01, 0x02, 0x03]);
+    const notAJpeg = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x00, 0x01, 0x02, 0x03,
+    ]);
     expect(() => JpegDecoder.Class.decode(notAJpeg)).toThrow();
   });
 });

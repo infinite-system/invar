@@ -16,6 +16,7 @@ import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { TabStrip } from './TabStrip';
 import { Breadcrumb, type BreadcrumbPathSegment } from './Breadcrumb';
+
 class $TabBarRenderer {
   protected static get WORKSPACE_TAB_MAX_LABEL_WIDTH() {
     return 18;
@@ -611,10 +612,12 @@ class $TabBarRenderer {
     return { text: new StyledText(chunks), segments };
   }
 }
+
 export namespace TabBarRenderer {
   export const $Class = Static($TabBarRenderer);
   export let Class = $Class;
 }
+
 export type WorkspaceTabBarSegment = {
   kind: 'tab' | 'panBackward' | 'panForward' | 'add';
   workspaceIndex: number;
@@ -623,10 +626,12 @@ export type WorkspaceTabBarSegment = {
   closePrimaryCoordinate?: number;
   closeCrossAxisCoordinate?: number;
 };
+
 export type WorkspaceTabBarHover = {
   kind: 'tab' | 'close' | 'panBackward' | 'panForward' | 'add';
   workspaceIndex: number;
 } | null;
+
 export type TabBarSegment =
   | {
       kind: 'tab';
@@ -646,10 +651,12 @@ export type TabBarSegment =
       start: number;
       end: number;
     };
+
 export type TabBarHover = {
   kind: 'tab' | 'close' | 'titleAction' | 'arrowLeft' | 'arrowRight' | 'badge';
   index: number;
 } | null;
+
 export interface WorkspaceTabBarRenderContext {
   strip: TabStrip.Instance;
   palette: Palette;
@@ -662,6 +669,7 @@ export interface WorkspaceTabBarRenderContext {
   rendererWidth: number;
   rendererHeight: number;
 }
+
 export interface BufferTabBarRenderContext {
   strip: TabStrip.Instance;
   palette: Palette;
@@ -688,16 +696,19 @@ export interface EditorTitleAction {
   readonly icon: string;
   readonly toggled: boolean;
 }
+
 export interface WorkspaceTabBarRender {
   text: StyledText;
   segments: WorkspaceTabBarSegment[];
   revealedIndex: number;
 }
+
 export interface BufferTabBarRender {
   text: StyledText;
   segments: TabBarSegment[];
   revealedIndex: number;
 }
+
 export interface BreadcrumbBarRenderContext {
   strip: TabStrip.Instance;
   palette: Palette;
@@ -710,10 +721,12 @@ export interface BreadcrumbBarRenderContext {
   canGoForward: boolean;
   hoveredSourceIndex: number | null;
 }
+
 export interface BreadcrumbBarSegment extends BreadcrumbPathSegment {
   start: number;
   end: number;
 }
+
 export interface BreadcrumbBarRender {
   text: StyledText;
   segments: BreadcrumbBarSegment[];

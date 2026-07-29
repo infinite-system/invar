@@ -3,6 +3,7 @@
 
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 import { Static } from 'ivue/extras';
+
 class $ScrollPhysics {
   /** Key repeats within this window continue an acceleration run; a gap resets it. */
   static readonly KEY_RUN_WINDOW_MS = 150;

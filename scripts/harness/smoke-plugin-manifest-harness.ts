@@ -46,14 +46,20 @@ async function selectSetting(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-plugin-manifest-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-plugin-manifest-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
   JSON.stringify({ 'inlineRewrite.enabled': true }),
 );
+
 await Bun.write(join(fixtureRoot, 'manifest.ts'), 'manifest-line\n');
+
 await Bun.write(
   join(fixtureRoot, 'tsconfig.json'),
   JSON.stringify({
@@ -66,6 +72,7 @@ await Bun.write(
     include: ['*.ts'],
   }),
 );
+
 await Bun.write(
   join(fixtureRoot, 'z-language.ts'),
   [
@@ -75,9 +82,13 @@ await Bun.write(
     '',
   ].join('\n'),
 );
+
 await Bun.write(join(fixtureRoot, '.hidden-marker'), 'hidden\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'manifest.ts']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.name=plugin-manifest-smoke',
@@ -87,6 +98,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'base',
 ]);
+
 await Bun.write(join(fixtureRoot, 'manifest.ts'), 'manifest-line\nchanged\n');
 
 const driver = new PtyTestDriver.Class({

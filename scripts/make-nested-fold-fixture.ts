@@ -27,6 +27,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const DEFAULT_LINE_COUNT = 500_000;
+
 const DEFAULT_OUTPUT_PATH =
   '/home/parallels/dev/tui-editor/tmp/invar-scale-test/nested.json';
 
@@ -90,7 +91,9 @@ const { lineCount: requestedLineCount, outputPath } = parseArguments(
 mkdirSync(dirname(outputPath), { recursive: true });
 
 const writer = Bun.file(outputPath).writer();
+
 let pendingLines: string[] = [];
+
 let emittedLineCount = 0;
 
 function emitLine(text: string): void {
@@ -141,12 +144,14 @@ function emitObject(
 // How many top-level groups fit the requested budget. Each group is a full subtree, so the file
 // lands on a whole number of groups rather than truncating mid-structure and emitting broken JSON.
 const groupLineCount = subtreeLineCount(0);
+
 const groupCount = Math.max(
   1,
   Math.round((requestedLineCount - 2) / groupLineCount),
 );
 
 emitLine('{');
+
 for (let group = 0; group < groupCount; group++) {
   emitObject(
     `group${String(group).padStart(4, '0')}`,
@@ -155,20 +160,28 @@ for (let group = 0; group < groupCount; group++) {
     group === groupCount - 1,
   );
 }
+
 emitLine('}');
 
 if (pendingLines.length > 0) writer.write(`${pendingLines.join('\n')}\n`);
+
 await writer.end();
 
 const byteCount = Bun.file(outputPath).size;
+
 const blockSize = 4096;
+
 console.log(`${outputPath}`);
+
 console.log(
   `  ${emittedLineCount.toLocaleString()} lines, ` +
     `${(byteCount / 1024 / 1024).toFixed(1)} MB, ${groupCount} top-level groups`,
 );
+
 console.log(`  nesting depth: ${CHILDREN_PER_LEVEL.length + 1} object levels`);
+
 console.log('  FOLD REGION SIZE BY LEVEL (the point of this fixture):');
+
 for (let level = 0; level <= CHILDREN_PER_LEVEL.length; level++) {
   const regionLineCount = subtreeLineCount(level);
   const blockSpan = regionLineCount / blockSize;

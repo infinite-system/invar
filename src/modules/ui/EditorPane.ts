@@ -28,6 +28,7 @@ import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { FindBar } from '../search/FindBar';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
+
 class $EditorPane {
   // View geometry of the last-rendered frame in both wrap modes: the visual rows the window showed,
   // written by renderEditor and read by the caret block, applySelection, and the mouse hit-test — so
@@ -515,11 +516,13 @@ class $EditorPane {
     gutterBody.onMouseOut = () => tooltip.clear();
   }
 }
+
 export namespace EditorPane {
   export const $Class = $EditorPane;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 export interface EditorPaneDeps {
   renderer: CliRenderer;
   editorArea: BoxRenderable;

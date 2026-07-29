@@ -22,9 +22,7 @@ test('the preferred TypeScript server resolves before its fallback', async () =>
     command: '/tools/typescript-language-server',
     args: ['--stdio'],
   });
-  expect(provider.executableLookups).toEqual([
-    'typescript-language-server',
-  ]);
+  expect(provider.executableLookups).toEqual(['typescript-language-server']);
 });
 
 test('supported paths use the TypeScript and JavaScript extension set', () => {

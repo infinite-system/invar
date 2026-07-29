@@ -14,16 +14,22 @@ import { PtyTestDriver } from './PtyTestDriver';
 const fixtureRoot = mkdtempSync(
   join(tmpdir(), 'tui-navigation-history-harness-'),
 );
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-navigation-history-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const alphaPath = join(fixtureRoot, 'alpha.ts');
+
 const betaPath = join(fixtureRoot, 'beta.ts');
+
 await Bun.write(
   alphaPath,
   'alpha one\nalpha two\nalpha three\nalpha four\nalpha five\n',
 );
+
 await Bun.write(
   betaPath,
   'beta one\nbeta two\nbeta three\nbeta four\nbeta five\n',

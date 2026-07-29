@@ -247,15 +247,19 @@ function cellAttributeSignature(
 const fixtureRoot = mkdtempSync(
   join(tmpdir(), 'tui-bounded-list-popup-harness-'),
 );
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-bounded-list-popup-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const uniformTreeFileNames = [
   'a-ordinary.txt',
   'b-picture.png',
   'bun.lock',
 ] as const;
+
 const totalFixtureBufferCount = 103;
 
 for (let fileNumber = 1; fileNumber <= 100; fileNumber++) {
@@ -265,11 +269,15 @@ for (let fileNumber = 1; fileNumber <= 100; fileNumber++) {
     `buffer ${paddedFileNumber}\n`,
   );
 }
+
 for (const fileName of uniformTreeFileNames) {
   await Bun.write(join(fixtureRoot, fileName), `${fileName}\n`);
 }
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q', '-b', 'main']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.email=a@b.c',
@@ -280,6 +288,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-m',
   'popup fixture root',
 ]);
+
 for (let branchNumber = 1; branchNumber <= 30; branchNumber++) {
   HarnessSmoke.Class.runGit(fixtureRoot, [
     'branch',

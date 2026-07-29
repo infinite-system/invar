@@ -27,7 +27,8 @@ test('client positions cross to the server as UTF-16 and server ranges map back 
     await flush();
 
     const request = fake.received.find(
-      (message) => 'method' in message && message.method === 'textDocument/hover',
+      (message) =>
+        'method' in message && message.method === 'textDocument/hover',
     ) as { params: { position: { character: number } } } | undefined;
     // Grapheme column 1 -> UTF-16 character 2 (past the surrogate pair), not 1.
     expect(request?.params.position.character).toBe(2);
@@ -45,7 +46,10 @@ test('multi-code-point graphemes (ZWJ emoji) convert by grapheme boundaries, not
   fake.responders.set('textDocument/hover', () => ({
     contents: 'x',
     // UTF-16 range covering `ab` after the ZWJ family emoji (8 UTF-16 units, 5 code points, 1 grapheme).
-    range: { start: { line: 0, character: 8 }, end: { line: 0, character: 10 } },
+    range: {
+      start: { line: 0, character: 8 },
+      end: { line: 0, character: 10 },
+    },
   }));
   const client = new LanguageClient.Class({
     rootPath: ROOT,
@@ -62,7 +66,8 @@ test('multi-code-point graphemes (ZWJ emoji) convert by grapheme boundaries, not
     await flush();
 
     const request = fake.received.find(
-      (message) => 'method' in message && message.method === 'textDocument/hover',
+      (message) =>
+        'method' in message && message.method === 'textDocument/hover',
     ) as { params: { position: { character: number } } } | undefined;
     expect(request?.params.position.character).toBe(8);
 

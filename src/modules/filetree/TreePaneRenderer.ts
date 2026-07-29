@@ -15,6 +15,7 @@ import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { FileTree } from './FileTree';
+
 class $TreePaneRenderer {
   public static render(context: TreePaneRenderContext): StyledText {
     const { tree, palette, filesFocused, innerWidth, viewportWidth } = context;
@@ -61,10 +62,12 @@ class $TreePaneRenderer {
     return new StyledText(chunks);
   }
 }
+
 export namespace TreePaneRenderer {
   export const $Class = Static($TreePaneRenderer);
   export let Class = $Class;
 }
+
 export interface TreePaneRenderContext {
   /** The active workspace's file-tree model (rows + selection/hover/scroll state). */
   tree: FileTree.Instance;

@@ -179,15 +179,22 @@ async function observeTerminalScrollStateRemainsUnchangedFor(
 }
 
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-harness-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const childInputPath = join(homeDirectory, 'wheel-input.bin');
+
 const childScriptPath = join(homeDirectory, 'wheel-child.py');
+
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
+
 mkdirSync(settingsDirectory, { recursive: true });
+
 await Bun.write(
   join(settingsDirectory, 'settings.json'),
   '{"glyphMode":"unicode"}\n',
 );
+
 await Bun.write(
   childScriptPath,
   [
@@ -210,6 +217,7 @@ await Bun.write(
 );
 
 console.log('== harness terminal: deterministic emulator and panel tests ==');
+
 const unitResult = Bun.spawnSync(
   [
     process.execPath,
@@ -219,6 +227,7 @@ const unitResult = Bun.spawnSync(
   ],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
+
 HarnessSmoke.Class.requireCondition(
   unitResult.exitCode === 0,
   'terminal core and PanelHost unit tests',

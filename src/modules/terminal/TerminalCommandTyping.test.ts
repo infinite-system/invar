@@ -3,7 +3,11 @@ import { TerminalCommandTyping } from './TerminalCommandTyping';
 
 test('higher typing speed shortens the total duration', () => {
   const command = 'printf terminal';
-  const graphemes = TerminalCommandTyping.Class.plan(command, 10, () => 0.5).graphemes;
+  const graphemes = TerminalCommandTyping.Class.plan(
+    command,
+    10,
+    () => 0.5,
+  ).graphemes;
   const slow = TerminalCommandTyping.Class.delays(graphemes, 10, () => 0.5);
   const fast = TerminalCommandTyping.Class.delays(graphemes, 100, () => 0.5);
   expect(fast.reduce((sum, delay) => sum + delay, 0)).toBeLessThan(
@@ -26,7 +30,9 @@ test('cadence includes deterministic human-like jitter without changing the cap'
     2,
     () => randomValues[randomIndex++ % randomValues.length]!,
   );
-  expect(new Set(delays.map((delay) => delay.toFixed(3))).size).toBeGreaterThan(1);
+  expect(new Set(delays.map((delay) => delay.toFixed(3))).size).toBeGreaterThan(
+    1,
+  );
   expect(delays.reduce((sum, delay) => sum + delay, 0)).toBeCloseTo(1_500, 6);
 });
 

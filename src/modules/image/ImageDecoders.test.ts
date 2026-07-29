@@ -8,10 +8,26 @@ import { ImageDecoders, type DecodedImage } from './ImageDecoders';
 
 describe('ImageDecoders', () => {
   test('supports exactly the registered raster extensions, case-insensitively', () => {
-    for (const extension of ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.Jpeg']) {
+    for (const extension of [
+      '.png',
+      '.jpg',
+      '.jpeg',
+      '.PNG',
+      '.JPG',
+      '.Jpeg',
+    ]) {
       expect(ImageDecoders.Class.supports(extension)).toBe(true);
     }
-    for (const extension of ['.gif', '.bmp', '.webp', '.ts', '.md', '.bin', '', 'png']) {
+    for (const extension of [
+      '.gif',
+      '.bmp',
+      '.webp',
+      '.ts',
+      '.md',
+      '.bin',
+      '',
+      'png',
+    ]) {
       expect(ImageDecoders.Class.supports(extension)).toBe(false);
     }
   });
@@ -31,7 +47,9 @@ describe('ImageDecoders', () => {
       frame[offset + 2] = 40;
       frame[offset + 3] = 255;
     }
-    const jpegBytes = new Uint8Array(encodeJpeg({ data: frame, width, height }, 95).data);
+    const jpegBytes = new Uint8Array(
+      encodeJpeg({ data: frame, width, height }, 95).data,
+    );
     for (const extension of ['.jpg', '.JPEG']) {
       const decoder = ImageDecoders.Class.decoderFor(extension);
       expect(decoder).not.toBeNull();
@@ -71,7 +89,10 @@ describe('ImageDecoders', () => {
     expect(pngDecoder).not.toBeNull();
     expect(jpegDecoder).not.toBeNull();
     const jpegBytes = new Uint8Array(
-      encodeJpeg({ data: new Uint8Array(4 * 4 * 4).fill(255), width: 4, height: 4 }, 95).data,
+      encodeJpeg(
+        { data: new Uint8Array(4 * 4 * 4).fill(255), width: 4, height: 4 },
+        95,
+      ).data,
     );
     expect(() => pngDecoder!(jpegBytes)).toThrow();
     const pngSignatureOnly = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);

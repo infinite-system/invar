@@ -5,6 +5,7 @@ import { Highlighter, type LangId } from './Highlighter';
 
 const roles = (line: string, language: LangId) =>
   Highlighter.Class.highlightLine(line, language).map((span) => span.role);
+
 const textOf = (line: string, language: LangId) =>
   Highlighter.Class.highlightLine(line, language)
     .map((span) => span.text)

@@ -20,7 +20,9 @@ interface SessionMeasurement {
 }
 
 const repositoryRoot = process.cwd();
+
 const measurementSessionCount = Number(process.env.LATENCY_SESSION_COUNT ?? 5);
+
 if (measurementSessionCount !== 5) {
   throw new Error(
     `The merge-gate contract requires exactly 5 sessions, received ${measurementSessionCount}`,
@@ -30,10 +32,12 @@ if (measurementSessionCount !== 5) {
 const baseline = readBaseline(
   join(repositoryRoot, 'project.performance-baselines.md'),
 );
+
 const effectiveBaselineP50Milliseconds =
   process.env.INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS === undefined
     ? baseline.p50Milliseconds
     : Number(process.env.INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS);
+
 if (!Number.isFinite(effectiveBaselineP50Milliseconds)) {
   throw new Error('Input-byte-flush baseline override must be a finite number');
 }
@@ -100,15 +104,20 @@ function measureFiveSessionMedians(passLabel: string): {
 }
 
 const { p50Milliseconds, p95Milliseconds } = measureFiveSessionMedians('');
+
 const warningThresholdMilliseconds =
   effectiveBaselineP50Milliseconds * baseline.warningMultiplier;
+
 const commitSha = gitHeadSha(repositoryRoot);
+
 const historyPath = join(
   repositoryRoot,
   '.perf-history',
   'input-byte-flush.ndjson',
 );
+
 mkdirSync(dirname(historyPath), { recursive: true });
+
 appendFileSync(
   historyPath,
   `${JSON.stringify({
@@ -124,16 +133,19 @@ console.log(
   `input-byte-flush-gate: p50 ${p50Milliseconds.toFixed(3)} ms, ` +
     `p95 ${p95Milliseconds.toFixed(3)} ms, boundary ${baseline.boundary}`,
 );
+
 console.log(
   `  reviewed baseline p50 ${effectiveBaselineP50Milliseconds.toFixed(3)} ms; ` +
     `WARN > ${warningThresholdMilliseconds.toFixed(3)} ms ` +
     `(report-only)`,
 );
+
 console.log(
   `  history appended: .perf-history/input-byte-flush.ndjson (${commitSha})`,
 );
 
 reportHistoryTrend(historyPath, baseline);
+
 if (p50Milliseconds > warningThresholdMilliseconds) {
   console.warn(
     `input-byte-flush-gate: WARN p50 ${p50Milliseconds.toFixed(3)} ms exceeds ` +

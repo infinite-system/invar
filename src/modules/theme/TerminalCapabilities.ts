@@ -101,9 +101,12 @@ export namespace TerminalCapabilities {
 }
 
 export type ColorDepth = 'truecolor' | '256' | '16';
+
 export type GlyphLevel = 'nerd' | 'unicode' | 'ascii';
+
 /** How the image preview reaches the screen, richest first. */
 export type GraphicsTier = 'kitty' | 'sixel' | 'halfblock';
+
 /** The persisted declaration; `auto` keeps live terminal-capability detection active. */
 export type GraphicsTierSetting = 'auto' | GraphicsTier;
 

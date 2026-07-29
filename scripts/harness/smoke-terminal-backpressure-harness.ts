@@ -14,14 +14,18 @@ import { PtyTestDriver } from './PtyTestDriver';
 const fixtureRoot = mkdtempSync(
   join(tmpdir(), 'tui-terminal-backpressure-harness-'),
 );
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-terminal-backpressure-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const stoppedChildIdentifierPath = join(
   homeDirectory,
   'stopped-terminal-child.pid',
 );
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,
@@ -31,6 +35,7 @@ const driver = new PtyTestDriver.Class({
     TUI_STATUS_PATH: statusPath,
   },
 });
+
 let stoppedChildProcessIdentifier = 0;
 
 try {

@@ -47,9 +47,13 @@ interface DiffOverviewRulerGeometry {
 }
 
 const modifiedColor = 0x6183bb;
+
 const addedColor = 0x41a6b5;
+
 const deletedColor = 0xdb4b4b;
+
 const selectionColor = 0x2b2f41;
+
 const diffGlyphVocabulary =
   ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
 
@@ -204,24 +208,34 @@ function selectedText(status: StatusSnapshot, currentText: string): string {
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-diff-overview-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-diff-overview-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
   JSON.stringify({ glyphMode: 'unicode' }),
 );
+
 const currentPath = join(fixtureRoot, 'long.txt');
+
 const originalLines = Array.from(
   { length: 120 },
   (_unused, lineIndex) =>
     `line ${String(lineIndex + 1).padStart(3, '0')} original content for selection`,
 );
+
 await Bun.write(currentPath, `${originalLines.join('\n')}\n`);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'long.txt']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.email=diff-overview@example.test',
@@ -231,10 +245,15 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'fixture',
 ]);
+
 const changedLines = [...originalLines];
+
 changedLines[4] = changedLines[4]?.replace('original', 'modified') ?? '';
+
 changedLines.splice(60, 0, 'line 060 added content for overview');
+
 changedLines.splice(115, 1);
+
 await Bun.write(currentPath, `${changedLines.join('\n')}\n`);
 
 const driver = new PtyTestDriver.Class({

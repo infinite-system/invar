@@ -2,6 +2,7 @@ import { test, expect } from 'bun:test';
 import { GitParsers } from './GitParsers';
 
 const LOG_FIELD_SEPARATOR = '\x1f';
+
 const LOG_RECORD_SEPARATOR = '\x1e';
 
 test('name-status parser yields one status letter + path per line', () => {

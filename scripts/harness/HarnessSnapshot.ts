@@ -24,8 +24,9 @@ class $HarnessSnapshot {
   ) {}
 
   cell(row: number, column: number): HarnessSnapshotCell | null {
-    if (row < 0 || row >= this.rows || column < 0 || column >= this.columns) return null;
-    return this.copiedCells[(row * this.columns) + column] ?? null;
+    if (row < 0 || row >= this.rows || column < 0 || column >= this.columns)
+      return null;
+    return this.copiedCells[row * this.columns + column] ?? null;
   }
 
   rowCells(row: number): ReadonlyArray<HarnessSnapshotCell> {
@@ -35,11 +36,15 @@ class $HarnessSnapshot {
   }
 
   rowText(row: number): string {
-    return this.rowCells(row).map((cell) => cell.characters).join('');
+    return this.rowCells(row)
+      .map((cell) => cell.characters)
+      .join('');
   }
 
   textRows(): string[] {
-    return Array.from({ length: this.rows }, (_unused, row) => this.rowText(row));
+    return Array.from({ length: this.rows }, (_unused, row) =>
+      this.rowText(row),
+    );
   }
 
   text(): string {

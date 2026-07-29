@@ -12,7 +12,9 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-find-harness-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-find-harness-home-'));
+
 await Bun.write(
   join(fixtureRoot, 'code.txt'),
   'alpha\nbeta TARGET\ngamma\ndelta TARGET here\nepsilon TARGET end\n',

@@ -56,9 +56,7 @@ class $ImagePreview {
     const text =
       'error' in outcome
         ? new StyledText([
-            fg(errorColor)(
-              `  Cannot preview this image — ${outcome.error}`,
-            ),
+            fg(errorColor)(`  Cannot preview this image — ${outcome.error}`),
           ])
         : this.HalfBlockRenderer.render({
             image: outcome.image,
@@ -79,7 +77,8 @@ class $ImagePreview {
   }
 
   protected decode(path: string): DecodeOutcome {
-    if (path === this.decodedPath && this.decodeOutcome) return this.decodeOutcome;
+    if (path === this.decodedPath && this.decodeOutcome)
+      return this.decodeOutcome;
     let outcome: DecodeOutcome;
     try {
       const extension = this.Files.extname(path).toLowerCase();
@@ -90,7 +89,9 @@ class $ImagePreview {
       const bytes = this.Files.readBytes(path);
       outcome = { image: decoder(new Uint8Array(bytes)) };
     } catch (error) {
-      outcome = { error: error instanceof Error ? error.message : String(error) };
+      outcome = {
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
     this.decodedPath = path;
     this.decodeOutcome = outcome;
@@ -105,9 +106,7 @@ export namespace ImagePreview {
 }
 
 /** A decoded image, or the error captured while decoding it (so the friendly message is stable). */
-export type DecodeOutcome =
-  | { image: DecodedImage }
-  | { error: string };
+export type DecodeOutcome = { image: DecodedImage } | { error: string };
 
 export interface ImagePreviewFiles {
   extname(path: string): string;

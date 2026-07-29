@@ -7,14 +7,26 @@ import { describe, test, expect } from 'bun:test';
 import { SixelEncoder } from './SixelEncoder';
 import type { DecodedImage } from './ImageDecoders';
 
-function imageFromPixels(width: number, height: number, pixels: [number, number, number, number][]): DecodedImage {
+function imageFromPixels(
+  width: number,
+  height: number,
+  pixels: [number, number, number, number][],
+): DecodedImage {
   const rgba = new Uint8Array(width * height * 4);
   pixels.forEach((pixel, pixelIndex) => rgba.set(pixel, pixelIndex * 4));
   return { width, height, rgba };
 }
 
-function solidImage(width: number, height: number, pixel: [number, number, number, number]): DecodedImage {
-  return imageFromPixels(width, height, Array.from({ length: width * height }, () => pixel));
+function solidImage(
+  width: number,
+  height: number,
+  pixel: [number, number, number, number],
+): DecodedImage {
+  return imageFromPixels(
+    width,
+    height,
+    Array.from({ length: width * height }, () => pixel),
+  );
 }
 
 describe('SixelEncoder', () => {
@@ -34,7 +46,8 @@ describe('SixelEncoder', () => {
     // Blue 0,0,255 → register 5; red → 180. Registers emit sorted; runs of 2 stay literal.
     const pixels: [number, number, number, number][] = [];
     for (let y = 0; y < 6; y++) {
-      for (let x = 0; x < 4; x++) pixels.push(x < 2 ? [255, 0, 0, 255] : [0, 0, 255, 255]);
+      for (let x = 0; x < 4; x++)
+        pixels.push(x < 2 ? [255, 0, 0, 255] : [0, 0, 255, 255]);
     }
     const emitted = SixelEncoder.Class.encode({
       image: imageFromPixels(4, 6, pixels),
@@ -42,7 +55,9 @@ describe('SixelEncoder', () => {
       pixelHeight: 6,
       background: [0, 0, 0],
     });
-    expect(emitted).toBe('\x1bP0;1;0q"1;1;4;6#5;2;0;0;100#180;2;100;0;0#5??~~$#180~~??\x1b\\');
+    expect(emitted).toBe(
+      '\x1bP0;1;0q"1;1;4;6#5;2;0;0;100#180;2;100;0;0#5??~~$#180~~??\x1b\\',
+    );
   });
 
   test('golden: a height that is not a multiple of six clips the last band mask', () => {

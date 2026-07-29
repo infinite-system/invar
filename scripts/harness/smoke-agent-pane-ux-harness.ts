@@ -39,6 +39,7 @@ const thinkingWords = [
   'ineffable',
   'limit',
 ];
+
 const spinnerGlyphs = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'];
 
 interface Rectangle {
@@ -358,15 +359,20 @@ async function awaitIdle(
 }
 
 const repositoryRoot = process.cwd();
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-agent-pane-ux-harness-home-'),
 );
+
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
   JSON.stringify({ glyphMode: 'unicode' }),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(repositoryRoot, 'fixtures'),
   repositoryRoot,

@@ -38,10 +38,12 @@ function statusButtonColumn(
 }
 
 console.log('== harness panel-split: deterministic PanelHost split tests ==');
+
 const unitResult = Bun.spawnSync(
   [process.execPath, 'test', 'src/modules/ui/PanelHost.test.ts'],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
+
 HarnessSmoke.Class.requireCondition(
   unitResult.exitCode === 0,
   'PanelHost unit tests (split layout, focus routing, per-cell resize, divider re-flow)',
@@ -50,7 +52,9 @@ HarnessSmoke.Class.requireCondition(
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-panel-split-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(process.cwd(), 'fixtures'),
   columns: 120,
@@ -61,6 +65,7 @@ const driver = new PtyTestDriver.Class({
     INVAR_AGENT_BACKEND: 'echo',
   },
 });
+
 let restartDriver: PtyTestDriver.Model | null = null;
 
 try {

@@ -26,12 +26,17 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const loadedContent = 'alpha\nbeta\ngamma\n';
+
 const workspaceRoot = mkdtempSync(join(tmpdir(), 'tui-dirty-marker-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-dirty-marker-harness-home-'),
 );
+
 const documentPath = join(workspaceRoot, 'dirty-marker.txt');
+
 const statusPath = join(homeDirectory, 'status.json');
+
 await Bun.write(documentPath, loadedContent);
 
 const driver = new PtyTestDriver.Class({

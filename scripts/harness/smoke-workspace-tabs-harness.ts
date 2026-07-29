@@ -35,18 +35,29 @@ import { HarnessSmoke } from './HarnessSmoke';
 const fixtureParent = mkdtempSync(
   join(tmpdir(), 'tui-workspace-tabs-harness-'),
 );
+
 const firstRoot = join(fixtureParent, 'tiny-workspace-project');
+
 const secondRoot = join(fixtureParent, 'wide-workspace-project');
+
 mkdirSync(firstRoot);
+
 mkdirSync(secondRoot);
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-workspace-tabs-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const firstName = basename(firstRoot);
+
 const secondName = basename(secondRoot);
+
 const tinyTrackedDirectoryCount = 3;
+
 const wideTrackedDirectoryCount = 520;
+
 const ignoredPackageCount = 600;
 
 async function selectVisibleSetting(label: string): Promise<void> {
@@ -62,6 +73,7 @@ async function selectVisibleSetting(label: string): Promise<void> {
 }
 
 mkdirSync(join(firstRoot, 'tracked'), { recursive: true });
+
 for (
   let directoryIndex = 0;
   directoryIndex < tinyTrackedDirectoryCount;
@@ -69,19 +81,28 @@ for (
 ) {
   mkdirSync(join(firstRoot, 'tracked', `directory-${directoryIndex}`));
 }
+
 await Bun.write(join(firstRoot, 'FIRST_TREE_ONLY.txt'), 'first tree\n');
+
 await Bun.write(join(firstRoot, 'first-root-change.txt'), 'first committed\n');
+
 runGit(firstRoot, ['init', '-q']);
+
 runGit(firstRoot, ['config', 'user.email', 'first@example.invalid']);
+
 runGit(firstRoot, ['config', 'user.name', 'First']);
+
 runGit(firstRoot, ['add', '.']);
+
 runGit(firstRoot, ['commit', '-qm', 'first']);
+
 await Bun.write(
   join(firstRoot, 'first-root-change.txt'),
   'first committed\nfirst modified\n',
 );
 
 mkdirSync(join(secondRoot, 'tracked'), { recursive: true });
+
 for (
   let directoryIndex = 0;
   directoryIndex < wideTrackedDirectoryCount;
@@ -89,6 +110,7 @@ for (
 ) {
   mkdirSync(join(secondRoot, 'tracked', `directory-${directoryIndex}`));
 }
+
 for (
   let packageIndex = 0;
   packageIndex < ignoredPackageCount;
@@ -99,17 +121,26 @@ for (
     { recursive: true },
   );
 }
+
 await Bun.write(join(secondRoot, '.gitignore'), 'ignored-cache/\n');
+
 await Bun.write(join(secondRoot, 'SECOND_TREE_ONLY.txt'), 'second tree\n');
+
 await Bun.write(
   join(secondRoot, 'second-root-change.txt'),
   'second committed\n',
 );
+
 runGit(secondRoot, ['init', '-q']);
+
 runGit(secondRoot, ['config', 'user.email', 'second@example.invalid']);
+
 runGit(secondRoot, ['config', 'user.name', 'Second']);
+
 runGit(secondRoot, ['add', '.']);
+
 runGit(secondRoot, ['commit', '-qm', 'second']);
+
 await Bun.write(
   join(secondRoot, 'second-root-change.txt'),
   'second committed\nsecond modified\n',

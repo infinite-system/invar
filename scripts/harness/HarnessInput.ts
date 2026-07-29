@@ -5,6 +5,7 @@
 import { Static } from 'ivue/extras';
 
 export type HarnessMouseButton = 'left' | 'middle' | 'right' | 'none';
+
 export interface HarnessMouseClick {
   column: number;
   row: number;

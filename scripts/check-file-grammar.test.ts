@@ -132,6 +132,24 @@ describe('file grammar failure paths', () => {
     );
   });
 
+  test('rejects abutting top-level declarations', () => {
+    const checkerResult = runCheckerFixture('syntax', {
+      fileName: 'Example.ts',
+      sourceText: `
+class $Example {}
+export namespace Example {
+  export const $Class = $Example;
+  export let Class = $Example;
+}
+`,
+    });
+
+    expect(checkerResult.exitCode).toBe(1);
+    expect(checkerResult.combinedOutput).toContain(
+      '[top-level-declaration-spacing] top-level declarations must have one blank line between them',
+    );
+  });
+
   test('rejects declarations before the eponymous contract interface', () => {
     expectRule(
       [
@@ -399,6 +417,7 @@ describe('converted-module enforcement ratchet', () => {
 export interface Example {
   value: string;
 }
+
 function createExample(): Example {
   return { value: 'example' };
 }

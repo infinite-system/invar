@@ -111,7 +111,9 @@ test('hostile inline-code turns reach mock TTS in order with no internal tokens'
       (spokenText) => !/[\uE000-\uF8FF]/u.test(spokenText),
     ),
   ).toBe(true);
-  expect(session.transcript.filter((entry) => entry.role === 'system')).toEqual([]);
+  expect(session.transcript.filter((entry) => entry.role === 'system')).toEqual(
+    [],
+  );
 });
 
 test('a restore miss speaks original text and appends a transcript-visible warning', () => {
@@ -128,8 +130,8 @@ test('a restore miss speaks original text and appends a transcript-visible warni
   expect(textToSpeechBackend.spoken[0]).not.toMatch(/[\uE000-\uF8FF]/u);
   expect(
     session.transcript.some(
-      (entry) => entry.role === 'system'
-        && entry.text.includes('Narration warning'),
+      (entry) =>
+        entry.role === 'system' && entry.text.includes('Narration warning'),
     ),
   ).toBe(true);
 });

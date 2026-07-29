@@ -171,11 +171,15 @@ function createDriver(
 }
 
 const repositoryRoot = process.cwd();
+
 const fixtureRoot = join(repositoryRoot, 'fixtures');
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-agent-engine-harness-home-'),
 );
+
 const firstStatusPath = join(homeDirectory, 'claude-status.json');
+
 let driver = createDriver(
   repositoryRoot,
   fixtureRoot,

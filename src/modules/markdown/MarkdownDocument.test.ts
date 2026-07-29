@@ -57,6 +57,7 @@ class $TestDocument extends MarkdownDocument.$Class {
     return this.lastParser as unknown as MarkdownParser.Model;
   }
 }
+
 const TestDocument = Reactive($TestDocument);
 
 const createSource = (initialRevision = 1) => {

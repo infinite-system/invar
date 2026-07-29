@@ -15,6 +15,7 @@ const {
   moveByVisualRows,
   scrollTopToRevealCursor,
 } = EditorWrap.Class;
+
 import { EditorCoordinates } from './EditorCoordinates';
 import { TextDocument } from './TextDocument';
 import { Editor } from './Editor';

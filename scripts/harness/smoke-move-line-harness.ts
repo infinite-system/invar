@@ -54,13 +54,17 @@ const unitResult = Bun.spawnSync(
   [process.execPath, 'test', 'src/modules/editor/EditorMoveLine.test.ts'],
   { stdout: 'pipe', stderr: 'pipe' },
 );
+
 requireCondition(unitResult.exitCode === 0, 'move-line unit tests pass');
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-move-line-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-move-line-harness-home-'),
 );
+
 await Bun.write(join(fixtureRoot, 'sample.ts'), 'one\ntwo\nthree');
+
 runGit(fixtureRoot, ['init', '-q']);
 
 const driver = new PtyTestDriver.Class({

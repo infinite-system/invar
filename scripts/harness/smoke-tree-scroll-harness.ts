@@ -12,10 +12,13 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tree-scroll-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-tree-scroll-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 for (let fileNumber = 1; fileNumber <= 60; fileNumber++) {
   await Bun.write(
     join(fixtureRoot, `file-${String(fileNumber).padStart(2, '0')}.txt`),

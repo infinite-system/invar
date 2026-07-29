@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { IvueStaticGetterCapability } from './IvueStaticGetterCapability';
 
 const originalClass = IvueStaticGetterCapability.Class;
+
 const originalSkipValue = process.env.INVAR_SKIP_CAPABILITY_CHECK;
 
 beforeEach(() => {

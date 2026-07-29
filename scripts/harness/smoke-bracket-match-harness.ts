@@ -20,17 +20,22 @@ const unitResult = Bun.spawnSync(
   [process.execPath, 'test', 'src/modules/editor/BracketMatch.test.ts'],
   { stdout: 'pipe', stderr: 'pipe' },
 );
+
 requireCondition(unitResult.exitCode === 0, 'bracket unit tests pass');
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-bracket-match-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-bracket-match-harness-home-'),
 );
+
 const statusPath = join(fixtureRoot, 'status.json');
+
 await Bun.write(
   join(fixtureRoot, 'sample.ts'),
   'function f()\n{\n  return 1;\n}\n',
 );
+
 runGit(fixtureRoot, ['init', '-q']);
 
 const driver = new PtyTestDriver.Class({

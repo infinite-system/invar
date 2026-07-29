@@ -29,6 +29,7 @@ import {
   type OptimizedBuffer,
   type RenderContext,
 } from '@opentui/core';
+
 class $SolidThumbScrollBar extends ScrollBarRenderable {
   protected overviewMarks: readonly ScrollbarOverviewMark[] = [];
 
@@ -154,11 +155,13 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
     this.reassertSliderViewport();
   }
 }
+
 export namespace SolidThumbScrollBar {
   export const $Class = Static($SolidThumbScrollBar);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
+
 /** The slider internals this subclass normalizes and repaints through: TypeScript-private in
  *  OpenTUI's declaration but plain methods at runtime. Replacing getThumbRect at the slider instance
  *  keeps the normalized paint rectangle and the native hit-test on ONE model. */
@@ -168,12 +171,14 @@ interface SliderPaintSurface {
   getThumbRect(): SliderThumbRect;
   renderSelf(buffer: OptimizedBuffer): void;
 }
+
 interface SliderThumbRect {
   x: number;
   y: number;
   width: number;
   height: number;
 }
+
 interface ThumbAxis {
   start: number;
   length: number;

@@ -15,8 +15,11 @@
 // Usage: bun stress-openpty-descriptors.ts <treeRoot> [rounds] [liveCount]
 
 const treeRoot = process.argv[2];
+
 const roundCount = Number(process.argv[3] ?? 400);
+
 const liveCount = Number(process.argv[4] ?? 6);
+
 if (!treeRoot) {
   console.error('usage: stress-openpty-descriptors.ts <treeRoot> [rounds]');
   process.exit(2);
@@ -25,9 +28,13 @@ if (!treeRoot) {
 const { OpenPty } = await import(`${treeRoot}/src/modules/terminal/OpenPty.ts`);
 
 let constructionFailureCount = 0;
+
 let statusFlagFailureCount = 0;
+
 let survivorInvalidCount = 0;
+
 let observedRoundCount = 0;
+
 const distinctErrors = new Map<string, number>();
 
 function recordError(error: unknown): void {
@@ -94,11 +101,17 @@ const totalFailureCount =
   constructionFailureCount + statusFlagFailureCount + survivorInvalidCount;
 
 console.log(`tree:                   ${treeRoot}`);
+
 console.log(`rounds observed:        ${observedRoundCount}`);
+
 console.log(`construction failures:  ${constructionFailureCount}`);
+
 console.log(`close failures:         ${statusFlagFailureCount}`);
+
 console.log(`survivor invalid:       ${survivorInvalidCount}`);
+
 console.log(`TOTAL failures:         ${totalFailureCount}`);
+
 for (const [message, count] of distinctErrors) {
   console.log(`  ${count}x ${message}`);
 }

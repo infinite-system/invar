@@ -64,14 +64,19 @@ const coveredSettingNames = new Set([
   'primaryDockContentOrder',
   'panelContentOrder',
 ]);
+
 const schemaSettingNames = Object.keys(Settings.$Class.DEFAULTS);
 
 const settingsHome = mkdtempSync(
   join(tmpdir(), 'tui-settings-applied-harness-home-'),
 );
+
 const settingsDirectory = join(settingsHome, '.config', 'invar');
+
 const settingsPath = join(settingsDirectory, 'settings.json');
+
 mkdirSync(settingsDirectory, { recursive: true });
+
 await Bun.write(settingsPath, '{}\n');
 
 async function setSetting(
@@ -571,6 +576,7 @@ async function snapshotForSetting(
 }
 
 const fixtureDirectories: string[] = [];
+
 function createFixture(prefix: string): string {
   const directory = mkdtempSync(join(tmpdir(), prefix));
   fixtureDirectories.push(directory);
@@ -578,28 +584,38 @@ function createFixture(prefix: string): string {
 }
 
 const longFixture = createFixture('tui-settings-long-harness-');
+
 let longText = '';
+
 for (let lineNumber = 0; lineNumber < 2_000; lineNumber++) {
   longText += `line ${String(lineNumber).padStart(3, '0')} ${'x'.repeat(180)}\n`;
 }
+
 await Bun.write(join(longFixture, 'long.txt'), longText);
 
 const treeFixture = createFixture('tui-settings-tree-harness-');
+
 for (let fileNumber = 1; fileNumber <= 60; fileNumber++) {
   await Bun.write(
     join(treeFixture, `file-${String(fileNumber).padStart(2, '0')}.txt`),
     'x\n',
   );
 }
+
 mkdirSync(join(treeFixture, 'subfolder'));
 
 const wrapFixture = createFixture('tui-settings-wrap-harness-');
+
 await Bun.write(join(wrapFixture, 'w.txt'), `${'A'.repeat(300)}\nMARKERLINE\n`);
 
 const gitFixture = createFixture('tui-settings-git-harness-');
+
 await Bun.write(join(gitFixture, 'f.txt'), 'a\n');
+
 HarnessSmoke.Class.runGit(gitFixture, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(gitFixture, ['add', 'f.txt']);
+
 HarnessSmoke.Class.runGit(gitFixture, [
   '-c',
   'user.name=settings-harness',
@@ -609,25 +625,31 @@ HarnessSmoke.Class.runGit(gitFixture, [
   '-qm',
   'init',
 ]);
+
 await Bun.write(join(gitFixture, 'f.txt'), 'a\nb\n');
+
 await Bun.write(join(gitFixture, 'g.txt'), 'n\n');
 
 const indentFixture = createFixture('tui-settings-indent-harness-');
+
 await Bun.write(
   join(indentFixture, 'i.ts'),
   'function f() {\n        deeply();\n}\n',
 );
 
 const lspFixture = createFixture('tui-settings-lsp-harness-');
+
 symlinkSync(
   join(process.cwd(), 'node_modules'),
   join(lspFixture, 'node_modules'),
 );
+
 await Bun.write(
   join(lspFixture, 'tsconfig.json'),
   '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", ' +
     '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
 );
+
 await Bun.write(
   join(lspFixture, 'big.ts'),
   `// padding ${'x'.repeat(1_500)}\nconst bad: number = "nope";\n`,

@@ -3,6 +3,7 @@ import { effect } from 'vue';
 import { Settings, type SettingsFileSystem } from './Settings';
 
 const USER_PATH = '/home/tester/.config/invar/settings.json';
+
 const PROJECT_PATH = '/workspace/.invar/settings.json';
 
 /** An in-memory filesystem so the whole load/merge/save cycle runs without touching the real disk. */

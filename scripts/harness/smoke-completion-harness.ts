@@ -25,10 +25,15 @@ const forcedGlyphMode = 'unicode';
 // The kind NUMBERS are protocol facts about what a TypeScript server answers for a member access, not
 // appearance. Everything visual comes from the two authorities the app itself uses.
 const methodCompletionItemKind = 2;
+
 const functionCompletionItemKind = 3;
+
 const fieldCompletionItemKind = 5;
+
 const variableCompletionItemKind = 6;
+
 const classCompletionItemKind = 7;
+
 const propertyCompletionItemKind = 10;
 
 function expectedMarkForCompletionItemKind(completionItemKind: number): string {
@@ -712,6 +717,9 @@ async function driveTsgoAtScale(fixtureLineCount: number): Promise<void> {
 }
 
 await driveMockProvider();
+
 await driveTsgoAtScale(20);
+
 await driveTsgoAtScale(100_000);
+
 console.log('smoke-completion-harness: ALL-PASS');

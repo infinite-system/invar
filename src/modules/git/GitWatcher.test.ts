@@ -39,11 +39,13 @@ const fsWatchAvailable = (() => {
     rmSync(probeDirectory, { recursive: true, force: true });
   }
 })();
+
 if (!fsWatchAvailable) {
   console.warn(
     'GitWatcher.test: fs.watch unavailable (EMFILE — inotify exhausted); skipping watch-path tests. smoke-git-watch.sh covers the behavior.',
   );
 }
+
 const watchTest = test.skipIf(!fsWatchAvailable);
 
 function wait(milliseconds: number): Promise<void> {

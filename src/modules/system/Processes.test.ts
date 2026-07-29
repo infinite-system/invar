@@ -11,19 +11,22 @@ test('spawn preserves argument boundaries and strips ambient git variables', asy
 
   try {
     const literalArgument = 'argument with spaces; $HOME $(printf unsafe)';
-    const subprocess = Processes.Class.spawn([
-      process.execPath,
-      '-e',
-      `process.stdout.write(JSON.stringify({
+    const subprocess = Processes.Class.spawn(
+      [
+        process.execPath,
+        '-e',
+        `process.stdout.write(JSON.stringify({
         gitEnvironmentNames: Object.keys(process.env).filter((environmentName) => environmentName.startsWith('GIT_')),
         retainedEnvironmentValue: process.env.${retainedEnvironmentName},
         literalArgument: process.argv[1],
       }))`,
-      literalArgument,
-    ], {
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+        literalArgument,
+      ],
+      {
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(subprocess.stdout).text(),
       new Response(subprocess.stderr).text(),
@@ -39,7 +42,10 @@ test('spawn preserves argument boundaries and strips ambient git variables', asy
     });
   } finally {
     restoreEnvironmentValue(gitEnvironmentName, previousGitEnvironmentValue);
-    restoreEnvironmentValue(retainedEnvironmentName, previousRetainedEnvironmentValue);
+    restoreEnvironmentValue(
+      retainedEnvironmentName,
+      previousRetainedEnvironmentValue,
+    );
   }
 });
 
@@ -66,7 +72,10 @@ test('run captures output through the shared spawn policy', async () => {
   }
 });
 
-function restoreEnvironmentValue(environmentName: string, previousEnvironmentValue: string | undefined): void {
+function restoreEnvironmentValue(
+  environmentName: string,
+  previousEnvironmentValue: string | undefined,
+): void {
   if (previousEnvironmentValue === undefined) {
     delete process.env[environmentName];
     return;

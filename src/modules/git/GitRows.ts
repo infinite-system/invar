@@ -95,6 +95,7 @@ export interface HeaderRow {
   label: string;
   count: number;
 }
+
 export interface FileRow {
   kind: 'file';
   bucket: ChangeBucket;
@@ -102,8 +103,10 @@ export interface FileRow {
   /** Human status letter: M/A/D/R/C/U/? — never a raw porcelain xy pair. */
   glyph: string;
 }
+
 export interface PlaceholderRow {
   kind: 'placeholder';
   label: string;
 }
+
 export type ChangeRow = HeaderRow | FileRow | PlaceholderRow;

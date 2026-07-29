@@ -11,22 +11,33 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const repositoryRoot = process.cwd();
+
 const generatedFixtureRoot = join(
   repositoryRoot,
   'artifacts',
   'switch-latency-fixtures',
 );
+
 const sessionCount = Number(process.env.SWITCH_LATENCY_SESSION_COUNT ?? 5);
+
 const switchCount = Number(process.env.SWITCH_LATENCY_SWITCH_COUNT ?? 20);
+
 const requestedScenario = process.env.SWITCH_LATENCY_SCENARIO ?? 'all';
+
 const secondWorkspaceRoot = process.env.SWITCH_LATENCY_SECOND_WORKSPACE;
+
 const preserveGeneratedFixtures =
   process.env.SWITCH_LATENCY_PRESERVE_FIXTURES === '1';
+
 const diagnosticLspFileSizeLimitKilobytes =
   process.env.SWITCH_LATENCY_DIAGNOSTIC_LSP_FILE_SIZE_LIMIT_KB;
+
 const captureSwitchFrames = process.env.SWITCH_LATENCY_CAPTURE_FRAMES === '1';
+
 const synchronizedOutputBeginMarker = '\x1b[?2026h';
+
 const synchronizedOutputEndMarker = '\x1b[?2026l';
+
 const observationBoundary = 'input-write→DEC-2026-end-marker-byte-arrival';
 
 interface SwitchTarget {
@@ -74,26 +85,32 @@ const smallFirstTarget: SwitchTarget = {
   path: join(repositoryRoot, 'README.md'),
   visibleMarker: 'terminal code editor',
 };
+
 const smallSecondTarget: SwitchTarget = {
   path: join(repositoryRoot, 'LICENSE'),
   visibleMarker: 'MIT License',
 };
+
 const realLargeFirstTarget: SwitchTarget = {
   path: join(repositoryRoot, 'src/modules/app/Bootstrap.ts'),
   visibleMarker: 'Boot sequence: seal the kernel',
 };
+
 const realLargeSecondTarget: SwitchTarget = {
   path: join(repositoryRoot, 'src/modules/ui/RootView.ts'),
   visibleMarker: 'The root frame, rendered from workspace',
 };
+
 const syntheticFiveThousandTarget: SwitchTarget = {
   path: join(generatedFixtureRoot, 'synthetic-realistic-05000.ts'),
   visibleMarker: 'SWITCH-LATENCY-SYNTHETIC-05000',
 };
+
 const syntheticTwentyThousandTarget: SwitchTarget = {
   path: join(generatedFixtureRoot, 'synthetic-realistic-20000.ts'),
   visibleMarker: 'SWITCH-LATENCY-SYNTHETIC-20000',
 };
+
 const cacheTargets = Array.from(
   { length: switchCount },
   (_unused, targetIndex): SwitchTarget => ({
@@ -108,6 +125,7 @@ const cacheTargets = Array.from(
 await prepareGeneratedFixtures();
 
 const results: ScenarioResult[] = [];
+
 try {
   if (scenarioRequested('keypress')) {
     results.push(await measureKeypressScenario());

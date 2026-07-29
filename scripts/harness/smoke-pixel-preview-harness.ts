@@ -184,6 +184,7 @@ async function requireOutputSequenceCountRemainsUnchangedFor(
 }
 
 const pngPath = '/tmp/ivue-cart-dark.png';
+
 HarnessSmoke.Class.requireCondition(
   await Bun.file(pngPath).exists(),
   `PNG fixture exists at ${pngPath}`,
@@ -192,6 +193,7 @@ HarnessSmoke.Class.requireCondition(
 console.log(
   '== harness pixel-preview: encoders, mount, and tier precedence unit layer ==',
 );
+
 const unitResult = Bun.spawnSync(
   [
     process.execPath,
@@ -201,18 +203,23 @@ const unitResult = Bun.spawnSync(
   ],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
+
 HarnessSmoke.Class.requireCondition(
   unitResult.exitCode === 0,
   'image and graphics-tier unit tests',
 );
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-pixel-preview-harness-'));
+
 copyFileSync(pngPath, join(fixtureRoot, 'picture.png'));
+
 await Bun.write(join(fixtureRoot, 'sample.ts'), 'export const answer = 42;\n');
+
 await Bun.write(
   join(fixtureRoot, 'data.bin'),
   new Uint8Array([66, 73, 78, 0, 0, 1, 2, 3]),
 );
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 
 async function driveLateKittyCapabilityUpgrade(): Promise<void> {

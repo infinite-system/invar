@@ -11,17 +11,24 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const repositoryRoot = process.cwd();
+
 const workspaceRoot = mkdtempSync(
   join(tmpdir(), 'invar-agent-skill-workspace-'),
 );
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-agent-skill-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
+
 mkdirSync(settingsDirectory, { recursive: true });
+
 await Bun.write(
   join(settingsDirectory, 'settings.json'),
   '{"glyphMode":"unicode"}\n',
 );
+
 await Bun.write(
   join(workspaceRoot, '.claude', 'skills', 'ivue', 'SKILL.md'),
   [
@@ -33,6 +40,7 @@ await Bun.write(
     'Use ivue.',
   ].join('\n'),
 );
+
 await Bun.write(
   join(workspaceRoot, '.claude', 'skills', 'invariants', 'SKILL.md'),
   [

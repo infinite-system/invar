@@ -9,6 +9,7 @@
 import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
+
 class $ContextMenu {
   protected get ContextMenu() {
     return ContextMenu.Class as unknown as typeof $ContextMenu;
@@ -128,12 +129,14 @@ class $ContextMenu {
     this.runAt(this.selectedIndex.value);
   }
 }
+
 export namespace ContextMenu {
   export const $Class = Static($ContextMenu);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
+
 export interface ContextMenuItem {
   id: string;
   label: string;

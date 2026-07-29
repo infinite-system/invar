@@ -38,7 +38,8 @@ class $MockBackend implements TerminalBackend {
 
   /** Push scripted child output into the emulator (the inverse of write). */
   feed(data: string | Uint8Array): void {
-    const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+    const bytes =
+      typeof data === 'string' ? new TextEncoder().encode(data) : data;
     this.dataCallback?.(bytes);
   }
 

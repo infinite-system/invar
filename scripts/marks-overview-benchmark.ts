@@ -8,22 +8,29 @@ import {
 } from '../src/modules/workspace/GutterDecorations';
 
 const documentLineCount = 20_000;
+
 const diagnosticLineCount = 10_000;
+
 const trackLength = 60;
+
 const measurementIterations = 25;
+
 const identityVisualProjection = {
   key: `identity:${documentLineCount}`,
   rowCount: documentLineCount,
   rowOfLine: (lineIndex: number) => lineIndex,
 };
+
 const documentText = Array.from(
   { length: documentLineCount },
   (_unusedValue, lineIndex) => `const line${lineIndex} = ${lineIndex};`,
 ).join('\n');
+
 const diagnosticDecorations = new Map<
   number,
   readonly EditorLineDecoration[]
 >();
+
 for (
   let diagnosticIndex = 0;
   diagnosticIndex < diagnosticLineCount;
@@ -82,19 +89,27 @@ const initialProjectionMilliseconds = measure(() => {
 });
 
 const measuredDocument = new TextDocument.Class();
+
 measuredDocument.loadFromText(documentText, '/large.ts');
+
 const measuredHandle = new DocumentHandle.Class(
   Symbol('document'),
   '/large.ts',
 );
+
 measuredHandle.attach(measuredDocument);
+
 let diagnosticRevision = 1;
+
 const measuredDecorations = new GutterDecorations.Class();
+
 measuredDecorations.register({
   revision: () => diagnosticRevision,
   byLine: () => diagnosticDecorations,
 });
+
 const measuredOverviewRuler = new OverviewRuler.Class();
+
 const decorationRecomputeMilliseconds = measure(() => {
   diagnosticRevision += 1;
   const snapshot = measuredDecorations.snapshotFor(measuredHandle);
@@ -104,14 +119,19 @@ const decorationRecomputeMilliseconds = measure(() => {
     trackLength,
   );
 });
+
 const cachedReadIterations = 100_000;
+
 const cachedSnapshot = measuredDecorations.snapshotFor(measuredHandle);
+
 measuredOverviewRuler.project(
   cachedSnapshot,
   identityVisualProjection,
   trackLength,
 );
+
 const cachedReadsStartedAtMilliseconds = performance.now();
+
 for (
   let cachedReadIndex = 0;
   cachedReadIndex < cachedReadIterations;
@@ -123,6 +143,7 @@ for (
     trackLength,
   );
 }
+
 const cachedReadMicroseconds =
   ((performance.now() - cachedReadsStartedAtMilliseconds) * 1_000) /
   cachedReadIterations;

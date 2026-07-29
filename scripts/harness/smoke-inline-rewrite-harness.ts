@@ -10,27 +10,38 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 
 const repositoryRoot = process.cwd();
+
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-inline-rewrite-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-inline-rewrite-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const reproductionMode = process.env.INVAR_INLINE_REWRITE_REPRO ?? '';
+
 const inlineRewriteBackground = Number.parseInt(
   ThemePalettes.Class.DARK.inlineRewriteBackground.slice(1),
   16,
 );
+
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
   JSON.stringify({
     'inlineRewrite.enabled': reproductionMode !== 'disabled',
   }),
 );
+
 await Bun.write(
   join(fixtureRoot, 'rewrite.ts'),
   'const value = calculate()\nconst label = original\n',
 );
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'rewrite.ts']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.email=inline-rewrite@example.test',
@@ -40,6 +51,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'fixture',
 ]);
+
 await Bun.write(
   join(fixtureRoot, 'rewrite.ts'),
   'const value = calculate()\nconst label = value\n',
@@ -125,10 +137,12 @@ const idleOwnershipPositiveControl = idleOwnershipFailure(
   },
   0,
 );
+
 HarnessSmoke.Class.requireCondition(
   idleOwnershipPositiveControl !== null,
   'inline-rewrite idle positive control rejects an active render owner',
 );
+
 console.log(
   `inline-rewrite idle positive control RED (expected): ` +
     idleOwnershipPositiveControl,

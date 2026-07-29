@@ -62,6 +62,7 @@ import type { ShortcutHelp } from './ShortcutHelp';
 import type { Tooltip } from './Tooltip';
 import type { Theme } from '../theme/Theme';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
+
 class $OverlayLayer {
   get paintRevision() {
     return ref(0);
@@ -1458,11 +1459,13 @@ class $OverlayLayer {
     }
   }
 }
+
 export namespace OverlayLayer {
   export const $Class = $OverlayLayer;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 /** A clickable settings widget: the text row + column range it occupies, the descriptor it edits, and
  *  what a click does. `select` just selects the row; `dec`/`inc` select then step/cycle/toggle it. */
 interface SettingsWidgetZone {
@@ -1472,17 +1475,20 @@ interface SettingsWidgetZone {
   index: number;
   action: 'select' | 'dec' | 'inc';
 }
+
 interface SettingsLineZone {
   startColumn: number;
   endColumn: number;
   index: number;
   action: SettingsWidgetZone['action'];
 }
+
 interface SettingsRenderedLine {
   chunks: TextChunk[];
   zones: SettingsLineZone[];
   settingIndex?: number;
 }
+
 interface OverlayDialogLayoutInput {
   dialogName: OverlayDialogName;
   title: string;
@@ -1493,6 +1499,7 @@ interface OverlayDialogLayoutInput {
   borderColor?: string;
   titleColor?: string;
 }
+
 interface OverlayDialogDismissalControl {
   show(geometry: {
     left: number;
@@ -1503,6 +1510,7 @@ interface OverlayDialogDismissalControl {
   }): void;
   hide(): void;
 }
+
 type OverlayDialogName =
   | 'commandPalette'
   | 'findBar'
@@ -1511,12 +1519,14 @@ type OverlayDialogName =
   | 'settingsPanel'
   | 'shortcutHelp'
   | 'contextMenu';
+
 export interface OverlayDialogBounds {
   left: number;
   top: number;
   width: number;
   height: number;
 }
+
 export interface OverlayLayerDependencies {
   renderer: CliRenderer;
   commands: CommandRegistry.Instance;

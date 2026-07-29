@@ -13,11 +13,13 @@ if (process.env.INVAR_REAL_CODEX_INLINE_REWRITE !== '1') {
   );
   process.exit(0);
 }
+
 if (!Bun.which('codex')) {
   throw new Error('codex is not available on PATH');
 }
 
 const repositoryRoot = process.cwd();
+
 const codexHomeDirectory =
   process.env.CODEX_HOME ?? join(process.env.HOME ?? tmpdir(), '.codex');
 
@@ -109,6 +111,7 @@ async function measureDrive(options: {
 }
 
 const positiveControlDelayMilliseconds = 350;
+
 const positiveControlLatencyMilliseconds = await measureDrive({
   label: 'positive-control',
   preloadPath: join(
@@ -121,6 +124,7 @@ const positiveControlLatencyMilliseconds = await measureDrive({
     ),
   },
 });
+
 HarnessSmoke.Class.requireCondition(
   positiveControlLatencyMilliseconds >= positiveControlDelayMilliseconds,
   'the latency meter observes its injected 350 ms positive control',
@@ -130,6 +134,7 @@ const realCodexLatencyMilliseconds = await measureDrive({
   label: 'real-codex',
   environment: { CODEX_HOME: codexHomeDirectory },
 });
+
 const result = {
   observationBoundary:
     'request-now PTY chord write to visible proposal status projection',
@@ -139,9 +144,12 @@ const result = {
   realCodexLatencyMilliseconds,
   measuredAt: new Date().toISOString(),
 };
+
 mkdirSync(join(repositoryRoot, 'artifacts'), { recursive: true });
+
 await Bun.write(
   join(repositoryRoot, 'artifacts', 'inline-rewrite-codex-latency.json'),
   JSON.stringify(result, null, 2) + '\n',
 );
+
 console.log(JSON.stringify(result, null, 2));

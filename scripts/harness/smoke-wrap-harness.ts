@@ -147,7 +147,9 @@ function assertFixtureLineWrap(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-wrap-harness-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-wrap-harness-home-'));
+
 const proseWords = [
   'prosealpha',
   'prosebravo',
@@ -161,6 +163,7 @@ const proseWords = [
   'prosejuliet',
   'proseterminalend',
 ] as const;
+
 const pathComponents = [
   'repositoryalpha',
   'repositorybravo',
@@ -170,6 +173,7 @@ const pathComponents = [
   'repositoryfoxtrot',
   'pathterminalend',
 ] as const;
+
 const camelCaseComponents = [
   'calculate',
   'Integrated',
@@ -186,6 +190,7 @@ const camelCaseComponents = [
   'Terminal',
   'Endmarker',
 ] as const;
+
 const operatorOperands = [
   'alphaoperandvalue',
   'bravooperandvalue',
@@ -193,8 +198,11 @@ const operatorOperands = [
   'deltaoperandvalue',
   'operatorterminalend',
 ] as const;
+
 const operatorRuns = ['&&', '===', '||', '=>'] as const;
+
 const proseLine = `// ${proseWords.join(' ')}`;
+
 const pathLine = pathComponents
   .map((pathComponent, pathComponentIndex) =>
     pathComponentIndex === 0
@@ -202,7 +210,9 @@ const pathLine = pathComponents
       : `${pathComponentIndex % 2 === 0 ? '.' : '/'}${pathComponent}`,
   )
   .join('');
+
 const camelCaseLine = camelCaseComponents.join('');
+
 const operatorLine = operatorOperands
   .map((operatorOperand, operatorOperandIndex) =>
     operatorOperandIndex === 0
@@ -210,11 +220,13 @@ const operatorLine = operatorOperands
       : `${operatorRuns[operatorOperandIndex - 1]}${operatorOperand}`,
   )
   .join('');
+
 const fillerLines = Array.from(
   { length: 60 },
   (_unused, fillerIndex) =>
     `filler body line ${String(fillerIndex).padStart(3, '0')}`,
 );
+
 await Bun.write(
   join(fixtureRoot, 'long.txt'),
   [

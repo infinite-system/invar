@@ -38,9 +38,13 @@ function clickCell(
 }
 
 const repositoryRoot = process.cwd();
+
 const fixtureRoot = join(repositoryRoot, 'fixtures');
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-editor-harness-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   repositoryRoot,

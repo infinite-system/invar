@@ -28,6 +28,7 @@ import {
 } from './AppStatusProjection';
 
 let temporaryRoot = '';
+
 let workspaceSet: InstanceType<typeof WorkspaceSet.Class> | null = null;
 
 beforeEach(() => {
