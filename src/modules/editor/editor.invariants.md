@@ -85,9 +85,10 @@ content itself, never asserted by a mutator.
 
 **Scope:** `TextDocument.dirty` / `matchesSaved()` / `captureSavedBaseline()` and every mutator on
 it; `Editor.dirty` and `Editor.title`; the `dirty` field of `OpenBufferSet.tabs()` (and through it
-the never-dehydrate-a-dirty-buffer rule), `TabBarRenderer`'s marker cell, and the `dirty` field
-`AppStatusProjection` publishes. Per open document. Out of scope: git's modified-versus-HEAD gutter
-markers, which compare against a COMMIT, not against the file on disk.
+the rule that dirty buffers remain live outside the bounded recent hydration set),
+`TabBarRenderer`'s marker cell, and the `dirty` field `AppStatusProjection` publishes. Per open
+document. Out of scope: git's modified-versus-HEAD gutter markers, which compare against a COMMIT,
+not against the file on disk.
 
 **Mechanism:** `dirty` is a derived getter with no setter. The baseline checks line count, then
 incrementally maintained serialized length, then exact content. A file load records a known-clean
@@ -97,9 +98,9 @@ loads and saves retain the order-sensitive FNV-1a signature because they have no
 disk read to compare. The answer is memoized on (`revision`, `savedBaselineVersion`), so unchanged
 frame reads are integer comparisons; content changes and baseline moves cannot leave it stale.
 
-**Generates:** the tab-strip `●`; the `name ●` window title; the never-dehydrate-while-dirty rule
-in `OpenBufferSet`; the `dirty` field the harness asserts; the absence of any `dirty` write
-anywhere in the codebase.
+**Generates:** the tab-strip `●`; the `name ●` window title; dirty-buffer retention outside
+`OpenBufferSet`'s two-document recent hydration budget; the `dirty` field the harness asserts; the
+absence of any `dirty` write anywhere in the codebase.
 
 **Evidence:** `TextDocument.ts` — `get dirty()` (derived, no setter), `matchesSaved()`
 (cheap-reject ladder), `captureSavedBaseline()`, `rebuildContentLength()` and the incremental delta
@@ -143,7 +144,7 @@ fails at the backspace step.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-28
 
 ### Undo records deltas not whole-document snapshots
 

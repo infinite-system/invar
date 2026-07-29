@@ -6,14 +6,19 @@ import { DocumentHandle } from './DocumentHandle';
 // The set of open editor buffers behind the editor tab bar (item 10a). Opening a file ADDS or
 // FOCUSES a buffer — it never replaces. This is the EDITOR-layer buffer set; project/workspace tabs
 // are a separate layer (see "Workspace and file navigation are separate layers"). It owns the
-// FLYWEIGHT + DISPOSE discipline that makes tabs memory-safe: only the active buffer (and any dirty
-// background buffer, whose unsaved edits must survive) holds a live document; clean background
+// FLYWEIGHT + DISPOSE discipline that makes tabs memory-safe: a bounded recently-active set (and
+// any dirty background buffer, whose unsaved edits must survive) holds live documents; other clean
 // buffers are dehydrated to a light handle (path + cursor/scroll) and rehydrated on activation.
 //
 // invariant: N open tabs do not cost N live documents (workspace.invariants.md)
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 
 class $OpenBufferSet {
+  // Two documents cover the dominant compare-and-edit gesture while bounding clean document
+  // storage independently of tab count. Dirty buffers remain live outside this budget.
+  protected static get MAXIMUM_RECENTLY_ACTIVE_HYDRATED_DOCUMENTS(): number {
+    return 2;
+  }
   protected static get ORIGIN(): BufferPosition {
     return { cursorLine: 0, cursorColumn: 0, scrollTop: 0, scrollLeft: 0 };
   }
@@ -26,6 +31,9 @@ class $OpenBufferSet {
   }
   get activeIndex() {
     return ref(-1);
+  }
+  protected get recentlyActiveEntries() {
+    return shallowRef<BufferEntry[]>([]);
   }
 
   get count(): number {
@@ -41,7 +49,7 @@ class $OpenBufferSet {
   get activeDocumentHandle(): DocumentHandle.Model | null {
     return this.active?.documentHandle ?? null;
   }
-  /** Number of entries currently holding a live document (active + any dirty background). */
+  /** Number of entries currently holding a live document (recent + any dirty background). */
   get liveCount(): number {
     return this.entries.value.filter((entry) => entry.buffer !== null).length;
   }
@@ -81,7 +89,7 @@ class $OpenBufferSet {
     return this.activeIndex.value;
   }
 
-  /** Make `index` active: dehydrate the outgoing active (if clean), hydrate the incoming. */
+  /** Make `index` active: hydrate the incoming and retain the bounded recent working set. */
   activate(index: number): void {
     if (
       index < 0 ||
@@ -92,6 +100,7 @@ class $OpenBufferSet {
         this.hydrate(index); // ensure current is live
         const activeEntry = this.entries.value[index];
         if (activeEntry?.buffer) {
+          this.retainRecentlyActive(activeEntry);
           this.seams.becameActive?.(
             activeEntry.documentHandle,
             activeEntry.buffer,
@@ -100,11 +109,11 @@ class $OpenBufferSet {
       }
       return;
     }
-    this.dehydrateIfClean(this.activeIndex.value);
     this.activeIndex.value = index;
     this.hydrate(index);
     const activeEntry = this.entries.value[index];
     if (activeEntry?.buffer) {
+      this.retainRecentlyActive(activeEntry);
       this.seams.becameActive?.(activeEntry.documentHandle, activeEntry.buffer);
     }
   }
@@ -124,6 +133,9 @@ class $OpenBufferSet {
       this.seams.closed?.(entry.documentHandle, entry.buffer);
       this.seams.disposeBuffer(entry.buffer, entry.documentHandle);
     }
+    this.recentlyActiveEntries.value = this.recentlyActiveEntries.value.filter(
+      (recentEntry) => recentEntry !== entry,
+    );
     const next = this.entries.value.filter(
       (_, entryIndex) => entryIndex !== index,
     );
@@ -157,12 +169,16 @@ class $OpenBufferSet {
       this.seams.disposeBuffer(entry.buffer, entry.documentHandle);
     }
     this.entries.value = [];
+    this.recentlyActiveEntries.value = [];
     this.activeIndex.value = -1;
   }
 
-  /** Dehydrate the clean active document while its workspace is not the observed project. */
+  /** Dehydrate clean recent documents while their workspace is not the observed project. */
   deactivate(): void {
-    this.dehydrateIfClean(this.activeIndex.value);
+    for (const entry of this.recentlyActiveEntries.value) {
+      this.dehydrateIfClean(entry);
+    }
+    this.recentlyActiveEntries.value = [];
   }
 
   /** Rehydrate the selected document when its workspace becomes active again. */
@@ -180,9 +196,29 @@ class $OpenBufferSet {
     this.entries.value = [...this.entries.value]; // notify
   }
 
-  protected dehydrateIfClean(index: number): void {
-    const entry = this.entries.value[index];
-    if (!entry || !entry.buffer) return;
+  protected retainRecentlyActive(entry: BufferEntry): void {
+    const openBufferSetClass = this.constructor as typeof $OpenBufferSet;
+    const recentlyActiveEntries = [
+      entry,
+      ...this.recentlyActiveEntries.value.filter(
+        (recentEntry) => recentEntry !== entry,
+      ),
+    ];
+    const retainedEntries = recentlyActiveEntries.slice(
+      0,
+      openBufferSetClass.MAXIMUM_RECENTLY_ACTIVE_HYDRATED_DOCUMENTS,
+    );
+    const evictedEntries = recentlyActiveEntries.slice(
+      openBufferSetClass.MAXIMUM_RECENTLY_ACTIVE_HYDRATED_DOCUMENTS,
+    );
+    this.recentlyActiveEntries.value = retainedEntries;
+    for (const evictedEntry of evictedEntries) {
+      this.dehydrateIfClean(evictedEntry);
+    }
+  }
+
+  protected dehydrateIfClean(entry: BufferEntry): void {
+    if (!entry.buffer) return;
     entry.position = entry.buffer.snapshotPosition();
     entry.dirty = entry.buffer.dirty;
     if (entry.dirty) return; // a dirty buffer stays LIVE — its unsaved edits must survive

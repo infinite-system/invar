@@ -1,10 +1,23 @@
 import { test, expect, describe } from 'bun:test';
+import { Reactive } from 'ivue';
+import { Static } from 'ivue/extras';
 import {
   OpenBufferSet,
   type LiveBuffer,
   type BufferPosition,
+  type OpenBufferSetSeams,
 } from './OpenBufferSet';
 import type { DocumentHandle } from './DocumentHandle';
+
+class $SingleHydratedDocumentOpenBufferSet extends OpenBufferSet.$Class {
+  protected static override get MAXIMUM_RECENTLY_ACTIVE_HYDRATED_DOCUMENTS(): number {
+    return 1;
+  }
+}
+
+const SingleHydratedDocumentOpenBufferSetClass = Reactive(
+  Static($SingleHydratedDocumentOpenBufferSet),
+);
 
 // A fake live buffer: records dispose, carries a mutable dirty flag + position.
 class FakeBuffer implements LiveBuffer {
@@ -29,11 +42,11 @@ class FakeBuffer implements LiveBuffer {
   }
 }
 
-function makeSet() {
+function makeSet(singleHydratedDocument = false) {
   const created: FakeBuffer[] = [];
   const createdHandles: DocumentHandle.Model[] = [];
   const disposed: FakeBuffer[] = [];
-  const set = new OpenBufferSet.Class({
+  const seams: OpenBufferSetSeams = {
     createBuffer: (path, documentHandle) => {
       const buffer = new FakeBuffer(path);
       created.push(buffer);
@@ -44,7 +57,10 @@ function makeSet() {
       (buffer as FakeBuffer).disposed = true;
       disposed.push(buffer as FakeBuffer);
     },
-  });
+  };
+  const set = singleHydratedDocument
+    ? new SingleHydratedDocumentOpenBufferSetClass(seams)
+    : new OpenBufferSet.Class(seams);
   return { set, created, createdHandles, disposed };
 }
 
@@ -66,15 +82,13 @@ describe('open / focus', () => {
 });
 
 describe('flyweight: N tabs are NOT N live documents', () => {
-  test('only the active buffer stays live; clean background tabs dehydrate + dispose', () => {
+  test('only the bounded recent set stays live; older clean tabs dehydrate + dispose', () => {
     const { set, created, disposed } = makeSet();
     for (const path of ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts']) set.open(path);
-    // 5 tabs, but only ONE live document (the active) — the rest dehydrated on deactivation.
+    // Five tabs retain only the two-document compare-and-edit working set.
     expect(set.count).toBe(5);
-    expect(set.liveCount).toBe(1);
-    // Each deactivation disposed the outgoing clean buffer.
-    expect(disposed.length).toBe(4);
-    // Created: one per activation (they were disposed then would recreate if revisited).
+    expect(set.liveCount).toBe(2);
+    expect(disposed.length).toBe(3);
     expect(created.length).toBe(5);
   });
 
@@ -85,8 +99,9 @@ describe('flyweight: N tabs are NOT N live documents', () => {
       cursorLine: 42,
       scrollTop: 30,
     });
-    set.open('b.ts'); // deactivate a.ts -> snapshot + dispose
-    expect(set.liveCount).toBe(1);
+    set.open('b.ts');
+    set.open('c.ts'); // a.ts leaves the two-document window -> snapshot + dispose
+    expect(set.liveCount).toBe(2);
     set.activate(0); // rehydrate a.ts
     const rehydrated = created[created.length - 1] as FakeBuffer;
     expect(rehydrated.snapshotPosition().cursorLine).toBe(42);
@@ -101,6 +116,7 @@ describe('flyweight: N tabs are NOT N live documents', () => {
     firstHandle?.foldState.collapsedLineStarts.add(4);
 
     set.open('b.ts');
+    set.open('c.ts');
     set.activate(0);
     expect(createdHandles.at(-1)).toBe(firstHandle);
     expect(createdHandles.at(-1)?.foldState.collapsedLineStarts.has(4)).toBe(
@@ -119,9 +135,38 @@ describe('flyweight: N tabs are NOT N live documents', () => {
     set.open('a.ts');
     (set.activeBuffer as FakeBuffer).dirty = true;
     set.syncActiveDirty();
-    set.open('b.ts'); // a.ts is dirty -> stays live
-    expect(set.liveCount).toBe(2); // active b + dirty-retained a
+    set.open('b.ts');
+    set.open('c.ts'); // a.ts leaves the recent window but stays live because it is dirty
+    expect(set.liveCount).toBe(3); // recent b/c + dirty-retained a
     expect(set.tabs()[0]!.dirty).toBe(true);
+  });
+
+  test('recent switch cycles perform zero full-document reads at small and large scale', () => {
+    const fullDocumentReadCounts: number[] = [];
+    for (const documentLineCount of [10, 500_000]) {
+      const { set, created } = makeSet();
+      set.open(`first-${documentLineCount}.txt`);
+      set.open(`second-${documentLineCount}.txt`);
+      const fullDocumentReadCountBeforeSwitchCycles = created.length;
+      for (let switchIndex = 0; switchIndex < 6; switchIndex++) {
+        set.cycle(1);
+      }
+      fullDocumentReadCounts.push(
+        created.length - fullDocumentReadCountBeforeSwitchCycles,
+      );
+    }
+    expect(fullDocumentReadCounts).toEqual([0, 0]);
+  });
+
+  test('reload counter detects the one-document dehydration defect', () => {
+    const { set, created } = makeSet(true);
+    set.open('first-500000.txt');
+    set.open('second-500000.txt');
+    const fullDocumentReadCountBeforeSwitchCycles = created.length;
+    for (let switchIndex = 0; switchIndex < 6; switchIndex++) {
+      set.cycle(1);
+    }
+    expect(created.length - fullDocumentReadCountBeforeSwitchCycles).toBe(6);
   });
 });
 

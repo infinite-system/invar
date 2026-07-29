@@ -326,32 +326,48 @@ vertical orientations.
 
 ### N open tabs do not cost N live documents
 
-**Invariant:** If N editor tabs are open, then the number of LIVE documents (with an in-memory text
-buffer + undo history) is bounded by the active buffer plus any DIRTY background buffers — clean
-background tabs are dehydrated to a light handle (path + cursor/scroll) and rehydrated on
-activation. Memory cost tracks the actively-edited set, not the tab count.
+**Invariant:** If N editor tabs are open, then live clean documents are bounded by the two most
+recently active buffers, dirty background buffers remain live outside that budget, and reactivating
+either recent buffer performs zero full-document reads.
 
 **Scope:** `OpenBufferSet` — the editor-layer buffer set behind the tab bar; its open/focus,
 dehydrate, and rehydrate discipline. Excludes workspace/project tabs (a separate layer).
 
-**Mechanism:** Opening a file ADDS or FOCUSES a buffer (never replaces). On deactivation a clean
-buffer is disposed to a handle; a dirty buffer stays live so unsaved edits survive. Activation
-rehydrates the handle from disk + restores the saved cursor/scroll. Realizes *Cost tracks the
-actively observed set*.
+**Components:**
+- *Recent interaction window* — `MAXIMUM_RECENTLY_ACTIVE_HYDRATED_DOCUMENTS` keeps the two-entry
+  compare-and-edit working set live, so switching within it never calls `createBuffer`.
+- *Bounded storage* — adding a third clean document evicts the least-recent entry to its
+  path-and-position handle; suspending a workspace dehydrates its clean recent entries.
+- *Dirty retention* — unsaved buffers remain live even after they leave the recent window.
 
-**Generates:** memory-safe many-tab sessions; the flyweight tab model; dirty-edit preservation
-across tab switches.
+**Mechanism:** `OpenBufferSet.retainRecentlyActive` updates a constant-size most-recent list and
+calls `dehydrateIfClean` only for entries that leave it. `activate` reuses a live entry and calls
+`hydrate` only on a cache miss. `createBuffer` is the sole path to `Editor.openFile`, so zero
+creations means zero full-document reads.
 
-**Evidence:** `src/modules/workspace/OpenBufferSet.ts` (flyweight + dispose discipline; the active
-+ dirty-background live set); `Workspace.test.ts` (flyweight keeps live docs < tab count).
+**Generates:** Free alternation between the two most recent files; memory-safe many-tab sessions;
+the flyweight tab model; dirty-edit preservation across tab switches.
+
+**Rejected alternatives:** Keep only the active document hydrated — every clean tab round trip
+re-runs `TextDocument.loadFromFile`, making a tab-switch interaction scale with file size. Keep every
+tab hydrated — memory scales with tab count.
+
+**Evidence:** `src/modules/workspace/OpenBufferSet.ts`;
+`src/modules/workspace/OpenBufferSet.test.ts` (10-line and 500,000-line switch cycles both read zero
+documents; the one-document positive control reads six);
+`src/modules/workspace/Workspace.test.ts` (four clean tabs retain two live documents);
+`scripts/harness/smoke-bounded-list-popup-harness.ts` (103 clean tabs retain two live documents);
+real PTY drives over the 100,000-line and 500,000-line shared fixtures.
 
 **Impossible if true:** every open tab holding a live document + undo stack regardless of activity;
-a clean background tab consuming a full buffer; a dirty background tab losing its unsaved edits on
-deactivation.
+a reactivation within the two-document recent window calling `createBuffer` or
+`TextDocument.loadFromFile`; live clean document count growing beyond two; a dirty background tab
+losing its unsaved edits on deactivation.
 
-**Verification:** a test opening more tabs than the live-document budget and asserting the live-set
-size stays bounded by active + dirty.
+**Verification:** `bun test src/modules/workspace/OpenBufferSet.test.ts
+src/modules/workspace/Workspace.test.ts`; drive the 100,000-line and 500,000-line shared fixtures,
+open two files, and alternate with `Control+Tab` while `bufferLiveCount` remains 2.
 
-**Status:** provisional
+**Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-28

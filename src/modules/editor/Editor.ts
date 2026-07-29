@@ -366,9 +366,9 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   // --- LiveBuffer surface (the OpenBufferSet flyweight drives these) --------
-  // A clean background tab is dehydrated to a light position handle and its document/undo/syntax are
-  // released; on re-activation the set recreates the buffer and restores the handle. A DIRTY tab is
-  // never dehydrated, so its unsaved edits survive.
+  // A clean tab outside the bounded recently-active set is dehydrated to a light position handle and
+  // its document/undo/syntax are released; reactivation recreates the buffer and restores the handle.
+  // A DIRTY tab is never dehydrated, so its unsaved edits survive.
 
   /** Dirty = the document's content differs from the last saved/loaded content (drives the tab's
    *  dirty dot + the never-dehydrate rule). Content-derived on EVERY path: no mutator asserts it, so

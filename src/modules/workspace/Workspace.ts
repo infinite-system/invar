@@ -45,8 +45,8 @@ class $Workspace {
 
   root = '';
   // The set of open editor buffers behind the tab bar (item 10a): opening a file ADDS or FOCUSES a
-  // tab, never replaces. Flyweight — only the active buffer (and any dirty background buffer) holds a
-  // live document; clean background tabs dehydrate to a light handle and rehydrate on activation.
+  // tab, never replaces. Flyweight — a bounded recent set (and any dirty background buffer) holds
+  // live documents; older clean tabs dehydrate to a light handle and rehydrate on activation.
   buffers = this.createBufferSet();
   editorContributions = new EditorContributions.Class();
   documentLifecycle = new DocumentLifecycle.Class();

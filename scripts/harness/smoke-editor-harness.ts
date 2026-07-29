@@ -386,6 +386,12 @@ try {
   await driver.awaitScreenChange();
   driver.sendKeys('Home');
   await driver.awaitScreenChange();
+  driver.sendKeys('Control+z');
+  await awaitStatusPublication(
+    statusPath,
+    'the exercised buffer returns to disk state before the clean-tab count contract',
+    (status) => status.dirty === false,
+  );
 
   console.log(
     '== harness editor: tree and editor clicks use one dispatch path ==',
@@ -527,7 +533,7 @@ try {
   );
 
   console.log(
-    '== harness editor: opening files adds tabs and dehydrates clean backgrounds ==',
+    '== harness editor: opening files adds tabs and retains a bounded warm set ==',
   );
   const tabBaselineStatus = await awaitStatusPublication(
     statusPath,
@@ -568,7 +574,7 @@ try {
     'the increased tab count and live document count are published',
     (status) =>
       Number(status.bufferTabCount) > tabsBefore &&
-      typeof status.bufferLiveCount === 'number',
+      Number(status.bufferLiveCount) === 2,
   );
   const tabsAfterOpen = Number(tabsAfterOpenStatus.bufferTabCount);
   const liveAfterOpen = Number(tabsAfterOpenStatus.bufferLiveCount);
@@ -577,8 +583,8 @@ try {
     `opening files adds tabs (${tabsBefore} to ${tabsAfterOpen})`,
   );
   requireCondition(
-    liveAfterOpen < tabsAfterOpen,
-    `flyweight keeps live documents ${liveAfterOpen} below tabs ${tabsAfterOpen}`,
+    liveAfterOpen === 2,
+    `flyweight keeps exactly two warm documents across ${tabsAfterOpen} clean tabs`,
   );
   driver.sendKeys('Control+w');
   await driver.awaitScreenChange();

@@ -267,7 +267,8 @@ encoding conversion round-trips.
 ### Cost tracks the actively observed set
 
 **Invariant:** If data exists in the system, then its memory, reactivity, and background-activity
-cost scale with what is visible and actively observed, not with what exists.
+cost scale with a bounded visible, actively observed, or recently interactive working set, never
+with the total population that exists.
 
 **Scope:** Editor buffers, syntax spans, terminal cells, file tree, git history, diagnostics,
 symbol outline, markdown tokens — every high-cardinality dataset.
@@ -275,8 +276,9 @@ symbol outline, markdown tokens — every high-cardinality dataset.
 **Components:**
 - *Ground truth is compact and non-reactive at rest* — columnar typed arrays / plain Maps /
   packed spans hold the data; refs are sparse version signals, not value holders.
-- *A resource lives only while observed* — reactive overlays and services are materialized for
-  the visible window and evicted/disposed when cold.
+- *A resource lives only while observed or warm* — reactive overlays and services are materialized
+  for the visible window or an explicit constant-size interaction window and evicted/disposed when
+  cold.
 
 **Mechanism:** The ivue flyweight pattern (`../ivue` flyweight-grid): columnar ground truth +
 disposable per-render facades + a two-tier sparse revision overlay (fine per-item, coarse
@@ -286,7 +288,9 @@ aggregates that a frame consumes are revision-keyed snapshots or incrementally m
 fold ranges preserve snapshot identity across non-structural edits and share one indexed snapshot
 with gutter markers, their collapsed projection is a compact typed mapping, serialized document
 length is a running count, and diff overview projection is cached by immutable alignment plus track
-height. Measured 4.7 bytes/cell at 20M cells, +0.3 MB after 30 viewports.
+height. Editor tabs retain a constant two-document recently-active hydration window so the dominant
+switch interaction reads zero documents while clean storage remains independent of tab count.
+Measured 4.7 bytes/cell at 20M cells, +0.3 MB after 30 viewports.
 
 **Generates:** The flyweight architecture; viewport rendering; packed highlight spans and
 `ScreenBuffer`; hot/warm/cold/disposed tiers; lazy LSP; `evict*` paths.
@@ -301,9 +305,9 @@ derivation is cheap exactly while every hot-path read is viewport-bounded; held 
 no-computed paradigm holds indefinitely against data scale, leaving only per-feature additive
 cost, which the gate step watches.
 
-**Impossible if true:** A reactive object per cell/token/line; an LSP alive for a cold
-workspace; idle CPU above ~zero; memory that grows with file/repo size rather than visible size; a
-per-frame quantity that scales with document length.
+**Impossible if true:** A reactive object per cell/token/line; an LSP alive for a cold workspace;
+idle CPU above ~zero; memory that grows with total row, item, or tab count rather than a bounded
+working set; a per-frame quantity that scales with document length.
 
 **Verification:** `bun scripts/harness/measure-scroll-smoothness.ts` drives the
 same gesture over 2k and 100k flat editor fixtures and requires exact equality
@@ -325,8 +329,10 @@ index contract requires identical typed-array writes and allocations at 2k
 and 1M. Its nested-fold-edit mode crosses the real PTY at 554,490 and 970,356
 lines with the 138,622-line top-level group both open and collapsed; the wrap
 index contract independently requires identical edit counts across both axes.
-Millisecond samples remain report-only; the operation count is the blocking
-scale claim.
+`src/modules/workspace/OpenBufferSet.test.ts` requires zero full-document
+reads across recent switch cycles at 10 and 500,000 lines and proves the
+counter with a one-document dehydration control. Millisecond samples remain
+report-only; the operation count is the blocking scale claim.
 
 **Status:** established
 
