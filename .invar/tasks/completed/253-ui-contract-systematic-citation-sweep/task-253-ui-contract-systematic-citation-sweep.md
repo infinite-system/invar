@@ -1,6 +1,6 @@
 # 253 — the systematic sweep: every ui.invariants.md citation AST-verified
 
-State: IN-PROGRESS
+State: COMPLETED — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
 Created: 2026-07-29
 Engine: codex
 Environment: linux
