@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #305 [unknown-task-variables-pass-through](.invar/tasks/in-progress/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md)  [building]
+  `tmux attach -t invar/305-unknown-task-variables-pass-through`
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/in-progress/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md)  [building]
   `tmux attach -t invar/299-structure-filter-uses-shared-input-generator`
 - #296 [per-workspace-terminal-worlds](.invar/tasks/in-progress/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md)  [building]
@@ -84,7 +86,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
 ## NO PRIORITY GROUP (1) — stamp Priority: into these task files
-- #305 [305-unknown-task-variables-pass-through](.invar/tasks/active/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md)
+- #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 
 ## RECENTLY COMPLETED (last 15 of 77 — full log: project.tasks-completed.md)
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
