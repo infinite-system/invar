@@ -391,6 +391,8 @@ echo
 # The generated views were regenerated and committed WITH the record in step 4.
 echo "dispatch: LAUNCHED #${task_number} ${slug}"
 echo "  attach:     tmux attach -t ${tmux_session}"
+echo "  monitor:    confirm fleet-watch is armed (TaskList); if missing:"
+echo "              Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)"
 echo "  transcript: ${transcript_path}"
 echo "  worktree:   ${worktree_path}"
 echo "  report to:  /tmp/${name}-READY.md"

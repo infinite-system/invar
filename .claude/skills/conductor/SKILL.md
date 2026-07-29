@@ -525,11 +525,19 @@ looks identical to that tool in a text search over command lines.**
   when wrong.
 - **A liveness probe that can only fail toward "dead" is how you take over work that was
   fine.** Every scan carries a positive control in the same command.
-- **Arm a Monitor on a long gate's log** whose result must be acted on. The tracked-bg
-  completion re-invoke is unreliable. **Stop a monitor in the ACTION that consumes its
-  result.** Arming a replacement stops its predecessor in the same action. Left running,
-  monitors emit timeout noise that trains you to skim the one channel that must stay
-  trustworthy.
+- **ONE standing watcher: `scripts/fleet/fleet-watch.sh`, armed as a persistent Monitor.**
+  It derives its watch set from disk every cycle (in-progress folders, transcripts, /tmp
+  READY files, registered gate logs), so a new dispatch enters the watch automatically and
+  recovery after an interrupt is one action:
+  `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`. Arm it at
+  session start and at resume. The reconciliation sweep's STALE-MONITOR check re-arms it
+  when TaskList shows none. Register a gate log by appending its path to
+  `/tmp/fleet-watch-gates`. Self-test before trusting: `fleet-watch.sh --self-test`.
+- **Arm a dedicated Monitor on a long gate's log** whose result must be acted on now
+  (fleet-watch's cycle also catches registered gates). The tracked-bg completion re-invoke
+  is unreliable. **Stop a monitor in the ACTION that consumes its result.** Arming a
+  replacement stops its predecessor in the same action. Left running, monitors emit timeout
+  noise that trains you to skim the one channel that must stay trustworthy.
 - **Tracked background, never `nohup`.** `nohup … &` leaves no live children and the harness
   drops you from view.
 - **Heartbeat over PID-watching.** PIDs rotate. Give long workers a heartbeat artifact
