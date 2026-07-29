@@ -42,3 +42,27 @@ it reads `None observed`.
 ## Sources
 
 - User message 2026-07-29 ~17:4x (verbatim above).
+
+## Refinement (user, 2026-07-29 ~17:5x, verbatim)
+
+"in structure there is also extra 1 key space from that icon to the
+property, there is too many glyphs, 1 glyph is enough f for function,
+no need for second glyph, only 1 glyph per item"
+
+This SHARPENS arm 1 into a row-density rule:
+
+- **ONE glyph per row, total.** The symbol-kind glyph (f for function
+  etc.) is the only mark; the separate visibility/cache/getter/override
+  glyph COLUMN goes away. Fold those semantics into the one glyph's
+  COLOR/styling (the existing semantic slots: e.g. getter = info-
+  colored kind glyph, private = warning-colored, $cache = its
+  differentiator on the same cell) — semantics stay expressed, cells
+  stop multiplying. Record the mapping in the invariant.
+- **Kill the extra space** between the glyph and the property name:
+  glyph, ONE space, name.
+- Census/authority: the mark-ownership census reduces accordingly;
+  labels stable at both scales.
+
+Both polarities: each semantic still visually distinguishable (drive
+one example per class in both themes); row width shrinks by the
+removed column + space.
