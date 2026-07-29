@@ -1,0 +1,35 @@
+# Overnight briefing — started 2026-07-29 00:28
+
+Written for your return. Latest entries at the top of the log section. #223
+(database plugin) is parked for you, per your instruction.
+
+## Standing state at the moment you left
+
+- Landed today: #59, #211, #174, #202, #114 (Wave B), #46, #122, #218.
+- Building: #219 (PaneContent retrofit — the hard capstone step), #222
+  (provider-seam analysis, documents only), #216 (drive on-ramp — instrument,
+  dispatched first under your pyramid rule: it is the floor of every
+  builder's inner loop).
+- Parked for you: #223 (database plugin proves the provider seam).
+- Commands: `bun run tasks:live` / `tasks:active` / `tasks:done`.
+
+## The plan I am following
+
+Bottom-up by fundamentality:
+
+1. Instruments and verification integrity (#216, then #215, #221, #182, #90,
+   #105, #183, #190 as lanes free up) — everything above them inherits their
+   truth.
+2. The capstone chain (#219 → #220) as its builders deliver.
+3. Flake-evidence and performance tasks after the instruments they depend on.
+4. #35 only after #220 (it is the proof, and proof runs last).
+5. #223 waits for you.
+
+Gate discipline unchanged: combined trees, serial landings, bycatch converted
+before merge, session archived at land.
+
+## Log (latest first)
+
+- 00:28 — #216 dispatched (codex). Session link resolved late (codex creates
+  its rollout lazily; the in-dispatch check fires too early — known wrinkle,
+  folded into #215's scope). Briefing file created.
