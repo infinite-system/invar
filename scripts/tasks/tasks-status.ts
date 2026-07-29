@@ -66,6 +66,8 @@ export interface TaskRecord {
   taskFileLineCount: number;
   briefCount: number;
   reportCount: number;
+  newestBriefMtimeMs: number;
+  newestReportMtimeMs: number;
   summaryCount: number;
   namesACommit: boolean;
   priorityGroup: string | null;
@@ -154,8 +156,32 @@ function readTaskRecords(tasksRoot: string): TaskRecord[] {
           taskFileName === undefined ? 0 : taskFileText.split('\n').length,
         briefCount: entries.filter((entry) => entry.startsWith('brief-'))
           .length,
+        newestBriefMtimeMs: entries
+          .filter((entry) => entry.startsWith('brief-'))
+          .reduce((newest, entry) => {
+            try {
+              return Math.max(
+                newest,
+                statSync(join(folderPath, entry)).mtimeMs,
+              );
+            } catch {
+              return newest;
+            }
+          }, 0),
         reportCount: entries.filter((entry) => entry.startsWith('report-'))
           .length,
+        newestReportMtimeMs: entries
+          .filter((entry) => entry.startsWith('report-'))
+          .reduce((newest, entry) => {
+            try {
+              return Math.max(
+                newest,
+                statSync(join(folderPath, entry)).mtimeMs,
+              );
+            } catch {
+              return newest;
+            }
+          }, 0),
         summaryCount: entries.filter((entry) => entry.startsWith('summary-'))
           .length,
         namesACommit:
@@ -986,20 +1012,30 @@ function live(
   }
   console.log(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
-    const ready = record.reportCount > 0;
+    // ROUNDS. Each conductor brief in the folder is a round (brief-<n>-<count>-…).
+    // A new brief after a delivered report re-enters building — spinner, deltas,
+    // and clock resume — as round N. Round-2+ reports are updated IN PLACE, so
+    // the READY signal is temporal, not a count: the report was touched after
+    // the newest brief.
+    const round = Math.max(1, record.briefCount);
+    const ready =
+      record.reportCount > 0 &&
+      record.newestReportMtimeMs > record.newestBriefMtimeMs;
     const breath =
       spinnerFrame === undefined
         ? null
         : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? null);
     const buildingGlyph =
       breath === null ? paint('38;5;45', '●') : paint(breath[1], breath[0]);
+    const roundSuffix =
+      round > 1 ? ` ${paint('38;5;179', `round ${round}`)}` : '';
     const statusBadge = ready
-      ? `${green('◉ READY')}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
+      ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
       : `${buildingGlyph} ${
           spinnerFrame === undefined
             ? paint('38;5;44', 'building')
             : gradientWord('building', spinnerFrame)
-        }`;
+        }${roundSuffix}`;
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const runningFor =
       startedAt === null

@@ -1,8 +1,10 @@
 # READY — #35 (the structure navigator pane — the proof task)
 
-Branch `fleet/35-structure-navigator-plugin-pane`, one commit:
+Branch `fleet/35-structure-navigator-plugin-pane`, two commits:
 
 - `88c2d795` — The structure navigator lands as a plugin pane with zero host edits (#35)
+- `215724d1` — smoke-activitybar derives activity orders from the manifest it observes
+  (#35 gate follow-up; see `## Gate follow-up` at the end)
 
 Worktree clean. `scripts/merge-gate.sh` was not run. Nothing pushed, merged, tagged, or deleted.
 
@@ -241,3 +243,51 @@ table marked the symbols, and the source-text view contract carried the jump. Th
 EXPOSED is the provider registry: closed to peers, it forced the first contributor-consuming-a-
 provider to build a parallel rendezvous. That finding — one closed seam, one workaround with a
 name, one decision owed — is the report the brief said would be worth more than the pane.
+
+## Gate follow-up
+
+Two gate reds were routed to me. One was mine and is fixed; the other does not reproduce here,
+with the evidence below.
+
+**Red 1 — `smoke-activitybar-harness`, mine, FIXED in `215724d1`.** Reproduced in this worktree
+on the first run: exit 1, `Timed out waiting for Alt+Up moves the active Extensions item through
+the activity order`. The cause is the class this repo keeps refinding: the smoke asserted
+LITERAL orders — `'files,extensions,git'` after Alt+Up and `['git','files','extensions']` after
+the pointer drag — a rotted enumeration of `DefaultPlugins`, red the moment a ninth contributor
+existed while the reorder behaviour it guards stayed correct. My insertion point is per the
+stated design (structure before Extensions), so the fix is on the smoke's side: both
+expectations now DERIVE from the observed initial order (Alt+Up expects the active item one slot
+up; the drag expects Git at Explorer's index). The smoke is ALL-PASS, exit 0. Two positive
+controls on the fix: a planted wrong derivation (active item up TWO slots) reds the exact wait,
+exit 1, quoted from the run; and the FIRST plant I tried — expecting the initial order —
+PASSED, because that expectation is already true before the keystroke. That second result is
+itself evidence of the pre-satisfied-wait hazard (#182/#198's class) sitting latent in this
+smoke's `awaitStatus` arms; noted here as bycatch of the fix, not fixed.
+
+**Red 2 — `behavioral-contracts.sh` plugin-manifest arm.** Ran once on this branch as asked:
+exit 0, `behavioral-contracts: ALL-PASS`, the plugin-manifest arm green through all eight
+sections including my structure arm. I cannot reproduce its gate red here; given red 1, the gate
+composition likely hit an order-shaped or load-shaped variant. If it stays red in the batch
+after `215724d1`, send me the arm's transcript.
+
+**Red 3 — the `smoke-completion-harness` interaction with #233 (isolated harness env): CANNOT
+REPRODUCE, four solo runs, exact composition.** I rebuilt the gate's population precisely:
+scratch worktree at current main `220d5143` (which includes #244's lazy agent-SDK boot), merged
+`fleet/35-structure-navigator-plugin-pane`, then merged
+`fleet/233-wrap-contract-red-settings-leak` (only its own task-folder files conflicted; resolved
+theirs), `bun install --frozen-lockfile`. `smoke-completion-harness` ran solo four times:
+exit 0, ALL-PASS, all four, mock-provider first arm included — `status.ready` arrives every
+time. On the boot-path suspicion: my boot additions are synchronous and small
+(`LspWorkspaceProvider`'s constructor gains one registry insert; `LanguageCapabilities` gains a
+boolean; the ninth contributor's activation registers a pane, commands, and bindings — no
+process, no I/O, no await). Nothing in them can hold `status.ready` open. A negative result is
+the deliverable: on this machine the composition is green. If the gate machine still reds it, I
+need its failing `status.json` tail or boot-stage log — and the remaining suspects are load or
+environment on that runner, or a 233-side env difference `scripts/tui-harness.sh` applies that
+the completion smoke's own driver does not, which would route it to #233 (wrap contract red —
+settings leak).
+
+Verification after the follow-up: `smoke-activitybar-harness` exit 0 ALL-PASS,
+`behavioral-contracts.sh` exit 0 ALL-PASS, `bunx tsc --noEmit` exit 0, and the worktree is
+clean at `215724d1`. The follow-up touches one smoke file; no production code moved, so the
+main report's numbers stand.
