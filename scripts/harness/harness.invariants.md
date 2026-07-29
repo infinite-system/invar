@@ -505,6 +505,55 @@ scripts/harness/BracketedPasteInput.ts --click 'fold-control=class $BracketedPas
 
 **Last refined:** 2026-07-28
 
+### Drive settled observations include declared debounced work
+
+**Invariant:** If `Drive` labels a boot observation settled, then every
+registered status condition is quiescent in the same published frame. A
+Markdown preview matches the active buffer revision, and an installed
+structure pane has refreshed the active file.
+
+**Scope:** `scripts/harness/Drive.ts` settled boot observations. Action
+observations keep their named completion rules and are outside this registry.
+Missing plugin status keys are outside that plugin's condition.
+
+**Components:**
+- *Markdown work is current* — `markdownParsing` is false when present, and
+  an active Markdown document's `markdownRevision` equals `bufferRevision`.
+- *Structure work has started and finished* — with an active file and the
+  structure projection installed, `structureStatus` is neither `no-document`
+  nor `loading`.
+- *The registry is explicit* — each pending state has a stable name in
+  `$settledStatusRules`.
+
+**Mechanism:** `Drive.awaitSettledObservation` combines app readiness with
+the registry through `PtyTestDriver.awaitGridCondition`. The status file
+flushes after a settled render, so a matching status condition and the
+printed grid describe the same completed frame.
+
+**Generates:** A settled Markdown preview instead of `Parsing Markdown…`; a
+current structure headline instead of `No file is open.`; a revision equality
+check that rejects a preview from the prior source revision.
+
+**Rejected alternatives:** Widen the timeout or wait for another frame. Time
+does not name the work, and frame arrival does not prove that debounced work
+finished.
+
+**Evidence:** `scripts/harness/Drive.ts`;
+`scripts/harness/Drive.test.ts` drives the 3,352-line
+`project.conductor.archive.md` fixture through the real PTY.
+
+**Impossible if true:** A `settled boot` print with
+`markdownParsing=true`; a parsed preview whose `markdownRevision` differs
+from `bufferRevision`; an active file beside the structure headline
+`No file is open.`; a new fixed sleep in the settle path.
+
+**Verification:** `bun test scripts/harness/Drive.test.ts && bun run drive
+--open README.md && bun run drive --open project.conductor.archive.md`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Async-published state is always awaited
 
 **Invariant:** If a harness verdict depends on state published asynchronously through the status

@@ -65,8 +65,15 @@ bun run drive --click 60,20
 Each grid row is `row │cells│`; the heading reports geometry and the native
 cursor. Below it, `name=JSON value` lines are the live status/probe
 publication. Search that list for the surface you are investigating, then
-drive again. For example, the session's one-row diff-ruler bug was reproduced
-in a dirty Git workspace with:
+drive again.
+
+The `settled boot` observation also waits for the drive's declared quiescence
+registry. An active Markdown preview must finish parsing its current buffer
+revision. An installed structure pane must finish its first refresh for the
+active file. Missing plugin keys do not hold the drive open.
+
+For example, the session's one-row diff-ruler bug was reproduced in a dirty
+Git workspace with:
 
 ```sh
 bun run drive --open /path/to/dirty/worktree --key Control+g --key o
