@@ -1408,19 +1408,22 @@ and the paint methods for model writes.
 **Invariant:** If the document, tree, or list is larger than the viewport, then only the visible
 window is materialized into renderables each frame — render cost is O(viewport), not O(content).
 
-**Scope:** editor body, file tree, palette list rendering in `RootView`.
+**Scope:** editor body rendering in `EditorPaneRenderer`, file-tree rendering in
+`TreePaneRenderer`, and command-palette list rendering in `OverlayLayer`.
 
 **Mechanism:** `EditorPaneRenderer.render` asks `EditorWrap.visualRowsFromOffset` for the viewport
-window and tokenizes only those rows; `TreePaneRenderer.render` slices the visible tree window; the
-palette caps at 12. Realizes *Cost tracks the actively observed set*.
+window and tokenizes only those rows; `TreePaneRenderer.render` slices the visible tree window;
+`OverlayLayer.update` slices `commands.filtered` to `commandPaletteViewportRows`. Realizes *Cost
+tracks the actively observed set*.
 
 **Generates:** viewport-bounded tokenization; windowed tree/list rendering; flat render cost as
 files/repos grow.
 
-**Evidence:** editor body, tree, and palette list all slice to the visible window; since 2026-07-21
-the editor ALSO virtualizes COLUMNS — each visible line is sliced to the visible display-column
-window (grapheme-safe, memoized boundaries) BEFORE tokenizing, so a 50k-char line drags/renders at
-normal speed (verified: 3 drag-selects ≈ 0.1s processing; open+settle 538ms). Trade-off recorded:
+**Evidence:** `src/modules/editor/EditorPaneRenderer.ts`;
+`src/modules/filetree/TreePaneRenderer.ts`; `src/modules/ui/OverlayLayer.ts`. Since 2026-07-21 the
+editor also virtualizes columns: each visible line is sliced to the visible display-column window
+(grapheme-safe, memoized boundaries) before tokenizing, so a 50k-char line drags and renders at
+normal speed (verified: 3 drag-selects ≈ 0.1s processing; open and settle 538ms). Trade-off recorded:
 tokens start at the slice, so left-context-sensitive highlighting can differ at the window edge.
 
 **Impossible if true:** a frame that tokenizes or builds renderables for every line of a large
@@ -1432,7 +1435,7 @@ bounded by viewport height.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-29
 
 ### One visible file line is one visual row when word wrap is off
 
@@ -1442,9 +1445,10 @@ inside a collapsed fold contribute zero rows. The gutter, caret Y, selection row
 hit-testing all read that same mapping. When word wrap is ON, a visible file line may contribute
 multiple segments, and the gutter numbers only its FIRST visual row (continuation rows blank).
 
-**Scope:** the editor gutter + code renderables in `RootView`, wrap-OFF mode. (Historically this was
-recorded as unconditional — "an editor pane NEVER soft-wraps"; word wrap becoming a mode on
-2026-07-21 and folding contributing zero-row lines on 2026-07-26 scoped it honestly.)
+**Scope:** the gutter and code renderables in `SourceTextPaneContent`, with the visual-row mapping in
+`EditorPane`, in wrap-off mode. (Historically this was recorded as unconditional — "an editor pane
+NEVER soft-wraps"; word wrap becoming a mode on 2026-07-21 and folding contributing zero-row lines
+on 2026-07-26 scoped it honestly.)
 
 **Mechanism:** the code renderable is `wrapMode: 'none'` in BOTH modes — the renderable itself never
 wraps. `EditorWrap.visualRowsFromOffset` feeds the rows in both modes: wrap-OFF contributes one
@@ -1457,7 +1461,7 @@ one row per visible line without reviving folded bodies.
 
 **Evidence:** human-QA regression (a wrapped tail once desynced every gutter number below it);
 `smoke-editor.sh` "no soft-wrap" check — consecutive unfolded rows carry consecutive gutter
-numbers; `RootView` codeBody options keep `wrapMode: 'none'`;
+numbers; `src/modules/editor/SourceTextPaneContent.ts` keeps `codeBody.wrapMode: 'none'`;
 `scripts/harness/smoke-code-folding-harness.ts`.
 
 **Impossible if true:** with wrap off, a visible file line occupying two visual rows, a folded body
@@ -1470,31 +1474,34 @@ record (continuation rows have BLANK gutters).
 
 **Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### The caret renders at the cursor display column
 
 **Invariant:** If the editor is focused, then a caret is drawn at the cursor's **display column**
 on its line — not merely a marker in the gutter — accounting for tabs and wide glyphs.
 
-**Scope:** the editor body caret in `RootView`.
+**Scope:** `EditorPane.visualPosition`, `SourceTextPaneContent.caretAnchor`, and the native cursor
+projection in `RootView`.
 
-**Mechanism:** the view anchors the caret to the code renderable's ACTUAL laid-out screen cell
-(`codeBody.x/y` from yoga — never hand-derived layout constants) plus
-`displayColumn(line, cursor.col)`, then adds **+1 on both axes** because the native terminal cursor
-is 1-based (ANSI CUP; OpenTUI's own `renderCursor` does `screenX + visualCol + 1`). Stands on
-*A cursor position resolves to three distinct coordinates* (editor).
+**Mechanism:** `EditorPane.visualPosition` maps the cursor through the current visual-row window.
+`SourceTextPaneContent.caretAnchor` adds the code renderable's actual laid-out `codeBody.x/y` screen
+cell from yoga. `RootView` adds **+1 on both axes** because the native terminal cursor is 1-based.
+No layer hand-derives layout constants. Stands on *A cursor position resolves to three distinct
+coordinates* (editor).
 
-In wrap MODE (word wrap, 2026-07-21) the caret cell comes from the SAME logical↔visual mapping the
-render used (`wrapVisualPosition`): x = `codeBody.x` + the display column WITHIN the cursor's wrapped
-segment (no scrollLeft term — horizontal scroll is inert), y = `codeBody.y` + the cursor's visual-row
-index in the window. The 1-based ANSI +1 and the tmux `#{cursor_x},#{cursor_y}` oracle are unchanged —
-the caret must agree with tmux's own cursor in EITHER mode.
+In wrap mode the caret cell comes from the same logical-to-visual mapping that the render uses:
+`EditorPane.visualPosition` returns the display column within the wrapped segment and its row index
+in `visualRowsWindow`. Horizontal scroll is inert in wrap mode. The 1-based ANSI offset and the tmux
+`#{cursor_x},#{cursor_y}` oracle are unchanged. The caret must agree with tmux's cursor in either
+mode.
 
 **Generates:** a real caret; correct visual position on lines with tabs/wide chars; a caret that
 stays correct when the layout changes (the anchor moves with the renderable).
 
-**Evidence:** HUMAN-QA BUG FIXED (2026-07-21): the caret rendered one row HIGH — two stacked causes:
+**Evidence:** `src/modules/editor/EditorPane.ts`;
+`src/modules/editor/SourceTextPaneContent.ts`; `src/modules/ui/RootView.ts`. HUMAN-QA BUG FIXED
+(2026-07-21): the caret rendered one row HIGH — two stacked causes:
 (1) 0-based cells passed to the 1-based `setCursorPosition`, and (2) hand-derived x constants that
 had drifted from the real layout. Both fixed by anchoring to `codeBody.x/y` + the ANSI +1. Verified
 against tmux's OWN cursor position (`#{cursor_x},#{cursor_y}` — the authoritative channel for a
@@ -1512,37 +1519,42 @@ position is the right oracle for the caret.
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-29
 
 ### The selected range renders with a background
 
 **Invariant:** If a non-empty selection exists, then exactly the selected range is drawn with a
 selection background, aligned to the model's `selectionRange()`, on the cursor's content row(s).
 
-**Scope:** the editor code renderable in `RootView` (`SelectableText` + `applySelection`).
+**Scope:** the `SelectableText` code renderable in `SourceTextPaneContent` and
+`EditorPane.applySelection`.
 
 **Mechanism:** the editor is split into a **gutter** renderable (line numbers + current-line marker)
 and a **code** renderable (`SelectableText`, syntax only) so the code buffer holds no gutter —
 OpenTUI's native selection then never shades a gutter on a multi-line span, and code-local selection
-coords are pure display columns. `applySelection` maps the model `selectionRange()` into
-viewport-local cells (`x = displayColumn`, `y = docLine − scrollTop`, clamped to the visible window)
-and drives `SelectableText.setSelectionRange` → `TextBufferView.setLocalSelection`
-(TextBufferRenderable syncs its view's viewport in `onResize`, so those coords resolve directly).
+coords are pure display columns. `EditorPane.applySelection` maps the model `selectionRange()`
+through `visualPosition` into viewport-local visual rows and display columns. It clamps ranges that
+start before or end after `visualRowsWindow`, then drives `SelectableText.setSelectionRange`.
+`SelectableText` writes OpenTUI's `lastLocalSelection`, refreshes the local selection, and requests
+a render. `SourceTextPaneContent.paint` applies that selection after it paints the current code
+buffer, so the coordinates resolve against the same frame.
 Stands on *A cursor position resolves to three distinct coordinates* (editor) and *Selection is an
 anchor plus the cursor* (editor).
-Mouse addendum (2026-07-21): the MODEL is the only selection writer. Mouse events on
-the code renderable drive `cursor`+`anchor` (`documentPositionAtCell`: line = scrollTop + rowOffset,
-column = `graphemeAtDisplayColumn` — the display→grapheme inverse, unit-tested for wide glyphs and
-tabs); `applySelection()` then projects the model into the native highlight each paint. OpenTUI's
-OWN mouse-drag selection is DISABLED (`selectable:false`) — it was a second writer the model never
+Mouse addendum (2026-07-21): the MODEL is the only selection writer. Mouse events on the code
+renderable drive `cursor` and `anchor`. `EditorPane.documentPositionAtCell` reads the matching row
+from `visualRowsWindow`, then maps the display column through that row's segment and horizontal
+scroll state. `applySelection()` projects the model into the native highlight each paint. OpenTUI's
+own mouse-drag selection is disabled (`selectable:false`) — it was a second writer the model never
 saw, so the next paint wiped its highlight (the human-QA "selection appears then disappears" bug),
 and Ctrl+C (which copies the model selection) copied nothing.
 
 **Generates:** a visible selection block that tracks the model; multi-line shading without touching
 the gutter.
 
-**Evidence:** VERIFIED by FrameProbe frame-diff (`TUI_FRAME_DUMP=1`). Selection on doc line 3, cols
-[1,4) → exactly 3 contiguous bg-changed cells on buffer row **y=4** (line 3's content row), x=38..40
+**Evidence:** `src/modules/editor/SourceTextPaneContent.ts`;
+`src/modules/editor/EditorPane.ts`; `src/modules/ui/SelectableText.ts`. VERIFIED by FrameProbe
+frame-diff (`TUI_FRAME_DUMP=1`). Selection on doc line 3, cols [1,4) → exactly 3 contiguous
+bg-changed cells on buffer row **y=4** (line 3's content row), x=38..40
 in the code area, bg `95,95,95,255`, no gutter cells; multi-line selection spans rows 4–5. The
 earlier "~4× scale/offset" was NOT a render bug — it was a FrameProbe defect (it read `bg` as one
 value per cell; OpenTUI stores fg/bg as FOUR Uint16 RGBA lanes per cell, so stride-1 reads aliased
@@ -1561,7 +1573,7 @@ editor unit tests. Persistence proven: highlight cells identical 1s after the dr
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-29
 
 ### A scrollable text surface is drag-selectable with edge auto-scroll
 
@@ -1774,8 +1786,8 @@ selection stays, highlight dims.
 **Evidence:** `src/modules/filetree/TreePaneRenderer.ts` and
 `src/modules/git/GitPaneRenderer.ts` (selection paint);
 `src/modules/filetree/FileTreePaneContent.ts` and `src/modules/git/GitPaneContent.ts` (click, hover,
-and scroll handlers); `src/modules/workspace/GitPanel.ts` selection setters and movers;
-`src/modules/workspace/GitPanel.test.ts`; `scripts/smoke-selection.sh`, hard-wired in
+and scroll handlers); `src/modules/git/GitPanel.ts` selection setters and movers;
+`src/modules/git/GitPanel.test.ts`; `scripts/smoke-selection.sh`, hard-wired in
 `scripts/merge-gate.sh`, drives tree, changes, and commit-log click/hover/wheel/blur/refocus paths and
 asserts full/dim backgrounds through FrameProbe.
 
@@ -1783,12 +1795,12 @@ asserts full/dim backgrounds through FrameProbe.
 vanishing on scroll or on losing focus; a list where click selects but the keyboard cannot move from
 there; different list panes disagreeing on the selection model.
 
-**Verification:** `bun test src/modules/workspace/GitPanel.test.ts
+**Verification:** `bun test src/modules/git/GitPanel.test.ts
 src/modules/filetree/FileTree.scroll.test.ts && bash scripts/smoke-selection.sh`
 
 **Status:** established
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-29
 
 ### TS diagnostics render as an underline and overview mark
 
