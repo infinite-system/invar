@@ -1,0 +1,15 @@
+{
+  "task": 174,
+  "slug": "markdown-preview-omits-ragged-table",
+  "branch": "fleet/174-markdown-preview-omits-ragged-table",
+  "worktree": ".invar/worktrees/174-markdown-preview-omits-ragged-table",
+  "tmuxSession": "invar/174-markdown-preview-omits-ragged-table",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-default-174-markdown-preview-omits-ragged-table.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "default",
+  "heldFromMain": false,
+  "baseCommit": "326bfd71782771c554b78057f5ff18e8c3a3a1a5",
+  "startedAt": "2026-07-28T21:52:54-04:00"
+}
