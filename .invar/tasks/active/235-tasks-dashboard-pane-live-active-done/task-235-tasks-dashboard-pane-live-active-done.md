@@ -71,3 +71,13 @@ per line), READY tasks hold STILL (stillness = a report waits for the
 conductor). Active-duration updates reactively every minute while a task
 runs. The CLI prototype is `bun run tasks:watch` (2s redraw, braille frames);
 the pane does it natively through ivue reactivity instead of redraw polling.
+
+## Interim step (user, 2026-07-29): the watch as a PTY widget first
+
+Before the full ivue-native port, `bun run tasks:watch` can embed as a PTY
+widget in a terminal pane: it is already alt-screen, repaint-in-place, 30fps
+flyweight, and (as of 07-29) narrow-width-safe (two-line rows: name, then
+status). The port order is therefore: (1) PTY widget embed if wanted early,
+(2) ivue-native pane consuming the same tasks-status primitives (lenses,
+rounds, gate glance, three gradient currents, compass/breath glyphs) — the
+CLI stays THE primitive either way; plug in, never re-roll.
