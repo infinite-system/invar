@@ -83,6 +83,22 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 04:5x — THE PROOF IS ON MAIN. Gate 3 GREEN (75 OK; one git-watch
+  retry-flake noted). #233 landed 3a1172c0 (145m): the wrap red was the
+  instrument, your settings file exonerated by hash. #35 landed 986ae1c2
+  (147m): the structure navigator, zero host edits, the modularity campaign
+  proven end to end. Gates 1-2's completion/behavioral "interaction" reds
+  were MY artifact: a hand-rolled scratch tree with an EMPTY node_modules —
+  Bun auto-install masked it for 57 steps while unlinked provider binaries
+  broke the two real-LSP arms; #251 filed (the gate must refuse an unlinked
+  tree), #252 filed (pre-satisfied waits the round-2 control exposed).
+  Interim SDK reaper retired: #244's app-owned cleanup held at ZERO
+  extractions across three full gates. NEW WAVE BUILDING: #245 (provider
+  seam + database proof, codex), #243 (contract rot round two, codex),
+  #236 (markdown stylesheet, fable). #238 queues behind #245; #237/#235
+  next lanes. Sessions archived for #244 and #35 (raw JSONL beside pane
+  transcripts). Landed tonight now 19.
+
 - 03:1x — THE SPRAWL SENTINEL IS MECHANICAL (your directive, encoded).
   fleet-watch gained the SPRAWL arm (floor <10G, fill >600MB/cycle + sustained >2G/5min-window — calibrated
   against the leak's measured 1.3G/cycle — entry surge >300/cycle, 5m
