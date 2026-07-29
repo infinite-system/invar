@@ -517,7 +517,8 @@ byte, emulator, and observation contracts above are unchanged by the extraction.
 `settings.agentTypingSpeed`, and `settings.reducedMotion` itself and passes them to
 `TerminalFactory.create`; a request carrying a declared `process` is launched with its own prompt
 instead. The plugin keeps its own map of the panes it created and resolves "the current terminal"
-as the host-reported visible pane, else its oldest live instance.
+only as the host-reported pane in the active workspace world. A hidden workspace terminal never
+projects status or answers an active-workspace consumer.
 
 **Generates:** a host that can be read end to end without learning what a PTY is; an uninstallable
 terminal; a terminal profile (a CLI agent in a pane) expressible as a request rather than a new
@@ -538,4 +539,4 @@ command event.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-07-29

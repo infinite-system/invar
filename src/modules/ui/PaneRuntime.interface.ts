@@ -26,8 +26,8 @@ export interface PaneRuntime {
  *  itself, plus its unregistration. Pull-based, so a runtime projects live state without holding the
  *  panel or observing its reactivity. */
 export interface PaneRuntimeHostPort {
-  /** The runtime's currently visible pane, or null when none of its kind is on screen. */
-  visiblePane(): PaneContent | null;
+  /** The runtime's current pane in the active workspace world, visible or hidden. */
+  currentPane(): PaneContent | null;
   /** Take one of this runtime's panes out of the panel. A runtime being uninstalled MUST release
    *  every pane it built: withdrawing its registrations while a live pane keeps rendering and
    *  holding keyboard focus leaves an orphan that answers for a runtime that no longer exists. */
@@ -37,7 +37,7 @@ export interface PaneRuntimeHostPort {
 
 /** Everything the host knows when it asks a runtime for a pane. */
 export interface PaneRuntimeRequest {
-  /** Host-allocated stable identity, unique inside the hosting `PanelHost`. */
+  /** Host-allocated stable identity, unique across every workspace world in the application. */
   readonly identifier: string;
   /** Host-allocated instance name (`Terminal`, `Terminal 2`). */
   readonly label: string;

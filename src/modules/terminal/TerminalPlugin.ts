@@ -86,12 +86,13 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
     this.panes.delete(content.id);
   }
 
-  /** The pane an outside consumer means by "the terminal": the visible one, else the oldest live
-   *  instance. The host answers only the visibility half. */
+  /** The pane an outside consumer means by "the terminal" in the active workspace world. */
+  // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
   currentPane(): TerminalPaneContent.Model | null {
-    const visiblePane = this.hostPort?.visiblePane() ?? null;
-    if (visiblePane instanceof TerminalPaneContent.Class) return visiblePane;
-    return this.panes.values().next().value ?? null;
+    const currentPane = this.hostPort?.currentPane() ?? null;
+    return currentPane instanceof TerminalPaneContent.Class
+      ? currentPane
+      : null;
   }
 
   disposeApplication(): void {

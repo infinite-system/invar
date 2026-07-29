@@ -141,7 +141,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         const unregister = this.options.paneRuntimes.register(runtime);
         registrationDisposers.push(unregister);
         return {
-          visiblePane: () => this.options.visiblePaneOfKind(runtime.kind),
+          currentPane: () => this.options.currentPaneOfKind(runtime.kind),
           releasePane: (identifier) => this.options.releasePane(identifier),
           dispose: unregister,
         };
@@ -226,8 +226,8 @@ export type ApplicationContributionsOptions = Omit<
   editorColumnDefault: EditorColumnDefault.Model;
   /** The host's registry of contributed pane runtimes. */
   paneRuntimes: PaneRuntimes.Model;
-  /** The one panel question a runtime cannot answer for itself. */
-  visiblePaneOfKind: (kind: string) => PaneContent | null;
+  /** The active workspace's current pane for a kind, whether its projection is visible or hidden. */
+  currentPaneOfKind: (kind: string) => PaneContent | null;
   /** Take a runtime-owned pane out of the panel, so uninstall leaves no orphan behind. */
   releasePane: (identifier: string) => void;
 };

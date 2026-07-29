@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // Byte-level workspace-tabs port: roots are added and switched through the painted strip and settings.
-// Each root also proves its own LSP process, diagnostics, structure, and type hover.
+// Each root proves its own retained panel world, LSP process, diagnostics, structure, and type hover.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -54,6 +54,14 @@ const statusPath = join(homeDirectory, 'status.json');
 const firstName = basename(firstRoot);
 
 const secondName = basename(secondRoot);
+
+const firstTaskIdentifier = `task:${encodeURIComponent(firstRoot)}:0`;
+
+const secondTaskIdentifier = `task:${encodeURIComponent(secondRoot)}:0`;
+
+const firstTerminalMarker = 'WORLD_A_296';
+
+const secondTerminalMarker = 'WORLD_B_296';
 
 const tinyTrackedDirectoryCount = 3;
 
@@ -327,7 +335,10 @@ const driver = new PtyTestDriver.Class({
   columns: 120,
   rows: 40,
   homeDirectory,
-  environment: { TUI_STATUS_PATH: statusPath },
+  environment: {
+    TUI_STATUS_PATH: statusPath,
+    INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '0',
+  },
 });
 
 try {
@@ -342,9 +353,27 @@ try {
     driver,
     statusPath,
     'one workspace is present after boot',
-    (status) => status.workspaceCount === 1,
+    (status) => status.ready === true && status.workspaceCount === 1,
   );
   pass('booted one workspace');
+  driver.sendKeys('Control+j');
+  const firstPanelWorldStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the first workspace owns its interactive terminal',
+    (status) =>
+      status.panelActiveContent === 'terminal' &&
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.includes(firstTaskIdentifier) &&
+      status.panelContentKinds.includes('terminal'),
+  );
+  driver.sendText(`printf '${firstTerminalMarker}\\n'`);
+  driver.sendKeys('Enter');
+  await driver.awaitGridCondition(
+    'the first workspace terminal paints its retained marker',
+    (candidate) => candidate.findText(firstTerminalMarker) !== null,
+  );
+  pass('the first workspace terminal owns live scrollback');
   const tinyActivationStatus = await awaitStatus(
     driver,
     statusPath,
@@ -491,6 +520,126 @@ try {
   requireCondition(
     branchCell?.foreground === settledSecondNameForeground,
     'active workspace detail foreground matches the readable name foreground',
+  );
+
+  console.log(
+    '== harness workspace tabs: panel worlds isolate and restore live sessions ==',
+  );
+  const secondPanelWorldInitialStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the second workspace projects only its declared task pane',
+    (status) =>
+      status.activeWorkspaceRoot === secondRoot &&
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.length === 1 &&
+      status.panelContentKinds[0] === secondTaskIdentifier &&
+      Array.isArray(status.panelContentIds) &&
+      !status.panelContentIds.includes(firstTaskIdentifier),
+  );
+  requireCondition(
+    !String(driver.snapshot().textRows().join('\n')).includes(
+      firstTerminalMarker,
+    ),
+    'the second workspace does not paint the first terminal scrollback',
+  );
+  driver.sendKeys('Control+j');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'a new terminal belongs only to the second workspace',
+    (status) =>
+      status.panelActiveContent === 'terminal@2' &&
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.includes(secondTaskIdentifier) &&
+      status.panelContentKinds.includes('terminal') &&
+      Array.isArray(status.panelContentLabels) &&
+      status.panelContentLabels.includes('Terminal'),
+  );
+  driver.sendText(`printf '${secondTerminalMarker}\\n'`);
+  driver.sendKeys('Enter');
+  await driver.awaitGridCondition(
+    'the second workspace terminal paints its own retained marker',
+    (candidate) => candidate.findText(secondTerminalMarker) !== null,
+  );
+  driver.sendKeys('Control+Shift+a');
+  const secondPanelWorldStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'a new agent belongs only to the second workspace',
+    (status) =>
+      status.panelActiveContent === 'agent@2' &&
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.includes('agent'),
+  );
+  snapshot = driver.snapshot();
+  clickMarker(driver, snapshot, firstName.slice(0, 17));
+  const restoredFirstPanelWorldStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'switching back restores the first workspace panel world',
+    (status) =>
+      status.activeWorkspaceRoot === firstRoot &&
+      JSON.stringify(status.panelContentIds) ===
+        JSON.stringify(firstPanelWorldStatus.panelContentIds) &&
+      JSON.stringify(status.panelContentKinds) ===
+        JSON.stringify(firstPanelWorldStatus.panelContentKinds) &&
+      JSON.stringify(status.panelCellIds) ===
+        JSON.stringify(firstPanelWorldStatus.panelCellIds),
+  );
+  requireCondition(
+    Array.isArray(restoredFirstPanelWorldStatus.panelContentIds) &&
+      !restoredFirstPanelWorldStatus.panelContentIds.includes(
+        secondTaskIdentifier,
+      ) &&
+      !restoredFirstPanelWorldStatus.panelContentIds.includes('terminal@2') &&
+      !restoredFirstPanelWorldStatus.panelContentIds.includes('agent@2'),
+    'the first workspace excludes every second-workspace pane identifier',
+  );
+  await driver.awaitGridCondition(
+    'the first terminal scrollback returns after a workspace round trip',
+    (candidate) =>
+      candidate.findText(firstTerminalMarker) !== null &&
+      candidate.findText(secondTerminalMarker) === null,
+  );
+  snapshot = driver.snapshot();
+  clickMarker(driver, snapshot, secondName.slice(0, 17));
+  const restoredSecondPanelWorldStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'switching again restores the exact second workspace panel world',
+    (status) =>
+      status.activeWorkspaceRoot === secondRoot &&
+      JSON.stringify(status.panelContentIds) ===
+        JSON.stringify(secondPanelWorldStatus.panelContentIds) &&
+      JSON.stringify(status.panelContentKinds) ===
+        JSON.stringify(secondPanelWorldStatus.panelContentKinds) &&
+      JSON.stringify(status.panelCellIds) ===
+        JSON.stringify(secondPanelWorldStatus.panelCellIds),
+  );
+  requireCondition(
+    Array.isArray(restoredSecondPanelWorldStatus.panelContentIds) &&
+      !restoredSecondPanelWorldStatus.panelContentIds.includes(
+        firstTaskIdentifier,
+      ),
+    'the second workspace excludes every first-workspace task identifier',
+  );
+  requireCondition(
+    Array.isArray(secondPanelWorldInitialStatus.panelContentIds) &&
+      !secondPanelWorldInitialStatus.panelContentIds.includes('terminal@2') &&
+      !secondPanelWorldInitialStatus.panelContentIds.includes('agent@2'),
+    'new terminal and agent instances were absent before their second-workspace gestures',
+  );
+  await driver.awaitGridCondition(
+    'the second terminal scrollback returns after a workspace round trip',
+    (candidate) =>
+      candidate.findText(secondTerminalMarker) !== null &&
+      candidate.findText(firstTerminalMarker) === null,
+  );
+  pass('workspace panel worlds isolate both polarities');
+  pass('workspace round trips preserve terminal processes and scrollback');
+  pass(
+    'workspace-local terminal and agent creation stays in the selected world',
   );
 
   console.log(

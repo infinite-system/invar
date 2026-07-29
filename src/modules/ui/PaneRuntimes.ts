@@ -11,7 +11,10 @@ import type { PaneRuntime, PaneRuntimeRequest } from './PaneRuntime.interface';
 
 class $PaneRuntimes {
   protected readonly runtimesByKind = new Map<string, PaneRuntime>();
-  protected readonly instanceCountsByKind = new Map<string, number>();
+  protected readonly instanceCountsByIdentityScopeAndKind = new Map<
+    string,
+    number
+  >();
 
   register(runtime: PaneRuntime): () => void {
     this.runtimesByKind.set(runtime.kind, runtime);
@@ -33,22 +36,27 @@ class $PaneRuntimes {
       .map((runtime) => ({ kind: runtime.kind, label: runtime.instanceLabel }));
   }
 
-  /** Allocate the next `<Label>`/`<Label> N` identity for a kind. Instance 1 keeps the bare kind
-   *  identifier so persisted panel content order and existing probes stay stable. */
+  /** Allocate the next workspace-local `<Label>`/`<Label> N` identity for a kind. The first
+   *  workspace keeps the bare kind identifier so persisted order and existing probes stay stable. */
   allocateInstanceIdentity(
     kind: string,
     additionalInstance: boolean,
+    identityScope = '',
   ): PaneInstanceIdentity | null {
     const runtime = this.runtimesByKind.get(kind);
     if (!runtime) return null;
-    const allocatedCount = this.instanceCountsByKind.get(kind) ?? 0;
+    const identityScopeAndKind = `${identityScope}\0${kind}`;
+    const allocatedCount =
+      this.instanceCountsByIdentityScopeAndKind.get(identityScopeAndKind) ?? 0;
     const instanceNumber = additionalInstance ? allocatedCount + 1 : 1;
-    this.instanceCountsByKind.set(
-      kind,
+    this.instanceCountsByIdentityScopeAndKind.set(
+      identityScopeAndKind,
       Math.max(allocatedCount, instanceNumber),
     );
+    const scopedKind = identityScope ? `${kind}@${identityScope}` : kind;
     return {
-      identifier: instanceNumber === 1 ? kind : `${kind}-${instanceNumber}`,
+      identifier:
+        instanceNumber === 1 ? scopedKind : `${scopedKind}-${instanceNumber}`,
       label:
         instanceNumber === 1
           ? runtime.instanceLabel

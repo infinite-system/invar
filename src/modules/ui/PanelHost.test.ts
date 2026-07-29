@@ -56,6 +56,99 @@ test('the first registered content becomes active', () => {
   expect(host.order.value).toEqual(['terminal']);
 });
 
+test('content sets isolate and restore complete panel worlds', () => {
+  const host = new PanelHost.Class();
+  const firstTask = fakeContent('first-task', 'task');
+  const firstTerminal = fakeContent('terminal', 'terminal');
+  host.register(firstTask);
+  host.register(firstTerminal);
+  host.split([firstTask.id, firstTerminal.id]);
+  host.show();
+  host.focusCell(1);
+  const firstContentSet = host.activeContentSet;
+
+  const secondContentSet = host.createContentSet();
+  host.selectContentSet(secondContentSet);
+  expect(host.orderedContents).toEqual([]);
+  expect(host.visible.value).toBe(false);
+  expect(firstTask.disposed).toBe(false);
+  expect(firstTerminal.disposed).toBe(false);
+
+  const secondTask = fakeContent('second-task', 'task');
+  host.register(secondTask);
+  host.showContent(secondTask.id);
+  expect(host.has(firstTask.id)).toBe(false);
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    secondTask.id,
+  ]);
+
+  host.selectContentSet(firstContentSet);
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    firstTask.id,
+    firstTerminal.id,
+  ]);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    firstTask.id,
+    firstTerminal.id,
+  ]);
+  expect(host.visible.value).toBe(true);
+  expect(host.focused.value).toBe(true);
+  expect(host.focusedContent).toBe(firstTerminal);
+  expect(secondTask.disposed).toBe(false);
+
+  host.disposeContentSet(secondContentSet);
+  expect(secondTask.disposed).toBe(true);
+  expect(firstTask.disposed).toBe(false);
+  expect(firstTerminal.disposed).toBe(false);
+});
+
+test('runtime withdrawal removes a pane from an inactive content set', () => {
+  const host = new PanelHost.Class();
+  const firstTerminal = fakeContent('terminal', 'terminal');
+  host.register(firstTerminal);
+  const firstContentSet = host.activeContentSet;
+  const secondContentSet = host.createContentSet();
+  host.selectContentSet(secondContentSet);
+  const secondTerminal = fakeContent('terminal@2', 'terminal');
+  host.register(secondTerminal);
+
+  host.removeContentFromAnySet(firstTerminal.id);
+
+  expect(firstTerminal.disposed).toBe(true);
+  expect(secondTerminal.disposed).toBe(false);
+  host.selectContentSet(firstContentSet);
+  expect(host.has(firstTerminal.id)).toBe(false);
+  host.selectContentSet(secondContentSet);
+  expect(host.content(secondTerminal.id)).toBe(secondTerminal);
+});
+
+test('a new content set excludes identifiers owned by another world', () => {
+  const host = new PanelHost.Class({
+    contentOrder: ref(['agent', 'terminal', 'terminal-2']),
+  });
+  host.register(fakeContent('terminal-2', 'terminal'));
+
+  host.selectContentSet(host.createContentSet());
+
+  expect(host.order.value).toEqual(['agent', 'terminal']);
+  expect(host.has('terminal-2')).toBe(false);
+});
+
+test('disposing the selected world preserves persisted content order', () => {
+  const persistedOrder = ref(['terminal', 'agent']);
+  const host = new PanelHost.Class({ contentOrder: persistedOrder });
+  const terminal = fakeContent('terminal');
+  const agent = fakeContent('agent');
+  host.register(terminal);
+  host.register(agent);
+
+  host.disposeContentSet(host.activeContentSet);
+
+  expect(persistedOrder.value).toEqual(['terminal', 'agent']);
+  expect(terminal.disposed).toBe(true);
+  expect(agent.disposed).toBe(true);
+});
+
 test('a dock-style host reveals itself when content is registered', () => {
   const host = new PanelHost.Class({ showWhenContentRegistered: true });
   host.register(fakeContent('navigator'));

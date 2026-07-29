@@ -51,7 +51,7 @@ import {
   type AppStatusMouseEvent,
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
-import { PanelHost } from '../ui/PanelHost';
+import { PanelHost, type PanelContentSet } from '../ui/PanelHost';
 import { ActivitySurface } from '../ui/ActivitySurface';
 import { PanelHostFocusSet } from '../ui/PanelHostFocusSet';
 import { PanelAddPopup } from '../ui/PanelAddPopup';
@@ -288,6 +288,49 @@ class $Bootstrap {
       persistContentOrder: () => settings.save(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
     });
+    const workspacePanelWorlds = new Map<
+      Workspace.Instance,
+      WorkspacePanelWorld
+    >();
+    let nextWorkspacePanelWorldNumber = 1;
+    const initialWorkspacePanelWorld: WorkspacePanelWorld = {
+      contentSet: panelHost.activeContentSet,
+      identityScope: '',
+      agentInstanceCount: 0,
+    };
+    workspacePanelWorlds.set(workspaceSet.active, initialWorkspacePanelWorld);
+    let activeWorkspacePanelWorld = initialWorkspacePanelWorld;
+    let reconnectPanelWorldDependencies = (): void => {};
+    const workspacePanelWorldFor = (
+      workspace: Workspace.Instance,
+    ): WorkspacePanelWorld => {
+      const existingWorkspacePanelWorld = workspacePanelWorlds.get(workspace);
+      if (existingWorkspacePanelWorld) return existingWorkspacePanelWorld;
+      nextWorkspacePanelWorldNumber += 1;
+      const workspacePanelWorld: WorkspacePanelWorld = {
+        contentSet: panelHost.createContentSet(),
+        identityScope: String(nextWorkspacePanelWorldNumber),
+        agentInstanceCount: 0,
+      };
+      workspacePanelWorlds.set(workspace, workspacePanelWorld);
+      return workspacePanelWorld;
+    };
+    const stopSelectingWorkspacePanelWorlds =
+      workspaceSet.onActiveWorkspaceChanged((workspace) => {
+        activeWorkspacePanelWorld = workspacePanelWorldFor(workspace);
+        panelHost.selectContentSet(activeWorkspacePanelWorld.contentSet);
+        reconnectPanelWorldDependencies();
+      });
+    const stopDisposingWorkspacePanelWorlds = workspaceSet.onWorkspaceDisposed(
+      (workspace) => {
+        const workspacePanelWorld = workspacePanelWorlds.get(workspace);
+        if (!workspacePanelWorld) return;
+        panelHost.disposeContentSet(workspacePanelWorld.contentSet);
+        workspacePanelWorlds.delete(workspace);
+      },
+    );
+    app.onDispose(stopSelectingWorkspacePanelWorlds);
+    app.onDispose(stopDisposingWorkspacePanelWorlds);
     // invariant: Activity bar order is one persisted sequence (src/modules/ui/ui.invariants.md)
     const primaryDockHost = new PanelHost.Class({
       focusSet: panelHostFocusSet,
@@ -356,10 +399,10 @@ class $Bootstrap {
         paneRuntimes,
         openRuntimePane: (runtimeKind, request) =>
           openRuntimePane(runtimeKind, request),
-        visiblePaneOfKind: (kind) => panelHost.visibleContentOfKind(kind),
-        releasePane: (identifier) => {
-          if (panelHost.has(identifier)) panelHost.removeContent(identifier);
-        },
+        currentPaneOfKind: (kind) =>
+          panelHost.visibleContentOfKind(kind) ?? panelHost.contentOfKind(kind),
+        releasePane: (identifier) =>
+          panelHost.removeContentFromAnySet(identifier),
         editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
         dismissEditorSuggestions: () => dismissEditorSuggestions(),
         bindingHint: (action, context) =>
@@ -487,23 +530,15 @@ class $Bootstrap {
     // true size. The host names no runtime: it passes a KIND to the registry and registers whatever
     // comes back.
     const runtimePanes = new Map<string, PaneContent>();
-    const agentPaneContents = new Map<string, AgentPaneContent.Model>();
-    let agentInstanceCount = 0;
-    let agentPaneContent: AgentPaneContent.Model | null = null;
-    /** The pane an outside consumer means by a kind: the visible one, else the oldest live one. */
+    /** The pane an outside consumer means by a kind in the active workspace world. */
     const currentPaneOfKind = (kind: string): PaneContent | null => {
-      const visibleContent = panelHost.visibleContentOfKind(kind);
-      if (visibleContent) return visibleContent;
-      for (const pane of runtimePanes.values()) {
-        if (pane.kind === kind) return pane;
-      }
-      return null;
+      return (
+        panelHost.visibleContentOfKind(kind) ?? panelHost.contentOfKind(kind)
+      );
     };
     const currentAgentPane = (): AgentPaneContent.Model | null => {
-      const visibleContent = panelHost.visibleContentOfKind('agent');
-      return visibleContent instanceof AgentPaneContent.Class
-        ? visibleContent
-        : agentPaneContent;
+      const content = currentPaneOfKind('agent');
+      return content instanceof AgentPaneContent.Class ? content : null;
     };
     const synchronizeAgentSkillPopup = (
       pane: AgentPaneContent.Model | null = panelHost.focusedContent instanceof
@@ -547,15 +582,22 @@ class $Bootstrap {
       const observationPort = currentPaneOfKind(
         'terminal',
       )?.capability?.<AgentTerminalObservationPort>('terminal-observation');
-      if (terminalFollowController || !observationPort || !agentPaneContent) {
+      const agentPane = currentAgentPane();
+      if (terminalFollowController || !observationPort || !agentPane) {
         return;
       }
       terminalFollowController = new AgentTerminalFollow.Class(
-        agentPaneContent.agentSession,
+        agentPane.agentSession,
         observationPort,
         settings.agentTerminalFollowMode,
         () => settings.save(),
       );
+    };
+    reconnectPanelWorldDependencies = (): void => {
+      agentSkillPopup.close();
+      terminalFollowController?.dispose();
+      terminalFollowController = null;
+      connectTerminalFollow();
     };
     // Build a pane through its contributed runtime. The host supplies identity and the laid-out
     // geometry; the runtime decides what — if anything — it starts behind them.
@@ -563,12 +605,11 @@ class $Bootstrap {
       kind: string,
       additionalInstance = false,
     ): PaneContent | null => {
-      const anyExisting = [...runtimePanes.values()].some(
-        (pane) => pane.kind === kind,
-      );
+      const anyExisting = panelHost.contentOfKind(kind) !== null;
       const identity = paneRuntimes.allocateInstanceIdentity(
         kind,
         additionalInstance || anyExisting,
+        activeWorkspacePanelWorld.identityScope,
       );
       if (!identity) return null;
       const content = paneRuntimes.createPane(kind, {
@@ -614,7 +655,6 @@ class $Bootstrap {
     // The audio narration projection over the agent transcript (the third projection: text→pane,
     // visual→decorations, audio→speech). Created alongside the agent pane so it subscribes to the SAME
     // AgentSession; null until the agent pane is ensured. Barge-in + dispose route through it.
-    let narration: NarrationProjection.Instance | null = null;
     const narrationsByAgentIdentifier = new Map<
       string,
       NarrationProjection.Instance
@@ -622,8 +662,8 @@ class $Bootstrap {
     const currentNarration = (): NarrationProjection.Instance | null => {
       const agentPane = currentAgentPane();
       return agentPane
-        ? (narrationsByAgentIdentifier.get(agentPane.id) ?? narration)
-        : narration;
+        ? (narrationsByAgentIdentifier.get(agentPane.id) ?? null)
+        : null;
     };
     // The agent pane instance once ensured — the frame dump reads its view state (scroll/collapse) so the
     // driving smoke asserts the UX without pane-scraping. Null until the pane is first toggled.
@@ -724,13 +764,20 @@ class $Bootstrap {
     const createAgent = (
       additionalInstance = false,
     ): AgentPaneContent.Model => {
+      const anyExisting = panelHost.contentOfKind('agent') !== null;
       const instanceNumber =
-        additionalInstance || agentPaneContents.size > 0
-          ? agentInstanceCount + 1
+        additionalInstance || anyExisting
+          ? activeWorkspacePanelWorld.agentInstanceCount + 1
           : 1;
-      agentInstanceCount = Math.max(agentInstanceCount, instanceNumber);
+      activeWorkspacePanelWorld.agentInstanceCount = Math.max(
+        activeWorkspacePanelWorld.agentInstanceCount,
+        instanceNumber,
+      );
+      const scopedKind = activeWorkspacePanelWorld.identityScope
+        ? `agent@${activeWorkspacePanelWorld.identityScope}`
+        : 'agent';
       const identifier =
-        instanceNumber === 1 ? 'agent' : `agent-${instanceNumber}`;
+        instanceNumber === 1 ? scopedKind : `${scopedKind}-${instanceNumber}`;
       const label = instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`;
       // Real Claude (when `claude` is on PATH) runs in the workspace root so it operates in the project.
       const agentPane = AgentFactory.Class.create({
@@ -744,8 +791,6 @@ class $Bootstrap {
       });
       panelHost.register(agentPane);
       if (agentPane instanceof AgentPaneContent.Class) {
-        agentPaneContents.set(agentPane.id, agentPane);
-        agentPaneContent ??= agentPane;
         agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
         const enginePort: AgentEnginePort = {
           get provider() {
@@ -770,22 +815,18 @@ class $Bootstrap {
           }),
         );
         narrationsByAgentIdentifier.set(agentPane.id, agentNarration);
-        narration ??= agentNarration;
         connectTerminalFollow();
       }
       return agentPane;
     };
     const ensureAgent = (): AgentPaneContent.Model =>
-      agentPaneContent ?? createAgent();
+      currentAgentPane() ?? createAgent();
     handlePanelContentRemoved = (content): void => {
       if (runtimePanes.delete(content.id)) paneRuntimes.paneRemoved(content);
       if (content instanceof AgentPaneContent.Class) {
-        agentPaneContents.delete(content.id);
         const removedNarration = narrationsByAgentIdentifier.get(content.id);
         removedNarration?.dispose();
         narrationsByAgentIdentifier.delete(content.id);
-        agentPaneContent = agentPaneContents.values().next().value ?? null;
-        narration = narrationsByAgentIdentifier.values().next().value ?? null;
       }
       terminalFollowController?.dispose();
       terminalFollowController = null;
@@ -2825,4 +2866,10 @@ export interface BootedApp {
   view: RootView;
   render(): Promise<void>;
   shutdown(): Promise<void>;
+}
+
+interface WorkspacePanelWorld {
+  readonly contentSet: PanelContentSet;
+  readonly identityScope: string;
+  agentInstanceCount: number;
 }
