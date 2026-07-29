@@ -1376,25 +1376,30 @@ renderables is a violation.
 **Invariant:** If a renderable exists, then it holds only presentation state; it pulls all
 domain data from models each `update()` and never mutates a model during render.
 
-**Scope:** `RootView` and every OpenTUI renderable it builds.
+**Scope:** `RootView`, `SourceTextPaneContent`, `EditorPaneRenderer`, and every OpenTUI renderable
+they build.
 
-**Mechanism:** `update()` reads workspace/editor/theme/commands state and writes renderable
-content; renderables store no cursor/buffer/selection truth. Realizes *ivue owns state, OpenTUI
-owns projection*.
+**Mechanism:** `RootView.update` and `SourceTextPaneContent.paint` read model state and write
+presentation content. `EditorPaneRenderer` derives the source-text cells from the current
+`SourceTextView`; the gutter and code renderables store no cursor, buffer, selection, or scroll
+truth. Realizes *ivue owns state and OpenTUI owns projection*.
 
 **Generates:** the stateless view; the ability to rebuild the frame purely from model state.
 
-**Evidence:** `RootView.ts:211-249` — renderables hold no model fields; pulls each update. Upheld.
+**Evidence:** `src/modules/ui/RootView.ts`; `src/modules/editor/SourceTextPaneContent.ts`;
+`src/modules/editor/EditorPaneRenderer.ts`; `src/modules/editor/SourceTextPaneContent.test.ts`;
+`src/modules/ui/PaneProjection.test.ts`.
 
 **Impossible if true:** a renderable that is the source of scroll/selection/cursor truth; a
 render pass that writes model state.
 
-**Verification:** review/grep — renderables hold no model fields; `update()` performs no model
-mutation.
+**Verification:** `bun test src/modules/editor/SourceTextPaneContent.test.ts
+src/modules/ui/PaneProjection.test.ts`; review the renderable constructors for domain model fields
+and the paint methods for model writes.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-29
 
 ### Only the visible window is rendered
 
