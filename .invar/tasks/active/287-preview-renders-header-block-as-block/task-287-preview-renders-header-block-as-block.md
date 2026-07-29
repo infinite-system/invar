@@ -32,6 +32,14 @@ Whatever the rule, it must be a RECORDED renderer semantic (markdown
 record), not a task-file special case; normal prose paragraphs must
 still reflow (both polarities: header stack stays stacked, prose joins).
 
+## Second arm (user, 12:2x): H1 styling
+
+Heading 1 in the preview should NOT be underlined — distinguish it by
+color instead (a different color alone suffices, per the user). Both
+themes; the H2+ treatments stay as they are unless consistency argues
+otherwise (say so if it does). This is the #236 stylesheet's territory —
+refine that record, keep its label.
+
 ## Invariants in scope
 
 - The markdown renderer/stylesheet records (#236's family); the split
