@@ -1,5 +1,17 @@
 # Overnight briefing — started 2026-07-29 00:28
 
+## NORTH STAR (user, 2026-07-29 12:4x, verbatim intent — long-term direction)
+
+Beyond VS Code parity: **InvarOS** — an AI-powered system that codes WITH
+you and runs fleets on ANY codebase: prepare a repo with its own merge
+gate + contracts + task ledger, deliver at fleet rate under invariants.
+Terminal-native is the moat: tmux/ssh/cron/processes/PTYs are first-class
+controllable and monitorable surfaces VS Code's sandbox cannot reach. The
+fleet discipline stack (dispatch/land/gate/watch/round-brief/link-lint)
+is deliberately PORTABLE — it is the product; the editor is the cockpit.
+(Related: the capsule/populate-a-repo skill remains HELD by the user until
+architecture refinement — do not start it unprompted.)
+
 ## RESUME ANCHOR 5 (09:5x — MACHINE SHUTDOWN EXPECTED; supersedes ANCHOR 4)
 
 - User went to work ~10:0x; machine off for a while. NO NEW DISPATCHES
