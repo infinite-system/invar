@@ -1,6 +1,32 @@
 # Overnight briefing — started 2026-07-29 00:28
 
-## RESUME ANCHOR 2 (04:3x — supersedes the 02:26 anchor below)
+## RESUME ANCHOR 3 (06:2x — supersedes ANCHOR 2)
+
+- MAIN IS RED at d42f2af0..afc6eecf: I landed #237 over GATE_EXIT=1 (the
+  wrapper exit I chained behind was an echo's, not the gate's — family 3
+  row added). The red: `smoke-editor-harness` wrap-off rows, displaced by
+  #237's auto-open preview narrowing the editor under the smoke's
+  full-width assumptions. #268 DISPATCHED (claude/fable, live) to fix the
+  smoke under real defaults — expectations derive from the viewport, or
+  non-md fixture; never weaken wrap-off, never disable auto-open.
+- GUARD LANDED (06d2709e): land.sh REFUSES without a READ verdict —
+  GATE_LOG must contain GATE_EXIT=0, or GATE_OVERRIDE='<written reason>';
+  exit 6. All four arms probe-tested. dispatch.sh also fixed (afc6eecf):
+  brief snapshot before the record move (pre-filed briefs live INSIDE the
+  active/ folder; the git mv relocated them before the worktree cp — bit
+  twice on #268; two zero-commit half-cut branches parked as
+  orphaned/268-halfcut-predispatch{,-2,-3}).
+- #238 round 2 FILED + steered (round-brief.sh): merge main into its
+  branch, self-resolve the 3-file conflict with #237 (MarkdownWorkspace.ts
+  + test + manifest smoke), full smokes green, out-of-scope: #268's red.
+- ON #268 READY: gate main+#268, land with GATE_LOG. ON #238 READY (after
+  #268 lands): gate main+#238, land. Then dispatch next lanes: #264
+  (settings ERASER, data loss), #259 (double-focus click), #235 (tasks
+  dashboard, PTY-widget interim per user). #241/#242 WAIT FOR USER.
+- Armed at 06:2x: fleet-watch Monitor re-armed (prior one died exit 2),
+  crons :07 + :37 verified live.
+
+## RESUME ANCHOR 2 (04:3x — superseded by ANCHOR 3)
 
 - FLEET: #233 and #35 READY round 2; gate 2 running on the combined tree
   (main+#233+#35 incl. 215724d1). On green: land #233 then #35 via land.sh,
