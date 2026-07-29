@@ -52,6 +52,7 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
+import { PanelHostFocusSet } from '../ui/PanelHostFocusSet';
 import { PanelAddPopup } from '../ui/PanelAddPopup';
 import type {
   PaneContent,
@@ -236,18 +237,22 @@ class $Bootstrap {
     // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
     const paneRuntimes = new PaneRuntimes.Class();
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
+    const panelHostFocusSet = new PanelHostFocusSet.Class();
     const panelHost = new PanelHost.Class({
+      focusSet: panelHostFocusSet,
       contentOrder: settings.panelContentOrder,
       persistContentOrder: () => settings.save(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
     });
     // invariant: Activity bar order is one persisted sequence (src/modules/ui/ui.invariants.md)
     const primaryDockHost = new PanelHost.Class({
+      focusSet: panelHostFocusSet,
       contentOrder: settings.primaryDockContentOrder,
       persistContentOrder: () => settings.save(),
       retainUnregisteredContentOrder: true,
     });
     const rightDockHost = new PanelHost.Class({
+      focusSet: panelHostFocusSet,
       showWhenContentRegistered: true,
     });
 
@@ -327,8 +332,6 @@ class $Bootstrap {
     // visible split; closing it leaves the agent region intact.
     const toggleTerminal = (): void => {
       agentSkillPopup.close();
-      primaryDockHost.blur();
-      rightDockHost.blur();
       const visibleTerminal = panelHost.visibleContentOfKind('terminal');
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
       else {
@@ -343,8 +346,6 @@ class $Bootstrap {
     // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
     const toggleAgent = (): void => {
       agentSkillPopup.close();
-      primaryDockHost.blur();
-      rightDockHost.blur();
       const visibleAgent = panelHost.visibleContentOfKind('agent');
       if (visibleAgent) panelHost.toggleContent(visibleAgent.id);
       else panelHost.showContent(ensureAgent().id);
@@ -744,8 +745,6 @@ class $Bootstrap {
         present: (identifiers, transferFocus) => {
           panelHost.split([...identifiers]);
           if (transferFocus) {
-            primaryDockHost.blur();
-            rightDockHost.blur();
             panelHost.show();
           } else {
             panelHost.visible.value = true;
@@ -771,8 +770,6 @@ class $Bootstrap {
     app.onDispose(disposeTasksContribution);
 
     const addPanelContent = (kind: string): void => {
-      primaryDockHost.blur();
-      rightDockHost.blur();
       const content =
         kind === 'agent' ? createAgent(true) : createRuntimePane(kind, true);
       if (content) panelHost.showContent(content.id);

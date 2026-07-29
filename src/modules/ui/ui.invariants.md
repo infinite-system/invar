@@ -1938,6 +1938,37 @@ paths and asserts the shared visibility state plus emulator geometry.
 
 **Last refined:** 2026-07-24
 
+### One panel host owns keyboard focus
+
+**Invariant:** If a `PanelHost` claims keyboard focus, then every other host in its
+`PanelHostFocusSet` loses focus before the next input routes.
+
+**Scope:** The primary dock, right dock, and bottom panel hosts built by `Bootstrap`.
+Modal overlays retain their separate input owner.
+
+**Mechanism:** `PanelHost.focus` calls `PanelHostFocusSet.claim` before it focuses its active
+content. The focus set blurs every other registered host.
+
+**Generates:** One focus operation for primary-dock, right-dock, and bottom-panel clicks and
+toggles; input routing with one focused host.
+
+**Rejected alternatives:** Blur sibling hosts at each click site — a new or missed path can
+leave two focus booleans true.
+
+**Evidence:** `src/modules/ui/PanelHostFocusSet.ts`;
+`src/modules/ui/PanelHostFocusSet.test.ts` `a focus claim blurs every other registered panel
+host`; `scripts/harness/smoke-activitybar-harness.ts`.
+
+**Impossible if true:** The primary dock and right dock both report focus after a right-dock
+click; one key reaches a host only because its branch appears first in the input ladder.
+
+**Verification:** `bun test src/modules/ui/PanelHostFocusSet.test.ts && bun
+scripts/harness/smoke-activitybar-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Command bar paint and hit geometry are identical
 
 **Invariant:** If the workspace command bar paints Back, Forward, the current folder, or Layouts,

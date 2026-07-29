@@ -20,7 +20,9 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import type { KeyEvent } from '@opentui/core';
 import type { PaneContent } from './PaneContent.interface';
+import type { PanelHostFocusSet } from './PanelHostFocusSet';
 
+// invariant: One panel host owns keyboard focus (src/modules/ui/ui.invariants.md)
 class $PanelHost {
   protected get PanelHost() {
     return PanelHost.Class as unknown as typeof $PanelHost;
@@ -31,7 +33,12 @@ class $PanelHost {
   protected get minimumCellRatio() {
     return this.PanelHost.MINIMUM_CELL_RATIO;
   }
-  constructor(readonly options: PanelHostOptions = {}) {}
+  protected readonly unregisterFromFocusSet: () => void;
+
+  constructor(readonly options: PanelHostOptions = {}) {
+    this.unregisterFromFocusSet =
+      this.options.focusSet?.register(this) ?? (() => {});
+  }
   /** The registry, keyed by content id. Non-reactive — `order`/`layout` drive what shows. */
   protected readonly contents = new Map<string, PaneContent>();
   /** Whether the slot is shown at all (VS Code: the bottom panel is toggled). */
@@ -598,6 +605,7 @@ class $PanelHost {
     this.expanded.value = !this.expanded.value;
   }
   focus(): void {
+    this.options.focusSet?.claim(this);
     if (this.focused.value) return;
     this.focused.value = true;
     this.focusedContent?.onFocus();
@@ -622,6 +630,7 @@ class $PanelHost {
       span.content.onResize(span.columns, rows);
   }
   dispose(): void {
+    this.unregisterFromFocusSet();
     for (const content of this.contents.values()) {
       content.dispose();
       this.options.onContentRemoved?.(content);
@@ -661,6 +670,7 @@ export interface PanelCellSpan {
 }
 
 export interface PanelHostOptions {
+  focusSet?: PanelHostFocusSet.Model;
   showWhenContentRegistered?: boolean;
   contentOrder?: Ref<string[]>;
   persistContentOrder?: () => void;
