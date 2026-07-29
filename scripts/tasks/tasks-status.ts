@@ -1166,8 +1166,12 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     // Home, then clear to end — repaint in place inside the alt screen.
     process.stdout.write('\x1b[H\x1b[0J');
     const clock = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    const fleet = fleetDeltaTotals();
     console.log(
       `${bold('INVAR TASKS')} ${dim(`· ${clock} · 30fps · Ctrl+C to exit`)}`,
+    );
+    console.log(
+      `  ${bold('tonight')} ${rollingBadge('fleet-added', fleet.added, '+', green)} ${rollingBadge('fleet-removed', fleet.removed, '-', red)} ${dim(`lines in flight · ${fleet.builders} builder(s)`)}`,
     );
     console.log('');
     live(tasksRoot, Math.floor(frame / SPINNER_PAINTS_PER_STEP), cachedRecords);
@@ -1182,10 +1186,6 @@ async function watchLenses(tasksRoot: string): Promise<number> {
       now !== null && base !== null && now > base
         ? green(` +${now - base}`)
         : '';
-    const fleet = fleetDeltaTotals();
-    console.log(
-      `⌨ fleet diff ${rollingBadge('fleet-added', fleet.added, '+', green)} ${rollingBadge('fleet-removed', fleet.removed, '-', red)} ${dim(`across ${fleet.builders} builder(s)`)}`,
-    );
     console.log(
       dim(`◫ ${activeCount} active · ✔ ${completedCount} completed`) +
         dim('  ·  ') +
