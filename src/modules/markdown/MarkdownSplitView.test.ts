@@ -126,6 +126,14 @@ test('a source reveal waits for the preview revision that matches the source', (
   ) as $ProbedMarkdownSplitView;
   Object.defineProperties(splitView, {
     preview: { value: previewState },
+    previewViewport: {
+      value: {
+        scrollTop: 0,
+        scrollToRow: (rowIndex: number) => {
+          previewState.scrollTop.value = rowIndex;
+        },
+      },
+    },
     options: {
       value: {
         source: {
@@ -221,15 +229,19 @@ test('the pane receiving input leads one-way scroll follow and the setting disab
 
   let sourceScrollTop = 10;
   let sourceLineAtViewportTop = 10;
-  const previewScrollTop = ref(0);
+  let previewScrollTop = 0;
   const previewState = {
-    scrollTop: previewScrollTop,
     parsedRevision: 1,
     renderedRowForSourceLine: (sourceLine: number) => sourceLine * 2,
     sourceLineForRenderedRow: (renderedRow: number) =>
       Math.round(renderedRow / 2),
-    scrollTo: (renderedRow: number) => {
-      previewScrollTop.value = renderedRow;
+  };
+  const previewViewport = {
+    get scrollTop() {
+      return previewScrollTop;
+    },
+    scrollToRow: (renderedRow: number) => {
+      previewScrollTop = renderedRow;
     },
   };
   const splitView = Object.create(
@@ -237,8 +249,8 @@ test('the pane receiving input leads one-way scroll follow and the setting disab
   ) as $ProbedMarkdownSplitView;
   Object.defineProperties(splitView, {
     preview: { value: previewState },
+    previewViewport: { value: previewViewport },
     focusedPane: { value: ref<'source' | 'preview'>('source') },
-    verticalScrollMomentum: { value: ref({ velocity: 0 }) },
     scrollSyncSetting: {
       value: {
         value: ref(true),
@@ -258,10 +270,10 @@ test('the pane receiving input leads one-way scroll follow and the setting disab
   });
 
   expect(splitView.synchronizeScrollFollowerForTest()).toBe(true);
-  expect(previewScrollTop.value).toBe(20);
+  expect(previewScrollTop).toBe(20);
 
   splitView.focusedPane.value = 'preview';
-  previewScrollTop.value = 30;
+  previewScrollTop = 30;
   expect(splitView.synchronizeScrollFollowerForTest()).toBe(true);
   expect(sourceScrollTop).toBe(15);
 
@@ -274,10 +286,10 @@ test('the pane receiving input leads one-way scroll follow and the setting disab
   sourceScrollTop = 25;
   sourceLineAtViewportTop = 25;
   splitView.synchronizeScrollFollowerForTest();
-  expect(previewScrollTop.value).toBe(30);
+  expect(previewScrollTop).toBe(30);
 
   splitView.focusedPane.value = 'preview';
-  previewScrollTop.value = 40;
+  previewScrollTop = 40;
   splitView.synchronizeScrollFollowerForTest();
   expect(sourceScrollTop).toBe(25);
 });

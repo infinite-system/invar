@@ -6,7 +6,7 @@
 // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
 import { BoxRenderable, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
+import { ref } from 'vue';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
@@ -15,8 +15,7 @@ import type { FindInBufferMatch } from '../search/FindInBuffer';
 import type { Settings } from '../settings/Settings';
 import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { Theme } from '../theme/Theme';
-import { Momentum, type ScrollMomentum } from '../system/Momentum';
-import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
+import { ScrollableTextViewport } from '../ui/ScrollableTextViewport';
 import { SplitterElement } from '../ui/SplitterElement';
 import { MarkdownPreview } from './MarkdownPreview';
 import type { MarkdownSource } from './MarkdownDocument';
@@ -34,7 +33,7 @@ class $MarkdownSplitView {
   protected readonly paneSplitter: SplitterModel.Instance;
   protected readonly splitterElement: SplitterElement.Model;
   protected readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
-  protected readonly previewSelectionDragBehavior: SelectionDragBehavior.Model;
+  protected readonly previewViewport: ScrollableTextViewport.Instance;
   protected readonly splitRatioSetting: RegisteredSetting<number>;
   protected readonly scrollSyncSetting: RegisteredSetting<boolean>;
   protected lastLaidOutWidth = -1;
@@ -67,10 +66,6 @@ class $MarkdownSplitView {
   get selectionRevision() {
     return ref(0);
   }
-  get verticalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
-  }
-
   constructor(
     readonly renderer: CliRenderer,
     readonly theme: Theme.Instance,
@@ -94,7 +89,8 @@ class $MarkdownSplitView {
       border: true,
       borderStyle: 'rounded',
       title: 'Preview',
-      overflow: 'hidden',
+      // MarkdownRenderable already clips its body. A second scissor here leaves the trailing-edge
+      // bars painted but removes them from OpenTUI's hit grid, so native drag and track clicks die.
       flexShrink: 0,
     });
     this.splitterElement = this.createSplitterElement();
@@ -103,8 +99,8 @@ class $MarkdownSplitView {
     this.previewRenderable = this.createPreviewRenderable();
     this.previewPaneRenderable.add(this.previewRenderable);
     this.previewTextBuffer = this.createPreviewTextBuffer();
+    this.previewViewport = this.createPreviewViewport();
     this.paneSplitter = this.splitterElement.model;
-    this.previewSelectionDragBehavior = this.createSelectionDragBehavior();
 
     // The RENDERED view reads left-to-right first, so the preview sits LEFT by default; the
     // contributed `markdownPreviewSide` setting flips the order. Only the child order and the
@@ -202,65 +198,74 @@ class $MarkdownSplitView {
     };
   }
 
-  protected createSelectionDragBehavior(): SelectionDragBehavior.Model {
-    // invariant: Markdown preview selection reuses shared drag behavior (src/modules/markdown/markdown.invariants.md)
-    return new SelectionDragBehavior.Class({
-      viewportRectangle: () => ({
-        leftColumn: this.previewRenderable.bodyRenderable.x,
-        rightColumn:
-          this.previewRenderable.bodyRenderable.x +
-          Math.max(1, this.previewViewportWidth()) -
-          1,
-        topRow: this.previewRenderable.bodyRenderable.y,
-        bottomRow:
-          this.previewRenderable.bodyRenderable.y +
-          Math.max(1, this.previewViewportHeight()) -
-          1,
+  protected createPreviewViewport(): ScrollableTextViewport.Instance {
+    // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
+    // invariant: One scrollbar painter gives each axis equal visual weight (src/modules/ui/ui.invariants.md)
+    return new ScrollableTextViewport.Class({
+      renderer: this.renderer,
+      settings: this.options.settings,
+      parent: this.previewPaneRenderable,
+      id: 'markdown-preview',
+      extent: () => ({
+        contentRows: this.preview.totalRows(this.previewViewportWidth()),
+        contentColumns: this.preview.totalColumns(this.previewViewportWidth()),
+        viewportRows: this.previewViewportHeight(),
+        viewportColumns: this.previewViewportWidth(),
       }),
-      positionAtCell: (screenColumn, screenRow) =>
-        this.previewRenderable.positionAtCell(screenColumn, screenRow),
-      horizontalScrollPosition: () => 0,
-      horizontalScrollingEnabled: () => false,
-      lineGraphemeCount: (lineIndex) =>
-        TextCoordinates.Class.graphemeCount(
-          this.previewTextBuffer.document.line(lineIndex),
-        ),
-      beginSelection: (position, pointerDisplayColumn) => {
-        this.focusPreview();
-        this.previewTextBuffer.cursor.set(
-          position.line,
-          position.column,
-          pointerDisplayColumn,
-        );
-        this.previewTextBuffer.cursor.setAnchorHere();
-        this.selectionRevision.value += 1;
+      colors: () => ({
+        track: this.theme.palette.bg,
+        thumb: this.theme.palette.dim,
+      }),
+      onScroll: () => {
+        this.synchronizePreviewPositionFromViewport();
+        this.renderer.requestRender();
       },
-      extendSelection: (position, pointerDisplayColumn) => {
-        this.previewTextBuffer.cursor.set(
-          position.line,
-          position.column,
-          pointerDisplayColumn,
-        );
-        this.selectionRevision.value += 1;
-        this.applyPreviewSelection();
-      },
-      finishSelection: () => {
-        if (!this.previewTextBuffer.cursor.hasSelection) {
-          this.previewTextBuffer.cursor.clearSelection();
-        }
-        this.selectionRevision.value += 1;
-        this.applyPreviewSelection();
-      },
-      scrollColumns: () => {},
-      scrollRows: (rowDelta) => {
-        this.preview.scrollBy(
-          rowDelta,
-          this.previewViewportWidth(),
-          this.previewViewportHeight(),
-        );
-      },
-      haltCompetingScroll: () => {
-        this.verticalScrollMomentum.value = Momentum.Class.halt();
+      onScrollbarInput: () => this.focusPreview(),
+      selection: {
+        viewportRectangle: () => ({
+          leftColumn: this.previewRenderable.bodyRenderable.x,
+          rightColumn:
+            this.previewRenderable.bodyRenderable.x +
+            Math.max(1, this.previewViewportWidth()) -
+            1,
+          topRow: this.previewRenderable.bodyRenderable.y,
+          bottomRow:
+            this.previewRenderable.bodyRenderable.y +
+            Math.max(1, this.previewViewportHeight()) -
+            1,
+        }),
+        positionAtCell: (screenColumn, screenRow) =>
+          this.previewRenderable.positionAtCell(screenColumn, screenRow),
+        lineGraphemeCount: (lineIndex) =>
+          TextCoordinates.Class.graphemeCount(
+            this.previewTextBuffer.document.line(lineIndex),
+          ),
+        begin: (position, pointerDisplayColumn) => {
+          this.focusPreview();
+          this.previewTextBuffer.cursor.set(
+            position.line,
+            position.column,
+            pointerDisplayColumn,
+          );
+          this.previewTextBuffer.cursor.setAnchorHere();
+          this.selectionRevision.value += 1;
+        },
+        extend: (position, pointerDisplayColumn) => {
+          this.previewTextBuffer.cursor.set(
+            position.line,
+            position.column,
+            pointerDisplayColumn,
+          );
+          this.selectionRevision.value += 1;
+          this.applyPreviewSelection();
+        },
+        finish: () => {
+          if (!this.previewTextBuffer.cursor.hasSelection) {
+            this.previewTextBuffer.cursor.clearSelection();
+          }
+          this.selectionRevision.value += 1;
+          this.applyPreviewSelection();
+        },
       },
     });
   }
@@ -277,6 +282,19 @@ class $MarkdownSplitView {
     return this.focusedPane.value === 'preview';
   }
 
+  previewScrollSnapshot(): MarkdownPreviewScrollSnapshot {
+    const viewportColumns = this.previewViewportWidth();
+    const viewportRows = this.previewViewportHeight();
+    return {
+      scrollTop: this.previewViewport.scrollTop,
+      scrollLeft: this.previewViewport.scrollLeft,
+      contentRows: this.preview.totalRows(viewportColumns),
+      contentColumns: this.preview.totalColumns(viewportColumns),
+      viewportRows,
+      viewportColumns,
+    };
+  }
+
   previewFindTargetIdentifier(): string {
     return `markdown-preview:${this.options.sourcePath}`;
   }
@@ -291,6 +309,8 @@ class $MarkdownSplitView {
 
   update(): void {
     this.synchronizePaneGeometry();
+    this.previewViewport.reconcileExtent();
+    this.synchronizePreviewPositionFromViewport();
     const explicitSourceRevealApplied = this.applyPendingSourceReveal();
     if (!explicitSourceRevealApplied) this.synchronizeScrollFollower();
     const palette = this.theme.palette;
@@ -306,13 +326,28 @@ class $MarkdownSplitView {
     this.previewRenderable.setHoveredReferenceKey(
       this.hoveredReferenceKey.value,
     );
-    this.previewRenderable.refresh();
     this.applyPreviewSelection();
+    this.previewViewport.updateScrollbars({
+      top: 0,
+      left: 0,
+      width: this.previewViewportWidth(),
+      height: this.previewViewportHeight(),
+    });
+  }
+
+  protected synchronizePreviewPositionFromViewport(): void {
+    const width = this.previewViewportWidth();
+    this.preview.scrollTo(
+      this.previewViewport.scrollTop,
+      width,
+      this.previewViewportHeight(),
+    );
+    this.preview.scrollHorizontallyTo(this.previewViewport.scrollLeft, width);
   }
 
   /** Follow an explicit source jump after the preview has parsed that same source revision. */
   revealSourceLine(sourceLine: number): void {
-    this.verticalScrollMomentum.value = Momentum.Class.halt();
+    this.previewViewport.haltMomentum();
     this.pendingSourceRevealLine = sourceLine;
     this.update();
   }
@@ -331,50 +366,27 @@ class $MarkdownSplitView {
       this.previewViewportWidth(),
       this.previewViewportHeight(),
     );
+    this.previewViewport.scrollToRow(this.preview.scrollTop.value);
     this.captureSynchronizedScrollState();
     return true;
   }
 
   /** Frame hook for preview momentum, edge autoscroll, async parse landing, and first-layout sizing. */
   tick(deltaTimeSeconds: number): boolean {
-    const momentumStep = Momentum.Class.stepMomentum(
-      this.verticalScrollMomentum.value,
-      deltaTimeSeconds,
-      Momentum.Class.verticalOptions,
-    );
-    this.verticalScrollMomentum.value = momentumStep.momentum;
-    if (momentumStep.rows !== 0) {
-      this.preview.scrollBy(
-        momentumStep.rows,
-        this.previewViewportWidth(),
-        this.previewViewportHeight(),
-      );
-    }
-    const selectionAutoscrolling =
-      this.previewSelectionDragBehavior.tick(deltaTimeSeconds);
+    const viewportMoving = this.previewViewport.tick(deltaTimeSeconds);
     const laidOutWidth = Number(this.rootRenderable.width) || 0;
     const layoutChanged = laidOutWidth !== this.lastLaidOutWidth;
     if (layoutChanged) this.lastLaidOutWidth = laidOutWidth;
     const scrollFollowerChanged = this.synchronizeScrollFollower();
-    if (
-      momentumStep.rows !== 0 ||
-      selectionAutoscrolling ||
-      layoutChanged ||
-      scrollFollowerChanged
-    ) {
+    if (viewportMoving || layoutChanged || scrollFollowerChanged) {
       this.update();
     }
-    return (
-      Momentum.Class.isMoving(momentumStep.momentum) ||
-      selectionAutoscrolling ||
-      layoutChanged ||
-      scrollFollowerChanged
-    );
+    return viewportMoving || layoutChanged || scrollFollowerChanged;
   }
 
   protected synchronizeScrollFollower(): boolean {
     const sourceScrollTop = this.options.sourceScrollTop();
-    const previewScrollTop = this.preview.scrollTop.value;
+    const previewScrollTop = this.previewViewport.scrollTop;
     const previewWidth = this.previewViewportWidth();
     const previewRevision = this.preview.parsedRevision;
     if (!this.scrollSyncSetting.value.value) {
@@ -403,14 +415,9 @@ class $MarkdownSplitView {
             );
       if (
         targetRenderedRow !== null &&
-        targetRenderedRow !== this.preview.scrollTop.value
+        targetRenderedRow !== this.previewViewport.scrollTop
       ) {
-        this.verticalScrollMomentum.value = Momentum.Class.halt();
-        this.preview.scrollTo(
-          targetRenderedRow,
-          previewWidth,
-          this.previewViewportHeight(),
-        );
+        this.previewViewport.scrollToRow(targetRenderedRow);
         followerChanged = true;
       }
     } else {
@@ -433,18 +440,13 @@ class $MarkdownSplitView {
   protected captureSynchronizedScrollState(): void {
     this.lastScrollSyncLeader = this.focusedPane.value;
     this.lastSynchronizedSourceScrollTop = this.options.sourceScrollTop();
-    this.lastSynchronizedPreviewScrollTop = this.preview.scrollTop.value;
+    this.lastSynchronizedPreviewScrollTop = this.previewViewport.scrollTop;
     this.lastSynchronizedPreviewRevision = this.preview.parsedRevision;
     this.lastSynchronizedPreviewWidth = this.previewViewportWidth();
   }
 
   moveByKeyboardRows(rowDelta: number): void {
-    this.verticalScrollMomentum.value = Momentum.Class.halt();
-    this.preview.scrollBy(
-      rowDelta,
-      this.previewViewportWidth(),
-      this.previewViewportHeight(),
-    );
+    this.previewViewport.scrollRowsBy(rowDelta);
     this.update();
   }
 
@@ -481,11 +483,7 @@ class $MarkdownSplitView {
       line: match.line,
       col: match.startColumn,
     };
-    this.preview.scrollTo(
-      match.line,
-      this.previewViewportWidth(),
-      this.previewViewportHeight(),
-    );
+    this.previewViewport.scrollToRow(match.line);
     this.selectionRevision.value += 1;
     this.update();
   }
@@ -519,7 +517,8 @@ class $MarkdownSplitView {
 
   protected applyPreviewSelection(): void {
     const selection = this.previewTextBuffer.cursor.selectionRange();
-    const firstVisibleRow = this.preview.scrollTop.value;
+    const firstVisibleRow = this.previewViewport.scrollTop;
+    const firstVisibleColumn = this.previewViewport.scrollLeft;
     const viewportHeight = this.previewViewportHeight();
     if (
       !selection ||
@@ -536,16 +535,22 @@ class $MarkdownSplitView {
     );
     const anchorColumn =
       selection.start.line >= firstVisibleRow
-        ? TextCoordinates.Class.displayColumn(
-            this.previewTextBuffer.document.line(selection.start.line),
-            selection.start.col,
+        ? Math.max(
+            0,
+            TextCoordinates.Class.displayColumn(
+              this.previewTextBuffer.document.line(selection.start.line),
+              selection.start.col,
+            ) - firstVisibleColumn,
           )
         : 0;
     const focusColumn =
       selection.end.line < firstVisibleRow + viewportHeight
-        ? TextCoordinates.Class.displayColumn(
-            this.previewTextBuffer.document.line(selection.end.line),
-            selection.end.col,
+        ? Math.max(
+            0,
+            TextCoordinates.Class.displayColumn(
+              this.previewTextBuffer.document.line(selection.end.line),
+              selection.end.col,
+            ) - firstVisibleColumn,
           )
         : this.previewViewportWidth();
     this.previewRenderable.setSelectionRange(
@@ -584,20 +589,15 @@ class $MarkdownSplitView {
         return;
       }
       this.synchronizeRenderedPreviewDocument();
-      this.previewSelectionDragBehavior.begin(event.x, event.y);
+      this.previewViewport.beginDrag(event.x, event.y);
     };
     previewBody.onMouseDrag = (event) =>
-      this.previewSelectionDragBehavior.drag(event.x, event.y);
-    previewBody.onMouseUp = () => this.previewSelectionDragBehavior.end();
-    previewBody.onMouseDragEnd = () => this.previewSelectionDragBehavior.end();
+      this.previewViewport.dragTo(event.x, event.y);
+    previewBody.onMouseUp = () => this.previewViewport.endDrag();
+    previewBody.onMouseDragEnd = () => this.previewViewport.endDrag();
     previewBody.onMouseScroll = (event) => {
       this.focusPreview();
-      const direction = event.scroll?.direction;
-      const rowImpulse = direction === 'up' || direction === 'left' ? -1 : 1;
-      Momentum.Class.queueImpulse(
-        this.verticalScrollMomentum.value,
-        rowImpulse,
-      );
+      this.previewViewport.handleWheel(event);
     };
     previewBody.onMouseMove = (event) => {
       const reference = this.referenceAt(event.x, event.y);
@@ -749,3 +749,12 @@ export interface MarkdownSplitViewOptions {
 }
 
 type MarkdownSplitPane = 'source' | 'preview';
+
+export interface MarkdownPreviewScrollSnapshot {
+  readonly scrollTop: number;
+  readonly scrollLeft: number;
+  readonly contentRows: number;
+  readonly contentColumns: number;
+  readonly viewportRows: number;
+  readonly viewportColumns: number;
+}

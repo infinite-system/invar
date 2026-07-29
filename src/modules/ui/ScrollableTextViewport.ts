@@ -4,8 +4,8 @@
 // whose thickness comes from ONE setting (never freestyled), and drag-select with edge auto-scroll.
 // A host pane supplies only its IDENTITY via deps — content extent, viewport extent, the selection
 // model, and how a screen cell maps to a content position — and gets the whole behaviour uniformly.
-// Consumers today: the hover card, the editor/diff surfaces, and the agent transcript (wrap mode:
-// disableHorizontal + followBottom tail-anchor).
+// Consumers today: the hover card, rendered Markdown, the editor/diff surfaces, and the agent
+// transcript (wrap mode: disableHorizontal + followBottom tail-anchor).
 //
 // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
 // invariant: Wheel impulses start their own frame sequence (src/modules/ui/ui.invariants.md)
@@ -57,6 +57,8 @@ class $ScrollableTextViewport {
       zIndex: scrollbarZIndex,
       onChange: (position) => {
         if (this.applyingBarGeometry) return;
+        this.verticalMomentum = Momentum.Class.halt();
+        this.deps.onScrollbarInput?.('vertical');
         this.setScrollTop(Math.round(position * this.verticalBarScale));
       },
     });
@@ -70,6 +72,8 @@ class $ScrollableTextViewport {
       zIndex: scrollbarZIndex,
       onChange: (position) => {
         if (this.applyingBarGeometry) return;
+        this.horizontalMomentum = Momentum.Class.halt();
+        this.deps.onScrollbarInput?.('horizontal');
         this.setScrollLeft(Math.round(position * this.horizontalBarScale));
       },
     });
@@ -204,9 +208,17 @@ class $ScrollableTextViewport {
     this.verticalMomentum = Momentum.Class.halt();
     this.setScrollTop(this.scrollTopValue + deltaRows);
   }
+  scrollToRow(rowIndex: number): void {
+    this.verticalMomentum = Momentum.Class.halt();
+    this.setScrollTop(rowIndex);
+  }
   scrollColumnsBy(deltaColumns: number): void {
     this.horizontalMomentum = Momentum.Class.halt();
     this.setScrollLeft(this.scrollLeftValue + deltaColumns);
+  }
+  scrollToColumn(columnIndex: number): void {
+    this.horizontalMomentum = Momentum.Class.halt();
+    this.setScrollLeft(columnIndex);
   }
   /** Jump to the bottom (re-arms tail-anchor in followBottom mode). Halts momentum. */
   scrollToBottom(): void {
@@ -397,7 +409,8 @@ export interface ViewportRegion {
 export interface ScrollableTextViewportDeps {
   renderer: CliRenderer;
   settings: Settings.Instance;
-  /** The renderable the scrollbars mount into (the host's content box). */
+  /** The renderable the scrollbars mount into (the host's content box). A bordered host must not
+   *  clip overflow: OpenTUI's hit-grid scissor drops absolute bars on the trailing content edges. */
   parent: {
     add(child: ScrollBarRenderable): void;
   };
@@ -411,6 +424,8 @@ export interface ScrollableTextViewportDeps {
   };
   /** Repaint hook — a scroll change carries no keypress/mouse event, so the host must re-project. */
   onScroll: () => void;
+  /** A native scrollbar press, track click, or drag names this viewport as the input leader. */
+  onScrollbarInput?: (orientation: 'vertical' | 'horizontal') => void;
   /** WRAP MODE: the content wraps to the viewport width, so there is no horizontal overflow — never
    *  route a horizontal wheel and never show the horizontal scrollbar. Used by the agent transcript. */
   disableHorizontal?: boolean;

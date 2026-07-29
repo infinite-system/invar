@@ -180,13 +180,19 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     const markdownWorkspace = this.activeWorkspace();
     const previewContent = this.surface?.previewContent ?? null;
     const splitView = previewContent?.splitView ?? null;
+    const previewScroll = splitView?.previewScrollSnapshot() ?? null;
     return {
       markdownPreviewOpen: markdownWorkspace.showingPreview,
       markdownPaneFocus: splitView?.focusedPane.value ?? 'source',
       markdownSplitRatio: this.splitRatioSetting?.value.value ?? 0.5,
       markdownPreviewSide: this.surface?.previewSide() ?? 'left',
       markdownPreviewScrollSync: this.scrollSyncSetting?.value.value ?? true,
-      markdownPreviewScrollTop: splitView?.preview.scrollTop.value ?? 0,
+      markdownPreviewScrollTop: previewScroll?.scrollTop ?? 0,
+      markdownPreviewScrollLeft: previewScroll?.scrollLeft ?? 0,
+      markdownPreviewContentRows: previewScroll?.contentRows ?? 0,
+      markdownPreviewContentColumns: previewScroll?.contentColumns ?? 0,
+      markdownPreviewViewportRows: previewScroll?.viewportRows ?? 0,
+      markdownPreviewViewportColumns: previewScroll?.viewportColumns ?? 0,
       markdownPreviewSelectionChars: splitView?.selectionCharacterCount() ?? 0,
       markdownHoveredReference: splitView?.hoveredReferencePath.value ?? null,
       markdownLinkNotice: splitView?.linkNotice.value ?? null,

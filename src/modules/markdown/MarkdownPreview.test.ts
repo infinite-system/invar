@@ -254,7 +254,7 @@ test('list items sit single-spaced while the list still separates from paragraph
   expect(texts[alphaIndex + 3]).toBe(''); // one blank between the list and outro
 });
 
-test('code fence borders stay aligned on every row including continuations', async () => {
+test('code fence borders stay aligned while long rows create horizontal overflow', async () => {
   const preview = new MarkdownPreview.Class();
   preview.open(
     createSource(
@@ -268,13 +268,15 @@ test('code fence borders stay aligned on every row including continuations', asy
 
   const rows = preview.allRows(40, ThemeIcons.Class.tableBordersFor('unicode'));
   const codeRows = rows.filter((row) => row.role === 'codeContent');
-  expect(codeRows.length).toBeGreaterThan(2);
+  const contentColumns = preview.totalColumns(40);
+  expect(codeRows).toHaveLength(2);
+  expect(contentColumns).toBeGreaterThan(40);
   for (const row of codeRows) {
     const text = preview.textForRow(row);
     // left frame edge on every row, right frame edge on one shared column
     expect(text.startsWith('  │ ')).toBe(true);
     expect(text.endsWith(' │')).toBe(true);
-    expect(TextCoordinates.Class.lineWidth(text)).toBe(38);
+    expect(TextCoordinates.Class.lineWidth(text)).toBe(contentColumns);
   }
 });
 
