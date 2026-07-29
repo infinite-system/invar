@@ -1,0 +1,114 @@
+diff --git a/src/modules/system/Momentum.ts b/src/modules/system/Momentum.ts
+index 8c95eaca..202acca2 100644
+--- a/src/modules/system/Momentum.ts
++++ b/src/modules/system/Momentum.ts
+@@ -49,7 +49,6 @@ class $Momentum {
+       velocity: 0,
+       residual: 0,
+       restEquivalentGestureVelocity: 0,
+-      restEquivalentGestureImpulseUnits: 0,
+     };
+     Object.defineProperty(this, '$atRest', {
+       configurable: true,
+@@ -83,16 +82,6 @@ class $Momentum {
+     return 20;
+   }
+ 
+-  /** The driven hard-flick shape is twelve unit impulses in one PTY write. The first such flick
+-   *  reserves headroom for this many later hard flicks, regardless of the configured ceiling. */
+-  protected static get hardFlickImpulseUnits(): number {
+-    return 12;
+-  }
+-
+-  protected static get followOnHardFlicksWithReservedHeadroom(): number {
+-    return 2;
+-  }
+-
+   /** Wheel impulses inside this interval belong to one physical gesture. Terminal input has no
+    *  gesture-end event, so cadence supplies the same boundary that key repeat inference uses. */
+   protected static get gestureContinuationWindowMilliseconds(): number {
+@@ -142,9 +131,6 @@ class $Momentum {
+     const restEquivalentGestureVelocity = gestureContinues
+       ? (momentum.restEquivalentGestureVelocity ?? 0)
+       : 0;
+-    const restEquivalentGestureImpulseUnits = gestureContinues
+-      ? (momentum.restEquivalentGestureImpulseUnits ?? 0)
+-      : 0;
+     const gainScale =
+       this.initialGainFraction +
+       (1 - this.initialGainFraction) *
+@@ -165,49 +151,18 @@ class $Momentum {
+     }
+     const gainedPhysicalVelocity =
+       restEquivalentGestureVelocityAfterImpulse - restEquivalentGestureVelocity;
+-    const restEquivalentGestureImpulseUnitsAfterImpulse =
+-      restEquivalentGestureImpulseUnits + Math.abs(deltaRows);
+-    const velocityBeforeCeiling = momentum.velocity + gainedPhysicalVelocity;
+-    const physicalVelocityCeiling = this.physicalVelocityCeiling(
+-      restEquivalentGestureImpulseUnitsAfterImpulse,
+-      options,
+-    );
+-    const velocity =
+-      Math.sign(velocityBeforeCeiling) *
+-      Math.min(Math.abs(velocityBeforeCeiling), physicalVelocityCeiling);
++    const velocity = momentum.velocity + gainedPhysicalVelocity;
+     return {
+-      velocity,
++      velocity: Math.max(-options.max, Math.min(options.max, velocity)),
+       residual: momentum.residual,
+-      restEquivalentGestureVelocity: restEquivalentGestureVelocityAfterImpulse,
+-      restEquivalentGestureImpulseUnits:
+-        restEquivalentGestureImpulseUnitsAfterImpulse,
++      restEquivalentGestureVelocity: Math.max(
++        -options.max,
++        Math.min(options.max, restEquivalentGestureVelocityAfterImpulse),
++      ),
+       lastImpulseTimestampMilliseconds: currentTimestampMilliseconds,
+     };
+   }
+ 
+-  protected static physicalVelocityCeiling(
+-    restEquivalentGestureImpulseUnits: number,
+-    options: MomentumOptions,
+-  ): number {
+-    const hardFlickCount = this.followOnHardFlicksWithReservedHeadroom + 1;
+-    const velocityHeadroomPerFollowOnFlick = Math.min(
+-      options.impulse * 0.75,
+-      options.max / hardFlickCount,
+-    );
+-    const hardFlickProgress =
+-      restEquivalentGestureImpulseUnits / this.hardFlickImpulseUnits;
+-    const remainingHardFlicksWithReservedHeadroom = Math.max(
+-      0,
+-      hardFlickCount - hardFlickProgress,
+-    );
+-    return Math.max(
+-      0,
+-      options.max -
+-        remainingHardFlicksWithReservedHeadroom *
+-          velocityHeadroomPerFollowOnFlick,
+-    );
+-  }
+-
+   /**
+    * Advance one frame by `dtSec`. Returns the next momentum and the WHOLE number of rows to move this
+    * frame (signed). Under constant velocity the row-crossings land at a constant frame interval
+@@ -233,8 +188,6 @@ class $Momentum {
+         velocity,
+         residual,
+         restEquivalentGestureVelocity: momentum.restEquivalentGestureVelocity,
+-        restEquivalentGestureImpulseUnits:
+-          momentum.restEquivalentGestureImpulseUnits,
+         lastImpulseTimestampMilliseconds:
+           momentum.lastImpulseTimestampMilliseconds,
+       },
+@@ -263,9 +216,6 @@ export interface ScrollMomentum {
+   // Gain-curve input accumulated from notches in the current physical gesture. Optional so external
+   // plain values created before this field existed enter honestly at rest-equivalent gain.
+   restEquivalentGestureVelocity?: number;
+-  // Absolute impulse units accumulated by the same gesture. The physical ceiling envelope uses
+-  // these units to reserve visible velocity headroom for two follow-on hard flicks.
+-  restEquivalentGestureImpulseUnits?: number;
+   // Input cadence is the pre-motion continuation proxy. Live physical
+   // motion is authoritative.
+   lastImpulseTimestampMilliseconds?: number;
