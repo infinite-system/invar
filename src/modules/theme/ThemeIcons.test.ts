@@ -23,6 +23,7 @@ function themeGlyphEntriesFor(level: GlyphLevel): ThemeGlyphEntry[] {
   return [
     ...namedEntries('symbol', ThemeIcons.Class.symbolMarksFor(level)),
     ...namedEntries('action', ThemeIcons.Class.actionIconsFor(level)),
+    ...namedEntries('taskAction', ThemeIcons.Class.taskActionIconsFor(level)),
     ...namedEntries('checkbox', ThemeIcons.Class.checkboxIconsFor(level)),
     ...namedEntries('activity', ThemeIcons.Class.activityIconsFor(level)),
     ...namedEntries(
@@ -129,6 +130,22 @@ test('git action icons ladder: real glyphs on nerd/unicode, letters as the ascii
     ]) {
       expect([...glyph].length).toBe(1); // exactly one code point -> one cell, hit-zones stay aligned
       expect('od+-'.includes(glyph)).toBe(false); // not the ascii letters
+    }
+  }
+});
+
+test('task action icons stay one cell and keep readable ASCII fallbacks', () => {
+  expect(ThemeIcons.Class.taskActionIconsFor('ascii')).toEqual({
+    workspace: 'W',
+    taskRecord: 'T',
+    latestBrief: 'B',
+    latestReport: 'R',
+  });
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    for (const glyph of Object.values(
+      ThemeIcons.Class.taskActionIconsFor(level),
+    )) {
+      expect(TextCoordinates.Class.lineWidth(glyph)).toBe(1);
     }
   }
 });

@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ref } from 'vue';
 import { TasksDashboardOverview } from './TasksDashboardOverview';
 
 interface Fixture {
@@ -91,7 +92,7 @@ function makeFixture(options?: { withTree?: boolean }): Fixture {
     );
   }
   const renders = { count: 0 };
-  const observed = { value: true };
+  const observed = ref(true);
   const overview = new TasksDashboardOverview.Class({
     workspaceRoot: () => root,
     isObserved: () => observed.value,
@@ -99,7 +100,16 @@ function makeFixture(options?: { withTree?: boolean }): Fixture {
       renders.count += 1;
     },
     cycleSeconds: () => 10,
+    fleetRepositoryRoot: () => root,
+    readTaskFleetFacts: (_fleetRepositoryRoot, record) => ({
+      lineDelta: { added: record.taskNumber, removed: 1 },
+      phase: record.taskNumber === 901 ? 'exploring' : 'building',
+      worktreePath: join(root, '.invar', 'worktrees', record.folderName),
+      sessionName: `invar/${record.folderName}`,
+    }),
+    readFleetGateGlance: () => null,
   });
+  overview.startObservation();
   return {
     root,
     overview,
@@ -118,12 +128,13 @@ test('the live lens lists in-progress tasks with the CLI standing vocabulary', (
   expect(overview.available.value).toBe(true);
   expect(overview.lens.value).toBe('live');
   const rows = overview.rows.value;
-  expect(rows.map((row) => row.taskNumber)).toEqual([902, 901]);
+  expect(rows.map((row) => row.taskNumber)).toEqual([902, 902, 901, 901]);
   expect(rows[0]?.standing).toBe('ready');
   expect(rows[0]?.round).toBe(2);
-  expect(rows[1]?.standing).toBe('building');
-  expect(rows[1]?.durationLabel).toBe('10m');
-  expect(rows[1]?.identity).toBe('claude·fable-5·high');
+  expect(rows[2]?.standing).toBe('building');
+  expect(rows[2]?.phase).toBe('exploring');
+  expect(rows[2]?.durationLabel).toBe('10m');
+  expect(rows[2]?.identity).toBe('claude·fable-5·high');
   fixture.dispose();
 });
 
@@ -135,15 +146,17 @@ test('the active lens groups by priority and selection skips group headings', ()
   expect(rows.map((row) => row.kind)).toEqual([
     'group',
     'task',
+    'detail',
     'group',
     'task',
+    'detail',
   ]);
   expect(rows[0]?.label).toContain('user-directed');
-  expect(rows[2]?.label).toContain('unprioritised');
+  expect(rows[3]?.label).toContain('unprioritised');
   // The initial selection lands on the first TASK row, never a heading.
   expect(overview.selectedIndex.value).toBe(1);
   overview.moveSelection(1);
-  expect(overview.selectedIndex.value).toBe(3);
+  expect(overview.selectedIndex.value).toBe(4);
   overview.moveSelection(-1);
   expect(overview.selectedIndex.value).toBe(1);
   fixture.dispose();
@@ -154,7 +167,7 @@ test('the done lens carries the landing attachment and the meta duration', () =>
   const { overview } = fixture;
   overview.setLens('done');
   const rows = overview.rows.value;
-  expect(rows).toHaveLength(1);
+  expect(rows).toHaveLength(2);
   expect(rows[0]?.taskNumber).toBe(905);
   expect(rows[0]?.attachment).toBe('merged 1a2b3c4d');
   expect(rows[0]?.durationLabel).toBe('1h 15m');
@@ -240,3 +253,53 @@ test('a version bump accompanies every data change so one counter drives repaint
   expect(overview.version.value).toBeGreaterThan(beforeToggle);
   fixture.dispose();
 });
+
+test('the motion clock exists only while the pane is observed', async () => {
+  const fixture = makeFixture();
+  const { overview, observed } = fixture;
+  await Bun.sleep(80);
+  expect(overview.animationPaint.value).toBeGreaterThan(0);
+  observed.value = false;
+  await Bun.sleep(20);
+  const hiddenPaint = overview.animationPaint.value;
+  await Bun.sleep(80);
+  expect(overview.animationPaint.value).toBe(hiddenPaint);
+  observed.value = true;
+  await Bun.sleep(80);
+  expect(overview.animationPaint.value).toBeGreaterThan(hiddenPaint);
+  fixture.dispose();
+});
+
+test('fleet extras state their main-checkout scope and do no unrelated reads', () => {
+  const root = makeWorkspaceRootForScope();
+  let fleetReadCount = 0;
+  const overview = new TasksDashboardOverview.Class({
+    workspaceRoot: () => root,
+    isObserved: () => true,
+    requestRender: () => {},
+    cycleSeconds: () => 10,
+    fleetRepositoryRoot: () => join(root, 'different-main-checkout'),
+    readTaskFleetFacts: () => {
+      fleetReadCount += 1;
+      throw new Error('An unrelated workspace must not read fleet facts');
+    },
+    readFleetGateGlance: () => {
+      fleetReadCount += 1;
+      return null;
+    },
+  });
+  overview.startObservation();
+  expect(overview.rows.value[0]?.kind).toBe('scope');
+  expect(overview.rows.value[0]?.label).toContain('main Invar checkout only');
+  expect(fleetReadCount).toBe(0);
+  overview.dispose();
+  rmSync(root, { recursive: true, force: true });
+});
+
+function makeWorkspaceRootForScope(): string {
+  const root = mkdtempSync(join(tmpdir(), 'tasks-dashboard-scope-'));
+  writeTask(join(root, '.invar', 'tasks'), 'in-progress', '910-scope', [
+    'State: IN-PROGRESS',
+  ]);
+  return root;
+}

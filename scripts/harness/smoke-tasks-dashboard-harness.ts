@@ -142,8 +142,15 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'boot publishes the tasks projection over the fixture tree',
-    (status) => status.tasksLens === 'live' && status.tasksAvailable === true,
+    'boot publishes the hidden zero-work tasks projection',
+    (status) =>
+      status.tasksLens === 'live' &&
+      status.tasksAvailable === false &&
+      Number(status.tasksAnimationPaint) === 0,
+  );
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).rightDockVisible === false,
+    'the default-off setting leaves the tasks dock hidden at boot',
   );
   driver.sendKeys('Control+Shift+t');
   await HarnessSmoke.Class.awaitStatus(
@@ -154,7 +161,8 @@ try {
       status.rightDockVisible === true &&
       status.rightDockActiveContent === 'tasks' &&
       status.rightDockFocused === true &&
-      Number(status.tasksRows) === 2,
+      status.tasksAvailable === true &&
+      Number(status.tasksRows) === 5,
   );
   await driver.awaitGridCondition(
     'the live lens paints the READY and building rows',
@@ -166,13 +174,126 @@ try {
   HarnessSmoke.Class.pass(
     'the live lens lists the in-progress fixture with the standing vocabulary',
   );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the observed building row advances its watch-parity motion clock',
+    (status) => Number(status.tasksAnimationPaint) >= 3,
+  );
+  HarnessSmoke.Class.pass(
+    'watch-parity motion runs while the pane is observed',
+  );
 
+  console.log(
+    '== tasks dashboard: row actions state misses and open artifacts ==',
+  );
+  const buildingTaskPosition = driver
+    .snapshot()
+    .findText('#901 planted-building');
+  const readyTaskPosition = driver.snapshot().findText('#902 planted-ready');
+  if (!buildingTaskPosition || !readyTaskPosition)
+    throw new Error('The live task rows disappeared before action clicks');
+  const reportActionColumn = driver.snapshot().columns - 3;
+  driver.sendMouseClick({
+    column: reportActionColumn,
+    row: buildingTaskPosition.row + 1,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a missing latest report states itself in the task row',
+    (status) =>
+      status.tasksActionNotice === 'No latest report exists for #901.',
+  );
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: reportActionColumn,
+    row: readyTaskPosition.row + 1,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the report action tooltip names its destination',
+    (snapshot) => snapshot.findText('Open the latest report') !== null,
+  );
+  driver.sendMouseClick({
+    column: reportActionColumn,
+    row: readyTaskPosition.row + 1,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the report action opens the latest report in the editor',
+    (status) =>
+      String(status.activeBuffer).endsWith('report-902-planted-ready.md'),
+  );
+  driver.sendKeys('Control+Shift+t');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the task pane returns before the tmux action',
+    (status) =>
+      status.rightDockActiveContent === 'tasks' &&
+      status.rightDockFocused === true,
+  );
+  const sessionPosition = driver.snapshot().findText('tmux invar/902');
+  if (!sessionPosition)
+    throw new Error(
+      'The READY task session target disappeared before its click',
+    );
+  driver.sendMouse({
+    kind: 'move',
+    column: sessionPosition.column + 2,
+    row: sessionPosition.row,
+    button: 'none',
+  });
+  await driver.awaitScreenChange();
+  driver.sendMouseClick({
+    column: sessionPosition.column + 2,
+    row: sessionPosition.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the tmux prefix resolves to the session row action',
+    (status) => status.tasksLastAction === 'session:902',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the tmux action opens a terminal-runtime pane',
+    (status) =>
+      (status.panelContentIds as string[]).includes('tasks-session-902'),
+    15_000,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the gone tmux session states itself in the terminal pane',
+    (status) =>
+      String(status.panelActiveContent) === 'tasks-session-902' &&
+      status.terminalExited === true,
+    15_000,
+  );
+  HarnessSmoke.Class.pass('row actions use the workspace and terminal seams');
+
+  driver.sendKeys('Control+Shift+t');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the tasks pane regains focus after the terminal action',
+    (status) =>
+      status.rightDockActiveContent === 'tasks' &&
+      status.rightDockFocused === true,
+  );
   driver.sendKeys('Right');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the active lens groups the waiting fixture by priority',
-    (status) => status.tasksLens === 'active' && Number(status.tasksRows) === 2,
+    (status) => status.tasksLens === 'active' && Number(status.tasksRows) === 4,
   );
   await driver.awaitGridCondition(
     'the active lens paints the priority group and its task',
@@ -187,7 +308,7 @@ try {
     driver,
     statusPath,
     'the done lens lists the landed fixture',
-    (status) => status.tasksLens === 'done' && Number(status.tasksRows) === 1,
+    (status) => status.tasksLens === 'done' && Number(status.tasksRows) === 3,
   );
   await driver.awaitGridCondition(
     'the done lens paints the check, the landing commit, and the duration',
@@ -312,7 +433,7 @@ try {
     (status) =>
       status.rightDockActiveContent === 'tasks' &&
       status.rightDockFocused === true &&
-      Number(status.tasksRows) === 2,
+      Number(status.tasksRows) === 5,
   );
   HarnessSmoke.Class.pass(
     'the tasks dashboard uninstalls and reinstalls symmetrically',
@@ -361,4 +482,54 @@ try {
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   await HarnessSmoke.Class.removeTemporaryDirectory(bareRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(bareHome);
+}
+
+console.log(
+  '== tasks dashboard: large task trees keep the same visible window ==',
+);
+const largeRoot = mkdtempSync(join(tmpdir(), 'tui-tasks-dashboard-large-'));
+const largeTasksRoot = join(largeRoot, '.invar', 'tasks');
+for (let taskOffset = 0; taskOffset < 500; taskOffset += 1) {
+  const taskNumber = 1_000 + taskOffset;
+  writeTask(largeTasksRoot, 'in-progress', `${taskNumber}-scale-row`, [
+    'State: IN-PROGRESS',
+  ]);
+}
+const largeHome = mkdtempSync(
+  join(tmpdir(), 'tui-tasks-dashboard-large-home-'),
+);
+const largeStatusPath = join(largeHome, 'status.json');
+const largeDriver = new PtyTestDriver.Class({
+  workspaceRoot: largeRoot,
+  columns: 120,
+  rows: 36,
+  homeDirectory: largeHome,
+  environment: { TUI_STATUS_PATH: largeStatusPath, COLORTERM: 'truecolor' },
+  command: [process.execPath, 'src/main.ts', largeRoot],
+});
+try {
+  largeDriver.sendKeys('Control+Shift+t');
+  await HarnessSmoke.Class.awaitStatus(
+    largeDriver,
+    largeStatusPath,
+    'the large fixture shows the same compact live projection',
+    (status) =>
+      status.rightDockActiveContent === 'tasks' &&
+      status.tasksAvailable === true &&
+      Number(status.tasksRows) === 1_001 &&
+      Number(status.tasksAnimationPaint) >= 3,
+  );
+  await largeDriver.awaitGridCondition(
+    'the large fixture paints only its visible leading window',
+    (snapshot) =>
+      snapshot.findText('#1499 scale-row') !== null &&
+      snapshot.findText('#1000 scale-row') === null,
+  );
+  HarnessSmoke.Class.pass(
+    'five hundred tasks keep the compact observed projection responsive',
+  );
+} finally {
+  await largeDriver.dispose();
+  await HarnessSmoke.Class.removeTemporaryDirectory(largeRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(largeHome);
 }

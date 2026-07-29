@@ -10,6 +10,7 @@ import type { PaneContent } from '../ui/PaneContent.interface';
 import type {
   PaneRuntime,
   PaneRuntimeHostPort,
+  PaneRuntimeRequest,
 } from '../ui/PaneRuntime.interface';
 import type { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import type {
@@ -78,6 +79,12 @@ export interface ApplicationContributionContext {
   /** Register a RUNTIME: the owner of one bottom-panel pane kind and the processes behind it. The
    *  host answers only which of that kind is visible; everything else stays inside the runtime. */
   readonly registerPaneRuntime: (runtime: PaneRuntime) => PaneRuntimeHostPort;
+  /** Open one process-backed pane through a contributed runtime. The consumer declares the
+   *  process; the host supplies projection and focus; only the runtime owns the process. */
+  readonly openRuntimePane: (
+    runtimeKind: string,
+    request: PaneRuntimeRequest,
+  ) => boolean;
   readonly editorInteractionIsAvailable: () => boolean;
   readonly dismissEditorSuggestions: () => void;
   readonly bindingHint: (action: string, context: string) => string;

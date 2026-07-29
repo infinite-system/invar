@@ -382,6 +382,33 @@ class $ThemeIcons {
     };
   }
 
+  /** Tasks-pane actions: open worktree, task record, latest brief, and latest report. */
+  protected static get TASK_ACTION_ICONS(): Record<
+    GlyphLevel,
+    TaskActionIconSet
+  > {
+    return {
+      nerd: {
+        workspace: '\u{f07c}',
+        taskRecord: '\u{f15b}',
+        latestBrief: '\u{f15c}',
+        latestReport: '\u{f00c}',
+      },
+      unicode: {
+        workspace: '▰',
+        taskRecord: '▤',
+        latestBrief: '◫',
+        latestReport: '✓',
+      },
+      ascii: {
+        workspace: 'W',
+        taskRecord: 'T',
+        latestBrief: 'B',
+        latestReport: 'R',
+      },
+    };
+  }
+
   // Staging-checkbox glyph ladder. nerd = fa square / check-square; unicode = ballot box ☐/☑;
   // ascii = blank / x so a no-nerd-font terminal still degrades to the classic ` ` / `x`.
   protected static get CHECKBOX_ICONS(): Record<GlyphLevel, CheckboxIconSet> {
@@ -616,6 +643,10 @@ class $ThemeIcons {
     return this.ACTION_ICONS[level];
   }
 
+  static taskActionIconsFor(level: GlyphLevel): TaskActionIconSet {
+    return this.TASK_ACTION_ICONS[level];
+  }
+
   static checkboxIconsFor(level: GlyphLevel): CheckboxIconSet {
     return this.CHECKBOX_ICONS[level];
   }
@@ -816,6 +847,13 @@ export interface ActionIconSet {
   stage: string;
   unstage: string;
   preview: string;
+}
+
+export interface TaskActionIconSet {
+  workspace: string;
+  taskRecord: string;
+  latestBrief: string;
+  latestReport: string;
 }
 
 export interface CheckboxIconSet {
