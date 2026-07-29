@@ -42,3 +42,10 @@ it reads `None observed`.
 
 - #280/#281/#284/#293 reports' bycatch sections (the same item four
   times).
+
+## Evidence from #295 (2026-07-29)
+
+The worktree-root TASK.md dispatched for #295 carried a contract link
+relative to the external task folder; the invariant checker rejected it and
+the builder hand-corrected the local copy. Third confirmed instance of the
+dispatch TASK.md pointer defect this record owns.

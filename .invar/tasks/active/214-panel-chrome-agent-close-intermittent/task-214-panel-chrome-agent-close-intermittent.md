@@ -31,3 +31,12 @@ before treating them as two defects.
 
 - [/tmp/114-wave-b-READY-v2.md](../../../../../../../../../../../tmp/114-wave-b-READY-v2.md) — Bycatch section (copied into
   `.invar/tasks/completed/114-.../` at #114's landing).
+
+## Census tally 2026-07-29 (#295 gate)
+
+- panel-split smoke timed out in #295's commit gate pool run; quiet retry
+  passed; not reproduced solo. 4th pool-only occurrence today (also #277,
+  #281-adjacent, #290 rounds). Same class: pool-load timeout, solo green.
+- input-byte timing gate p50 9.748 ms vs report-only warning 6.406 ms during
+  the same pool gate; all five ordering sessions passed. Load-bound metric —
+  normalise before tolerating (gate-what-humans-cannot-see rule).
