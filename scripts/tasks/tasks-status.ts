@@ -695,6 +695,29 @@ const SPINNER_FRAMES: Array<[string, string]> = [
 ];
 const SPINNER_PAINTS_PER_STEP = 5;
 
+// The word itself carries the current: a cool gradient flows through the
+// letters, one step per spinner advance — Claude Code's shimmer, in teal.
+const GRADIENT_RAMP = [
+  '38;5;30',
+  '38;5;37',
+  '38;5;44',
+  '38;5;51',
+  '38;5;45',
+  '38;5;39',
+];
+
+function gradientWord(word: string, shift: number): string {
+  return word
+    .split('')
+    .map((letter, index) =>
+      paint(
+        GRADIENT_RAMP[(index + shift) % GRADIENT_RAMP.length] ?? '38;5;44',
+        letter,
+      ),
+    )
+    .join('');
+}
+
 function live(
   tasksRoot: string,
   spinnerFrame?: number,
@@ -718,7 +741,11 @@ function live(
       breath === null ? paint('38;5;45', '●') : paint(breath[1], breath[0]);
     const statusBadge = ready
       ? green('◉ READY — awaiting landing')
-      : `${buildingGlyph} ${paint('38;5;44', 'building')}`;
+      : `${buildingGlyph} ${
+          spinnerFrame === undefined
+            ? paint('38;5;44', 'building')
+            : gradientWord('building', spinnerFrame)
+        }`;
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const runningFor =
       startedAt === null
