@@ -1,0 +1,15 @@
+{
+  "task": 211,
+  "slug": "horizontal-extent-grid-wait-timeout",
+  "branch": "fleet/211-horizontal-extent-grid-wait-timeout",
+  "worktree": ".invar/worktrees/211-horizontal-extent-grid-wait-timeout",
+  "tmuxSession": "invar/211-horizontal-extent-grid-wait-timeout",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-default-211-horizontal-extent-grid-wait-timeout.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "default",
+  "heldFromMain": false,
+  "baseCommit": "5c238004834c39c7f714569471854de82f8ff306",
+  "startedAt": "2026-07-28T21:53:06-04:00"
+}
