@@ -1,6 +1,6 @@
 # 122 — the editor becomes the final contributor
 
-State: ACTIVE — blocked, strictly after #114
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: claude
 Environment: linux

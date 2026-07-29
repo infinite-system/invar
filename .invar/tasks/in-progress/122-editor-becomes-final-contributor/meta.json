@@ -1,0 +1,15 @@
+{
+  "task": 122,
+  "slug": "editor-becomes-final-contributor",
+  "branch": "fleet/122-editor-becomes-final-contributor",
+  "worktree": ".invar/worktrees/122-editor-becomes-final-contributor",
+  "tmuxSession": "invar/122-editor-becomes-final-contributor",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-high-122-editor-becomes-final-contributor.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "38cc15a6115e519c7a0c4b9784b3eea49d798222",
+  "startedAt": "2026-07-28T23:20:09-04:00"
+}
