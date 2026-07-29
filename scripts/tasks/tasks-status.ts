@@ -864,12 +864,15 @@ function gateBadge(spinnerFrame?: number): string {
   if (glance.exitCode !== null)
     return `  ${red(`⛩ gate red (exit ${glance.exitCode})`)}`;
   const elapsed = formatDuration(Date.now() - glance.startedAtMilliseconds);
-  const breath =
-    spinnerFrame === undefined
-      ? null
-      : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? null);
-  const glyph = breath === null ? '⛩' : paint(breath[1], '⛩');
-  return `  ${glyph} ${paint('38;5;179', `gate: ${glance.phase}`)} ${cyan(elapsed)}`;
+  // A running gate flows the same gradient as the building word, and the ⛩
+  // glyph rides the flow's leading color — one visual language for "work in
+  // motion" across builders and the gate.
+  if (spinnerFrame === undefined) {
+    return `  ${paint('38;5;44', '⛩')} ${paint('38;5;44', `gate: ${glance.phase}`)} ${cyan(elapsed)}`;
+  }
+  const leadingColor =
+    GRADIENT_RAMP[spinnerFrame % GRADIENT_RAMP.length] ?? '38;5;44';
+  return `  ${paint(leadingColor, '⛩')} ${gradientWord(`gate: ${glance.phase}`, spinnerFrame)} ${cyan(elapsed)}`;
 }
 
 function fleetDeltaTotals(): {
