@@ -1,6 +1,6 @@
 # 264 — a boot-time save erases stored contributed settings that have not registered yet
 
-State: IN-PROGRESS
+State: COMPLETED — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
 Created: 2026-07-29
 Engine: codex
 Environment: linux
