@@ -40,3 +40,5 @@ before treating them as two defects.
 - input-byte timing gate p50 9.748 ms vs report-only warning 6.406 ms during
   the same pool gate; all five ordering sessions passed. Load-bound metric —
   normalise before tolerating (gate-what-humans-cannot-see rule).
+- 2026-07-29 #298 amend gate: scrollbars smoke + panel-split smoke both
+  starvation-timeout, both passed on retry (5th/6th pool-only today).
