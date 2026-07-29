@@ -9,14 +9,15 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 ## IN-PROGRESS (2)
 - #220 editor-registers-as-contributor-with-manifest  [building]
   `tmux attach -t invar/220-editor-registers-as-contributor-with-manifest`
-- #215 agent-tmux-send-confirm-false-negative  [building]
+- #215 agent-tmux-send-confirm-false-negative  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/215-agent-tmux-send-confirm-false-negative`
 
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (15)
+## VERIFICATION-INTEGRITY (16)
+- #231 agent-tmux-launch-and-list-defects
 - #230 author-ui-lattice
 - #229 scale-parity-selection-smoke
 - #227 dispatch-cuts-worktree-after-record-commit
