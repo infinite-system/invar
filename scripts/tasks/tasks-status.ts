@@ -795,6 +795,7 @@ interface GateGlance {
   phase: string;
   startedAtMilliseconds: number;
   exitCode: number | null;
+  finishedAtMilliseconds: number | null;
 }
 let gateGlanceCache: GateGlance | null = null;
 let gateRunAnchor: {
@@ -849,6 +850,7 @@ function refreshGateGlance(): void {
         phase: lastBanner.replace(/\s*\(.*$/, '').trim(),
         startedAtMilliseconds: gateRunAnchor.startedAtMilliseconds,
         exitCode: exitMatch ? Number(exitMatch[1]) : null,
+        finishedAtMilliseconds: exitMatch ? stats.mtimeMs : null,
       };
       return;
     }
@@ -860,9 +862,19 @@ function refreshGateGlance(): void {
 function gateBadge(spinnerFrame?: number): string {
   if (gateGlanceCache === null) return '';
   const glance = gateGlanceCache;
-  if (glance.exitCode === 0) return `  ${green('⛩ gate green ✓ land now')}`;
+  // A FINISHED gate's verdict is a fact about the LAST run, not a claim that
+  // this task's commits were covered — a fresh READY delivered after the run
+  // must not wear "gate green" as if it were gated (that lie was seen live on
+  // #243, 07-29). Say "last gate", say how long ago, and let the conductor
+  // judge coverage.
+  const finishedAgo =
+    glance.finishedAtMilliseconds === null
+      ? ''
+      : ` ${formatDuration(Date.now() - glance.finishedAtMilliseconds)} ago`;
+  if (glance.exitCode === 0)
+    return `  ${green(`⛩ last gate green${finishedAgo}`)}`;
   if (glance.exitCode !== null)
-    return `  ${red(`⛩ gate red (exit ${glance.exitCode})`)}`;
+    return `  ${red(`⛩ last gate red (exit ${glance.exitCode})${finishedAgo}`)}`;
   const elapsed = formatDuration(Date.now() - glance.startedAtMilliseconds);
   // A running gate flows its OWN gold current — motion says running, and the
   // color says judge, not builder. The ⛩ glyph rides the flow's leading color.
