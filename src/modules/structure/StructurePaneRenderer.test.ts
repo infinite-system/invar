@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { DocumentLifecycle } from '../workspace/DocumentLifecycle';
 import type { Workspace } from '../workspace/Workspace';
 import { StructureOutline } from './StructureOutline';
@@ -9,6 +10,7 @@ import { ThemePalettes } from '../theme/ThemePalettes';
 function makeOutline(): StructureOutline.Model {
   const workspace = {
     documentLifecycle: new DocumentLifecycle.Class(),
+    providers: new ProviderRegistry.Class(),
     activeDocumentHandle: null,
   } as unknown as Workspace.Model;
   return new StructureOutline.Class(workspace, () => true);

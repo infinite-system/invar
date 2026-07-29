@@ -104,15 +104,13 @@ install/uninstall.
 **Components:**
 - `LspPlugin` — contributes settings, keybindings, and a
   `WorkspaceContributor` through `ApplicationContributor`.
-- `LspWorkspaceProvider` — registers itself in
-  `WorkspaceContribution.providers`, owns one `LanguageClient`, and adapts
-  protocol results to `LanguageProvider`. It additionally registers itself as a
-  `StructureSource` in the consumer-owned per-workspace registry
-  (`src/modules/structure/structure.invariants.md` governs that seam) and
-  withdraws it on disposal — a peer-plugin port, not a host surface, so the
-  host-never-imports-LSP clause is untouched.
-- `Workspace` — resolves a provider by capability identifier from its existing
-  contribution list and returns neutral results when none is installed.
+- `LspWorkspaceProvider` — registers itself as `LanguageProvider`,
+  `StructureSource`, and `RewriteProviderFactory` through the one type-blind
+  workspace registry. It owns one `LanguageClient` and adapts protocol results
+  to each consumer-owned interface. It withdraws all three registrations on
+  disposal.
+- `Workspace` — carries one provider registry, resolves language capability
+  through it, and returns neutral results when none is installed.
 
 **Mechanism:** `ApplicationContributions` activates the one manifest and
 `WorkspaceSet.registerContributor` attaches `LspWorkspaceProvider` to each
@@ -124,8 +122,8 @@ disposal releases its client, diagnostics, and subprocess, while
 settings and keybindings; symmetric install/uninstall; a host-facing
 `LanguageProvider` port in `src/modules/workspace/`.
 
-**Rejected alternatives:** A dedicated LSP registry or plugin kind — duplicates
-the contributor/provider/runtime machinery. Host imports of LSP helpers —
+**Rejected alternatives:** A dedicated LSP or consumer registry — duplicates
+the provider lifetime and reactivity machinery. Host imports of LSP helpers —
 recreate the coupling the provider port removes.
 
 **Evidence:** `src/modules/lsp/LspPlugin.ts`;

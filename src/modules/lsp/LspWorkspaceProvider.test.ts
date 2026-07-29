@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { ref } from 'vue';
 import { TextDocument } from '../text/TextDocument';
 import { Workspace } from '../workspace/Workspace';
-import { StructureSources } from '../structure/StructureSources';
+import type { StructureSource } from '../structure/StructureSource.interface';
 import { LspWorkspaceProvider } from './LspWorkspaceProvider';
 
 test('the LSP workspace contribution registers one language provider', async () => {
@@ -45,21 +45,25 @@ test('the contribution registers a structure source and withdraws it symmetrical
 
   // While installed, the provider IS the workspace's structure source, and its capability
   // answer is the cheap path check — no server involved.
-  expect(StructureSources.Class.sourceFor(workspace)).toBe(contribution);
+  expect(workspace.providers.resolve<StructureSource>('structure')).toBe(
+    contribution,
+  );
   expect(contribution.supportsDocument(supportedDocument)).toBe(true);
   expect(contribution.supportsDocument(unsupportedDocument)).toBe(false);
 
   // Uninstall symmetry: disposal withdraws the source, so the pane degrades to its stated
   // affordance instead of asking a corpse.
   contribution.disposed();
-  expect(StructureSources.Class.sourceFor(workspace)).toBeNull();
+  expect(workspace.providers.resolve('structure')).toBeNull();
 
   // The reinstall arm: a fresh contribution registers again.
   const reinstalled = new LspWorkspaceProvider.Class(workspace, {
     preferredTypeScriptServer: ref('tsgo'),
     fileSizeLimitKb: ref(2048),
   });
-  expect(StructureSources.Class.sourceFor(workspace)).toBe(reinstalled);
+  expect(workspace.providers.resolve<StructureSource>('structure')).toBe(
+    reinstalled,
+  );
   reinstalled.disposed();
   workspace.dispose();
 });

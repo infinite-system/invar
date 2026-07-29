@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { ref } from 'vue';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { DocumentLifecycle } from '../workspace/DocumentLifecycle';
 import type { Workspace } from '../workspace/Workspace';
 import { StructureOutline } from './StructureOutline';
@@ -17,6 +18,7 @@ function renderedText(styled: { chunks: unknown }): string {
 function makeOutline(): StructureOutline.Model {
   const workspace = {
     documentLifecycle: new DocumentLifecycle.Class(),
+    providers: new ProviderRegistry.Class(),
     activeDocumentHandle: null,
   } as unknown as Workspace.Model;
   return new StructureOutline.Class(workspace, () => true);

@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import type {
   RewriteCandidate,
   RewriteProvider,
+  RewriteProviderFactory,
   RewriteRequest,
 } from './RewriteProvider.interface';
 import { ThemePalettes } from '../theme/ThemePalettes';
@@ -41,13 +42,21 @@ function createFixture(enabled: boolean) {
   editor.document.insertInline(0, 25, ';');
   editor.cursor.set(0, 26);
   const providers: DeferredRewriteProvider[] = [];
-  const contribution = new InlineRewriteWorkspace.Class(workspace, {
-    enabled,
-    createProvider: () => {
+  const providerFactory: RewriteProviderFactory = {
+    available: true,
+    create: () => {
       const provider = new DeferredRewriteProvider();
       providers.push(provider);
       return provider;
     },
+  };
+  workspace.providers.register('inline-rewrite', providerFactory);
+  const contribution = new InlineRewriteWorkspace.Class(workspace, {
+    enabled,
+    createProvider: () =>
+      workspace.providers
+        .resolve<RewriteProviderFactory>('inline-rewrite')
+        ?.create() ?? null,
     eligible: () => true,
     palette: () => ThemePalettes.Class.DARK,
     bindingHint: (action) => action,

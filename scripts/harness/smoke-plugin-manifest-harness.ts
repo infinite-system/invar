@@ -1099,6 +1099,123 @@ try {
   HarnessSmoke.Class.pass(
     'the structure navigator uninstalls and reinstalls symmetrically',
   );
+
+  console.log(
+    '== plugin manifest: the database provider and consumer withdraw and reinstall independently ==',
+  );
+  driver.sendKeys('Control+Shift+y');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the database consumer resolves the installed SQLite provider',
+    (status) =>
+      status.sidebarView === 'database' &&
+      status.databaseConsumerStatus === 'ready' &&
+      status.databaseProviderIdentifier === 'sqlite' &&
+      status.databaseQueryValue === '42',
+  );
+  await driver.awaitGridCondition(
+    'the database pane paints the bounded query and lazy schema results',
+    (snapshot) =>
+      snapshot.findText('Provider: sqlite') !== null &&
+      snapshot.findText('Query value: 42') !== null &&
+      snapshot.findText('Schema: provider_seam_probe') !== null,
+  );
+
+  await selectExtensionsRow('[x] SQLite Provider');
+  driver.sendKeys('Space');
+  await driver.awaitGridCondition(
+    'the SQLite provider uninstalls while the consumer stays installed',
+    (snapshot) => snapshot.findText('› [ ] SQLite Provider') !== null,
+  );
+  driver.sendKeys('Control+Shift+y');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the database consumer states that no provider remains',
+    (status) =>
+      status.sidebarView === 'database' &&
+      status.databaseConsumerStatus === 'unavailable' &&
+      status.databaseProviderIdentifier === null &&
+      status.databaseProviderPluginActive === undefined,
+  );
+  await driver.awaitGridCondition(
+    'the database pane paints the missing-provider state',
+    (snapshot) => snapshot.findText('No database provider is') !== null,
+  );
+
+  await selectExtensionsRow('[ ] SQLite Provider');
+  driver.sendKeys('Space');
+  await driver.awaitGridCondition(
+    'the SQLite provider reinstalls while the consumer stays installed',
+    (snapshot) => snapshot.findText('› [x] SQLite Provider') !== null,
+  );
+  driver.sendKeys('Control+Shift+y');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the database consumer resolves the reinstalled provider',
+    (status) =>
+      status.sidebarView === 'database' &&
+      status.databaseConsumerStatus === 'ready' &&
+      status.databaseProviderIdentifier === 'sqlite' &&
+      status.databaseQueryValue === '42' &&
+      status.databaseProviderPluginActive === true,
+  );
+
+  await selectExtensionsRow('[x] Database Explorer');
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstall removes the database pane and all consumer projections',
+    (status) =>
+      !(status.sidebarViewIdentifiers as string[]).includes('database') &&
+      status.databaseConsumerStatus === undefined &&
+      status.databaseProviderIdentifier === undefined &&
+      status.databaseQueryValue === undefined &&
+      status.databaseSchemaObjectNames === undefined &&
+      status.databaseConsumerFailure === undefined &&
+      status.databaseProviderPluginActive === true,
+  );
+  driver.sendKeysWithoutFrameExpectation('Control+Shift+y');
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the removed database chord cannot switch away before Settings opens',
+    (status) =>
+      status.settingsOpen === true && status.sidebarView === 'extensions',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes onto Extensions before the database consumer reinstall',
+    (status) => status.settingsOpen === false && status.focus === 'extensions',
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall restores the database pane registration',
+    (status) =>
+      (status.sidebarViewIdentifiers as string[]).includes('database'),
+  );
+  driver.sendKeys('Control+Shift+y');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the reinstalled database consumer resolves SQLite again',
+    (status) =>
+      status.sidebarView === 'database' &&
+      status.databaseConsumerStatus === 'ready' &&
+      status.databaseProviderIdentifier === 'sqlite' &&
+      status.databaseQueryValue === '42',
+  );
+  HarnessSmoke.Class.pass(
+    'the database provider and consumer uninstall and reinstall symmetrically',
+  );
 } finally {
   await driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);

@@ -3,8 +3,10 @@ import type {
   ApplicationContributor,
 } from '../app/ApplicationContributor.interface';
 import type { Keybinding } from '../keybindings/KeybindingRegistry';
-import { CodexRewriteProvider } from '../lsp/CodexRewriteProvider';
-import type { RewriteProvider } from './RewriteProvider.interface';
+import type {
+  RewriteProvider,
+  RewriteProviderFactory,
+} from './RewriteProvider.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { Workspace } from '../workspace/Workspace';
 import type {
@@ -17,10 +19,6 @@ import { InlineRewriteWorkspace } from './InlineRewriteWorkspace';
 class $InlineRewriteContributor
   implements ApplicationContributor, WorkspaceContributor
 {
-  constructor(
-    protected readonly options: InlineRewriteContributorOptions = {},
-  ) {}
-
   readonly identifier = 'inline-rewrite';
   readonly name = 'Inline Rewrite';
   readonly workspaceContributor: WorkspaceContributor = this;
@@ -35,9 +33,10 @@ class $InlineRewriteContributor
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
-    const availabilityProbe = this.createRewriteProvider();
-    const available = availabilityProbe.available;
-    availabilityProbe.dispose();
+    const available =
+      context.workspaceSet.active.providers.resolve<RewriteProviderFactory>(
+        'inline-rewrite',
+      )?.available ?? false;
     const enabledSetting = context.registerSetting({
       identifier: 'inlineRewrite.enabled',
       label: 'Enabled',
@@ -104,7 +103,7 @@ class $InlineRewriteContributor
     const context = this.application;
     const contribution = new InlineRewriteWorkspace.Class(workspace, {
       enabled: this.enabled,
-      createProvider: () => this.createRewriteProvider(),
+      createProvider: () => this.resolveRewriteProvider(workspace),
       eligible: () => context.editorInteractionIsAvailable(),
       palette: () => context.theme.palette,
       bindingHint: (action, keybindingContext) =>
@@ -125,9 +124,13 @@ class $InlineRewriteContributor
     this.enabled = false;
   }
 
-  protected createRewriteProvider(): RewriteProvider {
+  protected resolveRewriteProvider(
+    workspace: Workspace.Model,
+  ): RewriteProvider | null {
     return (
-      this.options.createRewriteProvider?.() ?? new CodexRewriteProvider.Class()
+      workspace.providers
+        .resolve<RewriteProviderFactory>('inline-rewrite')
+        ?.create() ?? null
     );
   }
 
@@ -205,8 +208,4 @@ export namespace InlineRewriteContributor {
   export const $Class = $InlineRewriteContributor;
   export let Class = $InlineRewriteContributor;
   export type Instance = InstanceType<typeof $InlineRewriteContributor>;
-}
-
-export interface InlineRewriteContributorOptions {
-  createRewriteProvider?: () => RewriteProvider;
 }

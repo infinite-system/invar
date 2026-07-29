@@ -3,10 +3,10 @@ import { ref } from 'vue';
 import { Workspace } from '../workspace/Workspace';
 import { DocumentLifecycle } from '../workspace/DocumentLifecycle';
 import { TextDocument } from '../text/TextDocument';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { StructurePlugin } from './StructurePlugin';
-import { StructureSources } from './StructureSources';
 
 interface RecordingContext {
   context: ApplicationContributionContext;
@@ -123,6 +123,7 @@ test('the outline is observed only while the dock shows the structure pane', asy
   const document = new TextDocument.Class();
   document.loadFromText('class A {}\n', '/tmp/observed.ts');
   const workspace = {
+    providers: new ProviderRegistry.Class(),
     documentLifecycle: new DocumentLifecycle.Class(),
     activeDocumentHandle: { document },
   } as unknown as Workspace.Model;
@@ -136,7 +137,7 @@ test('the outline is observed only while the dock shows the structure pane', asy
     documentSymbols: async () => ({ symbols: [], truncated: false }),
     structureNotice: () => null,
   };
-  const disposeSource = StructureSources.Class.register(workspace, source);
+  const disposeSource = workspace.providers.register('structure', source);
   const outline = plugin.controllerFor(workspace).outline;
   recording.setActiveDockContent(null);
   await outline.refresh();

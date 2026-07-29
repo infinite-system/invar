@@ -12,6 +12,7 @@ import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type {
   RewriteCandidate,
   RewriteProvider,
+  RewriteProviderFactory,
   RewriteRequest,
 } from './RewriteProvider.interface';
 import { Settings } from '../settings/Settings';
@@ -50,13 +51,16 @@ function createFixture() {
   const statusProjectionContributions =
     new StatusProjectionContributions.Class();
   const providers: DeferredRewriteProvider[] = [];
-  const contributor = new InlineRewriteContributor.Class({
-    createRewriteProvider: () => {
+  const providerFactory: RewriteProviderFactory = {
+    available: true,
+    create: () => {
       const provider = new DeferredRewriteProvider();
       providers.push(provider);
       return provider;
     },
-  });
+  };
+  workspaceSet.active.providers.register('inline-rewrite', providerFactory);
+  const contributor = new InlineRewriteContributor.Class();
   const options = {
     settings,
     keybindings,
@@ -120,15 +124,15 @@ test('Extensions disable owns every rewrite registration', async () => {
 
   fixture.commands.run('inlineRewrite.request');
   await Promise.resolve();
-  expect(fixture.providers).toHaveLength(2);
+  expect(fixture.providers).toHaveLength(1);
   expect(
     fixture.statusProjectionContributions.snapshot()
       .inlineRewriteRequestInFlight,
   ).toBe(true);
 
   fixture.settings.setContributed('inlineRewrite.enabled', false);
-  expect(fixture.providers[1]?.signals[0]?.aborted).toBe(true);
-  expect(fixture.providers[1]?.disposed).toBe(true);
+  expect(fixture.providers[0]?.signals[0]?.aborted).toBe(true);
+  expect(fixture.providers[0]?.disposed).toBe(true);
   expect(
     fixture.workspaceSet.active.editorContributions.contributionCount,
   ).toBe(0);

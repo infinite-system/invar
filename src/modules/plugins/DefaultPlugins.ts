@@ -12,6 +12,8 @@ import {
 } from '../inline-rewrite/InlineRewriteContributor';
 import { StructurePlugin } from '../structure/StructurePlugin';
 import { ExtensionsPlugin } from './ExtensionsPlugin';
+import { DatabaseProviderPlugin } from '../database/DatabaseProviderPlugin';
+import { DatabaseConsumerPlugin } from '../database/DatabaseConsumerPlugin';
 
 class $DefaultPlugins {
   static create(): ApplicationContributor[] {
@@ -20,10 +22,12 @@ class $DefaultPlugins {
       new GitPlugin.Class(),
       new MarkdownPlugin.Class(),
       new LspPlugin.Class(),
+      new DatabaseProviderPlugin.Class(),
       new TerminalPlugin.Class(),
       new InlineRewriteContributor.Class(),
       new EditorPlugin.Class(),
       new StructurePlugin.Class(),
+      new DatabaseConsumerPlugin.Class(),
       new ExtensionsPlugin.Class(),
     ];
   }

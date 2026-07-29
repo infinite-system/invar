@@ -13,6 +13,11 @@ export interface RewriteProvider {
   dispose(): void;
 }
 
+export interface RewriteProviderFactory {
+  readonly available: boolean;
+  create(): RewriteProvider;
+}
+
 export interface RewriteRequest {
   readonly documentPath: string;
   readonly documentText: string;
