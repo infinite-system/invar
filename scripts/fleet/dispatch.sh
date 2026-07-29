@@ -127,7 +127,11 @@ tmux_session="invar/${name}"
 # to the guards, not die mute. Caught by a DRY_RUN whose task number had no folder.
 task_file="$(ls "${repository_root}"/.invar/tasks/*/"${name}"/task-"${name}".md 2>/dev/null | head -1 || true)"
 if [ -n "$task_file" ]; then
-  read_field() { grep -m1 "^$1:" "$task_file" | sed "s/^$1:[[:space:]]*//" | tr -d '\r'; }
+  # `|| true`: a missing field must yield empty, not kill the script — under
+  # pipefail a no-match grep fails the whole substitution and set -e exits 1
+  # with NO output. Fourth member of the silent-death class tonight; the
+  # fleet defaults below are exactly for absent fields, so absence is legal.
+  read_field() { { grep -m1 "^$1:" "$task_file" || true; } | sed "s/^$1:[[:space:]]*//" | tr -d '\r'; }
   declared_engine="$(read_field Engine)"
   declared_environment="$(read_field Environment)"
   declared_model="$(read_field Model)"
