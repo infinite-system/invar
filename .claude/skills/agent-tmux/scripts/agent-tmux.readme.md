@@ -10,8 +10,8 @@ run workers (see `fleet.design.md`); the codex-review skill's hand-followed reci
 Driving an interactive agent through `tmux send-keys` is fragile in four ways, and every caller
 re-derives (and re-breaks) the same fixes. This script bakes them in once, tested:
 
-1. **Send races** — text + `Enter` in one call lands `Enter` mid-paste. → split: text, `sleep`,
-   `Enter` separately, then confirm the turn went busy.
+1. **Send races** — text + `Enter` in one call lands `Enter` mid-paste. → split: text, then the
+   submission key, and confirm that the bottom-anchored composer structure returned to empty.
 2. **Not-at-the-prompt** — startup + approval dialogs (MCP / trust) must be dismissed first, and the
    idle prompt must be detected. → wait for the idle footer (`for shortcuts` _or_ `for agents`),
    dismissing real dialogs — but **never** the persistent `bypass permissions on` footer (treating
@@ -57,9 +57,8 @@ which is `claude -p` only). A human can `tmux attach -t at_w1` to watch/steer an
 
 ## Profiles
 
-- **`claude`** — verified this session (ready/busy markers, dialog dismissal).
-- **`codex`** — `[UNVERIFIED]` placeholder markers; confirm codex's interactive footer/dialogs, then
-  tune the `codex` case in `agent-tmux.sh` (or pass `--ready`/`--busy` overrides).
+- **`claude`** — verified (ready/busy markers, dialog dismissal, and bare/dim empty-composer forms).
+- **`codex`** — verified with `^›` as ready and `esc to interrupt` as the common busy marker.
 - **generic** — any binary; pass `--ready <regex>` (and optionally `--busy <regex>`).
 
 ## Tests
@@ -71,5 +70,5 @@ bash scripts/agent-tmux.test.sh            # unit + real-tmux mechanics against 
 AGENT_TMUX_LIVE=1 bash scripts/agent-tmux.test.sh   # also a live claude (haiku) smoke
 ```
 
-15/15 green, incl. the live smoke. The suite caught two real bugs during development (the
-bypass-permissions footer, and `_dismiss` matching that footer as a fake dialog).
+The suite covers both send polarities. A real submitted turn must confirm. Literal input with
+submission keys suppressed must exit 1 and report `NOT CONFIRMED`.

@@ -95,9 +95,9 @@ nudge) and presses `Tab` or `Enter` accordingly. It confirms on one of two POSIT
 
 - **queued** — the count of `↳` markers INCREASED. Counting matters: the mere presence of a `↳` only
   proves some earlier message was queued.
-- **submitted** — a 30-character probe taken from the START of the message is gone from the pane. The
-  probe comes from the start because the composer's first line begins at column 0 and so is never
-  split by wrapping.
+- **submitted** — the engine-specific composer structure returned to empty. Codex compares its stable
+  `›` line. Claude checks the bottom-anchored composer frame and accepts its bare or dim-placeholder
+  empty forms. Pending Claude input is ordinary text, not a dim placeholder.
 
 The detector this replaced recognised unsent text only as `[Pasted Content N chars]`. Text typed with
 `send-keys -l` renders as **ordinary visible composer lines** with no placeholder at all, so it found
@@ -115,8 +115,11 @@ delivery to a nested agent has FIVE distinguishable levels, and it matters which
 | the pane went busy | **nothing when it was ALREADY busy** — passes trivially |
 | `pipe-pane` transcript contains the text | **nothing** — it captures your own echoed keystrokes |
 | no `[Pasted Content]` placeholder | **nothing** — typed text never produces one; this read as "sent" for a composer full of visible text |
-| a probe from the message is GONE from the pane | the input was **consumed** |
+| the bottom-anchored composer structure is empty | the input was **consumed** |
 | the `↳` marker COUNT increased, or a transcript TURN | it is **accepted and will run** / it **ran** |
+
+Claude output cannot impersonate the check by printing the same words. Its output stays above the
+bottom composer frame, while the check reads that frame and its text style.
 
 `send` confirms at the composer-empty level, which is where a sender can honestly stop, and it now
 **fails loudly** (`return 1`) if the composer never empties. The version it replaced polled for busy

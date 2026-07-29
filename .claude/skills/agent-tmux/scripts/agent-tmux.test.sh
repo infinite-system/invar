@@ -7,11 +7,27 @@
 # directly. Runs WITHOUT errexit, like the other suites.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=test-lib.sh
-source "$HERE/test-lib.sh"
 export AGENT_TMUX_PREFIX="att_" # isolated namespace so tests never touch real at_ sessions
 # shellcheck source=agent-tmux.sh
 source "$HERE/agent-tmux.sh"
+
+test_pass_count=0
+test_failure_count=0
+ok() {
+  printf '  PASS  %s\n' "$1"
+  test_pass_count=$((test_pass_count + 1))
+}
+bad() {
+  printf '  FAIL  %s\n        expected: %s\n        actual:   %s\n' "$1" "$2" "$3"
+  test_failure_count=$((test_failure_count + 1))
+}
+eq() {
+  if [ "$2" = "$3" ]; then ok "$1"; else bad "$1" "$2" "$3"; fi
+}
+report() {
+  printf '\nagent-tmux: %s passed, %s failed\n' "$test_pass_count" "$test_failure_count"
+  [ "$test_failure_count" -eq 0 ]
+}
 
 command -v tmux >/dev/null 2>&1 || { echo "tmux not installed — skipping"; exit 0; }
 
@@ -26,17 +42,51 @@ _profile codex
 READY_OVERRIDE="ZZZ"; _profile claude; eq "--ready override wins" "ZZZ" "$READY_RE"; READY_OVERRIDE=""
 eq "_sess namespacing" "att_foo" "$(_sess foo)"
 
+echo "── unit: claude composer structure ──"
+claude_divider="────────────────"
+claude_footer="  bypass permissions on · ← for agents"
+eq "bare claude composer is empty" "claude-empty" \
+  "$(_claude_empty_composer_signature_from_rows $'\033[39m❯ ' "$claude_divider" "$claude_footer")"
+eq "dim claude placeholder is empty" "claude-empty" \
+  "$(_claude_empty_composer_signature_from_rows $'\033[39m❯ \033[2mTry something\033[0m' "$claude_divider" "$claude_footer")"
+eq "ordinary claude composer text is pending" "" \
+  "$(_claude_empty_composer_signature_from_rows $'\033[39m❯ UNSUBMITTED' "$claude_divider" "$claude_footer")"
+eq "composer-like output outside the bottom frame is not empty" "" \
+  "$(_claude_empty_composer_signature_from_rows $'\033[39m❯ ' "ordinary output" "$claude_footer")"
+
 echo "── mechanics: real tmux against a bash session (no quota) ──"
 N="mech$$"
 cmd_kill "$N" >/dev/null 2>&1
-out="$(cmd_launch "$N" --ready '\$' --busy '' --timeout 15 -- bash --norc -i 2>&1)"
+out="$(cmd_launch "$N" --profile codex --ready '^›' --busy '' --timeout 15 -- env PS1='› ' bash --norc -i 2>&1)"
 eq "launch reaches the bash prompt" "ready" "$out"
 eq "status: idle at prompt" "idle" "$(cmd_status "$N")"
 SENT="HELLO_${$}_${RANDOM}"
-cmd_send "$N" "echo $SENT" >/dev/null
+send_output="$(cmd_send "$N" "echo $SENT" 2>&1)"
+send_exit_code=$?
+eq "submitted send exits zero" "0" "$send_exit_code"
+eq "submitted send confirms" "submitted" "$send_output"
 sleep 1
 if cmd_peek "$N" 30 | grep -q "$SENT"; then ok "send → peek roundtrip (output appeared)"
 else bad "send/peek roundtrip" "$SENT in pane" "$(cmd_peek "$N" 5 | tr '\n' '|')"; fi
+
+# Drop only submission keys. Literal input still reaches the real tmux pane and stays in the
+# composer, which proves the negative polarity without touching an agent session.
+drop_submission_keys=1
+tmux() {
+  if [ "$drop_submission_keys" = "1" ] && [ "${1:-}" = "send-keys" ]; then
+    case " $* " in *" Enter "*|*" Tab "*) return 0;; esac
+  fi
+  command tmux "$@"
+}
+unsubmitted_output="$(cmd_send "$N" "UNSUBMITTED_${$}_${RANDOM}" 2>&1)"
+unsubmitted_exit_code=$?
+eq "unsubmitted send exits one" "1" "$unsubmitted_exit_code"
+eq "unsubmitted send reports NOT CONFIRMED" \
+  "send: NOT CONFIRMED — composer never returned to its pre-send state and no new queued marker" \
+  "$unsubmitted_output"
+drop_submission_keys=0
+unset -f tmux
+
 cmd_kill "$N" >/dev/null
 eq "status: dead after kill" "dead" "$(cmd_status "$N")"
 eq "kill of missing session" "no session 'nope$$'" "$(cmd_kill "nope$$")"

@@ -436,7 +436,13 @@ native_session_file=""
 case "$engine" in
   claude)
     claude_project_directory="$HOME/.claude/projects/$(printf '%s' "$worktree_path" | tr '/.' '--')"
-    native_session_file="$(ls -t "$claude_project_directory"/*.jsonl 2>/dev/null | head -1 || true)"
+    # Claude creates the cwd-derived project directory lazily. Wait on that condition for the same
+    # bounded window as the transcript check. An immediate lookup warned during healthy launches.
+    claude_session_deadline=$((SECONDS + 15))
+    until [ -n "$native_session_file" ] || [ "$SECONDS" -ge "$claude_session_deadline" ]; do
+      native_session_file="$(ls -t "$claude_project_directory"/*.jsonl 2>/dev/null | head -1 || true)"
+      [ -n "$native_session_file" ] || sleep 1
+    done
     ;;
   codex)
     for candidate in $(find "$native_session_store" -type f -newer "$native_session_marker" 2>/dev/null); do
@@ -453,7 +459,7 @@ if [ -n "$native_session_file" ]; then
   echo "$native_session_file" > "$session_link_path"
 else
   echo "dispatch: WARNING — no native session file appeared in ${native_session_store} after launch" >&2
-  echo "UNRESOLVED — no store file newer than the launch marker" > "$session_link_path"
+  echo "UNRESOLVED — no engine session file appeared after launch" > "$session_link_path"
 fi
 
 # The opening turn goes through `send`, which confirms it submitted.

@@ -175,12 +175,44 @@ _queue_affordance() {
 #                                           the submitted turn into the transcript, so the text stays
 #                                           on screen forever (reported failure on a real success)
 #
-# What actually distinguishes all three is the COMPOSER LINE ITSELF. codex renders it as `›` plus
-# either its content or an idle placeholder hint. Capturing that line while the composer is known
-# empty — immediately before sending — gives an environment-independent signature to compare against,
-# with no hardcoded placeholder text and no assumption about where the message text ends up.
+# What actually distinguishes all three is the COMPOSER STRUCTURE. codex renders its composer as `›`
+# plus either content or a stable idle hint, so its empty line is a useful signature. claude renders
+# two different empty lines: a dim placeholder before the first turn and a bare prompt afterwards.
+# Its stable structure is the bottom composer frame. In that frame, empty input is either bare or dim;
+# pending input is ordinary text. The frame is anchored to the pane bottom, so agent output cannot
+# impersonate it by printing the same words.
 _composer_line() {
   _pane "$1" | grep -F '›' | tail -n 1
+}
+
+_claude_empty_composer_signature_from_rows() {
+  local escaped_composer_line="$1" divider_line="$2" footer_line="$3" composer_line_without_leading_style
+  # Require the bottom-anchored frame, not vocabulary that ordinary output can repeat.
+  printf '%s' "$divider_line" | grep -qE '^─+$' || return 0
+  printf '%s' "$footer_line" | grep -qF 'for agents' || return 0
+
+  # Remove only leading SGR controls. Input text remains visible. Claude's placeholder is the
+  # one dim span after the prompt, while submitted input returns to a bare prompt.
+  composer_line_without_leading_style="$(printf '%s' "$escaped_composer_line" | sed $'s/^\033\\[[0-9;]*m//')"
+  case "$composer_line_without_leading_style" in
+    "❯ "|"❯ "$'\033[2m'*$'\033[0m') printf '%s' 'claude-empty';;
+  esac
+}
+
+_claude_empty_composer_signature() {
+  local name="$1" escaped_composer_line divider_line footer_line
+  escaped_composer_line="$(tmux capture-pane -t "$(_sess "$name")" -p -e 2>/dev/null | tail -n 3 | head -n 1)"
+  divider_line="$(_pane "$name" | tail -n 2 | head -n 1)"
+  footer_line="$(_pane "$name" | tail -n 1)"
+  _claude_empty_composer_signature_from_rows "$escaped_composer_line" "$divider_line" "$footer_line"
+}
+
+_empty_composer_signature() {
+  case "$(_get "$1" profile)" in
+    claude) _claude_empty_composer_signature "$1";;
+    codex) _composer_line "$1";;
+    *) _composer_line "$1";;
+  esac
 }
 
 cmd_send() {
@@ -188,7 +220,7 @@ cmd_send() {
   _alive "$name" || { echo "send: no session '$name'" >&2; return 1; }
   local s i empty_composer queued_before queued_now; s="$(_sess "$name")"
   # Signature of the composer while it is still empty — the baseline both outcomes are measured against.
-  empty_composer="$(_composer_line "$name")"
+  empty_composer="$(_empty_composer_signature "$name")"
   # Count the queued markers BEFORE sending: an increase is positive proof of acceptance, whereas
   # the mere PRESENCE of a marker only proves some earlier message was queued.
   queued_before="$(_pane "$name" | grep -cF '↳' || true)"
@@ -208,7 +240,7 @@ cmd_send() {
     #   queued    — a NEW `↳` marker appeared: accepted, runs after the current turn
     #   submitted — the composer line returned to its empty signature: consumed into a turn
     if [ "$queued_now" -gt "$queued_before" ]; then echo queued; return 0; fi
-    if [ -n "$empty_composer" ] && [ "$(_composer_line "$name")" = "$empty_composer" ]; then
+    if [ -n "$empty_composer" ] && [ "$(_empty_composer_signature "$name")" = "$empty_composer" ]; then
       echo submitted; return 0
     fi
   done
