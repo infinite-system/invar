@@ -7,14 +7,15 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #218 workspace-buffer-splits-document-from-view  [building]
+- #218 workspace-buffer-splits-document-from-view  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/218-workspace-buffer-splits-document-from-view`
 
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (13)
+## VERIFICATION-INTEGRITY (14)
+- #221 editor-owns-no-view-state-uncited
 - #216 drive-onramp-quick-open-blind-enumeration
 - #215 agent-tmux-send-confirm-false-negative
 - #210 mutation-probes-for-semantic-weakening
