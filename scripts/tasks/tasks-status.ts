@@ -566,6 +566,30 @@ function selfTest(): number {
 // Command-line lenses, one per state the user asks about. `live` answers "what
 // is running and how do I join it"; `active` answers "what is waiting, in what
 // order"; `completed` answers "what landed, with which commit".
+// Colour lives ONLY in the terminal lenses — never in the generated files,
+// which stay byte-deterministic. Honours NO_COLOR and non-TTY pipes.
+const colourEnabled = process.stdout.isTTY === true && !process.env.NO_COLOR;
+
+function paint(ansiCode: string, text: string): string {
+  return colourEnabled ? `\x1b[${ansiCode}m${text}\x1b[0m` : text;
+}
+
+const bold = (text: string): string => paint('1', text);
+const dim = (text: string): string => paint('2', text);
+const green = (text: string): string => paint('32', text);
+const yellow = (text: string): string => paint('33', text);
+const cyan = (text: string): string => paint('36', text);
+const magenta = (text: string): string => paint('35', text);
+const red = (text: string): string => paint('31', text);
+
+const PRIORITY_BADGES: Record<string, string> = {
+  'user-directed': magenta('★ user-directed'),
+  'verification-integrity': yellow('⚑ verification-integrity'),
+  'flake-evidence': red('◍ flake-evidence'),
+  'performance-behaviour': cyan('⚡performance-behaviour'),
+  'architecture-hygiene': green('⬡ architecture-hygiene'),
+};
+
 // Durations are computed at VIEW time from meta.json's startedAt (written at
 // dispatch) — never stored, so the generated files stay byte-deterministic.
 function startedAtMilliseconds(
@@ -626,19 +650,21 @@ function live(tasksRoot: string): number {
     console.log('IN-PROGRESS: none.');
     return 0;
   }
-  console.log(`IN-PROGRESS (${records.length})`);
+  console.log(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
-    const builderStatus =
-      record.reportCount > 0
-        ? 'READY delivered — awaiting landing'
-        : 'building';
+    const ready = record.reportCount > 0;
+    const statusBadge = ready
+      ? green('◉ READY — awaiting landing')
+      : yellow('● building');
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const runningFor =
-      startedAt === null ? '' : `  ${formatDuration(Date.now() - startedAt)}`;
+      startedAt === null
+        ? ''
+        : `  ${cyan(formatDuration(Date.now() - startedAt))}`;
     console.log(
-      `  #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}  [${builderStatus}]${runningFor}`,
+      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}  ${statusBadge}${runningFor}`,
     );
-    console.log(`      tmux attach -t invar/${record.folderName}`);
+    console.log(dim(`      tmux attach -t invar/${record.folderName}`));
   }
   return 0;
 }
@@ -651,14 +677,24 @@ function activeOnly(tasksRoot: string): number {
     console.log('ACTIVE: none.');
     return 0;
   }
-  console.log(`ACTIVE (${records.length}) — grouped by priority`);
+  console.log(bold(`◫ ACTIVE (${records.length}) — grouped by priority`));
   for (const group of [...PRIORITY_ORDER, null]) {
     const inGroup = records
       .filter((record) => record.priorityGroup === group)
       .sort(byNumberDescending);
     if (inGroup.length === 0) continue;
-    console.log(`  ${group ?? 'unprioritised'}:`);
-    for (const record of inGroup) console.log(`  ${taskLine(record)}`);
+    const badge =
+      group === null
+        ? dim('◌ unprioritised')
+        : (PRIORITY_BADGES[group] ?? group);
+    console.log(`  ${badge}`);
+    for (const record of inGroup) {
+      const line = taskLine(record).replace(
+        /^- #(\d+)/,
+        (_, number: string) => `- ${bold(`#${number}`)}`,
+      );
+      console.log(`  ${line}`);
+    }
   }
   return 0;
 }
@@ -673,20 +709,54 @@ function completedOnly(tasksRoot: string): number {
     return 0;
   }
   console.log(
-    `COMPLETED (${completedCount}) — latest first, duration = dispatch to landing`,
+    bold(
+      `✔ COMPLETED (${completedCount}) — latest first, duration = dispatch to landing`,
+    ),
   );
+  printCompleted(tasksRoot, records, Number.POSITIVE_INFINITY);
+  return 0;
+}
+
+function printCompleted(
+  tasksRoot: string,
+  records: TaskRecord[],
+  cap: number,
+): void {
   const completed = records
     .filter((record) => record.directoryState === 'completed')
-    .sort(byNumberDescending);
+    .sort(byNumberDescending)
+    .slice(0, cap === Number.POSITIVE_INFINITY ? undefined : cap);
   for (const record of completed) {
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const landedAt = startedAt === null ? null : landedAtMilliseconds(record);
     const duration =
       startedAt !== null && landedAt !== null && landedAt > startedAt
-        ? `  [${formatDuration(landedAt - startedAt)}]`
+        ? `  ${cyan(`[${formatDuration(landedAt - startedAt)}]`)}`
         : '';
-    console.log(`${completedLine(record)}${duration}`);
+    const line = completedLine(record).replace(
+      /^- #(\d+)/,
+      (_, number: string) => `- ${green('✔')} ${bold(`#${number}`)}`,
+    );
+    console.log(`${line}${duration}`);
   }
+}
+
+// tasks:all — the whole system in one screenful: live, active, completed(15).
+function allLenses(tasksRoot: string): number {
+  live(tasksRoot);
+  console.log('');
+  activeOnly(tasksRoot);
+  console.log('');
+  const records = readTaskRecords(tasksRoot);
+  const completedCount = records.filter(
+    (record) => record.directoryState === 'completed',
+  ).length;
+  console.log(
+    bold(
+      `✔ COMPLETED (last ${Math.min(15, completedCount)} of ${completedCount} — bun run tasks:done for all)`,
+    ),
+  );
+  printCompleted(tasksRoot, records, 15);
   return 0;
 }
 
@@ -703,9 +773,11 @@ process.exit(
         ? activeOnly(tasksRoot)
         : process.argv.includes('completed')
           ? completedOnly(tasksRoot)
-          : process.argv.includes('backlog')
-            ? backlog(tasksRoot, false)
-            : process.argv.includes('write-active')
-              ? backlog(tasksRoot, true)
-              : report(tasksRoot),
+          : process.argv.includes('all')
+            ? allLenses(tasksRoot)
+            : process.argv.includes('backlog')
+              ? backlog(tasksRoot, false)
+              : process.argv.includes('write-active')
+                ? backlog(tasksRoot, true)
+                : report(tasksRoot),
 );
