@@ -1042,4 +1042,10 @@ else
   echo "merge-gate: FAILURES — commit/merge BLOCKED"
   report_failure_log_provenance
 fi
+# The verdict is BORN WITH THE LOG. land.sh refuses to act without reading
+# GATE_EXIT= from the log itself; wrappers used to append it, so a gate run
+# by anyone else produced a log land.sh could not accept (2026-07-29: a
+# builder's genuine ALL-PASS log lacked the sentinel). The gate now stamps
+# its own exit — every log is a self-contained verdict.
+echo "GATE_EXIT=${fail}"
 exit "$fail"

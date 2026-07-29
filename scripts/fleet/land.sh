@@ -145,15 +145,34 @@ if ! git merge --no-ff "$branch" -F "$merge_message_file" -q; then
   # them (bit twice on 2026-07-29). The resolution is always the same and
   # never manual: take either side, then REGENERATE from the folders.
   # Any other conflicted path is a real conflict — abort and refuse.
+  # A failed merge that left no MERGE_HEAD never started (overwrite refusal,
+  # bad ref) — there is nothing to resolve and nothing safe to commit.
+  git rev-parse -q --verify MERGE_HEAD >/dev/null \
+    || { echo "land: REFUSING — merge failed before starting (no MERGE_HEAD); inspect by hand." >&2; exit 5; }
   conflicted="$(git diff --name-only --diff-filter=U)"
+  # A file the builder added under ITS OWN task folder at the pre-dispatch
+  # path (active/<name>/) conflicts by location when HEAD renamed that folder
+  # to in-progress/<name>/ at dispatch. One correct resolution exists: keep
+  # the file at the renamed path. Auto-resolve for THIS task's folder only.
+  own_folder_conflicts="$(printf '%s\n' "$conflicted" | grep -E "^\.invar/tasks/(active|in-progress)/${name}/" || true)"
+  if [ -n "$own_folder_conflicts" ]; then
+    printf '%s\n' "$own_folder_conflicts" | while read -r moved_file; do
+      target_file="${moved_file/\/active\//\/in-progress\/}"
+      mkdir -p "$(dirname "$target_file")"
+      [ "$moved_file" != "$target_file" ] && [ -f "$moved_file" ] && git mv -f "$moved_file" "$target_file" 2>/dev/null
+      git add "$target_file" 2>/dev/null || git add "$moved_file"
+    done
+    echo "land: relocated the task's own pre-dispatch-path file(s) to in-progress/ (rename-follow)"
+    conflicted="$(git diff --name-only --diff-filter=U)"
+  fi
   real_conflicts="$(printf '%s\n' "$conflicted" | grep -v -E '^(project\.active-tasks\.md|project\.tasks-completed\.md)$' || true)"
-  if [ -n "$real_conflicts" ] || [ -z "$conflicted" ]; then
+  if [ -n "$real_conflicts" ]; then
     echo "land: REFUSING — merge conflict beyond the generated views:" >&2
     printf '%s\n' "$real_conflicts" >&2
     git merge --abort
     exit 5
   fi
-  printf '%s\n' "$conflicted" | while read -r view; do git checkout --theirs "$view" && git add "$view"; done
+  [ -n "$conflicted" ] && printf '%s\n' "$conflicted" | while read -r view; do git checkout --theirs "$view" && git add "$view"; done
   PATH="$HOME/.bun/bin:$PATH" bun scripts/tasks/tasks-status.ts write-active >/dev/null 2>&1 \
     || echo "land: WARNING — write-active failed during conflict resolution" >&2
   git add -- project.active-tasks.md project.tasks-completed.md 2>/dev/null || true
