@@ -1,7 +1,7 @@
 import { Reactive } from 'ivue';
 import { fileURLToPath } from 'node:url';
 import type { Ref } from 'vue';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import type { DocumentHandle } from '../workspace/DocumentHandle';
 import type {
   EditorLineDecoration,
@@ -176,7 +176,7 @@ class $LspWorkspaceProvider
         const endColumn =
           lineIndex === lastLine
             ? diagnostic.range.end.column
-            : EditorCoordinates.Class.graphemeCount(document.line(lineIndex));
+            : TextCoordinates.Class.graphemeCount(document.line(lineIndex));
         const severity =
           diagnostic.severity === 1
             ? 'error'

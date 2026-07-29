@@ -24,7 +24,7 @@ import {
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { HitTransparentText } from './HitTransparentText';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { Files } from '../system/Files';
 import { QuickOpenRenderer } from './QuickOpenRenderer';
 import {
@@ -1437,7 +1437,7 @@ class $OverlayLayer {
     this.tooltipText.visible = tooltip.visible.value;
     if (tooltip.visible.value) {
       const tooltipLabel = ` ${tooltip.text.value} `;
-      const tooltipWidth = EditorCoordinates.Class.lineWidth(tooltipLabel);
+      const tooltipWidth = TextCoordinates.Class.lineWidth(tooltipLabel);
       const centeredLeft = tooltip.anchorX.value - Math.floor(tooltipWidth / 2);
       this.tooltipText.left = Math.max(
         0,

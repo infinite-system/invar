@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test';
 import { LanguageClient } from './LanguageClient';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { StatusChannel } from '../system/StatusChannel';
 import { FakeLspProcess, FakeProvider, flush } from './lsp.fakes.test';
 

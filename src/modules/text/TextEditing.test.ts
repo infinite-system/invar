@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from './TextCoordinates';
 import { TextEditing } from './TextEditing';
 
 function deleteAtEnd(text: string) {
   return TextEditing.Class.deletePreviousWord(
     text,
-    EditorCoordinates.Class.graphemeCount(text),
+    TextCoordinates.Class.graphemeCount(text),
   );
 }
 

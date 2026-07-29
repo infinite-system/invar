@@ -1,4 +1,4 @@
-import type { TextDocument } from '../editor/TextDocument';
+import type { TextDocument } from '../text/TextDocument';
 import type { EditorFoldState } from '../editor/Editor';
 
 // invariant: Document identity survives document instance replacement (workspace.invariants.md)

@@ -1,7 +1,7 @@
 // Selection model + selection-aware editing + clipboard.
 // Covers the editor invariant "Selection is an anchor plus the cursor and edits replace it".
 import { test, expect } from 'bun:test';
-import { TextDocument } from './TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { Editor } from './Editor';
 import { Clipboard } from '../system/Clipboard';
 

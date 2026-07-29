@@ -12,7 +12,7 @@
 // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { FileTree } from './FileTree';
 
@@ -37,14 +37,14 @@ class $TreePaneRenderer {
       const indent = '  '.repeat(row.depth);
       const icon = context.icon(row.name, row.isDir, row.expanded);
       const completeLabel = `${marker}${indent}${icon} ${row.name}`;
-      let label = EditorCoordinates.Class.displayColumnWindow(
+      let label = TextCoordinates.Class.displayColumnWindow(
         completeLabel,
         tree.scrollLeft.value,
         viewportWidth,
       );
-      label = EditorCoordinates.Class.padToDisplayWidth(label, viewportWidth);
+      label = TextCoordinates.Class.padToDisplayWidth(label, viewportWidth);
       // Pad to the pane's inner width so the row highlight spans the full row (VS Code-style).
-      label = EditorCoordinates.Class.padToDisplayWidth(label, innerWidth);
+      label = TextCoordinates.Class.padToDisplayWidth(label, innerWidth);
       // Two intensities: selection (stronger) over hover (subtle); bg is the primary signal.
       const rowBackground = selected
         ? selectionFocused

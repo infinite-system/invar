@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { DocumentHandle } from './DocumentHandle';
 import {
   GutterDecorations,

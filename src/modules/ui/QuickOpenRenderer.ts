@@ -13,7 +13,7 @@
 // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { QuickOpen } from '../search/QuickOpen';
 
@@ -128,7 +128,7 @@ class $QuickOpenRenderer {
         : hovered
           ? palette.cursorLine
           : null;
-      const label = EditorCoordinates.Class.padToDisplayWidth(
+      const label = TextCoordinates.Class.padToDisplayWidth(
         ` ${match.path}`,
         innerWidth,
       );

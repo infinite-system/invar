@@ -1,6 +1,6 @@
 import { Static } from 'ivue/extras';
 import { Highlighter, type LangId } from '../syntax/Highlighter';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 
 // Fold discovery is proportional to what asks for it: gutter paint caches exact ranges only for
 // visible starts, while whole-document commands share the global snapshot.
@@ -365,7 +365,7 @@ class $CodeFolding {
 
   protected static indentationColumns(lineText: string): number {
     const leadingWhitespace = lineText.match(/^[ \t]*/)?.[0] ?? '';
-    return EditorCoordinates.Class.lineWidth(leadingWhitespace);
+    return TextCoordinates.Class.lineWidth(leadingWhitespace);
   }
 
   protected static recordRange(

@@ -13,15 +13,15 @@ import type {
   TextRenderable,
 } from '@opentui/core';
 import { Reactive } from 'ivue';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import type { EditorFrameAttribution } from '../editor/EditorFrameAttribution';
-import { EditorWrap, type VisualRow } from '../editor/EditorWrap';
+import { TextCoordinates } from '../text/TextCoordinates';
+import type { EditorFrameAttribution } from './EditorFrameAttribution';
+import { EditorWrap, type VisualRow } from './EditorWrap';
 import { EditorPaneRenderer } from './EditorPaneRenderer';
-import { BracketMatch } from '../editor/BracketMatch';
+import { BracketMatch } from './BracketMatch';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
-import { ScrollGesture } from './ScrollGesture';
-import { SelectionDragBehavior } from './SelectionDragBehavior';
-import { SelectableText } from './SelectableText';
+import { ScrollGesture } from '../ui/ScrollGesture';
+import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
+import { SelectableText } from '../ui/SelectableText';
 import { Logging } from '../system/Logging';
 import type { Palette } from '../theme/ThemePalettes';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
@@ -133,7 +133,7 @@ class $EditorPane {
       : [
           {
             startGrapheme: 0,
-            endGrapheme: EditorCoordinates.Class.graphemeCount(lineText),
+            endGrapheme: TextCoordinates.Class.graphemeCount(lineText),
             startDisplayColumn: 0,
           },
         ];
@@ -159,7 +159,7 @@ class $EditorPane {
     return {
       rowIndex,
       column:
-        EditorCoordinates.Class.displayColumn(lineText, column) -
+        TextCoordinates.Class.displayColumn(lineText, column) -
         (segment?.startDisplayColumn ?? 0) -
         (workspaceSet.active.editor.wordWrap.value
           ? 0
@@ -238,7 +238,7 @@ class $EditorPane {
         )
       : [row.segment];
     const lastSegmentOfLine = row.segmentIndex === segments.length - 1;
-    const hitColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
+    const hitColumn = TextCoordinates.Class.graphemeAtDisplayColumn(
       lineText,
       row.segment.startDisplayColumn +
         Math.max(0, cellX - codeBody.x) +
@@ -278,7 +278,7 @@ class $EditorPane {
         editor.viewport.scrollLeft.value + (cellX - this.deps.codeBody.x);
       if (
         displayColumn < 0 ||
-        displayColumn >= EditorCoordinates.Class.lineWidth(lineText)
+        displayColumn >= TextCoordinates.Class.lineWidth(lineText)
       )
         return false;
     }
@@ -321,7 +321,7 @@ class $EditorPane {
       horizontalScrollingEnabled: () =>
         !workspaceSet.active.editor.wordWrap.value,
       lineGraphemeCount: (lineIndex) =>
-        EditorCoordinates.Class.graphemeCount(
+        TextCoordinates.Class.graphemeCount(
           this.deps.frameAttribution.documentLine(
             workspaceSet.active.editor.document,
             lineIndex,
@@ -533,7 +533,7 @@ export interface EditorPaneDeps {
   settings: Settings.Instance;
   theme: Theme.Instance;
   frameAttribution: EditorFrameAttribution.Model;
-  tooltip: import('./Tooltip').Tooltip.Instance;
+  tooltip: import('../ui/Tooltip').Tooltip.Instance;
   readPalette: () => Palette;
   editorViewportHeight: () => number;
   editorViewportWidth: () => number;

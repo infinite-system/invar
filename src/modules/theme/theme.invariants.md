@@ -279,7 +279,7 @@ an undefined cell. The `ascii` entries remain printable; icon-cell glyphs are
 authored as one cell each; the classifiers fall back (`?? 'file'`,
 `?? 'unclassified'`) so a resolve always returns a printable string. The
 full-vocabulary width test enumerates every public `ThemeIcons` surface at
-every tier, compares `EditorCoordinates.lineWidth` with the independent
+every tier, compares `TextCoordinates.lineWidth` with the independent
 `@xterm/headless` cursor advance, and rejects either a disagreement or a
 terminal-rendered double-cell glyph. There is no exception list: adding an
 emoji-presentation or wide mark fails the test immediately. The `foldOpen`
@@ -311,7 +311,7 @@ detector reports a collision when one exists` (the synthetic-list positive
 control), `the javascript mark is not the dirty tab marker`, and `every theme
 glyph agrees and avoids double-cell rendering` in
 `src/modules/theme/ThemeIcons.test.ts` — the last enumerates every vocabulary
-surface, compares the app's width authority (`EditorCoordinates.lineWidth`,
+surface, compares the app's width authority (`TextCoordinates.lineWidth`,
 OpenTUI's table) against an independent one (`@xterm/headless` behind
 `TerminalEmulator`), and carries a wide-glyph positive control so it can fail
 toward two.
@@ -350,7 +350,7 @@ editor-mark table, or in the activity row `≡ ⑂ ⌕ ⚙ ⧫`.
 | C | `⏵` — `U+23F5 BLACK MEDIUM RIGHT-POINTING TRIANGLE` | `≔` — `U+2254 COLON EQUALS` | The solid triangle reads as “run”; colon-equals reads as a key/value assignment. The tradeoff is that “run” is broader than “shell script,” and `≔` is less familiar than a plain colon. |
 
 Measured with the same two authorities as the exhaustive vocabulary test:
-`EditorCoordinates.lineWidth` for the app and `@xterm/headless` through
+`TextCoordinates.lineWidth` for the app and `@xterm/headless` through
 `TerminalEmulator` for terminal cursor advance. The wide control proves the
 run can report two:
 

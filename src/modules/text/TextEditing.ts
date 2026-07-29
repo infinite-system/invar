@@ -1,13 +1,13 @@
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from './TextCoordinates';
 
 // The shared text-editing seam: pure word-boundary edits reused by the editor, find bar, quick-open,
 // the command palette, AND the agent composer — one generator, every text input wires in here instead
 // of re-implementing word deletion. The canonical instance of the shared-generator rule.
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 class $TextEditing {
-  protected static get EditorCoordinates() {
-    return EditorCoordinates.Class;
+  protected static get TextCoordinates() {
+    return TextCoordinates.Class;
   }
 
   protected static clusterKind(cluster: string): TextClusterKind {
@@ -25,9 +25,9 @@ class $TextEditing {
    * beginning of a line the previous position is the preceding line end, so deletion joins lines
    * without also removing text from the preceding line.
    */
-  // invariant: Word deletion uses navigation boundaries (src/modules/editor/editor.invariants.md)
+  // invariant: Word deletion uses navigation boundaries (src/modules/text/text.invariants.md)
   static wordLeft(text: string, cursor: number): number {
-    const clusters = this.EditorCoordinates.graphemes(text);
+    const clusters = this.TextCoordinates.graphemes(text);
     let position = Math.max(0, Math.min(cursor, clusters.length));
     if (position === 0) return 0;
 
@@ -64,7 +64,7 @@ class $TextEditing {
    * separators — landing at the START of the next word (or the end of the text).
    */
   static wordRight(text: string, cursor: number): number {
-    const clusters = this.EditorCoordinates.graphemes(text);
+    const clusters = this.TextCoordinates.graphemes(text);
     let position = Math.max(0, Math.min(cursor, clusters.length));
     const isWord = (cluster: string): boolean =>
       this.clusterKind(cluster) === 'word' ||
@@ -89,15 +89,15 @@ class $TextEditing {
 
   static deletePreviousWord(
     text: string,
-    cursor = this.EditorCoordinates.graphemeCount(text),
+    cursor = this.TextCoordinates.graphemeCount(text),
   ): PreviousWordDeletion {
     const end = Math.max(
       0,
-      Math.min(cursor, this.EditorCoordinates.graphemeCount(text)),
+      Math.min(cursor, this.TextCoordinates.graphemeCount(text)),
     );
     const start = this.wordLeft(text, end);
-    const startUtf16Offset = this.EditorCoordinates.graphemeToU16(text, start);
-    const endUtf16Offset = this.EditorCoordinates.graphemeToU16(text, end);
+    const startUtf16Offset = this.TextCoordinates.graphemeToU16(text, start);
+    const endUtf16Offset = this.TextCoordinates.graphemeToU16(text, end);
     return {
       text: text.slice(0, startUtf16Offset) + text.slice(endUtf16Offset),
       start,
@@ -108,11 +108,11 @@ class $TextEditing {
   static deleteNextWord(text: string, cursor = 0): NextWordDeletion {
     const start = Math.max(
       0,
-      Math.min(cursor, this.EditorCoordinates.graphemeCount(text)),
+      Math.min(cursor, this.TextCoordinates.graphemeCount(text)),
     );
     const end = this.wordRight(text, start);
-    const startUtf16Offset = this.EditorCoordinates.graphemeToU16(text, start);
-    const endUtf16Offset = this.EditorCoordinates.graphemeToU16(text, end);
+    const startUtf16Offset = this.TextCoordinates.graphemeToU16(text, start);
+    const endUtf16Offset = this.TextCoordinates.graphemeToU16(text, end);
     return {
       text: text.slice(0, startUtf16Offset) + text.slice(endUtf16Offset),
       start,

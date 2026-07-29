@@ -9,7 +9,7 @@ import type { ActionIconSet } from '../theme/ThemeIcons';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from './CommandScoring';
-import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
+import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $CommandRegistry {

@@ -2,7 +2,7 @@ import { bg, dim, fg, italic, type TextChunk } from '@opentui/core';
 import type { RewriteProvider } from './RewriteProvider.interface';
 import type { Editor } from '../editor/Editor';
 import type { EditorContribution } from '../editor/EditorContributions';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import type { Workspace } from '../workspace/Workspace';
@@ -210,7 +210,7 @@ class $InlineRewriteWorkspace
       start: { line: startLine, column: 0 },
       end: {
         line: endLine,
-        column: EditorCoordinates.Class.graphemeCount(
+        column: TextCoordinates.Class.graphemeCount(
           editor.document.line(endLine),
         ),
       },

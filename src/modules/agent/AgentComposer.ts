@@ -6,8 +6,8 @@ import {
   type SelectionPoint,
   type SelectionSpanRange,
 } from '../ui/TextSelectionModel';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
+import { TextCoordinates } from '../text/TextCoordinates';
+import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
 import { Clipboard } from '../system/Clipboard';
 import { AgentWordWrap, type AgentWordWrapSegment } from './AgentWordWrap';
 
@@ -65,10 +65,7 @@ class $AgentComposer {
   skillInvocation(): AgentSkillInvocation | null {
     const textBeforeCaret = this.input.value.slice(
       0,
-      EditorCoordinates.Class.graphemeToU16(
-        this.input.value,
-        this.clampCursor(),
-      ),
+      TextCoordinates.Class.graphemeToU16(this.input.value, this.clampCursor()),
     );
     const match = /(?:^|\s)\/([A-Za-z0-9_-]*)$/.exec(textBeforeCaret);
     if (!match) return null;
@@ -76,7 +73,7 @@ class $AgentComposer {
     const slashUtf16Offset = textBeforeCaret.length - prefix.length - 1;
     return {
       prefix,
-      start: EditorCoordinates.Class.graphemeCount(
+      start: TextCoordinates.Class.graphemeCount(
         textBeforeCaret.slice(0, slashUtf16Offset),
       ),
       end: this.clampCursor(),
@@ -87,11 +84,11 @@ class $AgentComposer {
     invocation: AgentSkillInvocation,
     skillName: string,
   ): void {
-    const startUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const startUtf16Offset = TextCoordinates.Class.graphemeToU16(
       this.input.value,
       invocation.start,
     );
-    const endUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const endUtf16Offset = TextCoordinates.Class.graphemeToU16(
       this.input.value,
       invocation.end,
     );
@@ -102,7 +99,7 @@ class $AgentComposer {
         this.input.value.slice(endUtf16Offset),
     );
     this.input.caret.value =
-      invocation.start + EditorCoordinates.Class.graphemeCount(replacement);
+      invocation.start + TextCoordinates.Class.graphemeCount(replacement);
     this.selection.clear();
   }
 
@@ -378,10 +375,10 @@ class $AgentComposer {
         endCell ?? Number.MAX_SAFE_INTEGER,
       );
       if (endCell !== null) return selectedVisibleText;
-      const displayedGraphemeCount = EditorCoordinates.Class.graphemeCount(
+      const displayedGraphemeCount = TextCoordinates.Class.graphemeCount(
         segment.text,
       );
-      const sourceGraphemes = EditorCoordinates.Class.graphemes(
+      const sourceGraphemes = TextCoordinates.Class.graphemes(
         segment.sourceText,
       );
       return (

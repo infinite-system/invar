@@ -16,8 +16,8 @@ const {
   scrollTopToRevealCursor,
 } = EditorWrap.Class;
 
-import { EditorCoordinates } from './EditorCoordinates';
-import { TextDocument } from './TextDocument';
+import { TextCoordinates } from '../text/TextCoordinates';
+import { TextDocument } from '../text/TextDocument';
 import { Editor } from './Editor';
 import type { FoldRange } from './CodeFolding';
 
@@ -37,22 +37,22 @@ function assertSegmentsSound(
   expect(segments.length).toBeGreaterThan(0);
   expect(segments[0]!.startGrapheme).toBe(0);
   expect(segments[segments.length - 1]!.endGrapheme).toBe(
-    EditorCoordinates.Class.graphemeCount(lineText),
+    TextCoordinates.Class.graphemeCount(lineText),
   );
   for (let index = 0; index < segments.length; index++) {
     const segment = segments[index]!;
     if (index > 0)
       expect(segment.startGrapheme).toBe(segments[index - 1]!.endGrapheme);
     expect(segment.startDisplayColumn).toBe(
-      EditorCoordinates.Class.displayColumn(lineText, segment.startGrapheme),
+      TextCoordinates.Class.displayColumn(lineText, segment.startGrapheme),
     );
     // The slice at grapheme boundaries never splits a cluster (no lone surrogates).
     const sliced = lineText.slice(
-      EditorCoordinates.Class.graphemeToU16(lineText, segment.startGrapheme),
-      EditorCoordinates.Class.graphemeToU16(lineText, segment.endGrapheme),
+      TextCoordinates.Class.graphemeToU16(lineText, segment.startGrapheme),
+      TextCoordinates.Class.graphemeToU16(lineText, segment.endGrapheme),
     );
     expect(sliced).toBe(
-      EditorCoordinates.Class.graphemes(lineText)
+      TextCoordinates.Class.graphemes(lineText)
         .slice(segment.startGrapheme, segment.endGrapheme)
         .join(''),
     );
@@ -105,7 +105,7 @@ test('wrapLine: word breaks preferred over hard breaks in mixed text', () => {
   const text = 'aaaa bbbb cccc dddd';
   const segments = wrapLine(text, 9);
   // Every non-final segment ends right after whitespace (a word break), never mid-word.
-  const clusters = EditorCoordinates.Class.graphemes(text);
+  const clusters = TextCoordinates.Class.graphemes(text);
   for (let index = 0; index < segments.length - 1; index++) {
     expect(clusters[segments[index]!.endGrapheme - 1]).toBe(' ');
   }
@@ -140,7 +140,7 @@ test('wrapLine: code profile preserves readable separators and token parts', () 
     },
   ] as const;
   for (const example of examples) {
-    const graphemes = EditorCoordinates.Class.graphemes(example.text);
+    const graphemes = TextCoordinates.Class.graphemes(example.text);
     const observedRows = wrapLine(example.text, example.width).map((segment) =>
       graphemes.slice(segment.startGrapheme, segment.endGrapheme).join(''),
     );
@@ -153,7 +153,7 @@ test('wrapLine: CJK wide glyphs never split and never overflow the width', () =>
   const segments = wrapLine(text, 7); // 3 glyphs (6 cols) fit; a 4th (8) would overflow
   for (const segment of segments) {
     const segmentWidth =
-      EditorCoordinates.Class.displayColumn(text, segment.endGrapheme) -
+      TextCoordinates.Class.displayColumn(text, segment.endGrapheme) -
       segment.startDisplayColumn;
     expect(segmentWidth).toBeLessThanOrEqual(7);
   }
@@ -168,8 +168,8 @@ test('wrapLine: emoji clusters (astral + ZWJ) stay whole across breaks', () => {
   assertSegmentsSound(text, 4, segments);
   for (const segment of segments) {
     const sliced = text.slice(
-      EditorCoordinates.Class.graphemeToU16(text, segment.startGrapheme),
-      EditorCoordinates.Class.graphemeToU16(text, segment.endGrapheme),
+      TextCoordinates.Class.graphemeToU16(text, segment.startGrapheme),
+      TextCoordinates.Class.graphemeToU16(text, segment.endGrapheme),
     );
     // No lone surrogate at either end of any slice.
     if (sliced.length > 0) {
@@ -198,7 +198,7 @@ test('wrapLine: tabs expand on the LOGICAL line column axis', () => {
   // Tab (cols 0-3) + "ab" fills width 6; break is tab-aware, not char-count based.
   expect(segments[0]!.startDisplayColumn).toBe(0);
   expect(segments[1]!.startDisplayColumn).toBe(
-    EditorCoordinates.Class.displayColumn(text, segments[1]!.startGrapheme),
+    TextCoordinates.Class.displayColumn(text, segments[1]!.startGrapheme),
   );
 });
 
@@ -446,7 +446,7 @@ test('property: segments partition, respect the width, and never split clusters'
       for (const segment of segments) {
         const clusterCount = segment.endGrapheme - segment.startGrapheme;
         const segmentWidth =
-          EditorCoordinates.Class.displayColumn(sample, segment.endGrapheme) -
+          TextCoordinates.Class.displayColumn(sample, segment.endGrapheme) -
           segment.startDisplayColumn;
         // Width respected unless the segment is a single oversized cluster (which cannot split).
         if (clusterCount > 1) expect(segmentWidth).toBeLessThanOrEqual(width);

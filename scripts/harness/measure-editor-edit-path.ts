@@ -9,7 +9,7 @@ import { loadavg } from 'node:os';
 import { join } from 'node:path';
 import { Static } from 'ivue/extras';
 import { EditorWrap } from '../../src/modules/editor/EditorWrap';
-import { TextDocument } from '../../src/modules/editor/TextDocument';
+import { TextDocument } from '../../src/modules/text/TextDocument';
 import { QuietLock } from './QuietLock';
 
 class $CountingEditorWrap extends EditorWrap.$Class {

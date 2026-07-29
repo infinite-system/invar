@@ -10,7 +10,7 @@
 // state. The marker is addressed by tab geometry (the cell after the tab label), never by searching
 // the ● glyph as text.
 //
-// invariant: The dirty marker is derived from content, never asserted (src/modules/editor/editor.invariants.md)
+// invariant: The dirty marker is derived from content, never asserted (src/modules/text/text.invariants.md)
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 import { mkdtempSync } from 'node:fs';

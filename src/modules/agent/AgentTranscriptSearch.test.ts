@@ -5,7 +5,7 @@
 import { describe, expect, test } from 'bun:test';
 import { AgentTranscriptProjection } from './AgentTranscriptProjection';
 import { AgentTranscriptSearch } from './AgentTranscriptSearch';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { FindInBuffer } from '../search/FindInBuffer';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import type { TranscriptEntry } from './AgentEvents.interface';

@@ -2,8 +2,8 @@ import type { FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import { Clipboard } from '../system/Clipboard';
 import { Cursor } from './Cursor';
-import { EditorCoordinates } from './EditorCoordinates';
-import { TextDocument } from './TextDocument';
+import { TextCoordinates } from '../text/TextCoordinates';
+import { TextDocument } from '../text/TextDocument';
 
 // The shared model for text surfaces whose generator is document reading, cursor selection,
 // clipboard copy, and find-target exposure. Editing, undo, persistence, and viewport behavior live
@@ -58,14 +58,14 @@ class $ReadOnlyTextBuffer {
     this.cursor.setAnchorHere();
     this.placeCursor(
       lastLineIndex,
-      EditorCoordinates.Class.graphemeCount(this.document.line(lastLineIndex)),
+      TextCoordinates.Class.graphemeCount(this.document.line(lastLineIndex)),
     );
   }
 
   /** Select the word at a document position. */
   selectWord(lineIndex: number, graphemeColumn: number): void {
     if (!this.selectionAvailable) return;
-    const wordBounds = EditorCoordinates.Class.wordBounds(
+    const wordBounds = TextCoordinates.Class.wordBounds(
       this.document.line(lineIndex),
       graphemeColumn,
     );
@@ -81,7 +81,7 @@ class $ReadOnlyTextBuffer {
     this.cursor.setAnchorHere();
     this.placeCursor(
       lineIndex,
-      EditorCoordinates.Class.graphemeCount(this.document.line(lineIndex)),
+      TextCoordinates.Class.graphemeCount(this.document.line(lineIndex)),
     );
   }
 
@@ -93,7 +93,7 @@ class $ReadOnlyTextBuffer {
     this.cursor.set(
       lineIndex,
       graphemeColumn,
-      EditorCoordinates.Class.displayColumn(
+      TextCoordinates.Class.displayColumn(
         this.document.line(lineIndex),
         graphemeColumn,
       ),

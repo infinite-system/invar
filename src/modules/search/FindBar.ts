@@ -4,8 +4,8 @@
 // editor selection), so this stays a pure overlay model like the command palette.
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import type { TextDocument } from '../editor/TextDocument';
-import type { TextInputAction, TextInputModel } from '../editor/TextInputModel';
+import type { TextDocument } from '../text/TextDocument';
+import type { TextInputAction, TextInputModel } from '../text/TextInputModel';
 import { FindInBuffer, type FindInBufferMatch } from './FindInBuffer';
 
 // invariant: Editable text fields share one input model (project.invariants.md)

@@ -11,8 +11,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LanguageClient } from '../src/modules/lsp/LanguageClient';
-import { TextDocument } from '../src/modules/editor/TextDocument';
-import { EditorCoordinates } from '../src/modules/editor/EditorCoordinates';
+import { TextDocument } from '../src/modules/text/TextDocument';
+import { TextCoordinates } from '../src/modules/text/TextCoordinates';
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -79,7 +79,7 @@ try {
   // Definition at the use site AFTER a wide emoji (surrogate pair) on the same line.
   const useLineIndex = 2;
   const useLineText = barDocument.line(useLineIndex);
-  const useColumn = EditorCoordinates.Class.u16ToGrapheme(
+  const useColumn = TextCoordinates.Class.u16ToGrapheme(
     useLineText,
     useLineText.indexOf('greetWidget'),
   );
@@ -139,10 +139,7 @@ try {
   client.syncDocument(barDocument);
   const zwjLineText = barDocument.line(zwjLineIndex);
   const zwjUtf16 = zwjLineText.indexOf('greetWidget');
-  const zwjColumn = EditorCoordinates.Class.u16ToGrapheme(
-    zwjLineText,
-    zwjUtf16,
-  );
+  const zwjColumn = TextCoordinates.Class.u16ToGrapheme(zwjLineText, zwjUtf16);
   const zwjDefinition = await client.definition(barDocument, {
     line: zwjLineIndex,
     column: zwjColumn,

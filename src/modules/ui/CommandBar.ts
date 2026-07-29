@@ -8,7 +8,7 @@ import {
   type MouseEvent,
   type TextChunk,
 } from '@opentui/core';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import {
   LayoutModel,
   type LayoutPreset,
@@ -51,7 +51,7 @@ class $CommandBar {
     const layoutsLabel = ' layouts ';
     const layoutsStartColumn = Math.max(
       0,
-      boundedWidth - EditorCoordinates.Class.lineWidth(layoutsLabel),
+      boundedWidth - TextCoordinates.Class.lineWidth(layoutsLabel),
     );
     const availableCenterColumns = Math.max(1, layoutsStartColumn);
     const fixedNavigationColumns = 6;
@@ -60,7 +60,7 @@ class $CommandBar {
       availableCenterColumns - fixedNavigationColumns - 2,
     );
     const visibleFolderName =
-      EditorCoordinates.Class.displayColumnWindow(
+      TextCoordinates.Class.displayColumnWindow(
         folderName || '.',
         0,
         maximumFolderColumns,
@@ -69,9 +69,9 @@ class $CommandBar {
     const forwardLabel = ' › ';
     const folderLabel = ` ${visibleFolderName} `;
     const centerWidth =
-      EditorCoordinates.Class.lineWidth(backLabel) +
-      EditorCoordinates.Class.lineWidth(forwardLabel) +
-      EditorCoordinates.Class.lineWidth(folderLabel);
+      TextCoordinates.Class.lineWidth(backLabel) +
+      TextCoordinates.Class.lineWidth(forwardLabel) +
+      TextCoordinates.Class.lineWidth(folderLabel);
     const centeredStartColumn = Math.floor(
       Math.max(0, boundedWidth - centerWidth) / 2,
     );
@@ -83,11 +83,11 @@ class $CommandBar {
       ),
     );
     const backEndColumn =
-      centerStartColumn + EditorCoordinates.Class.lineWidth(backLabel);
+      centerStartColumn + TextCoordinates.Class.lineWidth(backLabel);
     const forwardEndColumn =
-      backEndColumn + EditorCoordinates.Class.lineWidth(forwardLabel);
+      backEndColumn + TextCoordinates.Class.lineWidth(forwardLabel);
     const folderEndColumn =
-      forwardEndColumn + EditorCoordinates.Class.lineWidth(folderLabel);
+      forwardEndColumn + TextCoordinates.Class.lineWidth(folderLabel);
     const segments: CommandBarSegment[] = [
       {
         control: 'back',
@@ -111,7 +111,7 @@ class $CommandBar {
     if (layoutsStartColumn < boundedWidth) {
       segments.push({
         control: 'layouts',
-        label: EditorCoordinates.Class.displayColumnWindow(
+        label: TextCoordinates.Class.displayColumnWindow(
           layoutsLabel,
           0,
           boundedWidth - layoutsStartColumn,

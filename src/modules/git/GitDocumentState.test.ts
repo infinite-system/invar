@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { effect, stop } from 'vue';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { DocumentHandle } from '../workspace/DocumentHandle';
 import { GitDocumentState } from './GitDocumentState';
 

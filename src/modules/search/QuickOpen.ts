@@ -2,7 +2,7 @@ import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from '../commands/CommandScoring';
-import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
+import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { Processes, type RunResult } from '../system/Processes';

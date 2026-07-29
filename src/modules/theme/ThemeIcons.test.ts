@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { TerminalEmulator } from '../terminal/TerminalEmulator';
 import type { GlyphLevel } from './TerminalCapabilities';
 import { ThemeIcons } from './ThemeIcons';
@@ -215,7 +215,7 @@ test('the extensions glyph is one cell and is claimed by nobody else', () => {
   // ownership table rather than of a literal list a test would have to keep in step by hand.
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
     const glyph = ThemeIcons.Class.glyphFor(level, 'activityExtensions');
-    expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
+    expect(TextCoordinates.Class.lineWidth(glyph)).toBe(1);
   }
   expect(
     ThemeIcons.Class.markOwnersFor(
@@ -250,7 +250,7 @@ test('activity and panel control glyphs stay pairwise distinct at every tier', (
 test('file icon sets keep every file mark one cell at every tier', () => {
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
     for (const mark of Object.values(ThemeIcons.Class.symbolMarksFor(level))) {
-      expect(EditorCoordinates.Class.lineWidth(mark)).toBe(1);
+      expect(TextCoordinates.Class.lineWidth(mark)).toBe(1);
     }
   }
   expect(
@@ -399,7 +399,7 @@ test('every code-symbol mark is one display cell at every tier', () => {
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
     for (const symbolClass of completionSymbolClasses) {
       const mark = ThemeIcons.Class.symbolMarkFor(level, symbolClass);
-      expect(EditorCoordinates.Class.lineWidth(mark)).toBe(1);
+      expect(TextCoordinates.Class.lineWidth(mark)).toBe(1);
       expect([...mark].length).toBe(1);
     }
   }
@@ -523,7 +523,7 @@ test('every theme glyph agrees and avoids double-cell rendering', async () => {
   try {
     // Positive control: both authorities must be able to answer two.
     expect(await renderedWidthOf('漢')).toBe(2);
-    expect(EditorCoordinates.Class.lineWidth('漢')).toBe(2);
+    expect(TextCoordinates.Class.lineWidth('漢')).toBe(2);
 
     const glyphLevels = ['nerd', 'unicode', 'ascii'] as const;
     const vocabularyEntries = glyphLevels.flatMap((level) =>
@@ -547,7 +547,7 @@ test('every theme glyph agrees and avoids double-cell rendering', async () => {
       renderedWidth: number;
     }> = [];
     for (const entry of vocabularyEntries) {
-      const measuredWidth = EditorCoordinates.Class.lineWidth(entry.glyph);
+      const measuredWidth = TextCoordinates.Class.lineWidth(entry.glyph);
       const renderedWidth = await renderedWidthOf(entry.glyph);
       if (measuredWidth !== renderedWidth || renderedWidth === 2) {
         widthOffenders.push({
@@ -607,7 +607,7 @@ test('every semantic interface icon is one display cell and avoids reserved mark
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
     for (const slot of candidateGlyphSlots) {
       const glyph = ThemeIcons.Class.glyphFor(level, slot);
-      expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
+      expect(TextCoordinates.Class.lineWidth(glyph)).toBe(1);
       expect(reservedMarkers.has(glyph)).toBe(false);
     }
   }
@@ -644,7 +644,7 @@ test('markdown table borders are single-cell and unclaimed as semantic marks', (
     for (const glyph of Object.values(
       ThemeIcons.Class.tableBordersFor(level),
     )) {
-      expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
+      expect(TextCoordinates.Class.lineWidth(glyph)).toBe(1);
     }
   }
 

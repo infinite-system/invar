@@ -1,8 +1,8 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import type { TextDocument } from '../editor/TextDocument';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { TextInputModel } from '../editor/TextInputModel';
+import type { TextDocument } from '../text/TextDocument';
+import { TextCoordinates } from '../text/TextCoordinates';
+import { TextInputModel } from '../text/TextInputModel';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $FindInBuffer {
@@ -87,11 +87,11 @@ class $FindInBuffer {
           startUtf16Offset + regularExpressionMatch[0].length;
         matches.push({
           line: lineIndex,
-          startColumn: EditorCoordinates.Class.u16ToGrapheme(
+          startColumn: TextCoordinates.Class.u16ToGrapheme(
             lineText,
             startUtf16Offset,
           ),
-          endColumn: EditorCoordinates.Class.u16ToGrapheme(
+          endColumn: TextCoordinates.Class.u16ToGrapheme(
             lineText,
             endUtf16Offset,
           ),

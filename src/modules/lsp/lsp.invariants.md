@@ -65,16 +65,16 @@ API stays UTF-16-derived.
 internally, but a grapheme cluster (emoji, base+combining, ZWJ sequence) can span several UTF-16
 units — and several CODE POINTS, so a code-point walk (`Array.from`) is also wrong. The client
 converts grapheme column → UTF-16 character before a request and UTF-16 character → grapheme
-column when reading a result, through `EditorCoordinates.graphemeToU16`/`u16ToGrapheme` — the
+column when reading a result, through `TextCoordinates.graphemeToU16`/`u16ToGrapheme` — the
 same segmenter-backed boundaries the editor cursor uses.
 
 **Generates:** `toLspPosition` (grapheme boundary → UTF-16 offset via
-`EditorCoordinates.graphemeToU16`) and `fromLspPosition` (UTF-16 offset → grapheme index via
-`EditorCoordinates.u16ToGrapheme`); the client API surfacing UTF-16-derived positions rather
+`TextCoordinates.graphemeToU16`) and `fromLspPosition` (UTF-16 offset → grapheme index via
+`TextCoordinates.u16ToGrapheme`); the client API surfacing UTF-16-derived positions rather
 than raw grapheme columns.
 
 **Evidence:** `src/modules/lsp/LanguageClient.ts:643` (`toLspPosition` →
-`EditorCoordinates.graphemeToU16`); `:650` (`fromLspPosition` → `EditorCoordinates.u16ToGrapheme`).
+`TextCoordinates.graphemeToU16`); `:650` (`fromLspPosition` → `TextCoordinates.u16ToGrapheme`).
 Driven against a real `typescript-language-server` 5.3.0: a use site after a ZWJ family emoji
 (grapheme 39 / code point 43 / UTF-16 46) resolved to the correct identifier — the server's
 `originSelectionRange` echoed exactly the `greetWidget` token.

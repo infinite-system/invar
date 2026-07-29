@@ -1,7 +1,7 @@
 import { Static } from 'ivue/extras';
 import type { FoldRange } from './CodeFolding';
-import { EditorCoordinates } from './EditorCoordinates';
-import { WrapBreakOpportunity } from './WrapBreakOpportunity';
+import { TextCoordinates } from '../text/TextCoordinates';
+import { WrapBreakOpportunity } from '../text/WrapBreakOpportunity';
 
 // Word-wrap mapping layer — a PURE logical↔visual projection over the coordinate model.
 // When word wrap is ON, one logical line renders as one or more VISUAL rows; this module is the
@@ -52,8 +52,8 @@ class $EditorWrap {
     return emptyFoldRanges;
   }
 
-  protected static get EditorCoordinates() {
-    return EditorCoordinates.Class;
+  protected static get TextCoordinates() {
+    return TextCoordinates.Class;
   }
 
   /**
@@ -70,7 +70,7 @@ class $EditorWrap {
     const cached = this.$wrapMemo.get(memoKey);
     if (cached !== undefined) return cached;
 
-    const clusters = this.EditorCoordinates.graphemes(lineText);
+    const clusters = this.TextCoordinates.graphemes(lineText);
     const segments: WrapSegment[] = [];
     if (clusters.length === 0) {
       segments.push({
@@ -88,7 +88,7 @@ class $EditorWrap {
         const clusterWidth =
           cluster === '\t'
             ? this.TAB_WIDTH - (previousColumn % this.TAB_WIDTH)
-            : this.EditorCoordinates.graphemeWidth(cluster);
+            : this.TextCoordinates.graphemeWidth(cluster);
         columns[index + 1] = previousColumn + clusterWidth;
       }
 
@@ -153,7 +153,7 @@ class $EditorWrap {
     return [
       {
         startGrapheme: 0,
-        endGrapheme: this.EditorCoordinates.graphemeCount(lineText),
+        endGrapheme: this.TextCoordinates.graphemeCount(lineText),
         startDisplayColumn: 0,
       },
     ];
@@ -239,7 +239,7 @@ class $EditorWrap {
     const segment = targetSegments[target.segmentIndex];
     if (!segment) return { line: target.lineIndex, col: 0 };
     const lineText = document.line(target.lineIndex);
-    const landing = this.EditorCoordinates.graphemeAtDisplayColumn(
+    const landing = this.TextCoordinates.graphemeAtDisplayColumn(
       lineText,
       segment.startDisplayColumn + Math.max(0, goalVisualColumn),
     );

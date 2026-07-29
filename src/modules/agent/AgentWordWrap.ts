@@ -1,5 +1,5 @@
 import { Static } from 'ivue/extras';
-import { WrapBreakOpportunity } from '../editor/WrapBreakOpportunity';
+import { WrapBreakOpportunity } from '../text/WrapBreakOpportunity';
 import { TextSegmentation } from '../system/TextSegmentation';
 import {
   WrapText,

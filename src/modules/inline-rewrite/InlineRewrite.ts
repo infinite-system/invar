@@ -6,7 +6,7 @@ import type {
   RewriteProvider,
   RewriteRequest,
 } from './RewriteProvider.interface';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 
 class $InlineRewrite {
   protected eligibility: (() => boolean) | null = null;
@@ -125,13 +125,13 @@ class $InlineRewrite {
     const endLineText = lineReader(candidate.region.end.line);
     const prefix = startLineText.slice(
       0,
-      EditorCoordinates.Class.graphemeToU16(
+      TextCoordinates.Class.graphemeToU16(
         startLineText,
         candidate.region.start.column,
       ),
     );
     const suffix = endLineText.slice(
-      EditorCoordinates.Class.graphemeToU16(
+      TextCoordinates.Class.graphemeToU16(
         endLineText,
         candidate.region.end.column,
       ),

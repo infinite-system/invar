@@ -4,7 +4,7 @@ import type {
   LanguageCompletionList,
   LanguageProvider,
 } from '../workspace/LanguageProvider.interface';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { CompletionPopup } from './CompletionPopup';
 
 class MockRustProvider implements Pick<

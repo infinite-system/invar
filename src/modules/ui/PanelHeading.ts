@@ -2,7 +2,7 @@ import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { Palette } from '../theme/ThemePalettes';
 import type { GlyphSlot, InterfaceGlyphVocabulary } from '../theme/ThemeIcons';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 
 // invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelHeading {
@@ -44,17 +44,17 @@ class $PanelHeading {
     );
     const controlsWidth = controls.reduce(
       (totalWidth, control) =>
-        totalWidth + EditorCoordinates.Class.lineWidth(control.text),
+        totalWidth + TextCoordinates.Class.lineWidth(control.text),
       trailingPaddingWidth,
     );
     const titleWidth = Math.max(0, width - controlsWidth);
     const titleText = ` ${options.icon ? `${options.icon} ` : ''}${options.title}`;
-    const clippedTitle = EditorCoordinates.Class.displayColumnWindow(
+    const clippedTitle = TextCoordinates.Class.displayColumnWindow(
       titleText,
       0,
       titleWidth,
     );
-    const paddedTitle = EditorCoordinates.Class.padToDisplayWidth(
+    const paddedTitle = TextCoordinates.Class.padToDisplayWidth(
       clippedTitle,
       titleWidth,
     );
@@ -66,13 +66,13 @@ class $PanelHeading {
     const controlSegments: PanelHeadingControlSegment[] = [];
     let controlColumn = titleWidth;
     for (const control of controls) {
-      const controlWidth = EditorCoordinates.Class.lineWidth(control.text);
+      const controlWidth = TextCoordinates.Class.lineWidth(control.text);
       const visibleWidth = Math.max(
         0,
         Math.min(controlWidth, width - controlColumn),
       );
       if (visibleWidth <= 0) continue;
-      const visibleText = EditorCoordinates.Class.displayColumnWindow(
+      const visibleText = TextCoordinates.Class.displayColumnWindow(
         control.text,
         0,
         visibleWidth,

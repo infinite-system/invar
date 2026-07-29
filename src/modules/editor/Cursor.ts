@@ -3,7 +3,7 @@ import { ref, shallowRef } from 'vue';
 
 // Cursor position (line/col, 0-based; col = grapheme index) plus a goal column for vertical
 // movement and an optional selection anchor.
-// invariant: A cursor position resolves to three distinct coordinates (editor.invariants.md)
+// invariant: A cursor position resolves to three distinct coordinates (src/modules/text/text.invariants.md)
 //   — line/col are grapheme positions; display-column mapping is the view's job.
 class $Cursor {
   get line() {

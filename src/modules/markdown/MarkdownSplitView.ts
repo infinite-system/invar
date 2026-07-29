@@ -7,7 +7,7 @@
 import { BoxRenderable, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
@@ -173,7 +173,7 @@ class $MarkdownSplitView {
       horizontalScrollPosition: () => 0,
       horizontalScrollingEnabled: () => false,
       lineGraphemeCount: (lineIndex) =>
-        EditorCoordinates.Class.graphemeCount(
+        TextCoordinates.Class.graphemeCount(
           this.previewTextBuffer.document.line(lineIndex),
         ),
       beginSelection: (position, pointerDisplayColumn) => {
@@ -387,14 +387,14 @@ class $MarkdownSplitView {
     );
     const anchorColumn =
       selection.start.line >= firstVisibleRow
-        ? EditorCoordinates.Class.displayColumn(
+        ? TextCoordinates.Class.displayColumn(
             this.previewTextBuffer.document.line(selection.start.line),
             selection.start.col,
           )
         : 0;
     const focusColumn =
       selection.end.line < firstVisibleRow + viewportHeight
-        ? EditorCoordinates.Class.displayColumn(
+        ? TextCoordinates.Class.displayColumn(
             this.previewTextBuffer.document.line(selection.end.line),
             selection.end.col,
           )

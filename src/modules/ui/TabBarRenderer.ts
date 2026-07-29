@@ -12,7 +12,7 @@
 // invariant: Tab bars share paint and hit geometry (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { TabStrip } from './TabStrip';
 import { Breadcrumb, type BreadcrumbPathSegment } from './Breadcrumb';
@@ -32,7 +32,7 @@ class $TabBarRenderer {
   }
   protected static ellipsize(text: string, width: number): string {
     if (width <= 0) return '';
-    if (EditorCoordinates.Class.lineWidth(text) <= width)
+    if (TextCoordinates.Class.lineWidth(text) <= width)
       return text.padEnd(width, ' ');
     if (width === 1) return '…';
     return `${text.slice(0, width - 1)}…`;
@@ -163,7 +163,7 @@ class $TabBarRenderer {
       context.barWidthValue || context.rendererWidth,
     );
     const controlsText = ' ‹  ›  + ';
-    const controlsWidth = EditorCoordinates.Class.lineWidth(controlsText);
+    const controlsWidth = TextCoordinates.Class.lineWidth(controlsText);
     const availableTabsWidth = Math.max(1, barWidth - controlsWidth);
     const measuredWorkspaceTabs = workspaceTabs.map((workspaceTab) => ({
       workspaceTab,
@@ -172,8 +172,8 @@ class $TabBarRenderer {
         Math.min(
           this.WORKSPACE_TAB_MAX_LABEL_WIDTH,
           Math.max(
-            EditorCoordinates.Class.lineWidth(workspaceTab.label),
-            EditorCoordinates.Class.lineWidth(workspaceTab.detailLabel ?? ''),
+            TextCoordinates.Class.lineWidth(workspaceTab.label),
+            TextCoordinates.Class.lineWidth(workspaceTab.detailLabel ?? ''),
           ),
         ) + 6,
       ),
@@ -230,7 +230,7 @@ class $TabBarRenderer {
       );
       chunks.push(rowBackground ? bg(rowBackground)(styledTab) : styledTab);
       const closePrimaryCoordinate =
-        columnIndex + EditorCoordinates.Class.lineWidth(tabText);
+        columnIndex + TextCoordinates.Class.lineWidth(tabText);
       const closeGlyph = workspaceTabs.length > 1 ? '✕' : ' ';
       chunks.push(
         rowBackground
@@ -271,7 +271,7 @@ class $TabBarRenderer {
         control.text,
       );
       chunks.push(hovered ? bg(palette.cursorLine)(styled) : styled);
-      columnIndex += EditorCoordinates.Class.lineWidth(control.text);
+      columnIndex += TextCoordinates.Class.lineWidth(control.text);
       segments.push({
         kind: control.kind,
         workspaceIndex: -1,
@@ -337,8 +337,7 @@ class $TabBarRenderer {
     const measured = tabs.map((tab) => {
       const name =
         tab.identifier.split('/').filter(Boolean).pop() ?? tab.identifier;
-      const labelWidth =
-        1 + EditorCoordinates.Class.lineWidth(name) + 1 + 1 + 1; // ' ' + name + ' ' + dirtyGlyph + ' '
+      const labelWidth = 1 + TextCoordinates.Class.lineWidth(name) + 1 + 1 + 1; // ' ' + name + ' ' + dirtyGlyph + ' '
       return { tab, name, labelWidth, width: labelWidth + 2 }; // + '✕' + trailing ' '
     });
     const totalWidth = measured.reduce((sum, entry) => sum + entry.width, 0);
@@ -347,7 +346,7 @@ class $TabBarRenderer {
     const total = tabs.length;
     const activeIndex = tabs.findIndex((tab) => tab.active);
     const badgeText = ` ${activeIndex + 1}/${total} `;
-    const badgeWidth = EditorCoordinates.Class.lineWidth(badgeText);
+    const badgeWidth = TextCoordinates.Class.lineWidth(badgeText);
     const arrowCellWidth = 3; // ' « ' / ' » ' — padded so the hit target is easy to click
     const actionCellWidth = 3; // ' icon ' — same padded hit target as the pan arrows
     const actionsWidth = context.editorTitleActions.length * actionCellWidth;
@@ -603,9 +602,9 @@ class $TabBarRenderer {
       segments.push({
         ...crumb,
         start: column,
-        end: column + EditorCoordinates.Class.lineWidth(crumb.label),
+        end: column + TextCoordinates.Class.lineWidth(crumb.label),
       });
-      column += EditorCoordinates.Class.lineWidth(crumb.label);
+      column += TextCoordinates.Class.lineWidth(crumb.label);
       if (!isFilename) chunks.push(fg(palette.border)(' › '));
       if (!isFilename) column += 3;
     });

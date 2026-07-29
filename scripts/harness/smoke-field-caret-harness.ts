@@ -13,7 +13,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { EditorCoordinates } from '../../src/modules/editor/EditorCoordinates';
+import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
@@ -67,7 +67,7 @@ function queryCaretCell(status: StatusSnapshot): CaretCellStatus | null {
 }
 
 /** The caret column the MODEL implies: the published query sliced at the published grapheme caret,
- *  measured in display columns by EditorCoordinates — the app's own width authority. */
+ *  measured in display columns by TextCoordinates — the app's own width authority. */
 function caretColumnFromModel(
   geometry: PopupGeometryStatus,
   query: string,
@@ -75,11 +75,11 @@ function caretColumnFromModel(
 ): number {
   const valueBeforeCaret = query.slice(
     0,
-    EditorCoordinates.Class.graphemeToU16(query, caret),
+    TextCoordinates.Class.graphemeToU16(query, caret),
   );
   return (
     geometry.listLeft +
-    EditorCoordinates.Class.lineWidth(searchFieldPrefix + valueBeforeCaret)
+    TextCoordinates.Class.lineWidth(searchFieldPrefix + valueBeforeCaret)
   );
 }
 
@@ -342,7 +342,7 @@ try {
   );
   driver.sendPaste('漢字');
   // '漢字' is 2 graphemes but 4 display columns: a caret column derived from string length would
-  // land two cells early. assertModelCaretIsPainted measures through EditorCoordinates.lineWidth.
+  // land two cells early. assertModelCaretIsPainted measures through TextCoordinates.lineWidth.
   const wideGlyphStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -359,7 +359,7 @@ try {
   HarnessSmoke.Class.requireCondition(
     wideGlyphCaretCell.column ===
       wideGlyphGeometry.listLeft +
-        EditorCoordinates.Class.lineWidth(searchFieldPrefix) +
+        TextCoordinates.Class.lineWidth(searchFieldPrefix) +
         4,
     'a caret after two wide graphemes sits 4 display columns along, not 2',
   );
@@ -557,7 +557,7 @@ try {
   // Replace mode opens with the QUERY field focused, so the replacement field below it is the live
   // unfocused field. Both rows belong to one text renderable, so the replacement field starts at the
   // same left column as the query field: the row below the typed query, at the query's prefix column.
-  const findFieldPrefixColumns = EditorCoordinates.Class.lineWidth(
+  const findFieldPrefixColumns = TextCoordinates.Class.lineWidth(
     `${ThemeIcons.Class.findIconsFor('unicode').search} `,
   );
   snapshot = await driver.awaitGridCondition(

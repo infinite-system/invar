@@ -28,7 +28,7 @@ import type { Theme } from '../theme/Theme';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import { Files } from '../system/Files';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import {
   EditorFrameAttribution,
   type EditorFrameAttributionSnapshot,
@@ -39,7 +39,7 @@ import { TabBar } from './TabBar';
 import { ScrollGesture, type WheelModifiers } from './ScrollGesture';
 import { Sidebar } from './Sidebar';
 import { ActivityBar } from './ActivityBar';
-import { EditorPane } from './EditorPane';
+import { EditorPane } from '../editor/EditorPane';
 import { EditorContentMount } from './EditorContentMount';
 import { ImagePreview } from '../image/ImagePreview';
 import { ImageRenderers } from '../image/ImageRenderers';
@@ -1248,11 +1248,11 @@ class $RootView {
         : null;
     };
     /** Grapheme-safe window over display columns; never splits a wide glyph at either edge. */
-    // displayColumnWindow / padToDisplayWidth now live on EditorCoordinates (the display-column-math
+    // displayColumnWindow / padToDisplayWidth now live on TextCoordinates (the display-column-math
     // capability) so every pane renderer shares one horizontal-windowing primitive. Local aliases keep
     // the call sites terse.
-    const displayColumnWindow = EditorCoordinates.Class.displayColumnWindow;
-    const padToDisplayWidth = EditorCoordinates.Class.padToDisplayWidth;
+    const displayColumnWindow = TextCoordinates.Class.displayColumnWindow;
+    const padToDisplayWidth = TextCoordinates.Class.padToDisplayWidth;
     /**
      * Converge layout-derived pane inputs AFTER Yoga has laid out the frame. This is deliberately
      * outside update(): render stays model -> view only, while each pane model owns its live extent.

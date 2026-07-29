@@ -12,7 +12,7 @@ import type {
   TableCellRecord,
   TableColumnAlignment,
 } from './MarkdownParser';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { StatusChannel } from '../system/StatusChannel';
 import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
 
@@ -537,14 +537,14 @@ class $MarkdownPreview {
     ) {
       const contentWidth = contentWidths[columnIndex]!;
       const cell = cells[columnIndex]!;
-      const visibleText = EditorCoordinates.Class.displayColumnWindow(
+      const visibleText = TextCoordinates.Class.displayColumnWindow(
         cell.text,
         0,
         contentWidth,
       );
       const unusedWidth = Math.max(
         0,
-        contentWidth - EditorCoordinates.Class.lineWidth(visibleText),
+        contentWidth - TextCoordinates.Class.lineWidth(visibleText),
       );
       const alignment = alignments[columnIndex] ?? 'left';
       const alignmentPadding = this.tableAlignmentPadding(
@@ -554,7 +554,7 @@ class $MarkdownPreview {
       const leadingPadding = ` ${' '.repeat(alignmentPadding.left)}`;
       const trailingPadding = `${' '.repeat(alignmentPadding.right)} `;
       const textStartDisplayColumn =
-        nextCellColumn + EditorCoordinates.Class.lineWidth(leadingPadding);
+        nextCellColumn + TextCoordinates.Class.lineWidth(leadingPadding);
 
       previewCells.push({
         cell,

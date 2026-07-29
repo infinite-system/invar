@@ -1,5 +1,5 @@
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import type { ProjectedLine } from './AgentTranscriptProjection';
 
@@ -20,11 +20,11 @@ class $AgentTranscriptSearch {
     const highlights: TranscriptMatchHighlight[] = [];
     matches.forEach((match, matchIndex) => {
       if (match.line !== lineIndex) return;
-      const startCell = EditorCoordinates.Class.displayColumn(
+      const startCell = TextCoordinates.Class.displayColumn(
         lineText,
         match.startColumn,
       );
-      const endCell = EditorCoordinates.Class.displayColumn(
+      const endCell = TextCoordinates.Class.displayColumn(
         lineText,
         match.endColumn,
       );

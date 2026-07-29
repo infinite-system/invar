@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test';
 import { ref } from 'vue';
 import { Reactive } from 'ivue';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { ThemeIcons, type TableBorderGlyphSet } from '../theme/ThemeIcons';
 import type {
   BlockRecord,
@@ -168,10 +168,10 @@ test('table columns align in display cells with left center and right content', 
   );
   const tableRows = rows.filter((row) => row.role.startsWith('table'));
   const boundaryColumns = tableRows.map((row) =>
-    EditorCoordinates.Class.graphemes(preview.textForRow(row))
+    TextCoordinates.Class.graphemes(preview.textForRow(row))
       .map((grapheme, graphemeIndex) => ({
         grapheme,
-        column: EditorCoordinates.Class.displayColumn(
+        column: TextCoordinates.Class.displayColumn(
           preview.textForRow(row),
           graphemeIndex,
         ),
@@ -188,7 +188,7 @@ test('table columns align in display cells with left center and right content', 
   ]);
   expect(
     tableRows.map((row) =>
-      EditorCoordinates.Class.lineWidth(preview.textForRow(row)),
+      TextCoordinates.Class.lineWidth(preview.textForRow(row)),
     ),
   ).toEqual([38, 38, 38, 38]);
 

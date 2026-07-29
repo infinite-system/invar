@@ -49,6 +49,20 @@ if ! "$bun_binary" scripts/ast-query.ts text-input-census --require-zero; then
   fail=1
 fi
 
+# 1.52) TEXT-SEAM DIRECTION: `src/modules/text/` holds the shared text primitives every text
+#       surface stands on (coordinates, word edits, the editable field model, the break
+#       generator, the document). The source-text VIEW in `src/modules/editor/` stands on them.
+#       That edge points one way only. A text primitive that reaches back into the view stops
+#       being shared and silently re-fuses the two, which is the coupling #122 separated.
+text_seam_back_edges=$(
+  grep -rn "from '\.\./editor/" --include='*.ts' src/modules/text || true
+)
+if [ -n "$text_seam_back_edges" ]; then
+  echo "CONVENTIONS FAIL: src/modules/text imports the source-text view:"
+  echo "$text_seam_back_edges"
+  fail=1
+fi
+
 # 1.55) WRAP-INDEX EDIT CENSUS: a same-line edit may loop over its changed range, never the
 #       document-sized line count or an array length.
 if ! "$bun_binary" scripts/ast-query.ts wrap-index-edit-loop-census \

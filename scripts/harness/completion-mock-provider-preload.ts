@@ -1,5 +1,5 @@
 import { Reactive } from 'ivue';
-import { EditorCoordinates } from '../../src/modules/editor/EditorCoordinates';
+import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
 import { LanguageClient } from '../../src/modules/lsp/LanguageClient';
 import { StatusChannel } from '../../src/modules/system/StatusChannel';
 import type {
@@ -106,7 +106,7 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
         .join('')
         .match(/[\p{L}\p{N}_$]+$/u)?.[0] ?? '';
     const startColumn =
-      position.column - EditorCoordinates.Class.graphemeCount(prefixText);
+      position.column - TextCoordinates.Class.graphemeCount(prefixText);
     const completionItem = (
       label: string,
       sortText: string,

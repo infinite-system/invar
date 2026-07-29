@@ -12,8 +12,8 @@ import {
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from '../commands/CommandScoring';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
+import { TextCoordinates } from '../text/TextCoordinates';
+import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 import { ModalOverlayDismissal } from './ModalOverlayDismissal';
@@ -342,7 +342,7 @@ class $BoundedListPopup {
   ): number {
     return Math.max(
       minimumWidth,
-      EditorCoordinates.Class.lineWidth(title) + 4,
+      TextCoordinates.Class.lineWidth(title) + 4,
       maximumItemWidth + $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
     );
   }
@@ -604,8 +604,8 @@ class $BoundedListPopup {
     if (visibleMatches.length === 0) {
       chunks.push(
         fg(palette.dim)(
-          EditorCoordinates.Class.padToDisplayWidth(
-            EditorCoordinates.Class.displayColumnWindow(
+          TextCoordinates.Class.padToDisplayWidth(
+            TextCoordinates.Class.displayColumnWindow(
               ' (no matches)',
               0,
               geometry.listColumns,
@@ -617,8 +617,8 @@ class $BoundedListPopup {
     } else {
       visibleMatches.forEach((match, visibleRowIndex) => {
         const filteredIndex = geometry.firstVisible + visibleRowIndex;
-        const label = EditorCoordinates.Class.padToDisplayWidth(
-          EditorCoordinates.Class.displayColumnWindow(
+        const label = TextCoordinates.Class.padToDisplayWidth(
+          TextCoordinates.Class.displayColumnWindow(
             $BoundedListPopup.itemRowText(match.item, geometry.listIconColumns),
             0,
             geometry.listColumns,
@@ -726,7 +726,7 @@ class $BoundedListPopup {
   // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
   static itemRowText(item: BoundedListPopupItem, iconColumns: number): string {
     if (iconColumns <= 0) return ` ${item.label}`;
-    const iconCell = EditorCoordinates.Class.padToDisplayWidth(
+    const iconCell = TextCoordinates.Class.padToDisplayWidth(
       item.icon ?? '',
       iconColumns,
     );
@@ -738,7 +738,7 @@ class $BoundedListPopup {
     for (const item of items) {
       iconColumns = Math.max(
         iconColumns,
-        EditorCoordinates.Class.lineWidth(item.icon ?? ''),
+        TextCoordinates.Class.lineWidth(item.icon ?? ''),
       );
     }
     return iconColumns;
@@ -750,7 +750,7 @@ class $BoundedListPopup {
     for (const item of items) {
       maximumWidth = Math.max(
         maximumWidth,
-        EditorCoordinates.Class.lineWidth(
+        TextCoordinates.Class.lineWidth(
           $BoundedListPopup.itemRowText(item, iconColumns),
         ),
       );

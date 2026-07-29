@@ -1,35 +1,35 @@
 // Unicode coordinate matrix + grapheme-safe editing.
 // Covers the editor invariant "A cursor position resolves to three distinct coordinates".
 import { test, expect } from 'bun:test';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from './TextCoordinates';
 import { TextDocument } from './TextDocument';
 
 test('grapheme count treats emoji and combining marks as one character', () => {
-  expect(EditorCoordinates.Class.graphemeCount('abc')).toBe(3);
-  expect(EditorCoordinates.Class.graphemeCount('a😀b')).toBe(3); // emoji is one grapheme (two UTF-16 units)
-  expect(EditorCoordinates.Class.graphemeCount('é')).toBe(1); // e + combining acute = one cluster
-  expect(EditorCoordinates.Class.graphemeCount('')).toBe(0);
+  expect(TextCoordinates.Class.graphemeCount('abc')).toBe(3);
+  expect(TextCoordinates.Class.graphemeCount('a😀b')).toBe(3); // emoji is one grapheme (two UTF-16 units)
+  expect(TextCoordinates.Class.graphemeCount('é')).toBe(1); // e + combining acute = one cluster
+  expect(TextCoordinates.Class.graphemeCount('')).toBe(0);
   expect('a😀b'.length).toBe(4); // sanity: UTF-16 length differs from grapheme count
 });
 
 test('grapheme <-> UTF-16 mapping', () => {
-  expect(EditorCoordinates.Class.graphemeToU16('a😀b', 0)).toBe(0);
-  expect(EditorCoordinates.Class.graphemeToU16('a😀b', 1)).toBe(1);
-  expect(EditorCoordinates.Class.graphemeToU16('a😀b', 2)).toBe(3); // after 'a'(1) + emoji(2)
-  expect(EditorCoordinates.Class.graphemeToU16('a😀b', 3)).toBe(4);
-  expect(EditorCoordinates.Class.u16ToGrapheme('a😀b', 3)).toBe(2);
-  expect(EditorCoordinates.Class.u16ToGrapheme('a😀b', 1)).toBe(1);
+  expect(TextCoordinates.Class.graphemeToU16('a😀b', 0)).toBe(0);
+  expect(TextCoordinates.Class.graphemeToU16('a😀b', 1)).toBe(1);
+  expect(TextCoordinates.Class.graphemeToU16('a😀b', 2)).toBe(3); // after 'a'(1) + emoji(2)
+  expect(TextCoordinates.Class.graphemeToU16('a😀b', 3)).toBe(4);
+  expect(TextCoordinates.Class.u16ToGrapheme('a😀b', 3)).toBe(2);
+  expect(TextCoordinates.Class.u16ToGrapheme('a😀b', 1)).toBe(1);
 });
 
 test('display column: wide chars, combining marks, and tabs', () => {
-  expect(EditorCoordinates.Class.graphemeWidth('中')).toBe(2);
-  expect(EditorCoordinates.Class.displayColumn('中x', 1)).toBe(2);
-  expect(EditorCoordinates.Class.displayColumn('中x', 2)).toBe(3);
-  expect(EditorCoordinates.Class.displayColumn('áb', 1)).toBe(1); // combining adds no width
-  expect(EditorCoordinates.Class.displayColumn('áb', 2)).toBe(2);
-  expect(EditorCoordinates.Class.displayColumn('\tx', 1, 4)).toBe(4); // tab to next stop
-  expect(EditorCoordinates.Class.displayColumn('ab\tx', 3, 4)).toBe(4);
-  expect(EditorCoordinates.Class.lineWidth('中\tx', 4)).toBe(5); // 中(2) then tab to col 4, then x -> 5
+  expect(TextCoordinates.Class.graphemeWidth('中')).toBe(2);
+  expect(TextCoordinates.Class.displayColumn('中x', 1)).toBe(2);
+  expect(TextCoordinates.Class.displayColumn('中x', 2)).toBe(3);
+  expect(TextCoordinates.Class.displayColumn('áb', 1)).toBe(1); // combining adds no width
+  expect(TextCoordinates.Class.displayColumn('áb', 2)).toBe(2);
+  expect(TextCoordinates.Class.displayColumn('\tx', 1, 4)).toBe(4); // tab to next stop
+  expect(TextCoordinates.Class.displayColumn('ab\tx', 3, 4)).toBe(4);
+  expect(TextCoordinates.Class.lineWidth('中\tx', 4)).toBe(5); // 中(2) then tab to col 4, then x -> 5
 });
 
 test('backspace deletes a whole emoji, not half a surrogate pair', () => {
@@ -67,13 +67,13 @@ test('graphemeAtDisplayColumn inverts displayColumn on plain text', () => {
   const line = 'hello world';
   for (
     let graphemeIndex = 0;
-    graphemeIndex <= EditorCoordinates.Class.graphemeCount(line);
+    graphemeIndex <= TextCoordinates.Class.graphemeCount(line);
     graphemeIndex++
   ) {
     expect(
-      EditorCoordinates.Class.graphemeAtDisplayColumn(
+      TextCoordinates.Class.graphemeAtDisplayColumn(
         line,
-        EditorCoordinates.Class.displayColumn(line, graphemeIndex),
+        TextCoordinates.Class.displayColumn(line, graphemeIndex),
       ),
     ).toBe(graphemeIndex);
   }
@@ -81,22 +81,22 @@ test('graphemeAtDisplayColumn inverts displayColumn on plain text', () => {
 
 test('graphemeAtDisplayColumn: a hit inside a wide glyph resolves to that glyph', () => {
   const line = 'a中b'; // cells: a=0, 中=1..2 (wide), b=3
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, 0)).toBe(0); // on 'a'
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, 1)).toBe(1); // left cell of 中
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, 2)).toBe(1); // right cell of 中 -> still 中
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, 3)).toBe(2); // on 'b'
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, 0)).toBe(0); // on 'a'
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, 1)).toBe(1); // left cell of 中
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, 2)).toBe(1); // right cell of 中 -> still 中
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, 3)).toBe(2); // on 'b'
 });
 
 test('graphemeAtDisplayColumn: a hit inside a tab resolves to the tab', () => {
   const line = '\ta'; // tab covers cells 0..3 (tabWidth 4), 'a' at cell 4
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, 0)).toBe(0);
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, 3)).toBe(0); // still inside the tab
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, 4)).toBe(1); // on 'a'
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, 0)).toBe(0);
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, 3)).toBe(0); // still inside the tab
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, 4)).toBe(1); // on 'a'
 });
 
 test('graphemeAtDisplayColumn clamps past end-of-line and below zero', () => {
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn('ab', 99)).toBe(2); // caret after the last char
-  expect(EditorCoordinates.Class.graphemeAtDisplayColumn('ab', -5)).toBe(0);
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn('ab', 99)).toBe(2); // caret after the last char
+  expect(TextCoordinates.Class.graphemeAtDisplayColumn('ab', -5)).toBe(0);
 });
 
 // --- Horizontal flyweight: the prefix-sum index must be BEHAVIOURALLY identical to the old linear
@@ -119,7 +119,7 @@ function referenceDisplayColumn(
     column +=
       cluster === '\t'
         ? tabWidth - (column % tabWidth)
-        : EditorCoordinates.Class.graphemeWidth(cluster);
+        : TextCoordinates.Class.graphemeWidth(cluster);
   }
   return column;
 }
@@ -139,7 +139,7 @@ function referenceGraphemeAtDisplayColumn(
     const width =
       cluster === '\t'
         ? tabWidth - (column % tabWidth)
-        : EditorCoordinates.Class.graphemeWidth(cluster);
+        : TextCoordinates.Class.graphemeWidth(cluster);
     if (targetColumn < column + width) return index;
     column += width;
   }
@@ -148,16 +148,16 @@ function referenceGraphemeAtDisplayColumn(
 
 test('prefix index matches the linear reference across mixed tabs / wide glyphs / emoji', () => {
   const line = 'const\tx = "中文" + 😀 + `\ttab`;  // café';
-  const count = EditorCoordinates.Class.graphemeCount(line);
-  const width = EditorCoordinates.Class.lineWidth(line);
+  const count = TextCoordinates.Class.graphemeCount(line);
+  const width = TextCoordinates.Class.lineWidth(line);
   expect(width).toBe(referenceDisplayColumn(line, count));
   for (let g = 0; g <= count; g++) {
-    expect(EditorCoordinates.Class.displayColumn(line, g)).toBe(
+    expect(TextCoordinates.Class.displayColumn(line, g)).toBe(
       referenceDisplayColumn(line, g),
     );
   }
   for (let col = -1; col <= width + 2; col++) {
-    expect(EditorCoordinates.Class.graphemeAtDisplayColumn(line, col)).toBe(
+    expect(TextCoordinates.Class.graphemeAtDisplayColumn(line, col)).toBe(
       referenceGraphemeAtDisplayColumn(line, col),
     );
   }
@@ -168,15 +168,15 @@ test('a single 200k-column line: 20k drag-style lookups stay sub-linear (no re-s
   // lineWidth every paint; with the prefix index these are O(1)/O(log n) after one build. A regression
   // to the old O(n) scan would make this loop ~20k*200k = 4e9 ops and blow far past the bound.
   const hugeLine = 'a'.repeat(200_000);
-  const width = EditorCoordinates.Class.lineWidth(hugeLine); // builds the prefix once
+  const width = TextCoordinates.Class.lineWidth(hugeLine); // builds the prefix once
   expect(width).toBe(200_000);
   const started = performance.now();
   let sink = 0;
   for (let i = 0; i < 20_000; i++) {
     const column = (i * 9973) % 200_000; // spread across the whole line, incl. deep-right positions
-    sink += EditorCoordinates.Class.graphemeAtDisplayColumn(hugeLine, column);
-    sink += EditorCoordinates.Class.displayColumn(hugeLine, column);
-    sink += EditorCoordinates.Class.lineWidth(hugeLine);
+    sink += TextCoordinates.Class.graphemeAtDisplayColumn(hugeLine, column);
+    sink += TextCoordinates.Class.displayColumn(hugeLine, column);
+    sink += TextCoordinates.Class.lineWidth(hugeLine);
   }
   const elapsed = performance.now() - started;
   expect(sink).toBeGreaterThan(0);

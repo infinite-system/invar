@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { ref } from 'vue';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { Workspace } from '../workspace/Workspace';
 import { LspWorkspaceProvider } from './LspWorkspaceProvider';
 

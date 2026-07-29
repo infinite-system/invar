@@ -60,8 +60,8 @@ import { PaneRuntimes } from '../ui/PaneRuntimes';
 import { AgentFactory } from '../agent/AgentFactory';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { BracketMatch } from '../editor/BracketMatch';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import type { TextInputAction } from '../editor/TextInputModel';
+import { TextCoordinates } from '../text/TextCoordinates';
+import type { TextInputAction } from '../text/TextInputModel';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import {
   AgentPaneContent,
@@ -1329,7 +1329,7 @@ class $Bootstrap {
       const lineText = editor.document.line(line);
       const linePrefix = lineText.slice(
         0,
-        EditorCoordinates.Class.graphemeToU16(lineText, endColumn),
+        TextCoordinates.Class.graphemeToU16(lineText, endColumn),
       );
       const text = linePrefix.match(/[\p{L}\p{N}_$]+$/u)?.[0] ?? '';
       return {
@@ -1337,7 +1337,7 @@ class $Bootstrap {
         range: {
           start: {
             line,
-            column: endColumn - EditorCoordinates.Class.graphemeCount(text),
+            column: endColumn - TextCoordinates.Class.graphemeCount(text),
           },
           end: { line, column: endColumn },
         },

@@ -14,8 +14,8 @@
 // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import type { TextInputModel } from '../editor/TextInputModel';
+import { TextCoordinates } from '../text/TextCoordinates';
+import type { TextInputModel } from '../text/TextInputModel';
 import type { Palette } from '../theme/ThemePalettes';
 import type { FindIconSet } from '../theme/ThemeIcons';
 import type { FindBar } from '../search/FindBar';
@@ -85,7 +85,7 @@ class $FindBarRenderer {
         ? bg(palette.selection)(fg(palette.accent)(cellLabel))
         : fg(color)(cellLabel);
       chunks.push(painted);
-      column += EditorCoordinates.Class.lineWidth(cellLabel);
+      column += TextCoordinates.Class.lineWidth(cellLabel);
       buttons.push({ action, row: buttonRow, startColumn, endColumn: column });
       chunks.push(fg(palette.fg)(' '));
       column += 1;

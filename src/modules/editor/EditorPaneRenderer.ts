@@ -23,11 +23,11 @@ import {
   type TextChunk,
 } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import type { EditorFrameAttribution } from '../editor/EditorFrameAttribution';
-import { EditorWrap, type VisualRow } from '../editor/EditorWrap';
+import { TextCoordinates } from '../text/TextCoordinates';
+import type { EditorFrameAttribution } from './EditorFrameAttribution';
+import { EditorWrap, type VisualRow } from './EditorWrap';
 import { Highlighter, type Role, type Span } from '../syntax/Highlighter';
-import type { BracketCell } from '../editor/BracketMatch';
+import type { BracketCell } from './BracketMatch';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import type { Workspace } from '../workspace/Workspace';
@@ -172,7 +172,7 @@ class $EditorPaneRenderer {
           decoration.owner === 'diagnostics',
       );
       const windowGraphemeCount =
-        EditorCoordinates.Class.graphemeCount(windowText);
+        TextCoordinates.Class.graphemeCount(windowText);
       const boundaries = new Set<number>([0, windowGraphemeCount]);
       // Indent guides: a faint vertical bar drawn IN PLACE of the leading-whitespace space at each indent
       // level (display columns 0, tabWidth, 2*tabWidth, ...). Swapping a space for the guide glyph keeps
@@ -189,7 +189,7 @@ class $EditorPaneRenderer {
         ) {
           if (windowText[indentGrapheme] !== ' ') break;
           if (
-            EditorCoordinates.Class.displayColumn(windowText, indentGrapheme) %
+            TextCoordinates.Class.displayColumn(windowText, indentGrapheme) %
               this.INDENT_GUIDE_TAB_WIDTH ===
             0
           ) {
@@ -291,8 +291,8 @@ class $EditorPaneRenderer {
         const segmentEnd = orderedBoundaries[boundaryIndex + 1]!;
         if (segmentEnd <= segmentStart) continue;
         const segmentText = windowText.slice(
-          EditorCoordinates.Class.graphemeToU16(windowText, segmentStart),
-          EditorCoordinates.Class.graphemeToU16(windowText, segmentEnd),
+          TextCoordinates.Class.graphemeToU16(windowText, segmentStart),
+          TextCoordinates.Class.graphemeToU16(windowText, segmentEnd),
         );
         const findHighlighted = lineMatches.some(
           (match) =>
@@ -407,11 +407,11 @@ class $EditorPaneRenderer {
         }
         pushCodeChunks(
           lineText.slice(
-            EditorCoordinates.Class.graphemeToU16(
+            TextCoordinates.Class.graphemeToU16(
               lineText,
               row.segment.startGrapheme,
             ),
-            EditorCoordinates.Class.graphemeToU16(
+            TextCoordinates.Class.graphemeToU16(
               lineText,
               row.segment.endGrapheme,
             ),
@@ -473,28 +473,27 @@ class $EditorPaneRenderer {
       pushGutterMarker(lineNumber, isCurrentLine);
       let windowText = text;
       let windowStartGrapheme = 0;
-      let windowEndGraphemeIndex = EditorCoordinates.Class.graphemeCount(text);
+      let windowEndGraphemeIndex = TextCoordinates.Class.graphemeCount(text);
       if (scrollLeft > 0 || text.length > viewportWidth) {
         // O(1) test; a needless slice is harmless
-        let startGrapheme = EditorCoordinates.Class.graphemeAtDisplayColumn(
+        let startGrapheme = TextCoordinates.Class.graphemeAtDisplayColumn(
           text,
           scrollLeft,
         );
         if (
-          EditorCoordinates.Class.displayColumn(text, startGrapheme) <
-          scrollLeft
+          TextCoordinates.Class.displayColumn(text, startGrapheme) < scrollLeft
         )
           startGrapheme += 1; // never split a straddling wide glyph
         const endGrapheme =
-          EditorCoordinates.Class.graphemeAtDisplayColumn(
+          TextCoordinates.Class.graphemeAtDisplayColumn(
             text,
             scrollLeft + viewportWidth,
           ) + 1;
         windowStartGrapheme = startGrapheme;
         windowEndGraphemeIndex = endGrapheme;
         windowText = text.slice(
-          EditorCoordinates.Class.graphemeToU16(text, startGrapheme),
-          EditorCoordinates.Class.graphemeToU16(text, endGrapheme),
+          TextCoordinates.Class.graphemeToU16(text, startGrapheme),
+          TextCoordinates.Class.graphemeToU16(text, endGrapheme),
         );
       }
       const logicalLineSpans = plainForeground
@@ -514,9 +513,7 @@ class $EditorPaneRenderer {
         windowStartGrapheme,
         lineWindowSpans,
       );
-      if (
-        windowEndGraphemeIndex >= EditorCoordinates.Class.graphemeCount(text)
-      ) {
+      if (windowEndGraphemeIndex >= TextCoordinates.Class.graphemeCount(text)) {
         codeChunks.push(
           ...workspace.editorContributions.lineEndChunks(editor, lineNumber),
         );
