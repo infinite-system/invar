@@ -11,7 +11,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
   `tmux attach -t invar/222-provider-seam-analysis-and-convention`
 - #219 source-text-view-onto-pane-content-seam  [building]
   `tmux attach -t invar/219-source-text-view-onto-pane-content-seam`
-- #216 drive-onramp-quick-open-blind-enumeration  [building]
+- #216 drive-onramp-quick-open-blind-enumeration  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/216-drive-onramp-quick-open-blind-enumeration`
 
 ## USER-DIRECTED (2)

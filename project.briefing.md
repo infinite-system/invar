@@ -30,6 +30,14 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 00:52 — #216 READY and clean: Quick Open now publishes `degraded` instead of
+  a false `complete` on an empty fallback; the drive scratch workspace moved
+  out of the ignored path; both positive controls demonstrated red. The
+  builder caught that codex's own environment ships ripgrep and reproduced by
+  PATH surgery. One-sighting (#122's Ctrl+P key drop) probed 3x, no repro,
+  parked. HELD for the batch gate — #219 is mid-verification and a gate now
+  would contend with it.
+
 - 00:28 — #216 dispatched (codex). Session link resolved late (codex creates
   its rollout lazily; the in-dispatch check fires too early — known wrinkle,
   folded into #215's scope). Briefing file created.
