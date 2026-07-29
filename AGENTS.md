@@ -90,6 +90,11 @@ Bycatch explicitly includes the CONTRACT LAYER, not only runtime defects:
   consumer bypassing the seam, re-implementing part of it, or suppressing its core to fit; or
   a change (including your own task's) that made two previously identical paths behave
   differently. Name the seam, the diverging consumer, and what now varies.
+- **Plain nonsense**: anything that obviously makes no sense on inspection — a condition that
+  cannot be true, a branch that cannot run, a name that lies about what it holds, a value
+  computed and thrown away, a check that checks nothing, a setting nothing reads. Say WHAT it
+  is and WHY it cannot be right. If you only suspect, say "suspect" — a labeled hypothesis is
+  bycatch too; silent bafflement is not.
 
 These reports feed later cleanup tasks. A drifted comment you silently pass is a trap set
 for the next reader; a named one is a task someone can dispatch.
