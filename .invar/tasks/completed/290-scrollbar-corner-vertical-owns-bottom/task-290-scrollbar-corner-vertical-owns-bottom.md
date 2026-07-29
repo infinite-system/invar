@@ -1,6 +1,6 @@
 # 290 — the corner belongs to the vertical bar: full height; horizontal ends at its edge
 
-State: IN-PROGRESS
+State: COMPLETED — f22d86e3 — Scrollbar corner: vertical owns full height + corner, horizontal ends at its edge, grey/white parity both axes; #284 oracle banked
 Created: 2026-07-29
 Engine: codex
 Environment: linux
@@ -32,7 +32,7 @@ The horizontal bar's colors must MATCH the vertical bar's grey/white —
 today the horizontal thumb reads accent-blue while the vertical reads
 grey. One color pair per theme, BOTH axes, chosen at the shared painter
 (and derived live from the theme — coordinate with
-[#284](../284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)'s
+[#284](../../active/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)'s
 capture-at-construction fix if it has not landed; do not duplicate its
 work, but your assertion must hold under a theme switch).
 
