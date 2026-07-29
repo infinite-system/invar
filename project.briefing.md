@@ -30,6 +30,16 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 01:5x — USER CAUGHT A REAL ONE from a tmux footer: claude builders ran at
+  MEDIUM effort all night while task files said high — the assignment was
+  enforced at dispatch but never transmitted (no --model/--effort flags).
+  Fixed: dispatch now passes verified aliases (opus-5->opus, fable-5->fable;
+  the -5 forms are invalid CLI aliases) and --effort / model_reasoning_effort.
+  Codex was already high via your config. My tasks:live lens had displayed
+  the declared field as runtime fact — family 3, mine. #220 allowed to finish
+  at medium (its four predecessors delivered the whole capstone chain at
+  medium and passed everything — worth knowing when calibrating effort).
+
 - 01:4x — #215 LANDED via land.sh's first live run (7968d49f, 17m recorded in
   meta.json). Claude sends now confirm from the composer FRAME — structure
   printed words cannot impersonate; both polarities proven; dispatch waits
