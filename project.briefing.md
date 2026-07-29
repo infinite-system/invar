@@ -30,6 +30,16 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 01:4x — #215 LANDED via land.sh's first live run (7968d49f, 17m recorded in
+  meta.json). Claude sends now confirm from the composer FRAME — structure
+  printed words cannot impersonate; both polarities proven; dispatch waits
+  15s for the cwd-derived session file. Bycatch → #231 (three agent-tmux
+  launch/list defects, incl. `list` broken under the production prefix all
+  along — nothing calls it, which is its own finding). Lenses got colour,
+  icons, durations + `bun run tasks:all`. #220 still building the capstone
+  final — and it is already committing scratch tooling into its task folder
+  (drive-220-smoke-set.sh): the durable-workspace doctrine's first sighting.
+
 - 01:3x — Your late-night refinements, all mechanical now: (1) every brief
   MUST carry `## Invariants in scope` + `## Bycatch expected` — dispatch.sh
   refuses to launch without them (both guard arms proven); (2) bycatch
