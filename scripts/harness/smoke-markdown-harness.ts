@@ -6,6 +6,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+// invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -161,6 +162,150 @@ function clickCell(
   driver.sendMouse({ kind: 'press', column, row, button: 'left' });
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
+
+async function driveTerminalShrinkAtScale(
+  fixtureLineCount: number,
+): Promise<void> {
+  const scaleFixtureRoot = mkdtempSync(
+    join(tmpdir(), `tui-markdown-resize-${fixtureLineCount}-`),
+  );
+  const scaleHomeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-markdown-resize-home-${fixtureLineCount}-`),
+  );
+  const scaleStatusPath = join(scaleHomeDirectory, 'status.json');
+  const scaleFixtureLines = Array.from(
+    { length: fixtureLineCount },
+    (_unusedValue, lineIndex) =>
+      lineIndex === 0
+        ? `# Scale fixture ${fixtureLineCount}`
+        : `Scale line ${String(lineIndex + 1).padStart(6, '0')} content`,
+  );
+  await Bun.write(
+    join(scaleFixtureRoot, 'README.md'),
+    `${scaleFixtureLines.join('\n')}\n`,
+  );
+  const scaleDriver = new PtyTestDriver.Class({
+    workspaceRoot: scaleFixtureRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory: scaleHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: scaleStatusPath,
+      LANG: 'C.UTF-8',
+      NERD_FONT: '0',
+    },
+  });
+
+  try {
+    await scaleDriver.awaitSnapshot(
+      (candidate) => candidate.findText('README.md') !== null,
+      30_000,
+    );
+    scaleDriver.resize(60, 25);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line no-input resize publishes 60 by 25`,
+      (status) => status.width === 60 && status.height === 25,
+    );
+    scaleDriver.resize(120, 40);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line no-input resize restores 120 by 40`,
+      (status) => status.width === 120 && status.height === 40,
+    );
+    await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line file tree returns inside 120 columns`,
+      (candidate) =>
+        candidate.columns === 120 &&
+        candidate.rows === 40 &&
+        candidate.findText('README.md') !== null,
+    );
+    scaleDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line Markdown preview opens and finishes parsing`,
+      (status) =>
+        String(status.activeBuffer).endsWith('/README.md') &&
+        status.markdownPreviewOpen === true &&
+        status.markdownParsing === false,
+      60_000,
+    );
+    await HarnessSmoke.Class.concealAutoRevealedRightDock(
+      scaleDriver,
+      scaleStatusPath,
+    );
+    await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line Markdown split paints at 120 columns`,
+      (candidate) =>
+        candidate.columns === 120 &&
+        candidate.findText('╭─Preview') !== null &&
+        sourceBorderColumn(candidate) > previewBorder(candidate).column,
+    );
+
+    scaleDriver.resize(60, 25);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line terminal resize publishes 60 by 25`,
+      (status) => status.width === 60 && status.height === 25,
+    );
+    const narrowScaleSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line Markdown split fits the 60-column viewport`,
+      (candidate) => {
+        if (candidate.columns !== 60 || candidate.rows !== 25) return false;
+        const candidatePreviewBorder = candidate.findText('╭─Preview');
+        if (!candidatePreviewBorder) return false;
+        const candidatePreviewRightColumn = previewPaneRightColumn(candidate);
+        const candidateSourceColumn = sourceBorderColumn(candidate);
+        const candidateSourceRightColumn = candidate
+          .rowText(candidatePreviewBorder.row)
+          .lastIndexOf('╮');
+        if (
+          candidatePreviewRightColumn <= candidatePreviewBorder.column ||
+          candidateSourceColumn <= candidatePreviewRightColumn ||
+          candidateSourceRightColumn <= candidateSourceColumn ||
+          candidateSourceRightColumn >= candidate.columns
+        ) {
+          return false;
+        }
+        const previewContainsRenderedHeading = candidate
+          .textRows()
+          .some((rowText) =>
+            rowText
+              .slice(candidatePreviewBorder.column, candidatePreviewRightColumn)
+              .includes('Scale'),
+          );
+        return previewContainsRenderedHeading;
+      },
+    );
+    const narrowPreviewBorder = previewBorder(narrowScaleSnapshot);
+    const narrowPreviewRightColumn =
+      previewPaneRightColumn(narrowScaleSnapshot);
+    const narrowSourceColumn = sourceBorderColumn(narrowScaleSnapshot);
+    const narrowSourceRightColumn = narrowScaleSnapshot
+      .rowText(narrowPreviewBorder.row)
+      .lastIndexOf('╮');
+    HarnessSmoke.Class.requireCondition(
+      narrowPreviewRightColumn < 60 &&
+        narrowSourceColumn < 60 &&
+        narrowSourceRightColumn < 60,
+      `${fixtureLineCount}-line preview, divider, and source stay inside 60 columns`,
+    );
+  } finally {
+    await scaleDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(scaleFixtureRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(scaleHomeDirectory);
+  }
+}
+
+console.log(
+  '== harness markdown: terminal shrink reflows the split at small and large scale ==',
+);
+await driveTerminalShrinkAtScale(10);
+await driveTerminalShrinkAtScale(100_000);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-markdown-harness-'));
 

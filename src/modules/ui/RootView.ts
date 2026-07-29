@@ -1103,27 +1103,22 @@ class $RootView {
       leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
       rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
     });
+    // Resolve from the renderer's accepted viewport. A previous positive Yoga size is the previous
+    // frame on terminal resize and must never override this external input.
+    // invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
     const synchronizeLayoutGeometry = (): void => {
-      const fallbackColumns = Math.max(
+      const totalColumns = Math.max(
         1,
         renderer.width -
           (settings.workspaceTabPosition.value === 'left' ? 22 : 0),
       );
-      const fallbackRows = Math.max(
+      const totalRows = Math.max(
         1,
         renderer.height -
           1 -
           1 -
           (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
       );
-      const totalColumns =
-        Number(layoutCanvas.width) > 0
-          ? Number(layoutCanvas.width)
-          : fallbackColumns;
-      const totalRows =
-        Number(layoutCanvas.height) > 0
-          ? Number(layoutCanvas.height)
-          : fallbackRows;
       currentLayoutRows = totalRows;
       layoutSlotGeometry = LayoutModel.Class.resolve({
         totalColumns,

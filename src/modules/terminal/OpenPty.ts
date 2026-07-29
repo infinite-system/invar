@@ -423,6 +423,7 @@ class $OpenPty {
 
   resize(columns: number, rows: number): void {
     if (this.closed) return;
+    // invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
     const windowSize = new Uint16Array([
       Math.max(1, rows),
       Math.max(1, columns),
@@ -430,11 +431,17 @@ class $OpenPty {
       0,
     ]);
     const openPtyClass = this.constructor as typeof $OpenPty;
-    openPtyClass.$terminalControlLibrary.symbols.ioctl(
+    const resizeResult = openPtyClass.$terminalControlLibrary.symbols.ioctl(
       this.masterFileDescriptor,
       openPtyClass.TERMINAL_WINDOW_SIZE_REQUEST,
       ptr(windowSize),
     );
+    if (resizeResult !== 0) {
+      throw new Error(
+        `OpenPty TIOCSWINSZ failed with errno ${this.currentErrno()} ` +
+          `for ${Math.max(1, columns)}x${Math.max(1, rows)}`,
+      );
+    }
   }
 
   /** The child inherited the slave; close only the parent's copy so master EOF remains meaningful.

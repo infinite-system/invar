@@ -2618,9 +2618,14 @@ class $Bootstrap {
       HandlerGuard.Class.run(
         'resize',
         () => {
+          // invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
           // Re-assert the app-owned modes (some terminals drop them on the geometry change that
           // accompanies a tab-return) then re-lay-out + full-repaint. render() → processResize forces a
           // full repaint on a genuine size change; a same-size return is handled by onFocus above.
+          StatusChannel.Class.update({
+            width: renderer.width,
+            height: renderer.height,
+          });
           TerminalSession.Class.enterAppModes(writeSequence);
           agentSkillPopup.close();
           void render();

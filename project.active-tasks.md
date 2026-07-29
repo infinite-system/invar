@@ -19,7 +19,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (20)
+## VERIFICATION-INTEGRITY (21)
+- #272 markdown-preview-body-viewport-settles-after-parent-growth
 - #269 smokes-assume-editor-geometry-sweep
 - #265 status-projection-drops-plugin-keys
 - #261 drive-harness-drops-shifted-control-chords
