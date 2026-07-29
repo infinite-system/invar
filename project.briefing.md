@@ -1,6 +1,19 @@
 # Overnight briefing — started 2026-07-29 00:28
 
-## RESUME ANCHOR 3 (06:2x — supersedes ANCHOR 2)
+## RESUME ANCHOR 3 (06:2x — supersedes ANCHOR 2; 07:0x update below)
+
+- 07:0x: MAIN IS GREEN AGAIN — #268 landed 5c9965a4 (gate
+  /tmp/gate-268-only.log GATE_EXIT=0, read). The COMBINED gate with #238
+  ran RED first: #238's structure default-ON breaks SIX smokes' geometry
+  (the #237-auto-open class, fleet-wide) + 2 enforced file-grammar
+  violations in MarkdownStructureSource.ts. #238 is on ROUND 3 with the
+  failure logs (/tmp/merge-gate-failures.2898354/) and the
+  measure-don't-assume doctrine; its round ends with its OWN full
+  merge-gate green. On #238 READY: gate main+#238, land with GATE_LOG.
+  Near-miss recorded (family 10): a `;`-separated merge slipped into main
+  when `worktree add main` failed (needed --detach) — caught in seconds,
+  reset --keep; a destructive step never follows `;`. Gate scratch tree
+  lives at /tmp/gate-tree-268-238 (reusable via reset+merge).
 
 - MAIN IS RED at d42f2af0..afc6eecf: I landed #237 over GATE_EXIT=1 (the
   wrapper exit I chained behind was an echo's, not the gate's — family 3
