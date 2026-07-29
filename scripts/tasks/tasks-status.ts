@@ -65,6 +65,31 @@ export interface TaskRecord {
   summaryCount: number;
   namesACommit: boolean;
   priorityGroup: string | null;
+  assignedEngine: string | null;
+  assignedModel: string | null;
+  assignedEffort: string | null;
+}
+
+// A header field like `Engine: codex` from a task file's front block.
+function headerField(taskFileText: string, fieldName: string): string | null {
+  return (
+    taskFileText
+      .split('\n')
+      .find((line) => line.startsWith(`${fieldName}:`))
+      ?.slice(fieldName.length + 1)
+      .trim()
+      .split(/\s/)[0] ?? null
+  );
+}
+
+// The compact agent identity for the lenses: `claude·opus-5·high`.
+function agentIdentity(record: TaskRecord): string | null {
+  if (record.assignedEngine === null) return null;
+  return [
+    record.assignedEngine,
+    record.assignedModel ?? 'unknown',
+    record.assignedEffort ?? 'default',
+  ].join('·');
 }
 
 export interface DriftFinding {
@@ -138,6 +163,9 @@ function readTaskRecords(tasksRoot: string): TaskRecord[] {
             .find((line) => line.startsWith('Priority:'))
             ?.slice('Priority:'.length)
             .trim() ?? null,
+        assignedEngine: headerField(taskFileText, 'Engine'),
+        assignedModel: headerField(taskFileText, 'Model'),
+        assignedEffort: headerField(taskFileText, 'Effort'),
       });
     }
   }
@@ -661,8 +689,10 @@ function live(tasksRoot: string): number {
       startedAt === null
         ? ''
         : `  ${cyan(formatDuration(Date.now() - startedAt))}`;
+    const identity = agentIdentity(record);
+    const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
     console.log(
-      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}  ${statusBadge}${runningFor}`,
+      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}  ${statusBadge}${runningFor}${identitySuffix}`,
     );
     console.log(dim(`      tmux attach -t invar/${record.folderName}`));
   }
@@ -689,11 +719,13 @@ function activeOnly(tasksRoot: string): number {
         : (PRIORITY_BADGES[group] ?? group);
     console.log(`  ${badge}`);
     for (const record of inGroup) {
+      const identity = agentIdentity(record);
+      const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
       const line = taskLine(record).replace(
         /^- #(\d+)/,
         (_, number: string) => `- ${bold(`#${number}`)}`,
       );
-      console.log(`  ${line}`);
+      console.log(`  ${line}${identitySuffix}`);
     }
   }
   return 0;
@@ -733,11 +765,13 @@ function printCompleted(
       startedAt !== null && landedAt !== null && landedAt > startedAt
         ? `  ${cyan(`[${formatDuration(landedAt - startedAt)}]`)}`
         : '';
+    const identity = agentIdentity(record);
+    const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
     const line = completedLine(record).replace(
       /^- #(\d+)/,
-      (_, number: string) => `- ${green('✔')} ${bold(`#${number}`)}`,
+      (_, number: string) => `${green('✔')} ${bold(`#${number}`)}`,
     );
-    console.log(`${line}${duration}`);
+    console.log(`${line}${duration}${identitySuffix}`);
   }
 }
 
