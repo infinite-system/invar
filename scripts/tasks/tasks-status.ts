@@ -885,12 +885,26 @@ async function watchLenses(tasksRoot: string): Promise<number> {
   const baselineLanded = landedTodayStats(tasksRoot).landedToday;
   let sampledCommits = baselineCommits;
   let sampledLines = baselineLines;
+  // Alternate screen buffer + hidden cursor: a real repaint, not a stream.
+  // Plain \x1b[2J pushes each "cleared" frame into scrollback on several
+  // terminals, which reads as streaming. The alt screen has no scrollback,
+  // and exit restores the caller's screen exactly.
+  const enterAlternateScreen = '\x1b[?1049h\x1b[?25l';
+  const leaveAlternateScreen = '\x1b[?25h\x1b[?1049l';
+  process.stdout.write(enterAlternateScreen);
+  const restoreScreen = (): void => {
+    process.stdout.write(leaveAlternateScreen);
+    process.exit(0);
+  };
+  process.on('SIGINT', restoreScreen);
+  process.on('SIGTERM', restoreScreen);
   for (;;) {
     if (frame % 30 === 0 && frame > 0) {
       sampledCommits = commitsToday();
       sampledLines = sourceLineCount();
     }
-    process.stdout.write('\x1b[2J\x1b[H');
+    // Home, then clear to end — repaint in place inside the alt screen.
+    process.stdout.write('\x1b[H\x1b[0J');
     const clock = new Date().toLocaleTimeString('en-GB', { hour12: false });
     console.log(
       `${bold('INVAR TASKS')} ${dim(`· ${clock} · refresh 2s · Ctrl+C to exit`)}`,
