@@ -1988,3 +1988,344 @@ scripts/harness/smoke-layout-harness.ts`
 **Status:** provisional
 
 **Last refined:** 2026-07-25
+
+### The panel renders exactly the visible pane content cells each frame
+
+**Invariant:** The bottom panel slot (`PanelHost`) projects every resolved visible
+`PaneContent.render(region)` into that content's own cell each frame, with no per-content wiring in
+the host or in RootView. Adding another content (Output, Problems, a plugin) needs zero host change.
+
+**Scope:** `PaneContent` (the composable-view seam), `PanelHost` (the generic slot), the panel mount +
+render in `RootView`, and `TerminalPaneContent` (the terminal's implementation of the seam).
+
+**Mechanism:** `PanelHost` holds a registry keyed by `PaneContent.id`, resolves the visible cell
+layout, and keeps `activeId` aligned with the focused content. `RootView.update` mounts one generic
+heading-and-body container per resolved cell and fills its body from
+`content.render({width, height, palette, focused})`. RootView contains no terminal-specific render
+branch.
+
+**Generates:** a composable bottom panel where each content owns a headed region and any future
+PaneContent slots in unchanged; a stateless panel projection.
+
+**Evidence:** `src/modules/ui/PanelHost.test.ts` (registration, generic switching between two fake
+contents, focused-key routing, size convergence); `scripts/smoke-terminal.sh` (the terminal renders in
+the panel body).
+
+**Impossible if true:** RootView or PanelHost branching on a specific content type to render; a
+second content requiring host edits to appear; one visible content being omitted or rendered in
+another content's region.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bash scripts/smoke-terminal.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Each panel instance owns one independent session
+
+**Invariant:** If Add creates another Terminal or Agent instance, then it receives a unique instance
+identifier and label, owns a newly constructed backend/session, remains registered while hidden, and
+releases that owned session only when its heading or contents-list row is closed.
+
+**Scope:** `PaneRuntimes` (the one instance-identity allocator), each contributed `PaneRuntime`,
+`AgentFactory`, their `PaneContent` implementations, and the bottom `PanelHost`. Output and Problems
+content kinds are outside this wave.
+
+**Mechanism:** `PaneRuntimes.allocateInstanceIdentity` mints `<kind>`/`<kind>-N` identities and the
+matching `<Label>`/`<Label> N` names for every kind, and the owning runtime builds the session behind
+them; the host-owned agent pane uses the same numbering shape. `PanelHost` retains all instances in one ordered registry but
+projects at most one visible instance of each kind; selecting another same-kind row swaps the
+visible cell without disposal. `removeContent` unregisters exactly that identity and calls its
+`dispose` seam, while other instances and their session state survive.
+
+**Generates:** Independent Terminal 2 and Agent 2 sessions; hidden live instances selectable from the
+contents list; one terminal plus one agent visible side by side; instance-scoped close.
+
+**Evidence:** `src/modules/ui/PaneRuntimes.ts`; `src/modules/ui/PaneRuntimes.test.ts`;
+`src/modules/terminal/TerminalPlugin.ts`; `src/modules/terminal/TerminalPaneContent.ts`;
+`src/modules/agent/AgentFactory.ts`; `src/modules/agent/AgentPaneContent.ts`;
+`src/modules/app/Bootstrap.ts`; `src/modules/ui/PanelHost.test.ts`;
+`src/modules/terminal/TerminalFactory.test.ts`; `src/modules/agent/AgentFactory.test.ts`;
+`scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Impossible if true:** Terminal 2 sharing Terminal 1's backend; selecting a hidden instance
+destroying the prior instance; closing Agent 2 disposing Agent 1; two same-kind instances occupying
+simultaneous cells.
+
+**Verification:** `bun test src/modules/ui/PaneRuntimes.test.ts
+src/modules/terminal/TerminalFactory.test.ts src/modules/agent/AgentFactory.test.ts
+src/modules/ui/PanelHost.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-28
+
+### A focused panel routes keystrokes to its active pane content
+
+**Invariant:** When the panel is focused and no modal input overlay owns the keyboard, every
+non-reserved keystroke is encoded to terminal bytes and delivered to `activeContent.handleKey`;
+reserved global chords (quit, panel toggle) still fire first so the user is never trapped, and an
+unencodable key is swallowed rather than driving the hidden editor beneath. When the panel is not
+focused or a modal input overlay owns the keyboard, it consumes no keys.
+
+**Scope:** `PaneContent.keybindingContext`, `PaneContent.claimsContextAction`,
+`PaneContent.handleKey`, `PanelHost.handleKey`, and the panel-input branch in `Bootstrap.keyTick`.
+The bytes a specific pane produces are that pane's own record.
+
+**Mechanism:** `Bootstrap.keyTick` resolves reserved global chords first (`app.quit`,
+`panel.toggleTerminal`), then reads `RootView.modalOverlayOwnsScreen`, which delegates to the
+overlay layer's one modal-focus derivation. Only when that slot is empty and
+`panelHost.visible && focused` does the panel branch run. There the focused pane's OWN
+`keybindingContext` is resolved, and the PANE decides whether it claims the resolved action
+(`claimsContextAction`); a declined action falls through to `panelHost.handleKey(key)` as raw
+input, which is how a terminal selection owns Ctrl+C while an empty selection still sends SIGINT.
+The host reads no pane type and no action vocabulary. Focus follows the toggle and clicks
+(`panelContainsPoint`).
+
+**Generates:** a terminal that receives Ctrl+C/Ctrl+D/arrows/typing as a real terminal would, while
+Ctrl+Q and the toggle always work; no keystroke both drives the shell and the editor.
+
+**Evidence:** `src/modules/terminal/TerminalKeys.test.ts` (control-byte, arrow, named-key, printable
+encoding); `src/modules/ui/PanelHost.test.ts` (focused host routes to the active content);
+`scripts/smoke-terminal.sh` (typed `echo hello`+Enter reaches the shell and renders; Ctrl+Q from the
+focused terminal still quits); `scripts/harness/smoke-overlay-dialog-harness.ts` (Settings Escape
+outranks retained terminal and agent focus).
+
+**Impossible if true:** a focused terminal where typing drives the editor; a key that both types into
+the shell and moves the editor cursor; Ctrl+Q swallowed by the focused terminal; keys consumed while
+the panel is unfocused; a modal overlay key reaching the pane retained beneath it; the host naming a
+pane class or an action prefix to route a keystroke.
+
+**Verification:** `bun test src/modules/terminal/TerminalKeys.test.ts src/modules/ui/PanelHost.test.ts && bash scripts/smoke-terminal.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### A split panel renders every visible cell into its own sub-region
+
+**Invariant:** When the panel holds two or more visible cells, the slot is partitioned left-to-right by
+each cell's ratio (one column per interior divider), and each cell's `PaneContent.render` AND its
+`onResize` see ONLY that cell's sub-region — never the full slot. The single-cell case is the same code
+with one full-width partition, so nothing regresses when nothing is split. One width algorithm
+(`PanelHost.cellSpans`) feeds BOTH the laid-out cell width and the content's `onResize`, so a cell can
+never be sized for a region different from the one it is painted into.
+
+**Scope:** `PanelHost` (`layout`, `resolvedCells`, `cellSpans`, `setViewportSize`, `moveDivider`), the
+panel cell-pool render in `RootView` (`syncPanelCellMount`, the per-span body loop), and any
+`PaneContent` (e.g. `AgentPaneContent`, `TerminalPaneContent`) that occupies a cell.
+
+**Mechanism:** `PanelHost.cellSpans(totalColumns)` distributes the slot's inner columns across the
+resolved cells by normalized ratio, reserving one column per divider and giving the remainder to the
+last cell. `RootView.update` mounts one heading-and-body container per span (a divider before each
+container from the second on), sets its width to the span, and fills its body from
+`span.content.render({width: span.columns, …})`.
+`Bootstrap`'s converge step calls `panelHost.setViewportSize`, which walks the SAME `cellSpans` and
+calls each `content.onResize(span.columns, rows)`. `moveDivider` re-flows only the two cells adjacent
+to the dragged divider, each clamped to a minimum share.
+
+**Generates:** a terminal | agent (or N-way) bottom panel where each pane is a first-class occupant of
+its own region; a resizable divider that reflows both neighbours; a single-pane panel as the degenerate
+1-cell case with byte-identical behaviour.
+
+**Evidence:** `src/modules/ui/PanelHost.test.ts` (`split` layout + normalized shares, `cellSpans`
+per-cell widths reserving the divider column, `setViewportSize` resizes each cell independently,
+`moveDivider` re-flow + minimum clamp); `scripts/harness/smoke-panel-split-harness.ts` clicks the
+second status control and drives Ctrl+Shift+S to produce the same terminal | agent split, asserts both headings
+and distinct sub-widths, drags the divider, and restores the full-width pane.
+
+**Impossible if true:** a split cell rendered at the full slot width while another cell overlaps it; a
+cell whose content is `onResize`d to a region different from the one it is painted into; a divider drag
+that resizes one neighbour but not the other; a split that changes the single-pane render path.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### A focused split panel routes keystrokes to the focused cell
+
+**Invariant:** When the panel is focused and split, every non-reserved keystroke goes to exactly ONE
+cell — the focused cell — and clicking a cell makes it the focused cell (focus-follows-click at the
+cell grain). The block caret is drawn in the focused cell's sub-region. An unfocused cell receives no
+keys and shows no caret. With a single cell this is identical to the old "focused panel routes to its
+active content".
+
+**Scope:** `PanelHost` (`focusedIndex`, `focusedContent`, `focusCell`, `handleKey`, `retargetFocus`),
+the panel cell-body `onMouseDown` handlers + caret anchoring in `RootView`, and the panel-input branch
+in `Bootstrap.keyTick`.
+
+**Mechanism:** `PanelHost.handleKey` delegates to `focusedContent` (the resolved cell at `focusedIndex`,
+or the single active content). `RootView` gives each cell body an `onMouseDown` that calls
+`panelHost.focus()` + `panelHost.focusCell(index)`, and anchors the caret to the focused cell body's
+laid-out screen cell. `focusCell` also writes `activeId`, so the compatibility
+`panelActiveContent` projection remains truthful. `focusCell`/`split`/`unsplit` run through
+`retargetFocus`, which fires
+`onBlur`/`onFocus` only when the focused content actually changes, so exactly one cell is ever focused.
+
+**Generates:** two live panes (agent | terminal) where typing drives only the one you clicked, the
+caret sits in the active pane, and switching panes is a single click; no keystroke drives two panes.
+
+**Evidence:** `src/modules/ui/PanelHost.test.ts` (a focused split routes to the focused cell; `focusCell`
+moves the routing target; splitting while focused blurs the old content and focuses the new cell);
+`scripts/harness/smoke-panel-split-harness.ts` types into the focused agent cell, clicks the terminal
+cell, and asserts later terminal keys never reach the now-blurred agent.
+
+**Impossible if true:** a keystroke delivered to an unfocused cell; two cells focused at once; a click
+on a cell that does not focus it; a caret drawn in a blurred cell.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Bracketed paste survives stream chunking
+
+**Invariant:** If a bracketed paste sequence reaches Invar in arbitrary input chunks, then exactly
+one complete UTF-8 payload is routed to the focused terminal child or agent composer.
+
+**Scope:** OpenTUI `StdinParser`, `Bootstrap` paste dispatch, `PanelHost.handlePaste`,
+`TerminalPaneContent.handlePaste`, `AgentPaneContent.handlePaste`, and `OpenPty.write`. Editor and
+single-line overlay routing keeps the same dispatcher but is outside the two real-host acceptance
+paths.
+
+**Mechanism:** OpenTUI's stream parser retains split start marker, payload, and end marker bytes
+until it emits one paste event. `Bootstrap` dispatches that complete text through the focused pane
+seam, and `OpenPty.write` queues partial libc writes on a non-blocking descriptor until every
+terminal payload byte crosses the PTY.
+
+**Generates:** Marker-edge input fixtures; exact 10-byte, 1 KB, and 64 KB terminal and composer
+drives; large terminal payloads that cannot truncate on a partial PTY write.
+
+**Rejected alternatives:** Send every harness paste as one write — real terminals split large
+payloads and both bracketed-paste markers across PTY chunks.
+
+**Evidence:** `scripts/harness/BracketedPasteInput.test.ts`;
+`scripts/harness/smoke-paste-harness.ts`; `src/modules/terminal/OpenPty.ts`.
+
+**Impossible if true:** A split marker becomes typed text; one paste produces multiple composer
+insertions; a 64 KB terminal paste loses a suffix because libc accepted only a partial write; paste
+reaches the editor while a terminal or agent pane owns focus.
+
+**Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts && bun
+scripts/harness/smoke-paste-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-25
+
+### A pane runtime owns its processes
+
+**Invariant:** If a pane kind is backed by a process, then a contributed `PaneRuntime` owns that
+process end to end and the host holds only an opaque `PaneContent`. The host supplies identity,
+laid-out geometry, a working folder, and — for a declared task — the command line it was told to
+run; it never chooses a shell, a prompt, an environment, a lifetime, or a disposal order, and it
+never learns that a pseudo-terminal exists.
+
+**Scope:** `PaneRuntime`, `PaneRuntimeRequest`, `PaneRuntimeHostPort`, `PaneRuntimes`,
+`ApplicationContributionContext.registerPaneRuntime`, and the panel creation, add, removal, and
+status paths in `Bootstrap`. The pane's own rendering and input contracts are the `PaneContent`
+records above; what a specific runtime starts is that runtime's own record.
+
+**Components:**
+- One creation path — every pane of a contributed kind is built by `PaneRuntimes.createPane(kind,
+  request)`. An ordinary instance, an Add-menu instance, and a declared task differ only by the
+  request, so a runtime cannot be reached by a second construction route.
+- Host-neutral requests — a request carries identity, columns, rows, a working directory, and an
+  optional `process` declaration. A CLI agent profile is that shape and nothing more, so the host
+  can host one without an agent concept.
+- Pull-based liveness — a runtime receives a `PaneRuntimeHostPort` whose only question is which of
+  its panes is visible. Everything else it answers itself, so the host keeps no per-kind registry.
+- Contributed projection — a runtime's status reaches probes through
+  `StatusProjectionContributions`, so disabling it withdraws its keys instead of leaving host-owned
+  defaults behind.
+- Symmetric absence — with no runtime registered for a kind, creation returns null and every
+  affordance for it degrades to inert: no crash, no silent half-open pane.
+- Released panes — a runtime being withdrawn releases every pane it built through
+  `PaneRuntimeHostPort.releasePane`, so uninstall leaves no live pane rendering or holding the
+  panel's keyboard focus. An orphaned pane is not merely untidy: it keeps consuming keystrokes on
+  behalf of a runtime that no longer exists.
+
+**Mechanism:** A runtime registers during `activateApplication`; the registration disposer is the
+plugin's, so uninstall withdraws the kind, its keybinding layer, and its status contribution
+together. `Bootstrap.createRuntimePane` allocates the instance identity, asks the registry to build,
+registers the result in the `PanelHost`, and subscribes to the pane's `onSystemNote` stream without
+reading it. `handlePanelContentRemoved` routes removal back through `PaneRuntimes.paneRemoved` so
+the owner releases the session.
+
+**Generates:** a host with no pane-runtime imports; a declared task and an interactive shell served
+by one seam; an uninstallable process owner; a new runtime kind that needs no host edit.
+
+**Rejected alternatives:** Let the host construct the pane through the module's factory and hand it
+settings — that is exactly the coupling this removes, and it forces the host to know every
+runtime's configuration vocabulary.
+
+**Evidence:** `src/modules/ui/PaneRuntime.interface.ts`; `src/modules/ui/PaneRuntimes.ts`;
+`src/modules/ui/PaneRuntimes.test.ts`; `src/modules/terminal/TerminalPlugin.ts`;
+`src/modules/terminal/TerminalPlugin.test.ts`; `src/modules/app/Bootstrap.ts`;
+`scripts/harness/smoke-plugin-manifest-harness.ts` (Terminal runtime disable leaves the host live).
+
+**Impossible if true:** a host file importing a pane runtime's module; a pane kind built by two
+different routes; a disabled runtime still projecting status; a disabled runtime's pane still
+occupying the panel; a panel affordance for an uninstalled kind crashing or half-opening a pane.
+
+**Verification:** `bun test src/modules/ui/PaneRuntimes.test.ts
+src/modules/terminal/TerminalPlugin.test.ts && bun
+scripts/harness/smoke-plugin-manifest-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-28
+
+### A focused pane consumes only its own scoped bindings
+
+**Invariant:** If a focused pane declares a keybinding context, then the host dispatches a resolved
+action from that branch ONLY when the matched binding declared that same context. A binding that
+matched because it is global falls through to the pane as raw input, so a pane that owns a real
+surface never swallows a chord the rest of the application owns.
+
+**Scope:** `KeybindingRegistry.resolve`'s reported `Resolution.context`, and the panel pane-context
+branch in `Bootstrap.keyTick`. Reserved global chords are resolved earlier and are outside this
+rule; the primary-dock branch is deliberately unchanged, because a dock pane has no raw-byte sink
+to pass a keystroke to.
+
+**Mechanism:** `inContext` lets a binding whose context is `global` match inside every context —
+that is what makes one canonical layer serve every surface. The consequence is that an action alone
+cannot say whether a binding is the pane's or everyone's, so `resolve` reports the matched
+binding's declared context (`'global'` for one that applies everywhere, the context name for a
+scoped one, null for no match). The pane branch requires
+`resolution.context === pane.keybindingContext` before dispatching, then asks the pane whether it
+claims the action at all.
+
+**Generates:** Ctrl+P, Ctrl+F, Ctrl+S, Ctrl+R, Ctrl+U, Ctrl+W and Ctrl+, reaching a focused
+terminal's child as the exact bytes a real terminal sends; a task pane keeping surface-scoped
+Ctrl+, while reserved Ctrl+Alt+B still reaches the host; a new pane kind that can declare a context
+without silently capturing the global chord set.
+
+**Rejected alternatives:** Prefix-match the resolved action against the context name
+(`terminal.*`) — that was the pre-extraction shape. It couples the host to each pane's action
+vocabulary and breaks the moment a scoped binding is named for what it does rather than where it
+lives.
+
+**Evidence:** `src/modules/keybindings/KeybindingRegistry.ts`;
+`src/modules/keybindings/KeybindingRegistry.test.ts` `a resolution reports whether its binding was
+scoped or global`; `src/modules/terminal/TerminalPlugin.test.ts`;
+`scripts/harness/smoke-reserved-chord-harness.ts` `focused task content keeps surface-scoped Ctrl+,
+while reserved Ctrl+Alt+B reaches the host`; `scripts/smoke-keyboard-invariant.sh` section D
+(sent-vs-received byte table).
+
+**Impossible if true:** a focused pane swallowing a global chord that the pass-through table
+requires the child to receive; a host branch prefix-matching an action name to decide ownership; a
+pane's scoped binding failing to fire because it was mistaken for a global one.
+
+**Verification:** `bun test src/modules/keybindings/KeybindingRegistry.test.ts
+src/modules/terminal/TerminalPlugin.test.ts && bun
+scripts/harness/smoke-reserved-chord-harness.ts && bash scripts/smoke-keyboard-invariant.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-28

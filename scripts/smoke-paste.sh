@@ -8,7 +8,7 @@
 #   3) terminal — paste is written to the child PTY (echoes at the shell prompt)
 #   4) agent — paste inserts into the composer
 # The routing mirrors keyTick: focused panel pane → PTY / composer, else the editor.
-# invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
+# invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
 set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 H="$DIR/tui-harness.sh"

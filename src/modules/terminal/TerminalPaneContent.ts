@@ -5,8 +5,8 @@
 // instance's paint signal. All terminal-specific knowledge lives below the seam; the host sees only a
 // generic PaneContent.
 //
-// invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
-// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
+// invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
+// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/ui/ui.invariants.md)
 // invariant: Child terminal modes own wheel input (src/modules/terminal/terminal.invariants.md)
 // invariant: Terminal follow obeys the live user mode (src/modules/agent/agent.invariants.md)
 import { Static } from 'ivue/extras';
@@ -26,6 +26,7 @@ import {
 } from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
+import { TerminalCommandNote } from './TerminalCommandNote';
 import { TerminalPaneRenderer } from './TerminalPaneRenderer';
 import { TerminalKeys } from './TerminalKeys';
 import type { TerminalInstance } from './TerminalInstance';
@@ -56,6 +57,9 @@ class $TerminalPaneContent implements PaneContent {
   readonly kind: string;
   readonly instanceLabel: string;
   readonly icon = '❯'; // ❯
+  // The pane owns the `terminal` keybinding context while the panel focuses it, so the host resolves
+  // its bindings generically instead of testing for this class.
+  readonly keybindingContext = 'terminal';
   protected readonly selection = new TextSelectionModel.Class();
   protected scrollPort: PaneScrollPort | null = null;
   protected observedOutputRevision = 0;
@@ -171,6 +175,27 @@ class $TerminalPaneContent implements PaneContent {
     this.verticalMomentum = Momentum.Class.halt();
   }
 
+  /** The named ports this pane publishes. `terminal-commands` is the agent's read/stage/replace/run
+   *  surface, `terminal-observation` its command-boundary stream, and `text-selection` the shared
+   *  copy surface — each already satisfied structurally by this class, so a consumer resolves a port
+   *  without importing the terminal module. */
+  capability<Port>(identifier: string): Port | null {
+    switch (identifier) {
+      case 'terminal-commands':
+      case 'terminal-observation':
+      case 'text-selection':
+        return this as unknown as Port;
+      default:
+        return null;
+    }
+  }
+
+  /** A terminal selection owns copy; with no selection the same chord must fall through to the child
+   *  as SIGINT, so the pane declines the action rather than the host special-casing it. */
+  claimsContextAction(action: string): boolean {
+    return action === 'terminal.copy' ? this.hasSelection() : true;
+  }
+
   stageTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
     return this.instance.stageTerminalCommand(command);
   }
@@ -246,6 +271,18 @@ class $TerminalPaneContent implements PaneContent {
     callback: (event: TerminalCommandEvent) => void,
   ): void {
     this.instance.onTerminalCommandEvent(callback);
+  }
+
+  /** The pane's own activity, already worded, for a host to relay. The listener never sees a
+   *  terminal command event — only the finished note. */
+  onSystemNote(listener: (note: string) => void): () => void {
+    let subscribed = true;
+    this.instance.onTerminalCommandEvent((event) => {
+      if (subscribed) listener(TerminalCommandNote.Class.textFor(event));
+    });
+    return () => {
+      subscribed = false;
+    };
   }
 
   onPointerDown(column: number, row: number): boolean {

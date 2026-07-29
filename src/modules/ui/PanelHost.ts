@@ -10,10 +10,10 @@
 // handleKey to the FOCUSED cell, and converges each cell's sub-region through setViewportSize — so the
 // host stays a pure model, unit-testable with plain values.
 //
-// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
-// invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
-// invariant: A split panel renders every visible cell into its own sub-region (src/modules/terminal/terminal.invariants.md)
-// invariant: A focused split panel routes keystrokes to the focused cell (src/modules/terminal/terminal.invariants.md)
+// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/ui/ui.invariants.md)
+// invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
+// invariant: A split panel renders every visible cell into its own sub-region (src/modules/ui/ui.invariants.md)
+// invariant: A focused split panel routes keystrokes to the focused cell (src/modules/ui/ui.invariants.md)
 // invariant: Split arrangement follows panel content order (src/modules/layout/layout.invariants.md)
 import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';

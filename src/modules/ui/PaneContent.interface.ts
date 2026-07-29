@@ -39,6 +39,19 @@ export interface PaneContent {
   readonly activityBadge?: number;
   /** Optional keybinding context owned by this content while its host has focus. */
   readonly keybindingContext?: string;
+  /** Optional veto on an action resolved in this content's own keybinding context. A content that
+   *  declines lets the keystroke fall through to `handleKey` as raw input — that is how a terminal
+   *  selection owns Ctrl+C while an empty selection still sends SIGINT to the child. Absent means
+   *  every action resolved in the content's context is claimed. */
+  claimsContextAction?(action: string): boolean;
+  /** Optional stream of human-readable notes this content emits about its own activity. The host
+   *  relays them to whatever surface displays notes; it never composes or parses them. Returns an
+   *  unsubscribe. */
+  onSystemNote?(listener: (note: string) => void): () => void;
+  /** Optional named port this content offers to another plugin, resolved by identifier so neither
+   *  side needs the other's concrete class. The host only relays the identifier the CONSUMER asks
+   *  for; it never learns what backs the port. */
+  capability?<Port>(identifier: string): Port | null;
   /** A ref bumped whenever the content's projection changes (observed by the frame effect so an
    *  async change repaints without a keypress). */
   readonly renderRevision: Readonly<Ref<unknown>>;
@@ -96,6 +109,12 @@ export interface PaneContent {
   onBlur(): void;
   /** Release owned resources. */
   dispose(): void;
+}
+
+/** The `text-selection` capability: any pane whose visible selection can be copied. */
+export interface PaneTextSelectionPort {
+  hasSelection(): boolean;
+  copySelection(): Promise<number>;
 }
 
 export interface PaneContentSplitter {

@@ -1554,8 +1554,8 @@ class $RootView {
       // Bottom panel slot: pull EACH visible cell's PaneContent into its own body (one body = the
       // terminal for tier S; two = agent | terminal side by side). The host is content-agnostic — RootView
       // never names the terminal here; it iterates the host's converged cell spans and paints each.
-      // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
-      // invariant: A split panel renders every visible cell into its own sub-region (src/modules/terminal/terminal.invariants.md)
+      // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/ui/ui.invariants.md)
+      // invariant: A split panel renders every visible cell into its own sub-region (src/modules/ui/ui.invariants.md)
       if (panelHost.visible.value) {
         const panelFocused = panelHost.focused.value;
         const focusedIndex = panelHost.focusedIndex.value;

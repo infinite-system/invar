@@ -6,7 +6,7 @@ import { Static } from 'ivue/extras';
 import { createHash } from 'node:crypto';
 import { Processes } from './Processes';
 
-// invariant: Copy reaches the host terminal (src/modules/terminal/terminal.invariants.md)
+// invariant: Copy reaches the host terminal (src/modules/system/system.invariants.md)
 // invariant: Clipboard emissions flush at frame boundaries (system.invariants.md)
 
 class $Clipboard {

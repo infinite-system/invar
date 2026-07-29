@@ -162,3 +162,42 @@ status channel or logger.
 **Status:** provisional
 
 **Last refined:** 2026-07-21
+
+### Copy reaches the host terminal
+
+**Invariant:** If the user copies selected text from Settings, the terminal pane, agent transcript,
+or agent composer, then the exact selected UTF-8 text is emitted as OSC 52 through Invar stdout so
+the host terminal receives it across cmux, SSH, or a VM boundary.
+
+**Scope:** `Clipboard.copy`, Settings selection, terminal-pane selection, agent-transcript
+selection, and agent-composer selection. Clipboard reads remain local-tool or in-app-buffer
+operations because OSC 52 is write-only.
+
+**Mechanism:** Every selectable surface reconstructs text grapheme-safely, then calls the one
+`Clipboard.copy` seam. That seam buffers in-app, submits one complete
+`OSC 52 ; c ; base64 BEL` string through the renderer-coordinated `writeOut` binding, and also writes
+a local clipboard tool when available.
+
+**Generates:** Remote copy without `DISPLAY`; one raw-byte assertion shared by every copy surface;
+frame-boundary emission; local clipboard compatibility and in-app paste remain available.
+
+**Rejected alternatives:** Shell out only to xclip or wl-copy — those tools address the remote
+machine clipboard and commonly fail across SSH or VM boundaries.
+
+**Evidence:** The user's cmux host accepted a hand-run OSC 52 sequence on 2026-07-25;
+`src/modules/system/Clipboard.ts`; `scripts/harness/smoke-paste-harness.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`;
+`scripts/harness/smoke-clipboard-frame-boundary-harness.ts`.
+
+**Impossible if true:** A successful in-app copy status with no OSC 52 bytes crossing the app PTY;
+Settings swallowing its registered copy action; terminal selection sending Ctrl+C to the child
+instead of copying; copied Unicode being sliced by UTF-16 units; OSC 52 beginning inside another
+terminal control sequence or synchronized frame.
+
+**Verification:** `bun scripts/harness/smoke-paste-harness.ts && bun
+scripts/harness/smoke-agent-pane-ux-harness.ts && bun
+scripts/harness/smoke-clipboard-frame-boundary-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-27

@@ -499,7 +499,25 @@ try {
       String(status.activeBuffer).endsWith('/manifest.ts') &&
       status.focus === 'editor',
   );
-  driver.sendKeys('Control+Shift+x', 'Down');
+  // Walk to the row by LOOKING for it, not by counting keypresses: the extension list grows as
+  // plugins are contributed, and an ordinal Down would silently land on a neighbour.
+  driver.sendKeys('Control+Shift+x');
+  driver.sendKeysWithoutFrameExpectation(
+    ...Array.from({ length: 12 }, () => 'Up'),
+  );
+  await driver.awaitGridCondition(
+    'the Extensions selection is anchored on its first row',
+    (snapshot) => snapshot.findText('› [x] File Tree') !== null,
+  );
+  for (
+    let selectionStep = 0;
+    selectionStep < 12 &&
+    driver.snapshot().findText('› [x] Inline Rewrite') === null;
+    selectionStep++
+  ) {
+    driver.sendKeys('Down');
+    await driver.awaitScreenChange();
+  }
   await driver.awaitGridCondition(
     'Inline Rewrite is selected in Extensions',
     (snapshot) => snapshot.findText('› [x] Inline Rewrite') !== null,
@@ -555,6 +573,113 @@ try {
   );
   HarnessSmoke.Class.pass(
     'Extensions reinstall restores every Inline Rewrite registration',
+  );
+
+  // The RUNTIME positive control: with no terminal runtime installed, the host must degrade — the
+  // panel affordance opens nothing, the Add menu stops offering the kind, terminal status is simply
+  // absent, and the application stays live. Then reinstall must bring all of it back.
+  console.log(
+    '== plugin manifest: Terminal runtime disable leaves the host live ==',
+  );
+  driver.sendKeys('Control+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the terminal runtime opens its pane before being uninstalled',
+    (status) =>
+      status.terminalVisible === true &&
+      status.terminalObservedEventCount !== undefined,
+  );
+  driver.sendKeys('Control+j', 'Control+Shift+x');
+  // Anchor on the FIRST row (repeated Up saturates at the top), then walk down until the Terminal
+  // row is the selected one — every step then moves toward it, so each wait observes a real change.
+  driver.sendKeysWithoutFrameExpectation(
+    ...Array.from({ length: 12 }, () => 'Up'),
+  );
+  await driver.awaitGridCondition(
+    'the Extensions selection is anchored on its first row',
+    (snapshot) => snapshot.findText('› [x] File Tree') !== null,
+  );
+  for (
+    let selectionStep = 0;
+    selectionStep < 12 && driver.snapshot().findText('› [x] Terminal') === null;
+    selectionStep++
+  ) {
+    driver.sendKeys('Down');
+    await driver.awaitScreenChange();
+  }
+  await driver.awaitGridCondition(
+    'Terminal is selected in Extensions',
+    (snapshot) => snapshot.findText('› [x] Terminal') !== null,
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstalling the Terminal runtime withdraws its status projection',
+    (status) => status.terminalObservedEventCount === undefined,
+  );
+  // Uninstall must leave NO live pane behind. An orphaned pane keeps rendering and holding the
+  // panel's keyboard focus, so it swallows chords on behalf of a runtime that no longer exists.
+  await driver.awaitGridCondition(
+    'the uninstalled runtime leaves no pane in the panel',
+    () =>
+      !(
+        HarnessSmoke.Class.readStatus(statusPath).panelCellIds as
+          string[] | undefined
+      )?.includes('terminal'),
+  );
+  HarnessSmoke.Class.pass(
+    'the Terminal runtime uninstalls, releasing its pane and its status projection',
+  );
+
+  driver.sendKeys('Control+Shift+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'focus returns to the editor with the Terminal runtime disabled',
+    (status) => status.focus === 'editor',
+  );
+  const bufferBeforeInertToggle = String(
+    HarnessSmoke.Class.readStatus(statusPath).activeBuffer,
+  );
+  driver.sendKeysWithoutFrameExpectation('Control+j');
+  await Bun.sleep(500);
+  const statusAfterInertToggle = HarnessSmoke.Class.readStatus(statusPath);
+  HarnessSmoke.Class.requireCondition(
+    statusAfterInertToggle.terminalObservedEventCount === undefined &&
+      String(statusAfterInertToggle.activeBuffer) === bufferBeforeInertToggle &&
+      statusAfterInertToggle.focus === 'editor',
+    'the panel affordance is inert without a terminal runtime and nothing crashes',
+  );
+  HarnessSmoke.Class.pass(
+    'Ctrl+J opens no pane and leaves the editor untouched without a runtime',
+  );
+
+  driver.sendKeys('Control+Shift+x');
+  await driver.awaitGridCondition(
+    'the disabled Terminal row remains selected for reinstall',
+    (snapshot) => snapshot.findText('› [ ] Terminal') !== null,
+  );
+  driver.sendKeys('Space');
+  driver.sendKeys('Control+Shift+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'focus returns to the editor with the Terminal runtime reinstalled',
+    (status) => status.focus === 'editor',
+  );
+  driver.sendKeys('Control+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstalling the Terminal runtime restores its pane and status',
+    (status) =>
+      status.terminalVisible === true &&
+      status.terminalObservedEventCount !== undefined,
+  );
+  HarnessSmoke.Class.pass(
+    'Extensions reinstall restores the Terminal runtime and its pane',
   );
 } finally {
   await driver.dispose();

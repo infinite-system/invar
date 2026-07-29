@@ -4,7 +4,7 @@ import type {
   BoundedListPopupItem,
   BoundedListPopupOpenOptions,
 } from './BoundedListPopup';
-import { PanelAddPopup, type PanelContentKind } from './PanelAddPopup';
+import { PanelAddPopup } from './PanelAddPopup';
 
 test('the panel add adapter offers terminal and agent through the bounded popup', () => {
   let items: readonly BoundedListPopupItem[] = [];
@@ -12,7 +12,7 @@ test('the panel add adapter offers terminal and agent through the bounded popup'
     select?: (item: BoundedListPopupItem) => void;
     options?: BoundedListPopupOpenOptions;
   } = {};
-  const addedKinds: PanelContentKind[] = [];
+  const addedKinds: string[] = [];
   const adapter = new PanelAddPopup.Class({
     popup: {
       openAt(
@@ -30,6 +30,12 @@ test('the panel add adapter offers terminal and agent through the bounded popup'
       openExclusiveOverlay(_name, openOverlay) {
         openOverlay();
       },
+    },
+    addableKinds() {
+      return [
+        { kind: 'terminal', label: 'Terminal' },
+        { kind: 'agent', label: 'Agent' },
+      ];
     },
     addContent(kind) {
       addedKinds.push(kind);

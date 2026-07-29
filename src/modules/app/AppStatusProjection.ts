@@ -20,7 +20,6 @@ import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
-import type { TerminalPaneContent } from '../terminal/TerminalPaneContent';
 import type { StatusProjectionContributions } from './StatusProjectionContributions';
 
 class $AppStatusProjection {
@@ -349,19 +348,6 @@ class $AppStatusProjection {
         return '';
       })(),
       terminalFollowMode: ports.settings.agentTerminalFollowMode.value,
-      terminalObservedEventCount:
-        ports.terminalPaneContent?.observedEventCount ?? 0,
-      terminalExited: ports.terminalPaneContent?.terminalExited ?? false,
-      terminalExitCode: ports.terminalPaneContent?.terminalExitCode ?? null,
-      terminalLastObservedBoundarySource:
-        ports.terminalPaneContent?.lastObservedBoundarySource ?? null,
-      terminalScrollTop: ports.terminalPaneContent?.scrollTop ?? 0,
-      terminalScrollContentRows:
-        ports.terminalPaneContent?.scrollContentRows ?? 0,
-      terminalScrollViewportRows:
-        ports.terminalPaneContent?.scrollViewportRows ?? 0,
-      terminalWheelForwardedToChild:
-        ports.terminalPaneContent?.forwardsWheelToChild ?? false,
       agentLastToolResult: (() => {
         const transcript =
           ports.agentPaneContent?.agentSession.transcript ?? [];
@@ -526,16 +512,5 @@ export interface AppStatusProjectionPorts {
     | 'contentLineCount'
     | 'currentEngine'
     | 'title'
-  > | null;
-  readonly terminalPaneContent: Pick<
-    TerminalPaneContent.Model,
-    | 'observedEventCount'
-    | 'terminalExited'
-    | 'terminalExitCode'
-    | 'lastObservedBoundarySource'
-    | 'scrollTop'
-    | 'scrollContentRows'
-    | 'scrollViewportRows'
-    | 'forwardsWheelToChild'
   > | null;
 }

@@ -352,3 +352,73 @@ test('a user rebind DOES displace the floor chord in the hint map', () => {
   ]);
   expect(registry.bindingHint('quickopen.open', 'global')).toBe('Ctrl+O');
 });
+
+describe('the context a resolution came from', () => {
+  // A global binding deliberately matches inside every context, so a caller that owns a real
+  // surface (a focused terminal receiving raw bytes) cannot tell "mine" from "everyone's" by the
+  // action alone. The reported context is how it tells them apart.
+  test('a resolution reports whether its binding was scoped or global', () => {
+    const registry = new KeybindingRegistry.Class();
+    registry.registerLayer('canonical', [
+      { chord: { key: 'p', ctrl: true }, action: 'quickopen.open' },
+      {
+        chord: { key: 'c', ctrl: true },
+        action: 'terminal.copy',
+        context: 'terminal',
+      },
+    ]);
+
+    const scoped = registry.resolve(chord('c', { ctrl: true }), 'terminal', 0);
+    expect(scoped.action).toBe('terminal.copy');
+    expect(scoped.context).toBe('terminal');
+
+    // Matches inside the terminal context, but it belongs to everyone — a surface must let it pass.
+    const global = registry.resolve(chord('p', { ctrl: true }), 'terminal', 0);
+    expect(global.action).toBe('quickopen.open');
+    expect(global.context).toBe('global');
+
+    const unmatched = registry.resolve(
+      chord('j', { ctrl: true }),
+      'terminal',
+      0,
+    );
+    expect(unmatched.action).toBeNull();
+    expect(unmatched.context).toBeNull();
+  });
+
+  test('the shipped floor keeps terminal pass-through chords out of the terminal context', () => {
+    const registry = registryWithDefaults();
+    // Every chord the driven pass-through sweep requires to reach the child must resolve as global
+    // (or not at all) when a terminal pane is focused, never as a terminal-scoped binding.
+    for (const passThrough of [
+      'p',
+      'f',
+      's',
+      'r',
+      'u',
+      'w',
+      'k',
+      'l',
+      'e',
+      'd',
+      'a',
+    ]) {
+      const resolution = registry.resolve(
+        chord(passThrough, { ctrl: true }),
+        'terminal',
+        0,
+      );
+      expect(resolution.context).not.toBe('terminal');
+    }
+    expect(
+      registry.resolve(chord(',', { ctrl: true }), 'terminal', 0).context,
+    ).not.toBe('terminal');
+    // The canonical floor declares NO terminal-scoped binding at all — the terminal runtime
+    // contributes its own. `TerminalPlugin.test.ts` owns the other half of this pair.
+    expect(
+      KeybindingDefaults.Class.canonicalBindings.some(
+        (binding) => binding.context === 'terminal',
+      ),
+    ).toBe(false);
+  });
+});

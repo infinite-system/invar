@@ -2,6 +2,8 @@ import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Settings } from '../settings/Settings';
+import type { PaneContent } from '../ui/PaneContent.interface';
+import type { PaneRuntimes } from '../ui/PaneRuntimes';
 import type {
   ApplicationContributionCatalog,
   ApplicationContributionContext,
@@ -83,6 +85,15 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
           this.options.primaryDockHost.removeContent(content.id),
         );
       },
+      registerPaneRuntime: (runtime) => {
+        const unregister = this.options.paneRuntimes.register(runtime);
+        registrationDisposers.push(unregister);
+        return {
+          visiblePane: () => this.options.visiblePaneOfKind(runtime.kind),
+          releasePane: (identifier) => this.options.releasePane(identifier),
+          dispose: unregister,
+        };
+      },
     };
     try {
       contributor.activateApplication(context);
@@ -146,9 +157,16 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerKeybindingGuard'
   | 'registerSetting'
   | 'registerPrimaryDockContent'
+  | 'registerPaneRuntime'
 > & {
   keybindings: KeybindingRegistry.Instance;
   settings: Settings.Instance;
+  /** The host's registry of contributed pane runtimes. */
+  paneRuntimes: PaneRuntimes.Model;
+  /** The one panel question a runtime cannot answer for itself. */
+  visiblePaneOfKind: (kind: string) => PaneContent | null;
+  /** Take a runtime-owned pane out of the panel, so uninstall leaves no orphan behind. */
+  releasePane: (identifier: string) => void;
 };
 
 interface ActiveContribution {

@@ -8,24 +8,30 @@ import type { OverlayCoordinator } from './OverlayCoordinator';
 
 // invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelAddPopup {
-  protected static get ITEMS(): readonly BoundedListPopupItem[] {
-    return [
-      { identifier: 'terminal', label: 'Terminal' },
-      { identifier: 'agent', label: 'Agent' },
-    ];
-  }
-
   constructor(protected readonly dependencies: PanelAddPopupDependencies) {}
 
+  /** The offered kinds come from whatever is currently contributed — the popup names none of them,
+   *  so a disabled runtime simply stops being offered. */
+  protected items(): readonly BoundedListPopupItem[] {
+    return this.dependencies
+      .addableKinds()
+      .map((kind) => ({ identifier: kind.kind, label: kind.label }));
+  }
+
   show(anchor: BoundedListPopupAnchor): void {
+    const offeredItems = this.items();
     this.dependencies.overlayCoordinator.openExclusiveOverlay(
       'boundedListPopup',
       () =>
         this.dependencies.popup.openAt(
-          $PanelAddPopup.ITEMS,
+          offeredItems,
           anchor,
           (item) => {
-            if (item.identifier === 'terminal' || item.identifier === 'agent') {
+            if (
+              offeredItems.some(
+                (offered) => offered.identifier === item.identifier,
+              )
+            ) {
               this.dependencies.addContent(item.identifier);
             }
           },
@@ -45,10 +51,15 @@ export namespace PanelAddPopup {
   export type Instance = InstanceType<typeof Class>;
 }
 
-export type PanelContentKind = 'terminal' | 'agent';
+export interface PanelAddPopupKind {
+  readonly kind: string;
+  readonly label: string;
+}
 
 export interface PanelAddPopupDependencies {
   popup: Pick<BoundedListPopup.Instance, 'openAt'>;
   overlayCoordinator: Pick<OverlayCoordinator.Instance, 'openExclusiveOverlay'>;
-  addContent(kind: PanelContentKind): void;
+  /** Live: read at open time so a newly contributed or disabled kind appears or disappears. */
+  addableKinds(): readonly PanelAddPopupKind[];
+  addContent(kind: string): void;
 }

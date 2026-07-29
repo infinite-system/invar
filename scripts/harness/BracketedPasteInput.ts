@@ -1,6 +1,6 @@
 import { Static } from 'ivue/extras';
 
-// invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
+// invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
 class $BracketedPasteInput {
   protected static get startMarker(): Uint8Array {
     return new TextEncoder().encode('\x1b[200~');

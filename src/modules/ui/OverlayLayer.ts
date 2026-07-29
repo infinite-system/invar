@@ -812,7 +812,7 @@ class $OverlayLayer {
       this.settingsSelection.hasSelection()
     );
   }
-  // invariant: Copy reaches the host terminal (src/modules/terminal/terminal.invariants.md)
+  // invariant: Copy reaches the host terminal (src/modules/system/system.invariants.md)
   async copySettingsSelection(): Promise<number> {
     if (!this.settingsHasSelection()) return 0;
     const text = this.settingsSelection.selectedText(

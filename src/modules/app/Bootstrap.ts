@@ -51,11 +51,12 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
-import { PanelAddPopup, type PanelContentKind } from '../ui/PanelAddPopup';
-import type { PaneContent } from '../ui/PaneContent.interface';
-import { TerminalFactory } from '../terminal/TerminalFactory';
-import { TerminalPaneContent } from '../terminal/TerminalPaneContent';
-import type { TerminalCommandEvent } from '../terminal/TerminalCommandController';
+import { PanelAddPopup } from '../ui/PanelAddPopup';
+import type {
+  PaneContent,
+  PaneTextSelectionPort,
+} from '../ui/PaneContent.interface';
+import { PaneRuntimes } from '../ui/PaneRuntimes';
 import { AgentFactory } from '../agent/AgentFactory';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { BracketMatch } from '../editor/BracketMatch';
@@ -68,7 +69,10 @@ import {
   type AgentTranscriptSearchPort,
 } from '../agent/AgentPaneContent';
 import { AgentProviderRegistry } from '../agent/AgentProviderRegistry';
-import { AgentTerminalFollow } from '../agent/AgentTerminalFollow';
+import {
+  AgentTerminalFollow,
+  type AgentTerminalObservationPort,
+} from '../agent/AgentTerminalFollow';
 import { AgentSkillPopup } from '../agent/AgentSkillPopup';
 import { TtsFactory } from '../narration/TtsFactory';
 import type { TtsBackend } from '../narration/TtsBackend.interface';
@@ -220,9 +224,11 @@ class $Bootstrap {
     const findBar = new FindBar.Class();
     const quickOpen = new QuickOpen.Class();
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
-    // The bottom panel slot: a generic, content-agnostic host. Tier S registers ONE PaneContent (the
-    // terminal), lazily on first toggle so no shell spawns until the panel is opened.
+    // The bottom panel slot: a generic, content-agnostic host. Its occupants come from contributed
+    // RUNTIMES, built lazily on first toggle so nothing is started until the panel is opened.
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
+    // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
+    const paneRuntimes = new PaneRuntimes.Class();
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
     const panelHost = new PanelHost.Class({
       contentOrder: settings.panelContentOrder,
@@ -277,6 +283,11 @@ class $Bootstrap {
         statusBarSegments,
         statusProjectionContributions,
         editorSurfaceContents,
+        paneRuntimes,
+        visiblePaneOfKind: (kind) => panelHost.visibleContentOfKind(kind),
+        releasePane: (identifier) => {
+          if (panelHost.has(identifier)) panelHost.removeContent(identifier);
+        },
         editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
         dismissEditorSuggestions: () => dismissEditorSuggestions(),
         bindingHint: (action, context) =>
@@ -307,7 +318,12 @@ class $Bootstrap {
       rightDockHost.blur();
       const visibleTerminal = panelHost.visibleContentOfKind('terminal');
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
-      else panelHost.showContent(ensureTerminal().id);
+      else {
+        // No runtime for this kind (its plugin is disabled) — the affordance degrades to nothing
+        // rather than crashing.
+        const pane = ensureRuntimePane('terminal');
+        if (pane) panelHost.showContent(pane.id);
+      }
     };
 
     // The native agent pane owns its own headed region in the bottom-panel layout. Opening it while the
@@ -390,19 +406,22 @@ class $Bootstrap {
       !view.modalOverlayOwnsScreen() && !completionPopup.open;
     dismissEditorSuggestions = dismissCompletion;
 
-    // Lazily create + register the terminal PaneContent on first toggle (idle cost is zero until then).
-    // The initial cols×rows seed from the laid-out panel region; the frame loop converges the true size.
-    const terminalPaneContents = new Map<string, TerminalPaneContent.Model>();
+    // Lazily create + register a runtime's PaneContent on first toggle (idle cost is zero until
+    // then). The initial cols×rows seed from the laid-out panel region; the frame loop converges the
+    // true size. The host names no runtime: it passes a KIND to the registry and registers whatever
+    // comes back.
+    const runtimePanes = new Map<string, PaneContent>();
     const agentPaneContents = new Map<string, AgentPaneContent.Model>();
-    let terminalInstanceCount = 0;
     let agentInstanceCount = 0;
-    let terminalPaneContent: TerminalPaneContent.Model | null = null;
     let agentPaneContent: AgentPaneContent.Model | null = null;
-    const currentTerminalPane = (): TerminalPaneContent.Model | null => {
-      const visibleContent = panelHost.visibleContentOfKind('terminal');
-      return visibleContent instanceof TerminalPaneContent.Class
-        ? visibleContent
-        : terminalPaneContent;
+    /** The pane an outside consumer means by a kind: the visible one, else the oldest live one. */
+    const currentPaneOfKind = (kind: string): PaneContent | null => {
+      const visibleContent = panelHost.visibleContentOfKind(kind);
+      if (visibleContent) return visibleContent;
+      for (const pane of runtimePanes.values()) {
+        if (pane.kind === kind) return pane;
+      }
+      return null;
     };
     const currentAgentPane = (): AgentPaneContent.Model | null => {
       const visibleContent = panelHost.visibleContentOfKind('agent');
@@ -449,76 +468,53 @@ class $Bootstrap {
       },
     };
     const connectTerminalFollow = (): void => {
-      if (
-        terminalFollowController ||
-        !terminalPaneContent ||
-        !agentPaneContent
-      ) {
+      const observationPort = currentPaneOfKind(
+        'terminal',
+      )?.capability?.<AgentTerminalObservationPort>('terminal-observation');
+      if (terminalFollowController || !observationPort || !agentPaneContent) {
         return;
       }
       terminalFollowController = new AgentTerminalFollow.Class(
         agentPaneContent.agentSession,
-        terminalPaneContent,
+        observationPort,
         settings.agentTerminalFollowMode,
         () => settings.save(),
       );
     };
-    const terminalCommandEventText = (event: TerminalCommandEvent): string => {
-      switch (event.kind) {
-        case 'pending':
-          return `terminal command pending at ${event.currentWorkingDirectory || 'unknown cwd'} — waiting for an idle prompt: ${event.command}`;
-        case 'staged':
-          return `terminal command staged at ${event.currentWorkingDirectory || 'unknown cwd'} — edit it, press Enter to execute, or Ctrl+C to reject: ${event.command}`;
-        case 'replaced-then-staged':
-          return `terminal command replaced-then-staged at ${event.currentWorkingDirectory || 'unknown cwd'}\n- ${event.replacedCommand}\n+ ${event.command}`;
-        case 'user-executed':
-          return `terminal command user-executed: ${event.command}`;
-        case 'user-edited-then-executed':
-          return `terminal command user-edited-then-executed\n- ${event.command}\n+ ${event.executedCommand}`;
-        case 'agent-executed':
-          return `terminal command agent-executed at ${event.currentWorkingDirectory || 'unknown cwd'}: ${event.command}`;
-        case 'aborted':
-          return `terminal command staging aborted by user input before execution: ${event.command}`;
-        case 'rejected':
-          return `terminal command rejected with Ctrl+C: ${event.command}`;
-      }
-    };
-    const createTerminal = (
+    // Build a pane through its contributed runtime. The host supplies identity and the laid-out
+    // geometry; the runtime decides what — if anything — it starts behind them.
+    const createRuntimePane = (
+      kind: string,
       additionalInstance = false,
-    ): TerminalPaneContent.Model => {
-      const instanceNumber =
-        additionalInstance || terminalPaneContents.size > 0
-          ? terminalInstanceCount + 1
-          : 1;
-      terminalInstanceCount = Math.max(terminalInstanceCount, instanceNumber);
-      const identifier =
-        instanceNumber === 1 ? 'terminal' : `terminal-${instanceNumber}`;
-      const label =
-        instanceNumber === 1 ? 'Terminal' : `Terminal ${instanceNumber}`;
-      const content = TerminalFactory.Class.create({
-        identifier,
-        label,
+    ): PaneContent | null => {
+      const anyExisting = [...runtimePanes.values()].some(
+        (pane) => pane.kind === kind,
+      );
+      const identity = paneRuntimes.allocateInstanceIdentity(
+        kind,
+        additionalInstance || anyExisting,
+      );
+      if (!identity) return null;
+      const content = paneRuntimes.createPane(kind, {
+        identifier: identity.identifier,
+        label: identity.label,
         columns: view.panelViewportColumns() || 80,
         rows: view.panelViewportRows() || 24,
-        cwd: workspaceSet.active.root,
-        cleanPrompt: settings.terminalCleanPrompt.value,
-        promptColor: theme.palette.terminalPrompt,
-        typingSpeed: () => settings.agentTypingSpeed.value,
-        reducedMotion: () => settings.reducedMotion.value,
+        workingDirectory: workspaceSet.active.root,
       });
-      terminalPaneContents.set(content.id, content);
-      terminalPaneContent ??= content;
-      content.onTerminalCommandEvent((event) => {
-        currentAgentPane()?.agentSession.appendSystemNote(
-          terminalCommandEventText(event),
-        );
-      });
+      if (!content) return null;
+      runtimePanes.set(content.id, content);
+      // A pane's own notes reach whatever surface shows them; the host neither composes nor reads
+      // them.
+      content.onSystemNote?.((note) =>
+        currentAgentPane()?.agentSession.appendSystemNote(note),
+      );
       panelHost.register(content);
       connectTerminalFollow();
       return content;
     };
-    const ensureTerminal = (): TerminalPaneContent.Model =>
-      terminalPaneContent ?? createTerminal();
+    const ensureRuntimePane = (kind: string): PaneContent | null =>
+      currentPaneOfKind(kind) ?? createRuntimePane(kind);
 
     // The native agent pane — a second PaneContent with its OWN headed region in the bottom layout,
     // registered lazily on first toggle (idle cost zero). The host still supplies the shared layout and
@@ -570,28 +566,41 @@ class $Bootstrap {
       );
     };
 
-    const prepareTerminalForAgentCommand = (): TerminalPaneContent.Model => {
-      const terminalPane = currentTerminalPane() ?? ensureTerminal();
+    // The agent's declared terminal-tool dependency, resolved through the pane capability the
+    // CONSUMER names. The host relays the identifier and never learns what backs the port; with no
+    // runtime for the kind the tools report the absence instead of crashing.
+    const terminalCommandPort = (): AgentTerminalToolPort => {
+      const port =
+        ensureRuntimePane('terminal')?.capability?.<AgentTerminalToolPort>(
+          'terminal-commands',
+        );
+      if (!port) throw new Error('No terminal runtime is installed');
+      return port;
+    };
+    const revealTerminalForAgentCommand = (): AgentTerminalToolPort => {
+      const terminalPane = ensureRuntimePane('terminal');
+      const port =
+        terminalPane?.capability?.<AgentTerminalToolPort>('terminal-commands');
+      if (!terminalPane || !port) {
+        throw new Error('No terminal runtime is installed');
+      }
       panelHost.showContent(terminalPane.id);
       const terminalIndex = panelHost.resolvedCells.findIndex(
         (cell) => cell.content.id === terminalPane.id,
       );
       if (terminalIndex >= 0) panelHost.focusCell(terminalIndex);
-      return terminalPane;
+      return port;
     };
     const terminalToolPort: AgentTerminalToolPort = {
-      readTerminalInput: () =>
-        (currentTerminalPane() ?? ensureTerminal()).readTerminalInput(),
+      readTerminalInput: () => terminalCommandPort().readTerminalInput(),
       readTerminalScrollback: (request) =>
-        (currentTerminalPane() ?? ensureTerminal()).readTerminalScrollback(
-          request,
-        ),
+        terminalCommandPort().readTerminalScrollback(request),
       stageTerminalCommand: (command) =>
-        prepareTerminalForAgentCommand().stageTerminalCommand(command),
+        revealTerminalForAgentCommand().stageTerminalCommand(command),
       replaceTerminalInput: (command) =>
-        prepareTerminalForAgentCommand().replaceTerminalInput(command),
+        revealTerminalForAgentCommand().replaceTerminalInput(command),
       runTerminalCommand: (command) =>
-        prepareTerminalForAgentCommand().runTerminalCommand(command),
+        revealTerminalForAgentCommand().runTerminalCommand(command),
     };
 
     // --- Live engine switcher (claude ⇄ codex) --------------------------------------------------------
@@ -677,11 +686,7 @@ class $Bootstrap {
     const ensureAgent = (): AgentPaneContent.Model =>
       agentPaneContent ?? createAgent();
     handlePanelContentRemoved = (content): void => {
-      if (content instanceof TerminalPaneContent.Class) {
-        terminalPaneContents.delete(content.id);
-        terminalPaneContent =
-          terminalPaneContents.values().next().value ?? null;
-      }
+      if (runtimePanes.delete(content.id)) paneRuntimes.paneRemoved(content);
       if (content instanceof AgentPaneContent.Class) {
         agentPaneContents.delete(content.id);
         const removedNarration = narrationsByAgentIdentifier.get(content.id);
@@ -702,23 +707,24 @@ class $Bootstrap {
           if (panelHost.has(request.identifier)) {
             panelHost.removeContent(request.identifier);
           }
-          panelHost.register(
-            TerminalFactory.Class.create({
-              identifier: request.identifier,
-              label: request.label,
-              kind: request.identifier,
-              heading: request.label,
-              columns: view.panelViewportColumns() || 80,
-              rows: view.panelViewportRows() || 24,
-              cwd: request.workspaceRoot,
+          // A declared task is the same runtime request as an ordinary terminal, plus the process it
+          // declares. The host passes the declaration through; only the runtime knows a PTY is how
+          // it gets started.
+          const content = paneRuntimes.createPane('terminal', {
+            identifier: request.identifier,
+            label: request.label,
+            kind: request.identifier,
+            heading: request.label,
+            columns: view.panelViewportColumns() || 80,
+            rows: view.panelViewportRows() || 24,
+            workingDirectory: request.workspaceRoot,
+            process: {
               command: request.command,
               arguments: request.arguments,
               environment: request.environment,
-              cleanPrompt: false,
-              typingSpeed: () => settings.agentTypingSpeed.value,
-              reducedMotion: () => settings.reducedMotion.value,
-            }),
-          );
+            },
+          });
+          if (content) panelHost.register(content);
         },
         // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
         present: (identifiers, transferFocus) => {
@@ -750,16 +756,21 @@ class $Bootstrap {
     app.onDispose(disposeTasksStatus);
     app.onDispose(disposeTasksContribution);
 
-    const addPanelContent = (kind: PanelContentKind): void => {
+    const addPanelContent = (kind: string): void => {
       primaryDockHost.blur();
       rightDockHost.blur();
       const content =
-        kind === 'terminal' ? createTerminal(true) : createAgent(true);
-      panelHost.showContent(content.id);
+        kind === 'agent' ? createAgent(true) : createRuntimePane(kind, true);
+      if (content) panelHost.showContent(content.id);
     };
     panelAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
       overlayCoordinator,
+      // Contributed runtimes first, then the host's own agent pane (not yet a runtime — #122/#35).
+      addableKinds: () => [
+        ...paneRuntimes.addableKinds(),
+        { kind: 'agent', label: 'Agent' },
+      ],
       addContent: addPanelContent,
     });
     app.onDispose(() => {
@@ -775,14 +786,14 @@ class $Bootstrap {
     // add the missing terminal/agent region beside the current one, or collapse a split back to the
     // focused region.
     const togglePanelSplit = (): void => {
-      const terminal = ensureTerminal();
+      const terminal = ensureRuntimePane('terminal');
       const agent = ensureAgent();
       if (panelHost.isSplit) {
         panelHost.unsplit();
         return;
       }
       if (!panelHost.visible.value) panelHost.show();
-      panelHost.split([agent.id, terminal.id]);
+      panelHost.split(terminal ? [agent.id, terminal.id] : [agent.id]);
     };
     const focusPanelContent = (direction: -1 | 1): void => {
       const contentCount = panelHost.resolvedCells.length;
@@ -911,9 +922,6 @@ class $Bootstrap {
       },
       get agentPaneContent() {
         return currentAgentPane();
-      },
-      get terminalPaneContent() {
-        return currentTerminalPane();
       },
     };
 
@@ -1778,14 +1786,15 @@ class $Bootstrap {
         }
       },
       'agent.cycleTerminalFollowMode': cycleTerminalFollowMode,
+      // Copy from whichever focused pane publishes a text-selection port; the host never learns
+      // which pane that is. The word actions exist so the terminal context claims those chords —
+      // handling is the pane's own, reached by forwarding the original key.
       'terminal.copy': () => {
-        const focusedContent = panelHost.focusedContent;
-        const pane =
-          focusedContent instanceof TerminalPaneContent.Class
-            ? focusedContent
-            : currentTerminalPane();
-        if (!pane) return;
-        publishCopyResult(pane.copySelection());
+        const selection = (
+          panelHost.focusedContent ?? currentPaneOfKind('terminal')
+        )?.capability?.<PaneTextSelectionPort>('text-selection');
+        if (!selection) return;
+        publishCopyResult(selection.copySelection());
       },
       'terminal.wordLeft': (key) => panelHost.handleKey(key),
       'terminal.wordRight': (key) => panelHost.handleKey(key),
@@ -2006,7 +2015,7 @@ class $Bootstrap {
       // terminal bytes and delivered to the active PaneContent's handleKey. Reserved globals (quit, panel
       // toggle) already fired above, so Ctrl+Q / F10 still quit and the toggle still hides the panel; an
       // unencodable key is swallowed so it never drives the hidden editor beneath.
-      // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
+      // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
       if (
         !modalOverlayOwnsScreen &&
         panelHost.visible.value &&
@@ -2095,8 +2104,20 @@ class $Bootstrap {
             return;
           }
         }
-        if (focusedContent instanceof TerminalPaneContent.Class) {
-          const terminalResolution = keybindings.resolve(
+        // A focused pane that declares its own keybinding context resolves in it, and the PANE says
+        // whether it claims the resolved action right now. A declined action falls through to raw
+        // input — that is how a terminal without a selection still sends Ctrl+C as SIGINT. The host
+        // reads no pane type and no action vocabulary.
+        //
+        // Only bindings SCOPED to the pane's own context may be dispatched here. `resolve` lets
+        // global bindings match inside any context, and a focused pane owning a real surface must
+        // NOT swallow them: Ctrl+P/Ctrl+F/Ctrl+S and Ctrl+, have to reach the child as bytes, and a
+        // reserved frame chord has already fired above. That is what `resolution.context` guards.
+        // invariant: A focused pane consumes only its own scoped bindings (src/modules/ui/ui.invariants.md)
+        const contextOwningPane: PaneContent | null = panelHost.focusedContent;
+        const paneKeybindingContext = contextOwningPane?.keybindingContext;
+        if (contextOwningPane && paneKeybindingContext) {
+          const paneContextResolution = keybindings.resolve(
             {
               name: key.name,
               ctrl: key.ctrl,
@@ -2104,22 +2125,16 @@ class $Bootstrap {
               option: key.option || key.meta,
               super: key.super,
             },
-            'terminal',
+            paneKeybindingContext,
             Date.now(),
           );
+          const paneContextAction = paneContextResolution.action;
           if (
-            terminalResolution.action === 'terminal.copy' &&
-            focusedContent.hasSelection()
+            paneContextAction &&
+            paneContextResolution.context === paneKeybindingContext &&
+            (contextOwningPane.claimsContextAction?.(paneContextAction) ?? true)
           ) {
-            dispatchAction('terminal.copy', key);
-            return;
-          }
-          if (terminalResolution.action?.startsWith('terminal.word')) {
-            dispatchAction(terminalResolution.action, key);
-            return;
-          }
-          if (terminalResolution.action === 'terminal.deletePreviousWord') {
-            dispatchAction(terminalResolution.action, key);
+            dispatchAction(paneContextAction, key);
             return;
           }
         }
@@ -2405,8 +2420,8 @@ class $Bootstrap {
     // startup and RE-enters on every recovery — never enabled inline here, or the tab-refocus recovery
     // forgets it and paste/dictation dies until restart (the mode-ownership-split bug).
     // A framed paste yields NO keypresses, so OpenTUI's paste event is the ONLY delivery path.
-    // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
-    // invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
+    // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
+    // invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
     // Route a paste to the same target the keyboard has: the focused panel pane (terminal PTY / agent
     // composer), else a focused single-line modal input (quick-open / find), else the editor. Mirrors
     // keyTick's dispatch order so paste lands exactly where typing would.

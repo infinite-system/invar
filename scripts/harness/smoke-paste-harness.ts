@@ -3,8 +3,8 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-// invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
-// invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
+// invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
+// invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

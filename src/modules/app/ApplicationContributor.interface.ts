@@ -7,6 +7,10 @@ import type { ContextMenu } from '../ui/ContextMenu';
 import type { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import type { PanelHost } from '../ui/PanelHost';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import type {
+  PaneRuntime,
+  PaneRuntimeHostPort,
+} from '../ui/PaneRuntime.interface';
 import type { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import type { StatusBarSegments } from '../ui/StatusBarSegments';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
@@ -56,6 +60,9 @@ export interface ApplicationContributionContext {
     contribution: SettingContribution<Value>,
   ) => RegisteredSetting<Value>;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
+  /** Register a RUNTIME: the owner of one bottom-panel pane kind and the processes behind it. The
+   *  host answers only which of that kind is visible; everything else stays inside the runtime. */
+  readonly registerPaneRuntime: (runtime: PaneRuntime) => PaneRuntimeHostPort;
   readonly editorInteractionIsAvailable: () => boolean;
   readonly dismissEditorSuggestions: () => void;
   readonly bindingHint: (action: string, context: string) => string;
