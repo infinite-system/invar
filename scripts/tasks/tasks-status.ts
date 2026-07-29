@@ -40,6 +40,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -1053,6 +1054,31 @@ function statsLine(tasksRoot: string): string {
 // tasks:watch — the live view as a dashboard: spinners on building tasks,
 // READY rows still, durations ticking. Redraws every 2 s; Ctrl+C exits.
 // Motion means work; stillness means a report is waiting for the conductor.
+// Flyweight for the watch: work is proportional to what CHANGED, not to the
+// clock. A seven-stat mtime probe decides whether the task tree is re-read;
+// the 95k-line source count recomputes only when the commit count moves
+// (a landing), never on schedule.
+function tasksTreeStamp(tasksRoot: string): string {
+  const parts: string[] = [];
+  for (const state of TASK_STATES) {
+    try {
+      parts.push(String(statSync(join(tasksRoot, state)).mtimeMs));
+    } catch {
+      parts.push('0');
+    }
+  }
+  try {
+    for (const folder of readdirSync(join(tasksRoot, 'in-progress'))) {
+      parts.push(
+        String(statSync(join(tasksRoot, 'in-progress', folder)).mtimeMs),
+      );
+    }
+  } catch {
+    // no in-progress directory yet
+  }
+  return parts.join(':');
+}
+
 async function watchLenses(tasksRoot: string): Promise<number> {
   let frame = 0;
   // Deltas are measured against the moment the watch started: "what grew
@@ -1083,15 +1109,25 @@ async function watchLenses(tasksRoot: string): Promise<number> {
   const STATS_EVERY_FRAMES = 1800;
   let cachedRecords = readTaskRecords(tasksRoot);
   let cachedLanded = baselineLanded;
+  let lastTreeStamp = tasksTreeStamp(tasksRoot);
   for (;;) {
     if (frame % DATA_EVERY_FRAMES === 0 || frame === 0) {
-      cachedRecords = readTaskRecords(tasksRoot);
-      cachedLanded = landedTodayStats(tasksRoot).landedToday;
+      const stamp = tasksTreeStamp(tasksRoot);
+      if (stamp !== lastTreeStamp) {
+        lastTreeStamp = stamp;
+        cachedRecords = readTaskRecords(tasksRoot);
+        cachedLanded = landedTodayStats(tasksRoot).landedToday;
+      }
+      // Builder diffs always refresh on the tick — the worktrees are where
+      // the motion IS, and it is one cached-base spawn per builder.
       refreshLineDeltas(cachedRecords);
     }
     if (frame % STATS_EVERY_FRAMES === 0 && frame > 0) {
-      sampledCommits = commitsToday();
-      sampledLines = sourceLineCount();
+      const commitsNow = commitsToday();
+      if (commitsNow !== sampledCommits) {
+        sampledCommits = commitsNow;
+        sampledLines = sourceLineCount(); // only when a landing moved main
+      }
     }
     // Home, then clear to end — repaint in place inside the alt screen.
     process.stdout.write('\x1b[H\x1b[0J');
