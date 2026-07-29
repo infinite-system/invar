@@ -235,13 +235,14 @@ the active palette, so a theme change restyles the preview without touching the 
 **Mechanism:** One rule table maps element selectors (`heading1`…`heading6`, `paragraph`,
 `blockquote`, `listItem`, `codeBlock`, `table`…, `rule`) to margins and text styles, one
 vocabulary object holds the structural glyphs, and `spacingBetween` collapses adjacent margins
-CSS-style. `blockSelector`/`rowSelector` are the only translation from parsed blocks and row
-roles into selectors.
+CSS-style. The level-one heading uses the `keyword` slot with bold text and no underline. The
+level-two heading keeps its bold `accent` style. `blockSelector`/`rowSelector` are the only
+translation from parsed blocks and row roles into selectors.
 
 **Generates:** uniform pane padding (the breathing room between text and pane edges); the
-heading intensity ramp; single-spaced list runs that still separate from paragraphs; the quote
-bar on every wrapped quote row; code frames whose right edge stays on one column; consistent
-presentation across every element without per-element literals.
+color-and-intensity heading ramp with no H1 underline; single-spaced list runs that still separate
+from paragraphs; the quote bar on every wrapped quote row; code frames whose right edge stays on
+one column; consistent presentation across every element without per-element literals.
 
 **Rejected alternatives:** per-element literals scattered through projection and paint — the
 pre-#236 state, where the quote bar and code frame dropped off continuation rows because each
@@ -251,14 +252,53 @@ call site re-rolled its own prefix policy.
 `MarkdownPreview.ts` (`visitBlock`, `collectRows`, `totalRows` consume metrics);
 `MarkdownRenderable.ts` (`styledChunk`, `decorateText` consume text styles);
 `MarkdownStylesheet.test.ts` (the census test proves the consumers hold no presentation
-vocabulary).
+vocabulary); `scripts/harness/smoke-markdown-harness.ts` (H1 and H2 terminal cell attributes in
+both themes).
 
 **Impossible if true:** a box-drawing or bullet glyph literal inside `MarkdownPreview.ts` or
 `MarkdownRenderable.ts`; a palette slot chosen in the painter outside the stylesheet (the pane
-fg/bg defaults excepted); two elements resolving the same presentation question through
-different code paths.
+fg/bg defaults excepted); an underlined H1; H1 and H2 with identical terminal attributes; two
+elements resolving the same presentation question through different code paths.
 
-**Verification:** `bun test src/modules/markdown/MarkdownStylesheet.test.ts`
+**Verification:** `bun test src/modules/markdown/MarkdownStylesheet.test.ts && bun
+scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Metadata fields preserve authored lines
+
+**Invariant:** If a paragraph contains two or more consecutive `Key: value` metadata fields, then
+each field keeps its authored line boundary in the preview, while ordinary prose lines still join
+and reflow as one paragraph.
+
+**Scope:** `MarkdownParser.readParagraph`, metadata labels made from letters, digits, spaces,
+underscores, or hyphens, and the rows that `MarkdownPreview.visitWrapped` projects from the parsed
+paragraph. A single field line and mixed prose remain ordinary reflowing paragraphs.
+
+**Mechanism:** `MarkdownParser.isMetadataFieldLine` recognizes a complete paragraph only when every
+line has the metadata-field shape and the paragraph has at least two lines. `readParagraph` joins
+that block with newline characters and joins every other paragraph with spaces. The shared wrapped
+text path turns only preserved newline characters into preview rows.
+
+**Generates:** readable task-file header stacks; definition-like metadata blocks; unchanged
+CommonMark-style reflow for ordinary source-wrapped prose.
+
+**Rejected alternatives:** Treat every Markdown soft break as a line break — ordinary prose would
+stop reflowing. Special-case task filenames or known field labels — the semantic would depend on
+one repository format instead of the authored block shape.
+
+**Evidence:** `src/modules/markdown/MarkdownParser.ts` (`readParagraph`,
+`isMetadataFieldLine`); `MarkdownParser.test.ts` (`preserves consecutive metadata fields while
+prose still reflows`); `scripts/harness/smoke-markdown-harness.ts` (task fields and prose through
+the real PTY).
+
+**Impossible if true:** a task header painting `State:`, `Created:`, and `Engine:` on one preview
+row; an ordinary two-line prose paragraph painting an authored line break.
+
+**Verification:** `bun test src/modules/markdown/MarkdownParser.test.ts && bun
+scripts/harness/smoke-markdown-harness.ts`
 
 **Status:** provisional
 
