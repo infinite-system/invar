@@ -59,6 +59,17 @@ class $MarkdownPreview {
     return this.document.value?.revision.value ?? -1;
   }
 
+  referenceTargets(): string[] {
+    const targets: string[] = [];
+    for (const block of this.blocks) {
+      targets.push(...block.links);
+      for (const row of block.table?.rows ?? []) {
+        for (const cell of row) targets.push(...cell.links);
+      }
+    }
+    return targets;
+  }
+
   open(
     source: MarkdownSource,
     renderTarget: RenderTarget | null = null,

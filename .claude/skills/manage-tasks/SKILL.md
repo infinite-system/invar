@@ -24,6 +24,12 @@ Folder name: `<number>-<descriptive-name>`, three words minimum. `dispatch.sh` r
 shorter slug. `fold-flyweight` forced a reader to open the brief. `folded-editing-scale-invariance`
 did not. A folder name is read far more often than it is typed.
 
+Link to a task folder by its stable name. The state directory in a written
+`.invar/tasks/<state>/<task-folder>/...` path is a hint, not the task identity.
+If that exact path is absent, a task-link resolver retries the same task-folder and file tail
+under the other state directories. It never searches by basename or applies this fallback to
+paths outside the four task-state directories.
+
 Write all task prose in plain language. Follow `.claude/skills/ste-expression/SKILL.md`,
 flavored mode. This applies to task files, briefs, reports, and summaries. Keep exact paths,
 counts, and hashes. Lint a brief before dispatch:

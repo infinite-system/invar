@@ -285,10 +285,24 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
       workspaceDirectory,
       'project.invariants.md',
     );
+    const taskFolderName = '291-task-links-survive-state-moves';
+    const currentTaskDirectory = join(
+      workspaceDirectory,
+      '.invar',
+      'tasks',
+      'completed',
+      taskFolderName,
+    );
+    const currentTaskTarget = join(
+      currentTaskDirectory,
+      `task-${taskFolderName}.md`,
+    );
     makeDirectorySync(sourceDirectory);
+    makeDirectorySync(currentTaskDirectory, { recursive: true });
     writeFileSync(sourcePath, '# Guide\n');
     writeFileSync(sourceRelativeTarget, '# Details\n');
     writeFileSync(rootRelativeTarget, '# Invariants\n');
+    writeFileSync(currentTaskTarget, '# Task\n');
 
     const workspace = createWorkspace();
     workspace.root = workspaceDirectory;
@@ -305,6 +319,19 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     ).toBeNull();
     expect(workspace.resolveFileReference('../outside.md')).toBeNull();
     expect(workspace.resolveFileReference('missing.md')).toBeNull();
+    expect(
+      workspace.resolveFileReference(
+        `.invar/tasks/active/${taskFolderName}/task-${taskFolderName}.md`,
+      ),
+    ).toBe(currentTaskTarget);
+    expect(
+      workspace.resolveFileReference(
+        '.invar/tasks/active/292-dead-task-state-link/task-292-dead-task-state-link.md',
+      ),
+    ).toBeNull();
+    expect(
+      workspace.resolveFileReference(`src/task-${taskFolderName}.md`),
+    ).toBeNull();
 
     expect(workspace.openFileReference('project.invariants.md')).toBe(true);
     expect(workspace.editor.document.path).toBe(rootRelativeTarget);

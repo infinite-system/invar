@@ -77,6 +77,10 @@ test('inline styles overlay the element style through the stylesheet', () => {
   expect(stylesheet.inlineTextStyle('inlineEmphasis').colorSlot).toBe(null);
   expect(stylesheet.inlineTextStyle('inlineStrong').bold).toBe(true);
   expect(stylesheet.inlineTextStyle('inlineLink').underline).toBe(true);
+  expect(stylesheet.deadReferenceStyle).toMatchObject({
+    colorSlot: 'error',
+    underline: true,
+  });
 });
 
 test('pane padding gives body text breathing room from the pane edges', () => {

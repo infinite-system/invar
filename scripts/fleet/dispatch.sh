@@ -347,6 +347,8 @@ while [ -e "$dispatch_directory/brief-${task_number}-${brief_sequence}-${slug}.m
 done
 brief_dated_name="brief-${task_number}-${brief_sequence}-${slug}.md"
 cp "$brief_file" "$dispatch_directory/$brief_dated_name"
+PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
+  --fix --moved-only "$dispatch_directory/$brief_dated_name"
 
 # meta.json is written BEFORE the commit so it lands WITH the brief. Written afterwards it stayed
 # untracked and never became part of the audit record — the same "a record that needs a second step
