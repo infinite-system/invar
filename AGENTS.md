@@ -82,6 +82,14 @@ Bycatch explicitly includes the CONTRACT LAYER, not only runtime defects:
 - **Comment drift**: a comment, doc line, or record clause that no longer matches the code or
   the invariant beside it — a stale citation, a rotted enumeration, a rule stated only in a
   comment with no record behind it. Name both sides of the disagreement.
+- **A distillation possibility**: two or more sites you read that produce the same effect from
+  the same underlying generator — near-copies, parallel implementations, the same math or
+  policy re-rolled. Name the sites and the shared generator you believe is behind them
+  (convention 2). Do not unify them yourself; the seam call is a design decision.
+- **Generator drift / introduced variance**: consumers of ONE seam starting to diverge — a
+  consumer bypassing the seam, re-implementing part of it, or suppressing its core to fit; or
+  a change (including your own task's) that made two previously identical paths behave
+  differently. Name the seam, the diverging consumer, and what now varies.
 
 These reports feed later cleanup tasks. A drifted comment you silently pass is a trap set
 for the next reader; a named one is a task someone can dispatch.
