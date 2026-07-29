@@ -1,6 +1,6 @@
 # 254 — INVAR_GATE_WORKERS is validated after the gate has already taken side effects
 
-State: IN-PROGRESS
+State: COMPLETED — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
 Created: 2026-07-29
 Engine: codex
 Environment: linux
