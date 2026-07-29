@@ -1,6 +1,6 @@
 # 291 — task links survive state moves: the name is the identity, the state is a wildcard
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
