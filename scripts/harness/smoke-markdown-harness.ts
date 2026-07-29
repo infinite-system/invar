@@ -539,7 +539,7 @@ async function driveTerminalShrinkAtScale(
       `${fixtureLineCount}-line preview target`,
     );
 
-    if (fixtureLineCount === 500) {
+    if (fixtureLineCount === 500 || fixtureLineCount === 100_000) {
       console.log(
         `== harness markdown: ${fixtureLineCount}-line trailing body row hit boundary ==`,
       );

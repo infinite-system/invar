@@ -44,13 +44,15 @@ class $MarkdownPreview {
   protected positionMapValue: MarkdownSourcePositionMap = {
     sourceLines: [],
     renderedRows: [],
+    blockIndices: [],
+    totalRows: 0,
   };
+  protected rowLayoutRevision = -1;
+  protected rowLayoutWidth = -1;
+  protected wrappedRowOffsetsByBlock = new Map<BlockRecord, Uint32Array>();
   protected contentWidthRevision = -1;
   protected contentWidthViewport = -1;
   protected contentWidthValue = 1;
-  protected contentRowsRevision = -1;
-  protected contentRowsViewport = -1;
-  protected contentRowsValue = 0;
 
   get document() {
     return shallowRef<MarkdownDocument.Model | null>(null);
@@ -204,15 +206,18 @@ class $MarkdownPreview {
     ) {
       return this.positionMapValue;
     }
+    this.prepareRowLayoutCache(normalizedWidth);
 
     const stylesheet = MarkdownStylesheet.Class;
     const sourceLines: number[] = [];
     const renderedRows: number[] = [];
+    const blockIndices: number[] = [];
     let rowIndex = 0;
     let previousSelector: MarkdownElementSelector | null = null;
     let finalSourceLine = 0;
 
-    for (const block of this.blocks) {
+    for (let blockIndex = 0; blockIndex < this.blocks.length; blockIndex++) {
+      const block = this.blocks[blockIndex]!;
       if (block.kind === 'list') continue;
       const selector = stylesheet.blockSelector(block);
       rowIndex += stylesheet.spacingBetween(previousSelector, selector);
@@ -223,6 +228,7 @@ class $MarkdownPreview {
       ) {
         sourceLines.push(block.range.startLine);
         renderedRows.push(rowIndex);
+        blockIndices.push(blockIndex);
       }
       rowIndex += this.rowCountForBlock(block, normalizedWidth);
       finalSourceLine = Math.max(finalSourceLine, block.range.endLine);
@@ -236,12 +242,30 @@ class $MarkdownPreview {
     ) {
       sourceLines.push(finalSourceLine);
       renderedRows.push(rowIndex);
+      blockIndices.push(this.blocks.length);
     }
 
     this.positionMapRevision = this.parsedRevision;
     this.positionMapWidth = normalizedWidth;
-    this.positionMapValue = { sourceLines, renderedRows };
+    this.positionMapValue = {
+      sourceLines,
+      renderedRows,
+      blockIndices,
+      totalRows: rowIndex,
+    };
     return this.positionMapValue;
+  }
+
+  protected prepareRowLayoutCache(width: number): void {
+    if (
+      this.rowLayoutRevision === this.parsedRevision &&
+      this.rowLayoutWidth === width
+    ) {
+      return;
+    }
+    this.rowLayoutRevision = this.parsedRevision;
+    this.rowLayoutWidth = width;
+    this.wrappedRowOffsetsByBlock.clear();
   }
 
   protected interpolatePosition(
@@ -362,29 +386,7 @@ class $MarkdownPreview {
     const document = this.document.value;
     if (!document) return 0;
     const rowWidth = Math.max(1, Math.floor(width));
-    if (
-      this.contentRowsRevision === this.parsedRevision &&
-      this.contentRowsViewport === rowWidth
-    ) {
-      return this.contentRowsValue;
-    }
-    const stylesheet = MarkdownStylesheet.Class;
-    let rowCount = 0;
-    let previousSelector: MarkdownElementSelector | null = null;
-    for (const block of document.blocks.value) {
-      if (block.kind === 'list') continue;
-      const selector = stylesheet.blockSelector(block);
-      rowCount += stylesheet.spacingBetween(previousSelector, selector);
-      rowCount += this.rowCountForBlock(block, rowWidth);
-      previousSelector = selector;
-    }
-    if (previousSelector !== null) {
-      rowCount += stylesheet.spacingBetween(previousSelector, null);
-    }
-    this.contentRowsRevision = this.parsedRevision;
-    this.contentRowsViewport = rowWidth;
-    this.contentRowsValue = rowCount;
-    return rowCount;
+    return this.sourcePositionMap(rowWidth).totalRows;
   }
 
   /** The widest rendered row. Prose and tables stay viewport-bound; fenced code may overflow. */
@@ -440,7 +442,24 @@ class $MarkdownPreview {
     let rowIndex = 0;
     const endVisible = firstVisible + visibleCount;
     let previousSelector: MarkdownElementSelector | null = null;
-
+    let firstBlockIndex = 0;
+    let initialBlockSpacingIsCounted = false;
+    const positionMap = this.sourcePositionMap(width);
+    if (
+      positionMap.renderedRows.length > 0 &&
+      firstVisible >= positionMap.renderedRows[0]!
+    ) {
+      const anchorIndex = this.lowerAnchorIndex(
+        firstVisible,
+        positionMap.renderedRows,
+      );
+      firstBlockIndex = Math.min(
+        blocks.length,
+        positionMap.blockIndices[anchorIndex] ?? 0,
+      );
+      rowIndex = positionMap.renderedRows[anchorIndex] ?? 0;
+      initialBlockSpacingIsCounted = true;
+    }
     const pushSpacers = (spacerCount: number): void => {
       for (let spacerIndex = 0; spacerIndex < spacerCount; spacerIndex++) {
         if (rowIndex >= firstVisible && rowIndex < endVisible) {
@@ -450,11 +469,18 @@ class $MarkdownPreview {
       }
     };
 
-    for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+    for (
+      let blockIndex = firstBlockIndex;
+      blockIndex < blocks.length;
+      blockIndex++
+    ) {
       const block = blocks[blockIndex]!;
       if (block.kind === 'list') continue;
       const selector = stylesheet.blockSelector(block);
-      pushSpacers(stylesheet.spacingBetween(previousSelector, selector));
+      if (!initialBlockSpacingIsCounted) {
+        pushSpacers(stylesheet.spacingBetween(previousSelector, selector));
+      }
+      initialBlockSpacingIsCounted = false;
       previousSelector = selector;
       if (rowIndex >= endVisible) break;
       const blockRowCount = this.rowCountForBlock(block, width);
@@ -472,7 +498,9 @@ class $MarkdownPreview {
             tableBorders,
           );
         } else {
-          let blockLocalRow = 0;
+          const firstLocalRow = Math.max(0, firstVisible - rowIndex);
+          const endLocalRow = Math.min(blockRowCount, endVisible - rowIndex);
+          let blockLocalRow = firstLocalRow;
           const emit: EmitRow = (
             emittedBlock,
             emittedBlockIndex,
@@ -502,7 +530,14 @@ class $MarkdownPreview {
             blockLocalRow++;
             return emittedRowIndex + 1 >= endVisible;
           };
-          this.visitBlock(block, blockIndex, width, emit);
+          this.visitBlock(
+            block,
+            blockIndex,
+            width,
+            emit,
+            firstLocalRow,
+            endLocalRow,
+          );
         }
       }
 
@@ -529,6 +564,16 @@ class $MarkdownPreview {
 
   protected rowCountForBlock(block: BlockRecord, width: number): number {
     if (block.kind === 'table') return (block.table?.rows.length ?? 0) + 1;
+    if (block.kind !== 'code' && block.kind !== 'hr') {
+      const configuration = this.wrappedVisitConfiguration(block, width);
+      return (
+        this.wrappedRowOffsets(
+          block,
+          configuration.availableWidth,
+          configuration.options,
+        ).length / 2
+      );
+    }
     let rowCount = 0;
     this.visitBlock(block, -1, width, () => {
       rowCount++;
@@ -543,25 +588,14 @@ class $MarkdownPreview {
     blockIndex: number,
     width: number,
     emit: EmitRow,
+    firstLocalRow = 0,
+    endLocalRow = Number.MAX_SAFE_INTEGER,
   ): boolean {
     const stylesheet = MarkdownStylesheet.Class;
     const panePaddingText = stylesheet.panePaddingText;
-    const innerWidth = Math.max(1, width - stylesheet.panePadding.right);
     switch (block.kind) {
       case 'code':
         return this.visitCode(block, blockIndex, width, emit);
-      case 'blockquote': {
-        const quotePrefix =
-          panePaddingText + stylesheet.vocabulary.quoteBarPrefix;
-        return this.visitWrapped(block, blockIndex, innerWidth, emit, {
-          firstPrefix: quotePrefix,
-          continuationPrefix: quotePrefix,
-          suffix: '',
-          role: 'quote',
-          breakProfile: 'prose',
-          fillWidth: false,
-        });
-      }
       case 'table':
         return false;
       case 'hr': {
@@ -580,29 +614,70 @@ class $MarkdownPreview {
           panePaddingText + stylesheet.vocabulary.ruleGlyph.repeat(ruleWidth),
         );
       }
-      case 'listitem': {
-        const indentation = stylesheet.listIndentText(block.level);
-        const marker = block.marker ?? stylesheet.vocabulary.listMarkerFallback;
-        const firstPrefix = `${panePaddingText}${indentation}${marker} `;
-        return this.visitWrapped(block, blockIndex, innerWidth, emit, {
+      default: {
+        const configuration = this.wrappedVisitConfiguration(block, width);
+        return this.visitWrapped(
+          block,
+          blockIndex,
+          configuration.availableWidth,
+          emit,
+          configuration.options,
+          firstLocalRow,
+          endLocalRow,
+        );
+      }
+    }
+  }
+
+  protected wrappedVisitConfiguration(
+    block: BlockRecord,
+    width: number,
+  ): WrappedVisitConfiguration {
+    const stylesheet = MarkdownStylesheet.Class;
+    const panePaddingText = stylesheet.panePaddingText;
+    const innerWidth = Math.max(1, width - stylesheet.panePadding.right);
+    if (block.kind === 'blockquote') {
+      const quotePrefix =
+        panePaddingText + stylesheet.vocabulary.quoteBarPrefix;
+      return {
+        availableWidth: innerWidth,
+        options: {
+          firstPrefix: quotePrefix,
+          continuationPrefix: quotePrefix,
+          suffix: '',
+          role: 'quote',
+          breakProfile: 'prose',
+          fillWidth: false,
+        },
+      };
+    }
+    if (block.kind === 'listitem') {
+      const indentation = stylesheet.listIndentText(block.level);
+      const marker = block.marker ?? stylesheet.vocabulary.listMarkerFallback;
+      const firstPrefix = `${panePaddingText}${indentation}${marker} `;
+      return {
+        availableWidth: innerWidth,
+        options: {
           firstPrefix,
           continuationPrefix: ' '.repeat(firstPrefix.length),
           suffix: '',
           role: 'content',
           breakProfile: 'prose',
           fillWidth: false,
-        });
-      }
-      default:
-        return this.visitWrapped(block, blockIndex, innerWidth, emit, {
-          firstPrefix: panePaddingText,
-          continuationPrefix: panePaddingText,
-          suffix: '',
-          role: 'content',
-          breakProfile: 'prose',
-          fillWidth: false,
-        });
+        },
+      };
     }
+    return {
+      availableWidth: innerWidth,
+      options: {
+        firstPrefix: panePaddingText,
+        continuationPrefix: panePaddingText,
+        suffix: '',
+        role: 'content',
+        breakProfile: 'prose',
+        fillWidth: false,
+      },
+    };
   }
 
   protected visitCode(
@@ -712,7 +787,57 @@ class $MarkdownPreview {
     availableWidth: number,
     emit: EmitRow,
     options: WrappedVisitOptions,
+    firstLocalRow = 0,
+    endLocalRow = Number.MAX_SAFE_INTEGER,
   ): boolean {
+    const rowOffsets = this.wrappedRowOffsets(block, availableWidth, options);
+    const rowCount = rowOffsets.length / 2;
+    const lastLocalRow = Math.min(rowCount, endLocalRow);
+    for (
+      let localRowIndex = firstLocalRow;
+      localRowIndex < lastLocalRow;
+      localRowIndex++
+    ) {
+      const textStart = rowOffsets[localRowIndex * 2]!;
+      const textEnd = rowOffsets[localRowIndex * 2 + 1]!;
+      const prefix =
+        localRowIndex === 0 ? options.firstPrefix : options.continuationPrefix;
+      const segmentWidth = TextCoordinates.Class.lineWidth(
+        block.text.slice(textStart, textEnd),
+      );
+      const suffix = options.fillWidth
+        ? ' '.repeat(
+            Math.max(
+              0,
+              this.wrappedContentWidth(availableWidth, options) - segmentWidth,
+            ),
+          ) + options.suffix
+        : options.suffix;
+      if (
+        emit(
+          block,
+          blockIndex,
+          textStart,
+          textEnd,
+          prefix,
+          suffix,
+          options.role,
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  protected wrappedRowOffsets(
+    block: BlockRecord,
+    availableWidth: number,
+    options: WrappedVisitOptions,
+  ): Uint32Array {
+    const cachedOffsets = this.wrappedRowOffsetsByBlock.get(block);
+    if (cachedOffsets) return cachedOffsets;
+    const rowOffsets: number[] = [];
     const contentWidth = Math.max(
       1,
       availableWidth -
@@ -728,22 +853,39 @@ class $MarkdownPreview {
       if (
         this.visitWrappedLine(
           block,
-          blockIndex,
+          -1,
           lineStart,
           physicalEnd,
           contentWidth,
           isFirstLine,
-          emit,
+          (_emittedBlock, _emittedBlockIndex, textStart, textEnd) => {
+            rowOffsets.push(textStart, textEnd);
+            return false;
+          },
           options,
         )
       ) {
-        return true;
+        break;
       }
       isFirstLine = false;
       if (newline < 0) break;
       lineStart = newline + 1;
     }
-    return false;
+    const packedOffsets = Uint32Array.from(rowOffsets);
+    this.wrappedRowOffsetsByBlock.set(block, packedOffsets);
+    return packedOffsets;
+  }
+
+  protected wrappedContentWidth(
+    availableWidth: number,
+    options: WrappedVisitOptions,
+  ): number {
+    return Math.max(
+      1,
+      availableWidth -
+        TextCoordinates.Class.lineWidth(options.firstPrefix) -
+        TextCoordinates.Class.lineWidth(options.suffix),
+    );
   }
 
   protected visitWrappedLine(
@@ -1100,9 +1242,16 @@ interface WrappedVisitOptions {
   readonly fillWidth: boolean;
 }
 
+interface WrappedVisitConfiguration {
+  readonly availableWidth: number;
+  readonly options: WrappedVisitOptions;
+}
+
 interface MarkdownSourcePositionMap {
   readonly sourceLines: readonly number[];
   readonly renderedRows: readonly number[];
+  readonly blockIndices: readonly number[];
+  readonly totalRows: number;
 }
 
 type EmitRow = (
