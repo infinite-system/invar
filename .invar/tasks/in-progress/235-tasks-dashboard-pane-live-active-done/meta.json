@@ -1,0 +1,15 @@
+{
+  "task": 235,
+  "slug": "tasks-dashboard-pane-live-active-done",
+  "branch": "fleet/235-tasks-dashboard-pane-live-active-done",
+  "worktree": ".invar/worktrees/235-tasks-dashboard-pane-live-active-done",
+  "tmuxSession": "invar/235-tasks-dashboard-pane-live-active-done",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-235-tasks-dashboard-pane-live-active-done.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "979ef851f5c73e19c533551e97fdcb216404a9e6",
+  "startedAt": "2026-07-29T08:05:18-04:00"
+}

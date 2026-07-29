@@ -1,6 +1,6 @@
 # 235 — a tasks dashboard pane: live / active / done, cycling overview, linked to the records
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux
