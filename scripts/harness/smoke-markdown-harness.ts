@@ -417,13 +417,29 @@ try {
   });
   const narrowSnapshot = await driver.awaitGridCondition(
     'the aligned table repaints inside the dragged-narrow preview pane',
-    (candidate) =>
-      candidate.findText('╭─Preview') !== null &&
-      previewPaneRightColumn(candidate) <
-        previewBorder(candidate).column + 24 &&
-      candidate.findText(
-        ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
-      ) !== null,
+    (candidate) => {
+      // The wait must observe a COHERENT narrow frame: pane narrowed AND the table's junction
+      // row re-laid-out to end exactly on the pane border. Under gate load the drag's resize
+      // and the table's re-layout land in separate frames, and sampling between them let the
+      // border-intact assertion below read a mid-relayout grid.
+      if (candidate.findText('╭─Preview') === null) return false;
+      const candidatePreviewColumn = previewBorder(candidate).column;
+      const candidateRightColumn = previewPaneRightColumn(candidate);
+      if (candidateRightColumn >= candidatePreviewColumn + 24) return false;
+      const junctionGlyph =
+        ThemeIcons.Class.tableBordersFor('unicode').leftJunction;
+      for (let row = 0; row < candidate.rows; row++) {
+        const paneText = candidate
+          .rowText(row)
+          .slice(candidatePreviewColumn, candidateRightColumn);
+        if (!paneText.includes(junctionGlyph)) continue;
+        return (
+          candidate.cell(row, candidateRightColumn)?.characters ===
+          ThemeIcons.Class.tableBordersFor('unicode').vertical
+        );
+      }
+      return false;
+    },
   );
   const narrowHeaderRow = previewRowContaining(
     narrowSnapshot,
