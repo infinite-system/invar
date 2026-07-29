@@ -292,6 +292,7 @@ including what the agent was told not to do. Guards go first or they are not gua
 | — | `land.sh` merged into the wrong branch because I left the checkout off main AFTER being warned |
 | 07-28 23:0x | dispatch's record commit named only the brief; the staged task-folder move stayed uncommitted and the next merge tripped over it — now a pathspec commit of the whole record, always on main |
 | 07-29 02:4x | the agent-sdk import leaked 131×200MB per gate run; disk hit 100% TWICE before any lens showed it (#244) |
+| 07-29 06:3x | a `;`-separated merge ran in MAIN after its worktree-add guard failed (`worktree add main` refuses when main is checked out — needed `--detach`): #238 merged into main ungated, caught in seconds, `git reset --keep` restored. Same genus as the wrapper-exit landing: a compound command whose later step ACTS while an earlier failure is invisible. A destructive step never follows `;` — every link that precedes an acting git command must be `&&`, and the acting step belongs in its OWN command once the guards are seen to pass |
 
 **The sprawl corollary (user directive, 07-29).** The filesystem is fleet
 infrastructure and gets a standing instrument: fleet-watch's SPRAWL arm (floor <10G,
