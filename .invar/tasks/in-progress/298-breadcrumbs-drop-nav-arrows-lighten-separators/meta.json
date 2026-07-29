@@ -1,0 +1,15 @@
+{
+  "task": 298,
+  "slug": "breadcrumbs-drop-nav-arrows-lighten-separators",
+  "branch": "fleet/298-breadcrumbs-drop-nav-arrows-lighten-separators",
+  "worktree": ".invar/worktrees/298-breadcrumbs-drop-nav-arrows-lighten-separators",
+  "tmuxSession": "invar/298-breadcrumbs-drop-nav-arrows-lighten-separators",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-low-298-breadcrumbs-drop-nav-arrows-lighten-separators.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "0cd8eddfb5b7e5cc48cab0d068816fed6e2b4ba3",
+  "startedAt": "2026-07-29T16:59:48-04:00"
+}

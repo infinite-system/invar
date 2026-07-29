@@ -1,6 +1,6 @@
 # 298 — breadcrumbs: drop prev/forward (workspace bar owns them); separators a bit lighter
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
