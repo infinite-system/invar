@@ -1,6 +1,6 @@
 # 254 — INVAR_GATE_WORKERS is validated after the gate has already taken side effects
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

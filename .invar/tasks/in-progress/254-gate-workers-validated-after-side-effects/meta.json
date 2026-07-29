@@ -1,0 +1,15 @@
+{
+  "task": 254,
+  "slug": "gate-workers-validated-after-side-effects",
+  "branch": "fleet/254-gate-workers-validated-after-side-effects",
+  "worktree": ".invar/worktrees/254-gate-workers-validated-after-side-effects",
+  "tmuxSession": "invar/254-gate-workers-validated-after-side-effects",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-254-gate-workers-validated-after-side-effects.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "7bff13177e78746c514a935e976e894a83db221c",
+  "startedAt": "2026-07-29T04:54:29-04:00"
+}

@@ -6,10 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #254 gate-workers-validated-after-side-effects  [building]
+  `tmux attach -t invar/254-gate-workers-validated-after-side-effects`
 - #253 ui-contract-systematic-citation-sweep  [building]
   `tmux attach -t invar/253-ui-contract-systematic-citation-sweep`
-- #245 provider-seam-open-or-bless-decision  [building]
+- #245 provider-seam-open-or-bless-decision  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/245-provider-seam-open-or-bless-decision`
 - #236 markdown-terminal-stylesheet-readable  [building]
   `tmux attach -t invar/236-markdown-terminal-stylesheet-readable`
@@ -21,8 +23,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (18)
-- #254 gate-workers-validated-after-side-effects
+## VERIFICATION-INTEGRITY (17)
 - #240 momentum-records-placement-call
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
@@ -41,7 +42,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (15)
+## FLAKE-EVIDENCE (16)
+- #255 extensions-row-locator-wrapped-label
 - #252 activitybar-smoke-pre-satisfied-waits
 - #214 panel-chrome-agent-close-intermittent
 - #213 drive-quit-key-post-quit-frame-wait
