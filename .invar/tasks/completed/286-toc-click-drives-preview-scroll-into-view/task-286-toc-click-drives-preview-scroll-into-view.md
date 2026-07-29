@@ -1,6 +1,6 @@
 # 286 — structure TOC click drives the PREVIEW too, and jumps scroll INTO VIEW for reading
 
-State: IN-PROGRESS
+State: COMPLETED — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
 Created: 2026-07-29
 Engine: codex
 Environment: linux

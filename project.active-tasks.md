@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/in-progress/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md)  [building]
-  `tmux attach -t invar/286-toc-click-drives-preview-scroll-into-view`
+## IN-PROGRESS (1)
 - #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/in-progress/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md)  [building]
   `tmux attach -t invar/278-activity-bar-dock-agnostic-side-setting`
 
@@ -87,8 +85,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 58 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 59 — full log: project.tasks-completed.md)
 - #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
+- #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
 - #276 [task-md-links-walkable](.invar/tasks/completed/276-task-md-links-walkable/task-276-task-md-links-walkable.md) — 173daff9 — task views link to records; md links walk by click with jump ends
 - #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
@@ -102,4 +101,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #253 [ui-contract-systematic-citation-sweep](.invar/tasks/completed/253-ui-contract-systematic-citation-sweep/task-253-ui-contract-systematic-citation-sweep.md) — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
 - #251 [gate-refuses-unlinked-node-modules](.invar/tasks/completed/251-gate-refuses-unlinked-node-modules/task-251-gate-refuses-unlinked-node-modules.md) — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
 - #245 [provider-seam-open-or-bless-decision](.invar/tasks/completed/245-provider-seam-open-or-bless-decision/task-245-provider-seam-open-or-bless-decision.md) — b2bd2e57 — one registry census-proven; SQLite+fake+consumer proof; both workarounds deleted
-- #244 [sdk-binary-extraction-leak-fills-disk](.invar/tasks/completed/244-sdk-binary-extraction-leak-fills-disk/task-244-sdk-binary-extraction-leak-fills-disk.md) — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
