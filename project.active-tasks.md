@@ -7,14 +7,15 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #220 editor-registers-as-contributor-with-manifest  [building]
+- #220 editor-registers-as-contributor-with-manifest  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/220-editor-registers-as-contributor-with-manifest`
 
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (16)
+## VERIFICATION-INTEGRITY (17)
+- #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
 - #230 author-ui-lattice
 - #229 scale-parity-selection-smoke

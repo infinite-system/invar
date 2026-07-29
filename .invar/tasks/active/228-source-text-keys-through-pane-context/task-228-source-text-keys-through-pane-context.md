@@ -30,3 +30,12 @@ Constraints from the record:
 
 - `report-219-...md` — "What I did not do", item 1.
 - #114 Wave B v2 report — the scoped-binding regression and its fix.
+
+### Evidence from #220 (2026-07-29, reproduced on unmodified e13e2ef8)
+
+A focused terminal PANEL swallows `Control+P` even after focus returns to the
+editor (`status.focus === "editor"`, panel open): no overlay, no quickOpenOpen,
+no frame, probed 20x over 2s. The Wave B shape one step further — a pane
+consuming a global chord AFTER workspace focus left it, so a different bug
+from the one Wave B fixed. #220 worked around it in the manifest smoke by
+closing the panel first (comment beside it names this task).
