@@ -897,12 +897,24 @@ function refreshLineDeltas(
   records: TaskRecord[],
   fleetRepositoryRoot = INVAR_FLEET_REPOSITORY_ROOT,
 ): void {
+  // Both polarities: entries are ADDED for current in-progress tasks and
+  // REMOVED for tasks that left in-progress. Before 2026-07-29 the cache
+  // only grew, so a long-running watch counted every builder it had ever
+  // seen ("5 builder(s)" while 2 were live — the count could never
+  // decrease until restart).
+  const inProgressFolderNames = new Set<string>();
   for (const record of records) {
     if (record.directoryState !== 'in-progress') continue;
+    inProgressFolderNames.add(record.folderName);
     lineDeltaCache.set(
       record.folderName,
       readTaskLineDelta(fleetRepositoryRoot, record.folderName),
     );
+  }
+  for (const cachedFolderName of lineDeltaCache.keys()) {
+    if (!inProgressFolderNames.has(cachedFolderName)) {
+      lineDeltaCache.delete(cachedFolderName);
+    }
   }
 }
 
