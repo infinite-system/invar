@@ -160,7 +160,7 @@ export interface PaneTextSelectionPort {
   copySelection(): Promise<number>;
 }
 
-/** A focused pane field that receives the shared one-line input action vocabulary. */
+/** The `text-input` capability: a pane-owned one-line input that uses the shared input model. */
 export interface PaneTextInputPort {
   applyInputAction(action: TextInputAction): void;
 }

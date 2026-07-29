@@ -1636,7 +1636,7 @@ source; every non-overflowing axis has no bar, and scrollbar visual thickness is
 
 **Scope:** every scrollbar (editor vertical + horizontal, file tree vertical + horizontal, git
 changes vertical + horizontal, git commit log vertical + horizontal, agent transcript, terminal
-scrollback, and any future pane).
+scrollback, the structure right dock, and any future pane).
 
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
@@ -1649,7 +1649,8 @@ clipped content; grabbable thumbs; no phantom bars; equal visual thickness acros
 
 **Evidence:** `src/modules/ui/ScrollbarGeometry.test.ts` (17 region/property cases);
 `scripts/harness/smoke-scrollbars-harness.ts` (narrow tree/changes/log overflow, raw SGR reveal,
-fitting-pane absence, and the agent per-frame input/paint probe);
+`scripts/harness/smoke-plugin-manifest-harness.ts` (overflowing structure rows, live right-dock
+geometry, track click, and keyboard parity);
 `scripts/harness/smoke-terminal-harness.ts` (long terminal scrollback and solid vertical thumb),
 wired in `scripts/merge-gate.sh`.
 
@@ -1658,11 +1659,13 @@ reached; a bar visible with nothing to scroll; a horizontal thumb that reads twi
 same configured vertical thumb; two bars deriving placement from different math.
 
 **Verification:** `bun test src/modules/ui/ScrollbarGeometry.test.ts && bun
-scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-terminal-harness.ts`
+scripts/harness/smoke-scrollbars-harness.ts && bun
+scripts/harness/smoke-plugin-manifest-harness.ts && bun
+scripts/harness/smoke-terminal-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-29
 
 ### The editor overview derives from the decoration snapshot
 

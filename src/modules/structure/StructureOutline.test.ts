@@ -107,7 +107,47 @@ const READY_RESULT: StructureOutlineResult = {
   ],
 };
 
-test('a refresh flattens the symbol tree into depth-ordered document-order rows', async () => {
+const DEEP_RESULT: StructureOutlineResult = {
+  truncated: false,
+  symbols: [
+    {
+      name: 'Widget',
+      symbolClass: 'type',
+      line: 0,
+      column: 6,
+      endLine: 12,
+      children: [
+        {
+          name: 'render',
+          symbolClass: 'callable',
+          line: 2,
+          column: 2,
+          endLine: 10,
+          children: [
+            {
+              name: 'innerTask',
+              symbolClass: 'callable',
+              line: 4,
+              column: 4,
+              endLine: 6,
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'helper',
+      symbolClass: 'callable',
+      line: 14,
+      column: 0,
+      endLine: 16,
+      children: [],
+    },
+  ],
+};
+
+test('a refresh projects the symbol tree at the default depth in document order', async () => {
   const context = makeWorkspace(makeDocument('/tmp/a.ts'));
   const source = makeSource(READY_RESULT);
   const dispose = context.workspace.providers.register('structure', source);
@@ -124,6 +164,137 @@ test('a refresh flattens the symbol tree into depth-ordered document-order rows'
       ['method', 1, 5],
     ]);
     expect(outline.notice.value).toBeNull();
+  } finally {
+    dispose();
+    outline.dispose();
+  }
+});
+
+test('depth is session-scoped per file, defaults to one, and reset rejoins the setting', async () => {
+  const firstDocument = makeDocument('/tmp/depth-first.ts');
+  const secondDocument = makeDocument('/tmp/depth-second.ts');
+  const context = makeWorkspace(firstDocument);
+  const source = makeSource(DEEP_RESULT);
+  const dispose = context.workspace.providers.register('structure', source);
+  let defaultDepth = 1;
+  const outline = new StructureOutline.Class(
+    context.workspace,
+    () => true,
+    () => defaultDepth,
+  );
+  try {
+    await outline.refresh();
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'render',
+      'helper',
+    ]);
+    expect(outline.depth).toBe(1);
+    expect(outline.depthIsOverridden).toBe(false);
+
+    outline.setDepthForActiveFile(2);
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'render',
+      'innerTask',
+      'helper',
+    ]);
+    expect(outline.depthIsOverridden).toBe(true);
+
+    context.setDocument(secondDocument);
+    await outline.refresh();
+    expect(outline.depth).toBe(1);
+    expect(outline.depthIsOverridden).toBe(false);
+    outline.setDepthForActiveFile(0);
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'helper',
+    ]);
+
+    context.setDocument(firstDocument);
+    await outline.refresh();
+    expect(outline.depth).toBe(2);
+    outline.resetDepthForActiveFile();
+    expect(outline.depth).toBe(1);
+    expect(outline.depthIsOverridden).toBe(false);
+
+    defaultDepth = 0;
+    outline.refreshProjection();
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'helper',
+    ]);
+  } finally {
+    dispose();
+    outline.dispose();
+  }
+});
+
+test('row folds override the depth projection without changing the file depth', async () => {
+  const context = makeWorkspace(makeDocument('/tmp/folds.ts'));
+  const source = makeSource(DEEP_RESULT);
+  const dispose = context.workspace.providers.register('structure', source);
+  const outline = new StructureOutline.Class(context.workspace, () => true);
+  try {
+    await outline.refresh();
+    expect(outline.rows.value[0]?.childrenVisible).toBe(true);
+    expect(outline.toggleSelectedFold()).toBe(true);
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'helper',
+    ]);
+    expect(outline.depth).toBe(1);
+
+    expect(outline.toggleSelectedFold()).toBe(true);
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'render',
+      'helper',
+    ]);
+    outline.setSelection(1);
+    expect(outline.rows.value[1]?.childrenVisible).toBe(false);
+    expect(outline.toggleSelectedFold()).toBe(true);
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'render',
+      'innerTask',
+      'helper',
+    ]);
+  } finally {
+    dispose();
+    outline.dispose();
+  }
+});
+
+test('filtering uses the shared fuzzy score across hidden depths and Escape restores depth', async () => {
+  const context = makeWorkspace(makeDocument('/tmp/filter.ts'));
+  const source = makeSource(DEEP_RESULT);
+  const dispose = context.workspace.providers.register('structure', source);
+  const outline = new StructureOutline.Class(context.workspace, () => true);
+  try {
+    await outline.refresh();
+    expect(outline.rows.value.some((row) => row.name === 'innerTask')).toBe(
+      false,
+    );
+
+    outline.insertFilterText('ik');
+    expect(outline.filterInput.value).toBe('ik');
+    expect(outline.rows.value.map((row) => row.name)).toEqual(['innerTask']);
+    expect(outline.rows.value[0]?.childrenVisible).toBe(false);
+    expect(outline.toggleSelectedFold()).toBe(false);
+
+    expect(outline.clearFilter()).toBe(true);
+    expect(outline.rows.value.map((row) => row.name)).toEqual([
+      'Widget',
+      'render',
+      'helper',
+    ]);
+    expect(outline.clearFilter()).toBe(false);
+
+    outline.insertFilterText('ik');
+    context.setDocument(makeDocument('/tmp/filter-second.ts'));
+    await outline.refresh();
+    expect(outline.filterInput.value).toBe('');
   } finally {
     dispose();
     outline.dispose();

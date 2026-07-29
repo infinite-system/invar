@@ -1,6 +1,6 @@
 # 274 — structure pane: scrollbar, per-file depth (fold internals by default), filter
 
-State: IN-PROGRESS
+State: COMPLETED — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 Created: 2026-07-29
 Engine: codex
 Environment: linux

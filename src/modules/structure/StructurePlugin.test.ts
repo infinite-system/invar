@@ -20,6 +20,7 @@ interface RecordingContext {
   settingIdentifiers: string[];
   settingDisposals: number;
   showByDefault: ReturnType<typeof ref<boolean>>;
+  defaultDepth: ReturnType<typeof ref<number>>;
   snapshot: () => Record<string, unknown>;
 }
 
@@ -33,6 +34,7 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
     showWhenContentRegistered: true,
   });
   const showByDefault = ref(true);
+  const defaultDepth = ref(1);
   let snapshotProvider: (() => Record<string, unknown>) | null = null;
   const recording: RecordingContext = {
     rightDockHost,
@@ -44,6 +46,7 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
     settingIdentifiers,
     settingDisposals: 0,
     showByDefault,
+    defaultDepth,
     snapshot: () => snapshotProvider?.() ?? {},
     context: {
       workspaceSet: {
@@ -63,7 +66,10 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
       registerSetting: (contribution: { identifier: string }) => {
         settingIdentifiers.push(contribution.identifier);
         return {
-          value: showByDefault,
+          value:
+            contribution.identifier === 'structureDefaultDepth'
+              ? defaultDepth
+              : showByDefault,
           save: () => {},
           dispose: () => {
             recording.settingDisposals += 1;
@@ -109,19 +115,31 @@ test('activation registers the right-dock pane, commands, keybindings, setting, 
   ]);
   expect(recording.rightDockHost.has('structure')).toBe(true);
   expect(recording.keybindings).toBe(1);
-  expect(recording.settingIdentifiers).toEqual(['structureShowByDefault']);
+  expect(recording.settingIdentifiers).toEqual([
+    'structureShowByDefault',
+    'structureDefaultDepth',
+  ]);
   expect(recording.commandIds).toEqual([
     'view.showStructure',
     'structure.focusEditor',
     'structure.up',
     'structure.down',
     'structure.activate',
+    'structure.fold',
+    'structure.unfold',
+    'structure.decreaseDepth',
+    'structure.increaseDepth',
+    'structure.resetDepth',
+    'structure.clearFilter',
     'structure.refresh',
   ]);
   expect(recording.snapshot()).toMatchObject({
     structureStatus: 'no-document',
     structureRows: 0,
     structureRequests: 0,
+    structureDepth: 1,
+    structureDepthIsOverridden: false,
+    structureFilter: '',
   });
   plugin.disposeApplication();
 });

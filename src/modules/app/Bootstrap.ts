@@ -65,6 +65,7 @@ import { SdkBinaryExtraction } from '../agent/SdkBinaryExtraction';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import { TextCoordinates } from '../text/TextCoordinates';
+import { TextInputKey } from '../text/TextInputKey';
 import type { TextInputAction } from '../text/TextInputModel';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import {
@@ -1321,13 +1322,8 @@ class $Bootstrap {
       movementScope: 'editor' | 'editorSurface',
     ): number =>
       scrollPhysics.keyAccelerationFor(`${movementScope}:${key.name}`);
-    const isTypedCharacter = (key: KeyEvent): boolean => {
-      if (key.ctrl || key.meta || key.option) return false;
-      const sequence = key.sequence;
-      if (!sequence || sequence.length !== 1) return false;
-      const code = sequence.charCodeAt(0);
-      return code >= 32 && code !== 127;
-    };
+    const isTypedCharacter = (key: KeyEvent): boolean =>
+      TextInputKey.Class.isTypedCharacter(key);
     const completionPrefix = (): {
       text: string;
       range: {
@@ -1506,6 +1502,14 @@ class $Bootstrap {
         : null;
       if (primaryDockTextInput) {
         primaryDockTextInput.applyInputAction(action);
+        return;
+      }
+      const rightDockTextInput =
+        rightDockHost.focusedContent?.capability?.<PaneTextInputPort>(
+          'text-input',
+        );
+      if (rightDockHost.focused.value && rightDockTextInput) {
+        rightDockTextInput.applyInputAction(action);
         return;
       }
       const focusedContent = panelHost.focusedContent;

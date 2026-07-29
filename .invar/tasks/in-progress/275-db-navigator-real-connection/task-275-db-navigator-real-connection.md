@@ -1,6 +1,6 @@
 # 275 — DB navigator connects to a real database
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

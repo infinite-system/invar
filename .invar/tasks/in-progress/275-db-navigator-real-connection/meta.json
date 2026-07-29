@@ -1,0 +1,15 @@
+{
+  "task": 275,
+  "slug": "db-navigator-real-connection",
+  "branch": "fleet/275-db-navigator-real-connection",
+  "worktree": ".invar/worktrees/275-db-navigator-real-connection",
+  "tmuxSession": "invar/275-db-navigator-real-connection",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-275-db-navigator-real-connection.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e2c088d041fd263ed7b85459c84a4d4a208a7f2d",
+  "startedAt": "2026-07-29T09:28:59-04:00"
+}

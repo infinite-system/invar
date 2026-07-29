@@ -1,5 +1,31 @@
 # Overnight briefing — started 2026-07-29 00:28
 
+## RESUME ANCHOR 5 (09:5x — MACHINE SHUTDOWN EXPECTED; supersedes ANCHOR 4)
+
+- User went to work ~10:0x; machine off for a while. NO NEW DISPATCHES
+  ordered ("don't make any more tasks in progress").
+- LANDED TODAY through #274 (0a5e2474): #268 #238 #264 #259 #266 #263
+  #235 #274 — main GREEN, checkout clean at e3e290da.
+- IN FLIGHT AT SHUTDOWN: #275 delivered READY (cec0e374, own enforced
+  gate green) but conflicts with landed #274 in Bootstrap.ts,
+  KeybindingDefaults.ts, PaneContent.interface.ts — round-2 absorb brief
+  FILED (brief-275-2); land after it re-reports with the merge commit +
+  post-merge smokes. #276 checkpointed honestly (WIP 1d52ca4e, not
+  READY; generator links done, click-walk in progress) — resume with a
+  round brief pointing at its own Checkpoint section. If either session
+  died mid-step, DEAD-WITH-DIRTY procedure applies.
+- QUEUED, NOT DISPATCHED (user order): #278 (dock-agnostic activity
+  surface + per-pane dockSide + optional mirrored right bar — folds
+  #262), #269 #270(record-only) #271 #272 #273 #277 #279 #280, #255-#258
+  #260-#261 #265 #267. WAIT FOR USER: #241 #242.
+- ON RESTART ARM EXACTLY THREE THINGS: fleet-watch Monitor (persistent),
+  cron :07 orchestration, cron :37 sweep (verbatim prompts in conductor
+  SKILL.md "Live cron prompts"). Crons are session-only and died with
+  the machine.
+- land.sh since 6d3bad3b auto-resolves generated-view conflicts by
+  regeneration; refuses real conflicts (exit 5). Verdict guard: GATE_LOG
+  with GATE_EXIT=0 or written GATE_OVERRIDE, always.
+
 ## RESUME ANCHOR 4 (08:0x — supersedes ANCHOR 3)
 
 - THE #237/#238 WAVE IS FULLY LANDED, MAIN GREEN: #268 → 5c9965a4,

@@ -669,7 +669,13 @@ export namespace KeybindingDefaults {
 }
 
 export type TextInputBindingContext =
-  'palette' | 'quickopen' | 'find' | 'agent' | 'listPopup' | 'database';
+  | 'palette'
+  | 'quickopen'
+  | 'find'
+  | 'agent'
+  | 'listPopup'
+  | 'structure'
+  | 'database';
 
 export interface TextInputBindingOptions {
   /** Unmodified keys the surrounding surface already owns; their text-field chords are omitted. */

@@ -13,6 +13,8 @@ class $StructureWorkspace implements WorkspaceContribution {
   constructor(
     readonly workspace: Workspace.Model,
     protected readonly paneIsObserved: () => boolean,
+    protected readonly defaultDepth: () => number = () => 1,
+    protected readonly onDisposed: () => void = () => {},
   ) {
     this.outline = this.createOutline();
   }
@@ -22,7 +24,11 @@ class $StructureWorkspace implements WorkspaceContribution {
   protected settingsSource: Settings.Instance | null = null;
 
   protected createOutline(): StructureOutline.Model {
-    return new StructureOutline.Class(this.workspace, this.paneIsObserved);
+    return new StructureOutline.Class(
+      this.workspace,
+      this.paneIsObserved,
+      this.defaultDepth,
+    );
   }
 
   settingsAttached(settings: Settings.Instance): void {
@@ -37,6 +43,7 @@ class $StructureWorkspace implements WorkspaceContribution {
 
   disposed(): void {
     this.outline.dispose();
+    this.onDisposed();
   }
 
   protected get flingMomentum(): MomentumOptions {

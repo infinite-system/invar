@@ -13,9 +13,9 @@ import {
 } from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
-import { TextSegmentation } from '../system/TextSegmentation';
 import { TextDocument } from '../text/TextDocument';
 import type { TextInputAction } from '../text/TextInputModel';
+import { TextInputKey } from '../text/TextInputKey';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBuffer, FindInBufferMatch } from '../search/FindInBuffer';
 import { AgentPaneRenderer, type SelectionRange } from './AgentPaneRenderer';
@@ -72,13 +72,7 @@ class $AgentPaneContent implements PaneContent {
   }
 
   protected isTypedCharacter(key: KeyEvent): boolean {
-    if (key.ctrl || key.meta || key.option) return false;
-    const sequence = key.sequence;
-    if (!sequence || TextSegmentation.Class.graphemes(sequence).length !== 1) {
-      return false;
-    }
-    const codePoint = sequence.codePointAt(0);
-    return codePoint !== undefined && codePoint >= 32 && codePoint !== 127;
+    return TextInputKey.Class.isTypedCharacter(key);
   }
 
   readonly id: string;

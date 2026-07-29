@@ -6,16 +6,19 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #274 structure-scrollbar-depth-filter  [building]
-  `tmux attach -t invar/274-structure-scrollbar-depth-filter`
+## IN-PROGRESS (2)
+- #276 task-md-links-walkable  [building]
+  `tmux attach -t invar/276-task-md-links-walkable`
+- #275 db-navigator-real-connection  [building]
+  `tmux attach -t invar/275-db-navigator-real-connection`
 
 ## USER-DIRECTED (3)
 - #256 editor-stray-glyph-after-emoji
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (21)
+## VERIFICATION-INTEGRITY (22)
+- #279 drive-settle-unsupported-file-structure
 - #277 markdown-preview-body-viewport-settles-after-parent-growth
 - #269 smokes-assume-editor-geometry-sweep
 - #265 status-projection-drops-plugin-keys
@@ -84,7 +87,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 53 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 54 — full log: project.tasks-completed.md)
+- #274 structure-scrollbar-depth-filter — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 boot-save-erases-unregistered-settings — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
@@ -99,4 +103,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
 - #238 structure-default-right-and-md-toc — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
 - #237 markdown-preview-left-and-auto-open — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
-- #236 markdown-terminal-stylesheet-readable — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
