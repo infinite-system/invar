@@ -42,6 +42,16 @@ The done-test: run the full merge gate, count
 `/tmp/.*claude-agent-sdk*` directories before and after — the count must not
 grow. Positive control: revert the fix, show the count grows per boot.
 
+MEASURED RATE (02:5x, second incident same night): one merge-gate smoke pool
+(60 jobs, 6 workers) produced 131 extractions ≈ 26GB in under ten minutes.
+A process census DURING the pool found ZERO live processes with an exe
+inside any extraction dir — the spawned binary exits (or fails) immediately
+after boot, so every boot pays 200MB of disk for a process that does not
+survive. That immediate exit is your first diagnostic thread. Interim
+mitigation live until this task lands: a conductor-armed reaper deletes
+extractions older than one minute every 30s (`/tmp/sdk-reaper.pid`);
+your fix replaces it.
+
 ## Invariants in scope
 
 - `src/modules/agent/agent.invariants.md` (if present) — the backend spawn
