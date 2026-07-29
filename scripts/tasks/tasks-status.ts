@@ -255,9 +255,16 @@ function renderActiveView(records: TaskRecord[]): string {
   if (inProgress.length > 0) {
     outputLines.push(`## IN-PROGRESS (${inProgress.length})`);
     for (const record of inProgress) {
-      outputLines.push(taskLine(record));
-      // The attach command rides the entry, so joining a live builder is one copy-paste.
-      // Session naming is dispatch.sh's convention: invar/<folder-name>.
+      // A delivered report means the builder finished and the session is idle.
+      // Derived from the folder (the same fact REPORT-IN-OPEN reads), so the
+      // view stays deterministic — no liveness probe, no machine-dependent output.
+      const builderStatus =
+        record.reportCount > 0
+          ? 'READY delivered — builder idle, awaiting landing'
+          : 'building';
+      outputLines.push(`${taskLine(record)}  [${builderStatus}]`);
+      // The attach command rides the entry, so joining the session is one
+      // copy-paste. Session naming is dispatch.sh's convention: invar/<folder-name>.
       outputLines.push(`  \`tmux attach -t invar/${record.folderName}\``);
     }
     outputLines.push('');

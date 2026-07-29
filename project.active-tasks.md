@@ -7,9 +7,9 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (2)
-- #202 tab-reactivation-rereads-whole-file
+- #202 tab-reactivation-rereads-whole-file  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/202-tab-reactivation-rereads-whole-file`
-- #114 modularity-umbrella-provider-runtime
+- #114 modularity-umbrella-provider-runtime  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/114-modularity-umbrella-provider-runtime`
 
 ## USER-DIRECTED (2)
