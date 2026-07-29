@@ -1495,6 +1495,15 @@ class $Bootstrap {
         commands.applyQueryInputAction(action);
         return;
       }
+      const primaryDockTextInput = primaryDockHost.focused.value
+        ? primaryDockHost.focusedContent?.capability?.<PaneTextInputPort>(
+            'text-input',
+          )
+        : null;
+      if (primaryDockTextInput) {
+        primaryDockTextInput.applyInputAction(action);
+        return;
+      }
       const rightDockTextInput =
         rightDockHost.focusedContent?.capability?.<PaneTextInputPort>(
           'text-input',

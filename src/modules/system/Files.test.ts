@@ -17,3 +17,12 @@ test('listNamesResult distinguishes an unreadable path from an empty directory',
 
   expect(Files.Class.listNamesResult(missingDirectory).ok).toBe(false);
 });
+
+test('resolveFrom keeps absolute paths and resolves relative paths from the supplied base', () => {
+  expect(Files.Class.resolveFrom('/workspace', 'data/catalog.sqlite')).toBe(
+    '/workspace/data/catalog.sqlite',
+  );
+  expect(Files.Class.resolveFrom('/workspace', '/data/catalog.sqlite')).toBe(
+    '/data/catalog.sqlite',
+  );
+});

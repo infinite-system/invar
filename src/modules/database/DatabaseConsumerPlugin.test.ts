@@ -31,8 +31,8 @@ test('the consumer plugin registers and withdraws its pane and status projection
     registerKeybindings() {},
     registerPrimaryDockContent: (pane: PaneContent) => panes.push(pane),
     commands: {
-      register: (command: { id: string }) => {
-        commandIdentifiers.push(command.id);
+      registerAll: (commands: readonly { id: string }[]) => {
+        commandIdentifiers.push(...commands.map((command) => command.id));
         return () => {
           commandDisposals++;
         };
@@ -53,7 +53,9 @@ test('the consumer plugin registers and withdraws its pane and status projection
 
   expect(plugin.primaryDockContentIdentifiers).toEqual(['database']);
   expect(panes.map((pane) => pane.id)).toEqual(['database']);
-  expect(commandIdentifiers).toEqual(['view.showDatabase']);
+  expect(commandIdentifiers).toContain('view.showDatabase');
+  expect(commandIdentifiers).toContain('database.connect');
+  expect(commandIdentifiers).toContain('database.disconnect');
   expect(readSnapshot()).toMatchObject({
     databaseConsumerStatus: 'idle',
   });

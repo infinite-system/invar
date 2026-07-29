@@ -4,6 +4,7 @@ import type {
   DatabaseConnectionDescriptor,
   DatabaseProvider,
 } from './DatabaseProvider.interface';
+import { Files } from '../system/Files';
 import { SqliteDatabaseConnection } from './SqliteDatabaseConnection';
 
 class $SqliteDatabaseProvider {
@@ -13,6 +14,19 @@ class $SqliteDatabaseProvider {
   static async connect(
     descriptor: DatabaseConnectionDescriptor,
   ): Promise<DatabaseConnection> {
+    if (
+      descriptor.filePath !== ':memory:' &&
+      !Files.Class.exists(descriptor.filePath)
+    ) {
+      throw new Error(
+        `SQLite database file does not exist: ${descriptor.filePath}`,
+      );
+    }
+    if (Files.Class.isDir(descriptor.filePath)) {
+      throw new Error(
+        `SQLite database path is a directory: ${descriptor.filePath}`,
+      );
+    }
     return new SqliteDatabaseConnection.Class(descriptor.filePath);
   }
 }

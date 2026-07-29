@@ -603,8 +603,8 @@ insertion, deletion, and horizontal movement come from `TextInputModel`, and eve
 `TextInputModel.apply` implements is REACHABLE in that field.
 
 **Scope:** `AgentComposer`; `QuickOpen.query`; `CommandRegistry.query`; `FindInBuffer.query` and
-`replacement`; `BoundedListPopup.query`; every future one-line editable field. Full document
-editors and terminal subprocess input are outside this rule.
+`replacement`; `BoundedListPopup.query`; the database connection path; every future one-line
+editable field. Full document editors and terminal subprocess input are outside this rule.
 
 **Mechanism:** `TextInputModel` owns the reactive string and grapheme caret and delegates word
 boundaries to `TextEditing`. Consumers retain only their surface-specific filtering, layout,
@@ -625,7 +625,8 @@ or delete a different span.
 `src/modules/editor/TextInputModel.test.ts`; adopters in `src/modules/agent/AgentComposer.ts`,
 `src/modules/search/QuickOpen.ts`, `src/modules/commands/CommandRegistry.ts`, and
 `src/modules/search/FindInBuffer.ts`; `src/modules/ui/BoundedListPopup.ts`
-(`applyQueryInputAction`); `src/modules/keybindings/KeybindingDefaults.ts`
+(`applyQueryInputAction`); `src/modules/database/DatabasePaneContent.ts`;
+`src/modules/keybindings/KeybindingDefaults.ts`
 (`textInputBindings`); `scripts/conventions-gate.sh`.
 
 **Impossible if true:** An adopted text field storing its own query or caret and reimplementing
@@ -636,11 +637,11 @@ fourth chord table for the same `textInput.*` actions.
 **Verification:** `bun test src/modules/editor/TextInputModel.test.ts
 src/modules/keybindings/KeybindingDefaults.test.ts && bun scripts/ast-query.ts text-input-census
 --require-zero && bun scripts/harness/smoke-text-input-harness.ts && bun
-scripts/harness/smoke-field-caret-harness.ts`
+scripts/harness/smoke-field-caret-harness.ts && bun scripts/harness/smoke-database-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### The app is built only after the kernel is sealed
 

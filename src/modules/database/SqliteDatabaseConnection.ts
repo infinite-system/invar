@@ -80,13 +80,25 @@ class $SqliteDatabaseConnection implements DatabaseConnection {
     const columnRows = database
       .query<SqliteColumnRow, []>(`PRAGMA table_info("${escapedTableName}")`)
       .all();
-    return columnRows.map((row) => ({
-      reference: `column:${parentName}:${row.name}`,
-      name: row.name,
-      kind: 'column',
-      detail: row.type || null,
-      mayHaveChildren: false,
-    }));
+    const indexRows = database
+      .query<SqliteIndexRow, []>(`PRAGMA index_list("${escapedTableName}")`)
+      .all();
+    return [
+      ...columnRows.map((row) => ({
+        reference: `column:${parentName}:${row.name}`,
+        name: row.name,
+        kind: 'column' as const,
+        detail: row.type || null,
+        mayHaveChildren: false,
+      })),
+      ...indexRows.map((row) => ({
+        reference: `index:${parentName}:${row.name}`,
+        name: row.name,
+        kind: 'index' as const,
+        detail: row.unique === 1 ? 'UNIQUE' : null,
+        mayHaveChildren: false,
+      })),
+    ];
   }
 
   dispose(): void {
@@ -116,4 +128,9 @@ interface SqliteSchemaRow {
 interface SqliteColumnRow {
   name: string;
   type: string;
+}
+
+interface SqliteIndexRow {
+  name: string;
+  unique: number;
 }
