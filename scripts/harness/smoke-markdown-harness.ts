@@ -404,7 +404,7 @@ async function driveTerminalShrinkAtScale(
       if (lineIndex === 3) return '[dead scale link](missing-scale.md)';
       if (lineIndex === 5)
         return '[external scale link](https://example.com/docs)';
-      if (lineIndex === jumpSourceLine) return `## ${jumpMarker}`;
+      if (lineIndex === jumpSourceLine) return `## [${jumpMarker}](README.md)`;
       const scrollMarker = scrollMarkerBySourceLine.get(lineIndex);
       return scrollMarker
         ? `## ${scrollMarker}`
@@ -516,7 +516,7 @@ async function driveTerminalShrinkAtScale(
       `${fixtureLineCount}-line TOC target paints in source and preview`,
       (candidate) => {
         try {
-          sourceMarkerPosition(candidate, `## ${jumpMarker}`);
+          sourceMarkerPosition(candidate, jumpMarker);
           previewMarkerPosition(candidate, jumpMarker);
           return true;
         } catch {
@@ -524,10 +524,7 @@ async function driveTerminalShrinkAtScale(
         }
       },
     );
-    const followedSource = sourceMarkerPosition(
-      followedSnapshot,
-      `## ${jumpMarker}`,
-    );
+    const followedSource = sourceMarkerPosition(followedSnapshot, jumpMarker);
     const followedPreview = previewMarkerPosition(followedSnapshot, jumpMarker);
     requireReadingPosition(
       followedSnapshot,
@@ -541,6 +538,122 @@ async function driveTerminalShrinkAtScale(
       previewBorder(followedSnapshot).column,
       `${fixtureLineCount}-line preview target`,
     );
+
+    if (fixtureLineCount === 500) {
+      console.log(
+        `== harness markdown: ${fixtureLineCount}-line trailing body row hit boundary ==`,
+      );
+      scaleDriver.sendMouse({
+        kind: 'press',
+        column: followedPreview.column,
+        row: followedPreview.row,
+        button: 'left',
+      });
+      scaleDriver.sendMouse({
+        kind: 'release',
+        column: followedPreview.column,
+        row: followedPreview.row,
+        button: 'left',
+      });
+      let previewFocusStatus = await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line preview target takes pane focus`,
+        (status) => status.markdownPaneFocus === 'preview',
+      );
+      const trailingBodyRow = paneLastBodyRow(
+        scaleDriver.snapshot(),
+        previewBorder(scaleDriver.snapshot()).column,
+      );
+      const firstPreviewBodyRow = previewBorder(scaleDriver.snapshot()).row + 1;
+      const targetRenderedRow =
+        Number(previewFocusStatus.markdownPreviewScrollTop) +
+        followedPreview.row -
+        firstPreviewBodyRow;
+      const targetScrollTop =
+        targetRenderedRow - (trailingBodyRow - firstPreviewBodyRow);
+      for (
+        let correctionCount = 0;
+        Number(previewFocusStatus.markdownPreviewScrollTop) !== targetScrollTop;
+        correctionCount++
+      ) {
+        if (correctionCount >= 50) {
+          throw new Error(
+            `FAIL ${fixtureLineCount}-line preview did not reach the exact trailing-row scroll position within 50 corrections`,
+          );
+        }
+        const previousScrollTop = Number(
+          previewFocusStatus.markdownPreviewScrollTop,
+        );
+        scaleDriver.sendKeys(
+          previousScrollTop > targetScrollTop ? 'Up' : 'Down',
+        );
+        previewFocusStatus = await HarnessSmoke.Class.awaitStatus(
+          scaleDriver,
+          scaleStatusPath,
+          `${fixtureLineCount}-line preview moves the target toward the trailing body row`,
+          (status) =>
+            Number(status.markdownPreviewScrollTop) !== previousScrollTop,
+        );
+      }
+      const trailingSnapshot = await scaleDriver.awaitGridCondition(
+        `${fixtureLineCount}-line reference paints on the trailing preview body row`,
+        (candidate) => {
+          try {
+            return (
+              previewMarkerPosition(candidate, jumpMarker).row ===
+              paneLastBodyRow(candidate, previewBorder(candidate).column)
+            );
+          } catch {
+            return false;
+          }
+        },
+      );
+      const trailingReference = previewMarkerPosition(
+        trailingSnapshot,
+        jumpMarker,
+      );
+      scaleDriver.sendMouse({
+        kind: 'move',
+        column: trailingReference.column,
+        row: trailingReference.row,
+        button: 'none',
+      });
+      await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line trailing preview body row publishes its reference`,
+        (status) =>
+          String(status.markdownHoveredReference).endsWith('/README.md'),
+      );
+      HarnessSmoke.Class.pass(
+        `${fixtureLineCount}-line trailing preview body row hit-tests its painted reference`,
+      );
+      scaleDriver.sendMouse({
+        kind: 'move',
+        column: trailingReference.column,
+        row: trailingReference.row + 1,
+        button: 'none',
+      });
+      await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line row below the preview body clears its reference`,
+        (status) => status.markdownHoveredReference === null,
+      );
+      HarnessSmoke.Class.pass(
+        `${fixtureLineCount}-line row below the preview body remains outside the hit extent`,
+      );
+      scaleDriver.sendKeys('Escape');
+      await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line boundary arm returns keyboard focus to the source`,
+        (status) =>
+          status.markdownPaneFocus === 'source' &&
+          status.markdownHoveredReference === null,
+      );
+    }
 
     console.log(
       `== harness markdown: ${fixtureLineCount}-line source wheel leads at three depths ==`,
