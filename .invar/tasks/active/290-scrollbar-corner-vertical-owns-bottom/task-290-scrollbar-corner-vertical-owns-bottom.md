@@ -38,4 +38,4 @@ carries `## Bycatch` even if it reads `None observed`.
 
 ## Sources
 
-- User message 2026-07-29 13:0x; [#282](../282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md).
+- User message 2026-07-29 13:0x; [#282](../../completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md).
