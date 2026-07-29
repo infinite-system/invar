@@ -61,7 +61,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (9)
+## ARCHITECTURE-HYGIENE (10)
+- #234 navigation-getters-and-hop-depth-ratchet
 - #228 source-text-keys-through-pane-context
 - #226 clock-freeze-hook-and-getter-conversion
 - #224 momentum-ambient-clock-default-parameter
