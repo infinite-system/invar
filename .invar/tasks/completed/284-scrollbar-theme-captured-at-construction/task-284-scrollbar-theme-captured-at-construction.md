@@ -1,6 +1,6 @@
 # 284 — scrollbar colours captured at construction never follow the live theme
 
-State: IN-PROGRESS
+State: COMPLETED — 29d815ea — Scrollbar colours follow the live theme: derive-per-frame at the shared painter, census clean, two-scale switch contract
 Created: 2026-07-29
 Engine: codex
 Environment: linux

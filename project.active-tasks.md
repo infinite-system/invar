@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/in-progress/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md)  [building]
   `tmux attach -t invar/294-lsp-structure-dead-in-secondary-workspace`
-- #284 [scrollbar-theme-captured-at-construction](.invar/tasks/in-progress/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/284-scrollbar-theme-captured-at-construction`
 - #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/in-progress/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)  [building]
   `tmux attach -t invar/277-markdown-preview-body-viewport-settles-after-parent-growth`
 - #267 [go-to-line-does-not-exist](.invar/tasks/in-progress/267-go-to-line-does-not-exist/task-267-go-to-line-does-not-exist.md)  [building]
@@ -87,7 +85,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 71 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 72 — full log: project.tasks-completed.md)
 - #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
 - #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/completed/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md) — f22d86e3 — Scrollbar corner: vertical owns full height + corner, horizontal ends at its edge, grey/white parity both axes; #284 oracle banked
@@ -96,10 +94,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
 - #285 [preview-last-body-row-hit-test](.invar/tasks/completed/285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) — 5d9f0a1a — Preview last-row hit test: #289's seam change confirmed as generator fix by red control; workaround removed; boundary gated; deep-hover stall filed #293
+- #284 [scrollbar-theme-captured-at-construction](.invar/tasks/completed/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md) — 29d815ea — Scrollbar colours follow the live theme: derive-per-frame at the shared painter, census clean, two-scale switch contract
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
 - #281 [structure-pane-round-two-refinements](.invar/tasks/completed/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md) — 35151464 — Structure round two: no import/heritage noise, visibility+cache+override+getter marks, own ⛭ depth gear in-pane
 - #280 [comment-drift-panecontent-scrollbarsync](.invar/tasks/completed/280-comment-drift-panecontent-scrollbarsync/task-280-comment-drift-panecontent-scrollbarsync.md) — ae310859 — Comment drift: PaneContent citizens, ScrollbarSync ownership, Workspace doc blocks — code-evidenced corrections only
 - #279 [drive-settle-unsupported-file-structure](.invar/tasks/completed/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md) — bfa860d8 — Drive settle: hidden no-document is a decline, not pending; loading still holds; settings paint race filed as #292
 - #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/completed/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md) — 83554f14 — activity surface serves both docks; dockSide is a live setting; optional right mirror
 - #276 [task-md-links-walkable](.invar/tasks/completed/276-task-md-links-walkable/task-276-task-md-links-walkable.md) — 173daff9 — task views link to records; md links walk by click with jump ends
-- #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
