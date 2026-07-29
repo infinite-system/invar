@@ -50,6 +50,18 @@ guessing at general paths would repair typos into wrong targets and
 launder real rot. Negative arm in the self-test: a dead src/ link must
 NOT be rescued by any fallback.
 
+## Arm 4b (user, 13:3x): move-class --fix runs automatically at land and dispatch
+
+Wire `--fix --moved-only` (the identity-preserving class ONLY: task-state
+path rewritten to the file's current, verified location) into land.sh
+(the report + task file at landing) and dispatch.sh (the brief at
+filing) — silent, logged one line each ("N moved link(s) refreshed").
+The judgment classes stay manual: bare references and dead links refuse/
+warn with suggestions exactly as today — an auto-fix must never choose a
+target or alter testimony, only refresh a path to the same proven file.
+Self-test arm: --moved-only must not touch a bare reference even when
+its suggestion is unambiguous.
+
 ## Arm 5 (user, 13:2x): the preview paints dead links RED
 
 The markdown preview styles a relative link by the resolver's verdict:
