@@ -61,6 +61,10 @@ cost N live documents*.
   to assert what a buffer is.
 - *Lazy provider* — the provider resolves on first use, so a workspace built only to carry
   contributions (source control, language, file tree) needs no view at all.
+- *One releaser* — `releaseSourceTextViews` disposes every view in `viewsByLiveBuffer` plus the
+  empty view, drops the provider, and leaves the documents alone. One creator needs one release
+  path, or withdrawing the provider leaves live views behind — the orphaned-pane defect #114 found
+  for runtimes, one layer down. The next read of `editor` builds a fresh view from the provider.
 
 **Mechanism:** `WorkspaceOptions.createSourceTextViews` supplies the provider, lazily, on first
 use; `src/modules/editor/EditorSourceTextViews` is the one implementation, and `Bootstrap` is the
@@ -81,7 +85,7 @@ only move the type — the construction IS the coupling.
 `src/modules/editor/EditorSourceTextViews.ts` + `EditorSourceTextViews.test.ts`;
 `Workspace.test.ts` ("language requests read the document on the handle, never a view", "a
 workspace with NO view provider is legal until a view is actually needed", "one creator, one
-disposer"); conventions-gate rule 1.53.
+disposer", "one releaser frees every view the provider made"); conventions-gate rule 1.53.
 
 **Impossible if true:** A host file naming `Editor`; a language request answered through a view; a
 buffer view the workspace did not create or does not release; two contribution registries in one

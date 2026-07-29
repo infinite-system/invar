@@ -39,7 +39,7 @@ import { TabBar } from './TabBar';
 import { ScrollGesture, type WheelModifiers } from './ScrollGesture';
 import { Sidebar } from './Sidebar';
 import { ActivityBar } from './ActivityBar';
-import { EditorPane } from '../editor/EditorPane';
+import { SourceTextPaneContent } from '../editor/SourceTextPaneContent';
 import { EditorContentMount } from './EditorContentMount';
 import { ImagePreview } from '../image/ImagePreview';
 import { ImageRenderers } from '../image/ImageRenderers';
@@ -53,11 +53,14 @@ import { ScrollbarSync } from './ScrollbarSync';
 import { OverlayLayer } from './OverlayLayer';
 import { HoverCard } from './HoverCard';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
-import { EditorWrap } from '../editor/EditorWrap';
-import { SelectableText } from './SelectableText';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
-import type { PaneContent, PaneScrollPort } from './PaneContent.interface';
+import type {
+  PaneContent,
+  PaneScrollPort,
+  PaneSurfaceRegion,
+} from './PaneContent.interface';
+import { PaneProjection } from './PaneProjection';
 import type { ContextMenu, ContextMenuItem } from './ContextMenu';
 import type { BoundedListPopup } from './BoundedListPopup';
 import type { OverlayCoordinator } from './OverlayCoordinator';
@@ -257,33 +260,9 @@ class $RootView {
       flexDirection: 'row',
       title: 'Editor',
     });
-    // Gutter (line numbers + current-line marker) and code are SEPARATE renderables so the code
-    // buffer holds only code — OpenTUI's native selection then never shades the gutter on a
-    // multi-line span, and code-local selection coords are pure display columns.
-    const gutterBody = new TextRenderable(renderer, {
-      id: 'editor-gutter',
-      content: '',
-    });
-    const codeBody = new SelectableText.Class(renderer, {
-      id: 'editor-code',
-      content: '',
-      // selectable:false — OpenTUI's OWN mouse-drag selection is a second writer of selection state
-      // that the model never sees: its highlight appeared on drag, then the next paint's
-      // applySelection() (reading the EMPTY model selection) wiped it — the human-QA
-      // "selection appears then disappears" bug. The model is the one writer; mouse events below
-      // drive cursor+anchor, and the native selection is only ever set programmatically from them.
-      selectable: false,
-      flexGrow: 1,
-      // The RENDERABLE never soft-wraps — the renderable wrapping text itself would desync the
-      // gutter and every row-based mapping (caret Y, selection rows, click hit-testing). Word wrap
-      // is a MODE handled ABOVE this layer: wrap-OFF renders one file line per visual row (long
-      // lines clip; horizontal scroll covers the rest); wrap-ON feeds pre-wrapped SEGMENT rows from
-      // the pure mapping layer (EditorWrap.ts), so this stays 'none' in both modes.
-      // invariant: One visible file line is one visual row when word wrap is off (ui.invariants.md)
-      wrapMode: 'none',
-    });
-    editorArea.add(gutterBody);
-    editorArea.add(codeBody);
+    // The gutter and code renderables are NOT built here: the editor area is the SLOT, and the
+    // source-text pane content mounts its own surfaces into it (below), exactly as a terminal owns
+    // its own. invariant: The source text editor is a pane content citizen (ui.invariants.md)
     editorColumn.add(tabBar);
     editorColumn.add(breadcrumbBar);
     editorColumn.add(editorArea);
@@ -1228,25 +1207,13 @@ class $RootView {
     // column the overlay vertical scrollbar occupies — so the final column of a line is always
     // reachable and visible at max scrollLeft.
     const editorViewportWidth = () => {
-      const laidOut = codeBody.width as number;
-      if (laidOut && laidOut > 1) return Math.max(1, laidOut - 1);
+      const laidOut = sourceTextSurface.surfaceRegion()?.columns ?? 0;
+      if (laidOut > 1) return Math.max(1, laidOut - 1);
       return Math.max(1, (editorArea.width as number) - 2 - 6);
     };
-    const editorCaretAnchor = (): { column: number; row: number } | null => {
-      const editor = workspaceSet.active.editor;
-      if (!editor.hasDocument.value || workspaceSet.active.activeFileIsImage)
-        return null;
-      const position = editorController.visualPosition(
-        editor.cursor.line.value,
-        editor.cursor.col.value,
-      );
-      return position && typeof position === 'object'
-        ? {
-            column: codeBody.x + position.column,
-            row: codeBody.y + position.rowIndex,
-          }
-        : null;
-    };
+    // WHERE the source-text caret is belongs to the content that owns the renderable it sits in.
+    const editorCaretAnchor = (): { column: number; row: number } | null =>
+      sourceTextSurface.caretAnchor();
     /** Grapheme-safe window over display columns; never splits a wide glyph at either edge. */
     // displayColumnWindow / padToDisplayWidth now live on TextCoordinates (the display-column-math
     // capability) so every pane renderer shares one horizontal-windowing primitive. Local aliases keep
@@ -1257,24 +1224,10 @@ class $RootView {
      * Converge layout-derived pane inputs AFTER Yoga has laid out the frame. This is deliberately
      * outside update(): render stays model -> view only, while each pane model owns its live extent.
      */
-    const EMPTY_STATE = [
-      '',
-      '   Invar — a terminal code workspace',
-      '',
-      '   ↑/↓  navigate files      Enter  open / expand',
-      '   Tab  switch pane         Ctrl+P command palette',
-      '   Ctrl+Q or F10  quit   (VS Code: Ctrl+X then Ctrl+C)',
-      '',
-    ].join('\n');
-    // Gutter width in cells for the current document: "NN " (line number + space) + 1 marker cell.
-    const gutterWidth = () =>
-      String(workspaceSet.active.editor.document.lineCount).length + 1 + 2;
-    // Wrap-mode view geometry of the last-rendered frame: the visual rows the window showed, written
-    // by renderEditor and read by the caret block, applySelection, and the mouse hit-test — so all
-    // consumers agree on what is where. Presentation state only.
-    // Empty when wrap is off.
-    // wrapVisualPosition / documentPositionAtCell / applySelection / the selection drag now live in the
-    // EditorPane controller (below) with the wrap window they read.
+    // The empty state and the gutter width moved with the surfaces that draw them, into
+    // SourceTextPaneContent.
+    // The wrap window, the coordinate mapping, the model-to-native selection sync and the selection
+    // drag all live INSIDE the source-text pane content now, with the controller that owns them.
     // Workspace/project tabs and editor/buffer tabs are separate layers backed by the SAME TabStrip
     // capability, driven by the TabBar controller (below). The workspace strip changes orientation.
     let workspaceTabBarMountedPosition: 'top' | 'left' =
@@ -1409,21 +1362,14 @@ class $RootView {
         ? palette.borderActive
         : palette.border;
       // No filename legend on the editor-pane border: the path now lives in the buffer-tab breadcrumb
-      // (project › dir › file). Keep the border BOX (codeBody coords stay stable) but drop the redundant
-      // '╭─README.md' legend. Safe: the app's find/paste source identity is the document PATH, never this
-      // display title — the only thing that ever keyed off the legend text was a test probe (now fixed).
-      const contributedTitle = workspaceSet.active.editorContributions.title(
-        workspaceSet.active.editor,
-      );
-      if (contributedTitle) {
-        editorArea.title = contributedTitle.text;
-        editorArea.titleColor = contributedTitle.color;
-      } else {
-        editorArea.title = '';
-        editorArea.titleColor = sourcePaneFocused
-          ? palette.accent
-          : palette.dim;
-      }
+      // (project › dir › file). Keep the border BOX (the code surface's coords stay stable) but drop
+      // the redundant '╭─README.md' legend. Safe: the app's find/paste source identity is the
+      // document PATH, never this display title. The title and its colour come from the content —
+      // a content only names a colour when the colour carries meaning.
+      editorArea.title = sourceTextPane.title;
+      editorArea.titleColor =
+        sourceTextPane.titleColor ??
+        (sourcePaneFocused ? palette.accent : palette.dim);
       // A surface presenting something other than the active buffer has no editor buffer tabs. Reclaim
       // that row for the surface; source buffers keep the stable one-row strip.
       const activeDocumentIsPresented =
@@ -1445,89 +1391,33 @@ class $RootView {
       const primaryDockWidth = Math.max(1, sidebarWidth() - 2);
       const primaryDockHeight = Math.max(1, Number(sidebar.height) - 2);
       primaryDockContent?.onResize(primaryDockWidth, primaryDockHeight);
+      // Every host paint site asks the ONE resolver, never the content's own render — a content
+      // that paints its own renderables returns no cells and the body keeps what it had.
+      // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
       sidebarBody.content = primaryDockContent
-        ? primaryDockContent.render({
+        ? (PaneProjection.Class.paint(primaryDockContent, {
             width: primaryDockWidth,
             height: primaryDockHeight,
             palette,
             glyphLevel: theme.glyphLevel.value,
             colorDepth: theme.colorDepth.value,
             focused: primaryDockHost.focused.value,
-          })
+          }) ?? sidebarBody.content)
         : '';
       sidebarBody.fg = palette.fg;
       synchronizePrimaryDockSplitters(palette);
-      // When the active buffer is an image, the code body shows the half-block preview (no gutter, no
-      // syntax text). Non-image files are untouched — the editor render path below is unchanged.
-      // invariant: A raster image renders as half-block cells sized to the pane (src/modules/image/image.invariants.md)
-      // invariant: An image buffer replaces the code text and leaves other files untouched (src/modules/image/image.invariants.md)
-      const activeFileIsImage = workspaceSet.active.activeFileIsImage;
-      const rendered = activeFileIsImage
-        ? null
-        : editorController.renderEditor();
-      // Any non-image frame deletes a lingering pixel placement (cheap no-op when nothing is placed).
-      if (!activeFileIsImage) pixelMount.clear();
-      if (activeFileIsImage) {
-        gutterBody.width = 0;
-        gutterBody.content = '';
-        const imagePath = workspaceSet.active.editor.document.path;
-        const previewColumns = Math.max(1, editorViewportWidth());
-        const previewRows = Math.max(1, editorViewportHeight());
-        // The tier ladder: kitty → sixel → half-block. A pixel tier renders BLANK cells under the
-        // out-of-band graphics (so cell repaints never fight the image) and hands placement to the
-        // mount; the half-block floor (and every decode failure) renders through the cells exactly
-        // as before. The ladder is one registry ask — no tier list lives here.
-        // invariant: Graphics tier prefers the reported capability and degrades to cells (src/modules/theme/theme.invariants.md)
-        const graphicsTier = TerminalCapabilities.Class.resolveGraphicsTier(
-          settings.graphicsTier.value,
-          reportedGraphics.value,
-        );
-        const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
-        const decodedImage = pixelEncoder
-          ? imagePreview.decodedImage(imagePath)
-          : null;
-        if (pixelEncoder && decodedImage) {
-          codeBody.content = '';
-          // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
-          if (modalOverlayOwnsScreen) {
-            pixelMount.clear();
-          } else {
-            pixelMount.sync({
-              tier: graphicsTier,
-              encoder: pixelEncoder,
-              image: decodedImage,
-              path: imagePath,
-              region: {
-                x: codeBody.x,
-                y: codeBody.y,
-                columns: previewColumns,
-                rows: previewRows,
-              },
-              panelBackground: palette.panel,
-            });
-          }
-        } else {
-          pixelMount.clear();
-          codeBody.content = imagePreview.render(
-            imagePath,
-            previewColumns,
-            previewRows,
-            palette.panel,
-            palette.error,
-          );
-        }
-      } else if (rendered) {
-        gutterBody.width = gutterWidth();
-        gutterBody.content = rendered.gutter;
-        codeBody.content = rendered.code;
-      } else {
-        gutterBody.width = 0;
-        gutterBody.content = '';
-        codeBody.content = EMPTY_STATE;
-      }
-      codeBody.fg = palette.fg;
-      codeBody.selectionBg = palette.selection;
-      editorController.applySelection(); // after content is set, so selection maps onto the current buffer
+      // The editor column is painted through the SAME seam as every dock and panel cell. The source
+      // text pane is the one native-surface citizen: the resolver hands it the region, it paints the
+      // renderables it owns, and it returns no cells for the host to assign.
+      // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
+      PaneProjection.Class.paint(sourceTextPane, {
+        width: editorViewportWidth(),
+        height: editorViewportHeight(),
+        palette,
+        glyphLevel: theme.glyphLevel.value,
+        colorDepth: theme.colorDepth.value,
+        focused: sourcePaneFocused,
+      });
       if (rightDockHost.visible.value) {
         const rightDockFocused = rightDockHost.focused.value;
         const rightDockContent = rightDockHost.activeContent;
@@ -1541,14 +1431,14 @@ class $RootView {
         rightDockBox.title = rightDockContent?.title ?? 'Right Dock';
         rightDockBody.fg = palette.fg;
         rightDockBody.content = rightDockContent
-          ? rightDockContent.render({
+          ? (PaneProjection.Class.paint(rightDockContent, {
               width: rightDockViewportColumns(),
               height: rightDockViewportRows(),
               palette,
               glyphLevel: theme.glyphLevel.value,
               colorDepth: theme.colorDepth.value,
               focused: rightDockFocused,
-            })
+            }) ?? rightDockBody.content)
           : ' Right dock\n\n No content';
       }
       // Bottom panel slot: pull EACH visible cell's PaneContent into its own body (one body = the
@@ -1641,14 +1531,15 @@ class $RootView {
               height: agent.viewportRows,
             });
           } else {
-            view.body.content = span.content.render({
-              width: span.columns,
-              height: cellRows,
-              palette,
-              glyphLevel: theme.glyphLevel.value,
-              colorDepth: theme.colorDepth.value,
-              focused: cellFocused,
-            });
+            view.body.content =
+              PaneProjection.Class.paint(span.content, {
+                width: span.columns,
+                height: cellRows,
+                palette,
+                glyphLevel: theme.glyphLevel.value,
+                colorDepth: theme.colorDepth.value,
+                focused: cellFocused,
+              }) ?? view.body.content;
             const content = span.content;
             if (
               content.attachViewportScrollPort &&
@@ -1801,23 +1692,23 @@ class $RootView {
         }
         return;
       }
-      // Native terminal caret at the cursor's DISPLAY column (tab/wide aware). Shown only when the
-      // editor is focused, has a document, no palette overlay, and the cursor line is on screen.
-      // invariant: The caret renders at the cursor display column (ui.invariants.md)
-      const editor = workspaceSet.active.editor;
-      const cursorLine = editor.cursor.line.value;
-      const caretPosition =
-        editor.hasDocument.value &&
-        !activeFileIsImage &&
+      // Native terminal caret at the cursor's DISPLAY column (tab/wide aware). The host decides
+      // WHETHER this pane owns the keyboard — focused, the keyboard target, no palette overlay —
+      // and the content answers WHERE its caret is, in screen cells, because it owns the renderable
+      // the caret sits in. invariant: The caret renders at the cursor display column (ui.invariants.md)
+      const sourceTextOwnsKeyboard =
         workspaceSet.active.focus.value === 'editor' &&
         workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
-        !commands.open.value
-          ? editorController.visualPosition(cursorLine, editor.cursor.col.value)
-          : null;
-      if (caretPosition && typeof caretPosition === 'object') {
-        const caretCellX = codeBody.x + caretPosition.column;
-        const caretCellY = codeBody.y + caretPosition.rowIndex;
-        renderer.setCursorPosition(caretCellX + 1, caretCellY + 1, true);
+        !commands.open.value;
+      const caretAnchor = sourceTextOwnsKeyboard
+        ? sourceTextSurface.caretAnchor()
+        : null;
+      if (caretAnchor) {
+        renderer.setCursorPosition(
+          caretAnchor.column + 1,
+          caretAnchor.row + 1,
+          true,
+        );
       } else {
         renderer.setCursorPosition(0, 0, false);
       }
@@ -1839,10 +1730,6 @@ class $RootView {
     // 'none' = off). One expression feeds BOTH the wrap-mode direct step and the momentum impulse.
     const wheelStep = (event: WheelModifiers): number =>
       ScrollGesture.Class.wheelStep(event, settings);
-    // Mouse selection drives the MODEL (cursor + anchor) — the single writer; the native highlight
-    // is then applied FROM the model by applySelection() each paint, so it persists across repaints
-    // and Ctrl+C copies exactly what is highlighted.
-    // invariant: The selected range renders with a background (ui.invariants.md)
     // One shared drag/autoscroll behavior serves this editor and every read-only surface. They differ only in
     // coordinate mapping and scroll storage; pointer lifecycle, edge zones, rate, and re-extension are
     // identical. invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
@@ -1852,7 +1739,7 @@ class $RootView {
       const paneViewportGeometryChanged =
         scrollbarSync.syncPaneViewportGeometry();
       return (
-        editorController.tickDrag(deltaTimeSeconds) ||
+        (sourceTextPane.tickScroll?.(deltaTimeSeconds) ?? false) ||
         paneViewportGeometryChanged
       );
     }
@@ -1868,10 +1755,6 @@ class $RootView {
     // Right-click on a changes FILE row: normalize the selection (an unselected row becomes THE
     // selection; a selected row keeps the whole multi-selection) and open the context menu at the
     // pointer with the COLLECTIVE actions the selection's buckets support.
-    // The editor pane CONTROLLER owns the code body's behaviour: the wrap window, coordinate mapping,
-    // model→native selection sync, the selection-drag behaviour, Ctrl/Cmd+click go-to-definition, and
-    // wheel scroll. RootView keeps the renderables + viewport geometry (public interface) and the
-    // markdown mount; update() calls renderEditor()/applySelection()/wrapVisualPosition() through it.
     // The LSP hover card: a display-only overlay controller that owns its bordered box, content text,
     // and vertical scrollbar. A >0.5s mouse dwell over a symbol shows the language server's type/docs;
     // update() re-syncs it each frame, and the frame loop ticks its dwell.
@@ -1934,11 +1817,69 @@ class $RootView {
       },
     });
     app.onDispose(() => pixelMount.dispose());
-    const editorController = new EditorPane.Class({
+    // What the code cells must show while the active document is a RASTER (an image file). The
+    // tier ladder is kitty → sixel → half-block: a pixel tier renders BLANK cells under the
+    // out-of-band graphics (so cell repaints never fight the image) and hands placement to the
+    // mount; the half-block floor (and every decode failure) renders through the cells. The ladder
+    // is one registry ask — no tier list lives here. Null means "not a raster", and the same call
+    // then deletes any lingering placement (a cheap no-op when nothing is placed).
+    // invariant: A raster image renders as half-block cells sized to the pane (src/modules/image/image.invariants.md)
+    // invariant: An image buffer replaces the code text and leaves other files untouched (src/modules/image/image.invariants.md)
+    // invariant: Graphics tier prefers the reported capability and degrades to cells (src/modules/theme/theme.invariants.md)
+    const rasterProjection = (
+      region: PaneSurfaceRegion,
+    ): StyledText | string | null => {
+      if (!workspaceSet.active.activeFileIsImage) {
+        pixelMount.clear();
+        return null;
+      }
+      const palette = readPalette();
+      const imagePath = workspaceSet.active.editor.document.path;
+      const graphicsTier = TerminalCapabilities.Class.resolveGraphicsTier(
+        settings.graphicsTier.value,
+        reportedGraphics.value,
+      );
+      const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
+      const decodedImage = pixelEncoder
+        ? imagePreview.decodedImage(imagePath)
+        : null;
+      if (!pixelEncoder || !decodedImage) {
+        pixelMount.clear();
+        return imagePreview.render(
+          imagePath,
+          region.columns,
+          region.rows,
+          palette.panel,
+          palette.error,
+        );
+      }
+      // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
+      if (overlayLayer.modalOverlayOwnsScreen) {
+        pixelMount.clear();
+      } else {
+        pixelMount.sync({
+          tier: graphicsTier,
+          encoder: pixelEncoder,
+          image: decodedImage,
+          path: imagePath,
+          region: {
+            x: region.column,
+            y: region.row,
+            columns: region.columns,
+            rows: region.rows,
+          },
+          panelBackground: palette.panel,
+        });
+      }
+      return '';
+    };
+    // The source-text editor as a pane-content citizen. It builds its own gutter and code surfaces
+    // into the slot above, owns the controller that maps, selects, drags, and scrolls them, and
+    // publishes `native-surface` so the host paints it through the one resolver.
+    // invariant: The source text editor is a pane content citizen (src/modules/ui/ui.invariants.md)
+    const sourceTextPane = new SourceTextPaneContent.Class({
       renderer,
-      editorArea,
-      gutterBody,
-      codeBody,
+      slot: editorArea,
       workspaceSet,
       findBar,
       settings,
@@ -1946,8 +1887,8 @@ class $RootView {
       frameAttribution: editorFrameAttribution,
       tooltip,
       readPalette,
-      editorViewportHeight,
-      editorViewportWidth,
+      viewportRows: editorViewportHeight,
+      viewportColumns: editorViewportWidth,
       focusSourceEditor: () =>
         editorContentMount.contributedSurface?.yieldKeyboardToSourceEditor(),
       hover: {
@@ -1956,7 +1897,17 @@ class $RootView {
         clear: () => hoverCard.clear(),
         pointerOffSymbol: () => hoverCard.pointerOffSymbol(),
       },
+      rasterProjection,
+      releaseSourceTextViews: () => {
+        for (const workspace of workspaceSet.entries.value) {
+          workspace.releaseSourceTextViews();
+        }
+      },
     });
+    // Resolved once: every later read of the editor's caret, painted region, or paint goes through
+    // the seam, so the host holds no editor-specific handle at all.
+    const sourceTextSurface =
+      PaneProjection.Class.requireNativeSurface(sourceTextPane);
     // The scrollbar geometry controller derives every bar's track from the live layout each frame and
     // converges the panes' viewport extents. RootView constructs the bars (their onChange handlers call
     // scrollbarSync.trueScrollPosition + read applyingGeometry); update() calls syncScrollbars() and the
@@ -1983,7 +1934,14 @@ class $RootView {
       workspaceSet,
       theme,
       editorArea,
-      codeBody,
+      codeSurface: {
+        get x(): number {
+          return sourceTextSurface.surfaceRegion()?.column ?? 0;
+        },
+        get width(): number {
+          return sourceTextSurface.surfaceRegion()?.columns ?? 0;
+        },
+      },
       sidebar,
       primaryDockHost,
       tooltip,
@@ -2145,6 +2103,7 @@ class $RootView {
       activityBarItemIdentifiers: () => activityBar.itemIdentifiers(),
       dispose() {
         try {
+          sourceTextPane.dispose();
           editorContentMount.dispose();
           root.remove(column);
           column.destroyRecursively();

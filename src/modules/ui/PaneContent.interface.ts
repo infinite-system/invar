@@ -6,8 +6,15 @@
 //
 // A pane content renders its region to cells, consumes focused input, and owns a reactive paint
 // signal so async producers (a PTY, a log tail) repaint through the single frame effect. The terminal,
-// agent, and file tree are citizens today; the editor, git, and Markdown panes remain incremental
-// follow-ups. A content knows nothing about the host, the split, or where it is mounted.
+// agent, file tree, and the source-text editor are citizens today; git and the Markdown panes remain
+// incremental follow-ups. A content knows nothing about the host, the split, or where it is mounted.
+//
+// A content projects through EXACTLY ONE surface. Most return a StyledText from `render` and the
+// host paints it into a host-owned body. One that owns native OpenTUI renderables — the source-text
+// editor, whose native selection and layout-anchored caret are the point — declares the
+// `native-surface` capability instead and paints them itself. Hosts never choose between those two:
+// they call `PaneProjection.paint`, which resolves the capability.
+// invariant: A pane content projects through exactly one surface (ui.invariants.md)
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
@@ -29,6 +36,9 @@ export interface PaneContent {
   readonly instanceLabel?: string;
   /** Human-readable name shown in this content region's own heading. */
   readonly title: string;
+  /** Optional content-chosen title colour. Absent means the host's own focused/idle convention —
+   *  a content only names a colour when the colour carries meaning (a dirty-file title). */
+  readonly titleColor?: string;
   /** Optional activity-bar label when the pane heading and affordance use different established names. */
   readonly activityLabel?: string;
   /** Optional switcher glyph. */
@@ -55,8 +65,10 @@ export interface PaneContent {
   /** A ref bumped whenever the content's projection changes (observed by the frame effect so an
    *  async change repaints without a keypress). */
   readonly renderRevision: Readonly<Ref<unknown>>;
-  /** Project the content into cells for the given region. */
-  render(context: PaneRenderContext): StyledText;
+  /** Project the content into cells for the given region. Omitted ONLY by a content that declares
+   *  the `native-surface` capability and paints its own renderables — never both, never neither.
+   *  Hosts call `PaneProjection.paint`, which resolves which of the two this content is. */
+  render?(context: PaneRenderContext): StyledText;
   /** Optional native caret cell (viewport-local column/row) so the host can place the terminal-style
    *  block cursor. Contents with no caret (a log view) omit this. */
   caret?(): { column: number; row: number } | null;
@@ -109,6 +121,36 @@ export interface PaneContent {
   onBlur(): void;
   /** Release owned resources. */
   dispose(): void;
+}
+
+/** The `native-surface` capability: a pane content that owns OpenTUI renderables and paints them
+ *  itself. The host mounts nothing of the content's own — it hands over a slot box once and then
+ *  calls `paint` exactly where it would otherwise assign a `render()` StyledText into a host body.
+ *  It never learns what is inside, which renderables exist, or how many.
+ *
+ *  A native surface pays for that autonomy by answering two questions the host can no longer
+ *  derive: where its caret sits, and which screen region it actually painted.
+ *  invariant: A pane content projects through exactly one surface (ui.invariants.md) */
+export interface PaneNativeSurfacePort {
+  /** Project for this region by painting the renderables this content owns. Native selection is
+   *  applied inside this call, after the content is set, so a selection never maps onto the
+   *  previous frame's buffer. */
+  paint(context: PaneRenderContext): void;
+  /** The native block caret in SCREEN cells, or null when this content shows none. Screen cells,
+   *  not region-local ones, because the host does not own the renderable the caret sits in. This
+   *  answers WHERE the caret is; whether this pane owns the keyboard stays the host's ladder. */
+  caretAnchor(): { column: number; row: number } | null;
+  /** The screen region this content painted, for host-owned overlays that must anchor to what was
+   *  actually drawn — a scrollbar track, an out-of-band image placement. Null before first layout. */
+  surfaceRegion(): PaneSurfaceRegion | null;
+}
+
+/** A painted region in screen cells. */
+export interface PaneSurfaceRegion {
+  readonly column: number;
+  readonly row: number;
+  readonly columns: number;
+  readonly rows: number;
 }
 
 /** The `text-selection` capability: any pane whose visible selection can be copied. */

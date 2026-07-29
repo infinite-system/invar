@@ -208,6 +208,46 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(disposedViewCount.value).toBe(5);
   });
 
+  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  test('one releaser frees every view the provider made, and the documents stay', () => {
+    const disposedViewCount = { value: 0 };
+    let builtViewCount = 0;
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => {
+        const provider = new EditorSourceTextViews.Class();
+        return {
+          contributions: provider.contributions,
+          createView: () => {
+            builtViewCount += 1;
+            const view = provider.createView();
+            const dispose = view.dispose.bind(view);
+            view.dispose = () => {
+              disposedViewCount.value += 1;
+              dispose();
+            };
+            return view;
+          },
+        };
+      },
+    });
+    workspace.openFileInTab(filePaths[0]!);
+    workspace.openFileInTab(filePaths[1]!);
+    // Two buffer views plus the empty view the first open built; nothing evicted at two tabs.
+    expect(builtViewCount).toBe(3);
+    expect(disposedViewCount.value).toBe(0);
+
+    workspace.releaseSourceTextViews();
+
+    // Every live view is gone — the withdrawn pane leaves none behind.
+    expect(disposedViewCount.value).toBe(3);
+    // The DOCUMENTS stay: the tabs are still open and the handle still names the file.
+    expect(workspace.buffers.count).toBe(2);
+    expect(workspace.activeDocumentHandle?.path).toBe(filePaths[1]!);
+    // The next read builds a fresh view through the provider, so the pane can come back.
+    expect(workspace.editor).toBeDefined();
+    expect(builtViewCount).toBe(4);
+  });
+
   // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
   test('rendered file references resolve only to real files inside the workspace', () => {
     const sourceDirectory = join(workspaceDirectory, 'guides');

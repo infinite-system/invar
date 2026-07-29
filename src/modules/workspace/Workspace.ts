@@ -475,6 +475,22 @@ class $Workspace {
     this.emptySourceTextView = null;
   }
 
+  /** Release every view this workspace's provider made, and the provider with them. The DOCUMENTS
+   *  stay — they are the buffers' own, on their stable handles — and so do the open tabs. A
+   *  released buffer has no view until it is opened again, so `editor` reads the empty view
+   *  meanwhile, which a fresh provider builds on demand.
+   *
+   *  This is the release path the pane that SHOWS these views calls when it is withdrawn. One
+   *  creator needs one releaser: without it a withdrawn provider leaves live views behind, which
+   *  is the orphaned-pane defect #114 found for runtimes, one layer down.
+   *  invariant: One provider creates every workspace buffer view (workspace.invariants.md) */
+  releaseSourceTextViews(): void {
+    for (const view of this.sourceTextViewsInUse) view.dispose();
+    this.viewsByLiveBuffer.clear();
+    this.emptySourceTextView = null;
+    this.sourceTextViewProvider = null;
+  }
+
   toggleFocus(): void {
     if (this.focus.value === 'primaryPane') {
       this.focus.value = 'editor';

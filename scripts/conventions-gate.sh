@@ -79,6 +79,22 @@ if [ -n "$workspace_seam_back_edges" ]; then
   fail=1
 fi
 
+# 1.54) HOST-VIEW DIRECTION: `RootView` is the HOST of the editor column. It owns the SLOT — the
+#       bordered area, its background, its border colour — and the source-text pane content owns
+#       every surface inside it. The host must not name the editor's pane controller, its renderer,
+#       or its contribution registry: one such call and the host is back to rendering, selecting,
+#       and hit-testing source text itself, which is the coupling #219 removed. It reaches the
+#       editor only through `PaneContent` and the `native-surface` capability.
+host_view_back_edges=$(
+  grep -n "EditorPane\|EditorPaneRenderer\|editorContributions" \
+    src/modules/ui/RootView.ts | grep -v '^\s*[0-9]*:\s*//' || true
+)
+if [ -n "$host_view_back_edges" ]; then
+  echo "CONVENTIONS FAIL: RootView names the source-text view's own render path:"
+  echo "$host_view_back_edges"
+  fail=1
+fi
+
 # 1.55) WRAP-INDEX EDIT CENSUS: a same-line edit may loop over its changed range, never the
 #       document-sized line count or an array length.
 if ! "$bun_binary" scripts/ast-query.ts wrap-index-edit-loop-census \
