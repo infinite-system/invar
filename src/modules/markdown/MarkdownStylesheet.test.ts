@@ -49,6 +49,17 @@ test('row selectors resolve every role and heading level', () => {
 
 test('heading levels carry a distinct intensity ramp', () => {
   const stylesheet = MarkdownStylesheet.Class;
+  const heading1 = stylesheet.textStyle('heading1');
+  const heading2 = stylesheet.textStyle('heading2');
+  expect(heading1.colorSlot).toBe('keyword');
+  expect(heading1.bold).toBe(true);
+  expect(heading1.underline).toBe(false);
+  expect(heading2).toMatchObject({
+    colorSlot: 'accent',
+    bold: true,
+    italic: false,
+    underline: false,
+  });
   const rampKeys = [1, 2, 3, 4, 5, 6].map((level) => {
     const style = stylesheet.textStyle(stylesheet.headingSelector(level));
     return `${style.colorSlot}:${style.bold}:${style.italic}:${style.underline}`;

@@ -36,10 +36,7 @@ class $MarkdownStylesheet {
   > {
     const inherit = null;
     const rules: Record<MarkdownElementSelector, MarkdownElementRule> = {
-      heading1: this.buildRule(2, 1, 'accent', inherit, {
-        bold: true,
-        underline: true,
-      }),
+      heading1: this.buildRule(2, 1, 'keyword', inherit, { bold: true }),
       heading2: this.buildRule(2, 1, 'accent', inherit, { bold: true }),
       heading3: this.buildRule(1, 1, 'accent', inherit, {}),
       heading4: this.buildRule(1, 1, 'fg', inherit, { bold: true }),

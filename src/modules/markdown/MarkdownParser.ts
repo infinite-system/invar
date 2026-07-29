@@ -331,16 +331,24 @@ class $MarkdownParser {
       content.push(lines[endLine]!.text.trim());
       endLine++;
     }
+    // invariant: Metadata fields preserve authored lines (src/modules/markdown/markdown.invariants.md)
+    const preservesMetadataFieldLines =
+      content.length >= 2 &&
+      content.every((contentLine) => this.isMetadataFieldLine(contentLine));
     blocks.push(
       this.createInlineBlock(
         'paragraph',
-        content.join(' '),
+        content.join(preservesMetadataFieldLines ? '\n' : ' '),
         startLine,
         endLine,
         lines,
       ),
     );
     return endLine;
+  }
+
+  protected isMetadataFieldLine(text: string): boolean {
+    return /^[A-Za-z][A-Za-z0-9 _-]*:\s+\S.*$/.test(text);
   }
 
   protected startsBlock(

@@ -1,14 +1,17 @@
 #!/usr/bin/env bun
-// Byte-level Markdown split-preview contract: the auto-opened LEFT preview, per-document
-// hand-close memory, the contributed side setting, rendered links, persisted splitter,
-// edge-selection autoscroll/copy/paste, and independent source/preview find all cross the real PTY.
+// Byte-level Markdown split-preview contract: task metadata line breaks, heading styles in both
+// themes, the auto-opened LEFT preview, per-document hand-close memory, the contributed side
+// setting, rendered links, persisted splitter, edge-selection autoscroll/copy/paste, and
+// independent source/preview find all cross the real PTY.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Metadata fields preserve authored lines (src/modules/markdown/markdown.invariants.md)
+// invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
 // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
 // invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
 // invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
@@ -227,6 +230,119 @@ function clickCell(
   driver.sendMouse({ kind: 'press', column, row, button: 'left' });
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
+
+async function driveTaskPresentationInTheme(
+  theme: 'dark' | 'light',
+): Promise<void> {
+  const taskFixtureRoot = mkdtempSync(
+    join(tmpdir(), `tui-markdown-task-${theme}-`),
+  );
+  const taskHomeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-markdown-task-home-${theme}-`),
+  );
+  const taskStatusPath = join(taskHomeDirectory, 'status.json');
+  const settingsDirectory = join(taskHomeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    JSON.stringify({ theme }),
+  );
+  await Bun.write(
+    join(taskFixtureRoot, 'README.md'),
+    [
+      '# Task presentation',
+      '',
+      'State: IN-PROGRESS',
+      'Created: 2026-07-29',
+      'Engine: codex',
+      '',
+      'Prose joins',
+      'across source lines.',
+      '',
+      '## Existing section',
+      '',
+    ].join('\n'),
+  );
+  const taskDriver = new PtyTestDriver.Class({
+    workspaceRoot: taskFixtureRoot,
+    columns: 180,
+    rows: 36,
+    homeDirectory: taskHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: taskStatusPath,
+      LANG: 'C.UTF-8',
+      NERD_FONT: '0',
+    },
+  });
+
+  try {
+    await taskDriver.awaitSnapshot(
+      (candidate) => candidate.findText('README.md') !== null,
+      15_000,
+    );
+    taskDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      taskDriver,
+      taskStatusPath,
+      `${theme} task preview opens and finishes parsing`,
+      (status) =>
+        String(status.activeBuffer).endsWith('/README.md') &&
+        status.markdownPreviewOpen === true &&
+        status.markdownParsing === false,
+    );
+    const snapshot = await taskDriver.awaitGridCondition(
+      `${theme} task metadata and prose paint in the preview`,
+      (candidate) =>
+        candidate.findText('╭─Preview') !== null &&
+        previewHasMarker(candidate, 'Task presentation') &&
+        previewHasMarker(candidate, 'State: IN-PROGRESS') &&
+        previewHasMarker(candidate, 'Created: 2026-07-29') &&
+        previewHasMarker(candidate, 'Engine: codex') &&
+        previewHasMarker(candidate, 'Prose joins across source lines.') &&
+        previewHasMarker(candidate, 'Existing section'),
+    );
+    const state = previewMarkerPosition(snapshot, 'State: IN-PROGRESS');
+    const created = previewMarkerPosition(snapshot, 'Created: 2026-07-29');
+    const engine = previewMarkerPosition(snapshot, 'Engine: codex');
+    HarnessSmoke.Class.requireCondition(
+      created.row === state.row + 1 && engine.row === created.row + 1,
+      `${theme} task metadata keeps one authored field per preview row`,
+    );
+
+    const heading1 = previewMarkerPosition(snapshot, 'Task presentation');
+    const heading2 = previewMarkerPosition(snapshot, 'Existing section');
+    const prose = previewMarkerPosition(
+      snapshot,
+      'Prose joins across source lines.',
+    );
+    const heading1Cell = snapshot.cell(heading1.row, heading1.column);
+    const heading2Cell = snapshot.cell(heading2.row, heading2.column);
+    const proseCell = snapshot.cell(prose.row, prose.column);
+    HarnessSmoke.Class.requireCondition(
+      heading1Cell?.isUnderline === false &&
+        heading1Cell.isBold === true &&
+        heading1Cell.foreground !== proseCell?.foreground,
+      `${theme} H1 uses bold distinct color without an underline`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      heading2Cell?.isUnderline === false &&
+        heading2Cell.isBold === true &&
+        heading2Cell.foreground !== heading1Cell?.foreground &&
+        heading2Cell.foreground !== proseCell?.foreground,
+      `${theme} H2 keeps its bold accent treatment`,
+    );
+  } finally {
+    await taskDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(taskFixtureRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(taskHomeDirectory);
+  }
+}
+
+console.log(
+  '== harness markdown: task fields and heading styles hold in both themes ==',
+);
+await driveTaskPresentationInTheme('dark');
+await driveTaskPresentationInTheme('light');
 
 async function driveTerminalShrinkAtScale(
   fixtureLineCount: number,
