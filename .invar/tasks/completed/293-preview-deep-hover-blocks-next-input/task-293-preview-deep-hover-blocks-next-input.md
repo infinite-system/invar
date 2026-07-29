@@ -1,6 +1,6 @@
 # 293 — deep markdown preview hover blocks the next input at 100k lines
 
-State: IN-PROGRESS
+State: COMPLETED — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
 Created: 2026-07-29
 Engine: codex
 Environment: linux
