@@ -107,4 +107,27 @@ describe('Workspace navigation history (Go Back / Go Forward)', () => {
     expect(() => workspace.navigateForward()).not.toThrow();
     expect(workspace.editor.hasDocument.value).toBe(false);
   });
+
+  test('go-to-line clamps the target and records both ends for back and forward', () => {
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
+    const [alpha] = filePaths as [string, string, string];
+    workspace.openFileInTab(alpha);
+
+    expect(workspace.goToLine({ line: 3, column: 5 })).toBe(true);
+    expect(workspace.editor.cursor.line.value).toBe(2);
+    expect(workspace.editor.cursor.col.value).toBe(4);
+
+    workspace.navigateBack();
+    expect(workspace.editor.cursor.line.value).toBe(0);
+    expect(workspace.editor.cursor.col.value).toBe(0);
+    workspace.navigateForward();
+    expect(workspace.editor.cursor.line.value).toBe(2);
+    expect(workspace.editor.cursor.col.value).toBe(4);
+
+    expect(workspace.goToLine({ line: 500, column: 500 })).toBe(true);
+    expect(workspace.editor.cursor.line.value).toBe(5);
+    expect(workspace.editor.cursor.col.value).toBe(0);
+  });
 });

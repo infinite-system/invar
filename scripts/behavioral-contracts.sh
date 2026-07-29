@@ -1263,6 +1263,13 @@ else
   bad "tasks dashboard drive failed"
 fi
 
+echo "== CONTRACT go-to-line: valid, clamped, and malformed input hold at both scales =="
+if "$BUN" "$DIR/harness/smoke-go-to-line-harness.ts"; then
+  pass "go-to-line prompt, reading placement, and history hold at 10 and 100,000 lines"
+else
+  bad "go-to-line PTY drive failed"
+fi
+
 echo ""
 if [ "$fail" = 0 ]; then echo "behavioral-contracts: ALL-PASS"; else echo "behavioral-contracts: FAILURES"; fi
 exit "$fail"

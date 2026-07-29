@@ -73,6 +73,7 @@ import type { ScrollModifier } from '../settings/Settings';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { QuickOpen } from '../search/QuickOpen';
+import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { PaneSplitters } from './PaneSplitters';
 import { SplitterElement } from './SplitterElement';
 import { Logging } from '../system/Logging';
@@ -114,6 +115,7 @@ class $RootView {
     settingsPanel: SettingsPanel.Instance,
     findBar: FindBar.Instance,
     quickOpen: QuickOpen.Instance,
+    goToLinePrompt: GoToLinePrompt.Instance,
     shortcutHelp: ShortcutHelp.Instance,
     overlayCoordinator: OverlayCoordinator.Instance,
     panelHost: PanelHost.Instance,
@@ -2029,6 +2031,7 @@ class $RootView {
       commands,
       findBar,
       quickOpen,
+      goToLinePrompt,
       contextMenu,
       boundedListPopup,
       settingsPanel,

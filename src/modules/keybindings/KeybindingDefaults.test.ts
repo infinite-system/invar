@@ -334,7 +334,13 @@ test('the host floor names NO contributed-surface action — the surface owns it
 });
 
 test('every adopted text input receives the same complete binding table', () => {
-  const contexts = ['palette', 'quickopen', 'find', 'agent'] as const;
+  const contexts = [
+    'palette',
+    'quickopen',
+    'goToLine',
+    'find',
+    'agent',
+  ] as const;
   const signaturesByContext = contexts.map((context) =>
     KeybindingDefaults.Class.canonicalBindings
       .filter(
@@ -360,6 +366,33 @@ test('every adopted text input receives the same complete binding table', () => 
       chord: { key: 'delete', alt: true },
     }),
   );
+});
+
+test('Alt+G opens go-to-line without taking the Git chords', () => {
+  const registry = new KeybindingRegistry.Class();
+  registry.registerLayer(
+    'canonical',
+    KeybindingDefaults.Class.canonicalBindings,
+  );
+  expect(
+    registry.resolve(
+      {
+        name: 'g',
+        ctrl: false,
+        shift: false,
+        option: true,
+        super: false,
+      },
+      'editor',
+      0,
+    ).action,
+  ).toBe('editor.goToLine');
+  expect(
+    KeybindingDefaults.Class.canonicalBindings.some(
+      (binding) =>
+        binding.action === 'editor.goToLine' && binding.chord?.ctrl === true,
+    ),
+  ).toBe(false);
 });
 
 test('the popup search field gets the same table minus the keys the popup owns', () => {

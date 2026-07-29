@@ -10,6 +10,7 @@ import { AgentPaneContent } from '../agent/AgentPaneContent';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { NarrationProjection } from '../narration/NarrationProjection';
+import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
 import { Settings, type SettingsFileSystem } from '../settings/Settings';
@@ -100,6 +101,7 @@ describe('AppStatusProjection', () => {
       geometry: null,
     };
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
+    const goToLinePrompt = new GoToLinePrompt.Class();
     const tooltip = new Tooltip.Class();
     const panelHost = new PanelHost.Class();
     const primaryDockHost = new PanelHost.Class();
@@ -119,6 +121,7 @@ describe('AppStatusProjection', () => {
       commands,
       findBar,
       quickOpen,
+      goToLinePrompt,
       settingsPanel,
       contextMenu,
       boundedListPopup,
