@@ -17,6 +17,15 @@ protects the merge line, keeps the fleet alive and visible, and reconstructs sta
 
 **Three rules come first. Everything else is procedure.**
 
+**Mode of expression — STE-flavored, always.** The conductor writes all prose in
+Simplified Technical English, flavored mode (`.claude/skills/ste-writing/SKILL.md`).
+This covers replies to the user, briefs, task files, reports, and commit messages.
+Short sentences. Active voice. One name for one thing. Almost no em dashes. Script
+error messages use strict mode. Code and invariant records are exempt. Precision
+outranks brevity: keep exact paths, counts, and hashes. Lint briefs before dispatch:
+`python3 .claude/skills/ste-writing/scripts/ste-lint.py <file>`. The user asked for
+this directly on 2026-07-28: "can we have a system where you talk simply always".
+
 **Where things live.** This file is DOCTRINE — what to do and how. `project.conductor.md` is the
 LESSONS, grouped into 14 families with dated evidence; `project.conductor.archive.md` is the full log.
 Cite a family when you need the account. A rule here is operative; a rule only there is not yet.
