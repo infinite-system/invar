@@ -11,6 +11,7 @@ import {
   InlineRewriteContributor,
 } from '../inline-rewrite/InlineRewriteContributor';
 import { StructurePlugin } from '../structure/StructurePlugin';
+import { TasksDashboardPlugin } from '../tasks-dashboard/TasksDashboardPlugin';
 import { ExtensionsPlugin } from './ExtensionsPlugin';
 import { DatabaseProviderPlugin } from '../database/DatabaseProviderPlugin';
 import { DatabaseConsumerPlugin } from '../database/DatabaseConsumerPlugin';
@@ -27,6 +28,7 @@ class $DefaultPlugins {
       new InlineRewriteContributor.Class(),
       new EditorPlugin.Class(),
       new StructurePlugin.Class(),
+      new TasksDashboardPlugin.Class(),
       new DatabaseConsumerPlugin.Class(),
       new ExtensionsPlugin.Class(),
     ];

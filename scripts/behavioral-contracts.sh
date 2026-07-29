@@ -1256,6 +1256,13 @@ else
   bad "plugin manifest drive failed"
 fi
 
+echo "== CONTRACT tasks-dashboard: the three CLI lenses project into the pane and open their records =="
+if bash "$DIR/smoke-tasks-dashboard.sh"; then
+  pass "tasks dashboard lenses, cycling, record open, degrade, and Extensions lifecycle drive"
+else
+  bad "tasks dashboard drive failed"
+fi
+
 echo ""
 if [ "$fail" = 0 ]; then echo "behavioral-contracts: ALL-PASS"; else echo "behavioral-contracts: FAILURES"; fi
 exit "$fail"

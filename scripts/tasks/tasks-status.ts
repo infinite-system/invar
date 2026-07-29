@@ -27,6 +27,13 @@
 //                     happened and write-active did not run. The repair is always the
 //                     one command, never a hand edit to individual entries.
 //
+// THIS FILE IS ALSO THE SEAM. The in-app tasks dashboard pane
+// (src/modules/tasks-dashboard/) imports the exported readers below —
+// readTaskRecords, builderStanding, startedAtMilliseconds, landingStamp,
+// tasksTreeStamp — so the terminal lenses and the pane read the SAME
+// generator. The CLI entry point runs only under `import.meta.main`, so an
+// import executes nothing.
+//
 // POSITIVE CONTROL. `--self-test` builds a throwaway task tree in a temp directory
 // containing one planted instance of each signal, runs the same analysis over it, and
 // requires every signal to fire. A checker whose only possible output is "clean" is
@@ -46,7 +53,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
@@ -61,6 +68,8 @@ export type DriftSignal =
 export interface TaskRecord {
   taskNumber: number;
   folderName: string;
+  /** The folder's task-<n>-<slug>.md file name, so a consumer can open the record. */
+  taskFileName: string | null;
   directoryState: TaskState;
   declaredState: string | null;
   taskFileLineCount: number;
@@ -89,7 +98,7 @@ function headerField(taskFileText: string, fieldName: string): string | null {
 }
 
 // The compact agent identity for the lenses: `claude·opus-5·high`.
-function agentIdentity(record: TaskRecord): string | null {
+export function agentIdentity(record: TaskRecord): string | null {
   if (record.assignedEngine === null) return null;
   return [
     record.assignedEngine,
@@ -121,7 +130,7 @@ const THIN_LINE_CEILING = 15;
 // "added" or "deface" cannot masquerade as a short SHA.
 const COMMIT_REFERENCE = /\b[0-9a-f]{7,40}\b/;
 
-function readTaskRecords(tasksRoot: string): TaskRecord[] {
+export function readTaskRecords(tasksRoot: string): TaskRecord[] {
   const records: TaskRecord[] = [];
   for (const directoryState of TASK_STATES) {
     const statePath = join(tasksRoot, directoryState);
@@ -147,6 +156,7 @@ function readTaskRecords(tasksRoot: string): TaskRecord[] {
       records.push({
         taskNumber: Number.parseInt(folderName, 10),
         folderName,
+        taskFileName: taskFileName ?? null,
         directoryState,
         declaredState:
           declaredStateLine === undefined
@@ -261,7 +271,7 @@ function findDrift(records: TaskRecord[]): DriftFinding[] {
   return findings;
 }
 
-const PRIORITY_ORDER = [
+export const PRIORITY_ORDER = [
   'user-directed',
   'verification-integrity',
   'flake-evidence',
@@ -366,11 +376,16 @@ function renderActiveView(records: TaskRecord[]): string {
   return outputLines.join('\n').trimEnd();
 }
 
-// One line per completed task: the subject as the short message, and whatever the State line
-// carries after COMPLETED — usually the landing commit — attached.
+// Whatever the State line carries after COMPLETED — usually the landing commit.
+export function completedStateAttachment(record: TaskRecord): string {
+  return (
+    record.declaredState?.replace(/^COMPLETED\s*[—-]?\s*/, '').trim() ?? ''
+  );
+}
+
+// One line per completed task: the subject as the short message, and the landing attachment.
 function completedLine(record: TaskRecord): string {
-  const stateRemainder =
-    record.declaredState?.replace(/^COMPLETED\s*[—-]?\s*/, '').trim() ?? '';
+  const stateRemainder = completedStateAttachment(record);
   const attachment = stateRemainder.length > 0 ? ` — ${stateRemainder}` : '';
   return `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${attachment}`;
 }
@@ -651,7 +666,7 @@ const PRIORITY_BADGES: Record<string, string> = {
 
 // Durations are computed at VIEW time from meta.json's startedAt (written at
 // dispatch) — never stored, so the generated files stay byte-deterministic.
-function startedAtMilliseconds(
+export function startedAtMilliseconds(
   tasksRoot: string,
   record: TaskRecord,
 ): number | null {
@@ -674,7 +689,7 @@ function startedAtMilliseconds(
   }
 }
 
-function formatDuration(milliseconds: number): string {
+export function formatDuration(milliseconds: number): string {
   const totalMinutes = Math.floor(milliseconds / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -1039,7 +1054,7 @@ const firstEditSeen = new Set<string>();
 
 // The round stamp from a task's meta.json, written by round-brief.sh at the
 // filing act. Absent (or unreadable) for round-1 tasks and pre-round history.
-function roundStamp(
+export function roundStamp(
   tasksRoot: string,
   record: TaskRecord,
 ): { round: number; roundBriefedAtMs: number } | null {
@@ -1064,6 +1079,53 @@ function roundStamp(
   }
 }
 
+// ROUNDS AND READINESS, the one rule. Round 1 is dispatch.sh's act; later
+// rounds are round-brief.sh's, which stamps meta.json (round + roundBriefedAtMs)
+// AT FILING TIME. The stamp is the authoritative anchor: a report newer than it
+// is READY, older is an unanswered round. A backfilled brief file cannot demote
+// a delivered report, because the anchor is the filing act, not a file mtime.
+// Folders without a stamp fall back to newest-brief mtime (pre-round history).
+// Exported so the in-app dashboard paints the same standing the live lens does.
+export function builderStanding(
+  tasksRoot: string,
+  record: TaskRecord,
+): { round: number; ready: boolean } {
+  const stamp = roundStamp(tasksRoot, record);
+  const round = stamp?.round ?? Math.max(1, record.briefCount);
+  const roundAnchorMs = stamp?.roundBriefedAtMs ?? record.newestBriefMtimeMs;
+  return {
+    round,
+    ready: record.reportCount > 0 && record.newestReportMtimeMs > roundAnchorMs,
+  };
+}
+
+// The landing facts a completed task's meta.json carries (written at landing).
+export function landingStamp(
+  tasksRoot: string,
+  record: TaskRecord,
+): { landedAt: string | null; durationMinutes: number | null } {
+  try {
+    const metaPath = join(
+      tasksRoot,
+      record.directoryState,
+      record.folderName,
+      'meta.json',
+    );
+    if (!existsSync(metaPath)) return { landedAt: null, durationMinutes: null };
+    const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as {
+      landedAt?: string;
+      durationMinutes?: number;
+    };
+    return {
+      landedAt: typeof meta.landedAt === 'string' ? meta.landedAt : null,
+      durationMinutes:
+        typeof meta.durationMinutes === 'number' ? meta.durationMinutes : null,
+    };
+  } catch {
+    return { landedAt: null, durationMinutes: null };
+  }
+}
+
 function live(
   tasksRoot: string,
   spinnerFrame?: number,
@@ -1083,18 +1145,8 @@ function live(
   }
   console.log(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
-    // ROUNDS. Round 1 is dispatch.sh's act; later rounds are round-brief.sh's,
-    // which stamps meta.json (round + roundBriefedAtMs) AT FILING TIME. The
-    // stamp is the authoritative anchor: a report newer than it is READY, older
-    // is an unanswered round (building round N — spinner, deltas, clock resume).
-    // A backfilled brief file cannot demote a delivered report, because the
-    // anchor is the filing act, not a file mtime. Folders without a stamp fall
-    // back to newest-brief mtime (pre-round-brief history).
-    const stamp = roundStamp(tasksRoot, record);
-    const round = stamp?.round ?? Math.max(1, record.briefCount);
-    const roundAnchorMs = stamp?.roundBriefedAtMs ?? record.newestBriefMtimeMs;
-    const ready =
-      record.reportCount > 0 && record.newestReportMtimeMs > roundAnchorMs;
+    // ROUNDS. One rule for the CLI and the pane — see builderStanding above.
+    const { round, ready } = builderStanding(tasksRoot, record);
     const breath =
       spinnerFrame === undefined
         ? null
@@ -1276,25 +1328,10 @@ function landedTodayStats(tasksRoot: string): {
   let landedToday = 0;
   for (const record of readTaskRecords(tasksRoot)) {
     if (record.directoryState !== 'completed') continue;
-    const metaPath = join(
-      tasksRoot,
-      'completed',
-      record.folderName,
-      'meta.json',
-    );
-    if (!existsSync(metaPath)) continue;
-    try {
-      const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as {
-        landedAt?: string;
-        durationMinutes?: number;
-      };
-      if (meta.landedAt?.slice(0, 10) === today) {
-        landedToday += 1;
-        if (typeof meta.durationMinutes === 'number')
-          durations.push(meta.durationMinutes);
-      }
-    } catch {
-      // unreadable meta: skip
+    const { landedAt, durationMinutes } = landingStamp(tasksRoot, record);
+    if (landedAt?.slice(0, 10) === today) {
+      landedToday += 1;
+      if (durationMinutes !== null) durations.push(durationMinutes);
     }
   }
   durations.sort((left, right) => left - right);
@@ -1324,7 +1361,7 @@ function statsLine(tasksRoot: string): string {
 // clock. A seven-stat mtime probe decides whether the task tree is re-read;
 // the 95k-line source count recomputes only when the commit count moves
 // (a landing), never on schedule.
-function tasksTreeStamp(tasksRoot: string): string {
+export function tasksTreeStamp(tasksRoot: string): string {
   const parts: string[] = [];
   for (const state of TASK_STATES) {
     try {
@@ -1453,28 +1490,31 @@ function allLenses(tasksRoot: string): number {
   return 0;
 }
 
-const repositoryRoot = join(import.meta.dir, '..', '..');
+// The CLI entry point. Guarded so importing the readers above (the in-app
+// dashboard's seam) executes nothing — no lens run, no process.exit.
+if (import.meta.main) {
+  const repositoryRoot = join(import.meta.dir, '..', '..');
+  const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
 
-const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
+  if (process.argv.includes('watch')) {
+    await watchLenses(tasksRoot);
+  }
 
-if (process.argv.includes('watch')) {
-  await watchLenses(tasksRoot);
+  process.exit(
+    process.argv.includes('--self-test')
+      ? selfTest()
+      : process.argv.includes('live')
+        ? live(tasksRoot)
+        : process.argv.includes('active')
+          ? activeOnly(tasksRoot)
+          : process.argv.includes('completed')
+            ? completedOnly(tasksRoot)
+            : process.argv.includes('all')
+              ? allLenses(tasksRoot)
+              : process.argv.includes('backlog')
+                ? backlog(tasksRoot, false)
+                : process.argv.includes('write-active')
+                  ? backlog(tasksRoot, true)
+                  : report(tasksRoot),
+  );
 }
-
-process.exit(
-  process.argv.includes('--self-test')
-    ? selfTest()
-    : process.argv.includes('live')
-      ? live(tasksRoot)
-      : process.argv.includes('active')
-        ? activeOnly(tasksRoot)
-        : process.argv.includes('completed')
-          ? completedOnly(tasksRoot)
-          : process.argv.includes('all')
-            ? allLenses(tasksRoot)
-            : process.argv.includes('backlog')
-              ? backlog(tasksRoot, false)
-              : process.argv.includes('write-active')
-                ? backlog(tasksRoot, true)
-                : report(tasksRoot),
-);

@@ -1183,7 +1183,9 @@ try {
     'uninstall removes the structure pane and withdraws its projection',
     (status) =>
       !(status.rightDockContentIds as string[]).includes('structure') &&
-      status.rightDockVisible === false &&
+      // The dock stays visible: the tasks dashboard is a second right-dock citizen now, and the
+      // host falls back to the surviving content instead of hiding an occupied dock.
+      status.rightDockActiveContent === 'tasks' &&
       status.structureStatus === undefined,
   );
   driver.sendKeysWithoutFrameExpectation('Control+Shift+u');
