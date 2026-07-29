@@ -1144,10 +1144,10 @@ function live(
       `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}`,
     );
     console.log(
-      `      ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
+      `       ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
     );
     console.log(
-      paint('38;5;240', `  tmux attach -t invar/${record.folderName}`),
+      paint('38;5;240', `   tmux attach -t invar/${record.folderName}`),
     );
   }
   return 0;
