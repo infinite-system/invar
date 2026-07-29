@@ -12,8 +12,8 @@ import type {
 } from '../workspace/WorkspaceContributor.interface';
 import { InlineRewrite } from './InlineRewrite';
 
-// invariant: Disabled rewrites observe nothing (inline-rewrite.invariants.md)
-// invariant: Proposals preserve source text (inline-rewrite.invariants.md)
+// invariant: Disabled rewrites observe nothing (src/modules/inline-rewrite/inline-rewrite.invariants.md)
+// invariant: Proposals preserve source text (src/modules/inline-rewrite/inline-rewrite.invariants.md)
 class $InlineRewriteWorkspace
   implements WorkspaceContribution, EditorContribution
 {

@@ -82,7 +82,7 @@ test('fold chord bytes arrive through both OpenTUI parsers', () => {
 });
 
 // --- focus owns the keystroke -------------------------------------------------------------------
-// invariant: Focus owns the keystroke (keybindings.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 
 function registryWithCanonicalLayer(): KeybindingRegistry.Instance {
   const registry = new KeybindingRegistry.Class();

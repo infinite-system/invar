@@ -5,7 +5,7 @@ import { ScrollGesture } from './ScrollGesture';
 import type { PanelHost } from './PanelHost';
 import type { Tooltip } from './Tooltip';
 
-// invariant: Plugin panes use the shared pane and popup hosts (ui.invariants.md)
+// invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 class $Sidebar {
   constructor(protected readonly dependencies: SidebarDependencies) {
     this.wireHandlers();

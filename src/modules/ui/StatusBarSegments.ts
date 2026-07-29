@@ -2,7 +2,7 @@ import type { App } from '../app/App';
 import type { PanelHost } from './PanelHost';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 
-// invariant: Status text is assembled from ordered contributions (ui.invariants.md)
+// invariant: Status text is assembled from ordered contributions (src/modules/ui/ui.invariants.md)
 class $StatusBarSegments {
   protected readonly contributions = new Set<StatusBarSegmentContribution>();
 

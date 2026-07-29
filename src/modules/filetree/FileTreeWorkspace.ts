@@ -5,7 +5,7 @@ import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.in
 import { FileTree } from './FileTree';
 import type { Ref } from 'vue';
 
-// invariant: The file tree costs only what is expanded and visible (filetree.invariants.md)
+// invariant: The file tree costs only what is expanded and visible (src/modules/filetree/filetree.invariants.md)
 class $FileTreeWorkspace implements WorkspaceContribution {
   constructor(
     readonly workspace: Workspace.Model,

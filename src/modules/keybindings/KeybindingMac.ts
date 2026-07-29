@@ -12,9 +12,9 @@ import type { Keybinding } from './KeybindingRegistry';
 // re-emits the canonical Ctrl bindings of the primary-modifier actions with `super`, so a mac alias
 // can never disagree with the floor about what a chord MEANS. Only chords whose mac meaning genuinely
 // differs from the Ctrl form are hand-written below, each with its reason inline.
-// invariant: Modifier fidelity varies by protocol (keybindings.invariants.md)
-// invariant: The canonical layer is the floor (keybindings.invariants.md)
-// invariant: Focus owns the keystroke (keybindings.invariants.md)
+// invariant: Modifier fidelity varies by protocol (src/modules/keybindings/keybindings.invariants.md)
+// invariant: The canonical layer is the floor (src/modules/keybindings/keybindings.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 class $KeybindingMac {
   /**
    * Chords whose macOS meaning is NOT the primary-modifier substitution — they use a different

@@ -116,7 +116,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.buffers.liveCount).toBe(2); // active (1) + dirty background (0)
   });
 
-  // invariant: The editor surface answers capabilities, not plugin modes (workspace.invariants.md)
+  // invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
   test('opening a real file releases a contributed surface; the visible editor becomes the active tab', () => {
     const workspace = createWorkspace();
     // A contribution shaped like a read-only comparison: it occupies the surface and replaces the
@@ -142,7 +142,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.editor.document.path).toBe(filePaths[0]!);
   });
 
-  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
   test('language requests read the document on the handle, never a view', () => {
     const workspace = createWorkspace();
     workspace.root = workspaceDirectory;
@@ -166,7 +166,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.activeDocumentHandle?.document?.path).toBe(filePaths[0]!);
   });
 
-  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
   test('a workspace with NO view provider is legal until a view is actually needed', () => {
     // The provider resolves lazily, which is what lets a contributor-only workspace exist.
     const workspace = new Workspace.Class();
@@ -178,7 +178,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(() => workspace.editor).toThrow(/source-text view provider/);
   });
 
-  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
   test('one creator, one disposer: every view a workspace made is released with its buffer', () => {
     const disposedViewCount = { value: 0 };
     const workspace = new Workspace.Class({
@@ -208,7 +208,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(disposedViewCount.value).toBe(5);
   });
 
-  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
   test('one releaser frees every view the provider made, and the documents stay', () => {
     const disposedViewCount = { value: 0 };
     let builtViewCount = 0;
@@ -259,7 +259,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.editor.hasDocument.value).toBe(true);
   });
 
-  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
   test('a release keeps the view of a buffer holding unsaved edits', () => {
     const workspace = new Workspace.Class({
       createSourceTextViews: () => new EditorSourceTextViews.Class(),

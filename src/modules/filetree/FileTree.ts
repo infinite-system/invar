@@ -79,7 +79,7 @@ class $FileTree {
   }
 
   /** Flatten expanded directories into visible rows (depth-first, dirs first). */
-  // invariant: The file tree costs only what is expanded and visible (filetree.invariants.md)
+  // invariant: The file tree costs only what is expanded and visible (src/modules/filetree/filetree.invariants.md)
   protected flatten(): TreeRow[] {
     const rows: TreeRow[] = [];
     const walk = (directory: string, depth: number): void => {

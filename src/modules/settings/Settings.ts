@@ -338,7 +338,7 @@ class $Settings {
     record.contribution.changed?.(sanitized);
   }
 
-  // invariant: Plugin settings live in contributed schema (settings.invariants.md)
+  // invariant: Plugin settings live in contributed schema (src/modules/settings/settings.invariants.md)
   registerSetting<Value extends SettingValue>(
     contribution: SettingContribution<Value>,
   ): RegisteredSetting<Value> {

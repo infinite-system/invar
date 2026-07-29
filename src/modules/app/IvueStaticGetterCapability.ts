@@ -1,6 +1,6 @@
 import { Static } from 'ivue/extras';
 
-// invariant: Boot checks ivue static getter caching (app.invariants.md)
+// invariant: Boot checks ivue static getter caching (src/modules/app/app.invariants.md)
 class $IvueStaticGetterCapability {
   static assertAvailable(): void {
     if (process.env.INVAR_SKIP_CAPABILITY_CHECK === '1') return;

@@ -18,8 +18,8 @@ import { WrapBreakOpportunity } from '../text/WrapBreakOpportunity';
 // NEXT segment — it renders at visual column 0 of the following row. End-of-line belongs to the
 // last segment.
 //
-// invariant: Word wrap is a pure view mapping (editor.invariants.md)
-// invariant: One generator owns document-line-to-visual-row (editor.invariants.md)
+// invariant: Word wrap is a pure view mapping (src/modules/editor/editor.invariants.md)
+// invariant: One generator owns document-line-to-visual-row (src/modules/editor/editor.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 // invariant: Wrapped surfaces share one break generator (project.invariants.md)
 class $EditorWrap {

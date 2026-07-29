@@ -14,7 +14,7 @@
 // the real editor is embedded in its left pane — which is exactly the distinction the old
 // "is a diff showing?" question could not express.
 //
-// invariant: The editor surface answers capabilities, not plugin modes (workspace.invariants.md)
+// invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
 class $EditorSurfaceClaims {
   protected readonly claims = new Set<EditorSurfaceClaim>();
 

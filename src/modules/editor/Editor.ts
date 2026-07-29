@@ -24,7 +24,7 @@ import type { SourceTextView } from '../workspace/SourceTextView.interface';
 // editing, and scroll.
 //
 // invariant: Data flows one way (project.invariants.md)
-// invariant: Selection is an anchor plus the cursor and edits replace it (editor.invariants.md)
+// invariant: Selection is an anchor plus the cursor and edits replace it (src/modules/editor/editor.invariants.md)
 // invariant: The dirty marker is derived from content, never asserted (src/modules/text/text.invariants.md)
 class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   // invariant: Construction goes through overridable seams (project.invariants.md)
@@ -66,7 +66,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   }
   // Word wrap is a VIEW MODE: when on, rendering/caret/selection route through the pure
   // logical↔visual mapping in editor.wrap.ts and horizontal scroll is inert. The document model
-  // is untouched by the toggle. invariant: Word wrap is a pure view mapping (editor.invariants.md)
+  // is untouched by the toggle. invariant: Word wrap is a pure view mapping (src/modules/editor/editor.invariants.md)
   // Word wrap is a GLOBAL view preference: EVERY editor instance reads the SAME settings.wordWrap ref
   // (attached via attachWordWrap), so the setting is the single source — the settings panel AND the
   // toggle command drive the identical ref, and switching tabs never desyncs the mode. Falls back to a

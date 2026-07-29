@@ -180,7 +180,7 @@ class $StatusBar {
       deps.tooltip.clear();
     };
     this.rightDockButton.onMouseDown = () => {
-      // invariant: Right dock command and mouse affordance share one toggle (ui.invariants.md)
+      // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
       deps.toggleRightDock();
       renderer.requestRender();
     };

@@ -1,6 +1,6 @@
 import type { WrappableDocument } from './EditorWrap';
 
-// invariant: Editor frame work is independent of document length (editor.invariants.md)
+// invariant: Editor frame work is independent of document length (src/modules/editor/editor.invariants.md)
 class $EditorFrameAttribution {
   protected active = false;
   protected currentDocumentLineReads = 0;

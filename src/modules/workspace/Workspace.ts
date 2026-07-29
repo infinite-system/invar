@@ -43,8 +43,8 @@ import { ProviderRegistry } from '../plugins/ProviderRegistry';
 // stable `DocumentHandle` and is what the language requests read; the view comes from the injected
 // `SourceTextViewProvider` and is what the flyweight disposes and rebuilds.
 //
-// invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
-// invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+// invariant: Workspace and file navigation are separate layers (src/modules/workspace/workspace.invariants.md)
+// invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
 
 class $Workspace {
   constructor(protected readonly options: WorkspaceOptions = {}) {
@@ -227,7 +227,7 @@ class $Workspace {
    * only while that document is the text on screen. It is a document question, so it is answered
    * from the document side of the buffer — no view is consulted, and none has to exist.
    *
-   * invariant: The editor surface answers capabilities, not plugin modes (workspace.invariants.md)
+   * invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
    */
   protected get languageRequestDocument(): TextDocument.Model | null {
     if (!this.editorSurfaces.activeDocumentIsPresented) return null;
@@ -501,7 +501,7 @@ class $Workspace {
    *  tab that can never be shown again. And it does not drop the PROVIDER: the provider carries the
    *  per-workspace contribution registry that OTHER contributions attached to, which is not the
    *  withdrawn pane's to destroy.
-   *  invariant: One provider creates every workspace buffer view (workspace.invariants.md) */
+   *  invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md) */
   releaseSourceTextViews(): void {
     this.buffers.releaseHydratedBuffers();
     this.emptySourceTextView?.dispose();

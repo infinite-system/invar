@@ -6,7 +6,7 @@ import { ref, shallowRef } from 'vue';
 // locations plus a cursor into it. Recording a NEW location truncates any forward history and
 // appends; back()/forward() walk the cursor without recording. Pure model — plain values in, plain
 // values out — so it is unit-testable with no editor, no LSP, and no terminal.
-// invariant: Programmatic history navigation does not record new history (navigation.invariants.md)
+// invariant: Programmatic history navigation does not record new history (src/modules/navigation/navigation.invariants.md)
 class $NavigationHistory {
   /** The largest number of entries retained; recording past it drops the oldest. */
   protected static get MAXIMUM_ENTRY_COUNT(): number {

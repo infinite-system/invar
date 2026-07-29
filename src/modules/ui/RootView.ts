@@ -264,7 +264,7 @@ class $RootView {
     });
     // The gutter and code renderables are NOT built here: the editor area is the SLOT, and the
     // registered default content mounts its own surfaces into it (below), exactly as a terminal owns
-    // its own. invariant: The source text editor is a pane content citizen (ui.invariants.md)
+    // its own. invariant: The source text editor is a pane content citizen (src/modules/ui/ui.invariants.md)
     // The empty-slot notice. It is mounted ONLY while no content occupies the column, so an editor
     // that is simply not installed reads as a stated affordance rather than an empty document or a
     // crash. Built here because the SLOT is the host's, and so is the sentence about it being empty.
@@ -1232,7 +1232,7 @@ class $RootView {
     // every paint (the 'wheel not smooth since scrollbars' regression). onChange handlers must act
     // only on USER-initiated changes — a real thumb drag then halts momentum and adopts authority.
     // Interior height of a bordered box = box height - 2 (top+bottom border).
-    // invariant: A scrollable pane height is an input not an output (ui.invariants.md)
+    // invariant: A scrollable pane height is an input not an output (src/modules/ui/ui.invariants.md)
     const editorViewportHeight = () =>
       Math.max(1, (editorArea.height as number) - 2);
     // Layout-anchored (never hand-derived): the code renderable's own laid-out width, minus the one
@@ -1319,7 +1319,7 @@ class $RootView {
     // (flyweight). Returns null for the empty state.
     // Drive OpenTUI's native selection on the code renderable from the model selection, mapped into
     // code-local coords (x = display column, y = visible-line index). Clamps to the visible window.
-    // invariant: The selected range renders with a background (ui.invariants.md)
+    // invariant: The selected range renders with a background (src/modules/ui/ui.invariants.md)
     // renderStatus moved into the StatusBar controller (it composes the same parts from workspace/app
     // state + the markdown-preview-focused flag RootView passes to statusBar.update).
     // The editor content-area MOUNT controller owns what occupies the editor column (plain editor /
@@ -1713,7 +1713,7 @@ class $RootView {
       // Native terminal caret in the focused panel: a real block caret at the emulator's cursor cell,
       // anchored to the FOCUSED cell body's laid-out screen cell (+1 for the 1-based ANSI cursor). This
       // wins over the editor caret below because a focused terminal owns the keyboard.
-      // invariant: The caret renders at the cursor display column (ui.invariants.md)
+      // invariant: The caret renders at the cursor display column (src/modules/ui/ui.invariants.md)
       if (panelHost.visible.value && panelHost.focused.value) {
         const focusedCellIndex = Math.min(
           Math.max(0, panelHost.focusedIndex.value),
@@ -1735,7 +1735,7 @@ class $RootView {
       // Native terminal caret at the cursor's DISPLAY column (tab/wide aware). The host decides
       // WHETHER this pane owns the keyboard — focused, the keyboard target, no palette overlay —
       // and the content answers WHERE its caret is, in screen cells, because it owns the renderable
-      // the caret sits in. invariant: The caret renders at the cursor display column (ui.invariants.md)
+      // the caret sits in. invariant: The caret renders at the cursor display column (src/modules/ui/ui.invariants.md)
       const sourceTextOwnsKeyboard =
         workspaceSet.active.focus.value === 'editor' &&
         workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&

@@ -329,7 +329,7 @@ describe('effective bindings (deliverability honesty)', () => {
 });
 
 // --- hints never advertise an undeliverable chord ------------------------------------------------
-// invariant: Advertised bindings are deliverable bindings (keybindings.invariants.md)
+// invariant: Advertised bindings are deliverable bindings (src/modules/keybindings/keybindings.invariants.md)
 
 test('a super (Cmd) alias never displaces the floor chord in the hint map', () => {
   const registry = new KeybindingRegistry.Class();

@@ -10,7 +10,7 @@ import type { FileTreeWorkspace } from './FileTreeWorkspace';
 import { TreePaneRenderer } from './TreePaneRenderer';
 
 // invariant: The file tree is a pane content citizen (src/modules/ui/ui.invariants.md)
-// invariant: The file tree costs only what is expanded and visible (filetree.invariants.md)
+// invariant: The file tree costs only what is expanded and visible (src/modules/filetree/filetree.invariants.md)
 // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
 class $FileTreePaneContent implements PaneContent {
   constructor(

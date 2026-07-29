@@ -6,7 +6,7 @@
 // the thumb shrinks the reported range, the mapping carries a scale so positions round-trip to the
 // TRUE scroll range with exact extremes.
 //
-// invariant: A scrollbar track is derived per frame from its region rect (ui.invariants.md)
+// invariant: A scrollbar track is derived per frame from its region rect (src/modules/ui/ui.invariants.md)
 import { Static } from 'ivue/extras';
 
 class $ScrollbarGeometry {

@@ -6,7 +6,7 @@ import type { WorkspaceContributor } from './WorkspaceContributor.interface';
 import type { SourceTextViewProvider } from './SourceTextView.interface';
 
 /** The project-layer workspace set. Each entry preserves its own editor/tree state while cold. */
-// invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
+// invariant: Workspace and file navigation are separate layers (src/modules/workspace/workspace.invariants.md)
 class $WorkspaceSet {
   protected readonly contributors: WorkspaceContributor[];
 

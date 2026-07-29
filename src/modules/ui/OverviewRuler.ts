@@ -5,7 +5,7 @@ import {
   type EditorLineDecoration,
 } from '../workspace/GutterDecorations';
 
-// invariant: The editor overview derives from the decoration snapshot (ui.invariants.md)
+// invariant: The editor overview derives from the decoration snapshot (src/modules/ui/ui.invariants.md)
 // invariant: One generator owns document-line-to-visual-row (src/modules/editor/editor.invariants.md)
 class $OverviewRuler {
   protected cachedSnapshot: EditorDecorationSnapshot | null = null;

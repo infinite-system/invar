@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 
-// invariant: Plugin settings live in contributed schema (settings.invariants.md)
+// invariant: Plugin settings live in contributed schema (src/modules/settings/settings.invariants.md)
 export interface SettingContribution<
   Value extends SettingValue = SettingValue,
 > {

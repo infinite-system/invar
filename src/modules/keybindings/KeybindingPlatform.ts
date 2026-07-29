@@ -8,9 +8,9 @@ import type { Keybinding } from './KeybindingRegistry';
 // `ctrl` replaced by `super`, so a mac alias cannot disagree with the floor about meaning: there is
 // no second table to edit, and a drift like `Ctrl+P = go-to-file` vs `Cmd+P = command palette`
 // becomes unrepresentable.
-// invariant: The canonical layer is the floor (keybindings.invariants.md)
-// invariant: Modifier fidelity varies by protocol (keybindings.invariants.md)
-// invariant: Focus owns the keystroke (keybindings.invariants.md)
+// invariant: The canonical layer is the floor (src/modules/keybindings/keybindings.invariants.md)
+// invariant: Modifier fidelity varies by protocol (src/modules/keybindings/keybindings.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 class $KeybindingPlatform {
   /**
    * The actions whose PRIMARY MODIFIER is platform-variant: on macOS the user reaches them with Cmd.

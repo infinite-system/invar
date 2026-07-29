@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { Processes } from './Processes';
 
 // invariant: Copy reaches the host terminal (src/modules/system/system.invariants.md)
-// invariant: Clipboard emissions flush at frame boundaries (system.invariants.md)
+// invariant: Clipboard emissions flush at frame boundaries (src/modules/system/system.invariants.md)
 
 class $Clipboard {
   protected static detectedTool: ClipboardTool | null | undefined = undefined;

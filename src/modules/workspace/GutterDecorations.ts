@@ -1,8 +1,8 @@
 import { Static } from 'ivue/extras';
 import type { DocumentHandle } from './DocumentHandle';
 
-// invariant: Gutter marks come from document scoped contributions (workspace.invariants.md)
-// invariant: One mark has one reserved meaning (workspace.invariants.md)
+// invariant: Gutter marks come from document scoped contributions (src/modules/workspace/workspace.invariants.md)
+// invariant: One mark has one reserved meaning (src/modules/workspace/workspace.invariants.md)
 class $GutterDecorations {
   protected readonly contributions = new Set<GutterDecorationContribution>();
   protected snapshotCache = new WeakMap<

@@ -4,9 +4,9 @@ import type { Keybinding } from './KeybindingRegistry';
 // The CANONICAL binding layer — the floor: only universally-deliverable chords (Ctrl, plain keys,
 // function keys, arrows). Overlays (mac) ALIAS actions bound here; they never replace the floor.
 // Bindings are pure data: chord (or step list) -> action id (+ context / guard).
-// invariant: The canonical layer is the floor (keybindings.invariants.md)
-// invariant: Bindings are intent addressed (keybindings.invariants.md)
-// invariant: Focus owns the keystroke (keybindings.invariants.md)
+// invariant: The canonical layer is the floor (src/modules/keybindings/keybindings.invariants.md)
+// invariant: Bindings are intent addressed (src/modules/keybindings/keybindings.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 class $KeybindingDefaults {
   /**
    * The ONE chord table for every editable one-line field, instantiated per context. A host that
@@ -285,7 +285,7 @@ class $KeybindingDefaults {
       // clause and must not be taken from a focused surface.
       // It replaces the plain `Tab` this action used to claim GLOBALLY — a host claiming an unmodified
       // whitespace key that the editor needs for content, which is the violation #91 reported.
-      // invariant: Focus owns the keystroke (keybindings.invariants.md)
+      // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
       { chord: { key: 'j', ctrl: true, shift: true }, action: 'focus.toggle' },
       // Editor buffer tabs (item 10a) — global (work in any focus). Ctrl+Tab needs the kitty keyboard
       // protocol; Ctrl+PageUp/PageDown are the widely-supported equivalents.
@@ -528,7 +528,7 @@ class $KeybindingDefaults {
       // previous global `Tab → focus.toggle` was the host claiming an unmodified key it had no warrant
       // for (#91). With a selection: indent/outdent every selected line; without: one indent unit at
       // the caret / one unit removed from the line's leading whitespace.
-      // invariant: Focus owns the keystroke (keybindings.invariants.md)
+      // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
       {
         chord: { key: 'tab', shift: false },
         action: 'editor.indent',

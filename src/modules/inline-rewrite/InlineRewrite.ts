@@ -175,7 +175,7 @@ class $InlineRewrite {
       ) {
         return;
       }
-      // invariant: Stale rewrites never land (inline-rewrite.invariants.md)
+      // invariant: Stale rewrites never land (src/modules/inline-rewrite/inline-rewrite.invariants.md)
       if (
         this.options.currentRevision() !== snapshot.revision ||
         !(this.eligibility?.() ?? false)
@@ -227,7 +227,7 @@ class $InlineRewrite {
 
   protected cancelActiveRequest(): void {
     if (!this.activeAbortController) return;
-    // invariant: Only one rewrite request runs (inline-rewrite.invariants.md)
+    // invariant: Only one rewrite request runs (src/modules/inline-rewrite/inline-rewrite.invariants.md)
     this.requestGeneration += 1;
     this.activeAbortController.abort();
     this.activeAbortController = null;
