@@ -676,8 +676,12 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // details stay readable.
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
-function live(tasksRoot: string, spinnerFrame?: number): number {
-  const records = readTaskRecords(tasksRoot)
+function live(
+  tasksRoot: string,
+  spinnerFrame?: number,
+  preloadedRecords?: TaskRecord[],
+): number {
+  const records = (preloadedRecords ?? readTaskRecords(tasksRoot))
     .filter((record) => record.directoryState === 'in-progress')
     .sort(byNumberDescending);
   if (records.length === 0) {
@@ -898,8 +902,20 @@ async function watchLenses(tasksRoot: string): Promise<number> {
   };
   process.on('SIGINT', restoreScreen);
   process.on('SIGTERM', restoreScreen);
+  // Three cadences, one loop: PAINT at 30 fps (the spinner), DATA every ~2 s
+  // (task folders), STATS once a minute (git spawns and line counts). The
+  // spinner earns its smoothness without hammering the filesystem.
+  const PAINT_MILLISECONDS = 33;
+  const DATA_EVERY_FRAMES = 60;
+  const STATS_EVERY_FRAMES = 1800;
+  let cachedRecords = readTaskRecords(tasksRoot);
+  let cachedLanded = baselineLanded;
   for (;;) {
-    if (frame % 30 === 0 && frame > 0) {
+    if (frame % DATA_EVERY_FRAMES === 0 && frame > 0) {
+      cachedRecords = readTaskRecords(tasksRoot);
+      cachedLanded = landedTodayStats(tasksRoot).landedToday;
+    }
+    if (frame % STATS_EVERY_FRAMES === 0 && frame > 0) {
       sampledCommits = commitsToday();
       sampledLines = sourceLineCount();
     }
@@ -907,19 +923,17 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     process.stdout.write('\x1b[H\x1b[0J');
     const clock = new Date().toLocaleTimeString('en-GB', { hour12: false });
     console.log(
-      `${bold('INVAR TASKS')} ${dim(`· ${clock} · refresh 2s · Ctrl+C to exit`)}`,
+      `${bold('INVAR TASKS')} ${dim(`· ${clock} · 30fps · Ctrl+C to exit`)}`,
     );
     console.log('');
-    live(tasksRoot, frame);
+    live(tasksRoot, frame, cachedRecords);
     console.log('');
-    const records = readTaskRecords(tasksRoot);
-    const completedCount = records.filter(
+    const completedCount = cachedRecords.filter(
       (record) => record.directoryState === 'completed',
     ).length;
-    const activeCount = records.filter(
+    const activeCount = cachedRecords.filter(
       (record) => record.directoryState === 'active',
     ).length;
-    const { landedToday } = landedTodayStats(tasksRoot);
     const delta = (now: number | null, base: number | null): string =>
       now !== null && base !== null && now > base
         ? green(` +${now - base}`)
@@ -927,14 +941,14 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     console.log(
       dim(`◫ ${activeCount} active · ✔ ${completedCount} completed`) +
         dim('  ·  ') +
-        `⚡${landedToday} landed today${delta(landedToday, baselineLanded)}` +
+        `⚡${cachedLanded} landed today${delta(cachedLanded, baselineLanded)}` +
         dim('  ·  ') +
         `⎘ ${sampledCommits ?? '?'} commits${delta(sampledCommits, baselineCommits)}` +
         dim('  ·  ') +
         `≡ ${sampledLines?.toLocaleString('en-US') ?? '?'} src lines${delta(sampledLines, baselineLines)}`,
     );
     frame += 1;
-    await Bun.sleep(2000);
+    await Bun.sleep(PAINT_MILLISECONDS);
   }
 }
 
