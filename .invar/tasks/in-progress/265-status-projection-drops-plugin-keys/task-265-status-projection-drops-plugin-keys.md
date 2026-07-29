@@ -1,6 +1,6 @@
 # 265 — uninstalling a plugin turns its status keys undefined, not false
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
