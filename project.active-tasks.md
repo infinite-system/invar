@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (7)
-- #264 boot-save-erases-unregistered-settings
+## IN-PROGRESS (1)
+- #264 boot-save-erases-unregistered-settings  [building]
+  `tmux attach -t invar/264-boot-save-erases-unregistered-settings`
+
+## USER-DIRECTED (6)
 - #263 terminal-shrink-markdown-split-frozen
 - #259 right-dock-click-leaves-double-focus
 - #256 editor-stray-glyph-after-emoji

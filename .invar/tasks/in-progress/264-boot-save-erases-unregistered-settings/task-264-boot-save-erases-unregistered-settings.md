@@ -1,6 +1,6 @@
 # 264 — a boot-time save erases stored contributed settings that have not registered yet
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
