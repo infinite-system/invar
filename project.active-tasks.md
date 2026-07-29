@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (7)
-- #245 provider-seam-open-or-bless-decision
+## IN-PROGRESS (1)
+- #245 provider-seam-open-or-bless-decision  [building]
+  `tmux attach -t invar/245-provider-seam-open-or-bless-decision`
+
+## USER-DIRECTED (6)
 - #238 structure-default-right-and-md-toc
 - #237 markdown-preview-left-and-auto-open
 - #236 markdown-terminal-stylesheet-readable
@@ -36,7 +39,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (14)
+## FLAKE-EVIDENCE (15)
+- #252 activitybar-smoke-pre-satisfied-waits
 - #214 panel-chrome-agent-close-intermittent
 - #213 drive-quit-key-post-quit-frame-wait
 - #212 markdown-100k-paste-focus-wait

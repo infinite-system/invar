@@ -1,6 +1,6 @@
 # 245 — open the provider seam: one host registry, consumer-owned interfaces, proven by the database plugin
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Decided: 2026-07-29 by the user (converted from decision to build; #223 folded in)
 Engine: codex
