@@ -674,10 +674,20 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // The spinner belongs to WORK IN MOTION only: building tasks spin, READY ones
 // hold still. One glyph per task, not per line — motion marks the task, the
 // details stay readable.
-// A pulse: a small dot breathes into a big one and back (· • ● •). Four
-// frames, advancing every fourth paint at 30 fps; one breath ~530 ms.
-const SPINNER_FRAMES = ['·', '•', '●', '•'];
-const SPINNER_PAINTS_PER_STEP = 4;
+// A calm breath in cool light: the dot swells and settles while its colour
+// glides teal -> cyan -> blue and back — the Claude Code gradient feel.
+// Eight frames advancing every fifth paint at 30 fps; one breath ~1.3 s.
+const SPINNER_FRAMES: Array<[string, string]> = [
+  ['·', '38;5;30'],
+  ['•', '38;5;37'],
+  ['•', '38;5;44'],
+  ['●', '38;5;51'],
+  ['●', '38;5;45'],
+  ['●', '38;5;39'],
+  ['•', '38;5;44'],
+  ['·', '38;5;37'],
+];
+const SPINNER_PAINTS_PER_STEP = 5;
 
 function live(
   tasksRoot: string,
@@ -694,13 +704,15 @@ function live(
   console.log(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
     const ready = record.reportCount > 0;
-    const buildingGlyph =
+    const breath =
       spinnerFrame === undefined
-        ? '●'
-        : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? '●');
+        ? null
+        : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? null);
+    const buildingGlyph =
+      breath === null ? paint('38;5;45', '●') : paint(breath[1], breath[0]);
     const statusBadge = ready
       ? green('◉ READY — awaiting landing')
-      : yellow(`${buildingGlyph} building`);
+      : `${buildingGlyph} ${paint('38;5;44', 'building')}`;
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const runningFor =
       startedAt === null
