@@ -1,6 +1,6 @@
 # 230 — author ui.lattice.md: the ui records need the unification scroll has
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux

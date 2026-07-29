@@ -1,0 +1,15 @@
+{
+  "task": 230,
+  "slug": "author-ui-lattice",
+  "branch": "fleet/230-author-ui-lattice",
+  "worktree": ".invar/worktrees/230-author-ui-lattice",
+  "tmuxSession": "invar/230-author-ui-lattice",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-230-author-ui-lattice.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "6a3eb7bb6f287f87087235615e70e66ae5ae60b4",
+  "startedAt": "2026-07-29T01:52:05-04:00"
+}

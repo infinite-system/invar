@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #230 author-ui-lattice  [building]
+  `tmux attach -t invar/230-author-ui-lattice`
 - #35 structure-navigator-plugin-pane  [building]
   `tmux attach -t invar/35-structure-navigator-plugin-pane`
 
@@ -14,11 +16,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (18)
+## VERIFICATION-INTEGRITY (17)
 - #233 wrap-contract-red-settings-leak
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
-- #230 author-ui-lattice
 - #229 scale-parity-selection-smoke
 - #227 dispatch-cuts-worktree-after-record-commit
 - #225 system-invariants-rotted-enumeration
