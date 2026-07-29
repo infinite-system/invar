@@ -1727,12 +1727,12 @@ try {
     (status) =>
       !(status.settingsSections as string[] | undefined)?.includes('Markdown'),
   );
-  // The plugin's status projection leaves with it, so the key reads undefined — anything but true.
+  // The plugin's status projection leaves with it, so the key must be absent instead of stale.
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'uninstall closes the auto-opened preview',
-    (status) => status.markdownPreviewOpen !== true,
+    (status) => status.markdownPreviewOpen === undefined,
   );
   await driver.awaitGridCondition(
     'no stale preview pane survives the Markdown uninstall',
