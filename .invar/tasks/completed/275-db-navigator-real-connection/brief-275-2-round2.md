@@ -25,5 +25,5 @@ cec0e374 is the recovery point; this brief re-fires on resume.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The refreshed READY report carries `## Bycatch`
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The refreshed READY report carries `## Bycatch`
 even if it reads `None observed`.

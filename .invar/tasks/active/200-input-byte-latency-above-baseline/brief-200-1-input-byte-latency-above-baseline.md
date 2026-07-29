@@ -1,7 +1,7 @@
 # TASK — #200: is the POOL the shared cause? Two smokes, one hypothesis. BLOCKS A GREEN MAIN.
 
 Work ONLY in this worktree. Branch `fleet/200-pool`. Do NOT push, merge, tag or delete. Report to
-`/tmp/200-pool-READY.md`. `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
+[/tmp/200-pool-READY.md](../../../../../../../../../../../tmp/200-pool-READY.md). `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
 
 **YOU ARE THE ONLY BUILDER.** You may run `scripts/merge-gate.sh` — you will need it at several worker
 counts, which is the whole point. Take the machine-wide quiet lock for timing runs and check
@@ -82,9 +82,9 @@ run serially, and adding the declaration must move it into the pool.
 
 ## Required reading
 
-`AGENTS.md` at this worktree root has the skills index; codex does not auto-see `.claude/skills/`.
-For this task load `.claude/skills/ibr/IBR.md` (you are choosing between rival explanations, so reduce
-before building) and `.claude/skills/ast-query/SKILL.md` (use `bun scripts/ast-query.ts` for any
+[AGENTS.md](../../../../AGENTS.md) at this worktree root has the skills index; codex does not auto-see `.claude/skills/`.
+For this task load [.claude/skills/ibr/IBR.md](../../../../.claude/skills/ibr/IBR.md) (you are choosing between rival explanations, so reduce
+before building) and [.claude/skills/ast-query/SKILL.md](../../../../.claude/skills/ast-query/SKILL.md) (use `bun scripts/ast-query.ts` for any
 structural question about pool registration, never grep). The brief's Repo law section below is a
 FRAGMENT, not the discipline.
 

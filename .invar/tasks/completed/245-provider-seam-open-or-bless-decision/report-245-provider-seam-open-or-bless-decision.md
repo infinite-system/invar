@@ -32,7 +32,7 @@ and installs a fake plugin without changing the consumer.
   It reports exactly one rendezvous.
 - Extended the existing plugin-manifest PTY smoke. It now removes and reinstalls
   the SQLite provider and Database Explorer independently.
-- Left `src/modules/ui/ui.invariants.md` and all `src/modules/ui/` files
+- Left [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) and all `src/modules/ui/` files
   untouched.
 
 ## Driven evidence

@@ -22,7 +22,7 @@ Missing dependency ground truth exits 3. The refusal names `bun install --frozen
 
 The gate header now states the dependency-ground-truth rule and exit code.
 
-I did not change `scripts/harness/harness.invariants.md`. This rule governs every gate step, including formatting, tests, and contract checks. It belongs at the gate entry.
+I did not change [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md). This rule governs every gate step, including formatting, tests, and contract checks. It belongs at the gate entry.
 
 ## Reproduction
 

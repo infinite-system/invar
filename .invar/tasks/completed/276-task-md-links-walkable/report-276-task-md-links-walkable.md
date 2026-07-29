@@ -32,8 +32,8 @@ head `188c2807` (merge of main through #284), tree clean.
 ### 1. Generator end — the views link every task line
 
 `scripts/tasks/tasks-status.ts`: `taskRecordLinkPath` + `linkedTaskLabel`
-give every task line in `project.active-tasks.md` and
-`project.tasks-completed.md` a relative markdown link to its record:
+give every task line in [project.active-tasks.md](../../../../project.active-tasks.md) and
+[project.tasks-completed.md](../../../../project.tasks-completed.md) a relative markdown link to its record:
 `- #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-…/task-205-….md)`.
 Wired into `taskLine`, `completedLine`, and the no-priority-group branch —
 generator only, views regenerated. After the main merge: 81/81 active
@@ -111,7 +111,7 @@ link-stripped line goes red (quoted above).
 
 ## Records
 
-`src/modules/markdown/markdown.invariants.md`:
+[src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md):
 - NEW: **An unresolvable Markdown link states why** (provisional) —
   stated misses, the notice clearing rule, backticks-stay-prose.
 - REFINED: **A file reference opens from rendered Markdown** — focus
@@ -149,7 +149,7 @@ Checker: `--all --refs` → **0 problems** (1106 annotations resolved).
   line sitting on the LAST body row of the preview pane (row 37 of a
   40-row grid), hover publishes no reference and the tooltip never shows;
   nudging the same line one row up restores hover/click. Reproduced twice
-  while driving `project.active-tasks.md` at 140x40. Suspect an off-by-one
+  while driving [project.active-tasks.md](../../../../project.active-tasks.md) at 140x40. Suspect an off-by-one
   between the pane's body extent and `referenceAtCell`'s visible-row
   mapping. Not fixed (not obviously local); the drive script works around
   it by scrolling one extra step.

@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #291 [task-links-survive-state-moves](.invar/tasks/in-progress/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md)  [building]
+- #291 [task-links-survive-state-moves](.invar/tasks/in-progress/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/291-task-links-survive-state-moves`
 - #289 [preview-scroll-sync-setting](.invar/tasks/in-progress/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/289-preview-scroll-sync-setting`

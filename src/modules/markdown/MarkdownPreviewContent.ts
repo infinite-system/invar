@@ -46,6 +46,8 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
       findBar: context.findBar,
       resolveReference: (reference) =>
         workspace.resolveFileReference(reference),
+      referenceIsExternal: (reference) =>
+        workspace.referenceIsExternal(reference),
       // Open + focus, the #235 open-seam pattern: the user asked for the file, so the keyboard
       // follows it — without the focus move, editor-context chords (Back/Forward) stay dead
       // after a click-open.

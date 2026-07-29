@@ -54,13 +54,13 @@ your fix replaces it.
 
 ## Invariants in scope
 
-- `src/modules/agent/agent.invariants.md` (if present) — the backend spawn
+- [src/modules/agent/agent.invariants.md](../../../../src/modules/agent/agent.invariants.md) (if present) — the backend spawn
   contract; add a record: an app boot leaves no unreaped binary extraction.
-- `scripts/harness/harness.invariants.md` — smoke boots must be disk-bounded.
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — smoke boots must be disk-bounded.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

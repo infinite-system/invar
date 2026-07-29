@@ -130,7 +130,7 @@ No other smoke was changed.
 - `coverage ratchet: inspected 322 files; no undeclared decrease against 831e5cf`
 - The assertion replacement is count-neutral and changes a weaker relational policy check into the exact warm-window count.
 - One condition-based clean-state wait was added.
-- No assertion or wait count was weakened, so `project.coverage-deltas.md` was not changed.
+- No assertion or wait count was weakened, so [project.coverage-deltas.md](../../../../project.coverage-deltas.md) was not changed.
 
 ## Verification
 

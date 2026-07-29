@@ -39,7 +39,7 @@ Defaults came first.
   to depth 0 and 17 rows.
 - Typing `reproject` reduced the source outline to 2 fuzzy matches. Down selected the second match.
   Enter published `cursor={"line":393,"col":2}` and returned focus to the editor.
-- `src/modules/ui/ui.invariants.md` supplied the larger Markdown outline. Depth 1 painted 3 rows.
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) supplied the larger Markdown outline. Depth 1 painted 3 rows.
   Depth 2 painted 65 rows. Keyboard navigation crossed the 13-row viewport and advanced
   `structureScrollTop` from 0 to 3.
 - The shared scrollbar diagnostic for that Markdown drive published `scrollSize=65`,

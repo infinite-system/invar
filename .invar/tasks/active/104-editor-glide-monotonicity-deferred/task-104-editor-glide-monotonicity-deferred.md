@@ -27,7 +27,7 @@ It is one of the few open items whose deferral is a DECISION rather than a backl
 repeatedly re-listed as "known and deliberate" during flake triage so a reviewer counting open scroll
 items would not read it as an unexplained gap. Deleting the task would lose the trigger.
 
-Related: #138 (the shipped fling-accumulation fix), #139 (`scroll.invariants.md` + `scroll.lattice.md`,
+Related: #138 (the shipped fling-accumulation fix), #139 ([scroll.invariants.md](../../../../src/modules/ui/scroll.invariants.md) + [scroll.lattice.md](../../../../src/modules/ui/scroll.lattice.md),
 which should record whatever phase rule comes out of any resumed work here).
 
 ## Sources

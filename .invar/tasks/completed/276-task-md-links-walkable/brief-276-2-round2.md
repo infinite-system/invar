@@ -32,5 +32,5 @@ the refreshed report quotes its exit and both fixed mechanisms.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The refreshed READY report carries `## Bycatch`
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The refreshed READY report carries `## Bycatch`
 even if it reads `None observed`.

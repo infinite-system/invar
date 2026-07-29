@@ -1,4 +1,4 @@
-# 239 — repair ui.invariants.md: dead symbols, wrong paths, duplicated paragraph
+# 239 — repair [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md): dead symbols, wrong paths, duplicated paragraph
 
 State: COMPLETED — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
 Created: 2026-07-29
@@ -28,17 +28,17 @@ report:
 3. Delete the duplicated selection paragraph at `:1531-1545` (the mouse
    addendum restated ~15 lines later — an editing artifact, not two rules).
 
-Checker at zero problems after; the lattice (`ui.lattice.md`) must still
+Checker at zero problems after; the lattice ([ui.lattice.md](../../../../src/modules/ui/ui.lattice.md)) must still
 resolve every link — run `--all --refs` and quote counts before/after.
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — the subject.
-- `src/modules/ui/ui.lattice.md` — must stay fully woven after the edits.
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the subject.
+- [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) — must stay fully woven after the edits.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

@@ -24,7 +24,7 @@ Positive control: break `caretAnchor` (the #219 control) and require the red.
 
 Blocked-by note: NOT blocked, but coordinate with #216's landing — the drive
 on-ramp fix changes how scale fixtures are created (system temp, cleaned per
-run). Also add the one-line note #219 flagged to `scripts/harness/drive.md`:
+run). Also add the one-line note #219 flagged to [scripts/harness/drive.md](../../../../scripts/harness/drive.md):
 a fresh directory workspace starts with editor focus, so `Enter` does not open
 the selected tree row; click does.
 

@@ -183,7 +183,7 @@ no `degraded` entry from this task's run; the only matching entries are older
 editor-edit-path measurements.
 
 The relevant harness invariant was updated in
-`scripts/harness/harness.invariants.md`. The change preserves the rules that
+[scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md). The change preserves the rules that
 waits observe named conditions, async state is awaited, shared behavior has one
 generator, and rendering remains a coarse frame effect.
 

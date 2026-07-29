@@ -1,7 +1,7 @@
 # TASK — #196: make a 500,000-line file usable. USER-DIRECTED, TOP PRIORITY.
 
 Work ONLY in this worktree. Branch `fleet/196-scale`. Do NOT push, merge, tag or delete. Report to
-`/tmp/196-scale-READY.md`. `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
+[/tmp/196-scale-READY.md](../../../../../../../../../../../tmp/196-scale-READY.md). `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
 
 **YOU ARE THE ONLY BUILDER.** You may run `scripts/merge-gate.sh`. Take the machine-wide quiet lock for
 every timing run and **check `/tmp/invar-quiet-lock.journal` for a `degraded` entry afterwards** — the
@@ -19,7 +19,7 @@ script pins `argv[2]` to `.` and silently drops the path (#195).
 
 ## READ FIRST — the frame, then the reference, then STOP
 
-**1. `agent-dispatches/_staged/196-flyweight-frame.md`** — the structural frame, written from reading
+**1. [agent-dispatches/_staged/196-flyweight-frame.md](../../../../agent-dispatches/_staged/196-flyweight-frame.md)** — the structural frame, written from reading
 the source. Start here.
 
 **2. `../ivue/examples/playground/src/examples/flyweight-grid/Flyweight.invariants.md`** — the
@@ -260,12 +260,12 @@ Fenwick. Everything else on the list ships.
 
 # REQUIRED SKILLS (this supersedes the "Repo law" section's implied completeness)
 
-`AGENTS.md` at this worktree's root carries the skills index and notes that codex does not auto-see
+[AGENTS.md](../../../../AGENTS.md) at this worktree's root carries the skills index and notes that codex does not auto-see
 `.claude/skills/`. For THIS task the following are not optional, and the brief's "Repo law" section is a
 REMINDER OF A FEW RULES, **not** a substitute for any of them — treating that fragment as the complete
 discipline is the failure mode this section exists to prevent:
 
-- **`.claude/skills/ibr/IBR.md`** — load it. This task is architectural: it replaces a data structure on
+- **[.claude/skills/ibr/IBR.md](../../../../.claude/skills/ibr/IBR.md)** — load it. This task is architectural: it replaces a data structure on
   the strength of an invariant, and the acceptance test is derived from an impossibility boundary rather
   than a threshold. Reduce before building; the ladder in the main brief is a hypothesis about where the
   cost lives, and measurement outranks it.
@@ -276,9 +276,9 @@ discipline is the failure mode this section exists to prevent:
   governs.
 - **`.claude/skills/invariants/`** — load it, and run
   `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` before READY. You will be
-  editing `src/modules/editor/editor.invariants.md`, and the user's acceptance test is explicitly whether
+  editing [src/modules/editor/editor.invariants.md](../../../../src/modules/editor/editor.invariants.md), and the user's acceptance test is explicitly whether
   that record gets SHORTER.
-- **`.claude/skills/ast-query/SKILL.md`** — use `bun scripts/ast-query.ts` for every structural question
+- **[.claude/skills/ast-query/SKILL.md](../../../../.claude/skills/ast-query/SKILL.md)** — use `bun scripts/ast-query.ts` for every structural question
   (who reads `index.prefix`, who constructs the wrap index, which callers hold references to
   `rowCounts`). Parse, do not grep. The claim that the index arrays never escape must be established
   structurally, not by reading.

@@ -2,7 +2,7 @@
 
 You are a builder on the Invar terminal IDE. Work ONLY in `/tmp/conductor-icons2`
 (branch `fix-icon-uniformity`, forked from main at `1563456`). Do NOT run `scripts/merge-gate.sh`;
-do NOT push/merge/tag/delete. Commit and report to `/tmp/icon-uniformity-READY.md`.
+do NOT push/merge/tag/delete. Commit and report to [/tmp/icon-uniformity-READY.md](../../../../../../../../../../../tmp/icon-uniformity-READY.md).
 `export PATH=$HOME/.bun/bin:$PATH; bun install --frozen-lockfile` first.
 
 ## The user, verbatim (2026-07-26 ~19:55)

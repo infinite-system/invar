@@ -33,8 +33,8 @@ capstone) remain.
 
 The agent half runs through a terminal profile rather than a bespoke plugin surface: launch
 claude/codex — later pi/hermes/any CLI agent — in a PTY terminal pane, `cwd` = the workspace folder,
-with context verified present. Codex auto-reads `AGENTS.md`; claude auto-reads `CLAUDE.md` (a redirect
-to `AGENTS.md`); IBR arrives via `--append-system-prompt-file .claude/skills/ibr/IBR.md` for the
+with context verified present. Codex auto-reads [AGENTS.md](../../../../AGENTS.md); claude auto-reads [CLAUDE.md](../../../../CLAUDE.md) (a redirect
+to [AGENTS.md](../../../../AGENTS.md)); IBR arrives via `--append-system-prompt-file .claude/skills/ibr/IBR.md` for the
 claude lineage. The context must be VERIFIED present, not assumed — that is the part that fails
 silently.
 

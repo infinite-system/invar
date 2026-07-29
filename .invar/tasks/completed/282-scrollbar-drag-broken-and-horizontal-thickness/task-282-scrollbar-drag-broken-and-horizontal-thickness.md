@@ -39,11 +39,11 @@ Check the first-click warm-up family (#260) does not mask the repro.
 ## Invariants in scope
 
 - The scrollbar records (SolidThumbScrollBar, ScrollbarSync); #259's
-  one-focus-owner record; ui.invariants.md pointer records.
+  one-focus-owner record; [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) pointer records.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

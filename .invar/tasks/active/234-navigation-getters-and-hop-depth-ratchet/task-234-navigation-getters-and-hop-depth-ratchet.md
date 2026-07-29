@@ -38,14 +38,14 @@ ratchet.
 
 ## Invariants in scope
 
-- *Seams are drawn at the shared generator* (`project.invariants.md`) — rule 2
+- *Seams are drawn at the shared generator* ([project.invariants.md](../../../../project.invariants.md)) — rule 2
   above is its navigation corollary.
 - The ivue reactivity conventions (`.claude/skills/ivue/`) — the getter-vs-
   alias distinction must be stated in whatever convention text this adds.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories — distillation possibilities
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories — distillation possibilities
 especially: the hop census will surface repeated walks that are shared
 generators in hiding. The READY report carries `## Bycatch` even if it reads
 `None observed`.

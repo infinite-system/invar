@@ -3,10 +3,10 @@
 Analysis only. The convention text below is ready to paste. The gate rule is written, run, and
 proved with five controls. No production file is committed by this task.
 
-## Part 1 — convention 12, ready for AGENTS.md
+## Part 1 — convention 12, ready for [AGENTS.md](../../../../AGENTS.md)
 
-Paste after convention 11 in the "Non-negotiable conventions" list in `AGENTS.md`, and add the
-matching paragraph to `project.conventions.md` under a new "Capability access" heading.
+Paste after convention 11 in the "Non-negotiable conventions" list in [AGENTS.md](../../../../AGENTS.md), and add the
+matching paragraph to [project.conventions.md](../../../../project.conventions.md) under a new "Capability access" heading.
 
 > 12. **An EFFECTFUL capability is reached through a getter. A PURE one is called directly. The
 >     `Class` slot stays the global default.**
@@ -61,14 +61,14 @@ Recorded so the next reader does not relitigate it.
   times.
 - `extends X.Class` is already forbidden (gate rule 1.8) for the same reason: a mutable slot read
   eagerly pins a generation. A getter is the late read the invariant *Imported dependencies are
-  read late* (`project.invariants.md`) already requires.
+  read late* ([project.invariants.md](../../../../project.invariants.md)) already requires.
 
 The convention adds no new mechanism. It names one that four modules invented separately.
 
 ## Part 2 — the gate rule
 
 **Rule 1.58, EFFECT-SEAM BOUNDARY.** Subject is source text, so it belongs in
-`scripts/conventions-gate.sh`, per the "where a check belongs" rule in `project.conventions.md`.
+`scripts/conventions-gate.sh`, per the "where a check belongs" rule in [project.conventions.md](../../../../project.conventions.md).
 
 Two files are proposed, both written and run in this worktree, neither committed to production:
 
@@ -81,7 +81,7 @@ Two files are proposed, both written and run in this worktree, neither committed
 
 **It DISCOVERS its population.** The effectful set is computed by parsing the capability roots and
 applying the criterion, then closing over sibling imports. There is no list of effectful
-namespaces in the script. `project.conventions.md` says a population test that enumerates its
+namespaces in the script. [project.conventions.md](../../../../project.conventions.md) says a population test that enumerates its
 population reports green over a shrinking fraction of it. An effectful capability added tomorrow
 is governed on the day it is added.
 
@@ -217,7 +217,7 @@ The `Processes` new-getter count is 7 against 6 files because
 `src/modules/system/Clipboard.ts` is inside the capability layer. The checker excludes it and the
 task's own count of 6 external consumers is the one to use for #223.
 
-The reasoning for each verdict is in `analysis-222-minimal-conversion-set.md`.
+The reasoning for each verdict is in [analysis-222-minimal-conversion-set.md](analysis-222-minimal-conversion-set.md).
 
 The whole sweep is 51 files and 254 sites. The user judged it excessive up front. The measurement
 agrees. The three-namespace minimal set is 26 distinct files and 106 sites once the overlaps are

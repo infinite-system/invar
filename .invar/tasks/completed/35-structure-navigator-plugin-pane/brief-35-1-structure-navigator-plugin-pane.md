@@ -1,7 +1,7 @@
 # Brief — #35: the structure navigator pane — THE PROOF TASK
 
 Read first, in order:
-1. `.invar/tasks/active/35-structure-navigator-plugin-pane/task-35-structure-navigator-plugin-pane.md`
+1. [.invar/tasks/active/35-structure-navigator-plugin-pane/task-35-structure-navigator-plugin-pane.md](task-35-structure-navigator-plugin-pane.md)
 2. `report-220-...md` in #220's completed folder — the contributor shape you
    follow (manifest, uninstall symmetry, named host ports, the
    EditorColumnDefault vs EditorSurfaceContents distinction).
@@ -35,18 +35,18 @@ lesson: prove it can come BACK.
 
 ## Invariants in scope
 
-- *The editor column's default occupant is a contribution* (`ui.invariants.md`)
+- *The editor column's default occupant is a contribution* ([ui.invariants.md](../../../../src/modules/ui/ui.invariants.md))
   — read-only precedent; you are a DOCK contributor, not the column.
-- *A pane content projects through exactly one surface* (`ui.invariants.md`).
+- *A pane content projects through exactly one surface* ([ui.invariants.md](../../../../src/modules/ui/ui.invariants.md)).
 - The plugin-kind records from #103/#114 (`plugins`/`ui` records) — you are a
   contributor consuming a provider.
 - `src/modules/lsp/` provider records — the symbol source.
-- Expect to AUTHOR `src/modules/structure/structure.invariants.md` — a new
+- Expect to AUTHOR [src/modules/structure/structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) — a new
   domain gets its record (contract-layer-gap rule).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories — generator drift especially:
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories — generator drift especially:
 you are the first consumer of every seam in sequence, and any seam you must
 bend is exactly what this proof exists to find. The READY report carries
 `## Bycatch` even if it reads `None observed`.

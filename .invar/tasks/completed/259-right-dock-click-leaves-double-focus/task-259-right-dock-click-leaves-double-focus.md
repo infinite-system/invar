@@ -26,13 +26,13 @@ while there. Lock with a driven assertion on the double-focus scenario.
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — the right-dock toggle record #238
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the right-dock toggle record #238
   extended, and any record naming dock focus; if no record states "at most
   one dock holds focus", that gap is part of this task.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

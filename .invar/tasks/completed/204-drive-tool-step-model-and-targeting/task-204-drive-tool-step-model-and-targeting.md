@@ -61,5 +61,5 @@ smokes, and a second builder spawning app instances would inflate the very timin
 
 ## Sources
 
-- `brief-204-1-drive-tool-step-model-and-targeting.md`
+- [brief-204-1-drive-tool-step-model-and-targeting.md](brief-204-1-drive-tool-step-model-and-targeting.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

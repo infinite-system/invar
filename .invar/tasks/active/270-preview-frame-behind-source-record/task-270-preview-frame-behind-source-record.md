@@ -47,15 +47,15 @@ reconciliation only, no instrument work.
 
 ## Invariants in scope
 
-- `src/modules/markdown/markdown.invariants.md` — the split record's
-  Impossible-if-true clause; `scripts/harness/harness.invariants.md` —
+- [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md) — the split record's
+  Impossible-if-true clause; [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) —
   the settled-frame contract.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources
 
-- `report-268-editor-smoke-vs-auto-open-red-main.md`, Bycatch 3; #266.
+- [report-268-editor-smoke-vs-auto-open-red-main.md](../../completed/268-editor-smoke-vs-auto-open-red-main/report-268-editor-smoke-vs-auto-open-red-main.md), Bycatch 3; #266.

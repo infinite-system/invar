@@ -40,13 +40,13 @@ arms; say so). Positive controls per arm.
 
 ## Invariants in scope
 
-- `structure.invariants.md` (the citizen + answers-or-declines records);
+- [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) (the citizen + answers-or-declines records);
   the scrollbar projection record; the settings records for the new keys;
-  ui.invariants.md right-dock records.
+  [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) right-dock records.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

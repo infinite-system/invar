@@ -30,5 +30,5 @@ tabs) must hold unchanged.
 
 ## Sources
 
-- `.invar/tasks/completed/122-editor-becomes-final-contributor/report-122-editor-becomes-final-contributor.md`
+- [.invar/tasks/completed/122-editor-becomes-final-contributor/report-122-editor-becomes-final-contributor.md](../122-editor-becomes-final-contributor/report-122-editor-becomes-final-contributor.md)
   — "What is left, and why it is not one task".

@@ -27,12 +27,12 @@ a large markdown file must show the difference.
 
 ## Invariants in scope
 
-- `scripts/harness/harness.invariants.md` and the drive tool's records —
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) and the drive tool's records —
   the settled-frame contract.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

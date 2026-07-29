@@ -34,13 +34,13 @@ Constraints:
 
 ## Invariants in scope
 
-- `src/modules/markdown/markdown.invariants.md` — the preview records.
+- [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md) — the preview records.
 - *Plugins contribute their own settings and keybindings* (#100's record).
-- The layout records in `ui.invariants.md` that govern splits.
+- The layout records in [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) that govern splits.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

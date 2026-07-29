@@ -45,7 +45,7 @@ Per the #114 lesson, the cast came out only after the rule it enforced was writt
 `buffers.activeBuffer as Editor.Instance` was safe because of a comment: "the set only ever holds
 Editors (this seam is the sole creator)". That is a real rule, it was load-bearing at ten sites, and
 nothing recorded it. I added it FIRST, as *One provider creates every workspace buffer view* in
-`src/modules/workspace/workspace.invariants.md`, then made it structural: `createBuffer` records
+[src/modules/workspace/workspace.invariants.md](../../../../src/modules/workspace/workspace.invariants.md), then made it structural: `createBuffer` records
 what it made in `viewsByLiveBuffer`, and every later seam reads that map instead of asserting.
 
 The map is not an identity trick with extra steps. It is the seam: a provider that returns the view
@@ -54,7 +54,7 @@ to claim anything about what a buffer is.
 
 ## Where fold state lives, and why
 
-The brief asked for a decision plus its reasoning. Recorded in `project.decisions.md` as *Fold
+The brief asked for a decision plus its reasoning. Recorded in [project.decisions.md](../../../../project.decisions.md) as *Fold
 state is document-adjacent persistence, not a view property*.
 
 Fold state stays on the stable `DocumentHandle`; only its type moved, to
@@ -79,12 +79,12 @@ I measured before moving them: `Cursor` and `Viewport` had **zero** importers ou
 editor door.
 
 The contract layer agreed again. `Cursor` already cited *A cursor position resolves to three
-distinct coordinates*, which lives in `text.invariants.md`. `Viewport` cited two
-`project.invariants.md` records. **No invariant record had to move with the files.** That is the
+distinct coordinates*, which lives in [text.invariants.md](../../../../src/modules/text/text.invariants.md). `Viewport` cited two
+[project.invariants.md](../../../../project.invariants.md) records. **No invariant record had to move with the files.** That is the
 strongest evidence the folder was the only thing that disagreed.
 
 So both moved to `src/modules/text/` as `TextCursor` and `TextViewport`, renamed for the reason
-`EditorCoordinates` became `TextCoordinates`. Recorded in `project.decisions.md`. What did NOT move:
+`EditorCoordinates` became `TextCoordinates`. Recorded in [project.decisions.md](../../../../project.decisions.md). What did NOT move:
 `ReadOnlyTextBuffer`, `EditorWrap`, `CodeFolding`, `BracketMatch` — those are view behaviour, and
 moving them to suit one interface would repeat the mistake in the other direction.
 
@@ -147,7 +147,7 @@ Smokes driven green after the change, all exit 0 and ALL-PASS: `smoke-hover-harn
 ten were driven green BEFORE any edit, so their silence is a comparison and not a claim.
 
 Two test files moved. The coverage ratchet reads a move as a removal, so both are declared in
-`project.coverage-deltas.md` with their before counts and new paths. No assertion was dropped.
+[project.coverage-deltas.md](../../../../project.coverage-deltas.md) with their before counts and new paths. No assertion was dropped.
 `Workspace.test.ts` went 35 → 48 assertions and `OpenBufferSet.test.ts` 31 → 33 through prettier
 re-counting plus the three new tests.
 
@@ -193,7 +193,7 @@ matter for that work:
   reports it as a coverage gap. I verified against a stash of my own changes that this is
   PRE-EXISTING and not something I broke. It is worth a look now rather than later, because #218
   just recorded fold state as document-adjacent, which is the same claim from the other side.
-- **`editor.invariants.md` still emits `one category is empty — fine while bootstrapping`.**
+- **[editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) still emits `one category is empty — fine while bootstrapping`.**
   Pre-existing, already flagged by #122, unchanged by this work. A note, not a problem.
 - No mispainted cell, focus jump, stall, or wrong glyph was seen in any drive, at any of the three
   scales, before or after.

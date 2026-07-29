@@ -29,10 +29,10 @@ Deliverables:
    reds; a planted bare reference reds; a clean file passes silently.
 2. **Wire the guards**: dispatch.sh and round-brief.sh refuse a brief
    that fails the lint (same law as the two-section guard); the
-   AGENTS.md report contract gains "lint your report's links before
+   [AGENTS.md](../../../../AGENTS.md) report contract gains "lint your report's links before
    READY" with the exact command; land.sh warns (not refuses) on a
    report with dead links, so legacy folders do not block landings.
-3. **Convention recorded** in the manage-tasks skill + AGENTS.md: all
+3. **Convention recorded** in the manage-tasks skill + [AGENTS.md](../../../../AGENTS.md): all
    doc references in task records are md links, written relative to the
    file they sit in.
 
@@ -42,12 +42,12 @@ follow-up sweep once the linter exists (name it in the report).
 ## Invariants in scope
 
 - The manage-tasks skill contract; dispatch/round-brief guard records;
-  AGENTS.md report contract; #276's link-walk records (the consumer this
+  [AGENTS.md](../../../../AGENTS.md) report contract; #276's link-walk records (the consumer this
   serves).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if
 it reads `None observed`.
 
 ## Sources

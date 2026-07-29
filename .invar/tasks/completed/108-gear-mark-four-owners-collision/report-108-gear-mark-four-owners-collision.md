@@ -3,7 +3,7 @@
 Commit: `a6c50ba78a63eb8dc9b0e3f3fdb2d5941f293382`
 
 The committed diff changes only
-`src/modules/theme/theme.invariants.md`. It does not change the shipped
+[src/modules/theme/theme.invariants.md](../../../../src/modules/theme/theme.invariants.md). It does not change the shipped
 vocabulary or application appearance.
 
 ## Current `⚙` owners
@@ -89,7 +89,7 @@ breadcrumb, or completion behavior file changes.
   — exit `0`; `884 annotation(s) resolved, 67 lattice link(s) resolved,
   0 problem(s)`.
 - `git diff-tree --no-commit-id --name-only -r HEAD` lists only
-  `src/modules/theme/theme.invariants.md`.
+  [src/modules/theme/theme.invariants.md](../../../../src/modules/theme/theme.invariants.md).
 - Worktree clean after commit.
 - No code was added or changed, so no code test was invented or run.
 - `scripts/merge-gate.sh` was not run.

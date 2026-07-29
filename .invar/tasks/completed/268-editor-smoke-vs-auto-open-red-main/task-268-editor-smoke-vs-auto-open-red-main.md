@@ -13,7 +13,7 @@ Priority: URGENT — main is red
 Main (d42f2af0) fails `smoke-editor-harness` deterministically, solo:
 "FAIL wrap-off keeps consecutive logical lines on consecutive terminal
 rows", exit 1. Mechanism already identified by the conductor: the editor
-smoke's tree-walk opens `fixtures/README.md`; since #237 landed, opening a
+smoke's tree-walk opens [fixtures/README.md](../../../../fixtures/README.md); since #237 landed, opening a
 markdown file AUTO-OPENS the preview split by default, which narrows the
 editor pane and displaces the `gutterNumber(snapshot, typedPosition.row + 1)`
 row assertions. The smoke's expectations were written against a full-width
@@ -48,7 +48,7 @@ known flake classes, out of scope.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

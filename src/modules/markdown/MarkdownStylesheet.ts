@@ -98,6 +98,10 @@ class $MarkdownStylesheet {
     return this.buildTextStyle('accent', null, { bold: true, underline: true });
   }
 
+  protected static get $deadReferenceStyle(): MarkdownTextStyle {
+    return this.buildTextStyle('error', null, { underline: true });
+  }
+
   /** Structural vocabulary: quote bar, list markers, code frame, rule glyph. */
   protected static get $vocabulary(): MarkdownStyleVocabulary {
     const vocabulary: MarkdownStyleVocabulary = Object.freeze({
@@ -143,6 +147,10 @@ class $MarkdownStylesheet {
 
   static get referenceHoverStyle(): MarkdownTextStyle {
     return this.$referenceHoverStyle;
+  }
+
+  static get deadReferenceStyle(): MarkdownTextStyle {
+    return this.$deadReferenceStyle;
   }
 
   /** The element selector for a whole block, used for margin accounting. */

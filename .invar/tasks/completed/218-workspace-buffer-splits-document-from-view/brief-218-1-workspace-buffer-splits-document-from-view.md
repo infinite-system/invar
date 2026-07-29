@@ -1,8 +1,8 @@
 # Brief — #218: a Workspace buffer becomes a document plus a view handle
 
 Read first, in order:
-1. `.invar/tasks/active/218-workspace-buffer-splits-document-from-view/task-218-workspace-buffer-splits-document-from-view.md`
-2. `.invar/tasks/completed/122-editor-becomes-final-contributor/report-122-editor-becomes-final-contributor.md`
+1. [.invar/tasks/active/218-workspace-buffer-splits-document-from-view/task-218-workspace-buffer-splits-document-from-view.md](task-218-workspace-buffer-splits-document-from-view.md)
+2. [.invar/tasks/completed/122-editor-becomes-final-contributor/report-122-editor-becomes-final-contributor.md](../122-editor-becomes-final-contributor/report-122-editor-becomes-final-contributor.md)
    — the finding this sequence comes from. Its "What is left" section names the
    exact imports you are removing.
 3. `.invar/tasks/completed/114-modularity-umbrella-provider-runtime/` — the seam
@@ -35,7 +35,7 @@ grep -rn "from ['\"][^'\"]*\.\./editor/" --include='*.ts' src/modules/workspace 
 - `EditorFoldState` in `DocumentHandle` is view state in a document seam —
   decide where fold state lives (document-adjacent persistence vs view
   property) and record the decision with its reasoning in
-  `project.decisions.md`.
+  [project.decisions.md](../../../../project.decisions.md).
 - Do not start #219 (PaneContent retrofit). Report the boundary instead if you
   reach it.
 
@@ -47,5 +47,5 @@ declared. Positive control for any new guard rule.
 
 Do not run `scripts/merge-gate.sh`. Commit with
 `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`. Leave the tree
-clean. Write prose per `.claude/skills/ste-expression/SKILL.md` (flavored).
+clean. Write prose per [.claude/skills/ste-expression/SKILL.md](../../../../.claude/skills/ste-expression/SKILL.md) (flavored).
 Report bycatch explicitly.

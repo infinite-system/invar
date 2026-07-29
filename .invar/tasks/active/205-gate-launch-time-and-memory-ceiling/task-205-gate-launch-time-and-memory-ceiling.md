@@ -37,7 +37,7 @@ firing on a slow machine.
 
 To build:
 1. A peak-RSS ceiling at a declared document size, as a blocking gate step, with the derivation recorded
-   in `project.performance-baselines.md` so raising it later is a reviewed act rather than a quiet edit.
+   in [project.performance-baselines.md](../../../../project.performance-baselines.md) so raising it later is a reviewed act rather than a quiet edit.
 2. A MANDATORY positive control: an RSS check can only fail toward "pass" if measurement silently
    returns zero or the app fails to launch. Plant an over-ceiling allocation, require RED, remove it,
    require green.
@@ -49,4 +49,4 @@ Sequence after the drive-tool work; it lengthens every future gate.
 
 ## Sources
 
-- `brief-205-1-gate-launch-time-and-memory-ceiling.md`
+- [brief-205-1-gate-launch-time-and-memory-ceiling.md](brief-205-1-gate-launch-time-and-memory-ceiling.md)

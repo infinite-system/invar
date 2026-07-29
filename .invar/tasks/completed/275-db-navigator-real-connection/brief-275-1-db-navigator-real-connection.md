@@ -26,13 +26,13 @@ table.
 
 ## Invariants in scope
 
-- plugins.invariants.md rendezvous records (#245/#238's components); the
+- [plugins.invariants.md](../../../../src/modules/plugins/plugins.invariants.md) rendezvous records (#245/#238's components); the
   database plugin's record (author or extend, argued); settings records
   if a key is added.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## End state (mechanical)

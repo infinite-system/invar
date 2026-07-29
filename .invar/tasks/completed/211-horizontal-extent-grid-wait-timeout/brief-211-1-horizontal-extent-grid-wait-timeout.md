@@ -56,4 +56,4 @@ condition or an impossible predicate and show the timeout still fires and is rep
 - Full descriptive identifier names, no abbreviations.
 - Do not run `scripts/merge-gate.sh`; commit with
   `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean.
-- Report bycatch explicitly; write the report to `/tmp/211-READY.md` when done.
+- Report bycatch explicitly; write the report to [/tmp/211-READY.md](../../../../../../../../../../../tmp/211-READY.md) when done.

@@ -38,7 +38,7 @@ gate rule catches it, because `src/modules/datastore/` has no baseline row.
 ### A note on the providers themselves
 
 The sqlite provider imports `bun:sqlite`, and the pg provider reads `Bun.sql`. Both are ambient
-capability reads by the criterion in `analysis-222-classification.md`. That is correct and it is
+capability reads by the criterion in [analysis-222-classification.md](analysis-222-classification.md). That is correct and it is
 allowed. **A provider IS the seam's leaf.** Its whole job is to touch the engine. The convention
 governs CONSUMERS reaching PAST a seam, not the implementation behind one. The gate rule scopes
 itself to the capability roots for exactly this reason, and the same logic already exempts
@@ -87,7 +87,7 @@ The plan promises sqlite "openable from the file tree, a real feature on day one
 
 Convert that file. Convert no other. If #223's work opens a second existing file that already
 touches `Files`, convert that one too, on the same rule: **you convert what you edit, and nothing
-else.** That is the rule `project.conventions.md` already states for the file-grammar sweep, so it
+else.** That is the rule [project.conventions.md](../../../../project.conventions.md) already states for the file-grammar sweep, so it
 is not a new policy.
 
 Done-test: the baseline rows for the touched files are gone, and

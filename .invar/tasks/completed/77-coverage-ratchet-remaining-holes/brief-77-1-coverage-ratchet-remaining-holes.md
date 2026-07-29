@@ -68,7 +68,7 @@ Therefore:
 - Full descriptive identifier names, no abbreviations. `.prettierrc`, 80 columns. Match the existing
   style in `check-coverage-ratchet.ts` — it already exports `classifyCoverageCall`, `countCoverageCalls`,
   `isCoverageBearingPath`, and `compareCoverage`; extend that shape rather than inventing a parallel one.
-- Read `project.invariants.md`'s coverage-ratchet record BEFORE editing and refine it to describe the new
+- Read [project.invariants.md](../../../../project.invariants.md)'s coverage-ratchet record BEFORE editing and refine it to describe the new
   guarantees, including **Scope**. Verify the invariant checker with EXIT CODES, never a log tail.
 - `coverage-deltas.md` is edited by nearly every branch, so keep your diff to that file APPEND-ONLY where
   possible; a rewrite of the table will conflict with three other branches in flight tonight.
@@ -80,7 +80,7 @@ Therefore:
 - Commit with `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <message-file>`. Leave the worktree
   clean; `git ls-files | grep '^TASK'` must return nothing.
 
-## Report to /tmp/ratchet-holes-READY.md
+## Report to [/tmp/ratchet-holes-READY.md](../../../../../../../../../../../tmp/ratchet-holes-READY.md)
 
 The declaration grammar you chose and the rejection message; the normalisation used for the text census;
 the positive control and what happens when it fails; the real-case rejection transcript; and the exact

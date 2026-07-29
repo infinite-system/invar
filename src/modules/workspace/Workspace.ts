@@ -6,6 +6,7 @@ import {
   type Location,
 } from '../navigation/NavigationHistory';
 import { Files } from '../system/Files';
+import { TaskStatePath } from '../system/TaskStatePath';
 import { ImageDecoders } from '../image/ImageDecoders';
 import { Momentum, type MomentumOptions } from '../system/Momentum';
 import type { Settings } from '../settings/Settings';
@@ -701,13 +702,19 @@ class $Workspace {
         : null,
     ];
     for (const candidatePath of candidatePaths) {
-      if (
-        candidatePath &&
-        Files.Class.confineToRoot(this.root, candidatePath) !== null &&
-        Files.Class.exists(candidatePath) &&
-        !Files.Class.isDir(candidatePath)
-      ) {
-        return candidatePath;
+      if (!candidatePath) continue;
+      const candidateAndTaskStateAlternates = [
+        candidatePath,
+        ...TaskStatePath.Class.alternateStatePaths(candidatePath),
+      ];
+      for (const resolvingPath of candidateAndTaskStateAlternates) {
+        if (
+          Files.Class.confineToRoot(this.root, resolvingPath) !== null &&
+          Files.Class.exists(resolvingPath) &&
+          !Files.Class.isDir(resolvingPath)
+        ) {
+          return resolvingPath;
+        }
       }
     }
     return null;

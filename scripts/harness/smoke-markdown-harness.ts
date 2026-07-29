@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -231,6 +232,10 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
+function packedThemeColor(color: string): number {
+  return Number.parseInt(color.slice(1), 16);
+}
+
 async function driveTaskPresentationInTheme(
   theme: 'dark' | 'light',
 ): Promise<void> {
@@ -258,6 +263,12 @@ async function driveTaskPresentationInTheme(
       '',
       'Prose joins',
       'across source lines.',
+      '',
+      '[current link](README.md)',
+      '',
+      '[dead link](missing-link-target.md)',
+      '',
+      '[external link](https://example.com/docs)',
       '',
       '## Existing section',
       '',
@@ -299,6 +310,9 @@ async function driveTaskPresentationInTheme(
         previewHasMarker(candidate, 'Created: 2026-07-29') &&
         previewHasMarker(candidate, 'Engine: codex') &&
         previewHasMarker(candidate, 'Prose joins across source lines.') &&
+        previewHasMarker(candidate, 'current link') &&
+        previewHasMarker(candidate, 'dead link') &&
+        previewHasMarker(candidate, 'external link') &&
         previewHasMarker(candidate, 'Existing section'),
     );
     const state = previewMarkerPosition(snapshot, 'State: IN-PROGRESS');
@@ -331,6 +345,20 @@ async function driveTaskPresentationInTheme(
         heading2Cell.foreground !== proseCell?.foreground,
       `${theme} H2 keeps its bold accent treatment`,
     );
+    const palette =
+      theme === 'dark' ? ThemePalettes.Class.DARK : ThemePalettes.Class.LIGHT;
+    const currentLink = previewMarkerPosition(snapshot, 'current link');
+    const deadLink = previewMarkerPosition(snapshot, 'dead link');
+    const externalLink = previewMarkerPosition(snapshot, 'external link');
+    HarnessSmoke.Class.requireCondition(
+      snapshot.cell(currentLink.row, currentLink.column)?.foreground ===
+        packedThemeColor(palette.accent) &&
+        snapshot.cell(deadLink.row, deadLink.column)?.foreground ===
+          packedThemeColor(palette.error) &&
+        snapshot.cell(externalLink.row, externalLink.column)?.foreground ===
+          packedThemeColor(palette.accent),
+      `${theme} paints dead relative links red and leaves resolving or external links normal`,
+    );
   } finally {
     await taskDriver.dispose();
     await HarnessSmoke.Class.removeTemporaryDirectory(taskFixtureRoot);
@@ -356,7 +384,7 @@ async function driveTerminalShrinkAtScale(
   const scaleStatusPath = join(scaleHomeDirectory, 'status.json');
   const jumpSourceLine =
     fixtureLineCount <= 40
-      ? Math.max(3, Math.floor(fixtureLineCount * 0.4))
+      ? Math.max(7, Math.floor(fixtureLineCount * 0.7))
       : Math.floor(fixtureLineCount * 0.75);
   const jumpMarker = `Jump ${fixtureLineCount}`;
   const scaleFixtureLines = Array.from(
@@ -364,9 +392,17 @@ async function driveTerminalShrinkAtScale(
     (_unusedValue, lineIndex) =>
       lineIndex === 0
         ? `# Scale fixture ${fixtureLineCount}`
-        : lineIndex === jumpSourceLine
-          ? `## ${jumpMarker}`
-          : `Scale line ${String(lineIndex + 1).padStart(6, '0')} content`,
+        : lineIndex === 1
+          ? '[current scale link](README.md)'
+          : lineIndex === 2 || lineIndex === 4 || lineIndex === 6
+            ? ''
+            : lineIndex === 3
+              ? '[dead scale link](missing-scale.md)'
+              : lineIndex === 5
+                ? '[external scale link](https://example.com/docs)'
+                : lineIndex === jumpSourceLine
+                  ? `## ${jumpMarker}`
+                  : `Scale line ${String(lineIndex + 1).padStart(6, '0')} content`,
   );
   await Bun.write(
     join(scaleFixtureRoot, 'README.md'),
@@ -434,6 +470,24 @@ async function driveTerminalShrinkAtScale(
           return false;
         }
       },
+    );
+    const currentScaleLink = previewMarkerPosition(
+      tocSnapshot,
+      'current scale link',
+    );
+    const deadScaleLink = previewMarkerPosition(tocSnapshot, 'dead scale link');
+    const externalScaleLink = previewMarkerPosition(
+      tocSnapshot,
+      'external scale link',
+    );
+    HarnessSmoke.Class.requireCondition(
+      tocSnapshot.cell(currentScaleLink.row, currentScaleLink.column)
+        ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
+        tocSnapshot.cell(deadScaleLink.row, deadScaleLink.column)
+          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error) &&
+        tocSnapshot.cell(externalScaleLink.row, externalScaleLink.column)
+          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent),
+      `${fixtureLineCount}-line preview paints dead links red without changing current or external links`,
     );
     const tocMarker = structureMarkerPosition(tocSnapshot, jumpMarker);
     clickCell(scaleDriver, tocMarker.column, tocMarker.row);
@@ -1062,6 +1116,21 @@ try {
     driver.snapshot(),
     'the docs',
   );
+  const missingLinkPaintPosition = previewMarkerPosition(
+    driver.snapshot(),
+    'the missing note',
+  );
+  HarnessSmoke.Class.requireCondition(
+    driver
+      .snapshot()
+      .cell(externalLinkPosition.row, externalLinkPosition.column)
+      ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
+      driver
+        .snapshot()
+        .cell(missingLinkPaintPosition.row, missingLinkPaintPosition.column)
+        ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error),
+    'a missing relative link paints red while an external link stays normal',
+  );
   driver.sendMouse({
     kind: 'move',
     column: externalLinkPosition.column,
@@ -1138,10 +1207,82 @@ try {
     'a missing-target link answers the click with the stated miss',
   );
 
-  // A later successful open withdraws the owed notice.
+  // Repair the same authored link through the source watcher. Its written state is stale
+  // (`active`) while the task folder now lives under `completed`; the task name and file tail
+  // are unchanged. The new parse revision must repaint the link normally before it opens.
+  const movedTaskFolderName = '999-task-state-link-control';
+  const movedTaskFolder = join(
+    fixtureRoot,
+    '.invar',
+    'tasks',
+    'completed',
+    movedTaskFolderName,
+  );
+  mkdirSync(movedTaskFolder, { recursive: true });
+  await Bun.write(
+    join(movedTaskFolder, `task-${movedTaskFolderName}.md`),
+    '# Moved task target\n',
+  );
+  const revisionBeforeRepair = Number(
+    HarnessSmoke.Class.readStatus(statusPath).bufferRevision,
+  );
+  const repairedMarkdownText = `${markdownLines
+    .map((line) =>
+      line.replace(
+        '[the missing note](missing-note.md)',
+        `[the missing note](.invar/tasks/active/${movedTaskFolderName}/task-${movedTaskFolderName}.md)`,
+      ),
+    )
+    .join('\n')}\n`;
+  const repairSourceColumn = sourceBorderColumn(driver.snapshot()) + 8;
+  clickCell(
+    driver,
+    repairSourceColumn,
+    previewBorder(driver.snapshot()).row + 3,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the source pane receives focus before the repair edit',
+    (status) => status.markdownPaneFocus === 'source',
+  );
+  driver.sendKeys('Control+a');
+  driver.sendPaste(repairedMarkdownText);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the watcher repair reaches a matching parsed revision',
+    (status) =>
+      Number(status.bufferRevision) > revisionBeforeRepair &&
+      status.markdownParsing === false &&
+      Number(status.markdownRevision) === Number(status.bufferRevision),
+  );
+  const repairedSnapshot = await driver.awaitGridCondition(
+    'the repaired moved-state link repaints with the normal link color',
+    (candidate) => {
+      const repairedPosition = previewMarkerPosition(
+        candidate,
+        'the missing note',
+      );
+      return (
+        candidate.cell(repairedPosition.row, repairedPosition.column)
+          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent)
+      );
+    },
+  );
+  HarnessSmoke.Class.pass(
+    'a watcher revision repaints the repaired moved-state link normally',
+  );
+  driver.sendKeys('Control+s');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the repaired source saves before later tab-layout contracts run',
+    (status) => status.dirty === false,
+  );
   const resolvableLinkPosition = previewMarkerPosition(
-    driver.snapshot(),
-    'the target',
+    repairedSnapshot,
+    'the missing note',
   );
   driver.sendMouse({
     kind: 'press',
@@ -1157,21 +1298,53 @@ try {
     button: 'left',
     control: true,
   });
+  const movedTaskTargetStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the moved-state task link opens and clears the link notice',
+    (status) =>
+      String(status.activeBuffer).endsWith(`/task-${movedTaskFolderName}.md`) &&
+      status.markdownLinkNotice === null,
+  );
+  HarnessSmoke.Class.pass(
+    'a moved-state task link opens the current file and clears the stated notice',
+  );
+  driver.sendKeys('Control+w');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'a successful open clears the link notice',
+    'closing the moved task target removes its tab',
     (status) =>
-      String(status.activeBuffer).endsWith('/target.ts') &&
-      status.markdownLinkNotice === null,
+      !String(status.activeBuffer).endsWith(
+        `/task-${movedTaskFolderName}.md`,
+      ) &&
+      Number(status.bufferTabCount) <
+        Number(movedTaskTargetStatus.bufferTabCount),
   );
-  HarnessSmoke.Class.pass('a successful open clears the stated notice');
-  const tabPositionAfterNotice = driver.snapshot().findText('README.md');
-  if (!tabPositionAfterNotice) throw new Error('FAIL README tab missing');
-  clickCell(
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
     driver,
-    tabPositionAfterNotice.column + 2,
-    tabPositionAfterNotice.row,
+    statusPath,
+    'Go to File opens for the repaired README',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('README.md');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the repaired README',
+    (status) =>
+      status.quickOpenQuery === 'README.md' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File returns to the repaired source preview',
+    (status) =>
+      String(status.activeBuffer).endsWith('/README.md') &&
+      status.markdownPreviewOpen === true,
   );
   snapshot = await driver.awaitSnapshot((candidate) =>
     previewHasMarker(candidate, 'Rendered heading'),

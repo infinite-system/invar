@@ -39,13 +39,13 @@ run, quoted).
 
 ## Invariants in scope
 
-- `project.invariants.md` bounded-viewport; `layout.invariants.md`
-  slots-from-one-configuration; `markdown.invariants.md` live-split; the
+- [project.invariants.md](../../../../project.invariants.md) bounded-viewport; [layout.invariants.md](../../../../src/modules/layout/layout.invariants.md)
+  slots-from-one-configuration; [markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md) live-split; the
   NEW runtime-resize-boundary record (point 5).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The refreshed READY report carries `## Bycatch`
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The refreshed READY report carries `## Bycatch`
 even if it reads `None observed`.
 
 ## End state (mechanical)

@@ -38,7 +38,7 @@ State: READY for review. All work is committed on
 - `src/modules/markdown/MarkdownSplitView.ts`: pane order by side. Splitter
   `pointerDirection` is −1 when the preview is left. Adds the `previewSide`
   getter and the `MarkdownPreviewSide` type.
-- `src/modules/markdown/markdown.invariants.md`: new record *The Markdown
+- [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md): new record *The Markdown
   preview opens itself and sits on the configured side*. The split record's
   Generates line now names the auto-open default.
 - Tests: `MarkdownWorkspace.test.ts` (reactive-path mock; 14 tests),
@@ -52,7 +52,7 @@ State: READY for review. All work is committed on
 - Task folder: three probe scripts (see Bycatch) with STE headers.
 
 Presentation was not touched. `MarkdownStylesheet.ts`, `MarkdownPreview.ts`,
-and `MarkdownRenderable.ts` are unchanged. `src/modules/ui/ui.invariants.md`
+and `MarkdownRenderable.ts` are unchanged. [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md)
 is untouched, as the brief requires.
 
 ## Verification (exact commands, exact exit codes)
@@ -81,7 +81,7 @@ defect. The last two are bycatch below.
 
 ## Done-test, driven (frame evidence)
 
-- Fresh workspace, open README.md: `bun run drive --open README.md` shows the
+- Fresh workspace, open [README.md](../../../../README.md): `bun run drive --open README.md` shows the
   `╭─Preview` pane LEFT of the source box, `markdownPreviewOpen=true`,
   `markdownPreviewSide="left"`, `markdownPaneFocus="source"`, `focus="editor"`.
   The stylesheet-rendered content paints (heading with no `#`).
@@ -106,7 +106,7 @@ defect. The last two are bycatch below.
 ## Invariants
 
 - New record: *The Markdown preview opens itself and sits on the configured
-  side* (chosen, provisional) in `src/modules/markdown/markdown.invariants.md`,
+  side* (chosen, provisional) in [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md),
   with mechanism, rejected alternatives, file:line evidence, and test+harness
   verification. Annotated at `MarkdownWorkspace.ts`, `MarkdownPlugin.ts`,
   `MarkdownSplitView.ts`, both smokes, and the tests.

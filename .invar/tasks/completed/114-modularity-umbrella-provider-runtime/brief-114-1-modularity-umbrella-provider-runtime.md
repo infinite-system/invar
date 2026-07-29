@@ -1,7 +1,7 @@
 # TASK — #114 Wave A: extract LSP as a PROVIDER plugin
 
 Work ONLY in `/tmp/conductor-lsp` (branch `feat-lsp-provider`, cut off `bf57bcf`).
-Do NOT run `scripts/merge-gate.sh`; do NOT push/merge/tag/delete. Report to `/tmp/lsp-READY.md`.
+Do NOT run `scripts/merge-gate.sh`; do NOT push/merge/tag/delete. Report to [/tmp/lsp-READY.md](../../../../../../../../../../../tmp/lsp-READY.md).
 `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST — a fresh worktree has no
 `node_modules` and every preflight will fail on unresolved imports until you do.
 
@@ -50,7 +50,7 @@ undo `#103`.
 - **a positive control**: disable/uninstall the LSP plugin and show those behaviours degrade
   cleanly — a legible empty state, never a crash and never a silent nothing. If the plugin cannot be
   disabled, say so, because then it is not really a plugin yet;
-- `src/modules/lsp/lsp.invariants.md` updated to state the provider relationship;
+- [src/modules/lsp/lsp.invariants.md](../../../../src/modules/lsp/lsp.invariants.md) updated to state the provider relationship;
 - report the host-reference count before and after, and name anything you could NOT decouple with the
   reason.
 

@@ -12,7 +12,7 @@ Assignment note: Class-level: ~20 unrun smokes, three mechanisms in cost order.
 ## Outline
 
 `scripts/smoke-gutter-diff.sh` sat in the tree asserting the PRESENCE of `▁` as the deleted-line
-hint — the exact glyph that both `diff.invariants.md` and `workspace.invariants.md` name in their
+hint — the exact glyph that both [diff.invariants.md](../../../../src/modules/diff/diff.invariants.md) and [workspace.invariants.md](../../../../src/modules/workspace/workspace.invariants.md) name in their
 Impossible-if-true clauses. A sweep updated the harness twin and both records but not this file, and
 nothing noticed for a day because the smoke is registered `parallel_safe_full_tmux_smoke`, which the
 gate skips unless `INVAR_FULL_TMUX=1`.

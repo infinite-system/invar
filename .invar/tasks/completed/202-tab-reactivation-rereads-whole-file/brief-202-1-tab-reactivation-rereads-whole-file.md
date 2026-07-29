@@ -49,7 +49,7 @@ quote exact exit codes, never `$?` after a pipeline.
 
 - Prettier gate is live; the pre-commit hook formats staged files. 80 columns.
 - Full descriptive identifier names, no abbreviations.
-- ivue conventions per AGENTS.md (Static-manifest shape, `$Class` anchor rule).
+- ivue conventions per [AGENTS.md](../../../../AGENTS.md) (Static-manifest shape, `$Class` anchor rule).
 - Invariant records at `src/modules/<domain>/<domain>.invariants.md`, cited by
   root-relative path. Update editor/workspace records your change implicates.
 - Do not run `scripts/merge-gate.sh`; commit with
@@ -58,4 +58,4 @@ quote exact exit codes, never `$?` after a pipeline.
   terminal module; if your seam forces a terminal-side edit, report it as a
   finding instead of making it.
 - Report bycatch explicitly; write the report to
-  `/tmp/202-tab-reactivation-rereads-whole-file-READY.md` when done.
+  [/tmp/202-tab-reactivation-rereads-whole-file-READY.md](../../../../../../../../../../../tmp/202-tab-reactivation-rereads-whole-file-READY.md) when done.

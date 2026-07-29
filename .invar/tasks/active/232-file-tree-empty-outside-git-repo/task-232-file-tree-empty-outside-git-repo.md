@@ -32,13 +32,13 @@ instead of a second implementation (distillation question, convention 2).
 
 - *File enumeration failures stay visible* — `src/modules/search/` records
   (the #216 fix cites it; find the exact record and reuse its vocabulary).
-- `src/modules/filetree/filetree.invariants.md` — the tree's own contract;
+- [src/modules/filetree/filetree.invariants.md](../../../../src/modules/filetree/filetree.invariants.md) — the tree's own contract;
   expect to add the impossibility "a readable directory never renders as
   empty without a stated reason".
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

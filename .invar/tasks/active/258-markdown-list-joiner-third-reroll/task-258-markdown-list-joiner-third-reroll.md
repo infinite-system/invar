@@ -30,13 +30,13 @@ stays green; parser tests lock the joiner for all three block kinds.
 
 ## Invariants in scope
 
-- `src/modules/markdown/markdown.invariants.md` — the stylesheet record
+- [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md) — the stylesheet record
   from #236 and the parser records; add the one-joiner clause where it
   belongs.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

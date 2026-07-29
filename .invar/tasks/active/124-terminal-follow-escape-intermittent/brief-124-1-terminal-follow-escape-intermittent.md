@@ -3,7 +3,7 @@
 You are a builder on the Invar terminal IDE. Work ONLY in `/tmp/conductor-agentflakes`
 (branch `fix-agent-state-intermittents`, forked from main at `3694b23`). Do NOT run
 `scripts/merge-gate.sh`; do NOT push/merge/tag/delete. Commit and report to
-`/tmp/agent-intermittents-READY.md`. `export PATH=$HOME/.bun/bin:$PATH; bun install
+[/tmp/agent-intermittents-READY.md](../../../../../../../../../../../tmp/agent-intermittents-READY.md). `export PATH=$HOME/.bun/bin:$PATH; bun install
 --frozen-lockfile` first.
 
 Two intermittents share the agent-session-state neighborhood and have been flaking gates all day.

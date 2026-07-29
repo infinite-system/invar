@@ -1,8 +1,8 @@
 # System — Invariants
 
 Load-bearing rules for `src/modules/system/` — the stateless capability layer (`Files`, `Clock`,
-`Environment`, `Logging`, `Processes`, `StatusChannel`) plus the vendored `Static.ts`. Stands on
-`project.invariants.md`.
+`Environment`, `Logging`, `Processes`, `StatusChannel`, `TaskStatePath`) plus the vendored
+`Static.ts`. Stands on `project.invariants.md`.
 
 ## Reality-based invariants
 
@@ -65,7 +65,7 @@ receiving class. `Class` remains the selected mutable seam. Realizes `project.de
 callbacks); native static `super` + kernel composition of capabilities; the `system/*` `Static()`
 wrapping.
 
-**Evidence:** `system/{Files,Clock,Environment,Logging,Processes,StatusChannel}.ts` →
+**Evidence:** `system/{Files,Clock,Environment,Logging,Processes,StatusChannel,TaskStatePath}.ts` →
 `const $Class = Static($X); Class = $Class`. No capability class holds instance state or uses
 `this.#private` (which `Static()`'s subclass receiver would reject).
 

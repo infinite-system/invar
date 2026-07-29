@@ -40,6 +40,6 @@ Gained **panel-split** as a fifth site from #191's bycatch.
 
 ## Sources
 
-- `brief-192-1-residual-harness-wait-audit.md`
-- `report-192-residual-harness-wait-audit.md`
+- [brief-192-1-residual-harness-wait-audit.md](brief-192-1-residual-harness-wait-audit.md)
+- [report-192-residual-harness-wait-audit.md](report-192-residual-harness-wait-audit.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

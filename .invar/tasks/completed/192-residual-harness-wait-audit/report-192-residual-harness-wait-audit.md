@@ -67,7 +67,7 @@ Each repaired result was made RED, then restored GREEN:
 ## Invariant review
 
 Scope derives from the two changed files under `scripts/harness/`, implicating
-`scripts/harness/harness.invariants.md`.
+[scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md).
 
 - **Strengthened:** `Harness waits observe conditions not frame ordinals`.
   The three repaired waits now observe the exact visible result.

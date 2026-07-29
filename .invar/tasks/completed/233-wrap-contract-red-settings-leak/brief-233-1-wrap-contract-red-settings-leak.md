@@ -1,6 +1,6 @@
 # Brief — #233: the wrap contract red and the settings leak (GATE BLOCKER)
 
-Read first: `.invar/tasks/active/233-wrap-contract-red-settings-leak/task-233-wrap-contract-red-settings-leak.md`
+Read first: [.invar/tasks/active/233-wrap-contract-red-settings-leak/task-233-wrap-contract-red-settings-leak.md](task-233-wrap-contract-red-settings-leak.md)
 — it carries the full evidence chain, three ranked candidates, and the
 isolated-arm twist (the bare-HOME run fails with an EMPTY scrollTop, a second
 failure mode that must also be explained).
@@ -26,13 +26,13 @@ failure mode that must also be explained).
 ## Invariants in scope
 
 - The wrap/scroll record the wrap-mode contract cites (find it; state whether
-  it names the defaults assumption) — `scroll.invariants.md` /
+  it names the defaults assumption) — [scroll.invariants.md](../../../../src/modules/ui/scroll.invariants.md) /
   `src/modules/editor/` records.
-- `project.conventions.md` defaults-first doctrine.
+- [project.conventions.md](../../../../project.conventions.md) defaults-first doctrine.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Verification
