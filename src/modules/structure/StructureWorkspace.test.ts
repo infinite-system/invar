@@ -19,6 +19,9 @@ function makeWorkspaceStub() {
       },
       revealCursor: () => {},
     },
+    revealSourceLocation: (line: number, column: number) => {
+      placedCursors.push({ line, column });
+    },
     focusEditor: () => {},
     recordCurrentLocation: () => {},
   } as unknown as Workspace.Model;

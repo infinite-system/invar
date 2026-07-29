@@ -41,6 +41,7 @@ class $MarkdownSplitView {
   protected renderedPreviewRevision = -1;
   protected renderedPreviewWidth = -1;
   protected renderedPreviewBorderSignature = '';
+  protected pendingSourceRevealLine: number | null = null;
 
   get focusedPane() {
     return ref<MarkdownSplitPane>('source');
@@ -274,6 +275,7 @@ class $MarkdownSplitView {
 
   update(): void {
     this.synchronizePaneGeometry();
+    this.applyPendingSourceReveal();
     const palette = this.theme.palette;
     this.rootRenderable.backgroundColor = palette.bg;
     this.previewPaneRenderable.backgroundColor = palette.bg;
@@ -289,6 +291,29 @@ class $MarkdownSplitView {
     );
     this.previewRenderable.refresh();
     this.applyPreviewSelection();
+  }
+
+  /** Follow an explicit source jump after the preview has parsed that same source revision. */
+  revealSourceLine(sourceLine: number): void {
+    this.verticalScrollMomentum.value = Momentum.Class.halt();
+    this.pendingSourceRevealLine = sourceLine;
+    this.update();
+  }
+
+  protected applyPendingSourceReveal(): void {
+    const sourceLine = this.pendingSourceRevealLine;
+    if (
+      sourceLine === null ||
+      this.preview.parsedRevision !== this.options.source.revision.value
+    ) {
+      return;
+    }
+    this.pendingSourceRevealLine = null;
+    this.preview.revealSourceLine(
+      sourceLine,
+      this.previewViewportWidth(),
+      this.previewViewportHeight(),
+    );
   }
 
   /** Frame hook for preview momentum, edge autoscroll, async parse landing, and first-layout sizing. */

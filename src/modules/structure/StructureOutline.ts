@@ -567,8 +567,7 @@ class $StructureOutline {
     if (!row) return false;
     const workspace = this.workspace;
     workspace.recordCurrentLocation();
-    workspace.editor.placeCursor(row.line, row.column);
-    workspace.editor.revealCursor();
+    workspace.revealSourceLocation(row.line, row.column);
     workspace.focusEditor();
     workspace.recordCurrentLocation();
     return true;

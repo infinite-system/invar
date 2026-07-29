@@ -40,12 +40,17 @@ function createContribution(
   prepareWorkspace?: (
     workspace: ReturnType<typeof createHostWorkspace>,
   ) => void,
+  revealPreviewSourceLine: (lineIndex: number) => void = () => {},
 ) {
   const workspace = createHostWorkspace(path);
   prepareWorkspace?.(workspace);
   return {
     workspace,
-    contribution: new MarkdownWorkspace.Class(workspace, previewFocused),
+    contribution: new MarkdownWorkspace.Class(
+      workspace,
+      previewFocused,
+      revealPreviewSourceLine,
+    ),
   };
 }
 
@@ -174,6 +179,20 @@ describe('MarkdownWorkspace', () => {
     expect(workspace.editorSurfaces.activeDocumentIsKeyboardTarget).toBe(true);
     previewFocused = true;
     expect(workspace.editorSurfaces.activeDocumentIsKeyboardTarget).toBe(false);
+  });
+
+  it('forwards a source jump to its mounted preview', () => {
+    const revealedSourceLines: number[] = [];
+    const { workspace } = createContribution(
+      '/project/notes.md',
+      () => false,
+      undefined,
+      (lineIndex) => revealedSourceLines.push(lineIndex),
+    );
+
+    workspace.editorSurfaces.revealPresentedSourceLine(24);
+
+    expect(revealedSourceLines).toEqual([24]);
   });
 
   // Release must NOT drop the per-tab mode: the host calls it before the tab actually changes.

@@ -6,6 +6,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+// invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
 // invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -47,6 +48,70 @@ function previewPaneRightColumn(snapshot: HarnessSnapshot.Model): number {
 function sourceBorderColumn(snapshot: HarnessSnapshot.Model): number {
   const preview = previewBorder(snapshot);
   return snapshot.rowText(preview.row).indexOf('╭', preview.column + 1);
+}
+
+function sourcePaneRightColumn(snapshot: HarnessSnapshot.Model): number {
+  const preview = previewBorder(snapshot);
+  const sourceColumn = sourceBorderColumn(snapshot);
+  return snapshot.rowText(preview.row).indexOf('╮', sourceColumn + 1);
+}
+
+function paneLastBodyRow(
+  snapshot: HarnessSnapshot.Model,
+  paneColumn: number,
+): number {
+  const openingRow = previewBorder(snapshot).row;
+  for (let row = openingRow + 1; row < snapshot.rows; row++) {
+    if (snapshot.cell(row, paneColumn)?.characters === '╰') return row - 1;
+  }
+  throw new Error(`FAIL pane closing border missing\n${snapshot.text()}`);
+}
+
+function sourceMarkerPosition(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): { row: number; column: number } {
+  const sourceColumn = sourceBorderColumn(snapshot);
+  const rightColumn = sourcePaneRightColumn(snapshot);
+  for (let row = 0; row < snapshot.rows; row++) {
+    const column = snapshot.rowText(row).indexOf(marker, sourceColumn);
+    if (column >= 0 && column < rightColumn) return { row, column };
+  }
+  throw new Error(`FAIL source marker missing: ${marker}\n${snapshot.text()}`);
+}
+
+function structureMarkerPosition(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): { row: number; column: number } {
+  const sourceRightColumn = sourcePaneRightColumn(snapshot);
+  for (let row = 0; row < snapshot.rows; row++) {
+    const column = snapshot.rowText(row).lastIndexOf(marker);
+    if (column > sourceRightColumn) return { row, column };
+  }
+  throw new Error(
+    `FAIL structure marker missing: ${marker}\n${snapshot.text()}`,
+  );
+}
+
+function requireReadingPosition(
+  snapshot: HarnessSnapshot.Model,
+  targetRow: number,
+  paneColumn: number,
+  label: string,
+): void {
+  const firstBodyRow = previewBorder(snapshot).row + 1;
+  const lastBodyRow = paneLastBodyRow(snapshot, paneColumn);
+  const topThirdLastRow =
+    firstBodyRow + Math.floor((lastBodyRow - firstBodyRow) / 3);
+  HarnessSmoke.Class.requireCondition(
+    targetRow >= firstBodyRow &&
+      targetRow <= topThirdLastRow &&
+      targetRow < lastBodyRow,
+    `${label} paints in the top third and never on the trailing body row ` +
+      `(target ${String(targetRow)}, body ${String(firstBodyRow)}-${String(lastBodyRow)}, ` +
+      `top third through ${String(topThirdLastRow)})`,
+  );
 }
 
 function previewMarkerPosition(
@@ -173,12 +238,19 @@ async function driveTerminalShrinkAtScale(
     join(tmpdir(), `tui-markdown-resize-home-${fixtureLineCount}-`),
   );
   const scaleStatusPath = join(scaleHomeDirectory, 'status.json');
+  const jumpSourceLine =
+    fixtureLineCount <= 40
+      ? Math.max(3, Math.floor(fixtureLineCount * 0.4))
+      : Math.floor(fixtureLineCount * 0.75);
+  const jumpMarker = `Jump ${fixtureLineCount}`;
   const scaleFixtureLines = Array.from(
     { length: fixtureLineCount },
     (_unusedValue, lineIndex) =>
       lineIndex === 0
         ? `# Scale fixture ${fixtureLineCount}`
-        : `Scale line ${String(lineIndex + 1).padStart(6, '0')} content`,
+        : lineIndex === jumpSourceLine
+          ? `## ${jumpMarker}`
+          : `Scale line ${String(lineIndex + 1).padStart(6, '0')} content`,
   );
   await Bun.write(
     join(scaleFixtureRoot, 'README.md'),
@@ -186,7 +258,7 @@ async function driveTerminalShrinkAtScale(
   );
   const scaleDriver = new PtyTestDriver.Class({
     workspaceRoot: scaleFixtureRoot,
-    columns: 120,
+    columns: 140,
     rows: 40,
     homeDirectory: scaleHomeDirectory,
     environment: {
@@ -208,17 +280,17 @@ async function driveTerminalShrinkAtScale(
       `${fixtureLineCount}-line no-input resize publishes 60 by 25`,
       (status) => status.width === 60 && status.height === 25,
     );
-    scaleDriver.resize(120, 40);
+    scaleDriver.resize(140, 40);
     await HarnessSmoke.Class.awaitStatus(
       scaleDriver,
       scaleStatusPath,
-      `${fixtureLineCount}-line no-input resize restores 120 by 40`,
-      (status) => status.width === 120 && status.height === 40,
+      `${fixtureLineCount}-line no-input resize restores 140 by 40`,
+      (status) => status.width === 140 && status.height === 40,
     );
     await scaleDriver.awaitGridCondition(
-      `${fixtureLineCount}-line file tree returns inside 120 columns`,
+      `${fixtureLineCount}-line file tree returns inside 140 columns`,
       (candidate) =>
-        candidate.columns === 120 &&
+        candidate.columns === 140 &&
         candidate.rows === 40 &&
         candidate.findText('README.md') !== null,
     );
@@ -230,8 +302,73 @@ async function driveTerminalShrinkAtScale(
       (status) =>
         String(status.activeBuffer).endsWith('/README.md') &&
         status.markdownPreviewOpen === true &&
-        status.markdownParsing === false,
+        status.markdownParsing === false &&
+        status.structureStatus === 'ready' &&
+        Number(status.structureRows) === 2,
       60_000,
+    );
+    const tocSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line deep heading appears in the structure pane`,
+      (candidate) => {
+        if (candidate.columns !== 140) return false;
+        try {
+          structureMarkerPosition(candidate, jumpMarker);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    );
+    const tocMarker = structureMarkerPosition(tocSnapshot, jumpMarker);
+    clickCell(scaleDriver, tocMarker.column, tocMarker.row);
+    const followedStatus = await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line TOC click moves the source cursor`,
+      (status) => Number(status.cursorLineIndex) === jumpSourceLine,
+    );
+    if (fixtureLineCount > 40) {
+      HarnessSmoke.Class.requireCondition(
+        Number(followedStatus.editorScrollTop) > 0 &&
+          Number(followedStatus.markdownPreviewScrollTop) > 0,
+        `${fixtureLineCount}-line TOC click scrolls source and preview away from the opening section`,
+      );
+    }
+    const followedSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line TOC target paints in source and preview`,
+      (candidate) => {
+        try {
+          sourceMarkerPosition(candidate, `## ${jumpMarker}`);
+          previewMarkerPosition(candidate, jumpMarker);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    );
+    const followedSource = sourceMarkerPosition(
+      followedSnapshot,
+      `## ${jumpMarker}`,
+    );
+    const followedPreview = previewMarkerPosition(followedSnapshot, jumpMarker);
+    requireReadingPosition(
+      followedSnapshot,
+      followedSource.row,
+      sourceBorderColumn(followedSnapshot),
+      `${fixtureLineCount}-line source target`,
+    );
+    requireReadingPosition(
+      followedSnapshot,
+      followedPreview.row,
+      previewBorder(followedSnapshot).column,
+      `${fixtureLineCount}-line preview target`,
+    );
+    scaleDriver.resize(120, 40);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line TOC drive restores 120 by 40`,
+      (status) => status.width === 120 && status.height === 40,
     );
     await HarnessSmoke.Class.concealAutoRevealedRightDock(
       scaleDriver,

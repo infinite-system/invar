@@ -324,7 +324,8 @@ stale-answer cases) and the scale drives recorded in
 
 **Invariant:** If a symbol row is activated (Enter or a click), then the editor lands on
 that symbol through the existing source-text view contract — `placeCursor` on the symbol's name,
-`revealCursor`, focus returned to the editor (the right dock blurs with it) — with the
+the reading-position `revealCursor`, same-document projections following the source line, and focus
+returned to the editor (the right dock blurs with it) — with the
 departure and the landing both recorded
 in the navigation history, exactly as `goToDefinition` records its jump; and with no row to
 activate the gesture is a no-op, never a crash.
@@ -333,10 +334,11 @@ activate the gesture is a no-op, never a crash.
 cross-file jumps — the outline describes the active document only.
 
 **Mechanism:** Stands on *Plugin boundaries grant one authority*: the plugin asks the workspace
-to move its own cursor through public members (`recordCurrentLocation`, `editor.placeCursor`,
-`editor.revealCursor`, `focusEditor`); it opens no parallel navigation path and touches no view
-internals. The row's line/column are the symbol's selection anchor, converted to grapheme
-columns at the LSP boundary.
+to move its own cursor through public members (`recordCurrentLocation`,
+`revealSourceLocation`, `focusEditor`); it opens no parallel navigation path and touches no view
+internals. `Workspace.revealSourceLocation` places and reveals the source through `SourceTextView`,
+then asks an occupying same-document surface to follow the source line. The row's line/column are
+the symbol's selection anchor, converted to grapheme columns at the LSP boundary.
 
 **Generates:** `StructureOutline.activateSelected`; the `structure.activate` command and its Enter
 binding; the pointer-down activation.
@@ -351,8 +353,9 @@ would drift on focus and history semantics, the same reason `goToDefinition` reu
 `src/modules/structure/StructureOutline.test.ts` (the jump assertions).
 
 **Impossible if true:** A symbol activation that moves the cursor without recording the jump for
-Back/Forward; a second cursor-placement implementation in the structure module; a crash from
-activating an empty outline.
+Back/Forward; a Markdown heading activation leaving its visible preview at the old section; a
+second cursor-placement implementation in the structure module; a crash from activating an empty
+outline.
 
 **Verification:** `bun test src/modules/structure/StructureOutline.test.ts` and the driven jump
 in `bun scripts/harness/smoke-plugin-manifest-harness.ts`.

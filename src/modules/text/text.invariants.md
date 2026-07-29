@@ -189,3 +189,47 @@ than the editor for the same text and cursor position.
 
 **Last refined:** 2026-07-25
 
+### Explicit jumps use one reading position
+
+**Invariant:** If an explicit text jump reveals a target, then
+`TextViewport.scrollTopForTarget` places it with up to two context rows above and each
+same-document projection uses that result.
+
+**Scope:** `TextViewport.scrollTopForTarget`; `Editor.revealCursor`; Markdown preview follow through
+`EditorSurfaceClaims`, `MarkdownWorkspace`, `MarkdownSplitView`, and
+`MarkdownPreview.revealSourceLine`. Ordinary cursor movement uses the same generator with nearest
+placement. Document-edge clamping can reduce the context margin.
+
+**Mechanism:** `TextViewport.scrollTopForTarget` owns nearest and reading placement. An explicit
+source jump calls the editor's reading reveal, then `EditorSurfaceClaims` forwards the source line
+to the occupying same-document surface. `MarkdownPreview` maps that source block to its first
+rendered row after the parsed revision matches, then calls the same reading placement.
+
+**Generates:** A two-row reading margin for source jumps; Markdown table-of-contents follow; normal
+cursor movement that stays minimally revealing; one placement formula across wrapped source and
+rendered preview rows.
+
+**Rejected alternatives:** Separate source and preview offsets — pane geometry changes make the two
+formulas drift.
+
+**Evidence:** `src/modules/text/TextViewport.ts` (`scrollTopForTarget`);
+`src/modules/editor/Editor.ts` (`revealCursorMapped`, `revealCursor`);
+`src/modules/workspace/Workspace.ts` (`revealSourceLocation`);
+`src/modules/markdown/MarkdownPreview.ts` (`firstRenderedRowForSourceLine`,
+`revealSourceLine`); `src/modules/text/TextViewport.test.ts`;
+`src/modules/editor/Editor.test.ts`; `src/modules/markdown/MarkdownPreview.test.ts`;
+`scripts/harness/smoke-markdown-harness.ts`.
+
+**Impossible if true:** A deep table-of-contents click leaving the preview at its old scroll
+position; a jump painting its target on the trailing body row when two context rows and a full page
+remain; source and preview using different target-placement formulas.
+
+**Verification:** `bun test src/modules/text/TextViewport.test.ts
+src/modules/editor/Editor.test.ts src/modules/markdown/MarkdownPreview.test.ts
+src/modules/markdown/MarkdownWorkspace.test.ts
+src/modules/workspace/EditorSurfaceClaims.test.ts && bun
+scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29

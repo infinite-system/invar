@@ -17,3 +17,15 @@ test('never scrolls past the last page', () => {
   viewport.scrollBy(1000, 30);
   expect(viewport.firstVisible).toBe(20);
 });
+
+test('reading jumps keep two context rows above the target', () => {
+  expect(TextViewport.Class.scrollTopForTarget(50, 0, 15, 100, 'reading')).toBe(
+    48,
+  );
+  expect(
+    TextViewport.Class.scrollTopForTarget(50, 45, 15, 100, 'nearest'),
+  ).toBe(45);
+  expect(TextViewport.Class.scrollTopForTarget(50, 0, 2, 100, 'reading')).toBe(
+    50,
+  );
+});

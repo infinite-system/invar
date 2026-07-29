@@ -345,11 +345,10 @@ class $Workspace {
     this.withSuppressedLocationRecording(() => {
       this.openFileInTab(targetPath);
       this.focus.value = 'editor';
-      this.editor.placeCursor(
+      this.revealSourceLocation(
         location.range.start.line,
         location.range.start.column,
       );
-      this.editor.revealCursor();
     });
     this.recordCurrentLocation();
     return true;
@@ -625,14 +624,20 @@ class $Workspace {
     });
   }
 
+  /** Place and reveal one source location, then let any same-document projection follow it. */
+  revealSourceLocation(lineIndex: number, graphemeColumn: number): void {
+    this.editor.placeCursor(lineIndex, graphemeColumn);
+    this.editor.revealCursor();
+    this.editorSurfaces.revealPresentedSourceLine(lineIndex);
+  }
+
   /** Open a recorded location and land the cursor on it — the shared back/forward restore path.
    *  Suppresses recording so replaying history never mutates it. */
   protected restoreNavigationLocation(location: Location): void {
     this.withSuppressedLocationRecording(() => {
       this.openFileInTab(location.documentPath);
       this.focus.value = 'editor';
-      this.editor.placeCursor(location.line, location.column);
-      this.editor.revealCursor();
+      this.revealSourceLocation(location.line, location.column);
     });
   }
 

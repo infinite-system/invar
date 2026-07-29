@@ -27,7 +27,11 @@ function createEmbeddingClaim(identifier = 'test.preview') {
     occupyingEditorSurface: true,
     activeDocumentIsPresented: true,
     activeDocumentIsKeyboardTarget: true,
+    revealedSourceLines: [] as number[],
     released: 0,
+    revealPresentedSourceLine(lineIndex: number) {
+      claim.revealedSourceLines.push(lineIndex);
+    },
     release() {
       claim.released += 1;
       claim.occupyingEditorSurface = false;
@@ -81,6 +85,19 @@ describe('EditorSurfaceClaims', () => {
     claim.activeDocumentIsKeyboardTarget = false;
     expect(claims.activeDocumentIsPresented).toBe(true);
     expect(claims.activeDocumentIsKeyboardTarget).toBe(false);
+  });
+
+  it('forwards a source reveal only to the occupying presented surface', () => {
+    const claims = new EditorSurfaceClaims.Class();
+    const preview = createEmbeddingClaim();
+    const comparison = createReplacingClaim();
+    comparison.occupyingEditorSurface = false;
+    claims.register(preview);
+    claims.register(comparison);
+
+    claims.revealPresentedSourceLine(42);
+
+    expect(preview.revealedSourceLines).toEqual([42]);
   });
 
   it('defaults an omitted keyboard answer to the presentation answer', () => {

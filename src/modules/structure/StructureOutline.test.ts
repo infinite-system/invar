@@ -33,6 +33,10 @@ function makeWorkspace(document: TextDocument.Instance | null) {
         editorCalls.revealCursor += 1;
       },
     },
+    revealSourceLocation: (line: number, column: number) => {
+      editorCalls.placeCursor.push({ line, column });
+      editorCalls.revealCursor += 1;
+    },
     focusEditor: () => {
       calls.focusEditor += 1;
     },

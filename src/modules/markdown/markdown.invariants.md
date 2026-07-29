@@ -366,23 +366,28 @@ src/modules/markdown/MarkdownWorkspace.test.ts` and
 ### A Markdown file offers a live source preview split
 
 **Invariant:** If the active editor tab is a Markdown file and preview mode is enabled, then the
-editable source and the rendered current document appear together in two resizable panes.
+editable source and the rendered current document appear together in two resizable panes, and an
+explicit source jump reveals the same source block in both panes.
 
 **Scope:** `MarkdownWorkspace` (the per-tab preview mode and its editor-surface claim),
 `MarkdownPreviewSurface` / `MarkdownPreviewContent` (the mounted occupant), `EditorContentMount`
 (the generic host mount), `MarkdownSplitView`, `MarkdownPreview`, and the contributed editor-title
-action the tab strip renders from the `markdown.togglePreview` command.
+action the tab strip renders from the `markdown.togglePreview` command. Source-jump follow crosses
+the generic `EditorSurfaceClaims` seam.
 
 **Mechanism:** The tab-strip affordance and the `markdown.togglePreview` command are the SAME
 command — the button is rendered from its `editorTitleIcon`, so there is one action, not two — and it
 flips one per-path mode on `MarkdownWorkspace`. That makes the plugin's provider claim the editor
 column; `EditorContentMount` mounts whatever claims it, handing the content the source renderable it
 moves into its left pane, and `MarkdownPreview` opens on the active `TextDocument` revision. One
-`SplitterModel` writes `Settings.markdownSplitRatio` live and persists it once on release.
+`SplitterModel` writes `Settings.markdownSplitRatio` live and persists it once on release. An
+explicit source jump reaches the occupying Markdown claim through `EditorSurfaceClaims`;
+`MarkdownSplitView` waits for the matching parsed revision, maps the source line to its rendered
+block row, and uses `TextViewport.scrollTopForTarget` for the same reading placement as the source.
 
 **Generates:** the auto-opened preview default (see `The Markdown preview opens itself and sits on
-the configured side`); source and preview together; live edit reparsing; one clickable and
-keyboard-bound toggle; persistent pane geometry.
+the configured side`); source and preview together; table-of-contents jumps that reveal both panes;
+live edit reparsing; one clickable and keyboard-bound toggle; persistent pane geometry.
 
 **Evidence:** `src/modules/markdown/MarkdownSplitView.ts`; `MarkdownWorkspace.test.ts`,
 `MarkdownPreviewSurface.test.ts`, `MarkdownPreviewContent.test.ts`, `MarkdownPlugin.test.ts`; the
@@ -390,10 +395,12 @@ generic mount in `src/modules/ui/EditorContentMount.ts`; `scripts/smoke-markdown
 splitter drives.
 
 **Impossible if true:** enabling preview on an active Markdown tab while only raw source remains;
-editing source while the visible preview remains on an older revision; dragging the divider while
-both pane widths stay fixed; reopening the split at the default ratio after a completed drag.
+editing source while the visible preview remains on an older revision; a deep table-of-contents
+click moving only the source; dragging the divider while both pane widths stay fixed; reopening the
+split at the default ratio after a completed drag.
 
-**Verification:** `bash scripts/smoke-markdown.sh`.
+**Verification:** `bash scripts/smoke-markdown.sh && bun
+scripts/harness/smoke-markdown-harness.ts`.
 
 **Status:** established
 
