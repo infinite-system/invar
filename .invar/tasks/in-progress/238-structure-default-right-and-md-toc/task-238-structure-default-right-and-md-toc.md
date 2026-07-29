@@ -1,6 +1,6 @@
 # 238 — structure pane: enabled by default, right of files that need it, md table of contents
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux

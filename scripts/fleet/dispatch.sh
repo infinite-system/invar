@@ -57,6 +57,17 @@ if ! grep -q "^## Bycatch expected" "$brief_file"; then
   exit 2
 fi
 
+# SNAPSHOT the brief NOW. A pre-filed brief naturally lives INSIDE the active/
+# task folder, and the record move (active/ -> in-progress/) below relocates
+# that folder BEFORE the brief is copied into the worktree — the cp then reads
+# a path that no longer exists (bit twice on 2026-07-29, #268). The snapshot
+# makes the brief's location irrelevant to everything after this line.
+brief_snapshot="$(mktemp)"
+cp "$brief_file" "$brief_snapshot"
+brief_file="$brief_snapshot"
+# Cleaned by cleanup_ledger_worktree's EXIT trap below (one trap, one owner —
+# a second `trap ... EXIT` here would be silently replaced by that one).
+
 # A BUILDER NEVER RUNS UNWATCHED. fleet-watch stamps /tmp/fleet-watch.heartbeat
 # every cycle; a stale stamp means no sentinel is watching for READY, death, OR
 # file sprawl (the #244 night: 131 x 200MB extractions per gate, disk to 100%
@@ -239,6 +250,7 @@ if [ "$checked_out_branch" != "main" ]; then
   echo "dispatch: ledger — recording on main via temporary worktree (checkout is on $(git branch --show-current))"
 fi
 cleanup_ledger_worktree() {
+  rm -f "${brief_snapshot:-}"
   if [ -n "$ledger_worktree_temporary" ]; then
     git worktree remove "$ledger_worktree_temporary" 2>/dev/null \
       || echo "dispatch: WARNING — temporary ledger worktree left at $ledger_worktree_temporary for inspection" >&2

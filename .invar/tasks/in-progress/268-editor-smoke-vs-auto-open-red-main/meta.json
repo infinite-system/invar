@@ -1,0 +1,15 @@
+{
+  "task": 268,
+  "slug": "editor-smoke-vs-auto-open-red-main",
+  "branch": "fleet/268-editor-smoke-vs-auto-open-red-main",
+  "worktree": ".invar/worktrees/268-editor-smoke-vs-auto-open-red-main",
+  "tmuxSession": "invar/268-editor-smoke-vs-auto-open-red-main",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-high-268-editor-smoke-vs-auto-open-red-main.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "06d2709e9f0b9b5ae6ac3273fb086c94f4965e68",
+  "startedAt": "2026-07-29T06:16:47-04:00"
+}

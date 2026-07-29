@@ -1,6 +1,6 @@
 # 237 — markdown preview sits LEFT of the source by default and opens automatically
 
-State: IN-PROGRESS
+State: COMPLETED — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
 Created: 2026-07-29
 Engine: claude
 Environment: linux

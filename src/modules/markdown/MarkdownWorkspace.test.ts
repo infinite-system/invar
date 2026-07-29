@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'bun:test';
+import { ref } from 'vue';
 import { MarkdownWorkspace } from './MarkdownWorkspace';
 import { EditorSurfaceClaims } from '../workspace/EditorSurfaceClaims';
 import { ProviderRegistry } from '../plugins/ProviderRegistry';
+import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 import type { Workspace } from '../workspace/Workspace';
 
 function createHostWorkspace(path: string) {
   const editorSurfaces = new EditorSurfaceClaims.Class();
+  const activePath = ref(path);
   let focused = '';
   const workspace = {
     editorSurfaces,
     providers: new ProviderRegistry.Class(),
     root: '/project',
-    activeDocumentHandle: path === '' ? null : { path },
+    get activeDocumentHandle() {
+      return activePath.value === '' ? null : { path: activePath.value };
+    },
     editor: {
       hasDocument: { value: path !== '' },
       document: { path },
@@ -22,15 +27,36 @@ function createHostWorkspace(path: string) {
     get focusedTarget() {
       return focused;
     },
+    activateTab(nextPath: string) {
+      activePath.value = nextPath;
+    },
   };
   return workspace as unknown as Workspace.Model & typeof workspace;
 }
 
-function createContribution(path: string, previewFocused = () => false) {
+function createContribution(
+  path: string,
+  previewFocused = () => false,
+  prepareWorkspace?: (
+    workspace: ReturnType<typeof createHostWorkspace>,
+  ) => void,
+) {
   const workspace = createHostWorkspace(path);
+  prepareWorkspace?.(workspace);
   return {
     workspace,
     contribution: new MarkdownWorkspace.Class(workspace, previewFocused),
+  };
+}
+
+/** A claim that REPLACES the presented document, registered before markdown — mirroring the real
+ *  app, where the Git comparison's claim registers ahead of markdown's. */
+function replacingSurfaceClaim(): EditorSurfaceClaim {
+  return {
+    identifier: 'test.replacing',
+    occupyingEditorSurface: true,
+    activeDocumentIsPresented: false,
+    release() {},
   };
 }
 
@@ -50,33 +76,74 @@ describe('MarkdownWorkspace', () => {
     );
   });
 
-  // A surface that replaces the active document hides the Markdown tab behind it, so no preview is
-  // offered for a file the user cannot see.
-  it('offers no preview while another surface presents the editor column', () => {
+  // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+  it('opens the preview automatically for an active Markdown tab', () => {
+    const { contribution } = createContribution('/project/notes.md');
+    expect(contribution.showingPreview).toBe(true);
+    expect(contribution.previewPaths.value.has('/project/notes.md')).toBe(true);
+  });
+
+  it('does not auto-open for a non-Markdown tab', () => {
+    const { contribution } = createContribution('/project/main.ts');
+    expect(contribution.showingPreview).toBe(false);
+    expect(contribution.previewPaths.value.size).toBe(0);
+  });
+
+  // Auto-open must not steal the keyboard: the user did not ask for the pane.
+  it('leaves focus untouched when the preview opens itself', () => {
     const { workspace, contribution } = createContribution('/project/notes.md');
-    workspace.editorSurfaces.register({
-      identifier: 'test.replacing',
-      occupyingEditorSurface: true,
-      activeDocumentIsPresented: false,
-      release() {},
-    });
+    expect(contribution.showingPreview).toBe(true);
+    expect(workspace.focusedTarget).toBe('');
+  });
+
+  // A surface that replaces the active document hides the Markdown tab behind it, so no preview is
+  // offered — and none auto-opens — for a file the user cannot see.
+  it('offers no preview while another surface presents the editor column', () => {
+    const { contribution } = createContribution(
+      '/project/notes.md',
+      () => false,
+      (workspace) => workspace.editorSurfaces.register(replacingSurfaceClaim()),
+    );
     expect(contribution.activeFileIsMarkdown).toBe(true); // still a .md tab
     expect(contribution.previewToggleAvailable).toBe(false); // but hidden behind the surface
+    expect(contribution.previewPaths.value.size).toBe(0); // and nothing auto-opened
     contribution.togglePreview();
     expect(contribution.previewPaths.value.size).toBe(0);
   });
 
-  it('toggles the preview per path and keeps the choice for other tabs', () => {
+  it('closes by hand and stays closed for that document', () => {
     const { contribution } = createContribution('/project/notes.md');
+    expect(contribution.showingPreview).toBe(true);
+    contribution.togglePreview();
+    expect(contribution.showingPreview).toBe(false);
+    expect(
+      contribution.dismissedPreviewPaths.value.has('/project/notes.md'),
+    ).toBe(true);
+  });
+
+  it('reopens a dismissed preview through its own toggle', () => {
+    const { contribution } = createContribution('/project/notes.md');
+    contribution.togglePreview();
     expect(contribution.showingPreview).toBe(false);
     contribution.togglePreview();
     expect(contribution.showingPreview).toBe(true);
-    expect(contribution.previewPaths.value.has('/project/notes.md')).toBe(true);
-    contribution.togglePreview();
-    expect(contribution.showingPreview).toBe(false);
+    expect(contribution.dismissedPreviewPaths.value.size).toBe(0);
   });
 
-  it('focuses the editor when the preview is toggled on', () => {
+  // The done-test's dismissal arm: a hand-close binds to ITS document; every other Markdown
+  // document keeps the open-by-default behaviour.
+  it('re-applies the default to another Markdown tab while a dismissed one stays closed', () => {
+    const { workspace, contribution } = createContribution('/project/a.md');
+    contribution.togglePreview(); // dismiss a.md
+    workspace.activateTab('/project/b.md');
+    expect(contribution.showingPreview).toBe(true); // b.md auto-opens
+    workspace.activateTab('/project/a.md');
+    expect(contribution.showingPreview).toBe(false); // a.md respects the hand-close
+    workspace.activateTab('/project/b.md');
+    expect(contribution.showingPreview).toBe(true); // b.md keeps its open state
+  });
+
+  it('focuses the editor when the preview is toggled', () => {
     const { workspace, contribution } = createContribution('/project/notes.md');
     contribution.togglePreview();
     expect(workspace.focusedTarget).toBe('editor');
@@ -91,7 +158,6 @@ describe('MarkdownWorkspace', () => {
   // The distinction the old "is a diff showing?" question could not express.
   it('claims the surface while PRESENTING the active document', () => {
     const { workspace, contribution } = createContribution('/project/notes.md');
-    contribution.togglePreview();
     expect(contribution.occupyingEditorSurface).toBe(true);
     expect(workspace.editorSurfaces.occupyingClaim?.identifier).toBe(
       'markdown.preview',
@@ -101,11 +167,10 @@ describe('MarkdownWorkspace', () => {
 
   it('moves the keyboard answer with the focused pane', () => {
     let previewFocused = false;
-    const { workspace, contribution } = createContribution(
+    const { workspace } = createContribution(
       '/project/notes.md',
       () => previewFocused,
     );
-    contribution.togglePreview();
     expect(workspace.editorSurfaces.activeDocumentIsKeyboardTarget).toBe(true);
     previewFocused = true;
     expect(workspace.editorSurfaces.activeDocumentIsKeyboardTarget).toBe(false);
@@ -114,18 +179,19 @@ describe('MarkdownWorkspace', () => {
   // Release must NOT drop the per-tab mode: the host calls it before the tab actually changes.
   it('keeps the per-tab preview choice when the host releases the surface', () => {
     const { workspace, contribution } = createContribution('/project/notes.md');
-    contribution.togglePreview();
     workspace.editorSurfaces.releaseOccupying();
     expect(contribution.previewPaths.value.has('/project/notes.md')).toBe(true);
     expect(contribution.showingPreview).toBe(true);
   });
 
-  it('unregisters its claim and clears its modes on disposal', () => {
-    const { workspace, contribution } = createContribution('/project/notes.md');
-    contribution.togglePreview();
+  it('unregisters its claim, stops auto-open, and clears its modes on disposal', () => {
+    const { workspace, contribution } = createContribution('/project/a.md');
     contribution.disposed();
     expect(contribution.previewPaths.value.size).toBe(0);
+    expect(contribution.dismissedPreviewPaths.value.size).toBe(0);
     expect(workspace.editorSurfaces.occupyingClaim).toBeNull();
+    workspace.activateTab('/project/b.md');
+    expect(contribution.previewPaths.value.size).toBe(0); // the watcher is stopped
   });
 
   it('registers the heading structure source and withdraws it on disposal', () => {

@@ -33,6 +33,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   protected disposeCommands: (() => void) | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
   protected splitRatioSetting: RegisteredSetting<number> | null = null;
+  protected previewSideSetting: RegisteredSetting<string> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const markdownWorkspace = new MarkdownWorkspace.Class(
@@ -58,6 +59,14 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
         decimals: 2,
       },
     });
+    // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+    this.previewSideSetting = context.registerSetting({
+      identifier: 'markdownPreviewSide',
+      label: 'Preview side',
+      section: this.name,
+      defaultValue: 'left',
+      spec: { kind: 'enum', options: ['left', 'right'] },
+    });
     context.registerKeybindings([
       {
         chord: { key: 'v', ctrl: true, shift: true },
@@ -73,6 +82,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     this.surface = new MarkdownPreviewSurface.Class(
       () => this.workspaces.get(context.workspaceSet.active) ?? null,
       this.splitRatioSetting,
+      this.previewSideSetting,
     );
     this.disposeSurface = context.editorSurfaceContents.register(this.surface);
     this.disposeStatusProjection =
@@ -91,6 +101,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     this.disposeStatusProjection = null;
     this.surface = null;
     this.splitRatioSetting = null;
+    this.previewSideSetting = null;
     this.application = null;
   }
 
@@ -147,6 +158,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
       markdownPreviewOpen: markdownWorkspace.showingPreview,
       markdownPaneFocus: splitView?.focusedPane.value ?? 'source',
       markdownSplitRatio: this.splitRatioSetting?.value.value ?? 0.5,
+      markdownPreviewSide: this.surface?.previewSide() ?? 'left',
       markdownPreviewScrollTop: splitView?.preview.scrollTop.value ?? 0,
       markdownPreviewSelectionChars: splitView?.selectionCharacterCount() ?? 0,
       markdownHoveredReference: splitView?.hoveredReferencePath.value ?? null,

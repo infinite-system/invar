@@ -1,0 +1,15 @@
+{
+  "task": 238,
+  "slug": "structure-default-right-and-md-toc",
+  "branch": "fleet/238-structure-default-right-and-md-toc",
+  "worktree": ".invar/worktrees/238-structure-default-right-and-md-toc",
+  "tmuxSession": "invar/238-structure-default-right-and-md-toc",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-238-structure-default-right-and-md-toc.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "c17151aa9d333ffcf0a22243d60bd0a096af4a1e",
+  "startedAt": "2026-07-29T05:12:17-04:00"
+}

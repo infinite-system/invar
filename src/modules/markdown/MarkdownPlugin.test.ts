@@ -45,14 +45,14 @@ function activate(path = '/project/notes.md') {
 
 describe('MarkdownPlugin', () => {
   it('registers its preview surface with the editor-column registry', () => {
-    const { editorSurfaceContents } = activate();
-    // Nothing is showing a preview yet, so it claims nothing.
+    const { editorSurfaceContents } = activate('/project/main.ts');
+    // No Markdown tab is active, so nothing shows a preview and it claims nothing.
     expect(editorSurfaceContents.claimingProvider).toBeNull();
   });
 
-  it('claims the editor column once a tab turns its preview on', () => {
-    const { plugin, workspace, editorSurfaceContents } = activate();
-    plugin.controllerFor(workspace).togglePreview();
+  // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+  it('claims the editor column when a Markdown tab auto-opens its preview', () => {
+    const { editorSurfaceContents } = activate();
     expect(editorSurfaceContents.claimingProvider?.identifier).toBe(
       'markdown.preview',
     );
@@ -67,13 +67,14 @@ describe('MarkdownPlugin', () => {
       'markdown.togglePreview',
     ]);
     expect(actions[0]?.editorTitleIcon).toBe('preview');
-    expect(actions[0]?.toggled?.()).toBe(false);
+    // The auto-opened preview reports the toggle as already ON.
+    expect(actions[0]?.toggled?.()).toBe(true);
   });
 
-  it('reports the toggle as ON once the preview is showing', () => {
+  it('reports the toggle as OFF once the preview is closed by hand', () => {
     const { plugin, workspace, commands } = activate();
     plugin.controllerFor(workspace).togglePreview();
-    expect(commands.editorTitleActions()[0]?.toggled?.()).toBe(true);
+    expect(commands.editorTitleActions()[0]?.toggled?.()).toBe(false);
   });
 
   it('withdraws the toggle affordance for a non-Markdown tab', () => {
@@ -83,24 +84,24 @@ describe('MarkdownPlugin', () => {
 
   it('runs the toggle through the one registry, by command id', () => {
     const { plugin, workspace, commands } = activate();
-    commands.run('markdown.togglePreview');
     expect(plugin.controllerFor(workspace).showingPreview).toBe(true);
+    commands.run('markdown.togglePreview');
+    expect(plugin.controllerFor(workspace).showingPreview).toBe(false);
   });
 
   it('projects its own status fields, with no host involvement', () => {
-    const { plugin, workspace } = activate();
-    plugin.controllerFor(workspace).togglePreview();
+    const { plugin } = activate();
     const snapshot = (
       plugin as unknown as { statusSnapshot: () => Record<string, unknown> }
     ).statusSnapshot();
     expect(snapshot.markdownPreviewOpen).toBe(true);
     expect(snapshot.markdownPaneFocus).toBe('source');
     expect(snapshot.markdownSplitRatio).toBe(0.5);
+    expect(snapshot.markdownPreviewSide).toBe('left');
   });
 
   it('unregisters its surface on application disposal', () => {
-    const { plugin, workspace, editorSurfaceContents } = activate();
-    plugin.controllerFor(workspace).togglePreview();
+    const { plugin, editorSurfaceContents } = activate();
     plugin.disposeApplication();
     expect(editorSurfaceContents.claimingProvider).toBeNull();
   });

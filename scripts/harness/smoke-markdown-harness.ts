@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
-// Byte-level Markdown split-preview contract: preview toggle, rendered links, persisted splitter,
+// Byte-level Markdown split-preview contract: the auto-opened LEFT preview, per-document
+// hand-close memory, the contributed side setting, rendered links, persisted splitter,
 // edge-selection autoscroll/copy/paste, and independent source/preview find all cross the real PTY.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -23,9 +25,20 @@ function previewBorder(snapshot: HarnessSnapshot.Model): {
   return position;
 }
 
+/** The column of the preview pane's own closing corner on its border row. The preview no longer
+ *  ends at the terminal edge — the source pane sits to its RIGHT by default — so every scan of
+ *  preview content must stop here or it silently matches raw source text. */
+function previewPaneRightColumn(snapshot: HarnessSnapshot.Model): number {
+  const preview = previewBorder(snapshot);
+  const rowText = snapshot.rowText(preview.row);
+  const closingColumn = rowText.indexOf('╮', preview.column);
+  return closingColumn >= 0 ? closingColumn : rowText.length;
+}
+
+/** The source pane's opening border corner: the next box corner right of the preview pane. */
 function sourceBorderColumn(snapshot: HarnessSnapshot.Model): number {
   const preview = previewBorder(snapshot);
-  return snapshot.rowText(preview.row).indexOf('╭');
+  return snapshot.rowText(preview.row).indexOf('╭', preview.column + 1);
 }
 
 function previewMarkerPosition(
@@ -33,9 +46,10 @@ function previewMarkerPosition(
   marker: string,
 ): { row: number; column: number } {
   const previewColumn = previewBorder(snapshot).column;
+  const rightColumn = previewPaneRightColumn(snapshot);
   for (let row = 0; row < snapshot.rows; row++) {
     const column = snapshot.rowText(row).indexOf(marker, previewColumn);
-    if (column >= 0) return { row, column };
+    if (column >= 0 && column < rightColumn) return { row, column };
   }
   throw new Error(`FAIL preview marker missing: ${marker}\n${snapshot.text()}`);
 }
@@ -46,9 +60,11 @@ function previewHasMarker(
 ): boolean {
   const previewPosition = snapshot.findText('╭─Preview');
   if (!previewPosition) return false;
-  return snapshot
-    .textRows()
-    .some((rowText) => rowText.indexOf(marker, previewPosition.column) >= 0);
+  const rightColumn = previewPaneRightColumn(snapshot);
+  return snapshot.textRows().some((rowText) => {
+    const column = rowText.indexOf(marker, previewPosition.column);
+    return column >= 0 && column < rightColumn;
+  });
 }
 
 function previewRowContaining(
@@ -56,26 +72,34 @@ function previewRowContaining(
   marker: string,
 ): number {
   const previewColumn = previewBorder(snapshot).column;
+  const rightColumn = previewPaneRightColumn(snapshot);
   for (let row = 0; row < snapshot.rows; row++) {
-    if (snapshot.rowText(row).slice(previewColumn).includes(marker)) return row;
+    if (
+      snapshot.rowText(row).slice(previewColumn, rightColumn).includes(marker)
+    )
+      return row;
   }
   throw new Error(`FAIL preview row missing: ${marker}\n${snapshot.text()}`);
 }
 
+/** Table cell boundaries INSIDE the preview pane: every table vertical between the pane's own
+ *  left and right borders (both excluded). */
 function tableBoundaryColumns(
   snapshot: HarnessSnapshot.Model,
   row: number,
 ): number[] {
   const previewColumn = previewBorder(snapshot).column;
+  const rightColumn = previewPaneRightColumn(snapshot);
   const verticalBorder = ThemeIcons.Class.tableBordersFor('unicode').vertical;
-  const verticalColumns = snapshot
+  return snapshot
     .rowCells(row)
     .filter(
       (cell) =>
-        cell.column > previewColumn && cell.characters === verticalBorder,
+        cell.column > previewColumn &&
+        cell.column < rightColumn &&
+        cell.characters === verticalBorder,
     )
     .map((cell) => cell.column);
-  return verticalColumns.slice(0, -1);
 }
 
 /** The GRID column where needle starts, at or after fromColumn. Snapshot row text carries one
@@ -179,6 +203,13 @@ await Bun.write(
   'export const openedFromMarkdown = true;\n',
 );
 
+// A second Markdown document for the per-document dismissal arm. The name sorts AFTER README.md
+// and target.ts so the boot selection still lands on README.md.
+await Bun.write(
+  join(fixtureRoot, 'zebra-notes.md'),
+  '# Zebra notes\n\nA second Markdown document.\n',
+);
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,
@@ -193,7 +224,7 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log(
-    '== harness markdown: source opens alone and tab button toggles rendered preview ==',
+    '== harness markdown: the preview auto-opens LEFT of the source ==',
   );
   let snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('README.md') !== null,
@@ -203,24 +234,20 @@ try {
   const openedMarkdownStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: String(status.activeBuffer).endsWith('/README.md') && status.markdownPreviewOpen === false",
+    "status condition: String(status.activeBuffer).endsWith('/README.md') && status.markdownPreviewOpen === true && status.markdownPreviewSide === 'left'",
     (status) =>
       String(status.activeBuffer).endsWith('/README.md') &&
-      status.markdownPreviewOpen === false,
+      status.markdownPreviewOpen === true &&
+      status.markdownPreviewSide === 'left',
   );
-  HarnessSmoke.Class.pass('Markdown opens source-only by default');
-  snapshot = await driver.awaitGridCondition(
-    'the README editor tab and Markdown preview button are painted',
-    (candidate) => findPreviewButton(candidate) !== null,
+  HarnessSmoke.Class.pass(
+    'opening a Markdown file auto-opens its preview without a keystroke',
   );
-  let button = previewButton(snapshot);
-  clickCell(driver, button.column, button.row);
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the preview publishes the current source revision as parsed',
+    'the auto-opened preview publishes the current source revision as parsed',
     (status) =>
-      status.markdownPreviewOpen === true &&
       status.markdownParsing === false &&
       Number(status.markdownRevision) ===
         Number(openedMarkdownStatus.bufferRevision) &&
@@ -228,12 +255,20 @@ try {
         Number(openedMarkdownStatus.bufferRevision),
   );
   snapshot = await driver.awaitGridCondition(
-    'the current Markdown revision paints content after the malformed tables',
+    'the auto-opened preview paints rendered content and the tab-bar toggle',
     (candidate) =>
       candidate.findText('╭─Preview') !== null &&
+      findPreviewButton(candidate) !== null &&
       previewHasMarker(candidate, 'Rendered row 01'),
   );
-  HarnessSmoke.Class.pass('tab button mounts the preview pane');
+  HarnessSmoke.Class.requireCondition(
+    previewBorder(snapshot).column < sourceBorderColumn(snapshot),
+    'the preview pane sits LEFT of the source pane by default',
+  );
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).markdownPaneFocus === 'source',
+    'auto-open keeps the keyboard on the source pane',
+  );
   const renderedHeading = previewMarkerPosition(snapshot, 'Rendered heading');
   HarnessSmoke.Class.requireCondition(
     !snapshot
@@ -318,11 +353,44 @@ try {
     'a ragged table keeps its raw extra cell',
   );
 
-  driver.resize(60, 25);
+  // The narrow-pane contract is tested by DRAGGING THE DIVIDER, not by resizing the terminal: a
+  // terminal SHRINK never re-lays-out the split's pane widths (pre-existing host defect, present on
+  // unmodified main when the preview is opened with the toggle chord — the old flow's tab-button
+  // click masked it; see the #237 task-folder probes). The divider drag reaches the same narrow
+  // preview through a driven, deterministic path.
+  const wideRatioStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Markdown split ratio is published before the narrow-pane drag',
+    (status) => typeof status.markdownSplitRatio === 'number',
+  );
+  const wideRatio = Number(wideRatioStatus.markdownSplitRatio);
+  const narrowDragStartColumn = sourceBorderColumn(snapshot) - 1;
+  const narrowDragRow = previewBorder(snapshot).row + 7;
+  driver.sendMouse({
+    kind: 'press',
+    column: narrowDragStartColumn,
+    row: narrowDragRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'move',
+    column: previewBorder(snapshot).column + 16,
+    row: narrowDragRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: previewBorder(snapshot).column + 16,
+    row: narrowDragRow,
+    button: 'left',
+  });
   const narrowSnapshot = await driver.awaitGridCondition(
-    'the aligned table repaints at the narrow terminal width',
+    'the aligned table repaints inside the dragged-narrow preview pane',
     (candidate) =>
-      candidate.columns === 60 &&
+      candidate.findText('╭─Preview') !== null &&
+      previewPaneRightColumn(candidate) <
+        previewBorder(candidate).column + 24 &&
       candidate.findText(
         ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
       ) !== null,
@@ -332,23 +400,52 @@ try {
     ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
   );
   HarnessSmoke.Class.requireCondition(
-    narrowSnapshot.cell(narrowHeaderRow, narrowSnapshot.columns - 1)
+    narrowSnapshot.cell(narrowHeaderRow, previewPaneRightColumn(narrowSnapshot))
       ?.characters === ThemeIcons.Class.tableBordersFor('unicode').vertical,
     'a too-wide table leaves the preview pane outer border intact',
   );
-  driver.resize(120, 40);
+  // Drag the divider back and confirm the wide table layout returns.
+  const narrowSourceBorderColumn = sourceBorderColumn(narrowSnapshot);
+  driver.sendMouse({
+    kind: 'press',
+    column: narrowSourceBorderColumn - 1,
+    row: narrowDragRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'move',
+    column: narrowDragStartColumn,
+    row: narrowDragRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: narrowDragStartColumn,
+    row: narrowDragRow,
+    button: 'left',
+  });
   snapshot = await driver.awaitGridCondition(
-    'the aligned table returns to the default terminal width',
+    'the aligned table returns at the restored split ratio',
     (candidate) =>
-      candidate.columns === 120 &&
+      candidate.findText('╭─Preview') !== null &&
       findPreviewButton(candidate) !== null &&
-      (candidate.findText('╭─Preview')?.column ?? 0) > 60 &&
+      Math.abs(sourceBorderColumn(candidate) - narrowDragStartColumn - 1) <=
+        2 &&
       candidate.findText(
         ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
       ) !== null,
   );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the restored split ratio is published near its pre-drag value',
+    (status) => Math.abs(Number(status.markdownSplitRatio) - wideRatio) <= 0.06,
+  );
 
-  button = previewButton(snapshot);
+  console.log(
+    '== harness markdown: a hand-close binds to its document; other tabs keep the default ==',
+  );
+  let button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -356,9 +453,71 @@ try {
     'status condition: status.markdownPreviewOpen === false',
     (status) => status.markdownPreviewOpen === false,
   );
-  HarnessSmoke.Class.pass('second click returns to source-only');
+  HarnessSmoke.Class.pass('the tab button closes the auto-opened preview');
   snapshot = await driver.awaitGridCondition(
-    'the preview pane is absent and the Markdown preview button is painted',
+    'the preview pane is absent after the hand-close',
+    (candidate) =>
+      candidate.findText('╭─Preview') === null &&
+      findPreviewButton(candidate) !== null,
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens for the second Markdown document',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('zebra-notes.md');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the second Markdown document',
+    (status) =>
+      status.quickOpenQuery === 'zebra-notes.md' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/zebra-notes.md') && status.markdownPreviewOpen === true",
+    (status) =>
+      String(status.activeBuffer).endsWith('/zebra-notes.md') &&
+      status.markdownPreviewOpen === true,
+  );
+  HarnessSmoke.Class.pass(
+    'another Markdown tab re-applies the open-by-default preview',
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens for the return to the dismissed document',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('README.md');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the dismissed document',
+    (status) =>
+      status.quickOpenQuery === 'README.md' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/README.md') && status.markdownPreviewOpen === false",
+    (status) =>
+      String(status.activeBuffer).endsWith('/README.md') &&
+      status.markdownPreviewOpen === false,
+  );
+  HarnessSmoke.Class.pass(
+    'a hand-closed preview stays closed for its own document',
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the tab toggle is painted for the reopen',
     (candidate) =>
       candidate.findText('╭─Preview') === null &&
       findPreviewButton(candidate) !== null,
@@ -427,7 +586,7 @@ try {
   console.log(
     '== harness markdown: splitter moves and persists across preview remount ==',
   );
-  const previewColumnBefore = previewBorder(snapshot).column;
+  const sourceColumnBefore = sourceBorderColumn(snapshot);
   const ratioBeforeStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -435,9 +594,11 @@ try {
     (status) => typeof status.markdownSplitRatio === 'number',
   );
   const ratioBefore = Number(ratioBeforeStatus.markdownSplitRatio);
-  const dividerColumn = previewColumnBefore - 1;
+  // The divider sits between the LEFT preview pane and the source. The ratio names the SOURCE
+  // pane's share, so a low ratio means the divider sits far right — drag away from the clamp.
+  const dividerColumn = sourceColumnBefore - 1;
   const dividerTargetColumn =
-    ratioBefore <= 0.3 ? dividerColumn + 10 : dividerColumn - 10;
+    ratioBefore <= 0.3 ? dividerColumn - 10 : dividerColumn + 10;
   const dividerRow = previewBorder(snapshot).row + 7;
   driver.sendMouse({
     kind: 'press',
@@ -458,9 +619,11 @@ try {
     button: 'left',
   });
   snapshot = await driver.awaitSnapshot(
-    (candidate) => previewBorder(candidate).column !== previewColumnBefore,
+    (candidate) =>
+      candidate.findText('╭─Preview') !== null &&
+      sourceBorderColumn(candidate) !== sourceColumnBefore,
   );
-  const previewColumnAfter = previewBorder(snapshot).column;
+  const sourceColumnAfter = sourceBorderColumn(snapshot);
   const persistedRatioStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -471,7 +634,7 @@ try {
   );
   const persistedRatio = Number(persistedRatioStatus.markdownSplitRatio);
   HarnessSmoke.Class.pass(
-    `divider moved preview ${previewColumnBefore} to ${previewColumnAfter} and changed the ratio`,
+    `divider moved the source border ${sourceColumnBefore} to ${sourceColumnAfter} and changed the ratio`,
   );
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
@@ -492,7 +655,8 @@ try {
   snapshot = await driver.awaitSnapshot(
     (candidate) =>
       previewHasMarker(candidate, 'Rendered heading') &&
-      previewBorder(candidate).column === previewColumnAfter,
+      candidate.findText('╭─Preview') !== null &&
+      sourceBorderColumn(candidate) === sourceColumnAfter,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -634,6 +798,77 @@ try {
   );
   HarnessSmoke.Class.pass(
     `independent preview Find owns ${String(findStatus.findMatchCount)} rendered matches`,
+  );
+
+  console.log(
+    '== harness markdown: the contributed side setting flips the preview to the right ==',
+  );
+  driver.sendKeys('Escape');
+  await driver.awaitGridCondition(
+    'the preview Find bar closes before Settings opens',
+    (candidate) => candidate.findText('╭─Find') === null,
+  );
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings opens over the contributed Markdown schema',
+    (status) => status.settingsOpen === true,
+  );
+  let settingsStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the settings selection publishes its current label',
+    (status) => typeof status.settingsSelectedLabel === 'string',
+  );
+  for (
+    let navigationStep = 0;
+    navigationStep < 60 &&
+    settingsStatus.settingsSelectedLabel !== 'Preview side';
+    navigationStep += 1
+  ) {
+    const previousLabel = settingsStatus.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    settingsStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'settings navigation advances toward Preview side',
+      (candidate) => candidate.settingsSelectedLabel !== previousLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    settingsStatus.settingsSelectedLabel === 'Preview side',
+    'Preview side is contributed to the live settings schema',
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: status.markdownPreviewSide === 'right'",
+    (status) => status.markdownPreviewSide === 'right',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes with the preview still open on the right',
+    (status) =>
+      status.settingsOpen === false && status.markdownPreviewOpen === true,
+  );
+  const rightSnapshot = await driver.awaitGridCondition(
+    'the right-side preview paints rendered content beside its source',
+    (candidate) =>
+      candidate.findText('╭─Preview') !== null &&
+      previewHasMarker(candidate, 'Rendered heading'),
+  );
+  const rightPreview = previewBorder(rightSnapshot);
+  const firstBoxCorner = rightSnapshot.rowText(rightPreview.row).indexOf('╭');
+  HarnessSmoke.Class.requireCondition(
+    firstBoxCorner >= 0 && firstBoxCorner < rightPreview.column,
+    'markdownPreviewSide=right places the preview pane RIGHT of the source',
+  );
+  HarnessSmoke.Class.pass(
+    'the contributed side setting flips the live preview to the right',
   );
 
   driver.sendKeys('Control+q');

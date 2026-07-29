@@ -14,7 +14,10 @@ function createMarkdownWorkspace(root: string, path: string) {
     typeof markdownWorkspace;
 }
 
-function createSurface(markdownWorkspace: MarkdownWorkspace.Model | null) {
+function createSurface(
+  markdownWorkspace: MarkdownWorkspace.Model | null,
+  previewSideValue = 'left',
+) {
   const splitRatioReads: number[] = [];
   const splitRatio = ref(0.5);
   Object.defineProperty(splitRatio, 'value', {
@@ -26,6 +29,20 @@ function createSurface(markdownWorkspace: MarkdownWorkspace.Model | null) {
   });
   const splitRatioSetting = {
     value: splitRatio,
+    save() {},
+    dispose() {},
+  };
+  const previewSideReads: number[] = [];
+  const previewSide = ref(previewSideValue);
+  Object.defineProperty(previewSide, 'value', {
+    configurable: true,
+    get() {
+      previewSideReads.push(1);
+      return previewSideValue;
+    },
+  });
+  const previewSideSetting = {
+    value: previewSide,
     save() {},
     dispose() {},
   };
@@ -42,8 +59,13 @@ function createSurface(markdownWorkspace: MarkdownWorkspace.Model | null) {
     }
   }
   return {
-    surface: new TestSurface(() => markdownWorkspace, splitRatioSetting),
+    surface: new TestSurface(
+      () => markdownWorkspace,
+      splitRatioSetting,
+      previewSideSetting,
+    ),
     splitRatioReads,
+    previewSideReads,
     created,
   };
 }
@@ -61,15 +83,37 @@ describe('MarkdownPreviewSurface', () => {
     expect(createSurface(markdownWorkspace).surface.mountIdentity()).toBe('');
   });
 
-  it('keys its mount identity to the root and the source path', () => {
+  it('keys its mount identity to the root, the source path, and the side', () => {
     const markdownWorkspace = createMarkdownWorkspace(
       '/project',
       '/project/a.md',
     );
     markdownWorkspace.showingPreview = true;
     expect(createSurface(markdownWorkspace).surface.mountIdentity()).toBe(
-      '/project:preview:/project/a.md',
+      '/project:preview:/project/a.md:left',
     );
+  });
+
+  // Flipping the contributed side setting must rebuild the split in the new pane order.
+  it('changes identity when the preview side setting flips', () => {
+    const markdownWorkspace = createMarkdownWorkspace(
+      '/project',
+      '/project/a.md',
+    );
+    markdownWorkspace.showingPreview = true;
+    expect(
+      createSurface(markdownWorkspace, 'right').surface.mountIdentity(),
+    ).toBe('/project:preview:/project/a.md:right');
+  });
+
+  it('normalizes an unknown side value to the default left', () => {
+    const markdownWorkspace = createMarkdownWorkspace(
+      '/project',
+      '/project/a.md',
+    );
+    markdownWorkspace.showingPreview = true;
+    const { surface } = createSurface(markdownWorkspace, 'sideways');
+    expect(surface.previewSide()).toBe('left');
   });
 
   // Switching to another Markdown tab must rebuild the split against THAT tab's document.
@@ -121,9 +165,10 @@ describe('MarkdownPreviewSurface', () => {
     expect(surface.previewContent).toBeNull();
   });
 
-  it('subscribes the persisted split ratio so a divider drag repaints the host', () => {
-    const { surface, splitRatioReads } = createSurface(null);
+  it('subscribes the persisted split ratio and side so their changes repaint the host', () => {
+    const { surface, splitRatioReads, previewSideReads } = createSurface(null);
     surface.observePaintSignals();
     expect(splitRatioReads.length).toBe(1);
+    expect(previewSideReads.length).toBe(1);
   });
 });

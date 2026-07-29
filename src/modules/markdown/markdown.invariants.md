@@ -380,8 +380,9 @@ column; `EditorContentMount` mounts whatever claims it, handing the content the 
 moves into its left pane, and `MarkdownPreview` opens on the active `TextDocument` revision. One
 `SplitterModel` writes `Settings.markdownSplitRatio` live and persists it once on release.
 
-**Generates:** source-only default mode; source and preview together; live edit reparsing; one
-clickable and keyboard-bound toggle; persistent pane geometry.
+**Generates:** the auto-opened preview default (see `The Markdown preview opens itself and sits on
+the configured side`); source and preview together; live edit reparsing; one clickable and
+keyboard-bound toggle; persistent pane geometry.
 
 **Evidence:** `src/modules/markdown/MarkdownSplitView.ts`; `MarkdownWorkspace.test.ts`,
 `MarkdownPreviewSurface.test.ts`, `MarkdownPreviewContent.test.ts`, `MarkdownPlugin.test.ts`; the
@@ -396,7 +397,57 @@ both pane widths stay fixed; reopening the split at the default ratio after a co
 
 **Status:** established
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-29
+
+### The Markdown preview opens itself and sits on the configured side
+
+**Invariant:** If the markdown plugin is enabled and a Markdown tab becomes the active presented
+document, then its preview opens without a keystroke, on the side named by the plugin's contributed
+`markdownPreviewSide` setting (default LEFT of the source), with keyboard focus staying on the
+source pane; a preview the user closed by hand stays closed for that document until its own toggle
+reopens it; disabling the plugin removes the auto-open and the pane with it.
+
+**Scope:** `MarkdownWorkspace` (the auto-open watcher and the dismissed-path memory),
+`MarkdownPlugin` (the contributed setting), `MarkdownPreviewSurface` (the side in the mount
+identity), `MarkdownSplitView` (pane order and splitter pointer direction). Stands on the #100/#222
+convention *Plugins contribute their own settings and keybindings* — the host learns nothing.
+
+**Mechanism:** A sync-flush watcher on the auto-open candidate (an active presented Markdown tab
+with no preview showing and no recorded hand-close) writes the path into `previewPaths`, so the
+claim is up before the next paint. `togglePreview` records a hand-close in `dismissedPreviewPaths`
+BEFORE removing the path from `previewPaths` — the sync watcher fires between the two writes and
+must already see the dismissal, or it re-opens the pane. The persisted split ratio keeps meaning
+the SOURCE pane's share on either side: only the child order and the splitter's pointer direction
+flip, and the mount identity carries the side so a settings flip rebuilds the split.
+
+**Generates:** the preview-open default for every Markdown tab; per-document dismissal memory; the
+`Preview side` settings row; auto-open that never moves the keyboard; uninstall symmetry (disposing
+the contribution stops the watcher and drops the claim).
+
+**Rejected alternatives:** Deriving `showingPreview` from the surface capability — the claim would
+ask the registry about itself (the recorded boot-time recursion). Focusing the preview pane on
+auto-open — the user did not ask for the pane, so the keyboard must not move. Re-rolling a second
+persisted ratio for the flipped side — one ratio with one meaning survives the flip.
+
+**Evidence:** `MarkdownWorkspace.ts:38-44` (the sync `$watch` armed in the constructor);
+`MarkdownWorkspace.ts:63-79` (`autoOpenCandidatePath` respects `previewPaths` and
+`dismissedPreviewPaths`); `MarkdownWorkspace.ts:129-132` (dismissal written first);
+`MarkdownPlugin.ts:63-69` (the contributed `markdownPreviewSide` setting, default `left`);
+`MarkdownSplitView.ts:98-111` (child order by side) and `MarkdownSplitView.ts:157` (the flipped
+pointer direction); `MarkdownPreviewSurface.ts:40-45` (the side keys the mount identity).
+
+**Impossible if true:** an active presented Markdown tab showing only raw source with no recorded
+hand-close while the plugin is enabled; a hand-closed document auto-reopening on reactivation; the
+preview mounting right of the source while the setting says `left`; an auto-open or a stale preview
+pane surviving plugin uninstall.
+
+**Verification:** `bun test src/modules/markdown/MarkdownWorkspace.test.ts
+src/modules/markdown/MarkdownPreviewSurface.test.ts src/modules/markdown/MarkdownPlugin.test.ts
+src/modules/markdown/MarkdownSplitView.test.ts && bun scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
 
 ### A file reference opens from rendered Markdown
 
