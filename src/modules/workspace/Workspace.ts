@@ -664,11 +664,6 @@ class $Workspace {
     if (!this.suppressLocationRecording) this.recordCurrentLocation(); // where we arrived
   }
 
-  /** Resolve a textual reference to a real file inside this workspace, or null. Pure path
-   *  confinement: strip a fragment or query, reject any `scheme:` URL and any malformed escape, then
-   *  try the reference against the workspace root and against the active document's directory,
-   *  keeping only a target that exists, is not a directory, and stays inside the root. Nothing here
-   *  knows what produced the reference; rendered documents are simply its first caller. */
   /** True when the reference is a `scheme:` URL (http, https, mailto, …) — a target that can
    *  never name a workspace file. The ONE scheme rule, shared with `resolveFileReference`, so a
    *  caller explaining an unresolved reference classifies it the same way resolution rejected it. */
@@ -678,6 +673,11 @@ class $Workspace {
     return /^[A-Za-z][A-Za-z0-9+.-]*:/.test(withoutFragment);
   }
 
+  /** Resolve a textual reference to a real file inside this workspace, or null. Pure path
+   *  confinement: strip a fragment or query, reject any `scheme:` URL and any malformed escape, then
+   *  try the reference against the workspace root and against the active document's directory,
+   *  keeping only a target that exists, is not a directory, and stays inside the root. Nothing here
+   *  knows what produced the reference; rendered documents are simply its first caller. */
   resolveFileReference(reference: string): string | null {
     const withoutFragment =
       reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';
