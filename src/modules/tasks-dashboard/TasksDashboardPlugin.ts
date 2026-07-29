@@ -9,7 +9,8 @@
 // all of it from the same context — nothing is retained between lives.
 //
 // invariant: The tasks dashboard is a pane content citizen (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
-// invariant: Selection opens the record through the workspace open seam (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Task actions use the workspace and runtime seams (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Tasks stay hidden by default (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: The host canvas is complete without plugins (project.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 import { existsSync } from 'node:fs';
@@ -21,6 +22,7 @@ import type {
 import type { StatusSnapshot } from '../system/StatusChannel';
 import { TasksDashboardOverview } from './TasksDashboardOverview';
 import { TasksDashboardPaneContent } from './TasksDashboardPaneContent';
+import type { TasksDashboardAction } from './TasksDashboardPaneRenderer';
 
 class $TasksDashboardPlugin implements ApplicationContributor {
   readonly identifier = 'tasks-dashboard';
@@ -31,6 +33,8 @@ class $TasksDashboardPlugin implements ApplicationContributor {
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
   protected dockContent: RegisteredDockContent | null = null;
+  protected autoShown = false;
+  protected lastAction: string | null = null;
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
@@ -83,6 +87,16 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       defaultValue: 10,
       spec: { kind: 'number', step: 1, minimum: 2, maximum: 120, decimals: 0 },
     });
+    let readShowByDefault = (): boolean => false;
+    const showByDefaultSetting = context.registerSetting({
+      identifier: 'tasksDashboardShowByDefault',
+      label: 'Show tasks by default',
+      section: this.name,
+      defaultValue: false,
+      spec: { kind: 'boolean' },
+      changed: () => this.applyDefaultVisibility(readShowByDefault()),
+    });
+    readShowByDefault = () => showByDefaultSetting.value.value;
     this.overview = this.createOverview(
       context,
       () => cycleSecondsSetting.value.value,
@@ -95,6 +109,8 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       section: this.name,
       suggestedSide: 'right',
     });
+    this.requireOverview().startObservation();
+    this.applyDefaultVisibility(showByDefaultSetting.value.value);
     this.disposeStatusProjection =
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
@@ -121,12 +137,11 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     return new TasksDashboardPaneContent.Class(
       context,
       this.requireOverview(),
-      () => this.openSelectedRecord(),
+      (action, rowIndex) => this.performRowAction(action, rowIndex),
     );
   }
 
-  /** True while the tasks pane is on screen. The overview gates every tree read on this, so a
-   *  hidden pane costs zero. */
+  /** True while the tasks pane is on screen. A hidden pane owns no timer or task-tree read. */
   protected paneIsObserved(): boolean {
     return this.dockContent?.isVisible() ?? false;
   }
@@ -147,14 +162,88 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     return overview;
   }
 
-  /** Open the selected task's own record file through the workspace's one open seam. */
-  protected openSelectedRecord(): boolean {
+  protected applyDefaultVisibility(showByDefault: boolean): void {
+    const dockContent = this.dockContent;
+    if (!dockContent) return;
+    if (showByDefault) {
+      if (!dockContent.host().visible.value) {
+        dockContent.reveal();
+        this.autoShown = true;
+      }
+      return;
+    }
+    if (
+      this.autoShown &&
+      dockContent.isVisible() &&
+      !dockContent.host().focused.value
+    ) {
+      dockContent.host().hide();
+      this.autoShown = false;
+    }
+  }
+
+  protected performRowAction(
+    action: TasksDashboardAction,
+    rowIndex: number,
+  ): boolean {
     const application = this.application;
     if (!application) return false;
-    const taskFilePath = this.requireOverview().selectedTaskFilePath();
-    if (taskFilePath === null || !existsSync(taskFilePath)) return false;
+    const overview = this.requireOverview();
+    const row = overview.rows.value[rowIndex];
+    if (!row || row.taskNumber === null) return false;
+    this.lastAction = `${action}:${row.taskNumber}`;
+    overview.clearActionNotice();
+    if (action === 'session') {
+      if (row.sessionName === null) {
+        overview.stateActionMiss(
+          row.taskNumber,
+          `No builder session exists for #${row.taskNumber}.`,
+        );
+        return true;
+      }
+      return application.openRuntimePane('terminal', {
+        identifier: `tasks-session-${row.taskNumber}`,
+        label: `#${row.taskNumber} session`,
+        heading: `#${row.taskNumber} tmux`,
+        columns: 80,
+        rows: 24,
+        workingDirectory:
+          row.worktreePath !== null && existsSync(row.worktreePath)
+            ? row.worktreePath
+            : application.workspaceSet.active.root,
+        process: {
+          command: 'tmux',
+          arguments: ['attach', '-t', row.sessionName],
+        },
+      });
+    }
+    if (action === 'workspace') {
+      if (row.worktreePath === null || !existsSync(row.worktreePath)) {
+        overview.stateActionMiss(
+          row.taskNumber,
+          `Worktree is missing for #${row.taskNumber}.`,
+        );
+        return true;
+      }
+      application.workspaceSet.open(row.worktreePath);
+      return true;
+    }
+    const path =
+      action === 'task'
+        ? row.taskFilePath
+        : action === 'brief'
+          ? row.latestBriefFilePath
+          : row.latestReportFilePath;
+    if (path === null || !existsSync(path)) {
+      const name = action === 'task' ? 'task record' : `latest ${action}`;
+      overview.stateActionMiss(
+        row.taskNumber,
+        `No ${name} exists for #${row.taskNumber}.`,
+      );
+      return true;
+    }
     const workspace = application.workspaceSet.active;
-    workspace.openFileInTab(taskFilePath);
+    workspace.openFileInTab(path);
     workspace.focusEditor();
     return true;
   }
@@ -168,6 +257,8 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
     this.dockContent = null;
+    this.autoShown = false;
+    this.lastAction = null;
     this.application = null;
   }
 
@@ -177,6 +268,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       // The pane is about to be looked at — refresh so the first paint is current, then move the
       // keyboard with the gesture to whichever dock owns it.
       overview().refresh();
+      this.autoShown = false;
       context.workspaceSet.active.focusEditor();
       this.requireDockContent().show();
     };
@@ -226,7 +318,8 @@ class $TasksDashboardPlugin implements ApplicationContributor {
         category: 'Tasks',
         run: () => {
           // The record lands IN the editor, so the keyboard follows it out of the dock.
-          if (this.openSelectedRecord()) this.requireDockContent().blur();
+          if (this.performRowAction('task', overview().selectedIndex.value))
+            this.requireDockContent().blur();
         },
       },
       {
@@ -249,6 +342,11 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       tasksAvailable: overview.available.value,
       tasksCycling: overview.cycling.value,
       tasksSelectedFile: selectedFile,
+      tasksAnimationPaint: overview.animationPaint.value,
+      tasksFleetScopeMatches: overview.fleetScopeMatches.value,
+      tasksActionNotice: overview.actionNotice.value?.message ?? null,
+      tasksGateExitCode: overview.gateGlance.value?.exitCode ?? null,
+      tasksLastAction: this.lastAction,
     };
   }
 }

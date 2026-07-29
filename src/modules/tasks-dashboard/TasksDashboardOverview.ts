@@ -7,20 +7,22 @@
 // reader; it adds only what a pane can do that a terminal cannot: ivue reactivity, selection,
 // and opening the record files in the editor.
 //
-// COST TRACKS WHAT IS OBSERVED. A hidden pane costs zero task-tree reads: the heartbeat returns
-// before probing when the pane is not observed. While observed, a cheap directory-stamp probe
-// (the same seven-stat fingerprint the CLI watch uses) decides whether the tree is re-read, and
-// durations re-derive once a minute — data cadence, never paint polling; paints happen only when
-// a ref actually changed.
+// COST TRACKS WHAT IS OBSERVED. A hidden pane owns no timer. While observed, a cheap
+// directory-stamp probe (the same seven-stat fingerprint the CLI watch uses) decides whether the
+// tree is re-read, durations re-derive once a minute, and the motion clock asks for a paint only
+// while a visible row or gate moves.
 //
 // invariant: Task truth lives in the folders the CLI reads (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: The CLI lenses are the dashboard's one generator (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: An absent task tree is stated, never blank (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Dashboard motion exists only while observed (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Fleet extras name their repository scope (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import {
+  INVAR_FLEET_REPOSITORY_ROOT,
   PRIORITY_ORDER,
   agentIdentity,
   builderStanding,
@@ -28,15 +30,22 @@ import {
   formatDuration,
   landingStamp,
   readTaskRecords,
+  readFleetGateGlance,
+  readTaskFleetFacts,
   startedAtMilliseconds,
   tasksTreeStamp,
+  type GateGlance,
+  type TaskFleetFacts,
   type TaskRecord,
 } from '../../../scripts/tasks/tasks-status';
 
 class $TasksDashboardOverview {
-  protected static readonly HEARTBEAT_MILLISECONDS = 1000;
+  protected static readonly DATA_HEARTBEAT_MILLISECONDS = 1000;
+  protected static readonly MOTION_HEARTBEAT_MILLISECONDS = 1000 / 30;
   protected static readonly PROBE_EVERY_TICKS = 2;
   protected static readonly DURATION_REFRESH_EVERY_TICKS = 60;
+  declare $watch: typeof import('vue').watch;
+  declare $stopEffects: () => void;
 
   /** The lens rotation, in the CLI's own order. */
   static readonly LENS_ORDER: readonly TasksDashboardLens[] = [
@@ -56,19 +65,16 @@ class $TasksDashboardOverview {
 
   constructor(
     protected readonly dependencies: TasksDashboardOverviewDependencies,
-  ) {
-    this.refresh();
-    this.heartbeatTimer = setInterval(
-      () => this.heartbeatTick(),
-      $TasksDashboardOverview.HEARTBEAT_MILLISECONDS,
-    );
-  }
+  ) {}
 
-  protected heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  protected dataHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  protected motionHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  protected observationStarted = false;
   protected heartbeatCount = 0;
   protected lastProbeStamp = '';
   protected lastLensChangeAtMs = Date.now();
   protected records: TaskRecord[] = [];
+  protected fleetFactsByFolder = new Map<string, TaskFleetFacts>();
 
   get lens() {
     return ref<TasksDashboardLens>('live');
@@ -97,6 +103,18 @@ class $TasksDashboardOverview {
   get viewportWidth() {
     return ref(1);
   }
+  get animationPaint() {
+    return ref(0);
+  }
+  get gateGlance() {
+    return shallowRef<GateGlance | null>(null);
+  }
+  get fleetScopeMatches() {
+    return ref(true);
+  }
+  get actionNotice() {
+    return shallowRef<TasksDashboardActionNotice | null>(null);
+  }
 
   /** Bumped on every data change, so the pane's renderRevision observes one counter. */
   get version() {
@@ -108,19 +126,54 @@ class $TasksDashboardOverview {
     return join(this.dependencies.workspaceRoot(), '.invar', 'tasks');
   }
 
+  /** Start the observation-priced clocks after the pane has joined its real dock host. */
+  startObservation(): void {
+    if (this.observationStarted) return;
+    this.observationStarted = true;
+    this.$watch(
+      () => this.dependencies.isObserved(),
+      (isObserved) => this.onObservationChanged(isObserved),
+      { immediate: true, flush: 'sync' },
+    );
+  }
+
+  protected onObservationChanged(isObserved: boolean): void {
+    this.stopHeartbeatTimers();
+    if (!isObserved) return;
+    this.refresh();
+    this.dataHeartbeatTimer = setInterval(
+      () => this.heartbeatTick(),
+      $TasksDashboardOverview.DATA_HEARTBEAT_MILLISECONDS,
+    );
+    this.motionHeartbeatTimer = setInterval(
+      () => this.motionHeartbeatTick(),
+      $TasksDashboardOverview.MOTION_HEARTBEAT_MILLISECONDS,
+    );
+  }
+
+  protected stopHeartbeatTimers(): void {
+    if (this.dataHeartbeatTimer !== null) {
+      clearInterval(this.dataHeartbeatTimer);
+    }
+    if (this.motionHeartbeatTimer !== null) {
+      clearInterval(this.motionHeartbeatTimer);
+    }
+    this.dataHeartbeatTimer = null;
+    this.motionHeartbeatTimer = null;
+  }
+
   /** Re-read the tree through the CLI readers and rebuild the current lens's rows. */
   refresh(): void {
     const tasksRoot = this.tasksRootPath();
     this.available.value = existsSync(tasksRoot);
     this.records = this.available.value ? readTaskRecords(tasksRoot) : [];
+    this.refreshFleetFacts();
     this.lastProbeStamp = this.probeStamp();
     this.rebuildRows();
   }
 
-  /** One shared clock: cycling advance, the cheap tree probe, and the per-minute duration
-   *  re-derivation. Returns before any work while the pane is not observed. */
+  /** The data clock: cycling advance, the cheap tree probe, and duration re-derivation. */
   protected heartbeatTick(): void {
-    if (!this.dependencies.isObserved()) return;
     this.heartbeatCount += 1;
     if (this.cycling.value && this.cycleIsDue()) this.advanceLens(1);
     if (this.heartbeatCount % $TasksDashboardOverview.PROBE_EVERY_TICKS === 0)
@@ -133,6 +186,24 @@ class $TasksDashboardOverview {
     ) {
       this.refresh(); // durations re-derive from now(); records re-read is one small tree walk
     }
+  }
+
+  protected motionHeartbeatTick(): void {
+    if (!this.hasLiveMotion()) return;
+    this.animationPaint.value += 1;
+    this.dependencies.requestRender();
+  }
+
+  protected hasLiveMotion(): boolean {
+    if (this.gateGlance.value?.exitCode === null) return true;
+    return (
+      this.lens.value === 'live' &&
+      this.rows.value.some(
+        (row) =>
+          row.kind === 'task' &&
+          (row.phase === 'exploring' || row.phase === 'building'),
+      )
+    );
   }
 
   protected cycleIsDue(): boolean {
@@ -149,7 +220,46 @@ class $TasksDashboardOverview {
   }
 
   protected probeTick(): void {
-    if (this.probeStamp() !== this.lastProbeStamp) this.refresh();
+    if (this.probeStamp() !== this.lastProbeStamp) {
+      this.refresh();
+      return;
+    }
+    if (this.refreshFleetFacts()) this.rebuildRows();
+  }
+
+  protected refreshFleetFacts(): boolean {
+    const fleetRepositoryRoot =
+      this.dependencies.fleetRepositoryRoot?.() ?? INVAR_FLEET_REPOSITORY_ROOT;
+    const fleetScopeMatches =
+      resolve(this.dependencies.workspaceRoot()) ===
+      resolve(fleetRepositoryRoot);
+    const previousFingerprint = this.fleetFactsFingerprint();
+    this.fleetScopeMatches.value = fleetScopeMatches;
+    this.fleetFactsByFolder.clear();
+    this.gateGlance.value = null;
+    if (fleetScopeMatches && this.dependencies.isObserved()) {
+      const taskFleetFacts =
+        this.dependencies.readTaskFleetFacts ?? readTaskFleetFacts;
+      for (const record of this.records) {
+        if (record.directoryState !== 'in-progress') continue;
+        this.fleetFactsByFolder.set(
+          record.folderName,
+          taskFleetFacts(fleetRepositoryRoot, record),
+        );
+      }
+      this.gateGlance.value = (
+        this.dependencies.readFleetGateGlance ?? readFleetGateGlance
+      )();
+    }
+    return previousFingerprint !== this.fleetFactsFingerprint();
+  }
+
+  protected fleetFactsFingerprint(): string {
+    return JSON.stringify({
+      scope: this.fleetScopeMatches.value,
+      facts: [...this.fleetFactsByFolder.entries()],
+      gate: this.gateGlance.value,
+    });
   }
 
   // ---- lenses -------------------------------------------------------------
@@ -188,7 +298,18 @@ class $TasksDashboardOverview {
         : lens === 'active'
           ? this.buildActiveRows()
           : this.buildDoneRows();
-    this.rows.value = rows;
+    const fleetRows: TasksDashboardRow[] = [];
+    if (this.available.value && !this.fleetScopeMatches.value) {
+      fleetRows.push(
+        this.nonTaskRow(
+          'scope',
+          'Fleet extras describe the main Invar checkout only.',
+        ),
+      );
+    } else if (this.available.value && this.gateGlance.value !== null) {
+      fleetRows.push(this.nonTaskRow('gate', ''));
+    }
+    this.rows.value = [...fleetRows, ...rows];
     this.clampSelection();
     this.version.value += 1;
     this.dependencies.requestRender();
@@ -198,36 +319,89 @@ class $TasksDashboardOverview {
     return right.taskNumber - left.taskNumber;
   }
 
-  protected taskFilePath(record: TaskRecord): string | null {
-    if (record.taskFileName === null) return null;
-    return join(
-      this.tasksRootPath(),
-      record.directoryState,
-      record.folderName,
-      record.taskFileName,
-    );
+  protected taskFolderPath(record: TaskRecord): string {
+    return join(this.tasksRootPath(), record.directoryState, record.folderName);
+  }
+
+  protected artifactPath(
+    record: TaskRecord,
+    fileName: string | null,
+  ): string | null {
+    return fileName === null
+      ? null
+      : join(this.taskFolderPath(record), fileName);
   }
 
   protected shortName(record: TaskRecord): string {
     return record.folderName.replace(/^\d+-/, '');
   }
 
-  protected taskRow(
-    record: TaskRecord,
-    overrides: Partial<TasksDashboardRow>,
+  protected nonTaskRow(
+    kind: 'group' | 'scope' | 'gate',
+    label: string,
   ): TasksDashboardRow {
     return {
+      kind,
+      label,
+      taskNumber: null,
+      standing: null,
+      phase: null,
+      round: 1,
+      durationLabel: '',
+      identity: '',
+      attachment: '',
+      addedLines: null,
+      removedLines: null,
+      sessionName: null,
+      worktreePath: null,
+      taskFilePath: null,
+      latestBriefFilePath: null,
+      latestReportFilePath: null,
+    };
+  }
+
+  protected taskRows(
+    record: TaskRecord,
+    overrides: Partial<TasksDashboardRow>,
+  ): TasksDashboardRow[] {
+    const fleetFacts = this.fleetFactsByFolder.get(record.folderName) ?? null;
+    const shared: TasksDashboardRow = {
       kind: 'task',
       label: this.shortName(record),
       taskNumber: record.taskNumber,
       standing: null,
+      phase: null,
       round: 1,
       durationLabel: '',
       identity: agentIdentity(record) ?? '',
       attachment: '',
-      taskFilePath: this.taskFilePath(record),
+      addedLines: fleetFacts?.lineDelta?.added ?? null,
+      removedLines: fleetFacts?.lineDelta?.removed ?? null,
+      sessionName:
+        record.directoryState === 'in-progress'
+          ? (fleetFacts?.sessionName ?? `invar/${record.folderName}`)
+          : null,
+      worktreePath:
+        fleetFacts?.worktreePath ??
+        join(
+          this.dependencies.fleetRepositoryRoot?.() ??
+            INVAR_FLEET_REPOSITORY_ROOT,
+          '.invar',
+          'worktrees',
+          record.folderName,
+        ),
+      taskFilePath: this.artifactPath(record, record.taskFileName),
+      latestBriefFilePath: this.artifactPath(
+        record,
+        record.latestBriefFileName,
+      ),
+      latestReportFilePath: this.artifactPath(
+        record,
+        record.latestReportFileName,
+      ),
       ...overrides,
     };
+    return [shared, { ...shared, kind: 'detail' }];
   }
 
   protected buildLiveRows(): TasksDashboardRow[] {
@@ -235,11 +409,13 @@ class $TasksDashboardOverview {
     return this.records
       .filter((record) => record.directoryState === 'in-progress')
       .sort((left, right) => this.byNumberDescending(left, right))
-      .map((record) => {
+      .flatMap((record) => {
         const { round, ready } = builderStanding(tasksRoot, record);
         const startedAt = startedAtMilliseconds(tasksRoot, record);
-        return this.taskRow(record, {
+        const fleetFacts = this.fleetFactsByFolder.get(record.folderName);
+        return this.taskRows(record, {
           standing: ready ? 'ready' : 'building',
+          phase: ready ? null : (fleetFacts?.phase ?? 'building'),
           round,
           durationLabel:
             startedAt === null ? '' : formatDuration(Date.now() - startedAt),
@@ -261,18 +437,13 @@ class $TasksDashboardOverview {
         group === null
           ? '◌'
           : ($TasksDashboardOverview.PRIORITY_GLYPHS[group] ?? '·');
-      rows.push({
-        kind: 'group',
-        label: `${glyph} ${group ?? 'unprioritised'} (${inGroup.length})`,
-        taskNumber: null,
-        standing: null,
-        round: 1,
-        durationLabel: '',
-        identity: '',
-        attachment: '',
-        taskFilePath: null,
-      });
-      for (const record of inGroup) rows.push(this.taskRow(record, {}));
+      rows.push(
+        this.nonTaskRow(
+          'group',
+          `${glyph} ${group ?? 'unprioritised'} (${inGroup.length})`,
+        ),
+      );
+      for (const record of inGroup) rows.push(...this.taskRows(record, {}));
     }
     return rows;
   }
@@ -282,9 +453,9 @@ class $TasksDashboardOverview {
     return this.records
       .filter((record) => record.directoryState === 'completed')
       .sort((left, right) => this.byNumberDescending(left, right))
-      .map((record) => {
+      .flatMap((record) => {
         const { durationMinutes } = landingStamp(tasksRoot, record);
-        return this.taskRow(record, {
+        return this.taskRows(record, {
           attachment: completedStateAttachment(record),
           durationLabel:
             durationMinutes === null
@@ -371,9 +542,25 @@ class $TasksDashboardOverview {
     return row?.kind === 'task' ? row.taskFilePath : null;
   }
 
+  rowAtVisibleRow(visibleRow: number): TasksDashboardRow | null {
+    return this.rows.value[this.windowTop() + visibleRow] ?? null;
+  }
+
+  stateActionMiss(taskNumber: number, message: string): void {
+    this.actionNotice.value = { taskNumber, message };
+    this.version.value += 1;
+    this.dependencies.requestRender();
+  }
+
+  clearActionNotice(): void {
+    if (this.actionNotice.value === null) return;
+    this.actionNotice.value = null;
+    this.version.value += 1;
+  }
+
   dispose(): void {
-    if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
-    this.heartbeatTimer = null;
+    this.stopHeartbeatTimers();
+    if (this.observationStarted) this.$stopEffects();
   }
 }
 
@@ -388,12 +575,14 @@ export type TasksDashboardLens = 'live' | 'active' | 'done';
 
 /** One paintable row: a priority-group heading or a selectable task line. */
 export interface TasksDashboardRow {
-  kind: 'group' | 'task';
+  kind: 'group' | 'scope' | 'gate' | 'task' | 'detail';
   /** Group rows: the heading text. Task rows: the task's short name (folder minus number). */
   label: string;
   taskNumber: number | null;
   /** READY holds still, building carries the motion vocabulary; null outside the live lens. */
   standing: 'ready' | 'building' | null;
+  /** Fleet-only work phase. Null for READY and outside the live lens. */
+  phase: 'exploring' | 'building' | null;
   /** `round N` past round 1, live lens only. */
   round: number;
   /** Running time (live) or dispatch-to-landing time (done); empty when unknown. */
@@ -402,8 +591,14 @@ export interface TasksDashboardRow {
   identity: string;
   /** Done lens: whatever the State line carries after COMPLETED (the landing commit). */
   attachment: string;
+  addedLines: number | null;
+  removedLines: number | null;
+  sessionName: string | null;
+  worktreePath: string | null;
   /** Absolute path of the task's `task-<n>-<slug>.md`, or null when the folder has none. */
   taskFilePath: string | null;
+  latestBriefFilePath: string | null;
+  latestReportFilePath: string | null;
 }
 
 export interface TasksDashboardOverviewDependencies {
@@ -414,4 +609,16 @@ export interface TasksDashboardOverviewDependencies {
   requestRender: () => void;
   /** The contributed cycle interval, seconds per lens while the overview plays. */
   cycleSeconds: () => number;
+  /** The main checkout that owns fleet worktrees and gate registry facts. */
+  fleetRepositoryRoot?: () => string;
+  readTaskFleetFacts?: (
+    fleetRepositoryRoot: string,
+    record: TaskRecord,
+  ) => TaskFleetFacts;
+  readFleetGateGlance?: () => GateGlance | null;
+}
+
+export interface TasksDashboardActionNotice {
+  readonly taskNumber: number;
+  readonly message: string;
 }

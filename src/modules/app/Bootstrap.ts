@@ -61,6 +61,7 @@ import type {
   PaneTextSelectionPort,
 } from '../ui/PaneContent.interface';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
+import type { PaneRuntimeRequest } from '../ui/PaneRuntime.interface';
 import { AgentFactory } from '../agent/AgentFactory';
 import { SdkBinaryExtraction } from '../agent/SdkBinaryExtraction';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
@@ -273,6 +274,10 @@ class $Bootstrap {
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
     // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
     const paneRuntimes = new PaneRuntimes.Class();
+    let openRuntimePane = (
+      _runtimeKind: string,
+      _request: PaneRuntimeRequest,
+    ): boolean => false;
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
     const panelHostFocusSet = new PanelHostFocusSet.Class();
     const panelHost = new PanelHost.Class({
@@ -346,6 +351,8 @@ class $Bootstrap {
         editorSurfaceContents,
         editorColumnDefault,
         paneRuntimes,
+        openRuntimePane: (runtimeKind, request) =>
+          openRuntimePane(runtimeKind, request),
         visiblePaneOfKind: (kind) => panelHost.visibleContentOfKind(kind),
         releasePane: (identifier) => {
           if (panelHost.has(identifier)) panelHost.removeContent(identifier);
@@ -575,6 +582,22 @@ class $Bootstrap {
     };
     const ensureRuntimePane = (kind: string): PaneContent | null =>
       currentPaneOfKind(kind) ?? createRuntimePane(kind);
+    openRuntimePane = (
+      runtimeKind: string,
+      request: PaneRuntimeRequest,
+    ): boolean => {
+      const existingContent = panelHost.content(request.identifier);
+      if (existingContent) {
+        panelHost.showContent(existingContent.id);
+        return true;
+      }
+      const content = paneRuntimes.createPane(runtimeKind, request);
+      if (!content) return false;
+      runtimePanes.set(content.id, content);
+      panelHost.register(content);
+      panelHost.showContent(content.id);
+      return true;
+    };
 
     // The native agent pane — a second PaneContent with its OWN headed region in the bottom layout,
     // registered lazily on first toggle (idle cost zero). The host still supplies the shared layout and

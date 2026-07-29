@@ -50,14 +50,97 @@ from anything but the current folder read.
 
 ## Chosen invariants
 
+### Dashboard motion exists only while observed
+
+**Invariant:** If no live task motion and no running gate is visible, then a motion tick causes
+no paint; if the pane itself is hidden, then it has no task-tree read, data timer, or motion
+timer. While visible,
+building, exploring, and gate motion use the exact exported CLI watch ramps and glyph frames.
+
+**Scope:** `TasksDashboardOverview` clocks and `TasksDashboardPaneRenderer` motion paint.
+
+**Mechanism:** The pane starts and stops both ivue-owned intervals from the dock's observed ref.
+The motion tick advances only when a visible row or gate needs it. The renderer indexes the
+tables exported by `scripts/tasks/tasks-status.ts`.
+
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`startObservation`);
+`src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts`; and
+`src/modules/tasks-dashboard/TasksDashboardOverview.test.ts`.
+
+**Impossible if true:** A hidden dashboard timer; a held READY row that repaints; a pane-local
+copy of a watch ramp or glyph sequence.
+
+**Verification:** `bun test src/modules/tasks-dashboard` and the motion arm of
+`bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Fleet extras name their repository scope
+
+**Invariant:** If the active workspace is the main Invar checkout, then live task rows may show
+the fleet's gate glance, line delta, and exploring/building phase. In every other workspace the
+pane states that those extras describe the main checkout only and does not read or imply
+workspace-local fleet facts.
+
+**Scope:** Fleet-only rows and fields in `TasksDashboardOverview`.
+
+**Mechanism:** `INVAR_FLEET_REPOSITORY_ROOT` resolves the main checkout even when the app code
+runs from a task worktree. The overview compares resolved workspace roots before calling either
+fleet reader.
+
+**Evidence:** `scripts/tasks/tasks-status.ts` (`INVAR_FLEET_REPOSITORY_ROOT`,
+`readTaskFleetFacts`, `readFleetGateGlance`) and
+`src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`refreshFleetFacts`).
+
+**Impossible if true:** A fixture or unrelated project displaying main-checkout deltas as its
+own; a fleet reader running for an unrelated active workspace.
+
+**Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardOverview.test.ts` and
+the scoped fixture arm of `bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Tasks stay hidden by default
+
+**Invariant:** If the reader has not enabled `tasksDashboardShowByDefault` and has not invoked a
+show gesture, then installing or booting the plugin leaves the dock exactly as found. If the
+setting is enabled, the policy may reveal Tasks only into an empty dock and never takes keyboard
+focus.
+
+**Scope:** Tasks dashboard application activation and its contributed default-visibility
+setting.
+
+**Mechanism:** The contributed boolean defaults to false. The plugin uses `reveal` for its
+default, records whether that policy opened the dock, and takes back only its own unfocused
+reveal when the setting turns off.
+
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardPlugin.ts`
+(`applyDefaultVisibility`); `src/modules/tasks-dashboard/TasksDashboardPlugin.test.ts`; and
+the boot arm of `scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Impossible if true:** A fresh install opening Tasks; an automatic reveal stealing keyboard
+focus; turning the setting off hiding a dock the reader opened.
+
+**Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardPlugin.test.ts` and
+`bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### The CLI lenses are the dashboard's one generator
 
 **Invariant:** If the dashboard needs a task fact, then it obtains it by importing the exported
 readers of `scripts/tasks/tasks-status.ts` — `readTaskRecords`, `builderStanding`,
 `startedAtMilliseconds`, `landingStamp`, `completedStateAttachment`, `agentIdentity`,
-`formatDuration`, `PRIORITY_ORDER`, `tasksTreeStamp` — and it re-implements no reader: no second
-folder parser, no second readiness rule, no second duration formula. The pane adds only what a
-terminal cannot: ivue reactivity, selection, and opening files.
+`formatDuration`, `PRIORITY_ORDER`, `tasksTreeStamp`, the fleet-fact readers, and the exported
+motion tables — and it re-implements no reader or watch vocabulary: no second folder parser, no
+second readiness rule, no second duration formula, and no copied colour or glyph ramp. The pane
+adds only what a terminal cannot: ivue reactivity, selection, and opening files.
 
 **Scope:** All of `src/modules/tasks-dashboard/`. The readers themselves live with the CLI in
 `scripts/tasks/tasks-status.ts`, whose entry point is guarded by `import.meta.main` so importing
@@ -100,7 +183,7 @@ comparison, or a duration formatter defined inside `src/modules/tasks-dashboard/
 
 **Invariant:** If the tasks dashboard is installed, then it is an ordinary contribution: a
 manifest row (`tasks-dashboard`) registering one right-dock pane content (`tasks`), its
-keybindings, its commands, its contributed setting, and its status projection through the same
+keybindings, its commands, its contributed settings, and its status projection through the same
 `ApplicationContributionContext` seams every citizen uses — zero host edits — and uninstalling
 it stops the overview's heartbeat and withdraws all of it while a reinstall rebuilds all of it
 from the same context.
@@ -184,27 +267,27 @@ the absent-tree arm of `bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
 
 **Last refined:** 2026-07-29
 
-### Selection opens the record through the workspace open seam
+### Task actions use the workspace and runtime seams
 
-**Invariant:** If a task row is activated (Enter, Space, or a click), then its
-`task-<n>-<slug>.md` opens through the existing workspace contract — `openFileInTab`, focus
-returned to the editor, the right dock blurred — the same seam every other opener uses; and
-with no selectable row, or a folder without a task file, the gesture is a no-op, never a crash.
+**Invariant:** If a task action is activated, then task, brief, and report files open through
+`openFileInTab`, the worktree opens through `WorkspaceSet.open`, and a builder session opens
+through the terminal `PaneRuntime` as `tmux attach -t <session>`. A missing file, worktree, or
+session states itself in the action row; it never crashes and never silently does nothing.
 
-**Scope:** `TasksDashboardPlugin.openSelectedRecord`, the `tasks.open` command, and the pane's
+**Scope:** `TasksDashboardPlugin.performRowAction`, the `tasks.open` command, and the pane's
 pointer-down path. Group headings are never activatable.
 
 **Mechanism:** Stands on *Plugin boundaries grant one authority*: the plugin asks the workspace
 to open its own tab through public members; it opens no parallel path. The file name comes from
 the reader's `taskFileName` field, so the pane never guesses at naming conventions.
 
-**Generates:** `openSelectedRecord`; the Enter/Space bindings and the pointer-down activation;
-the `tasksSelectedFile` status key a smoke asserts.
+**Generates:** `performRowAction`; the Enter/Space bindings; the session, workspace, task,
+brief, and report hit regions; their tooltips; and the stated missing-artifact row.
 
 **Rejected alternatives:** A dashboard-owned buffer opener — two openers would drift on focus
 and history semantics, the same reason the structure pane jumps through the view contract.
 
-**Evidence:** `src/modules/tasks-dashboard/TasksDashboardPlugin.ts` (`openSelectedRecord`);
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardPlugin.ts` (`performRowAction`);
 `src/modules/tasks-dashboard/TasksDashboardPaneContent.ts` (`onPointerDown`);
 `src/modules/tasks-dashboard/TasksDashboardPlugin.test.ts` (the open assertions).
 

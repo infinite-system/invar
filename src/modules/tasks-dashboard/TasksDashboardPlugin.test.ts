@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ref } from 'vue';
 import { PanelHost } from '../ui/PanelHost';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { TasksDashboardPlugin } from './TasksDashboardPlugin';
@@ -20,6 +21,7 @@ interface RecordingContext {
   settingIdentifiers: string[];
   openedPaths: string[];
   editorFocusCount: number;
+  runtimeRequests: Array<{ kind: string; request: Record<string, unknown> }>;
   snapshot: () => Record<string, unknown>;
 }
 
@@ -43,7 +45,10 @@ function makeWorkspaceRoot(withTree: boolean): string {
   return root;
 }
 
-function makeContext(workspaceRoot: string): RecordingContext {
+function makeContext(
+  workspaceRoot: string,
+  settingValues: Record<string, unknown> = {},
+): RecordingContext {
   const dockContents: PaneContent[] = [];
   const commandIds: string[] = [];
   const commandRunners = new Map<string, () => void>();
@@ -61,6 +66,7 @@ function makeContext(workspaceRoot: string): RecordingContext {
     settingIdentifiers,
     openedPaths: [],
     editorFocusCount: 0,
+    runtimeRequests: [],
     snapshot: () => snapshotProvider?.() ?? {},
     context: {
       workspaceSet: {
@@ -74,11 +80,21 @@ function makeContext(workspaceRoot: string): RecordingContext {
           },
         },
         activeWorkspaceIndex: ref(0),
+        open: () => 0,
       },
       rightDockHost,
       primaryDockHost: { blur: () => {} },
       settings: { scrollbarThickness: ref(1) },
-      theme: { glyphLevel: ref('unicode') },
+      theme: {
+        glyphLevel: ref('unicode'),
+        palette: ThemePalettes.Class.DARK,
+        taskActionIcons: {
+          workspace: 'W',
+          taskRecord: 'T',
+          latestBrief: 'B',
+          latestReport: 'R',
+        },
+      },
       registerKeybindings: () => {
         recording.keybindings += 1;
       },
@@ -105,9 +121,20 @@ function makeContext(workspaceRoot: string): RecordingContext {
           dispose: () => {},
         };
       },
-      registerSetting: (contribution: { identifier: string }) => {
+      registerSetting: (contribution: {
+        identifier: string;
+        defaultValue: unknown;
+      }) => {
         settingIdentifiers.push(contribution.identifier);
-        return { value: ref(10), save: () => {}, dispose: () => {} };
+        return {
+          value: ref(
+            contribution.identifier in settingValues
+              ? settingValues[contribution.identifier]
+              : contribution.defaultValue,
+          ),
+          save: () => {},
+          dispose: () => {},
+        };
       },
       statusProjectionContributions: {
         register: (contribution: {
@@ -132,6 +159,10 @@ function makeContext(workspaceRoot: string): RecordingContext {
         },
       },
       requestRender: () => {},
+      openRuntimePane: (kind: string, request: Record<string, unknown>) => {
+        recording.runtimeRequests.push({ kind, request });
+        return true;
+      },
     } as never,
   };
   return recording;
@@ -148,6 +179,7 @@ test('activation registers the dock pane, commands, keybindings, setting, and st
   expect(recording.keybindings).toBe(1);
   expect(recording.settingIdentifiers).toEqual([
     'tasksDashboardCycleSeconds',
+    'tasksDashboardShowByDefault',
     'tasks.dockSide',
   ]);
   expect(recording.commandIds).toContain('view.showTasks');
@@ -155,8 +187,11 @@ test('activation registers the dock pane, commands, keybindings, setting, and st
   expect(recording.commandIds).toContain('tasks.toggleCycle');
   const snapshot = recording.snapshot();
   expect(snapshot.tasksLens).toBe('live');
-  expect(snapshot.tasksAvailable).toBe(true);
-  expect(snapshot.tasksRows).toBe(1);
+  expect(snapshot.tasksAvailable).toBe(false);
+  expect(snapshot.tasksRows).toBe(0);
+  recording.commandRunners.get('view.showTasks')?.();
+  expect(recording.snapshot().tasksAvailable).toBe(true);
+  expect(recording.snapshot().tasksRows).toBe(3);
   plugin.disposeApplication();
   rmSync(workspaceRoot, { recursive: true, force: true });
 });
@@ -198,6 +233,20 @@ test('activation leaves an already-visible dock alone', () => {
   rmSync(workspaceRoot, { recursive: true, force: true });
 });
 
+test('the opt-in default reveals tasks without taking keyboard focus', () => {
+  const workspaceRoot = makeWorkspaceRoot(true);
+  const plugin = new TasksDashboardPlugin.Class();
+  const recording = makeContext(workspaceRoot, {
+    tasksDashboardShowByDefault: true,
+  });
+  plugin.activateApplication(recording.context);
+  expect(recording.rightDockHost.activeContent?.id).toBe('tasks');
+  expect(recording.rightDockHost.visible.value).toBe(true);
+  expect(recording.rightDockHost.focused.value).toBe(false);
+  plugin.disposeApplication();
+  rmSync(workspaceRoot, { recursive: true, force: true });
+});
+
 test('tasks.open opens the selected record through the workspace seam and blurs the dock', () => {
   const workspaceRoot = makeWorkspaceRoot(true);
   const plugin = new TasksDashboardPlugin.Class();
@@ -229,6 +278,31 @@ test('an absent tree keeps tasks.open a stated no-op, never a crash', () => {
   expect(recording.snapshot().tasksAvailable).toBe(false);
   recording.commandRunners.get('tasks.open')?.();
   expect(recording.openedPaths).toEqual([]);
+  plugin.disposeApplication();
+  rmSync(workspaceRoot, { recursive: true, force: true });
+});
+
+test('the detail row attaches through the terminal runtime and states a missing report', () => {
+  const workspaceRoot = makeWorkspaceRoot(true);
+  const plugin = new TasksDashboardPlugin.Class();
+  const recording = makeContext(workspaceRoot);
+  plugin.activateApplication(recording.context);
+  recording.commandRunners.get('view.showTasks')?.();
+  const pane = recording.dockContents[0]!;
+  pane.onResize(60, 10);
+  // Scope row, task row, detail row. The session occupies the detail prefix.
+  expect(pane.onPointerDown?.(5, 3)).toBe(true);
+  expect(recording.runtimeRequests).toHaveLength(1);
+  expect(recording.runtimeRequests[0]?.kind).toBe('terminal');
+  expect(recording.runtimeRequests[0]?.request.process).toEqual({
+    command: 'tmux',
+    arguments: ['attach', '-t', 'invar/901-planted-building'],
+  });
+  // The fourth pinned action is report; this fixture has none.
+  expect(pane.onPointerDown?.(57, 3)).toBe(true);
+  expect(recording.snapshot().tasksActionNotice).toBe(
+    'No latest report exists for #901.',
+  );
   plugin.disposeApplication();
   rmSync(workspaceRoot, { recursive: true, force: true });
 });

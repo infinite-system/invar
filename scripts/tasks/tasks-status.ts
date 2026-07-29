@@ -53,7 +53,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
 export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
@@ -70,6 +70,10 @@ export interface TaskRecord {
   folderName: string;
   /** The folder's task-<n>-<slug>.md file name, so a consumer can open the record. */
   taskFileName: string | null;
+  /** The newest brief by modification time, so consumers never guess the round naming form. */
+  latestBriefFileName: string | null;
+  /** The newest report by modification time, including later-round report names. */
+  latestReportFileName: string | null;
   directoryState: TaskState;
   declaredState: string | null;
   taskFileLineCount: number;
@@ -83,6 +87,22 @@ export interface TaskRecord {
   assignedEngine: string | null;
   assignedModel: string | null;
   assignedEffort: string | null;
+}
+
+export interface TaskMotionColour {
+  readonly ansi: string;
+  readonly color: string;
+}
+
+export interface TaskMotionFrame extends TaskMotionColour {
+  readonly glyph: string;
+}
+
+export interface TaskFleetFacts {
+  readonly lineDelta: { added: number; removed: number } | null;
+  readonly phase: 'exploring' | 'building';
+  readonly worktreePath: string | null;
+  readonly sessionName: string;
 }
 
 // A header field like `Engine: codex` from a task file's front block.
@@ -114,6 +134,18 @@ export interface DriftFinding {
   directoryState: TaskState;
   detail: string;
 }
+
+const CHECKOUT_REPOSITORY_ROOT = join(import.meta.dir, '..', '..');
+const FLEET_WORKTREE_MARKER = `${sep}.invar${sep}worktrees${sep}`;
+const fleetWorktreeMarkerIndex = CHECKOUT_REPOSITORY_ROOT.indexOf(
+  FLEET_WORKTREE_MARKER,
+);
+
+/** The main Invar checkout that owns `.invar/worktrees/`, even when this script runs in a worktree. */
+export const INVAR_FLEET_REPOSITORY_ROOT =
+  fleetWorktreeMarkerIndex < 0
+    ? CHECKOUT_REPOSITORY_ROOT
+    : CHECKOUT_REPOSITORY_ROOT.slice(0, fleetWorktreeMarkerIndex);
 
 const TASK_STATES: TaskState[] = [
   'active',
@@ -153,10 +185,42 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
       const declaredStateLine = taskFileText
         .split('\n')
         .find((line) => line.startsWith('State:'));
+      let latestBriefFileName: string | null = null;
+      let newestBriefMtimeMs = 0;
+      let latestReportFileName: string | null = null;
+      let newestReportMtimeMs = 0;
+      for (const entry of entries) {
+        if (!entry.startsWith('brief-') && !entry.startsWith('report-')) {
+          continue;
+        }
+        try {
+          const modificationTimeMilliseconds = statSync(
+            join(folderPath, entry),
+          ).mtimeMs;
+          if (
+            entry.startsWith('brief-') &&
+            modificationTimeMilliseconds >= newestBriefMtimeMs
+          ) {
+            latestBriefFileName = entry;
+            newestBriefMtimeMs = modificationTimeMilliseconds;
+          }
+          if (
+            entry.startsWith('report-') &&
+            modificationTimeMilliseconds >= newestReportMtimeMs
+          ) {
+            latestReportFileName = entry;
+            newestReportMtimeMs = modificationTimeMilliseconds;
+          }
+        } catch {
+          // A concurrent task move can remove one entry between readdir and stat. The next read wins.
+        }
+      }
       records.push({
         taskNumber: Number.parseInt(folderName, 10),
         folderName,
         taskFileName: taskFileName ?? null,
+        latestBriefFileName,
+        latestReportFileName,
         directoryState,
         declaredState:
           declaredStateLine === undefined
@@ -166,32 +230,10 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
           taskFileName === undefined ? 0 : taskFileText.split('\n').length,
         briefCount: entries.filter((entry) => entry.startsWith('brief-'))
           .length,
-        newestBriefMtimeMs: entries
-          .filter((entry) => entry.startsWith('brief-'))
-          .reduce((newest, entry) => {
-            try {
-              return Math.max(
-                newest,
-                statSync(join(folderPath, entry)).mtimeMs,
-              );
-            } catch {
-              return newest;
-            }
-          }, 0),
+        newestBriefMtimeMs,
         reportCount: entries.filter((entry) => entry.startsWith('report-'))
           .length,
-        newestReportMtimeMs: entries
-          .filter((entry) => entry.startsWith('report-'))
-          .reduce((newest, entry) => {
-            try {
-              return Math.max(
-                newest,
-                statSync(join(folderPath, entry)).mtimeMs,
-              );
-            } catch {
-              return newest;
-            }
-          }, 0),
+        newestReportMtimeMs,
         summaryCount: entries.filter((entry) => entry.startsWith('summary-'))
           .length,
         namesACommit:
@@ -782,21 +824,21 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // Twelve frames advancing every fifth paint at 30 fps; one breath ~2 s —
 // small to medium to full and back, each size holding through two or three
 // colour steps so nothing jumps.
-const SPINNER_FRAMES: Array<[string, string]> = [
-  ['·', '38;5;30'],
-  ['·', '38;5;37'],
-  ['•', '38;5;37'],
-  ['•', '38;5;44'],
-  ['•', '38;5;51'],
-  ['●', '38;5;51'],
-  ['●', '38;5;45'],
-  ['●', '38;5;39'],
-  ['●', '38;5;45'],
-  ['•', '38;5;44'],
-  ['•', '38;5;37'],
-  ['·', '38;5;30'],
+export const TASKS_BUILDING_BREATH_FRAMES: readonly TaskMotionFrame[] = [
+  { glyph: '·', ansi: '38;5;30', color: '#008787' },
+  { glyph: '·', ansi: '38;5;37', color: '#00afaf' },
+  { glyph: '•', ansi: '38;5;37', color: '#00afaf' },
+  { glyph: '•', ansi: '38;5;44', color: '#00d7d7' },
+  { glyph: '•', ansi: '38;5;51', color: '#00ffff' },
+  { glyph: '●', ansi: '38;5;51', color: '#00ffff' },
+  { glyph: '●', ansi: '38;5;45', color: '#00d7ff' },
+  { glyph: '●', ansi: '38;5;39', color: '#00afff' },
+  { glyph: '●', ansi: '38;5;45', color: '#00d7ff' },
+  { glyph: '•', ansi: '38;5;44', color: '#00d7d7' },
+  { glyph: '•', ansi: '38;5;37', color: '#00afaf' },
+  { glyph: '·', ansi: '38;5;30', color: '#008787' },
 ];
-const SPINNER_PAINTS_PER_STEP = 5;
+export const TASKS_MOTION_PAINTS_PER_STEP = 5;
 
 // Lines of code, live, as the agents write: each in-progress task's worktree
 // diffed against its merge-base with main — committed AND uncommitted edits
@@ -805,26 +847,25 @@ const SPINNER_PAINTS_PER_STEP = 5;
 // spawn per builder per data tick.
 const mergeBaseCache = new Map<string, string | null>();
 
-function worktreeLineDelta(
+export function readTaskLineDelta(
+  fleetRepositoryRoot: string,
   folderName: string,
 ): { added: number; removed: number } | null {
   const worktreePath = join(
-    import.meta.dir,
-    '..',
-    '..',
+    fleetRepositoryRoot,
     '.invar',
     'worktrees',
     folderName,
   );
   if (!existsSync(worktreePath)) return null;
-  let base = mergeBaseCache.get(folderName);
+  let base = mergeBaseCache.get(worktreePath);
   if (base === undefined) {
     const baseResult = Bun.spawnSync(['git', 'merge-base', 'main', 'HEAD'], {
       cwd: worktreePath,
     });
     base =
       baseResult.exitCode === 0 ? baseResult.stdout.toString().trim() : null;
-    mergeBaseCache.set(folderName, base);
+    mergeBaseCache.set(worktreePath, base);
   }
   if (base === null) return null;
   const diffResult = Bun.spawnSync(
@@ -849,10 +890,16 @@ const lineDeltaCache = new Map<
   { added: number; removed: number } | null
 >();
 
-function refreshLineDeltas(records: TaskRecord[]): void {
+function refreshLineDeltas(
+  records: TaskRecord[],
+  fleetRepositoryRoot = INVAR_FLEET_REPOSITORY_ROOT,
+): void {
   for (const record of records) {
     if (record.directoryState !== 'in-progress') continue;
-    lineDeltaCache.set(record.folderName, worktreeLineDelta(record.folderName));
+    lineDeltaCache.set(
+      record.folderName,
+      readTaskLineDelta(fleetRepositoryRoot, record.folderName),
+    );
   }
 }
 
@@ -864,7 +911,7 @@ function refreshLineDeltas(records: TaskRecord[]): void {
 //             run truncating the log) and re-anchors the timer at that moment.
 //   verdict — the GATE_EXIT=<n> sentinel, once present.
 // Flyweight: one stat + one 16KB tail read per data tick, cached between.
-interface GateGlance {
+export interface GateGlance {
   phase: string;
   startedAtMilliseconds: number;
   exitCode: number | null;
@@ -932,6 +979,12 @@ function refreshGateGlance(): void {
   }
 }
 
+/** Read the fleet gate registry through the same parser used by `tasks:watch`. */
+export function readFleetGateGlance(): GateGlance | null {
+  refreshGateGlance();
+  return gateGlanceCache;
+}
+
 function gateBadge(spinnerFrame?: number): string {
   if (gateGlanceCache === null) return '';
   const glance = gateGlanceCache;
@@ -954,8 +1007,9 @@ function gateBadge(spinnerFrame?: number): string {
   if (spinnerFrame === undefined) {
     return `  ${paint('38;5;220', '⛩')} ${paint('38;5;220', `gate: ${glance.phase}`)} ${cyan(elapsed)}`;
   }
-  const leadingColor = GATE_RAMP[spinnerFrame % GATE_RAMP.length] ?? '38;5;220';
-  return `  ${paint(leadingColor, '⛩')} ${gradientWord(`gate: ${glance.phase}`, spinnerFrame, GATE_RAMP)} ${cyan(elapsed)}`;
+  const leadingColor =
+    TASKS_GATE_RAMP[spinnerFrame % TASKS_GATE_RAMP.length]?.ansi ?? '38;5;220';
+  return `  ${paint(leadingColor, '⛩')} ${gradientWord(`gate: ${glance.phase}`, spinnerFrame, TASKS_GATE_RAMP)} ${cyan(elapsed)}`;
 }
 
 function fleetDeltaTotals(): {
@@ -1058,50 +1112,59 @@ function rollingBadge(
 
 // The word itself carries the current: a cool gradient flows through the
 // letters, one step per spinner advance — Claude Code's shimmer, in teal.
-const GRADIENT_RAMP = [
-  '38;5;30',
-  '38;5;37',
-  '38;5;44',
-  '38;5;51',
-  '38;5;45',
-  '38;5;39',
+export const TASKS_BUILDING_RAMP: readonly TaskMotionColour[] = [
+  { ansi: '38;5;30', color: '#008787' },
+  { ansi: '38;5;37', color: '#00afaf' },
+  { ansi: '38;5;44', color: '#00d7d7' },
+  { ansi: '38;5;51', color: '#00ffff' },
+  { ansi: '38;5;45', color: '#00d7ff' },
+  { ansi: '38;5;39', color: '#00afff' },
 ];
 
 // Exploring wears quieter weather: white through light blue into navy grey.
 // Reading is motion too, but it should not shout like building does.
-const EXPLORING_RAMP = [
-  '38;5;231',
-  '38;5;189',
-  '38;5;153',
-  '38;5;110',
-  '38;5;103',
-  '38;5;60',
+export const TASKS_EXPLORING_RAMP: readonly TaskMotionColour[] = [
+  { ansi: '38;5;231', color: '#ffffff' },
+  { ansi: '38;5;189', color: '#d7d7ff' },
+  { ansi: '38;5;153', color: '#afd7ff' },
+  { ansi: '38;5;110', color: '#87afd7' },
+  { ansi: '38;5;103', color: '#8787af' },
+  { ansi: '38;5;60', color: '#5f5f87' },
 ];
 
 // Exploring's icon is a compass needle sweeping the points — a builder
 // finding its bearings before the first edit.
-const EXPLORING_GLYPHS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+export const TASKS_EXPLORING_GLYPHS = [
+  '↑',
+  '↗',
+  '→',
+  '↘',
+  '↓',
+  '↙',
+  '←',
+  '↖',
+] as const;
 
 // The gate flows gold — a torii's color, and unmistakably not a builder.
 // Three motions, three currents: teal builds, white-navy reads, gold judges.
-const GATE_RAMP = [
-  '38;5;178',
-  '38;5;214',
-  '38;5;220',
-  '38;5;221',
-  '38;5;214',
-  '38;5;172',
+export const TASKS_GATE_RAMP: readonly TaskMotionColour[] = [
+  { ansi: '38;5;178', color: '#d7af00' },
+  { ansi: '38;5;214', color: '#ffaf00' },
+  { ansi: '38;5;220', color: '#ffd700' },
+  { ansi: '38;5;221', color: '#ffd75f' },
+  { ansi: '38;5;214', color: '#ffaf00' },
+  { ansi: '38;5;172', color: '#d78700' },
 ];
 
 function gradientWord(
   word: string,
   shift: number,
-  ramp: string[] = GRADIENT_RAMP,
+  ramp: readonly TaskMotionColour[] = TASKS_BUILDING_RAMP,
 ): string {
   return word
     .split('')
     .map((letter, index) =>
-      paint(ramp[(index + shift) % ramp.length] ?? '38;5;44', letter),
+      paint(ramp[(index + shift) % ramp.length]?.ansi ?? '38;5;44', letter),
     )
     .join('');
 }
@@ -1109,6 +1172,32 @@ function gradientWord(
 // Folders whose worktree has shown at least one changed line this session —
 // the sticky exploring→building transition.
 const firstEditSeen = new Set<string>();
+
+/** One in-progress task's fleet-only facts, all anchored to the main Invar checkout. */
+export function readTaskFleetFacts(
+  fleetRepositoryRoot: string,
+  record: TaskRecord,
+): TaskFleetFacts {
+  const lineDelta =
+    record.directoryState === 'in-progress'
+      ? readTaskLineDelta(fleetRepositoryRoot, record.folderName)
+      : null;
+  if (lineDelta !== null && lineDelta.added + lineDelta.removed > 0) {
+    firstEditSeen.add(record.folderName);
+  }
+  const worktreePath = join(
+    fleetRepositoryRoot,
+    '.invar',
+    'worktrees',
+    record.folderName,
+  );
+  return {
+    lineDelta,
+    phase: firstEditSeen.has(record.folderName) ? 'building' : 'exploring',
+    worktreePath: existsSync(worktreePath) ? worktreePath : null,
+    sessionName: `invar/${record.folderName}`,
+  };
+}
 
 // The round stamp from a task's meta.json, written by round-brief.sh at the
 // filing act. Absent (or unreadable) for round-1 tasks and pre-round history.
@@ -1208,7 +1297,9 @@ function live(
     const breath =
       spinnerFrame === undefined
         ? null
-        : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? null);
+        : (TASKS_BUILDING_BREATH_FRAMES[
+            spinnerFrame % TASKS_BUILDING_BREATH_FRAMES.length
+          ] ?? null);
     const roundSuffix =
       round > 1 ? ` ${paint('38;5;179', `round ${round}`)}` : '';
     // EXPLORING vs BUILDING. Until the worktree diff shows one changed line,
@@ -1222,18 +1313,20 @@ function live(
     if (hasEdits) firstEditSeen.add(record.folderName);
     const exploring = !firstEditSeen.has(record.folderName);
     const phaseWord = exploring ? 'exploring' : 'building';
-    const phaseRamp = exploring ? EXPLORING_RAMP : GRADIENT_RAMP;
+    const phaseRamp = exploring ? TASKS_EXPLORING_RAMP : TASKS_BUILDING_RAMP;
     const phaseGlyph =
       breath === null
         ? paint(exploring ? '38;5;153' : '38;5;45', exploring ? '➤' : '●')
         : exploring
           ? paint(
-              EXPLORING_RAMP[(spinnerFrame ?? 0) % EXPLORING_RAMP.length] ??
-                '38;5;153',
-              EXPLORING_GLYPHS[(spinnerFrame ?? 0) % EXPLORING_GLYPHS.length] ??
-                '➤',
+              TASKS_EXPLORING_RAMP[
+                (spinnerFrame ?? 0) % TASKS_EXPLORING_RAMP.length
+              ]?.ansi ?? '38;5;153',
+              TASKS_EXPLORING_GLYPHS[
+                (spinnerFrame ?? 0) % TASKS_EXPLORING_GLYPHS.length
+              ] ?? '➤',
             )
-          : paint(breath[1], breath[0]);
+          : paint(breath.ansi, breath.glyph);
     const statusBadge = ready
       ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
       : `${phaseGlyph} ${
@@ -1503,7 +1596,11 @@ async function watchLenses(tasksRoot: string): Promise<number> {
       `  ${bold('tonight')} ${rollingBadge('fleet-added', fleet.added, '+', green)} ${rollingBadge('fleet-removed', fleet.removed, '-', red)} ${dim(`lines in flight · ${fleet.builders} builder(s)`)}`,
     );
     console.log('');
-    live(tasksRoot, Math.floor(frame / SPINNER_PAINTS_PER_STEP), cachedRecords);
+    live(
+      tasksRoot,
+      Math.floor(frame / TASKS_MOTION_PAINTS_PER_STEP),
+      cachedRecords,
+    );
     console.log('');
     const completedCount = cachedRecords.filter(
       (record) => record.directoryState === 'completed',

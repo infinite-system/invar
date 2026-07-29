@@ -97,6 +97,8 @@ export interface PaneContent {
   scrollToColumn?(column: number): void;
   /** Optional hover projection in content-local cells. */
   onPointerMove?(column: number, row: number): boolean;
+  /** Optional display-only tooltip at a content-local cell. The host owns dwell and projection. */
+  tooltipAt?(column: number, row: number): string | null;
   /** Optional pointer-leave notification for clearing transient hover state. */
   onPointerOut?(): void;
   /** Optional: a pointer-down inside this cell at content-local (column, row) — for click hit-testing

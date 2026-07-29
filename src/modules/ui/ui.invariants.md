@@ -1307,8 +1307,8 @@ unchanged in status.json.
 consumes, or reroutes any pointer or keyboard event, and any disqualifying input (pointer moved
 off the target, any click anywhere, any keypress) hides it immediately.
 
-**Scope:** `Tooltip` (the dwell state machine) and the tooltip overlay in `RootView`
-(`HitTransparentText`).
+**Scope:** `Tooltip` (the dwell state machine), `PaneContent.tooltipAt`, and the tooltip overlay
+and pane-host routing in `RootView` (`HitTransparentText`).
 
 **Mechanism:** the tooltip renderable overrides `render()` to mask OpenTUI's hit-grid stamp for
 itself (`HitTransparentText`), so the pointer can NEVER resolve to the tooltip — a click at its
@@ -1317,12 +1317,13 @@ writes its own display refs (`visible/text/anchor`); the dwell advances on the f
 (`tick(dtSeconds)` — the momentum/auto-scroll contract) and `Bootstrap` clears on every keypress
 and every mouse-down.
 
-**Generates:** hover affordance labels (git action buttons now; scrollbars/tree/diagnostics
-later) with zero input risk.
+**Generates:** hover affordance labels from a pane's own shared action geometry, including git
+and task actions, with zero input risk.
 
 **Evidence:** unit tests (`Tooltip.test.ts` dwell machine: no show before the dwell, cumulative
 dwell, jitter keeps the timer, clear disarms) + live tmux: tooltip visible in the pane capture
-after a dwell; a click at the same cells acted on the row beneath.
+after a dwell; a click at the same cells acted on the row beneath; and
+`scripts/harness/smoke-tasks-dashboard-harness.ts` (a pane-owned report action tooltip).
 
 **Impossible if true:** a tooltip that eats a click (a click that would have hit the control
 beneath but does not); a tooltip whose state machine writes cursor/selection/scroll state; a
@@ -2341,8 +2342,9 @@ records above; what a specific runtime starts is that runtime's own record.
 
 **Components:**
 - One creation path — every pane of a contributed kind is built by `PaneRuntimes.createPane(kind,
-  request)`. An ordinary instance, an Add-menu instance, and a declared task differ only by the
-  request, so a runtime cannot be reached by a second construction route.
+  request)`. An ordinary instance, an Add-menu instance, a declared task, and a contributed
+  `openRuntimePane` request differ only by the request, so a runtime cannot be reached by a second
+  construction route.
 - Host-neutral requests — a request carries identity, columns, rows, a working directory, and an
   optional `process` declaration. A CLI agent profile is that shape and nothing more, so the host
   can host one without an agent concept.
@@ -2375,7 +2377,8 @@ runtime's configuration vocabulary.
 **Evidence:** `src/modules/ui/PaneRuntime.interface.ts`; `src/modules/ui/PaneRuntimes.ts`;
 `src/modules/ui/PaneRuntimes.test.ts`; `src/modules/terminal/TerminalPlugin.ts`;
 `src/modules/terminal/TerminalPlugin.test.ts`; `src/modules/app/Bootstrap.ts`;
-`scripts/harness/smoke-plugin-manifest-harness.ts` (Terminal runtime disable leaves the host live).
+`scripts/harness/smoke-plugin-manifest-harness.ts` (Terminal runtime disable leaves the host live);
+`scripts/harness/smoke-tasks-dashboard-harness.ts` (tmux attach through the terminal runtime).
 
 **Impossible if true:** a host file importing a pane runtime's module; a pane kind built by two
 different routes; a disabled runtime still projecting status; a disabled runtime's pane still

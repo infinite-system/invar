@@ -421,6 +421,24 @@ class $RootView {
       );
       renderer.requestRender();
     };
+    rightDockBody.onMouseMove = (event: MouseEvent) => {
+      const content = rightDockHost.activeContent;
+      const localColumn = Number(event.x) - Number(rightDockBody.x);
+      const localRow = Number(event.y) - Number(rightDockBody.y);
+      content?.onPointerMove?.(localColumn, localRow);
+      const tooltipText = content?.tooltipAt?.(localColumn, localRow) ?? null;
+      if (tooltipText) {
+        tooltip.point(tooltipText, Number(event.x), Number(event.y));
+      } else {
+        tooltip.clear();
+      }
+      renderer.requestRender();
+    };
+    rightDockBody.onMouseOut = () => {
+      rightDockHost.activeContent?.onPointerOut?.();
+      tooltip.clear();
+      renderer.requestRender();
+    };
     rightDockBody.onMouseScroll = (event) => {
       const direction = event.scroll?.direction;
       if (direction !== 'up' && direction !== 'down') return;
@@ -812,6 +830,24 @@ class $RootView {
           const content = panelHost.resolvedCells[index]?.content;
           content?.onPointerDown?.(localColumn, localRow);
         }
+        renderer.requestRender();
+      };
+      body.onMouseMove = (event: MouseEvent) => {
+        const content = panelHost.resolvedCells[index]?.content;
+        const localColumn = Number(event.x) - Number(body.x);
+        const localRow = Number(event.y) - Number(body.y);
+        content?.onPointerMove?.(localColumn, localRow);
+        const tooltipText = content?.tooltipAt?.(localColumn, localRow) ?? null;
+        if (tooltipText) {
+          tooltip.point(tooltipText, Number(event.x), Number(event.y));
+        } else {
+          tooltip.clear();
+        }
+        renderer.requestRender();
+      };
+      body.onMouseOut = () => {
+        panelHost.resolvedCells[index]?.content.onPointerOut?.();
+        tooltip.clear();
         renderer.requestRender();
       };
       body.onMouseDrag = (event: MouseEvent) => {
