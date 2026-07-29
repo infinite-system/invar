@@ -1,0 +1,15 @@
+{
+  "task": 233,
+  "slug": "wrap-contract-red-settings-leak",
+  "branch": "fleet/233-wrap-contract-red-settings-leak",
+  "worktree": ".invar/worktrees/233-wrap-contract-red-settings-leak",
+  "tmuxSession": "invar/233-wrap-contract-red-settings-leak",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-233-wrap-contract-red-settings-leak.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "42dffe79b6c340e4a4ef286a16e5254dca71ebbe",
+  "startedAt": "2026-07-29T01:53:37-04:00"
+}

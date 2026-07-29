@@ -1,6 +1,6 @@
 # 233 — wrap-mode contract red: the user's real settings leak into the harness
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
