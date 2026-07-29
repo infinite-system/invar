@@ -75,8 +75,10 @@ is the conductor's operative summary.
 **The ONLY hand-written record is the task file itself.** Priority lives as a `Priority:` field in
 each task's header (user-directed | verification-integrity | flake-evidence | performance-behaviour |
 architecture-hygiene). Everything else is DERIVED: `project.active-tasks.md` is GENERATED from those
-fields by `tasks-status.ts write-active` and is never hand-edited — an agent cannot forget to update
-a file no agent updates. The old root docs (`project.tasks.md`, `project.ledger.md`,
+fields by `tasks-status.ts write-active`; its generated zone is never hand-edited — an agent cannot
+forget to update a file no agent updates. BELOW its priority-log marker is the one hand-written
+zone: dated ordering decisions, preserved verbatim by regeneration and exempt from the staleness
+diff. The old root docs (`project.tasks.md`, `project.ledger.md`,
 `project.tasks-ledger.md`, `backlog.md`) are all retired.
 
 | file | shape |

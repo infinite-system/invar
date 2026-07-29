@@ -206,13 +206,33 @@ const PRIORITY_ORDER = [
 // A hand-written backlog needs a second edit per filed or landed task, and a record that needs a
 // second step eventually does not happen — that is how every prior task snapshot went stale.
 const ACTIVE_VIEW_HEADER =
-  '# project.active-tasks.md — GENERATED, DO NOT EDIT\n\n' +
-  'Regenerate with `bun scripts/tasks/tasks-status.ts write-active`. Hand edits WILL be\n' +
-  'overwritten — this file exists so the active backlog is a BYPRODUCT of the instrument,\n' +
-  'never a record an agent must remember to update. Detail: `.invar/tasks/<state>/<folder>/`.\n\n';
+  '# project.active-tasks.md — GENERATED ABOVE THE MARKER, DO NOT EDIT\n\n' +
+  'Regenerate with `bun scripts/tasks/tasks-status.ts write-active`. Hand edits ABOVE the\n' +
+  'priority-log marker WILL be overwritten — the backlog is a BYPRODUCT of the instrument,\n' +
+  'never a record an agent must remember to update. Detail: `.invar/tasks/<state>/<folder>/`.\n' +
+  'Below the marker is the hand-written priority log: write-active PRESERVES it verbatim.\n\n';
+
+// TWO ZONES, ONE OWNER EACH. Above the marker the instrument owns every byte; below it the
+// conductor/AI keeps the priority LOG — dated reasons for the current ordering, re-prioritisation
+// decisions, holds. write-active carries the log through regeneration untouched, and the staleness
+// diff exempts it, so editing the log never reads as drift and regenerating never destroys thought.
+const PRIORITY_LOG_MARKER =
+  '---\n\n## Priority log — hand-written below this line; write-active preserves it\n';
 
 function activeViewPath(tasksRoot: string): string {
   return join(tasksRoot, '..', '..', 'project.active-tasks.md');
+}
+
+// The log zone of the file on disk, marker included — or the marker alone with a seed line when the
+// file (or the marker) does not exist yet, so the zone is always present to write under.
+function existingPriorityLog(filePath: string): string {
+  const seed =
+    PRIORITY_LOG_MARKER +
+    '\n(append dated entries here — e.g. "2026-07-28: #202 jumps the queue, the user drives at 500k daily")\n';
+  if (!existsSync(filePath)) return seed;
+  const text = readFileSync(filePath, 'utf8');
+  const markerIndex = text.indexOf(PRIORITY_LOG_MARKER);
+  return markerIndex < 0 ? seed : text.slice(markerIndex);
 }
 
 function renderActiveView(records: TaskRecord[]): string {
@@ -257,10 +277,29 @@ function renderActiveView(records: TaskRecord[]): string {
 // fresh render, and the repair is always the same single command. Prompting an agent to hand-edit
 // individual stale entries would reintroduce the hand-maintained backlog this file exists to end.
 function activeViewIsStale(tasksRoot: string, records: TaskRecord[]): boolean {
-  const expected = ACTIVE_VIEW_HEADER + renderActiveView(records) + '\n';
   const filePath = activeViewPath(tasksRoot);
   if (!existsSync(filePath)) return true;
+  // The expected file is the fresh render PLUS whatever priority log is on disk — the log is the
+  // hand-owned zone, so its content never makes the file read stale.
+  const expected =
+    ACTIVE_VIEW_HEADER +
+    renderActiveView(records) +
+    '\n\n' +
+    existingPriorityLog(filePath);
   return readFileSync(filePath, 'utf8') !== expected;
+}
+
+// The self-test writes the view exactly the way write-active does — through the SAME code path —
+// so the arms exercise the real writer rather than a test-local imitation of it.
+function backlogWriteForTest(tasksRoot: string, records: TaskRecord[]): void {
+  const filePath = activeViewPath(tasksRoot);
+  writeFileSync(
+    filePath,
+    ACTIVE_VIEW_HEADER +
+      renderActiveView(records) +
+      '\n\n' +
+      existingPriorityLog(filePath),
+  );
 }
 
 function backlog(tasksRoot: string, writeActiveFile: boolean): number {
@@ -268,8 +307,12 @@ function backlog(tasksRoot: string, writeActiveFile: boolean): number {
   const view = renderActiveView(records);
   console.log(view);
   if (writeActiveFile) {
-    writeFileSync(activeViewPath(tasksRoot), ACTIVE_VIEW_HEADER + view + '\n');
-    console.log('wrote project.active-tasks.md');
+    const filePath = activeViewPath(tasksRoot);
+    writeFileSync(
+      filePath,
+      ACTIVE_VIEW_HEADER + view + '\n\n' + existingPriorityLog(filePath),
+    );
+    console.log('wrote project.active-tasks.md (priority log preserved)');
   }
   return 0;
 }
@@ -408,19 +451,28 @@ function selfTest(): number {
   const plantedRecords = readTaskRecords(root);
   const findings = findDrift(plantedRecords);
 
-  // STALE-ACTIVE-VIEW, both arms. A view containing a task that is DONE must read stale; the freshly
-  // generated view must read fresh. The temp root gives the check its own project.active-tasks.md
-  // two directories up, so nothing touches the real one.
+  // STALE-ACTIVE-VIEW, both arms — and the priority-log zone, both directions. A view listing a
+  // DONE task must read stale; a freshly generated one must read fresh; a hand-written log entry
+  // must neither read as stale NOR be destroyed by regeneration. The sandbox nests .invar/tasks so
+  // the view path resolves inside it, not to /.
   writeFileSync(
     activeViewPath(root),
     ACTIVE_VIEW_HEADER + '- #903 planted-done-no-evidence\n',
   );
   const staleDetected = activeViewIsStale(root, plantedRecords);
+  backlogWriteForTest(root, plantedRecords);
+  const freshMisreported = activeViewIsStale(root, plantedRecords);
+  const plantedLogEntry = '2026-01-01: planted priority-log entry #999\n';
   writeFileSync(
     activeViewPath(root),
-    ACTIVE_VIEW_HEADER + renderActiveView(plantedRecords) + '\n',
+    readFileSync(activeViewPath(root), 'utf8') + plantedLogEntry,
   );
-  const freshMisreported = activeViewIsStale(root, plantedRecords);
+  const logEditMisreadAsStale = activeViewIsStale(root, plantedRecords);
+  backlogWriteForTest(root, plantedRecords);
+  const logSurvivedRegeneration = readFileSync(
+    activeViewPath(root),
+    'utf8',
+  ).includes(plantedLogEntry);
   rmSync(sandbox, { recursive: true, force: true });
 
   const expected: Array<[DriftSignal, number]> = [
@@ -438,6 +490,14 @@ function selfTest(): number {
     `  ${freshMisreported ? 'FAIL' : 'PASS'}  a freshly generated view reads fresh`,
   );
   if (freshMisreported) failures++;
+  console.log(
+    `  ${logEditMisreadAsStale ? 'FAIL' : 'PASS'}  a priority-log entry does not read as stale`,
+  );
+  if (logEditMisreadAsStale) failures++;
+  console.log(
+    `  ${logSurvivedRegeneration ? 'PASS' : 'FAIL'}  the priority log survives regeneration`,
+  );
+  if (!logSurvivedRegeneration) failures++;
   for (const [signal, taskNumber] of expected) {
     const fired = findings.some(
       (finding) =>
