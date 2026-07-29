@@ -1,6 +1,6 @@
 # 59 — prettier on commit, format gate, one-shot reformat
 
-State: IN-PROGRESS
+State: COMPLETED — 243c160 — prettier format gate + one-shot repo reformat (205 files) + blank-line grammar rule; .git-blame-ignore-revs carries the reformat sha; combined-tree gate green except two pre-existing reds (#211 horizontal-extent, #174 ragged table) both reproduced on plain main by control runs
 Created: 2026-07-28
 Engine: codex
 Environment: linux

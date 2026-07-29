@@ -41,6 +41,17 @@ It was explicitly excluded from the timeout-class flake population: *"markdown h
 missing `| Ragged` preview row (not timeout-class, so no retry) — that is #174 and it is a DIFFERENT
 class; do not fold it in."*
 
+### ESCALATION 2026-07-28 21:47 — now a gate hard red, reproduced deterministically on plain main
+
+The #59 combined-tree gate failed on `smoke-markdown-harness` ("a ragged table keeps its raw header" —
+`| Ragged` row absent from preview; the malformed *missing-separator* table right above it DOES fall back
+to raw text correctly). Control run on plain main reproduced the identical failure immediately
+(`/tmp/markdown-control-main.log`, exit 1). So this is no longer intermittent: it fails
+deterministically on current main. The "passed three merge-base gates" caveat now dates a regression
+window — something landed between those green gates and today flipped ragged-table fallback from
+sometimes-failing to always-failing. `git log` over the markdown plugin/table renderer within that window
+is the first move. Evidence: `/tmp/merge-gate-failures.1618453/smoke-markdown-harness-.log`.
+
 ## Sources
 
 None in this folder. Detail above recovered from the session transcript (`faf7e858-…jsonl`).

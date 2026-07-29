@@ -6,9 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #59 prettier-format-gate-and-reformat
-
 ## USER-DIRECTED (3)
 - #205 gate-launch-time-and-memory-ceiling
 - #202 tab-reactivation-rereads-whole-file
@@ -62,7 +59,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 20 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 21 — full log: project.tasks-completed.md)
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc
 - #207 silently-discarded-user-input — fb199cb

@@ -25,3 +25,4 @@ task file’s State line. Completion chronology in full detail: `git log -- .inv
 - #108 gear-mark-four-owners-collision — merged 186f2d8, fix 82b746c (user accepted Pair A)
 - #107 emoji-width-authority-disagreement — glyphs swapped at 966c5d1; the exception list is now empty
 - #77 coverage-ratchet-remaining-holes — holes 1 and 2 landed at 4ab250f; hole 3 carved out to #210
+- #59 prettier-format-gate-and-reformat — 243c160 — prettier format gate + one-shot repo reformat (205 files) + blank-line grammar rule; .git-blame-ignore-revs carries the reformat sha; combined-tree gate green except two pre-existing reds (#211 horizontal-extent, #174 ragged table) both reproduced on plain main by control runs
