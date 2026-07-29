@@ -1,6 +1,6 @@
 # 174 — markdown preview omitted a ragged table visible in source
 
-State: IN-PROGRESS
+State: COMPLETED — 638b5c0 — harness predicate race, not the parser: smoke asserted preview content before the preview parsed the opened revision; fix waits on markdownParsing=false + revision convergence; flip commit faeaa99 (timing, whitespace-only); positive control proved a planted parser defect still reds; bycatch filed as #212
 Created: 2026-07-28
 Engine: codex
 Environment: linux

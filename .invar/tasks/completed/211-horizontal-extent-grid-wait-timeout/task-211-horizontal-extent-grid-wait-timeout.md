@@ -1,6 +1,6 @@
 # 211 — smoke-horizontal-extent's grid-condition wait timed out, attempt AND retry
 
-State: IN-PROGRESS
+State: COMPLETED — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 Created: 2026-07-28
 Engine: codex
 Environment: linux

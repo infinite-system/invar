@@ -13,6 +13,17 @@ Priority: flake-evidence
 A 100k fold-dense behavioural contract travelled **995 rows against a 1,000-row shape requirement**.
 One sighting. Triaged as bycatch from #191, with merge-base verification.
 
+### SECOND SIGHTING 2026-07-28 22:09 — same number, and a passing control beside it
+
+The integrate/211-174 gate red on this contract with **rows=995 exactly again** (nested JSON variant:
+`cases=1, fullStack=1, checkpoints=1, rows=995, slowest=30.0fps, floor 28`), under builder #114's load
+(load average 1.38). A solo rerun of `behavioral-contracts.sh` on the identical tree passed with
+**rows=1002**. Two readings for the diagnosis: (1) the failing value repeating EXACTLY at 995 twice is
+structure, not noise — a specific dropped increment (5 rows ≈ one coalesced impulse?), not a smear;
+(2) the pass overshot at 1002, so the bound is two-sided-loose and the miss is quantised. That favours
+a mechanism (one lost/coalesced wheel batch under load) over the zero-margin class — find what unit of
+travel is exactly 5–7 rows. Evidence: `/tmp/merge-gate-failures.1667957/`, `/tmp/bc-rerun-integrate.log`.
+
 ### The first question, and it is not "why did it fail"
 
 **How far is 995 from its budget?** Three prior cases in this family — **#144** (23 of 24 frames),

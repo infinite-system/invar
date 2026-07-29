@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc
 - #207 silently-discarded-user-input — fb199cb
@@ -22,6 +23,7 @@ task file’s State line. Completion chronology in full detail: `git log -- .inv
 - #188 frame-ordinal-wait-regressions
 - #187 wheel-at-clamp-unreachable-wait
 - #186 max-width-rescan-at-500k
+- #174 markdown-preview-omits-ragged-table — 638b5c0 — harness predicate race, not the parser: smoke asserted preview content before the preview parsed the opened revision; fix waits on markdownParsing=false + revision convergence; flip commit faeaa99 (timing, whitespace-only); positive control proved a planted parser defect still reds; bycatch filed as #212
 - #108 gear-mark-four-owners-collision — merged 186f2d8, fix 82b746c (user accepted Pair A)
 - #107 emoji-width-authority-disagreement — glyphs swapped at 966c5d1; the exception list is now empty
 - #77 coverage-ratchet-remaining-holes — holes 1 and 2 landed at 4ab250f; hole 3 carved out to #210

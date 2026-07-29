@@ -6,9 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #211 horizontal-extent-grid-wait-timeout
-- #174 markdown-preview-omits-ragged-table
+## IN-PROGRESS (1)
+- #114 modularity-umbrella-provider-runtime
 
 ## USER-DIRECTED (3)
 - #205 gate-launch-time-and-memory-ceiling
@@ -28,7 +27,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (11)
+## FLAKE-EVIDENCE (12)
+- #212 markdown-100k-paste-focus-wait
 - #200 input-byte-latency-above-baseline
 - #198 selection-harness-pre-satisfied-wheels
 - #193 fold-dense-contract-row-shortfall  [ACTIVE — single unexplained miss]
@@ -52,16 +52,16 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (7)
+## ARCHITECTURE-HYGIENE (6)
 - #136 shared-scale-fixture-corpus-cache
 - #122 editor-becomes-final-contributor  [ACTIVE — blocked, strictly after #114]
-- #114 modularity-umbrella-provider-runtime  [ACTIVE — Wave A landed, Wave B open]
 - #62 parameter-count-ports-object-sweep
 - #46 terminal-observer-reverse-presence  [ACTIVE — design doc exists, no branch cut]
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 21 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 23 — full log: project.tasks-completed.md)
+- #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc
 - #207 silently-discarded-user-input — fb199cb
@@ -76,4 +76,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #192 residual-harness-wait-audit
 - #191 terminal-stage-compound-predicate
 - #189 gate-reds-population-separation
-- #188 frame-ordinal-wait-regressions
