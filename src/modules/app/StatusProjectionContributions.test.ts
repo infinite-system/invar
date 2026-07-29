@@ -18,7 +18,7 @@ test('status snapshot contributions are read live at the host boundary', () => {
   });
 });
 
-test('disposing a contribution clears its previously projected fields', () => {
+test('disposing a contribution omits its projected fields from status JSON', () => {
   const contributions = new StatusProjectionContributions.Class();
   const dispose = contributions.register({
     snapshot: () => ({ samplePluginValue: 'active' }),
@@ -27,7 +27,9 @@ test('disposing a contribution clears its previously projected fields', () => {
 
   dispose();
 
-  expect(contributions.snapshot()).toEqual({
+  const withdrawnSnapshot = contributions.snapshot();
+  expect(withdrawnSnapshot).toEqual({
     samplePluginValue: undefined,
   });
+  expect(JSON.parse(JSON.stringify(withdrawnSnapshot))).toEqual({});
 });

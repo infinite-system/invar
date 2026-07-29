@@ -68,6 +68,8 @@ open/query/selection, theme selection) then calls `paint()` = `view.update()` +
 `AppStatusProjection.publish()` +
 `requestRender()`. `AppStatusProjection` reads narrow live ports and updates `StatusChannel`
 without mutating model state, so the effect never self-triggers. The frame tick publishes whether
+`StatusProjectionContributions` maps withdrawn plugin keys to `undefined`, so `StatusChannel`
+omits them from its JSON artifact instead of retaining stale values.
 workspace and panel scroll momentum and contributed-surface animation are exactly at rest before
 settling the status frame, giving driven verification condition endpoints without a clock. `viewport.setSize` (a
 projection→model write) is kept OUTSIDE the effect, on boot + resize only. Input handlers mutate
