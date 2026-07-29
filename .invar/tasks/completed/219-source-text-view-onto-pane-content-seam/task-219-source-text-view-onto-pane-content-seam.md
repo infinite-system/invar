@@ -1,6 +1,6 @@
 # 219 — retrofit the source-text view onto the PaneContent seam
 
-State: IN-PROGRESS
+State: COMPLETED — 43b6002 — PaneContent grew native-surface (who paints); editor is a citizen via SourceTextPaneContent + PaneProjection; paint-then-selection ordering became a tested invariant; release path ready for #220; fingerprints unchanged at 10/100k/500k; boundaries filed as #228, #229
 Created: 2026-07-29
 Engine: claude
 Environment: linux

@@ -1,6 +1,6 @@
 # 216 — drive's on-ramp cannot open its own file, and the empty scan reports complete
 
-State: IN-PROGRESS
+State: COMPLETED — 03b61df — Quick Open publishes degraded (never a false complete) with a recovery message; drive fixtures in system temp outside the ignored path; codex-ships-ripgrep caught by PATH surgery; one-sighting probed 3x, no repro, parked
 Created: 2026-07-28
 Engine: codex
 Environment: linux
