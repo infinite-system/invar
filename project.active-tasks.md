@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #266 drive-settle-ignores-debounced-parse  [building]
+  `tmux attach -t invar/266-drive-settle-ignores-debounced-parse`
 - #263 terminal-shrink-markdown-split-frozen  [building]
   `tmux attach -t invar/263-terminal-shrink-markdown-split-frozen`
 - #235 tasks-dashboard-pane-live-active-done  [building]
@@ -17,9 +19,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (21)
+## VERIFICATION-INTEGRITY (20)
 - #269 smokes-assume-editor-geometry-sweep
-- #266 drive-settle-ignores-debounced-parse
 - #265 status-projection-drops-plugin-keys
 - #261 drive-harness-drops-shifted-control-chords
 - #240 momentum-records-placement-call

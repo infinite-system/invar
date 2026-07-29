@@ -1,0 +1,15 @@
+{
+  "task": 266,
+  "slug": "drive-settle-ignores-debounced-parse",
+  "branch": "fleet/266-drive-settle-ignores-debounced-parse",
+  "worktree": ".invar/worktrees/266-drive-settle-ignores-debounced-parse",
+  "tmuxSession": "invar/266-drive-settle-ignores-debounced-parse",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-266-drive-settle-ignores-debounced-parse.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "06f770993a886e0f91e305fd4033e22b08527aff",
+  "startedAt": "2026-07-29T08:16:38-04:00"
+}

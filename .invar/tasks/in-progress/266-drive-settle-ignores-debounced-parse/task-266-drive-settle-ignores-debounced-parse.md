@@ -1,6 +1,6 @@
 # 266 — the drive's settled frame still shows "Parsing Markdown…"
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
