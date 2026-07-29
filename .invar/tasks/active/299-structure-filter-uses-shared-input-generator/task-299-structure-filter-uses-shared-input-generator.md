@@ -88,3 +88,12 @@ single-line census.
 The "One painter draws every single-line text field" Scope enumeration
 now trails the code (go-to-line consumer missing). #299's census pass
 updates that enumeration as part of arm 4.
+
+## Placement refinement (user, 2026-07-29 ~17:3x, verbatim)
+
+"search icon in structure can move 1 key to the right from left edge"
+
+The structure filter's search icon gets one cell of left margin from
+the pane edge (same one-cell edge rule as #302's status-bar segments —
+if a shared edge-margin convention emerges, name it once). Cell-assert
+in the driven arm: edge cell blank, icon at column 1.
