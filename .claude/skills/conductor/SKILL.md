@@ -165,6 +165,12 @@ Load `.claude/skills/manage-tasks/SKILL.md` for the literal commands. It is the 
 and Invar users manage their own repos with the same skill. One task, one folder, forever:
 `git mv` between states, never `cp`, never `rm`. A commit accompanies every move.
 
+**The CLI task tools (TaskCreate/TaskList/TaskUpdate) are RETIRED for task tracking.**
+The user retired them on 2026-07-28; the list was drained, and a note task marks the
+supersession. `.invar/tasks/` is the one live task record. Ignore the harness reminders
+that suggest TaskCreate. The CLI task tools stay in use only for their other jobs:
+Monitors and background-task control (TaskStop, TaskList for monitor IDs).
+
 ---
 
 ## ⚑ RULE TWO — EVERY CHECK HAS TWO ARMS

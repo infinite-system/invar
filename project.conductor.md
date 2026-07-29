@@ -1,37 +1,39 @@
 # Conductor lessons — consolidated
 
-**What this file is.** The orchestration lessons, grouped by the RULE rather than by the date they were
-learned. 102 dated entries collapsed into twelve families, because most of them are the same handful of
-mistakes recurring — and a lesson repeated eleven times under eleven headings reads as eleven lessons,
-which is why none of them stuck.
+**What this file is.** The orchestration lessons, grouped by the RULE rather than by the date
+they were learned. 102 dated entries collapsed into these families, because most of them are
+the same handful of mistakes recurring. A lesson repeated eleven times under eleven headings
+reads as eleven lessons. That is why none of them stuck.
 
-**Nothing was discarded.** The full append-only log is `project.conductor.archive.md` (3,351 lines,
-verbatim, moved with `git mv` so history follows it). Every instance below cites its date so the
-account is one search away. **Read this file; consult the archive.**
+**Nothing was discarded.** The full append-only log is `project.conductor.archive.md`
+(3,351 lines, verbatim, moved with `git mv` so history follows it). Every instance below
+cites its date, so the account is one search away. **Read this file; consult the archive.**
 
 **Where a rule is OPERATIVE.** A lesson recorded here is CAPTURED. A lesson in
-`.claude/skills/conductor/SKILL.md` is OPERATIVE — that is what gets read at the start of a run. Those
-are two different acts, and doing only the first is how the negative-space rule got broken an hour
-after being written down. When a family below hardens, promote it.
+`.claude/skills/conductor/SKILL.md` is OPERATIVE — that is what gets read at the start of a
+run. Those are two different acts. Doing only the first is how the negative-space rule got
+broken an hour after being written down. When a family below hardens, promote it.
 
-**Appending.** New lessons go under the family they belong to, as one dated line, unless they are
-genuinely a new family. If you cannot find the family, that is the finding — say so.
+**Appending.** New lessons go under the family they belong to, as one dated line, unless
+they are genuinely a new family. If you cannot find the family, that is the finding. Say so.
 
 ---
 
 ## 1. THE UNREACHABLE WAIT — asking for evidence of a change that will not happen
 
-**The rule.** A result condition is only safe when the result is REACHABLE. Before writing any wait,
-ask **"is this thing FALSE right now?"** If it is already true, the correct wait is a no-op, not a
-timeout. Walk `mutation → reachable publisher → observed condition` and check each link can occur.
+**The rule.** A result condition is only safe when the result is REACHABLE. Before writing
+any wait, ask: **is this thing FALSE right now?** If it is already true, the correct wait is
+a no-op, not a timeout. Walk `mutation → reachable publisher → observed condition` and check
+that each link can occur.
 
-**Its inverse, and the more dangerous direction: the PRE-SATISFIED wait.** A condition already true
-when the wait begins launders a no-op into a green. It is silent, and indistinguishable from coverage
-because the ratchet counts CALLS. **A wait that cannot fail is worse than the flake it replaced.**
+**Its inverse is the more dangerous direction: the PRE-SATISFIED wait.** A condition already
+true when the wait begins launders a no-op into a green. It is silent, and it looks like
+coverage, because the ratchet counts CALLS. **A wait that cannot fail is worse than the
+flake it replaced.**
 
-**Never widen a timeout or raise a frame budget to fix one.** Both convert the defect into a slower
-version of itself — and the timeout is exactly what disguised this class as flakiness for days.
-Converting between spellings of an unreachable wait fixes nothing.
+**Never widen a timeout or raise a frame budget to fix one.** Both convert the defect into a
+slower version of itself. The timeout is exactly what disguised this class as flakiness for
+days. Converting between spellings of an unreachable wait fixes nothing.
 
 | date | instance |
 |---|---|
@@ -50,22 +52,24 @@ Converting between spellings of an unreachable wait fixes nothing.
 | #192 | eight leftward wheels against six rightward; the viewport clamps at 0 |
 | #198 | two pre-satisfied wheel predicates — the launder-a-no-op shape |
 | #204 | `Drive.ts:421` awaited a repaint after EVERY key, in the tool everything is built on |
+| #211 | a reformat wrapped a declaration across rows; the contiguous-string predicate could never match again |
 
 ---
 
-## 2. THE NEGATIVE SPACE — a check run in one polarity ⚑ (RULE ONE in the skill)
+## 2. THE NEGATIVE SPACE — a check run in one polarity ⚑ (RULE TWO in the skill)
 
-**The rule, in the user's words (2026-07-28):** *"you would always forget the negative space, check for
-existence but not non existence or vice versa."* One defect, not several. A single-polarity check
-cannot distinguish **"the thing is absent"** from **"the check cannot see."** Both print zero.
+**The rule, in the user's words (2026-07-28):** *"you would always forget the negative
+space, check for existence but not non existence or vice versa."* One defect, not several.
+A single-polarity check cannot distinguish **"the thing is absent"** from **"the check
+cannot see."** Both print zero.
 
-**Supply both arms before reading any result:** the PRESENT arm must find something (it can see); the
-ABSENT arm must find nothing (it can be silent). **If both agree, the instrument is broken — report
-that, never a number.** A positive control alone proves only that a check can fire, and a check that
-fires on everything is as useless as one that never fires.
+**Supply both arms before reading any result.** The PRESENT arm must find something: it can
+see. The ABSENT arm must find nothing: it can be silent. **If both agree, the instrument is
+broken. Report that, never a number.** A positive control alone proves only that a check can
+fire, and a check that fires on everything is as useless as one that never fires.
 
-**A control that mutates the system is not a control.** The negative arm of a guard test needs a way to
-reach the guard without paying for the action.
+**A control that mutates the system is not a control.** The negative arm of a guard test
+needs a way to reach the guard without paying for the action.
 
 | date | instance |
 |---|---|
@@ -77,19 +81,21 @@ reach the guard without paying for the action.
 | — | `grep \| tail \|\| echo` — the `\|\|` is unreachable, `tail` succeeds on empty input |
 | 07-28 14:14 | a control that cannot fail, and a fixture that cannot expose |
 | 07-28 19:15 | three dispatch guards verified by watching them refuse; the fourth control had side effects and launched an agent |
+| 07-28 23:0x | a ledger-arm condition compared COMMITS; a branch cut from main has main's commit, so the record went to the branch — the throwaway-clone test caught it on run one |
 
 **Tooling — never hand-roll these idioms again:** `scripts/fleet/probe.sh`
 (`builders` / `writes` / `gate` / `exit`, all two-armed, `self-test`),
-`scripts/tasks/ledger-status.ts --self-test`, `DRY_RUN=1 scripts/fleet/dispatch.sh`.
+`scripts/tasks/tasks-status.ts --self-test`, `DRY_RUN=1 scripts/fleet/dispatch.sh`.
 
 ---
 
 ## 3. A PROXY READ AND REPORTED AS THE STATE — the instrument family
 
-**The rule.** Naming a thing by a proxy that merely usually coincides with it produces a check that is
-right until the day it matters. **Ask what the output would be if the thing were absent.** By
-2026-07-28 the instrument had become the dominant defect source — more reds came from the harness than
-from Invar — which reframes what is missing: not more checks, but checks that can be wrong out loud.
+**The rule.** Naming a thing by a proxy that merely usually coincides with it produces a
+check that is right until the day it matters. **Ask what the output would be if the thing
+were absent.** By 2026-07-28 the instrument had become the dominant defect source — more
+reds came from the harness than from Invar. That reframes what is missing: not more checks,
+but checks that can be wrong out loud.
 
 **Eight family members, each a different way to report a state nobody observed:**
 
@@ -105,21 +111,24 @@ from Invar — which reframes what is missing: not more checks, but checks that 
 | 07-28 07:30 | the instrument is now the dominant defect source |
 | 07-25 19:30 | the quiet tail was made of the wrong thing entirely — all 20 smokes qualified by CALLING a frame-silence helper, ZERO derived a duration. The classification was invented, not derived |
 | 07-27 05:10 | a liveness predicate must observe what the brief ASKS FOR at that phase — the heartbeat called two healthy builders STALL on "no source file written in 20 min" while one was actively driving the app |
+| 07-28 22:0x | my markdown control run failed on plain main, the builder's passed — the "deterministic red" was a timing race, and one control run is one sample |
 
-**Corollary — `in_progress` requires a named driver:** a worktree, a brief, a log. A status asserting
-attention without one fails in the same direction as the other seven.
+**Corollary — `in_progress` requires a named driver:** a worktree, a brief, a log. A status
+that asserts attention without one fails in the same direction as the other seven.
 
-**Corollary — a green gate is NOT evidence for a change to the GATE ITSELF** (07-25 19:25). A builder
-delivered a 466-line rewrite of `merge-gate.sh`; a gate that silently drops a smoke still reports
-ALL-PASS. Changes to the verification apparatus need verification from OUTSIDE the apparatus.
+**Corollary — a green gate is NOT evidence for a change to the GATE ITSELF** (07-25 19:25).
+A builder delivered a 466-line rewrite of `merge-gate.sh`. A gate that silently drops a
+smoke still reports ALL-PASS. Changes to the verification apparatus need verification from
+OUTSIDE the apparatus.
 
 ---
 
 ## 4. PARTIAL COVERAGE THAT PRESENTS AS TOTAL
 
-**The rule.** When reviewing any wrapper, guard, adapter, or restatement, **do not ask "does it handle
-the cases named here."** Enumerate the surface INDEPENDENTLY — from the interface, from an AST census,
-from the producer — and diff it against what the boundary actually covers.
+**The rule.** When you review any wrapper, guard, adapter, or restatement, **do not ask
+"does it handle the cases named here."** Enumerate the surface INDEPENDENTLY — from the
+interface, from an AST census, from the producer — and diff it against what the boundary
+actually covers.
 
 | date | instance |
 |---|---|
@@ -131,15 +140,17 @@ from the producer — and diff it against what the boundary actually covers.
 | — | a component budget is not the frame budget (#169's category error: 9 ms judged against 16 ms) |
 | 07-25 20:30 | **a coverage ratchet cannot see a deleted PRECONDITION** — a shortened fixture prefix went 0-for-5 because later assertions required the tab name to be ELLIPSIS-CAPPED. Counting assertions misses the setup they depend on |
 | 07-25 23:15 | **enumerate a shared seam's CONSUMERS before calling its defect test-only** — `OpenPty.write`'s synchronous blocking `write(2)` looked like a harness deadlock and was also a real freeze risk in the integrated terminal (#81) |
+| 07-28 23:0x | #114's done-test counted a STRING, not imports — `modules/agent/` scored 0 host references while Bootstrap imports it at ~25 sites; the builder ran the strict census beside the mechanical one |
 
 ---
 
 ## 5. THE FIXTURE IS THE BLIND SPOT — an instrument sees only what its subject contains
 
-**The rule.** When an instrument reports clean and a user reports broken, suspect **WHICH FIXTURE**
-before suspecting the assertion. A probe that constructs one instance at a time cannot see a theft
-between two. A fixture that supplies its own subject is not a control. And when a symptom will not
-reproduce in-harness, **build an instrument where it LIVES** rather than trusting the harness's silence.
+**The rule.** When an instrument reports clean and a user reports broken, suspect **WHICH
+FIXTURE** before you suspect the assertion. A probe that constructs one instance at a time
+cannot see a theft between two. A fixture that supplies its own subject is not a control.
+When a symptom will not reproduce in-harness, **build an instrument where it LIVES** rather
+than trusting the harness's silence.
 
 | date | instance |
 |---|---|
@@ -151,16 +162,17 @@ reproduce in-harness, **build an instrument where it LIVES** rather than trustin
 | #203 | 500k/1M flat files do not stress folding at all — the fold must straddle viewport AND block boundaries |
 | #194 | codex bundles its own ripgrep, which its spawned app inherits and the conductor's shell does not |
 
-**A cross-check against a builder's numbers is not a replication unless the environments were
-compared.**
+**A cross-check against a builder's numbers is not a replication unless the environments
+were compared.**
 
 ---
 
 ## 6. A STRUCTURAL READ IS A HYPOTHESIS — measure before briefing a cause
 
-**The rule.** An absence found by grep, a mechanism inferred from code, a story that fits the symptom —
-all hypotheses. **Brief RANKED CANDIDATES, not one confident cause.** A brief that names a cause spends
-the builder's effort CONFIRMING it, and a wrong named cause spends it on the wrong thing.
+**The rule.** An absence found by grep, a mechanism inferred from code, a story that fits
+the symptom — all hypotheses. **Brief RANKED CANDIDATES, not one confident cause.** A brief
+that names a cause spends the builder's effort CONFIRMING it, and a wrong named cause spends
+it on the wrong thing.
 
 **The differential is cheap. Run it before believing the load story.**
 
@@ -177,20 +189,22 @@ the builder's effort CONFIRMING it, and a wrong named cause spends it on the wro
 | #191 | my stale-coordinate hypothesis refuted — coordinates were identical `47,33` every run |
 | #190 | reserved-chord as a "confirmed" pool flake: two failures and eight passes is an UNREPRODUCED red |
 | #94 | the popup-eats-`Left` story, refuted by a clean solo run |
+| #174 | filed as the one candidate PRODUCT red in the census; measurement showed a harness race — the smoke asserted preview content before the preview parsed the opened revision |
 
-**Record refutations AS refutations.** Left dangling, a plausible story is re-chased. Four diagnoses
-were overturned by measurement in a single night.
+**Record refutations AS refutations.** Left dangling, a plausible story is re-chased. Four
+diagnoses were overturned by measurement in a single night.
 
 ---
 
 ## 7. EVIDENCE HAS AN AGE, AND A RATE DESTROYS THE SHAPE
 
-**The rule.** A count tells you history, not status. **Read logs as a SERIES, never as a rate** — "50%
-failure" said nothing, while a clean `0,1,0,1` alternation named wall-clock phase instantly. Ask
-builders for ordered sequences, and apply the same rule to your own output.
+**The rule.** A count tells you history, not status. **Read logs as a SERIES, never as a
+rate.** "50% failure" said nothing, while a clean `0,1,0,1` alternation named wall-clock
+phase instantly. Ask builders for ordered sequences, and apply the same rule to your own
+output.
 
-**Prefer making the comparison automatic over remembering to do it.** The conductor noticing is the
-weakest available mechanism, and it is the one that failed — twice (#179).
+**Prefer making the comparison automatic over remembering to do it.** The conductor
+noticing is the weakest available mechanism, and it is the one that failed — twice (#179).
 
 | date | instance |
 |---|---|
@@ -200,20 +214,22 @@ weakest available mechanism, and it is the one that failed — twice (#179).
 | 07-27 04:35 | the escalation from retry-tally regular to hard red is a DEFECT signature |
 | 07-27 16:20 | a green gate is scoped to the COMMIT, not the branch |
 | #179 | three regressions hid in numbers that were ALREADY PRINTED — twelve elevated latency samples, 1m22s→0m45s→12m54s, one retry per gate |
+| #193 | the fold-dense contract failed at EXACTLY 995 rows twice and passed at 1002 — a repeating exact value is structure, not noise |
 
 ---
 
 ## 8. CONCURRENCY — the conductor competes with its own fleet
 
-**The rule.** **NO GATE WHILE ANY BUILDER IS LIVE.** A gate and a builder's verification phase are the
-same resource, and "looks quiet" is not idle — a reading-phase builder reaches its own tests minutes
-later, inside the gate's window. A `git commit` launches a gate you did not type, so enumerate builders
-by `/proc/<pid>/cwd` before committing too. The conductor also holds its OWN heavy work while a gate
-runs. Take the exception deliberately and write down why, or HOLD.
+**The rule.** **NO GATE WHILE ANY BUILDER IS LIVE.** A gate and a builder's verification
+phase are the same resource, and "looks quiet" is not idle. A reading-phase builder reaches
+its own tests minutes later, inside the gate's window. A `git commit` launches a gate you
+did not type, so enumerate builders by `/proc/<pid>/cwd` before committing too. The
+conductor also holds its OWN heavy work while a gate runs. Take the exception deliberately
+and write down why, or HOLD.
 
-**You cannot demand a quiet machine you are not providing.** Concurrency limits are reasoned per PAIR
-of tasks, not only per count: two builders may be within cap and still ruin each other's measurement
-(#204 was held beside the flake investigation for exactly this).
+**You cannot demand a quiet machine you are not providing.** Concurrency limits are reasoned
+per PAIR of tasks, not only per count. Two builders may be within cap and still ruin each
+other's measurement (#204 was held beside the flake investigation for exactly this).
 
 | date | instance |
 |---|---|
@@ -232,13 +248,14 @@ of tasks, not only per count: two builders may be within cap and still ruin each
 
 ## 9. DELEGATION — a brief is read at LAUNCH, and the builder's world is not yours
 
-**The rule.** **A brief is read at LAUNCH. Appending to it does not reach a running agent** — verify by
-grepping the OUTPUT, and send post-dispatch information as a NEW dispatch. Law files are read from the
-WORKTREE, so law changes do not reach builders already running. And a builder's environment is not the
-conductor's: state environment facts from measurement, never from memory.
+**The rule.** **A brief is read at LAUNCH. Appending to it does not reach a running agent.**
+Verify by grepping the OUTPUT, and send post-dispatch information as a NEW dispatch. Law
+files are read from the WORKTREE, so law changes do not reach builders already running. A
+builder's environment is not the conductor's: state environment facts from measurement,
+never from memory.
 
-Delegation is **cold-start-clone orientation + task delta**: assume the agent knows nothing about this
-session and everything about the repo it can read.
+Delegation is **cold-start-clone orientation + task delta**: assume the agent knows nothing
+about this session and everything about the repo it can read.
 
 | date | instance |
 |---|---|
@@ -256,10 +273,11 @@ session and everything about the repo it can read.
 ## 10. DESTRUCTION AND MERGE SAFETY — every one of these cost real time
 
 **The rule.** Never destroy a recovery point. Branches are never deleted — park them
-`finished/` (merged) · `retired/` (never landed) · `reverted/` · `blocked/`. Never rewrite history.
-Never `git worktree remove --force`. **Never search for a process you intend to kill** — resolve the pid
-through `/proc/<pid>/cwd`, because argv contains INSTRUCTIONS including what the agent was told not to
-do. Guards go first or they are not guards (validate-late/act-early has bitten three times).
+`finished/` (merged) · `retired/` (never landed) · `reverted/` · `blocked/`. Never rewrite
+history. Never `git worktree remove --force`. **Never search for a process you intend to
+kill.** Resolve the pid through `/proc/<pid>/cwd`, because argv contains INSTRUCTIONS,
+including what the agent was told not to do. Guards go first or they are not guards
+(validate-late/act-early has bitten three times).
 
 | date | instance |
 |---|---|
@@ -271,19 +289,21 @@ do. Guards go first or they are not guards (validate-late/act-early has bitten t
 | 07-28 07:45 | the hard blocker was the length of a name I chose |
 | 07-28 19:15 | a negative control with side effects cut a worktree and launched an agent (see family 2) |
 | — | `land.sh` merged into the wrong branch because I left the checkout off main AFTER being warned |
+| 07-28 23:0x | dispatch's record commit named only the brief; the staged task-folder move stayed uncommitted and the next merge tripped over it — now a pathspec commit of the whole record, always on main |
 
 ---
 
 ## 11. THE GATE IS A SIEVE, NOT AN ITERATION MECHANISM (user correction)
 
-**The rule.** Iteration does not need the gate. **Only LANDING does.** The agent's inner loop is
-DRIVING the real app; the gate is the conductor's outer sieve. Fusing them is the most expensive
-mistake available, and it is invisible while it happens because everything still looks rigorous.
-(Full statement: RULE ZERO in the skill.)
+**The rule.** Iteration does not need the gate. **Only LANDING does.** The agent's inner
+loop is DRIVING the real app; the gate is the conductor's outer sieve. Fusing them is the
+most expensive mistake available, and it is invisible while it happens, because everything
+still looks rigorous. (Full statement: RULE ZERO in the skill.)
 
-**A green gate is not a claim about what the user feels.** It went green twice on a change that made
-the app unusable. Contracts earn their keep on properties a human CANNOT see; for felt properties the
-value is attribution, not detection — so **verify by DRIVING the real user path.**
+**A green gate is not a claim about what the user feels.** It went green twice on a change
+that made the app unusable. Contracts earn their keep on properties a human CANNOT see. For
+felt properties the value is attribution, not detection — so **verify by DRIVING the real
+user path.**
 
 **The user's veto is a gate the harness cannot replace.**
 
@@ -300,14 +320,15 @@ value is attribution, not detection — so **verify by DRIVING the real user pat
 
 ## 12. PRIORITY AND PROVENANCE — whose call is it
 
-**The rule.** **Never silently rank one user-directed item above another** — surface the ordering.
-Provenance decides main, not quality: conductor-invented experiments stay on `experiment/*` branches
-for the user to adopt. **A structural fact is not a problem** — make the change carry the burden of
-proof, and name predictions BEFORE implementing (cost/benefit becomes arguable once someone has a
-diff). Escalate only when the call is genuinely the user's: naming, scope, feel, publish consent.
+**The rule.** **Never silently rank one user-directed item above another.** Surface the
+ordering. Provenance decides main, not quality: conductor-invented experiments stay on
+`experiment/*` branches for the user to adopt. **A structural fact is not a problem.** Make
+the change carry the burden of proof, and name predictions BEFORE implementing
+(cost/benefit becomes arguable once someone has a diff). Escalate only when the call is
+genuinely the user's: naming, scope, feel, publish consent.
 
-**An instruction is an assertion.** Run it, from the directory the reader will run it from, before
-handing it over — including the ones too simple to fail.
+**An instruction is an assertion.** Run it, from the directory the reader will run it from,
+before handing it over. Including the ones too simple to fail.
 
 | date | instance |
 |---|---|
@@ -323,13 +344,14 @@ handing it over — including the ones too simple to fail.
 
 ## 13. RECORDS — capture is not the same as operative
 
-**The rule.** **ONE live copy, in the repo the work happens in.** Two copies diverge and a reader
-cannot tell which is current. A record that needs a SECOND STEP eventually does not happen — make it a
-BYPRODUCT (`dispatch.sh` refuses to launch without committing the brief first).
+**The rule.** **ONE live copy, in the repo the work happens in.** Two copies diverge, and a
+reader cannot tell which is current. A record that needs a SECOND STEP eventually does not
+happen — make it a BYPRODUCT (`dispatch.sh` refuses to launch without committing the record
+first).
 
-**A stale instruction in an automated prompt does not become correct by repeating.** Check any rule you
-are about to cite by name against the skill before acting on it — I cited a retired rule with full
-confidence once (07-27 04:30).
+**A stale instruction in an automated prompt does not become correct by repeating.** Check
+any rule you are about to cite by name against the skill before acting on it. I cited a
+retired rule with full confidence once (07-27 04:30).
 
 **Appending here CAPTURES a lesson. Promoting it into the skill makes it OPERATIVE.**
 
@@ -338,58 +360,66 @@ confidence once (07-27 04:30).
 | 07-25 19:20 | a record of a loop is not the loop |
 | 07-26 21:40 | MIGRATED — the ibr `Skills/Orchestration Lessons.md` entries that lived only there; that file is SUPERSEDED |
 | 07-28 | the record became a byproduct |
-| 07-28 19:25 | `orphaned/` → `retired/`; the negative-space rule promoted to RULE ONE in the skill |
+| 07-28 19:25 | `orphaned/` → `retired/`; the negative-space rule promoted into the skill |
 | — | the ledger migration carried each task's subject and dropped the rest; verifying a script RAN is not verifying its OUTPUT |
+| 07-28 23:5x | the parallel CLI task list was retired and drained; `.invar/tasks/` is the ONE live task record (a note task marks the supersession) |
 
 ---
 
 ## 14. CRAFT — rules that are specific rather than general, and still load-bearing
 
-**Contracts.** Separate CONFIGURED duration inputs from MEASURED duration verdicts (#155). The glide
-cap, easing window and maximum animation delta still derive row-count BOUNDS — that is legitimate; what
-is forbidden is a blocking verdict read off a clock. Frame ordering retires clock authority for
-verdicts, not for configuration. **A threshold I have to invent is one I will get wrong** — derive it,
-or make the contract a count.
+**Contracts.** Separate CONFIGURED duration inputs from MEASURED duration verdicts (#155).
+The glide cap, easing window, and maximum animation delta still derive row-count BOUNDS —
+that is legitimate. What is forbidden is a blocking verdict read off a clock. Frame ordering
+retires clock authority for verdicts, not for configuration. **A threshold I have to invent
+is one I will get wrong.** Derive it, or make the contract a count.
 
-**Zero-margin bounds are an unstated tolerance, not a flake.** #144 (23 of 24 frames), #149 (two bounds
-ignoring real scheduling), #165 (9 rows against 8), #193 (995 against 1000). Before diagnosing a miss,
-establish the MARGIN.
+**Zero-margin bounds are an unstated tolerance, not a flake.** #144 (23 of 24 frames), #149
+(two bounds ignoring real scheduling), #165 (9 rows against 8), #193 (995 against 1000).
+Before diagnosing a miss, establish the MARGIN.
 
-**Smoke authoring.** Chained steps carry state forward — compute cursor math from the ACTUAL carried
-state, not from the step's assumed starting point (07-23: a wrap smoke assumed index 0 while the prior
-step had left it at 20). Full list in the archive under `## Smoke authoring`.
+**Smoke authoring.** Chained steps carry state forward. Compute cursor math from the ACTUAL
+carried state, not from the step's assumed starting point (07-23: a wrap smoke assumed
+index 0 while the prior step had left it at 20). Full list in the archive under
+`## Smoke authoring`.
 
-**Building new modules.** **Mirror an existing module 1:1** — it is the cheapest path to a correct new
-one. The agent-harness module mirrored `terminal/` exactly: backend seam (interface) + mock double +
-reactive single-source. Full list in the archive under `## Building new modules`.
+**Building new modules.** **Mirror an existing module 1:1.** It is the cheapest path to a
+correct new one. The agent-harness module mirrored `terminal/` exactly: backend seam
+(interface) + mock double + reactive single-source. Full list in the archive under
+`## Building new modules`.
 
-**Modularity.** Draw the seam at the shared GENERATOR. Reject both duplication AND over-unification;
-the tell for a bad seam is a consumer suppressing a core behaviour.
+**Modularity.** Draw the seam at the shared GENERATOR. Reject both duplication AND
+over-unification. The tell for a bad seam is a consumer suppressing a core behaviour.
+Addendum from #114 Wave B: a rule that exists only implicitly (a hand-written action-name
+list) dies in the generalisation that removes the list — write the invariant BEFORE
+extracting the mechanism that silently enforces it.
 
-**Search for the CONCEPT, not a guessed spelling** (07-26 01:25). I told the user no keyboard
-acceleration existed; it did, as `movementRun`/`movementAcceleration` feeding
-`ScrollPhysics.Class.keyAcceleration`, with an invariant already recorded for it. A grep for the word I
-expected found nothing, and I reported that as absence — which is family 2 wearing a search's clothes.
+**Search for the CONCEPT, not a guessed spelling** (07-26 01:25). I told the user no
+keyboard acceleration existed; it did, as `movementRun`/`movementAcceleration` feeding
+`ScrollPhysics.Class.keyAcceleration`, with an invariant already recorded for it. A grep for
+the word I expected found nothing, and I reported that as absence — family 2 wearing a
+search's clothes.
 
-**The invariant lattice reviews a design before the code exists** (07-25 20:20). I proposed frame
-ORDERING with more confidence than it deserved; stating it against the lattice exposed the gap before
-any code was written. Use it as a design reviewer, not only as a record.
+**The invariant lattice reviews a design before the code exists** (07-25 20:20). I proposed
+frame ORDERING with more confidence than it deserved. Stating it against the lattice exposed
+the gap before any code was written. Use it as a design reviewer, not only as a record.
 
 ## Historical arc — the founding runs (full accounts in the archive)
 
-`Part 1`–`Part 11` cover 2026-07-23→24: the first conductor runs, the Invar UI batch, the tsgo swap,
-the agent-harness experiment, the provider layer, and the review phase. Their durable output is already
-distilled above; two framings are worth keeping verbatim here because everything else rests on them:
+`Part 1`–`Part 11` cover 2026-07-23→24: the first conductor runs, the Invar UI batch, the
+tsgo swap, the agent-harness experiment, the provider layer, and the review phase. Their
+durable output is already distilled above. Two framings are worth keeping verbatim here,
+because everything else rests on them:
 
-- **Part 3b — delegation is cold-start-clone orientation + task delta.** The strongest formulation of
-  what a brief has to contain.
-- **Part 5 — the invariants are the artifact; the app is an expression of them.** The reason contracts
-  are written as counts and impossibilities rather than as thresholds.
+- **Part 3b — delegation is cold-start-clone orientation + task delta.** The strongest
+  formulation of what a brief has to contain.
+- **Part 5 — the invariants are the artifact; the app is an expression of them.** The
+  reason contracts are written as counts and impossibilities rather than as thresholds.
 
-`Part 9` (a false invariant from a flawed verification method) is the ancestor of family 3, and
-`Part 2` (antipatterns and traps) is the ancestor of families 1 and 10.
+`Part 9` (a false invariant from a flawed verification method) is the ancestor of family 3,
+and `Part 2` (antipatterns and traps) is the ancestor of families 1 and 10.
 
 ## Live cron prompts
 
-**NOT here** — their verbatim copies live in the skill (`## Live cron prompts`). Crons are session-only
-and die on restart; the words are the durable artifact.
+**NOT here.** Their verbatim copies live in the skill (`## Live cron prompts`). Crons are
+session-only and die on restart; the words are the durable artifact.
