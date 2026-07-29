@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #305 [unknown-task-variables-pass-through](.invar/tasks/in-progress/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md)  [building]
   `tmux attach -t invar/305-unknown-task-variables-pass-through`
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/in-progress/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md)  [building]
   `tmux attach -t invar/299-structure-filter-uses-shared-input-generator`
-- #296 [per-workspace-terminal-worlds](.invar/tasks/in-progress/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md)  [building]
-  `tmux attach -t invar/296-per-workspace-terminal-worlds`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -85,11 +83,18 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (1) — stamp Priority: into these task files
+## NO PRIORITY GROUP (7) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
+- #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
+- #308 [308-markdown-view-only-mode-persistent](.invar/tasks/active/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)
+- #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
+- #310 [310-markdown-title-blue-like-subtitles](.invar/tasks/active/310-markdown-title-blue-like-subtitles/task-310-markdown-title-blue-like-subtitles.md)
+- #311 [311-vue-sfc-integration-map](.invar/tasks/active/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md)
+- #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 
-## RECENTLY COMPLETED (last 15 of 77 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 78 — full log: project.tasks-completed.md)
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
+- #296 [per-workspace-terminal-worlds](.invar/tasks/completed/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md) — 55772cef — per-workspace terminal worlds: panel content sets isolate + restore per workspace
 - #295 [vscode-task-variable-schema](.invar/tasks/completed/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md) — 371cbdb7 — VS Code task variables: env + predefined set, boundary refusals
 - #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/completed/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md) — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
 - #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
@@ -103,4 +108,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #284 [scrollbar-theme-captured-at-construction](.invar/tasks/completed/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md) — 29d815ea — Scrollbar colours follow the live theme: derive-per-frame at the shared painter, census clean, two-scale switch contract
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
 - #281 [structure-pane-round-two-refinements](.invar/tasks/completed/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md) — 35151464 — Structure round two: no import/heritage noise, visibility+cache+override+getter marks, own ⛭ depth gear in-pane
-- #280 [comment-drift-panecontent-scrollbarsync](.invar/tasks/completed/280-comment-drift-panecontent-scrollbarsync/task-280-comment-drift-panecontent-scrollbarsync.md) — ae310859 — Comment drift: PaneContent citizens, ScrollbarSync ownership, Workspace doc blocks — code-evidenced corrections only

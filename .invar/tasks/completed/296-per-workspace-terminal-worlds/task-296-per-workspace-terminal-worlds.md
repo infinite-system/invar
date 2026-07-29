@@ -1,6 +1,6 @@
 # 296 — terminals double on workspace open; design: each workspace owns its terminal world
 
-State: IN-PROGRESS
+State: COMPLETED — 55772cef — per-workspace terminal worlds: panel content sets isolate + restore per workspace
 Created: 2026-07-29
 Engine: codex
 Environment: linux
