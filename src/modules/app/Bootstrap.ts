@@ -120,11 +120,11 @@ class $Bootstrap {
     // Ctrl+click routing guard. OpenTUI treats Ctrl+left-down as "extend the current native
     // selection" and CONSUMES the event whenever `currentSelection` exists — and an ordinary
     // click on any selectable text (a tab label, a tree row) leaves a zero-width selection
-    // behind. That residue silently eats every later Ctrl+click, including the markdown
-    // preview's link activation. A selection the user is actively DRAGGING keeps the native
-    // gesture; a non-dragging one is cleared here so the down reaches the renderable under
-    // the pointer and Ctrl+click keeps its recorded meaning (open the reference).
-    // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+    // behind. That residue silently eats every later Ctrl+click, so any renderable listening
+    // for a modified click (a rendered link, a go-to-definition target) never hears it. A
+    // selection the user is actively DRAGGING keeps the native gesture; a non-dragging one is
+    // cleared here so the down reaches the renderable under the pointer. Host-generic: no
+    // consumer is named — whoever handles Ctrl+click simply receives it again.
     {
       const routedRenderer = renderer as unknown as {
         processSingleMouseEvent: (mouseEvent: {
