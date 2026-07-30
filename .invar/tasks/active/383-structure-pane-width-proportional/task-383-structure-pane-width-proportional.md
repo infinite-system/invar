@@ -1,4 +1,4 @@
-# #383 — the structure pane opens too wide; the editor is the prominent actor
+# #383 — the right panel is proportional; the editor is the prominent actor
 
 State: ACTIVE
 Priority: user-directed
@@ -35,3 +35,14 @@ the prominent actor."
   ("The structure pane shows itself for a supported document" etc.) and
   layout contracts; propose refinements if the proportion rule deserves a
   record.
+
+## Widened scope (user, same conversation): the whole right panel
+
+The proportional rule applies HOLISTICALLY to the right panel, not just
+the structure pane — whatever content occupies the right side (structure,
+pane list, any future right-panel occupant) obeys the same law: the
+editor is the prominent actor; the right panel takes a bounded
+proportion, never exceeding the editor's share, at every geometry. One
+generator for the rule (the right-panel layout), not per-pane copies —
+fix it at the panel level so every current and future occupant inherits
+it.
