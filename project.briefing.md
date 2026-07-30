@@ -307,3 +307,24 @@ user firing many small feature requests mid-session: file each as its own
 numbered task WITH verbatim intent + conductor seam-triage, commit
 immediately, keep the dispatch queue ordered in the anchor — the filing IS
 the ack.
+
+## ANCHOR 16 DELTA (2026-07-30 03:2x — append-only, anchor 16 otherwise stands)
+
+- #334 LANDED b4695e2f (Drive settled-wait fixed; re-gate red was #214's
+  panel-chrome class, narrow-ruled with census evidence). Main-tree Drive red
+  is GONE.
+- #342 DISPATCHED into the freed lane (tasks.json panes; SAFETY RAIL in its
+  task file). Lanes: #339, #340, #342.
+- QUEUE REORDERED (user): #350 (nicer sample video — mandelbrot/life pick)
+  jumps to right after #342. Then #343 #344 #345 #346 #347 #348 #349; #341
+  behind #340.
+- #346 grew points 8-10 tonight: close controls -> then REMOVED in favor of
+  the chip-expanded management list (point 9); spaces are MULTI-PANE
+  containers; rounded pane frames REMOVED entirely, tabs are the only
+  chrome, density goal, focus cue must be re-proposed (point 10).
+- NEW since anchor 16: #349 (extensions pane knobs/icons/hover/detail),
+  #350 (sample video source swap).
+- extract-gate-verdict.sh was hardened (cwd-based rollout selection, the
+  #280/#289 lesson) — someone edited it in-place; self-test it before first
+  use: bash scripts/fleet/extract-gate-verdict.sh --self-test.
+- Twin conductor 3541394: STILL no user decision. Keep asking.
