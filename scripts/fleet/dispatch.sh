@@ -50,6 +50,12 @@ for task_state in active in-progress completed retired; do
     break
   fi
 done
+brief_sequence=1
+while [ -e "${brief_link_directory}/brief-${task_number}-${brief_sequence}-${slug}.md" ]; do
+  brief_sequence=$((brief_sequence + 1))
+done
+brief_dated_name="brief-${task_number}-${brief_sequence}-${slug}.md"
+task_pointer_target=".invar/tasks/in-progress/${name}/${brief_dated_name}#invariants-in-scope"
 
 # THE INVARIANT DIALOGUE IS MECHANICAL. A brief without its two sections does
 # not launch — the loop cannot depend on the conductor remembering it.
@@ -77,9 +83,9 @@ fi
 
 # SNAPSHOT the brief NOW. A pre-filed brief naturally lives INSIDE the active/
 # task folder, and the record move (active/ -> in-progress/) below relocates
-# that folder BEFORE the brief is copied into the worktree — the cp then reads
-# a path that no longer exists (bit twice on 2026-07-29, #268). The snapshot
-# makes the brief's location irrelevant to everything after this line.
+# that folder BEFORE the brief is filed — the copy then reads a path that no
+# longer exists (bit twice during #268, editor smoke versus auto-open red on
+# main). The snapshot makes the brief's location irrelevant after this line.
 brief_snapshot="$(mktemp)"
 cp "$brief_file" "$brief_snapshot"
 brief_file="$brief_snapshot"
@@ -245,7 +251,9 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   echo "  environment: ${declared_environment:-unset} (host: $(uname -s | tr '[:upper:]' '[:lower:]'))"
   echo "  branch:      ${branch}"
   echo "  worktree:    ${worktree_path}"
+  echo "  task brief:  ${task_pointer_target}"
   echo "  transcript:  ${transcript_path}"
+  rm -f "$brief_snapshot"
   exit 0
 fi
 
@@ -341,8 +349,8 @@ base_commit="$(git rev-parse --short "$base_ref")"
 echo "dispatch: cutting worktree $worktree_path on $branch"
 echo "dispatch: BASE = $base_ref ($base_commit)"
 # ---------------------------------------------------------------------------
-# 3. Place the brief in BOTH homes: the worktree (for the builder) and the
-#    dispatch record (for the audit trail).
+# 3. File the brief in the dispatch record. The worktree gets a root pointer
+#    after it is cut, so the brief keeps one link base and one durable home.
 # ---------------------------------------------------------------------------
 # A pre-filed task MOVES from active/ — one task, one folder, forever. mkdir alone would leave the
 # active copy behind and the first dispatch of a filed task would duplicate it. The State line
@@ -354,13 +362,7 @@ fi
 mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
 # Brief naming is brief-<task-number>-<sequence>-<slug>.md — the NUMBER leads, so every file in the
 # folder sorts under its task and a directory listing groups by task before it groups by round. The
-# sequence is the next unused one, so a follow-up brief is a NEW file and never overwrites the brief
-# the builder was actually working from.
-brief_sequence=1
-while [ -e "$dispatch_directory/brief-${task_number}-${brief_sequence}-${slug}.md" ]; do
-  brief_sequence=$((brief_sequence + 1))
-done
-brief_dated_name="brief-${task_number}-${brief_sequence}-${slug}.md"
+# sequence was resolved before DRY_RUN so the dry-run output tests the same pointer target used here.
 cp "$brief_file" "$dispatch_directory/$brief_dated_name"
 PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
   --fix --moved-only "$dispatch_directory/$brief_dated_name"
@@ -455,7 +457,17 @@ echo "dispatch: installing dependencies (not optional, not the builder's job to 
 ( cd "$worktree_path" && PATH="$HOME/.bun/bin:$PATH" bun install >/dev/null 2>&1 ) \
   || { echo "dispatch: bun install FAILED — not launching" >&2; exit 1; }
 
-cp "$brief_snapshot" "$worktree_path/TASK.md"
+# TASK.md is a POINTER, not a second copy of the brief. The filed brief keeps
+# its task-folder base, so every relative link continues to resolve from its
+# authored home. The worktree-root pointer uses a root-relative target and the
+# required section anchor.
+cat > "$worktree_path/TASK.md" <<TASK_POINTER
+# Task brief
+
+Read the entire [filed task brief](${task_pointer_target}) from the beginning and execute it fully.
+TASK_POINTER
+PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
+  --base-directory "$worktree_path" "$worktree_path/TASK.md"
 
 # ---------------------------------------------------------------------------
 # 5. Launch inside tmux so the session is ATTACHABLE BY SOMEONE WHO IS NOT THE
