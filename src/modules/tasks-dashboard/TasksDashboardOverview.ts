@@ -25,6 +25,7 @@ import { ref, shallowRef } from 'vue';
 import {
   INVAR_FLEET_REPOSITORY_ROOT,
   PRIORITY_ORDER,
+  TASKS_MOTION_PAINTS_PER_STEP,
   agentIdentity,
   builderStanding,
   completedStateAttachment,
@@ -44,7 +45,8 @@ import {
 
 class $TasksDashboardOverview {
   protected static readonly DATA_HEARTBEAT_MILLISECONDS = 1000;
-  protected static readonly MOTION_HEARTBEAT_MILLISECONDS = 1000 / 30;
+  protected static readonly MOTION_HEARTBEAT_MILLISECONDS =
+    (1000 / 30) * TASKS_MOTION_PAINTS_PER_STEP;
   protected static readonly PROBE_EVERY_TICKS = 2;
   protected static readonly DURATION_REFRESH_EVERY_TICKS = 60;
   declare $watch: typeof import('vue').watch;
@@ -175,6 +177,10 @@ class $TasksDashboardOverview {
 
   /** The data clock: cycling advance, the cheap tree probe, and duration re-derivation. */
   protected heartbeatTick(): void {
+    if (!this.dependencies.isObserved()) {
+      this.stopHeartbeatTimers();
+      return;
+    }
     this.heartbeatCount += 1;
     if (this.cycling.value && this.cycleIsDue()) this.advanceLens(1);
     if (this.heartbeatCount % $TasksDashboardOverview.PROBE_EVERY_TICKS === 0)
@@ -203,8 +209,11 @@ class $TasksDashboardOverview {
   }
 
   protected motionHeartbeatTick(): void {
-    if (!this.hasLiveMotion()) return;
-    this.animationPaint.value += 1;
+    if (!this.dependencies.isObserved() || !this.hasLiveMotion()) {
+      this.syncMotionHeartbeatTimer();
+      return;
+    }
+    this.animationPaint.value += TASKS_MOTION_PAINTS_PER_STEP;
     this.dependencies.requestRender();
   }
 
@@ -225,12 +234,21 @@ class $TasksDashboardOverview {
   }
 
   protected hasLiveMotion(): boolean {
-    if (this.gateGlance.value?.exitCode === null) return true;
+    const visibleRows = this.rows.value.slice(
+      this.windowTop(),
+      this.windowTop() + Math.max(1, this.viewportHeight.value),
+    );
+    if (
+      this.gateGlance.value?.exitCode === null &&
+      visibleRows.some((row) => row.kind === 'gate')
+    ) {
+      return true;
+    }
     return (
       this.lens.value === 'live' &&
-      this.rows.value.some(
+      visibleRows.some(
         (row) =>
-          row.kind === 'task' &&
+          row.kind === 'detail' &&
           (row.phase === 'exploring' || row.phase === 'building'),
       )
     );
@@ -611,7 +629,20 @@ class $TasksDashboardOverview {
     const next = Math.min(Math.max(0, this.scrollTop.value + rowDelta), maxTop);
     if (next === this.scrollTop.value) return;
     this.scrollTop.value = next;
+    this.syncMotionHeartbeatTimer();
     this.version.value += 1;
+  }
+
+  setViewportSize(columns: number, rows: number): void {
+    const viewportHeight = Math.max(1, rows);
+    const viewportWidth = Math.max(1, columns);
+    const viewportChanged =
+      this.viewportHeight.value !== viewportHeight ||
+      this.viewportWidth.value !== viewportWidth;
+    if (!viewportChanged) return;
+    this.viewportHeight.value = viewportHeight;
+    this.viewportWidth.value = viewportWidth;
+    this.syncMotionHeartbeatTimer();
   }
 
   selectedTaskFilePath(): string | null {
