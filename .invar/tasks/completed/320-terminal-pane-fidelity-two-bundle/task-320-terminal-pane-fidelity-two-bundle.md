@@ -1,6 +1,6 @@
 # 320 — dispatch record: terminal-pane-fidelity-two-bundle
 
-State: active
+State: COMPLETED — f64f85ef — terminal theme fidelity (VSCode palette + theme defaults) + DEC 2026 synchronized child repaints; tasks:watch flicker gone
 Engine: codex
 Model: 5.6-sol
 Effort: high
