@@ -35,6 +35,12 @@ Second addition (verbatim, 2026-07-29, GOVERNS equally):
 
 ("to an extent" — the user's own correction of his "to an extend".)
 
+Third addition (verbatim, 2026-07-29, GOVERNS equally):
+
+> what if sharing is so interleaved sharing stream extracted separately
+> is nonsense, cannot be decoded, but can be delivered still, make data
+> interleaving secure by construction
+
 Naming context (same session): the user named the north star
 "Indranet Invarnet" — Indra's net; the prior verbatim north star is
 "imagine we create our own internet between Invar instances"
@@ -86,18 +92,39 @@ this task folder) covering, with citations for every ecosystem claim:
    graceful degradation for leechers first, contributors never; and how
    does a leecher's path to becoming a contributor look (install Invar,
    inherit an allocation)?
-3. **Server independence**: what remains centralized in each prior-art
+3. **Secure-by-construction interleaving** (third addition): fragments
+   a relay carries are individually NONSENSE — deliverable but not
+   decodable in isolation; only the assembling endpoint reconstructs.
+   Survey the real constructions and their exact guarantees, cite each:
+   erasure/fountain codes (Reed-Solomon, LT/Raptor — dispersal, not
+   secrecy by themselves), threshold secret sharing (Shamir — true
+   k-of-n secrecy, at bandwidth cost), random linear network coding
+   (coded pieces useless below rank), all-or-nothing transforms (AONT —
+   every fragment needed, near-zero overhead), and plain
+   encrypt-then-stripe (where the key, not the interleaving, carries
+   the secrecy — be honest about which property comes from where).
+   For each: overhead, latency cost for streaming (can you decode a
+   window before the whole object?), repair traffic under churn, and
+   what "secure by construction" formally means for a relay node
+   (privacy for the viewer, deniability for the relay — a relay that
+   CANNOT decode what it forwards is also a relay that need not answer
+   for it; note the legal-gray reality rather than hand-waving it).
+   Interaction with arm 2: coded fragments make capability-ratio caps
+   easier (any k fragments serve, no hot pieces) — say where coding
+   dissolves the rarest-piece problem.
+
+4. **Server independence**: what remains centralized in each prior-art
    system (trackers, signaling, TURN, certificate roots) and the
    decentralized alternatives (DHT, rendezvous over existing relays,
    mDNS local, gossip). Be honest about NAT traversal reality:
    percentage of peers reachable p2p, relay fallback cost.
-4. **Fit with Invar's seams**: the north-star ladder already recorded
+5. **Fit with Invar's seams**: the north-star ladder already recorded
    (presence → ledger sync → projected panes → fleet mesh); prefer
    location-independent seams. Where does a transfer-allocation
    underlay slot in — transport layer under projected panes and video
    (#324/#325 lanes)? What is the smallest honest first rung (e.g. two
    Invar instances exchanging a stream over the underlay)?
-5. **Recommendation + phasing**: ranked approaches by (i) server
+6. **Recommendation + phasing**: ranked approaches by (i) server
    independence achieved, (ii) realistic scale, (iii) implementation
    cost in our stack (Bun/TypeScript — what libraries exist: cite),
    (iv) testability in the harness (how do you ASSERT redistribution
