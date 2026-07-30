@@ -6,7 +6,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: default
-Priority: verification-integrity
+Priority: user-directed
 
 ## Outline
 
@@ -36,3 +36,30 @@ acceptance produces FALSE GREENS. Only the first has been observed.
 ## Sources
 
 None. Only the subject line above survives — no brief was written for this task.
+
+## USER DIRECTIVE (2026-07-30 04:5x — promoted to user-directed, dispatch soon)
+
+From the #337 report: artifacts/tui.log has no instance identity — two
+concurrent plugin-manifest runs interleave geometry lines in one file and
+the newest-boot slice holds both instances' lines (reproduced 2/2
+concurrent pairs). Correction to this task's earlier detail: the
+plugin-manifest smoke ALSO sets TUI_DEBUG_BARS='1', so "only scrollbars
+enables it" no longer holds.
+
+The user's order widens the scope: "test isolation is critical — find out
+EVERY instance where we are violating test isolation and writing to the
+same file polluting the results."
+
+So this task now has two parts:
+1. The census FIRST: enumerate every shared mutable path the harness and
+   smokes write concurrently — artifacts/tui.log and every sibling
+   (relative-path logs, fixed /tmp names, shared HOME/settings,
+   .perf-history, fixed ports/sockets, fixed fifo paths). For each: who
+   writes, who reads, per-run-isolated or shared, and whether pollution
+   can flip a verdict (false green OR false red). The #337 report's
+   measurement method (plant a foreign line, watch the reader accept it)
+   is the model. Both polarities per check.
+2. The fix: instance-scoped diagnostic paths (per-run log path or
+   instance-tagged lines), a provenance guard in the readers, and a
+   positive control that rejects a planted foreign line. Fix the worst
+   class first (verdict-flipping shared writes), then sweep the rest.

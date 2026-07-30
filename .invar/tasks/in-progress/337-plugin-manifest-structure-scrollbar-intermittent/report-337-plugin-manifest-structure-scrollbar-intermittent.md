@@ -3,8 +3,8 @@
 State: READY
 Engine: claude (opus-5)
 Branch: `fleet/337-plugin-manifest-structure-scrollbar-intermittent`
-Commit: `PENDING_COMMIT_HASH`
-Gate: `PENDING_GATE_EXIT`
+Commit: `af864b3d` (branch only, not pushed)
+Gate: `GATE_EXIT=0` on attempt 5, tree clean
 
 ## The task numbers this report uses
 
@@ -251,27 +251,67 @@ for weakness B.
 
 ## 7. Gate chain
 
-The commit ran the pre-commit hook, which runs the full `scripts/merge-gate.sh`. I did not
-run `merge-gate.sh` by hand and did not use `SKIP_GATE`. Two attempts:
+**`GATE_EXIT=0`. Commit `af864b3d`. Tree clean. Branch not pushed.**
 
-**Attempt 1: `GATE_EXIT=1`.** One hard red, `smoke: markdown harness`, in the parallel
-pool. The failure was an assertion, not a timeout, so the gate did not retry it:
-`error: FAIL preview row missing: alpha`, at
-`scripts/harness/smoke-markdown-harness.ts:173` through line 1464. The dumped grid shows
-the preview pane narrower than the table it must hold, so the marker `alpha` is clipped to
-`alph`. My diff touches only `scripts/harness/smoke-plugin-manifest-harness.ts` and each
-smoke runs as its own process, so the two cannot interact. I proved it off-diff by driving
-the markdown harness standalone twice on this same tree: 94 PASS and `EXIT=0` both times.
-The same gate also recorded two retried passes, `smoke: panel-split harness` (#359) and
-`smoke: panel-chrome harness` (#214), both named in the brief as pre-existing classes.
-Load average was 2.51 with 6 pool workers. The markdown red belongs to the same
-layout-under-load family. It is bycatch 8, named and not chased.
+```
+merge-gate: GREEN
+GATE_EXIT=0
+pre-commit: merge-gate GREEN — commit allowed.
+COMMIT_EXIT=0
+merge-gate timing: total 3m50s
+```
 
-The behavioral-contracts step, which is the one that contains the plugin-manifest drive,
-PASSED on attempt 1: `merge-gate timing: serial step 1m53.041s — behavioral-contracts
-(felt invariants)`. The subject of this task was green on the first gate run.
+The commit ran the pre-commit hook, which runs the full `scripts/merge-gate.sh`. I never
+ran `merge-gate.sh` by hand and never used `SKIP_GATE`. The green came on the fifth
+attempt. The tree did not change between attempt 1 and attempt 5. Every red came from a
+pre-existing class, and the step that contains this task's subject passed on all five.
 
-**Attempt 2: `GATE_EXIT=PENDING_GATE_EXIT`.** Re-run with no change to the tree.
+| attempt | GATE_EXIT | what was red |
+|---|---|---|
+| 1 | 1 | `smoke: markdown harness`, hard red. #359 and #214 retried-passed |
+| 2 | 1 | `smoke: panel-split harness` (#359) and `smoke: panel-chrome harness` (#214), both retried and still failed |
+| 3 | 1 | `smoke: panel-chrome harness` (#214), retried and still failed |
+| 4 | 1 | `smoke: panel-split harness` (#359), retried and still failed |
+| 5 | **0** | nothing. `smoke: panel-chrome harness` (#214) retried-passed, so it is in the RETRY TALLY as a flake |
+
+`behavioral-contracts (felt invariants)`, the step that runs the plugin-manifest drive,
+was `OK` in all five, at 1m52 plus or minus one second:
+
+```
+attempt 1: merge-gate timing: serial step 1m53.041s
+attempt 2: merge-gate timing: serial step 1m52.656s
+attempt 3: merge-gate timing: serial step 1m52.486s
+attempt 4: merge-gate timing: serial step 1m51.981s
+attempt 5: merge-gate timing: serial step 1m51.689s
+```
+
+**Attempt 1's markdown red, proven off-diff.** The failure was an assertion, not a
+timeout, so the gate did not retry it: `error: FAIL preview row missing: alpha` at
+`scripts/harness/smoke-markdown-harness.ts:173`, reached from line 1464. The dumped grid
+shows the preview pane narrower than the table it must hold, so `alpha` painted as `alph`.
+My diff touches only `scripts/harness/smoke-plugin-manifest-harness.ts`, and nothing
+imports that file, so the two cannot interact. I drove the markdown harness standalone
+twice on the same tree: 94 PASS and `EXIT=0` both times. It is bycatch 8.
+
+**#359 and #214, proven off-diff.** `scripts/harness/smoke-panel-split-harness.ts` imports
+only `HarnessSmoke`, `HarnessSnapshot`, `PtyTestDriver`, `StatusChannel`, and two theme
+modules. It has no path to my change. Beyond that argument I measured it: I replaced the
+smoke file with its `HEAD` version, drove panel-split on that base tree, and it passed
+(`EXIT=0`), then restored the fix. panel-chrome also passed standalone (`EXIT=0`). Their
+failures are `Timed out waiting for status condition:
+status.panelContentOrder.join(',') === 'agent,terminal' ...` and `Timed out waiting for
+the Terminal 2 list close removes only that instance`, both terminal-spawn waits under
+pool contention. Recorded load averages across the five runs ranged from 1.37 to 4.19.
+Named as the brief instructs, not chased.
+
+One caution for the conductor about the retry ledger.
+`.perf-history/gate-retries.ndjson` holds 7 records for commit `26dd04f9`, but I ran 5
+gates. Two extra records at 08:47:59 (`all-pass`) and 08:48:58 came from a malformed
+command of mine that launched a sixth gate in the background while attempt 4 was already
+running. Two concurrent gates in one worktree contend for the same machine, which is the
+most likely reason attempt 4 went red. The 08:47:59 `all-pass` record has no console log
+and produced no commit, so I do not count it as a green. The only green I claim is
+attempt 5, whose log states `GATE_EXIT=0` and whose commit exists.
 
 Verification also run by hand, once each:
 
