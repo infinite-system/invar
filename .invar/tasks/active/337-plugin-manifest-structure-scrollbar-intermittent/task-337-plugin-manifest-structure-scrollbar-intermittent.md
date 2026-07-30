@@ -5,7 +5,7 @@ Priority: flake-evidence
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: high
+Effort: medium
 
 ## What happened (bycatch from #335, 2026-07-30)
 

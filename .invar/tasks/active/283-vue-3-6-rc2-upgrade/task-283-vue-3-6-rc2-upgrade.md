@@ -5,7 +5,7 @@ Created: 2026-07-29
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: high
+Effort: medium
 Priority: USER-DIRECTED (2026-07-29 10:5x — "keep up with latest alien
 signals"; expectation: marginal difference)
 

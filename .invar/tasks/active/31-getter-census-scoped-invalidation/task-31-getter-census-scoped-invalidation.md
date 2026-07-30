@@ -5,7 +5,7 @@ Created: 2026-07-28
 Engine: claude
 Environment: linux
 Model: fable-5
-Effort: high
+Effort: medium
 Priority: architecture-hygiene
 Assignment note: On hold pending #110; resuming means re-judging whether it is still worth doing.
 

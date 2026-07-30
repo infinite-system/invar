@@ -5,7 +5,7 @@ Priority: user-directed
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: high
+Effort: medium
 
 ## The request (user, 2026-07-30)
 

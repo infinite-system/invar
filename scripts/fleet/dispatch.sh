@@ -534,8 +534,8 @@ case "$engine" in
       5.6-sol|"") model_flags=" -m gpt-5.6-sol";;
       *) model_flags=" -m ${declared_model}";;
     esac
-    effective_effort="${declared_effort:-high}"
-    [ "$effective_effort" = "default" ] && effective_effort="high"
+    effective_effort="${declared_effort:-medium}"
+    [ "$effective_effort" = "default" ] && effective_effort="medium"
     model_flags="${model_flags} -c model_reasoning_effort=${effective_effort}"
     ;;
   claude)

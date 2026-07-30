@@ -3,7 +3,7 @@
 State: IN-PROGRESS
 Engine: codex
 Model: 5.6-sol
-Effort: high
+Effort: medium
 Provenance: USER-DIRECTED 2026-07-29
 
 ## User's words (verbatim, GOVERNS)

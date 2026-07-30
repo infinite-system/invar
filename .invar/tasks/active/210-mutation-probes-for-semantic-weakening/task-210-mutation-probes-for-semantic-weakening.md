@@ -5,7 +5,7 @@ Created: 2026-07-28 (carved out of #77 when its first two holes landed)
 Engine: claude
 Environment: linux
 Model: opus-5
-Effort: high
+Effort: medium
 Priority: verification-integrity
 Assignment note: Targeted mutation testing — choosing what to mutate is the whole task.
 
