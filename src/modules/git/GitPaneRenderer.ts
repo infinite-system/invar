@@ -10,7 +10,7 @@
 // invariant: Renderables hold no model state (src/modules/ui/ui.invariants.md)
 // invariant: Commit expansion is lazy and windowed (src/modules/git/git.invariants.md)
 // invariant: Git row decoration stays within one row (src/modules/git/git.invariants.md)
-// invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
+// invariant: Selection stays anchored to an item (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { TextCoordinates } from '../text/TextCoordinates';

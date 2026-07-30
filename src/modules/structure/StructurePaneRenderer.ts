@@ -11,7 +11,7 @@
 // invariant: One table resolves every symbol mark (src/modules/theme/theme.invariants.md)
 // invariant: A structure source answers or declines, never blanks (src/modules/structure/structure.invariants.md)
 // invariant: Outline labels expose source semantics (src/modules/structure/structure.invariants.md)
-// invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
+// invariant: Selection stays anchored to an item (src/modules/ui/ui.invariants.md)
 import {
   StyledText,
   fg,

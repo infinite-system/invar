@@ -60,7 +60,20 @@ describe('FileTreePaneContent', () => {
 
     expect(pane.id).toBe('files');
     expect(pane.keybindingContext).toBe('files');
-    expect(pane.onPointerDown(0, 1)).toBe(true);
+    pane.render({
+      width: 12,
+      height: 4,
+      palette: {
+        dim: '#777777',
+        accent: '#ffffff',
+        cursorLine: '#333333',
+        fg: '#ffffff',
+      },
+    } as never);
+    expect(pane.tooltipAt(9, 0)).toBe('Reveal open file');
+    expect(pane.tooltipAt(8, 0)).toBeNull();
+    expect(pane.tooltipAt(9, 1)).toBeNull();
+    expect(pane.onPointerDown(0, 2)).toBe(true);
     expect(tree.selectedIndex.value).toBe(1);
     expect(workspaceFocus.value).toBe('primaryPane');
     expect(activationCount).toBe(1);
@@ -91,8 +104,9 @@ describe('FileTreePaneContent', () => {
     pane.onResize(20, 8);
 
     expect(tree.viewportWidth.value).toBe(18);
-    expect(tree.viewportHeight.value).toBe(8);
+    expect(tree.viewportHeight.value).toBe(7);
     expect(pane.scrollViewportColumns).toBe(18);
-    expect(pane.scrollViewportRows).toBe(8);
+    expect(pane.scrollViewportRows).toBe(7);
+    expect(pane.scrollbarRowOffset).toBe(1);
   });
 });

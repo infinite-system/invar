@@ -2,6 +2,7 @@ import { test, expect, beforeAll, afterAll } from 'bun:test';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ref } from 'vue';
 import { FileTree } from './FileTree';
 
 let root: string;
@@ -53,4 +54,45 @@ test('selection movement clamps to bounds', () => {
   expect(tree.selectedIndex.value).toBe(0);
   tree.moveSelection(100);
   expect(tree.selectedIndex.value).toBe(tree.rows.length - 1);
+});
+
+test('revealing a path expands ancestors, selects the file, and minimally scrolls', () => {
+  const tree = new FileTree.Class();
+  tree.open(root);
+  tree.viewportHeight.value = 1;
+
+  expect(tree.revealPath(join(root, 'sub', 'c.ts'))).toBe(true);
+  expect(tree.rows.map((row) => row.name)).toEqual([
+    'sub',
+    'c.ts',
+    'a.ts',
+    'b.md',
+  ]);
+  expect(tree.selected?.path).toBe(join(root, 'sub', 'c.ts'));
+  expect(tree.scrollTop.value).toBe(1);
+});
+
+test('revealing a filtered hidden file is a safe no-op', () => {
+  const hiddenRoot = mkdtempSync(join(tmpdir(), 'ftree-hidden-'));
+  try {
+    mkdirSync(join(hiddenRoot, '.private'));
+    writeFileSync(join(hiddenRoot, '.private', 'secret.ts'), 'secret\n');
+    writeFileSync(join(hiddenRoot, 'visible.ts'), 'visible\n');
+    const showHiddenFiles = ref(false);
+    const tree = new FileTree.Class(showHiddenFiles);
+    tree.open(hiddenRoot);
+    const originalRows = tree.rows.map((row) => row.path);
+
+    expect(tree.revealPath(join(hiddenRoot, '.private', 'secret.ts'))).toBe(
+      false,
+    );
+    expect(tree.rows.map((row) => row.path)).toEqual(originalRows);
+    expect(tree.selectedIndex.value).toBe(0);
+    showHiddenFiles.value = true;
+    expect(tree.rows.find((row) => row.name === '.private')?.expanded).toBe(
+      false,
+    );
+  } finally {
+    rmSync(hiddenRoot, { recursive: true, force: true });
+  }
 });

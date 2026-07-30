@@ -210,6 +210,10 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.panelRestore, owner: 'panel restore' },
       { mark: unicodeVocabulary.panelClose, owner: 'panel close' },
       {
+        mark: unicodeVocabulary.fileTreeReveal,
+        owner: 'file-tree reveal',
+      },
+      {
         mark: unicodeVocabulary.diffPreviousChange,
         owner: 'diff previous change',
       },
@@ -459,6 +463,7 @@ class $ThemeIcons {
         panelExpand: '\u{f065}',
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
+        fileTreeReveal: '\u{f05b}',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
         overviewMark: '•',
@@ -491,6 +496,7 @@ class $ThemeIcons {
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
+        fileTreeReveal: '⊙',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
         overviewMark: '•',
@@ -510,6 +516,7 @@ class $ThemeIcons {
         panelExpand: '>',
         panelRestore: '<',
         panelClose: 'x',
+        fileTreeReveal: 'o',
         diffPreviousChange: 'U',
         diffNextChange: 'D',
         overviewMark: '.',
@@ -910,6 +917,7 @@ export interface InterfaceGlyphVocabulary {
   panelExpand: string;
   panelRestore: string;
   panelClose: string;
+  fileTreeReveal: string;
   diffPreviousChange: string;
   diffNextChange: string;
   overviewMark: string;

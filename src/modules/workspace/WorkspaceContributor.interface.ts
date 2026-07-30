@@ -15,6 +15,7 @@ export interface WorkspaceContribution {
   readonly providers?: readonly WorkspaceProvider[];
   readonly renderRevision?: Readonly<Ref<number>>;
   opened(root: string): void;
+  documentBecameActive?(path: string): void;
   settingsAttached?(settings: Settings.Instance): void;
   suspended(): void;
   resumed(): void;

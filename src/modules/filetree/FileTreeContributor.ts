@@ -32,6 +32,7 @@ class $FileTreeContributor
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
   protected showHiddenFilesSetting: RegisteredSetting<boolean> | null = null;
+  protected revealOpenFileSetting: RegisteredSetting<boolean> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const fileTreeWorkspace = this.createWorkspaceContribution(workspace);
@@ -44,6 +45,13 @@ class $FileTreeContributor
     this.showHiddenFilesSetting = context.registerSetting({
       identifier: 'fileTreeShowHiddenFiles',
       label: 'Show hidden files',
+      section: this.name,
+      defaultValue: true,
+      spec: { kind: 'boolean' },
+    });
+    this.revealOpenFileSetting = context.registerSetting({
+      identifier: 'fileTreeRevealOpenFile',
+      label: 'Reveal open file',
       section: this.name,
       defaultValue: true,
       spec: { kind: 'boolean' },
@@ -93,6 +101,7 @@ class $FileTreeContributor
     return new FileTreeWorkspace.Class(
       workspace,
       this.showHiddenFilesSetting?.value,
+      this.revealOpenFileSetting?.value,
     );
   }
 
@@ -109,6 +118,7 @@ class $FileTreeContributor
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
     this.showHiddenFilesSetting = null;
+    this.revealOpenFileSetting = null;
     this.application = null;
   }
 

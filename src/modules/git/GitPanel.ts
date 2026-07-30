@@ -136,7 +136,7 @@ class $GitPanel {
   }
 
   // Click selection changes only the selected ITEM. A visible click must never move its viewport.
-  // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
+  // invariant: Selection stays anchored to an item (src/modules/ui/ui.invariants.md)
   setChangesSelection(index: number): void {
     this.changesIndex.value = Math.max(0, index);
   }
