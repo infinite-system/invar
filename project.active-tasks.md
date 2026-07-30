@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #383 [structure-pane-width-proportional](.invar/tasks/in-progress/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md)  [building]
+  `tmux attach -t invar/383-structure-pane-width-proportional`
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/in-progress/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md)  [building]
   `tmux attach -t invar/380-idle-cpu-fifteen-to-twentyfive-percent`
 - #375 [tasks-live-attach-icon-invisible](.invar/tasks/in-progress/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md)  [building]
@@ -14,9 +16,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/in-progress/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)  [building]
   `tmux attach -t invar/346-panel-tab-bar-workspace-content-spaces`
 
-## USER-DIRECTED (18)
+## USER-DIRECTED (17)
 - #384 [quit-dialog-buttons-and-padding](.invar/tasks/active/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)
-- #383 [structure-pane-width-proportional](.invar/tasks/active/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
 - #381 [realized-typescript-lsp-still-missing](.invar/tasks/active/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)
 - #379 [quick-open-exact-basename-loses](.invar/tasks/active/379-quick-open-exact-basename-loses/task-379-quick-open-exact-basename-loses.md)

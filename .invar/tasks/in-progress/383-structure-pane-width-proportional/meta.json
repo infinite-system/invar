@@ -1,0 +1,15 @@
+{
+  "task": 383,
+  "slug": "structure-pane-width-proportional",
+  "branch": "fleet/383-structure-pane-width-proportional",
+  "worktree": ".invar/worktrees/383-structure-pane-width-proportional",
+  "tmuxSession": "invar/383-structure-pane-width-proportional",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-383-structure-pane-width-proportional.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "cceafb4f7b763643bbf4e40b02a6b4ae15f67b4e",
+  "startedAt": "2026-07-30T11:26:33-04:00"
+}

@@ -1,6 +1,6 @@
 # #383 — the right panel is proportional; the editor is the prominent actor
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux
