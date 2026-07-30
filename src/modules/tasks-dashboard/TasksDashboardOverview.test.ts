@@ -292,19 +292,15 @@ test('a version bump accompanies every data change so one counter drives repaint
   fixture.dispose();
 });
 
-test('the motion clock exists only while the pane is observed', async () => {
+test('the motion clock exists only while the pane is observed', () => {
   const fixture = makeFixture();
   const { overview, observed } = fixture;
-  await Bun.sleep(80);
-  expect(overview.animationPaint.value).toBeGreaterThan(0);
+  overview.setViewportSize(80, 10);
+  expect(overview.motionHeartbeatAtRest()).toBe(false);
   observed.value = false;
-  await Bun.sleep(20);
-  const hiddenPaint = overview.animationPaint.value;
-  await Bun.sleep(80);
-  expect(overview.animationPaint.value).toBe(hiddenPaint);
+  expect(overview.motionHeartbeatAtRest()).toBe(true);
   observed.value = true;
-  await Bun.sleep(80);
-  expect(overview.animationPaint.value).toBeGreaterThan(hiddenPaint);
+  expect(overview.motionHeartbeatAtRest()).toBe(false);
   fixture.dispose();
 });
 
@@ -313,6 +309,26 @@ test('the motion clock stays absent when no live row or gate needs it', () => {
   expect(fixture.overview.rows.value).toEqual([]);
   expect(fixture.overview.animationPaint.value).toBe(0);
   expect(fixture.overview.motionHeartbeatAtRest()).toBe(true);
+  fixture.dispose();
+});
+
+test('the motion clock follows the visible row window', () => {
+  const fixture = makeFixture();
+  const { overview } = fixture;
+  overview.setViewportSize(80, 2);
+  expect(
+    overview.rows.value.slice(0, 2).every((row) => row.standing === 'ready'),
+  ).toBe(true);
+  expect(overview.motionHeartbeatAtRest()).toBe(true);
+  overview.scrollBy(2);
+  expect(
+    overview.rows.value
+      .slice(overview.windowTop(), overview.windowTop() + 2)
+      .some((row) => row.kind === 'detail' && row.phase === 'exploring'),
+  ).toBe(true);
+  expect(overview.motionHeartbeatAtRest()).toBe(false);
+  overview.scrollBy(-2);
+  expect(overview.motionHeartbeatAtRest()).toBe(true);
   fixture.dispose();
 });
 

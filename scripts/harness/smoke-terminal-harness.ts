@@ -42,41 +42,34 @@ function terminalThumbRowCount(
   snapshot: HarnessSnapshot.Model,
   panelRectangle: Rectangle,
 ): number {
-  const rightBorderColumn = panelRectangle.left + panelRectangle.width - 1;
-  const thumbBackground = Number.parseInt(
-    ThemePalettes.Class.DARK.dim.slice(1),
-    16,
-  );
+  const rightmostColumn = panelRectangle.left + panelRectangle.width - 1;
+  let longestThumbRun = 0;
   for (
-    let scrollBarColumn = rightBorderColumn - 1;
-    scrollBarColumn >= rightBorderColumn - 4;
+    let scrollBarColumn = rightmostColumn;
+    scrollBarColumn >= rightmostColumn - 4;
     scrollBarColumn -= 1
   ) {
-    let longestThumbRun = 0;
     let currentThumbRun = 0;
+    let currentThumbBackground: number | null = null;
     for (
       let row = panelRectangle.top;
       row < panelRectangle.top + panelRectangle.height;
       row += 1
     ) {
       const cell = snapshot.cell(row, scrollBarColumn);
-      if (
-        cell?.characters === ' ' &&
-        cell.isBackgroundRgb &&
-        cell.background === thumbBackground
-      ) {
+      const background =
+        cell?.characters === ' ' ? (cell.background ?? null) : null;
+      if (background !== null && currentThumbBackground === background) {
         currentThumbRun += 1;
       } else {
         longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
-        currentThumbRun = 0;
+        currentThumbBackground = background;
+        currentThumbRun = background === null ? 0 : 1;
       }
     }
     longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
-    if (longestThumbRun >= 2) {
-      return longestThumbRun;
-    }
   }
-  return 0;
+  return longestThumbRun;
 }
 
 async function collectTerminalScrollFrames(

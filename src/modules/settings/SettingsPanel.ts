@@ -282,6 +282,19 @@ class $SettingsPanel {
         },
       },
       {
+        key: 'panelTabCycleSeconds',
+        label: 'Panel tab cycle',
+        section: 'Layout',
+        spec: {
+          kind: 'number',
+          step: 1,
+          minimum: 1,
+          maximum: 300,
+          decimals: 0,
+        },
+        companionBooleanKey: 'panelTabCycling',
+      },
+      {
         key: 'showRightActivityBar',
         label: 'Mirror activity bar on right',
         section: 'Layout',
@@ -429,6 +442,19 @@ class $SettingsPanel {
     this.settingsStore.save();
   }
 
+  toggleCompanion(index: number): void {
+    const descriptor = this.descriptors[index];
+    if (!descriptor?.companionBooleanKey) return;
+    const current = Boolean(
+      this.settingsStore.settingValue(descriptor.companionBooleanKey),
+    );
+    this.settingsStore.set(
+      descriptor.companionBooleanKey as keyof import('./Settings').SettingsValues,
+      !current as never,
+    );
+    this.settingsStore.save();
+  }
+
   protected setValue(key: string, value: SettingValue): void {
     const hostDescriptor = this.settingsPanelClass.$settingDescriptors.find(
       (descriptor) => descriptor.key === key,
@@ -458,6 +484,13 @@ class $SettingsPanel {
       kind: descriptor.spec.kind,
       section: descriptor.section,
       index,
+      companionValueText: descriptor.companionBooleanKey
+        ? Boolean(
+            this.settingsStore.settingValue(descriptor.companionBooleanKey),
+          )
+          ? 'pause'
+          : 'play'
+        : undefined,
     }));
   }
 
@@ -489,6 +522,7 @@ export interface SettingDescriptor {
   section: string;
   spec: SettingSpec;
   defaultValue?: SettingValue;
+  companionBooleanKey?: string;
 }
 
 /** One rendered settings row. */
@@ -499,4 +533,5 @@ export interface SettingsPanelRow {
   kind: SettingSpec['kind'];
   section: string;
   index: number;
+  companionValueText?: string;
 }

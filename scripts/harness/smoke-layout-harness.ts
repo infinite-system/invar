@@ -8,6 +8,7 @@
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
 // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
+// invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
 // invariant: The right dock control owns the status edge (src/modules/ui/ui.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -105,9 +106,9 @@ function assertPanelAlignmentGeometry(
   HarnessSmoke.Class.requireCondition(
     leftCorner !== null &&
       rightCorner !== null &&
-      leftCorner.characters.trim().length > 0 &&
-      rightCorner.characters.trim().length > 0,
-    `${context}: ${panelAlignment} slot edges are painted in the emulator frame`,
+      !['╭', '┌'].includes(leftCorner.characters) &&
+      !['╮', '┐'].includes(rightCorner.characters),
+    `${context}: ${panelAlignment} slot edges stay flat in the emulator frame`,
   );
 }
 
@@ -1215,7 +1216,7 @@ try {
     0,
     (before, after) => after.left < before.left,
   );
-  await HarnessSmoke.Class.awaitStatus(
+  status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the resized right dock width is live-applied and persisted',
@@ -1223,6 +1224,64 @@ try {
   );
   HarnessSmoke.Class.pass(
     'right-dock splitter resize live-applied and persisted its width setting',
+  );
+
+  console.log(
+    '== harness layout: the right dock stays a bounded minority of the row ==',
+  );
+  const draggedRightDockWidth = Number(status.rightDockWidth);
+  const draggedRightDock = layoutSlot(status, 'rightDock');
+  const draggedEditorCenter = layoutSlot(status, 'editorCenter');
+  HarnessSmoke.Class.requireCondition(
+    draggedRightDock.width === draggedRightDockWidth,
+    `the 120-column layout grants the dragged width in full (${draggedRightDock.width} of ${draggedRightDockWidth} requested)`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    draggedRightDock.width < draggedEditorCenter.width,
+    `the dragged right dock stays narrower than the editor at 120 columns (dock ${draggedRightDock.width}, editor ${draggedEditorCenter.width})`,
+  );
+  // The dragged width no longer fits a 24-column bound at 80 columns, so the narrow layout must
+  // re-clamp it. The condition is the row the right dock now occupies, not the rule under test.
+  driver.resize(80, 24);
+  const narrowStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: candidate.width === 80 && the right dock ends inside the 80-column row',
+    (candidate) =>
+      Number(candidate.width) === 80 &&
+      rectangleRight(layoutSlot(candidate, 'rightDock')) <= 80,
+  );
+  const narrowRightDock = layoutSlot(narrowStatus, 'rightDock');
+  const narrowEditorCenter = layoutSlot(narrowStatus, 'editorCenter');
+  HarnessSmoke.Class.requireCondition(
+    narrowRightDock.width < narrowEditorCenter.width,
+    `an 80-column row keeps the editor wider than the right dock (dock ${narrowRightDock.width}, editor ${narrowEditorCenter.width})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    narrowRightDock.width <= Math.floor(80 * 0.3),
+    `an 80-column right dock claims at most 30 percent of the row (${narrowRightDock.width} of 80)`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(narrowStatus.rightDockWidth) === draggedRightDockWidth,
+    'the clamp bounds the painted dock without rewriting the user width setting',
+  );
+  // The drag is a REQUEST, so the wider terminal must give the user's own width back.
+  driver.resize(120, 50);
+  const restoredStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: candidate.width === 120 && the right dock regained the dragged width',
+    (candidate) =>
+      Number(candidate.width) === 120 &&
+      layoutSlot(candidate, 'rightDock').width === draggedRightDockWidth,
+  );
+  HarnessSmoke.Class.requireCondition(
+    layoutSlot(restoredStatus, 'rightDock').width <
+      layoutSlot(restoredStatus, 'editorCenter').width,
+    'the restored dragged width is still narrower than the editor',
+  );
+  HarnessSmoke.Class.pass(
+    'the right dock is clamped by the row it is in and keeps the user request across resizes',
   );
 
   driver.sendKeys('Control+q');
@@ -1262,6 +1321,22 @@ try {
     HarnessSmoke.Class.requireCondition(
       layoutSlot(compactStatus, 'bottomPanel').height === 9,
       '24-row viewport gives the bottom panel 45% of its 21 layout rows',
+    );
+    compactDriver.sendKeys('Control+Alt+b');
+    const compactRightDockStatus = await HarnessSmoke.Class.awaitStatus(
+      compactDriver,
+      compactStatusPath,
+      'status condition: candidate.rightDockVisible === true',
+      (candidate) => candidate.rightDockVisible === true,
+    );
+    const compactRightDock = layoutSlot(compactRightDockStatus, 'rightDock');
+    const compactEditorCenter = layoutSlot(
+      compactRightDockStatus,
+      'editorCenter',
+    );
+    HarnessSmoke.Class.requireCondition(
+      compactRightDock.width < compactEditorCenter.width,
+      `an 80-column boot opens the right dock narrower than the editor (dock ${compactRightDock.width}, editor ${compactEditorCenter.width})`,
     );
     compactDriver.sendKeys('Control+q');
   } finally {

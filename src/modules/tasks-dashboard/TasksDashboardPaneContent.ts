@@ -253,14 +253,10 @@ class $TasksDashboardPaneContent implements PaneContent {
 
   onResize(columns: number, rows: number): void {
     // The tab line owns one row; lens rows get the rest.
-    const viewportHeight = Math.max(1, rows - 1);
-    const viewportWidth = Math.max(1, columns - this.scrollbarThicknessCells);
-    if (this.overview.viewportHeight.value !== viewportHeight) {
-      this.overview.viewportHeight.value = viewportHeight;
-    }
-    if (this.overview.viewportWidth.value !== viewportWidth) {
-      this.overview.viewportWidth.value = viewportWidth;
-    }
+    this.overview.setViewportSize(
+      columns - this.scrollbarThicknessCells,
+      rows - 1,
+    );
   }
 
   onFocus(): void {}

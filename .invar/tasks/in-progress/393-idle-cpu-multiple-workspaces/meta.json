@@ -1,0 +1,15 @@
+{
+  "task": 393,
+  "slug": "idle-cpu-multiple-workspaces",
+  "branch": "fleet/393-idle-cpu-multiple-workspaces",
+  "worktree": ".invar/worktrees/393-idle-cpu-multiple-workspaces",
+  "tmuxSession": "invar/393-idle-cpu-multiple-workspaces",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-393-idle-cpu-multiple-workspaces.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "e786bcc7d38611fa36bf1c39830f82e162cc0a54",
+  "startedAt": "2026-07-30T11:55:48-04:00"
+}

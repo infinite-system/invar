@@ -15,6 +15,25 @@
 set -euo pipefail
 
 repository_root="$(git rev-parse --show-toplevel)"
+
+# TWIN GUARD — one conductor per checkout. Invar's folderOpen tasks.json fires
+# this script on every workspace open of the main checkout; --continue would
+# fork the live conductor's session into a parallel twin with the same memory
+# and the same anchor. Detect a live conductor by STRUCTURE, never vocabulary:
+# a claude process whose cmdline carries the conductor-system-prompt marker
+# AND whose /proc cwd is this checkout. Override: CONDUCTOR_TWIN_OK=1.
+if [[ "${CONDUCTOR_TWIN_OK:-0}" != "1" ]]; then
+  for existing_pid in $(pgrep -x claude 2>/dev/null || true); do
+    existing_cwd="$(readlink "/proc/${existing_pid}/cwd" 2>/dev/null || true)"
+    [[ "$existing_cwd" == "$repository_root" ]] || continue
+    if tr '\0' ' ' < "/proc/${existing_pid}/cmdline" 2>/dev/null \
+        | grep -qF 'conductor-system-prompt-'; then
+      echo "claude-conductor: REFUSED — a conductor is already live in this checkout (pid ${existing_pid})."
+      echo "claude-conductor: talk to that session instead. Force a second one with CONDUCTOR_TWIN_OK=1."
+      exit 0
+    fi
+  done
+fi
 prompt_directory="${repository_root}/tmp"
 mkdir -p "$prompt_directory"
 

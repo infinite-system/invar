@@ -315,7 +315,7 @@ test('a focused panel routes keystrokes to the active content', () => {
   expect(terminal.keys).toContain(event);
 });
 
-test('switching is generic: a second content activates with zero host rewiring', () => {
+test('cycling switches content spaces while a space keeps its own active content', () => {
   const host = new PanelHost.Class();
   const terminal = fakeContent('terminal');
   const output = fakeContent('output');
@@ -324,7 +324,13 @@ test('switching is generic: a second content activates with zero host rewiring',
   expect(host.order.value).toEqual(['terminal', 'output']);
   host.activate('output');
   expect(host.activeContent).toBe(output);
+  host.createSpaceForContent('output');
+  expect(host.spaces.value.map((space) => space.label)).toEqual([
+    'Terminal',
+    'Terminal 2',
+  ]);
   host.cycle(1);
+  expect(host.activeSpace?.label).toBe('Terminal');
   expect(host.activeId.value).toBe('terminal');
 });
 
@@ -513,4 +519,40 @@ test('expanded state toggles only while visible and resets when the panel hides'
   expect(host.expanded.value).toBe(true);
   host.hide();
   expect(host.expanded.value).toBe(false);
+});
+
+test('each workspace restores its active space and retained split independently', () => {
+  const host = new PanelHost.Class();
+  const firstWorld = host.activeContentSet;
+  const firstAgent = fakeContent('agent', 'agent');
+  const firstTerminal = fakeContent('terminal', 'terminal');
+  host.register(firstAgent);
+  host.register(firstTerminal);
+  host.split(['agent', 'terminal']);
+  const database = fakeContent('database', 'database');
+  host.registerShared(database);
+  const databaseSpace = host.spaces.value.find(
+    (space) => space.kind === 'database',
+  );
+  expect(databaseSpace).toBeDefined();
+  host.selectSpace(databaseSpace?.identifier ?? '');
+
+  const secondWorld = host.createContentSet();
+  host.selectContentSet(secondWorld);
+  const secondAgent = fakeContent('agent@2', 'agent');
+  const secondTerminal = fakeContent('terminal@2', 'terminal');
+  host.register(secondAgent);
+  host.register(secondTerminal);
+  host.split(['agent@2', 'terminal@2']);
+
+  expect(host.activeSpace?.label).toBe('Terminal');
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'agent@2',
+    'terminal@2',
+  ]);
+  host.selectContentSet(firstWorld);
+  expect(host.activeSpace?.label).toBe('Database');
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'database',
+  ]);
 });

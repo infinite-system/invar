@@ -61,6 +61,8 @@ describe('Settings', () => {
     expect(settings.agentTerminalFollowMode.value).toBe('off');
     expect(settings.primaryDockContentOrder.value).toEqual([]);
     expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
+    expect(settings.panelTabCycleSeconds.value).toBe(10);
+    expect(settings.panelTabCycling.value).toBe(false);
   });
 
   test('load with no files keeps every default', () => {

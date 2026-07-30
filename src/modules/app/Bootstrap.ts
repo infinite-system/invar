@@ -398,6 +398,7 @@ class $Bootstrap {
         keybindings,
         primaryDockHost,
         rightDockHost,
+        bottomPanelHost: panelHost,
         contextMenu,
         boundedListPopup,
         overlayCoordinator,
@@ -911,8 +912,17 @@ class $Bootstrap {
 
     const addPanelContent = (kind: string): void => {
       const content =
-        kind === 'agent' ? createAgent(true) : createRuntimePane(kind, true);
-      if (content) panelHost.showContent(content.id);
+        kind === 'database'
+          ? panelHost.contentOfKind('database')
+          : kind === 'agent'
+            ? createAgent(true)
+            : createRuntimePane(kind, true);
+      if (content) {
+        panelHost.createSpaceForContent(
+          content.id,
+          kind === 'database' ? 'database' : 'terminal',
+        );
+      }
     };
     panelAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
@@ -921,6 +931,9 @@ class $Bootstrap {
       addableKinds: () => [
         ...paneRuntimes.addableKinds(),
         { kind: 'agent', label: 'Agent' },
+        ...(panelHost.contentOfKind('database')
+          ? [{ kind: 'database', label: 'Database' }]
+          : []),
       ],
       addContent: addPanelContent,
     });
@@ -947,12 +960,7 @@ class $Bootstrap {
       panelHost.split(terminal ? [agent.id, terminal.id] : [agent.id]);
     };
     const focusPanelContent = (direction: -1 | 1): void => {
-      const contentCount = panelHost.resolvedCells.length;
-      if (contentCount < 2) return;
-      const nextIndex =
-        (panelHost.focusedIndex.value + direction + contentCount) %
-        contentCount;
-      panelHost.focusCell(nextIndex);
+      panelHost.cycle(direction);
     };
     const movePanelContent = (direction: -1 | 1): void => {
       const identifier = panelHost.focusedContent?.id;
@@ -986,6 +994,26 @@ class $Bootstrap {
       theme.setGlyphLevel(
         mode === 'auto' ? TerminalCapabilities.Class.detectGlyphLevel() : mode,
       );
+    });
+    let panelTabCycleTimer: ReturnType<typeof setTimeout> | null = null;
+    app.$watchEffect(() => {
+      const cycling = settings.panelTabCycling.value;
+      const visible = panelHost.visible.value;
+      const seconds = Math.max(1, settings.panelTabCycleSeconds.value);
+      const spaceCount = panelHost.spaces.value.length;
+      void panelHost.activeSpaceId.value;
+      if (panelTabCycleTimer) clearTimeout(panelTabCycleTimer);
+      panelTabCycleTimer = null;
+      if (!cycling || !visible || spaceCount < 2) return;
+      panelTabCycleTimer = setTimeout(() => {
+        panelTabCycleTimer = null;
+        panelHost.cycle(1);
+        renderer.requestRender();
+      }, seconds * 1000);
+    });
+    app.onDispose(() => {
+      if (panelTabCycleTimer) clearTimeout(panelTabCycleTimer);
+      panelTabCycleTimer = null;
     });
     app.$watch(
       () => settings.workspaceTabPosition.value,
