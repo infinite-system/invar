@@ -1270,9 +1270,9 @@ else
   bad "go-to-line PTY drive failed"
 fi
 
-echo "== CONTRACT breadcrumbs: one navigation owner and readable live-theme separators =="
+echo "== CONTRACT breadcrumbs: one navigation owner, readable live-theme separators, and a hover highlight one cell wider than the segment on each side =="
 if COLORTERM=truecolor "$BUN" "$DIR/harness/smoke-breadcrumb-harness.ts"; then
-  pass "breadcrumb controls, contrast, scale parity, and live theme derivation hold"
+  pass "breadcrumb controls, contrast, scale parity, live theme derivation, and hover geometry hold"
 else
   bad "breadcrumb PTY drive failed"
 fi
