@@ -6,6 +6,7 @@ derived from `.invar/tasks/completed/`. Each line: number, name, and the landing
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
 - #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)
+- #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/completed/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md) — 69ca67ed — slim splitters on both axes everywhere; pad cell before the bottom drag span
 - #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/completed/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md) — 157dda25 — theme glyphs survive capability negotiation (OSC 66 payloads decoded by the emulator)
 - #383 [structure-pane-width-proportional](.invar/tasks/completed/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md) — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/completed/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md) — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)

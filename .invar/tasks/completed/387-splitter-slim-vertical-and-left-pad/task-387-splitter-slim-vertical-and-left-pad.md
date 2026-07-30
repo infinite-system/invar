@@ -1,6 +1,6 @@
 # #387 — vertical splitter slims to match; horizontal splitter gains a left pad cell
 
-State: IN-PROGRESS
+State: COMPLETED — 69ca67ed — slim splitters on both axes everywhere; pad cell before the bottom drag span
 Priority: user-directed
 Engine: claude
 Environment: linux
