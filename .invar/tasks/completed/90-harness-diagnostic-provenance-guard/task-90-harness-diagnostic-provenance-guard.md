@@ -1,6 +1,6 @@
 # 90 — shared artifacts/tui.log lets runs read each other; stale lines satisfy assertions
 
-State: IN-PROGRESS
+State: COMPLETED — 21bf9c71 — per-run diagnostic log + provenance guard; isolation census: one verdict-flipping shared write, fixed
 Created: 2026-07-28
 Engine: claude
 Environment: linux

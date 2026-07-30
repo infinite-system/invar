@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/in-progress/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)  [building]
   `tmux attach -t invar/343-tasks-activity-icon-and-live-loader`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
-- #90 [harness-diagnostic-provenance-guard](.invar/tasks/in-progress/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)  [building]
-  `tmux attach -t invar/90-harness-diagnostic-provenance-guard`
 
 ## USER-DIRECTED (16)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
@@ -32,7 +30,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (20)
+## VERIFICATION-INTEGRITY (21)
+- #365 [gate-scratch-paths-are-machine-global](.invar/tasks/active/365-gate-scratch-paths-are-machine-global/task-365-gate-scratch-paths-are-machine-global.md)
 - #362 [markdown-harness-ordinal-drive-and-preview-clipping](.invar/tasks/active/362-markdown-harness-ordinal-drive-and-preview-clipping/task-362-markdown-harness-ordinal-drive-and-preview-clipping.md)
 - #332 [smoke-tabs-hardcoded-close-glyph](.invar/tasks/active/332-smoke-tabs-hardcoded-close-glyph/task-332-smoke-tabs-hardcoded-close-glyph.md)  [active]
 - #269 [smokes-assume-editor-geometry-sweep](.invar/tasks/active/269-smokes-assume-editor-geometry-sweep/task-269-smokes-assume-editor-geometry-sweep.md)
@@ -88,7 +87,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (19)
+## ARCHITECTURE-HYGIENE (22)
+- #368 [uncovered-records-annotation-sweep](.invar/tasks/active/368-uncovered-records-annotation-sweep/task-368-uncovered-records-annotation-sweep.md)
+- #367 [legacy-harness-shared-home-fallback](.invar/tasks/active/367-legacy-harness-shared-home-fallback/task-367-legacy-harness-shared-home-fallback.md)
+- #366 [frame-json-tracked-fixture-overwrite](.invar/tasks/active/366-frame-json-tracked-fixture-overwrite/task-366-frame-json-tracked-fixture-overwrite.md)
 - #363 [settings-row-walker-shared-generator](.invar/tasks/active/363-settings-row-walker-shared-generator/task-363-settings-row-walker-shared-generator.md)
 - #358 [media-status-scene-key-and-fake-ffmpeg-header](.invar/tasks/active/358-media-status-scene-key-and-fake-ffmpeg-header/task-358-media-status-scene-key-and-fake-ffmpeg-header.md)
 - #355 [quick-open-parallel-bounded-list-generator](.invar/tasks/active/355-quick-open-parallel-bounded-list-generator/task-355-quick-open-parallel-bounded-list-generator.md)
@@ -113,7 +115,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 121 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 122 — full log: project.tasks-completed.md)
 - #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #350 [nicer-generated-sample-video](.invar/tasks/completed/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md) — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/completed/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md) — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
