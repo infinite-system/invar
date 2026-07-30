@@ -1,0 +1,15 @@
+{
+  "task": 334,
+  "slug": "structure-pane-no-file-open-transient",
+  "branch": "fleet/334-structure-pane-no-file-open-transient",
+  "worktree": ".invar/worktrees/334-structure-pane-no-file-open-transient",
+  "tmuxSession": "invar/334-structure-pane-no-file-open-transient",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-334-structure-pane-no-file-open-transient.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "a9b69447e52fddd332109f0fa12cd1210afa643a",
+  "startedAt": "2026-07-30T02:49:18-04:00"
+}

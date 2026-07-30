@@ -5,7 +5,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: high
-State: ACTIVE
+State: IN-PROGRESS
 
 ## What was seen (builder evidence, #322 round 1, 2026-07-30)
 
