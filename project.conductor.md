@@ -30,7 +30,7 @@ context." The protocol makes survival MECHANICAL, not remembered.
 CHECKPOINT_PCT (default 85) of the compaction gauge — roughly 15% of runway left —
 once per crossing, even when the fleet is quiet. Every event batch also carries a
 `CTX:` speedometer line, so the gauge is seen at every gate. The gauge itself is
-`~/dev/ibr/scripts/context-usage.sh` (mechanical, reads the live session jsonl).
+`scripts/context-usage.sh` (repo-local; the context-usage skill documents it).
 
 **On CHECKPOINT (or whenever COMPACT_PCT ≥ 85 is seen): stop starting new work and
 run these five steps, in order, each ending in a commit:**

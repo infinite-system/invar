@@ -202,7 +202,7 @@ emit_sprawl_events() {
 # from the conductor's live session jsonl, so the conductor sees the gauge exactly
 # when it acts. Analysis only; a missing or failing gauge must never silence the
 # events themselves (the events are the payload, the gauge is the rider).
-CONTEXT_GAUGE_SCRIPT="${CONTEXT_GAUGE_SCRIPT:-$HOME/dev/ibr/scripts/context-usage.sh}"
+CONTEXT_GAUGE_SCRIPT="${CONTEXT_GAUGE_SCRIPT:-${repository_root}/scripts/context-usage.sh}"
 
 emit_context_speedometer() {
   [ -f "$CONTEXT_GAUGE_SCRIPT" ] || return 0

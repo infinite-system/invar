@@ -39,7 +39,7 @@ only there is not yet.
 The conductor loses its context to compaction. Survival is mechanical, never
 remembered. fleet-watch fires `CHECKPOINT:` at 85% of the compaction gauge and
 rides a `CTX:` speedometer line on every event batch (gauge:
-`~/dev/ibr/scripts/context-usage.sh`).
+`scripts/context-usage.sh`, see the context-usage skill).
 
 On CHECKPOINT, or on any sight of COMPACT_PCT >= 85: stop starting new work and
 run five steps, each ending in a commit. Full text: `project.conductor.md`
