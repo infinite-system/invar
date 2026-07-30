@@ -631,11 +631,16 @@ try {
 
   driver.sendText('echo hello');
   driver.sendKeys('Enter');
+  // The trimmed set is every glyph the chrome can paint at a row's two ends: pane borders,
+  // the terminal's own rules, and BOTH splitter marks. A vertical splitter used to paint a
+  // blank cell, so plain whitespace trimming reached the shell text through it; it now paints
+  // the slim mark, which the old set left in place and broke the exact-match compare.
   await driver.awaitSnapshot((snapshot) =>
     snapshot
       .textRows()
       .some(
-        (rowText) => rowText.replace(/^[\s│|╎]+|[\s│|╎]+$/g, '') === 'hello',
+        (rowText) =>
+          rowText.replace(/^[\s│|╎┃━]+|[\s│|╎┃━]+$/g, '') === 'hello',
       ),
   );
   HarnessSmoke.Class.pass('shell output completed the nested PTY round trip');

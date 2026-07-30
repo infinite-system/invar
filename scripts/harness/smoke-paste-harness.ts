@@ -15,6 +15,7 @@ import {
   requireCondition,
 } from './HarnessSmokeSupport';
 import { BracketedPasteInput } from './BracketedPasteInput';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
@@ -38,6 +39,23 @@ const driver = new PtyTestDriver.Class({
 });
 
 driver.outputSequenceCount('\x1b[?2004h');
+
+// One reader for every pane-window text compare in this smoke. It joins the rows of a column
+// window and removes the cells that carry no payload: whitespace, and BOTH splitter marks. A
+// window can include the splitter cell beside its pane. That cell used to be blank, so whitespace
+// removal reached the payload through it. It now paints a mark, and a surviving mark lands inside
+// the pasted text and breaks a contiguous match.
+function paneWindowText(
+  snapshot: HarnessSnapshot.Model,
+  left: number,
+  columns: number,
+): string {
+  return snapshot
+    .textRows()
+    .map((rowText) => rowText.slice(left, left + columns))
+    .join('')
+    .replace(/[\s┃━]+/g, '');
+}
 
 function emittedClipboardTexts(): string[] {
   return driver
@@ -316,19 +334,8 @@ try {
   const pasteAgentPaneColumns = Number(
     agentPanelCellColumns[pasteAgentCellIndex] ?? 0,
   );
-  const agentPaneText = (
-    snapshot: ReturnType<typeof driver.snapshot>,
-  ): string =>
-    snapshot
-      .textRows()
-      .map((rowText) =>
-        rowText.slice(
-          pasteAgentPaneLeft,
-          pasteAgentPaneLeft + pasteAgentPaneColumns,
-        ),
-      )
-      .join('')
-      .replace(/\s+/g, '');
+  const agentPaneText = (snapshot: HarnessSnapshot.Model): string =>
+    paneWindowText(snapshot, pasteAgentPaneLeft, pasteAgentPaneColumns);
   for (const payloadByteCount of [10, 1024, 65_536]) {
     const payloadSuffix = `-END${payloadByteCount}`;
     const payload = exactSizePayload(
@@ -408,17 +415,11 @@ try {
   );
   driver.sendPaste('_BURST');
   await driver.awaitSnapshot((candidate) =>
-    candidate
-      .textRows()
-      .map((rowText) =>
-        rowText.slice(
-          stagedTerminalPaneLeft,
-          stagedTerminalPaneLeft + stagedTerminalPaneColumns,
-        ),
-      )
-      .join('')
-      .replace(/\s+/g, '')
-      .includes('$printfSTAGED_PASTE_BURST'),
+    paneWindowText(
+      candidate,
+      stagedTerminalPaneLeft,
+      stagedTerminalPaneColumns,
+    ).includes('$printfSTAGED_PASTE_BURST'),
   );
   pass('paste payload reaches readline intact while a command is staged');
   driver.sendKeys('Control+c');
@@ -486,14 +487,9 @@ try {
   );
   driver.sendPaste('PASTE_DURING_ANIMATION');
   await driver.awaitSnapshot((candidate) =>
-    candidate
-      .textRows()
-      .map((rowText) =>
-        rowText.slice(terminalPaneLeft, terminalPaneLeft + terminalPaneColumns),
-      )
-      .join('')
-      .replace(/\s+/g, '')
-      .includes('PASTE_DURING_ANIMATION'),
+    paneWindowText(candidate, terminalPaneLeft, terminalPaneColumns).includes(
+      'PASTE_DURING_ANIMATION',
+    ),
   );
   pass('paste payload reaches readline intact during visible typing');
   driver.sendKeys('Control+c');

@@ -187,6 +187,7 @@ describe('AppStatusProjection', () => {
             width: 20,
             height: 1,
             visible: true,
+            leadingPaintPadCells: 1,
           },
           controls: [],
         }),
@@ -456,6 +457,7 @@ describe('AppStatusProjection', () => {
         width: 20,
         height: 1,
         visible: true,
+        leadingPaintPadCells: 1,
       },
       controls: [],
     });

@@ -7,6 +7,14 @@ import type { PanelSpace } from './PanelHost';
 
 // invariant: Tab bars share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelTabBar {
+  /**
+   * One blank cell stands between the leading run (tabs then action icons) and the drag line's
+   * first painted cell. It is a PAINT pad, never a layout quantity: `leadingWidth` and
+   * `dragWidth` do not move, so the drag strip still grabs at the pad cell and across its whole
+   * extent. The row order stays tabs, actions, pad, drag, controls.
+   */
+  static readonly DRAG_LEADING_PAINT_PAD_CELLS = 1;
+
   static project(options: PanelTabBarOptions): PanelTabBarProjection {
     const width = Math.max(0, Math.floor(options.width));
     const controlDefinitions: readonly PanelTabBarControlDefinition[] = [
@@ -167,6 +175,10 @@ class $PanelTabBar {
       actionWidth,
       leadingWidth,
       dragWidth,
+      dragLeadingPaintPadCells: Math.min(
+        this.DRAG_LEADING_PAINT_PAD_CELLS,
+        Math.max(0, dragWidth - 1),
+      ),
       controlWidth,
       tabs,
       editorActions,
@@ -239,6 +251,7 @@ export interface PanelTabBarProjection {
   readonly actionWidth: number;
   readonly leadingWidth: number;
   readonly dragWidth: number;
+  readonly dragLeadingPaintPadCells: number;
   readonly controlWidth: number;
   readonly tabs: readonly PanelTabBarTabSegment[];
   readonly editorActions: readonly PanelTabBarEditorActionSegment[];

@@ -104,3 +104,19 @@ test('editor actions truncate before tabs and the drag cell', () => {
   expect(projection.editorActions).toEqual([]);
   expect(projection.dragWidth).toBe(1);
 });
+
+test('the drag span reserves one blank paint pad, and never its only cell', () => {
+  const wide = project(2);
+  expect(wide.dragWidth).toBeGreaterThan(1);
+  expect(wide.dragLeadingPaintPadCells).toBe(1);
+
+  // The pad is PAINT, so it comes out of the span's glyphs and never out of its width. The
+  // leading run and the controls still meet the span exactly where they did without a pad.
+  expect(wide.leadingWidth + wide.dragWidth + wide.controlWidth).toBe(80);
+
+  // At the narrowest row the span is one cell. A pad there would blank the whole mark, so it
+  // collapses to zero instead.
+  const narrow = project(2, 26);
+  expect(narrow.dragWidth).toBe(1);
+  expect(narrow.dragLeadingPaintPadCells).toBe(0);
+});
