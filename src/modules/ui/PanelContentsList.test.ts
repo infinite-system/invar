@@ -5,7 +5,6 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import { PanelContentsList } from './PanelContentsList';
-import { PanelHeading } from './PanelHeading';
 import { PanelHost } from './PanelHost';
 import type { PaneContent } from './PaneContent.interface';
 import { TabBarRenderer } from './TabBarRenderer';
@@ -42,20 +41,25 @@ test('click activates and the visible close affordance closes the same row', () 
   const host = new PanelHost.Class();
   host.register(new FakeContent('agent', 'Agent', 'A'));
   host.register(new FakeContent('terminal', 'Terminal', 'T'));
-  host.split(['agent', 'terminal']);
+  host.register(new FakeContent('output', 'Output', 'O'));
+  host.split(['agent', 'terminal', 'output']);
   host.show();
+  host.togglePanelList();
   const list = new PanelContentsList.Class(host);
 
   expect(list.visible).toBe(true);
   expect(list.pointerDown(2, 1)).toBe(true);
   expect(host.focusedContent?.id).toBe('terminal');
   expect(list.pointerDown(list.width - 1, 1)).toBe(true);
-  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual(['agent']);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'agent',
+    'output',
+  ]);
   expect(list.visible).toBe(false);
 });
 
 test('dragging a row reorders the live split through the host', () => {
-  const order = ref(['agent', 'terminal']);
+  const order = ref(['agent', 'terminal', 'output']);
   let persistenceCount = 0;
   const host = new PanelHost.Class({
     contentOrder: order,
@@ -65,22 +69,25 @@ test('dragging a row reorders the live split through the host', () => {
   });
   host.register(new FakeContent('terminal', 'Terminal', 'T'));
   host.register(new FakeContent('agent', 'Agent', 'A'));
-  host.split(['agent', 'terminal']);
+  host.register(new FakeContent('output', 'Output', 'O'));
+  host.split(['agent', 'terminal', 'output']);
   host.show();
+  host.togglePanelList();
   const list = new PanelContentsList.Class(host);
 
   list.pointerDown(2, 0);
   list.pointerDrag(1);
   list.pointerUp();
 
-  expect(order.value).toEqual(['terminal', 'agent']);
+  expect(order.value).toEqual(['terminal', 'agent', 'output']);
   expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
     'terminal',
     'agent',
+    'output',
   ]);
   expect(persistenceCount).toBe(1);
   host.dispose();
-  expect(order.value).toEqual(['terminal', 'agent']);
+  expect(order.value).toEqual(['terminal', 'agent', 'output']);
   expect(persistenceCount).toBe(1);
 });
 
@@ -88,11 +95,17 @@ test('the list selects visibility among multiple open instances of one kind', ()
   const host = new PanelHost.Class();
   host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
   host.register(new FakeContent('terminal-2', 'Terminal 2', 'T', 'terminal'));
+  host.register(new FakeContent('terminal-3', 'Terminal 3', 'T', 'terminal'));
   host.showContent('terminal');
+  host.togglePanelList();
   const list = new PanelContentsList.Class(host);
 
   expect(list.visible).toBe(true);
-  expect(list.rows.map((row) => row.title)).toEqual(['Terminal', 'Terminal 2']);
+  expect(list.rows.map((row) => row.title)).toEqual([
+    'Terminal',
+    'Terminal 2',
+    'Terminal 3',
+  ]);
   list.pointerDown(2, 1);
   expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
     'terminal-2',
@@ -101,7 +114,7 @@ test('the list selects visibility among multiple open instances of one kind', ()
   expect(list.rows[1]?.visible).toBe(true);
 });
 
-test('tabs, panel headings, and panel rows project one tier-aware close token', () => {
+test('tabs and panel rows project one tier-aware close token', () => {
   const host = new PanelHost.Class();
   host.register(new FakeContent('terminal', 'Terminal', 'T'));
   host.showContent('terminal');
@@ -122,18 +135,6 @@ test('tabs, panel headings, and panel rows project one tier-aware close token', 
       .render(ThemePalettes.Class.DARK, glyphVocabulary)
       .chunks.map((chunk) => chunk.text)
       .join('');
-    const headingText = PanelHeading.Class.project({
-      width: 20,
-      title: 'Terminal',
-      focused: true,
-      expanded: false,
-      hoveredAction: null,
-      actions: ['close'],
-      glyphVocabulary,
-      palette: ThemePalettes.Class.DARK,
-    })
-      .text.chunks.map((chunk) => chunk.text)
-      .join('');
     const tabText = TabBarRenderer.Class.renderBuffer({
       strip,
       palette: ThemePalettes.Class.DARK,
@@ -150,7 +151,6 @@ test('tabs, panel headings, and panel rows project one tier-aware close token', 
       .join('');
 
     expect(listText.endsWith(expectedCloseGlyph)).toBe(true);
-    expect(headingText.includes(expectedCloseGlyph)).toBe(true);
     expect(tabText.includes(expectedCloseGlyph)).toBe(true);
   }
 });

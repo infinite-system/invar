@@ -30,7 +30,7 @@ class $PanelContentsList {
 
   get rows(): PanelContentsListRow[] {
     const focusedIdentifier = this.panelHost.focusedContent?.id;
-    return this.panelHost.orderedContents.map((content) => ({
+    return this.panelHost.activeSpaceContents.map((content) => ({
       identifier: content.id,
       icon: content.icon ?? ' ',
       title: content.instanceLabel ?? content.title,

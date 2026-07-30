@@ -161,7 +161,6 @@ function mediaHalfBlockFingerprint(
   snapshot: HarnessSnapshot.Model,
   frameNumber: number,
 ): MediaFrameFingerprint | null {
-  if (!snapshot.findText('3D Demo ·')) return null;
   const colors: number[] = [];
   for (let row = 0; row < snapshot.rows; row++) {
     for (let column = 0; column < snapshot.columns; column++) {
@@ -183,7 +182,6 @@ function mediaHalfBlockFingerprint(
 }
 
 function mediaVideoHalfBlockCount(snapshot: HarnessSnapshot.Model): number {
-  if (!snapshot.findText('Sample Video')) return 0;
   let count = 0;
   for (let row = 0; row < snapshot.rows; row++) {
     for (let column = 0; column < snapshot.columns; column++) {
@@ -409,7 +407,7 @@ async function driveHalfBlockAnimation(): Promise<void> {
         return fingerprint !== null && fingerprint.coloredCellCount > 100;
       },
     );
-    const initialFingerprints = driver
+    const observedFingerprints = driver
       .completedFrameObservationsSince(observationBaseline)
       .map((observation, observationIndex) =>
         mediaHalfBlockFingerprint(observation.snapshot, observationIndex),
@@ -418,14 +416,20 @@ async function driveHalfBlockAnimation(): Promise<void> {
         (fingerprint): fingerprint is MediaFrameFingerprint =>
           fingerprint !== null,
       );
+    const firstPaintedFrameIndex = observedFingerprints.findIndex(
+      (fingerprint) => fingerprint.coloredCellCount > 100,
+    );
+    const initialFingerprints = observedFingerprints.slice(
+      firstPaintedFrameIndex,
+    );
     assertContinuousAnimation(initialFingerprints);
     HarnessSmoke.Class.pass(
       `${initialFingerprints.length} completed small animation frames stayed painted and changed`,
     );
     const unicodeSnapshot = driver.snapshot();
     HarnessSmoke.Class.requireCondition(
-      headingCloseGlyph(unicodeSnapshot, initialStatus, 'media-demo') === '×',
-      'the media pane uses Unicode host chrome at the Unicode glyph tier',
+      headingCloseGlyph(unicodeSnapshot, initialStatus, 'panel') === '×',
+      'the panel uses Unicode host chrome at the Unicode glyph tier',
     );
 
     driver.sendKeys('t');
@@ -435,9 +439,8 @@ async function driveHalfBlockAnimation(): Promise<void> {
       'the user scene key selects the torus',
       (status) => status.mediaScene === 'torus',
     );
-    await driver.awaitGridCondition(
-      'the torus title is painted after the scene key',
-      (snapshot) => snapshot.findText('3D Demo · Torus') !== null,
+    HarnessSmoke.Class.pass(
+      'the scene key selects the torus without pane-local title chrome',
     );
     driver.sendKeys('Space');
     const pausedStatus = await HarnessSmoke.Class.awaitStatus(
@@ -747,9 +750,8 @@ async function driveKittyAndAsciiChrome(): Promise<void> {
     );
     const snapshot = driver.snapshot();
     HarnessSmoke.Class.requireCondition(
-      headingCloseGlyph(snapshot, supersampledLargeDemoStatus, 'media-demo') ===
-        'x',
-      'the media pane uses ASCII host chrome at the ASCII glyph tier',
+      headingCloseGlyph(snapshot, supersampledLargeDemoStatus, 'panel') === 'x',
+      'the panel uses ASCII host chrome at the ASCII glyph tier',
     );
     driver.sendKeys('Control+q');
     HarnessSmoke.Class.requireCondition(

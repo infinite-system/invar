@@ -106,9 +106,9 @@ function assertPanelAlignmentGeometry(
   HarnessSmoke.Class.requireCondition(
     leftCorner !== null &&
       rightCorner !== null &&
-      leftCorner.characters.trim().length > 0 &&
-      rightCorner.characters.trim().length > 0,
-    `${context}: ${panelAlignment} slot edges are painted in the emulator frame`,
+      !['╭', '┌'].includes(leftCorner.characters) &&
+      !['╮', '┐'].includes(rightCorner.characters),
+    `${context}: ${panelAlignment} slot edges stay flat in the emulator frame`,
   );
 }
 
