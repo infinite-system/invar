@@ -1,5 +1,77 @@
 # Overnight briefing — started 2026-07-29 00:28
 
+## RESUME ANCHOR 20 — 2026-07-30 14:06 (written at 77.6% gauge, pre-compaction)
+
+Supersedes anchor 19 and its deltas. State reconstructed from disk; verify with
+git log --oneline -15 and bun scripts/tasks/tasks-status.ts on resume.
+
+### Session shape
+- Conductor pid 3752392 in the MAIN checkout /home/parallels/dev/invar. The
+  twin guard is LANDED in scripts/claude-conductor.sh (refuses when a live
+  conductor exists; CONDUCTOR_TWIN_OK=1 overrides). A pre-guard twin pid
+  1494453 may still sit idle in the user's Invar pane — user cancels by hand;
+  never kill without their word.
+- Fleet mix: 2 codex sol-MEDIUM + 1 opus-MEDIUM, cap flexed to 4 on user
+  priorities. dispatch.sh effort floor is medium (fixed today).
+- Landed today: 21 tasks incl. #380 (idle motion), #383 (right dock bound),
+  #386 (OSC 66 glyphs), #346 (panel tab bar, 3 rounds), #389 (watch autowrap),
+  #387 (slim splitters + pad, opus), #384 (quit dialog), #390 (both docks
+  bounded). Build hotfix c325bb41 (the #380 x #348 semantic merge break).
+
+### LANES LIVE (3)
+1. #393 idle-cpu-multiple-workspaces (codex) — merge-forward round PLUS two
+   queued rounds: hidden-tasks-pane-still-observed (user evidence: hidden pane
+   polls at ~30% CPU; hypothesis selected-vs-painted in isObserved derivation;
+   fix observed=painted; real-shaped fixture: hundreds of folders) AND the
+   addendum (visible tick must be proportional — profile the tick, target low
+   single digits on a 250-folder tree). Brief files brief-393-3 + addendum in
+   its in-progress folder.
+2. #402 invar-monitoring-plugin (opus) — user-directed observability plugin:
+   pane citizen, delta CPU (never ps lifetime), heap vs RSS, per-plugin render
+   load with logging toggle, file memory ledger, agent-readable projections,
+   one stats generator shared with future #376 CLI. Must answer the user's
+   206->263MB question in its report.
+3. #404 panel-two-row-chrome (codex) — BIG user redesign, THREE verbatim
+   details in the task file: two rows (splitter row with wrap/go-to-line/NEW
+   go-to-bottom icons left; tab row BELOW with per-tab close + blank cell +
+   ellipsis); tabs create CONTAINERS only; lower-level + adds WINDOWS
+   (Terminal/Claude/Invar Agent) inside a container — NEVER nested tabs; add
+   never auto-splits (full-width groups, explicit split button per list item,
+   joined glyphs, drag-out separates, reorder at both levels); pane list pins
+   sticky + splitter-resizable + persists closed.
+
+### LANDING RITUAL (unchanged, plus one lesson)
+extract-gate-verdict.sh writes its OWN log (never redirect onto the same
+path); claude lanes get a hand-written verdict log + session-link repair from
+the worktree-keyed project dir. ALWAYS check overlap before landing:
+comm -12 of both sides' diffs from merge-base; overlap on a hot file =
+round-brief the builder to merge forward + re-gate (semantic conflicts merged
+cleanly TWICE today: #380 x #348 broke the build; #346 x #383 needed manual
+rounds). Trivial disjoint overlap MAY be conductor-combined with targeted
+smokes and a composed three-part verdict log (#387 precedent).
+
+### QUEUE (user-directed first)
+381 (LSP missing realized/blackline — reopens #294, hover repro) -> 382
+(claude resume dialog cut off) -> 395 (Database connect hidden-field focus) ->
+361 (tasks-icon crash) -> 356 (Invar Agent plugin decoupling — partially
+refined by #404's composable-placement) -> 397 (FrameProbe misdecode) -> 403
+(file cache bounds audit; coordinate with #402) -> 376 (instances:watch CLI;
+delta sampling + whoami notes in task) -> 391/392/394/396/399/400/401 hygiene
+-> #214/#359/#360/385 flake family (NOTE: #398 retired — one-based offset
+already fixed on main).
+
+### WATCHERS
+fleet-watch Monitor persistent (ONE only — TaskStop duplicates). Crons
+permanently disarmed (user order, commit 740c5d81) — do NOT re-arm.
+
+### USER CONTEXT
+- IV_WHOAMI=egor marks the user's instance; measure with DELTA sampling only.
+- User's idle measured 0.6% real when tasks deselected; 30% when tasks pane
+  hidden-but-selected (the #393 round-3 subject).
+- Standing safety: never drive the app with THIS repo as opened workspace
+  (real tasks.json spawns aws-vault+conductor sessions); fixtures only.
+  Never kill user sessions. Branches never deleted. Builders never push.
+
 ## NORTH STAR (user, 2026-07-29 12:4x, verbatim intent — long-term direction)
 
 Beyond VS Code parity: **InvarOS** — an AI-powered system that codes WITH
