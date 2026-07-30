@@ -3,7 +3,7 @@
 State: active
 Engine: codex
 Model: 5.6-sol
-Effort: medium
+Effort: high
 Provenance: USER-DIRECTED 2026-07-29
 
 ## User's words (verbatim, GOVERNS)
