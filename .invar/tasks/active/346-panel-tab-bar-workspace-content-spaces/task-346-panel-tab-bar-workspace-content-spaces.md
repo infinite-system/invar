@@ -58,3 +58,8 @@ Effort: high
    "Terminal" in the RIGHT pane (declaration order = left-to-right). This
    depends on #342 (tasks.json panes must load at all) — sequence #342
    before or into this task's verification.
+
+7. The count chip carries an ICON plus the number, not a bare digit — a
+   panes/stack glyph (e.g. ▦ or ☰ family; pick what reads at one cell and
+   has an ASCII-tier fallback). Make it look deliberate: icon + count as one
+   chip, hover highlight consistent with the tab hover treatment.
