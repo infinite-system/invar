@@ -347,7 +347,7 @@ The existing verified Nerd Font marks remain `U+F489` for shell scripts and
 `U+E6B2` for configuration. Each candidate below is a Unicode-tier pair; at
 the ASCII tier every pair honestly degrades to `$` and `:`. No candidate is
 in the Geometric Shapes block, present in `$markOwnerships`, reserved by the
-editor-mark table, or in the activity row `≡ ⑂ ⌕ ⚙ ⧫`.
+editor-mark table, or in the activity row `≡ ⑂ ⌕ ▶ ⚙ ⧫`.
 
 | Pair | Shell-script mark | YAML/configuration mark | Why it reads correctly |
 | --- | --- | --- | --- |

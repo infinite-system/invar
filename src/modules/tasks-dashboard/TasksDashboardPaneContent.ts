@@ -6,6 +6,7 @@
 // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 // invariant: Dashboard controls state their selection and next action (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 import type { KeyEvent, StyledText } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { computed, shallowRef } from 'vue';
@@ -44,7 +45,7 @@ class $TasksDashboardPaneContent implements PaneContent {
   }
 
   get icon(): string {
-    return this.application.theme.glyphLevel.value === 'ascii' ? '#' : '⛭';
+    return this.application.theme.glyphVocabulary.activityTasks;
   }
 
   get activityAction(): string {

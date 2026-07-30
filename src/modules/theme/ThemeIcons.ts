@@ -200,6 +200,7 @@ class $ThemeIcons {
         owner: 'activity: Extensions',
       },
       { mark: unicodeVocabulary.activitySearch, owner: 'activity: Search' },
+      { mark: unicodeVocabulary.activityTasks, owner: 'activity: Tasks' },
       { mark: unicodeVocabulary.activitySettings, owner: 'activity: Settings' },
       {
         mark: unicodeVocabulary.activityAccentBar,
@@ -457,6 +458,7 @@ class $ThemeIcons {
         activitySourceControl: '\u{e702}',
         activityExtensions: '\u{f487}',
         activitySearch: '\u{f002}',
+        activityTasks: '\u{f04b}',
         activitySettings: '\u{f013}',
         activityAccentBar: '▎',
         panelAdd: '\u{f067}',
@@ -483,13 +485,14 @@ class $ThemeIcons {
         // legible but read as oversized beside its siblings — and measurement says that was
         // aesthetic, not a width bug: U+2B22 measures ONE cell in the app table AND renders in one
         // cell in the terminal, so the activity strip was never misaligned; the hexagon simply carries
-        // more ink than ≡ ⑂ ⌕ ⚙. The constraint is therefore a narrow band: solid (no fine detail that
+        // more ink than ≡ ⑂ ⌕ ▶ ⚙. The constraint is therefore a narrow band: solid (no fine detail that
         // can vanish), one unambiguous cell, and not visually heavier than the row. ⧫ BLACK LOZENGE is
         // solid, keeps a package-like read, is slimmer than the hexagon, and is East-Asian-Width
         // NEUTRAL rather than AMBIGUOUS — narrow by classification instead of by hope, which also
         // removes a latent risk the hexagon carried even though this terminal agreed on its width.
         activityExtensions: '⧫',
         activitySearch: '⌕',
+        activityTasks: '▶',
         activitySettings: '⚙',
         activityAccentBar: '▎',
         panelAdd: '+',
@@ -510,6 +513,7 @@ class $ThemeIcons {
         activitySourceControl: 'G',
         activityExtensions: 'X',
         activitySearch: '/',
+        activityTasks: 'P',
         activitySettings: '*',
         activityAccentBar: '|',
         panelAdd: '+',
@@ -911,6 +915,7 @@ export interface InterfaceGlyphVocabulary {
   activitySourceControl: string;
   activityExtensions: string;
   activitySearch: string;
+  activityTasks: string;
   activitySettings: string;
   activityAccentBar: string;
   panelAdd: string;
