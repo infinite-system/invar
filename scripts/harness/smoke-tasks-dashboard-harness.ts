@@ -251,6 +251,7 @@ try {
     (status) =>
       status.tasksLens === 'live' &&
       status.tasksAvailable === false &&
+      status.tasksAnimationAtRest === true &&
       Number(status.tasksAnimationPaint) === 0,
   );
   HarnessSmoke.Class.requireCondition(
@@ -267,6 +268,7 @@ try {
       status.rightDockActiveContent === 'tasks' &&
       status.rightDockFocused === true &&
       status.tasksAvailable === true &&
+      status.tasksAnimationAtRest === false &&
       Number(status.tasksRows) === 5,
   );
   await driver.awaitGridCondition(
@@ -274,13 +276,10 @@ try {
     (snapshot) => {
       const readyTitle = snapshot.findText('#902 planted-ready');
       const buildingTitle = snapshot.findText('#901 planted-building');
-      const readyStatus = snapshot.findText('READY round');
-      const buildingStatus = snapshot.findText('building  10');
-      if (!readyTitle || !buildingTitle || !readyStatus || !buildingStatus)
-        return false;
+      if (!readyTitle || !buildingTitle) return false;
       return (
-        readyStatus.row === readyTitle.row + 1 &&
-        buildingStatus.row === buildingTitle.row + 1
+        snapshot.rowText(readyTitle.row + 1).includes('READY') &&
+        snapshot.rowText(buildingTitle.row + 1).includes('building')
       );
     },
   );
@@ -350,21 +349,21 @@ try {
       status.rightDockActiveContent === 'tasks' &&
       status.rightDockFocused === true,
   );
-  const sessionPosition = driver.snapshot().findText('READY round');
-  if (!sessionPosition)
+  const sessionTitlePosition = driver.snapshot().findText('#902 planted-ready');
+  if (!sessionTitlePosition)
     throw new Error(
       'The READY task status target disappeared before its click',
     );
   driver.sendMouse({
     kind: 'move',
-    column: sessionPosition.column + 2,
-    row: sessionPosition.row,
+    column: sessionTitlePosition.column,
+    row: sessionTitlePosition.row + 1,
     button: 'none',
   });
   await driver.awaitScreenChange();
   driver.sendMouseClick({
-    column: sessionPosition.column + 2,
-    row: sessionPosition.row,
+    column: sessionTitlePosition.column,
+    row: sessionTitlePosition.row + 1,
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(
@@ -673,6 +672,7 @@ try {
     'the pane shows with zero rows over the absent tree',
     (status) =>
       status.rightDockActiveContent === 'tasks' &&
+      status.tasksAnimationAtRest === true &&
       Number(status.tasksRows) === 0,
   );
   await bareDriver.awaitGridCondition(

@@ -334,7 +334,10 @@ try {
   const gitRow = glyphRow(snapshot, 'G');
   const extensionsRow = glyphRow(snapshot, 'X');
   const structureRow = glyphRow(snapshot, 't');
-  const tasksRow = glyphRow(snapshot, '#');
+  const tasksRow = glyphRow(
+    snapshot,
+    ThemeIcons.Class.glyphFor('ascii', 'activityTasks'),
+  );
   HarnessSmoke.Class.pass(`Explorer glyph 'F' rendered (row ${filesRow})`);
   HarnessSmoke.Class.pass(`Source Control glyph 'G' rendered (row ${gitRow})`);
   HarnessSmoke.Class.pass(
@@ -466,7 +469,11 @@ try {
     (candidate) =>
       glyphRowAtColumn(candidate, 'F', candidate.columns - 2) >= 0 &&
       glyphRowAtColumn(candidate, 't', candidate.columns - 2) >= 0 &&
-      glyphRowAtColumn(candidate, '#', candidate.columns - 2) >= 0,
+      glyphRowAtColumn(
+        candidate,
+        ThemeIcons.Class.glyphFor('ascii', 'activityTasks'),
+        candidate.columns - 2,
+      ) >= 0,
   );
   HarnessSmoke.Class.pass(
     'the optional right activity bar mirrors the dock-agnostic surface',

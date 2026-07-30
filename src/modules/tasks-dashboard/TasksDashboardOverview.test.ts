@@ -270,6 +270,14 @@ test('the motion clock exists only while the pane is observed', async () => {
   fixture.dispose();
 });
 
+test('the motion clock stays absent when no live row or gate needs it', () => {
+  const fixture = makeFixture({ withTree: false });
+  expect(fixture.overview.rows.value).toEqual([]);
+  expect(fixture.overview.animationPaint.value).toBe(0);
+  expect(fixture.overview.motionHeartbeatAtRest()).toBe(true);
+  fixture.dispose();
+});
+
 test('fleet extras state their main-checkout scope and do no unrelated reads', () => {
   const root = makeWorkspaceRootForScope();
   let fleetReadCount = 0;

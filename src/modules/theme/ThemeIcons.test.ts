@@ -180,6 +180,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'activitySourceControl',
     'activityExtensions',
     'activitySearch',
+    'activityTasks',
     'activitySettings',
     'panelAdd',
     'panelExpand',
@@ -199,6 +200,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{e702}',
       '\u{f487}',
       '\u{f002}',
+      '\u{f04b}',
       '\u{f013}',
       '\u{f067}',
       '\u{f065}',
@@ -217,6 +219,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '⑂',
       '⧫',
       '⌕',
+      '▶',
       '⚙',
       '+',
       '↗',
@@ -235,6 +238,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       'G',
       'X',
       '/',
+      'P',
       '*',
       '+',
       '>',
@@ -273,12 +277,23 @@ test('the extensions glyph is one cell and is claimed by nobody else', () => {
   ).toEqual(['activity: Extensions']);
 });
 
+test('the tasks activity glyph reads as run through every fallback tier', () => {
+  const glyphLevels = ['nerd', 'unicode', 'ascii'] as const;
+  expect(
+    glyphLevels.map((level) =>
+      ThemeIcons.Class.glyphFor(level, 'activityTasks'),
+    ),
+  ).toEqual(['\u{f04b}', '▶', 'P']);
+  expect(ThemeIcons.Class.markOwnersFor('▶')).toEqual(['activity: Tasks']);
+});
+
 test('activity and panel control glyphs stay pairwise distinct at every tier', () => {
   const distinctGlyphSlots = [
     'activityFiles',
     'activitySourceControl',
     'activityExtensions',
     'activitySearch',
+    'activityTasks',
     'activitySettings',
     'panelAdd',
     'panelExpand',

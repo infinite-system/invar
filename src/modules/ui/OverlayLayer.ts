@@ -253,10 +253,18 @@ class $OverlayLayer {
     this.quickOpenInput = new TextRenderable(renderer, {
       id: 'quick-open-input',
       content: '',
+      height: 1,
+      flexShrink: 0,
+      wrapMode: 'none',
+      truncate: true,
+      selectable: false,
     });
     this.quickOpenList = new TextRenderable(renderer, {
       id: 'quick-open-list',
       content: '',
+      wrapMode: 'none',
+      truncate: true,
+      selectable: false,
     });
     this.quickOpenBox.add(this.quickOpenInput);
     this.quickOpenBox.add(this.quickOpenList);
@@ -1314,6 +1322,9 @@ class $OverlayLayer {
         );
       }
       this.quickOpenInput.content = new StyledText(inputChunks);
+      this.quickOpenInput.width = quickOpenGeometry.interiorWidth;
+      this.quickOpenList.width = quickOpenGeometry.interiorWidth;
+      this.quickOpenList.height = this.quickOpenViewportRows;
       // The result list renders through the renderer: row-background selection/hover (no arrow marker),
       // and it reports the hit-testable row count for the pointer handler.
       const quickOpenResult = QuickOpenRenderer.Class.render({

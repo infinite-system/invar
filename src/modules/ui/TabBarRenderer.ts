@@ -516,7 +516,8 @@ class $TabBarRenderer {
     const pathAreaWidth = Math.max(1, barWidth - actionsWidth);
     const crumbs = Breadcrumb.Class.fitPathSegments(
       Breadcrumb.Class.pathSegments(activeTab.identifier, projectRoot),
-      Math.max(1, pathAreaWidth - 2), // reserve one leading and one trailing pad
+      // Reserve the row margin plus the hover pad cell each crumb row end carries.
+      Math.max(1, pathAreaWidth - 2 - Breadcrumb.Class.HOVER_PAD_COLUMNS),
       3,
     );
     const chunks: TextChunk[] = [fg(palette.fg)(' ')];
@@ -524,23 +525,28 @@ class $TabBarRenderer {
     let column = 1;
     crumbs.forEach((crumb, index) => {
       const isFilename = index === crumbs.length - 1;
+      // ONE crumb geometry. The padded label is what the row shows, what the hover background
+      // paints, and what `start`/`end` report — so the hit test and the picker anchor read the
+      // same span the paint used. No second measurement anywhere.
+      const paddedLabel = Breadcrumb.Class.paddedLabel(crumb.label);
+      const start = column;
+      const end = column + TextCoordinates.Class.lineWidth(paddedLabel);
       const styledCrumb = fg(isFilename ? palette.fg : palette.dim)(
-        crumb.label,
+        paddedLabel,
       );
       chunks.push(
         context.hoveredSourceIndex === crumb.sourceIndex
           ? bg(palette.cursorLine)(styledCrumb)
           : styledCrumb,
       );
-      segments.push({
-        kind: 'crumb',
-        ...crumb,
-        start: column,
-        end: column + TextCoordinates.Class.lineWidth(crumb.label),
-      });
-      column += TextCoordinates.Class.lineWidth(crumb.label);
-      if (!isFilename) chunks.push(fg(palette.dim)(' › '));
-      if (!isFilename) column += 3;
+      segments.push({ kind: 'crumb', ...crumb, start, end });
+      column = end;
+      // The separator glyph sits BETWEEN two padded crumbs and belongs to neither, so it never
+      // takes the hover background and no crumb span covers it.
+      if (!isFilename) {
+        chunks.push(fg(palette.dim)('›'));
+        column += 1;
+      }
     });
     this.appendHorizontalGap(
       chunks,

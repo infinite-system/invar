@@ -1,7 +1,10 @@
 import { RGBA } from '@opentui/core';
 import { expect, test } from 'bun:test';
 import { ThemePalettes } from '../theme/ThemePalettes';
-import { TASKS_BUILDING_BREATH_FRAMES } from '../../../scripts/tasks/tasks-status';
+import {
+  TASKS_BUILDING_BREATH_FRAMES,
+  TASKS_EXPLORING_GLYPHS,
+} from '../../../scripts/tasks/tasks-status';
 import {
   TasksDashboardPaneRenderer,
   type TasksDashboardRenderContext,
@@ -210,21 +213,58 @@ test('the cycling glyph reflects start and stop through theme-owned icons', () =
   expect(playing).not.toContain('>');
 });
 
-test('building motion advances through the CLI-exported breath frames', () => {
-  const row = taskRow({ standing: 'building', phase: 'building' });
+test('live motion advances through the CLI-exported phase frames', () => {
+  const titleRow = taskRow({ standing: 'building', phase: 'building' });
+  const detailRow = taskRow({
+    kind: 'detail',
+    standing: 'building',
+    phase: 'building',
+  });
   const first = renderedText(
     TasksDashboardPaneRenderer.Class.render(
-      makeContext({ rows: [row], animationPaint: 0 }),
+      makeContext({ rows: [titleRow, detailRow], animationPaint: 0 }),
     ),
   );
   const second = renderedText(
     TasksDashboardPaneRenderer.Class.render(
-      makeContext({ rows: [row], animationPaint: 10 }),
+      makeContext({ rows: [titleRow, detailRow], animationPaint: 10 }),
     ),
   );
-  expect(first).toContain(TASKS_BUILDING_BREATH_FRAMES[0]!.glyph);
-  expect(second).toContain(TASKS_BUILDING_BREATH_FRAMES[2]!.glyph);
+  expect(first).toContain(`${TASKS_BUILDING_BREATH_FRAMES[0]!.glyph} building`);
+  expect(second).toContain(
+    `${TASKS_BUILDING_BREATH_FRAMES[2]!.glyph} building`,
+  );
+  expect(first).not.toContain(`${TASKS_BUILDING_BREATH_FRAMES[0]!.glyph} #901`);
   expect(second).not.toBe(first);
+
+  const exploringTitleRow = taskRow({
+    standing: 'building',
+    phase: 'exploring',
+  });
+  const exploringDetailRow = taskRow({
+    kind: 'detail',
+    standing: 'building',
+    phase: 'exploring',
+  });
+  const exploringFirst = renderedText(
+    TasksDashboardPaneRenderer.Class.render(
+      makeContext({
+        rows: [exploringTitleRow, exploringDetailRow],
+        animationPaint: 0,
+      }),
+    ),
+  );
+  const exploringSecond = renderedText(
+    TasksDashboardPaneRenderer.Class.render(
+      makeContext({
+        rows: [exploringTitleRow, exploringDetailRow],
+        animationPaint: 10,
+      }),
+    ),
+  );
+  expect(exploringFirst).toContain(`${TASKS_EXPLORING_GLYPHS[0]} exploring`);
+  expect(exploringSecond).toContain(`${TASKS_EXPLORING_GLYPHS[2]} exploring`);
+  expect(exploringSecond).not.toBe(exploringFirst);
 });
 
 test('the pinned row actions share one hit and tooltip geometry', () => {

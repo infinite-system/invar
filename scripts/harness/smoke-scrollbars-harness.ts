@@ -6,13 +6,14 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
+import { DiagnosticLog } from './DiagnosticLog';
 import { HarnessSmoke } from './HarnessSmoke';
 import {
   deriveMarkdownPreviewScrollbarThumbDragTargets,
@@ -1405,23 +1406,18 @@ function sendRepeatedWheel(
   }
 }
 
+// The scroll inputs come from this driven instance's OWN diagnostic log, guarded by instance
+// identity. The earlier form tailed the shared repository-relative artifacts/tui.log and took
+// the last matching line in the whole file, so a concurrent instance's line and a previous
+// run's leftover were both accepted (measured 2026-07-30: a planted line was returned).
 function latestVerticalScrollInputs(
-  repositoryRoot: string,
+  driver: PtyTestDriver.Model,
   scrollbarIdentifier: string,
 ): Omit<VerticalThumbFrame, 'thumbLength'> | null {
-  let logText: string;
-  try {
-    logText = readFileSync(
-      join(repositoryRoot, 'artifacts', 'tui.log'),
-      'utf8',
-    );
-  } catch {
-    return null;
-  }
-  const matchingLines = logText
-    .split('\n')
-    .filter((line) => line.includes(`bar ${scrollbarIdentifier}:`));
-  const latestLine = matchingLines.at(-1);
+  const latestLine = DiagnosticLog.Class.latestLineContaining(
+    driver,
+    `bar ${scrollbarIdentifier}:`,
+  );
   if (!latestLine) return null;
   const match =
     /scrollSize=(?<totalRows>-?\d+(?:\.\d+)?) viewportSize=(?<viewportRows>-?\d+(?:\.\d+)?) scrollPosition=(?<scrollTop>-?\d+(?:\.\d+)?)/.exec(
@@ -1437,7 +1433,6 @@ function latestVerticalScrollInputs(
 
 async function collectVerticalThumbFrames(
   driver: PtyTestDriver.Model,
-  repositoryRoot: string,
   scrollbarIdentifier: string,
   modeLabel: string,
   diagnosticsRequired: boolean,
@@ -1507,7 +1502,7 @@ async function collectVerticalThumbFrames(
         );
       }
       const scrollInputs = latestVerticalScrollInputs(
-        repositoryRoot,
+        driver,
         scrollbarIdentifier,
       );
       if (diagnosticsRequired && !scrollInputs) {
@@ -1719,7 +1714,6 @@ async function proveVerticalEditorThumbStability(
     );
     const thumbFrames = await collectVerticalThumbFrames(
       driver,
-      repositoryRoot,
       'editor-scrollbar-v',
       modeLabel,
       diagnosticsRequired,
@@ -1794,7 +1788,6 @@ async function proveVerticalDiffThumbStability(
     const horizontalFrames: DiffHorizontalScrollbarFrame[] = [];
     const thumbFrames = await collectVerticalThumbFrames(
       driver,
-      repositoryRoot,
       'diff-scrollbar-vertical',
       'diff',
       true,

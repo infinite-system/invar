@@ -391,3 +391,111 @@ opus-5 medium (Engine: claude in the task file — dispatch.sh transmits
 --model opus --effort medium). #350 is pre-marked opus. Claude builders:
 prime per doctrine (they auto-read CLAUDE.md; tell them to load /ivue +
 /invariants; IBR via the system-prompt flags is dispatch.sh's job).
+## RESUME ANCHOR 17 (2026-07-30 03:5x, pre-compact CHECKPOINT)
+
+Overnight autonomous run. Stop hooks active: drain the queue, cap 3 agents,
+no user questions. Morning report with hashes when drained.
+
+### Lanes (3 live tmux sessions, AGENT_TMUX_PREFIX="invar/")
+- 326-stage-two — codex sol MEDIUM, manual lane (branch fleet/326-stage-two,
+  worktree .invar/worktrees/326-stage-two). Stage-2 execute per
+  brief-326-2-stage-two-execute.md. fleet-watch may not auto-key this
+  nonstandard lane; check its tmux + worktree on every wake.
+- 342-tasks-json-panes-fail-to-load — READY DELIVERED. Report = NEGATIVE
+  diagnosis (all 4 rivals rejected; smoke ratchet added, no product code).
+  Commit 60810aa9 on fleet/342-…. NEXT ACTION: extract-gate-verdict.sh 342
+  tasks-json-panes-fail-to-load → land via land.sh (bycatch: none stated —
+  re-read the report ## Bycatch before landing). After landing: lane FREES.
+- 351-quick-open-search-bar-vanishes-list-corrupts — codex sol HIGH, still
+  building (recent writes).
+
+### Fleet mix (user, final directive)
+2x codex gpt-5.6-sol MEDIUM + 1x claude OPUS MEDIUM. #350 pre-marked
+Engine: claude / Model: opus-5 / Effort: medium — it is the NEXT dispatch
+when a lane frees (becomes the opus lane). dispatch.sh transmits flags.
+
+### Queue (front first)
+350 (opus lane) → 343 → 344 → 345 → 346 (needs 342) → 347 → 348 → 349 →
+352 → 341 (unblocked, #340 landed) → 337 (promoted, gate-taxing red).
+
+### Landing ritual
+bash scripts/fleet/extract-gate-verdict.sh <n> <slug>  (self-test on first
+use each session) → GATE_LOG=tmp/gate-verdict-<n>.log BYCATCH_TRIAGED=1
+bash scripts/fleet/land.sh <n> <slug> tmp/merge-msg-<n>.md "<summary>".
+Pre-existing red classes for GATE_OVERRIDE: #214 panel-chrome, #337
+structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
+
+### Watchers to re-arm on resume (crons stay DISARMED, user order 740c5d81)
+1. Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+2. ScheduleWakeup ~1800s overnight-loop fallback (re-arm while queue
+   non-empty; stop when drained).
+
+### Hazards
+- NEVER drive the app with this repo as opened workspace while real
+  .invar/tasks.json present (spawns real aws-vault/claude). #342 work was
+  fixture-only by design.
+- Twin conductor pid 3541394 (old ibr session) may still commit; never
+  kill without user word; duplicate #338 folder retires after its death.
+- Builders misread "do not run merge-gate.sh" as SKIP_GATE license; briefs
+  must say: let the commit hook run the gate.
+
+### ANCHOR 17 DELTA (03:4x)
+- #342 LANDED e93995e7 (negative diagnosis + smoke ratchet). #353 filed
+  from its bycatch (harness contract omits folder-open suppression). Two
+  single-occurrence gate flakes logged inside #353, not converted.
+- #350 DISPATCHED as the OPUS lane (claude opus medium), branch
+  fleet/350-nicer-generated-sample-video. dispatch's send said NOT
+  CONFIRMED but the pane shows the builder actively thinking — the
+  confirm heuristic is codex-shaped; claude delivery verified by pane
+  capture. LESSON: for claude lanes verify delivery by pane capture.
+- Lanes now: 326-stage-two (codex med), 351 (codex high), 350 (opus med).
+  Mix satisfied. Queue front after these: 343 → 344 → 345 → 346 → 347 →
+  348 → 349 → 352 → 341 → 337 (+ 353 hygiene).
+
+### ANCHOR 17 DELTA 2 (05:0x)
+- LANDED tonight so far: #342 e93995e7, #351 7f57b019 (+#354/#355 bycatch),
+  #350 4017f53c (mandelbrot; narrow-rule over #359/#360/#337 reds),
+  #337 64ca4df5 (ordinal->label walks; root cause was #340's contributed
+  row; +#362/#363/#364 bycatch). #338 duplicate consolidated+retired
+  (twin conductor asleep per user).
+- User filed live: #356 agent pane = decoupled "Invar Agent" plugin
+  (analysis in task file: module exists, plugin wrapper missing, wired in
+  Bootstrap/RootView); #361 tasks-icon click -> panel warnings ->
+  terminal buffer crash (verbatim log in task); #90 PROMOTED user-directed
+  (full test-isolation census + provenance fix).
+- Lanes: 326-stage-two (codex med) · 343 (codex med, round-3: merge main
+  + re-gate after #337 unblock) · 90 (opus med, census+fix).
+- dispatch.sh codex floor is now MEDIUM (supersedes 07-29 high floor).
+- Claude-lane lessons: steer.sh/send confirm heuristics are codex-shaped —
+  verify delivery by pane capture; claude builders may write READY before
+  committing — briefs now order commit-before-READY; land.sh busy-check
+  needs builder idle — wait, retry.
+- Queue: 344 345 346 347 348 349 352 341 356 361 362 353 357 358 363 364
+  359 360 (+#326 stage-2 in flight).
+
+### ANCHOR 17 DELTA 3 (05:4x)
+- More landings: #90 21bf9c71 (isolation census + provenance guard;
+  bycatch #365-368), #344 dc30d875 (breadcrumb hover; bycatch #369/#370),
+  #343 68a95c11 (play glyph + LIVE spinner; #371 git-watch flake filed;
+  post-landing spot smokes green). 7 landings this shift.
+- Lanes: 326-stage-two (codex med) · 345 separator glyph (opus med) ·
+  346 panel tab bar ten-point spec (codex med, just dispatched).
+- Queue: 347 348 349 352 341 356 361 362 353 357 358 363-371 tail.
+- Codex-lane report lesson: #343 wrote its report only in the WORKTREE
+  task folder; land.sh refused until the conductor copied it to the main
+  checkout folder. #346 brief now orders absolute-path report delivery.
+
+### ANCHOR 17 DELTA 4 (06:0x)
+- #345 LANDED 085bfca0 (heavy-line centered separator; bycatch #372
+  glyph-tier gap, #373 user-visible border hole with repro). 8 landings.
+- #326 stage-2 READY delivered (signed runtime plugin install + in-place
+  execve relaunch, catalog identity/provenance, atomic selection record).
+  Its one gate run was red on the since-fixed plugin-manifest class +
+  word-delete double timeout (filed #374). Round-3 brief filed + steered:
+  merge main, re-check, re-gate through hook, append chain. Land next.
+- #347 dispatched opus (markdown link resolution rivals + double-click).
+- Lanes: 326 (codex, round-3 merge) · 346 panel tab bar (codex) ·
+  347 (opus). Queue: 348 349 352 341 356 361 + hygiene tail 353-374.
+- land.sh claude-lane note: busy-check accepts idle-unconfirmed for
+  engine=claude in meta.json; transient 'busy' comes from background
+  shells — wait and retry.

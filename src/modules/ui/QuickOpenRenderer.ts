@@ -126,7 +126,11 @@ class $QuickOpenRenderer {
           ? palette.cursorLine
           : null;
       const label = TextCoordinates.Class.padToDisplayWidth(
-        ` ${match.path}`,
+        TextCoordinates.Class.displayColumnWindow(
+          ` ${match.path}`,
+          0,
+          innerWidth,
+        ),
         innerWidth,
       );
       const styled = fg(selected ? palette.accent : palette.fg)(label);

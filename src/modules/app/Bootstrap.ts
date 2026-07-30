@@ -163,7 +163,6 @@ class $Bootstrap {
       kernelExtensions: Kernel.Class.instance.registeredExtensions(),
       appClassExtended: App.Class !== App.$Class,
     });
-    StatusChannel.Class.flush();
     app.onDispose(() => this.reapSdkBinaryExtractions());
     app.attach(renderer);
     // OpenTUI owns stdout and may flush frames from a native render thread. Its OSC 52 writer shares

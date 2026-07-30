@@ -208,20 +208,18 @@ fi
 # three different agents produce three distinguishable transcripts instead of one overwritten file.
 # Resolve model/effort DEFAULTS per engine before anything records them: a
 # record with no Model: line means the fleet default for its engine, never
-# "unknown". Codex effort policy: medium is NOT allowed (user directive
-# 2026-07-29) — normalize medium->high loudly; empty/default -> high.
+# "unknown". Codex effort policy (user directive 2026-07-30, "tokens are
+# scarce"): MEDIUM is the default and is allowed; it supersedes the
+# 2026-07-29 high-floor. 'low' stays blocked — the floor is medium now.
 resolved_engine="${declared_engine:-$engine}"
 if [ "$resolved_engine" = "codex" ]; then
   declared_model="${declared_model:-5.6-sol}"
   case "${declared_effort:-}" in
-    ""|default) declared_effort="high";;
-    high|xhigh) ;;
+    ""|default) declared_effort="medium";;
+    medium|high|xhigh) ;;
     *)
-      # The directive named 'medium', but the INTENT is a floor: high is the
-      # minimum codex effort. Enforcing only the named value let a builder
-      # run at 'low' on 2026-07-30 (#322) — block the class, not the instance.
-      echo "dispatch: WARNING — codex effort '${declared_effort}' is below the floor; using 'high'" >&2
-      declared_effort="high"
+      echo "dispatch: WARNING — codex effort '${declared_effort}' is below the medium floor; using 'medium'" >&2
+      declared_effort="medium"
       ;;
   esac
 else

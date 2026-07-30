@@ -8,7 +8,9 @@
 import { existsSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-quickopen-harness-'));
@@ -46,6 +48,23 @@ mkdirSync(join(fixtureRoot, 'src'));
 
 await Bun.write(join(fixtureRoot, 'src', 'widget.txt'), 'content\n');
 
+const longPathResultCount = 24;
+const targetLongPathResultCount = 5;
+const longPathFileNames = Array.from(
+  { length: longPathResultCount },
+  (_unused, resultIndex) => {
+    const resultGroup =
+      resultIndex < targetLongPathResultCount ? 'target' : 'other';
+    return (
+      `scroll-${resultGroup}-${String(resultIndex).padStart(2, '0')}-` +
+      'quick-open-result-with-a-name-longer-than-the-compact-dialog-width.txt'
+    );
+  },
+);
+for (const longPathFileName of longPathFileNames) {
+  await Bun.write(join(fixtureRoot, longPathFileName), 'long path\n');
+}
+
 mkdirSync(join(degradedFixtureRoot, 'ignored'));
 
 await Bun.write(
@@ -64,10 +83,60 @@ function pathWithoutRipgrep(): string {
     .join(delimiter);
 }
 
+function quickOpenDialogBounds(
+  status: StatusSnapshot,
+): { left: number; top: number; width: number; height: number } | null {
+  const dialogBounds = status.overlayDialogBounds as
+    | Record<
+        string,
+        { left: number; top: number; width: number; height: number } | null
+      >
+    | undefined;
+  return dialogBounds?.quickOpen ?? null;
+}
+
+function quickOpenScrollPosition(status: StatusSnapshot): number {
+  const scrollPositions = status.overlayScrollPositions as
+    Record<string, number> | undefined;
+  return Number(scrollPositions?.quickOpen ?? 0);
+}
+
+function quickOpenViewportExtent(
+  status: StatusSnapshot,
+): { contentRows: number; viewportRows: number } | null {
+  const viewportExtents = status.overlayViewportExtents as
+    Record<string, { contentRows: number; viewportRows: number }> | undefined;
+  return viewportExtents?.quickOpen ?? null;
+}
+
+function quickOpenInputIsVisible(
+  snapshot: HarnessSnapshot.Model,
+  status: StatusSnapshot,
+  expectedQuery: string,
+): boolean {
+  const dialogBounds = quickOpenDialogBounds(status);
+  if (!dialogBounds) return false;
+  const inputRow = snapshot
+    .rowText(dialogBounds.top + 1)
+    .slice(dialogBounds.left + 1, dialogBounds.left + dialogBounds.width - 1);
+  return inputRow.includes(`↗ ${expectedQuery}`);
+}
+
+async function requireQuickOpenInputVisible(
+  driver: PtyTestDriver.Model,
+  status: StatusSnapshot,
+  expectedQuery: string,
+  description: string,
+): Promise<void> {
+  await driver.awaitGridCondition(description, (snapshot) =>
+    quickOpenInputIsVisible(snapshot, status, expectedQuery),
+  );
+}
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
-  columns: 120,
-  rows: 40,
+  columns: 60,
+  rows: 15,
   homeDirectory,
   environment: { TUI_STATUS_PATH: statusPath },
 });
@@ -150,6 +219,180 @@ try {
   HarnessSmoke.Class.pass(
     'Enter opened the exact Quick Open entry published as selected ' +
       `(${String(identityOpenedStatus.activeBuffer)})`,
+  );
+
+  console.log(
+    '== harness quick-open: long results preserve the input through every list window ==',
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Quick Open enumerates the long-path fixture before the scroll drive',
+    (status) =>
+      status.quickOpenOpen === true &&
+      status.quickOpenQuery === '' &&
+      status.quickOpenFileEnumerationState === 'complete' &&
+      Number(status.quickOpenMatches) >= longPathFileNames.length,
+  );
+  driver.sendText('scroll');
+  let longPathStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the broad long-path query publishes every fixture result',
+    (status) =>
+      status.quickOpenQuery === 'scroll' &&
+      status.quickOpenMatches === longPathFileNames.length &&
+      status.quickOpenSelected === 0,
+  );
+  await requireQuickOpenInputVisible(
+    driver,
+    longPathStatus,
+    'scroll',
+    'the broad query remains painted on the fixed input row',
+  );
+
+  const observedDownwardScrollPositions = new Set<number>([
+    quickOpenScrollPosition(longPathStatus),
+  ]);
+  for (
+    let selectedIndex = 1;
+    selectedIndex < longPathFileNames.length;
+    selectedIndex++
+  ) {
+    driver.sendKeys('Down');
+    longPathStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Quick Open selects long-path result ${selectedIndex} while moving down`,
+      (status) =>
+        status.quickOpenQuery === 'scroll' &&
+        status.quickOpenSelected === selectedIndex,
+    );
+    observedDownwardScrollPositions.add(
+      quickOpenScrollPosition(longPathStatus),
+    );
+    await requireQuickOpenInputVisible(
+      driver,
+      longPathStatus,
+      'scroll',
+      `the input row remains visible at downward selection ${selectedIndex}`,
+    );
+  }
+
+  const broadViewportExtent = quickOpenViewportExtent(longPathStatus);
+  HarnessSmoke.Class.requireCondition(
+    broadViewportExtent !== null,
+    'Quick Open publishes its long-path viewport extent',
+  );
+  const maximumBroadScrollPosition = Math.max(
+    0,
+    (broadViewportExtent?.contentRows ?? 0) -
+      (broadViewportExtent?.viewportRows ?? 0),
+  );
+  for (
+    let scrollPosition = 0;
+    scrollPosition <= maximumBroadScrollPosition;
+    scrollPosition++
+  ) {
+    HarnessSmoke.Class.requireCondition(
+      observedDownwardScrollPositions.has(scrollPosition),
+      `downward selection exposed scroll position ${scrollPosition}`,
+    );
+  }
+
+  driver.sendText('target');
+  longPathStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the narrow query shrinks the result set and reconciles its old bottom offset',
+    (status) =>
+      status.quickOpenQuery === 'scrolltarget' &&
+      status.quickOpenMatches === targetLongPathResultCount &&
+      quickOpenScrollPosition(status) === 0,
+  );
+  await requireQuickOpenInputVisible(
+    driver,
+    longPathStatus,
+    'scrolltarget',
+    'the input row remains visible after the result set shrinks',
+  );
+
+  for (
+    let removedCharacterCount = 1;
+    removedCharacterCount <= 'target'.length;
+    removedCharacterCount++
+  ) {
+    driver.sendKeys('Backspace');
+    const expectedQuery = `scroll${'target'.slice(
+      0,
+      'target'.length - removedCharacterCount,
+    )}`;
+    longPathStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Quick Open publishes the growing transition query ${expectedQuery}`,
+      (status) => status.quickOpenQuery === expectedQuery,
+    );
+    await requireQuickOpenInputVisible(
+      driver,
+      longPathStatus,
+      expectedQuery,
+      `the input row remains visible during growth transition ${expectedQuery}`,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    longPathStatus.quickOpenMatches === longPathFileNames.length,
+    'removing the narrow suffix restores the full long-path result set',
+  );
+
+  const observedUpwardScrollPositions = new Set<number>();
+  for (
+    let selectedIndex = 1;
+    selectedIndex < longPathFileNames.length;
+    selectedIndex++
+  ) {
+    driver.sendKeys('Down');
+    longPathStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Quick Open returns to long-path result ${selectedIndex}`,
+      (status) => status.quickOpenSelected === selectedIndex,
+    );
+  }
+  observedUpwardScrollPositions.add(quickOpenScrollPosition(longPathStatus));
+  for (
+    let selectedIndex = longPathFileNames.length - 2;
+    selectedIndex >= 0;
+    selectedIndex--
+  ) {
+    driver.sendKeys('Up');
+    longPathStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Quick Open selects long-path result ${selectedIndex} while moving up`,
+      (status) => status.quickOpenSelected === selectedIndex,
+    );
+    observedUpwardScrollPositions.add(quickOpenScrollPosition(longPathStatus));
+    await requireQuickOpenInputVisible(
+      driver,
+      longPathStatus,
+      'scroll',
+      `the input row remains visible at upward selection ${selectedIndex}`,
+    );
+  }
+  for (
+    let scrollPosition = 0;
+    scrollPosition <= maximumBroadScrollPosition;
+    scrollPosition++
+  ) {
+    HarnessSmoke.Class.requireCondition(
+      observedUpwardScrollPositions.has(scrollPosition),
+      `upward selection exposed scroll position ${scrollPosition}`,
+    );
+  }
+  HarnessSmoke.Class.pass(
+    'the input row survived every downward and upward scroll position plus shrink and growth',
   );
 
   driver.sendKeys('Control+q');
