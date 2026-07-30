@@ -265,3 +265,45 @@ builder did not cause: prove pre-existence by running the exact failing test on
 main, then narrow-rule land. (4) The other-incarnation hazard is real: check
 `pgrep -x claude` + /proc cwd BEFORE trusting main history; a duplicate task
 number filed by a twin looks exactly like your own work.
+
+## RESUME ANCHOR 16 (2026-07-30 03:01 — CHECKPOINT anchor; supersedes 15)
+
+**Pid check first (writer: 3752392, ~/dev/invar launch). TWIN HAZARD STILL OPEN:
+old ibr incarnation pid 3541394 alive, filed duplicate #338
+(338-declared-graphics-tier-fails-silently, a1c9f878). User asked twice, no
+answer. On resume: ps -p 3541394; if alive, ask again; once dead, git mv the
+duplicate folder to retired/ with reason "duplicate of 338-forced-... filed by
+twin incarnation".**
+
+MAIN-TREE RED (gate-blocking, unchanged): Drive.test.ts large-Markdown
+structure-dock case (#334, dispatched). Landings until fixed use the narrow
+rule citing #334 (pre-existing proof: fails on main without branch content).
+
+LANES LIVE (3, cap): #334 (the red), #339 (supersampled demo), #340 (tree
+reveal + button row). All codex sol high. Verdict at READY: use
+scripts/fleet/extract-gate-verdict.sh <n> <slug> (NEW, self-tested — the
+hand ritual is retired), then land.sh with GATE_LOG=. Remember merge-round
+discipline: if main moved with CODE, round-brief a merge before landing.
+
+DISPATCH QUEUE (user-directed, in order): #342 tasks.json panes (SAFETY RAIL
+in task file — never drive repo root with real tasks.json, fixture-only,
+audit folderOpen guard) → #343 tasks icon + LIVE spinner → #344 breadcrumb
+hover pad → #345 separator glyph U+2501 (record re-choice rides the diff) →
+#346 panel tab bar (BIG spec, 7 numbered points + addenda; depends on #342)
+→ #347 markdown links red + double-click open → #348 tasks:watch gradient
+60fps time-based phase. #341 blocked on #340. #326 stage 2 awaits user go.
+#337 accumulating.
+
+USER SYMPTOMS RESOLVED TONIGHT: video (-y, #336 landed eaf04d09 — user must
+rebuild); 3D demo blank (his graphicsTier=kitty in non-kitty terminal; #338
+filed; he sees it on auto now; #339 brings real res for his Ghostty/cmux).
+
+WATCHERS: Monitor(command: "bash scripts/fleet/fleet-watch.sh", persistent:
+true). CRON: NONE (permanent disarm stands).
+
+LESSON SWEEP delta since 15: (5) the READY-to-land ritual is now a script —
+extract-gate-verdict.sh; use it, extend it, never hand-grep again. (6) A
+user firing many small feature requests mid-session: file each as its own
+numbered task WITH verbatim intent + conductor seam-triage, commit
+immediately, keep the dispatch queue ordered in the anchor — the filing IS
+the ack.
