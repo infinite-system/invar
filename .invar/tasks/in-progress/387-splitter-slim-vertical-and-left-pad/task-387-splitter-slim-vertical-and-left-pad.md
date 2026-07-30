@@ -1,6 +1,6 @@
 # #387 — vertical splitter slims to match; horizontal splitter gains a left pad cell
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux
