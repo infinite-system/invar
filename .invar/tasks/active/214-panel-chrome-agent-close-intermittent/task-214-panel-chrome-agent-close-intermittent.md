@@ -90,3 +90,13 @@ before treating them as two defects.
   not recur without the overlap (37th). Final hook: git-watch smoke +
   behavioral contracts one timeout-class first attempt each, both passed the
   gate's quiet retry, gate named both as flakes (38th-39th).
+- 2026-07-30 #322 hooks: round-1 full hook failed twice while the panel-chrome
+  smoke closed "Terminal 2"; the same harness passed alone immediately after
+  and passed without retry in the green hook (40th). Round-2 merge hook first
+  attempt reproduced the exact #214 shape: the "Agent 2" list close timed out
+  twice; the next complete hook passed panel chrome without retry (41st).
+  Round-1 green hook also recorded starvation-class retry-passes in the
+  scrollbars and panel-split smokes, each on the gate's one allowed retry
+  (42nd-43rd). Round-2 green hook input-byte p50 13.050 ms against the
+  4.928 ms reviewed baseline — load-bound metric, report-only, two builders
+  plus gates live on the machine.

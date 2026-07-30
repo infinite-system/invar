@@ -42,6 +42,14 @@ print_file() {
   cat "$absolute_path"
 }
 
+# --list-files: the fundamentals list for consumers (resume-conductor.sh
+# subtracts these from its closure when the launcher's marker says they are
+# already in the system prompt). One owner for the list — never a copy.
+if [ "${1:-}" = "--list-files" ]; then
+  printf '%s\n' "${fundamentals_files[@]}"
+  exit 0
+fi
+
 if [ "${1:-}" = "--self-test" ]; then
   failures=0
   full_output="$(bash "$0")"

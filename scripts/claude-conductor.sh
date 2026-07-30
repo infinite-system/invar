@@ -29,6 +29,9 @@ fi
 
 echo "claude-conductor: fundamentals -> ${prompt_file} ($(wc -c <"$prompt_file") bytes)"
 cd "$repository_root"
+# Marker for resume-conductor.sh: the fundamentals are ALREADY in the system
+# prompt of this session — the orientation must not print them a second time.
+export CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE="$prompt_file"
 exec claude \
   --system-prompt USE_IBR_FOR_REASONING \
   --append-system-prompt-file "$prompt_file" \

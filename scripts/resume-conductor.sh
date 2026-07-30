@@ -27,6 +27,25 @@ closure_files=(
   ".claude/skills/conductor/SKILL.md"
 )
 
+# When launched via claude-conductor.sh the fundamentals are ALREADY in the
+# session's system prompt (marker: CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE).
+# Printing them again doubles ~45k tokens for nothing — subtract them.
+# The list of what the system prompt holds comes from its OWNER
+# (conductor-system-prompt.sh --list-files), never a copied list here.
+skipped_files=()
+if [ -n "${CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE:-}" ]; then
+  fundamentals_list="$("${repository_root}/scripts/conductor-system-prompt.sh" --list-files)"
+  remaining_files=()
+  for relative_path in "${closure_files[@]}"; do
+    if grep -qFx "$relative_path" <<<"$fundamentals_list"; then
+      skipped_files+=("$relative_path")
+    else
+      remaining_files+=("$relative_path")
+    fi
+  done
+  closure_files=("${remaining_files[@]}")
+fi
+
 print_file() {
   local relative_path="$1"
   local absolute_path="${repository_root}/${relative_path}"
@@ -57,7 +76,9 @@ print_newest_anchor() {
 if [ "${1:-}" = "--self-test" ]; then
   failures=0
   # PRESENT arm: every closure header + the anchor header appear in the output.
-  full_output="$(bash "$0")"
+  # The marker is explicitly UNSET — inside a conductor session it is set, and
+  # inheriting it would subtract files and false-fail this arm.
+  full_output="$(env -u CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE bash "$0")"
   # Herestrings, not pipes: grep -q exits at first match; with pipefail the
   # writer's SIGPIPE (141) then fails the pipeline EXACTLY when the match is
   # early — the instrument punished success (caught 2026-07-30, first run).
@@ -69,6 +90,17 @@ if [ "${1:-}" = "--self-test" ]; then
     || { echo "FAIL present arm — anchor section missing"; failures=1; }
   grep -qF 'RESUME ANCHOR' <<<"$full_output" \
     || { echo "FAIL present arm — newest anchor content missing"; failures=1; }
+  # MARKER arm: with the launcher's marker set, fundamentals already in the
+  # system prompt are NOT reprinted (loud notice instead); non-fundamentals stay.
+  marker_output="$(CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/proc/self/status bash "$0")"
+  grep -qF 'CLOSURE DOCUMENT: .claude/skills/ibr/IBR.md' <<<"$marker_output" \
+    && { echo "FAIL marker arm — IBR.md reprinted despite system-prompt marker"; failures=1; }
+  grep -qF 'CLOSURE DOCUMENT: .claude/skills/conductor/SKILL.md' <<<"$marker_output" \
+    && { echo "FAIL marker arm — conductor skill reprinted despite marker"; failures=1; }
+  grep -qF 'CLOSURE DOCUMENT: AGENTS.md' <<<"$marker_output" \
+    || { echo "FAIL marker arm — AGENTS.md missing (must survive subtraction)"; failures=1; }
+  grep -qF 'ALREADY IN YOUR SYSTEM PROMPT' <<<"$marker_output" \
+    || { echo "FAIL marker arm — skip notice missing"; failures=1; }
   # ABSENT arm: a missing closure file must fail loudly, not print a partial orientation.
   sandbox="$(mktemp -d /tmp/resume-conductor-selftest-XXXXXX)"
   git -C "$repository_root" worktree add --detach "$sandbox/tree" HEAD >/dev/null 2>&1
@@ -87,6 +119,9 @@ fi
 
 printf 'CONDUCTOR RESUME ORIENTATION — reading this output IS the required reading.\n'
 printf 'Order: law, conventions, expression, reasoning, doctrine, then the anchor.\n'
+if [ "${#skipped_files[@]}" -gt 0 ]; then
+  printf 'ALREADY IN YOUR SYSTEM PROMPT (not reprinted): %s\n' "${skipped_files[*]}"
+fi
 
 for relative_path in "${closure_files[@]}"; do
   print_file "$relative_path"
