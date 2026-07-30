@@ -1,6 +1,6 @@
 # #345 — horizontal panel separator glyph sits vertically centered
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux

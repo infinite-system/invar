@@ -1,0 +1,15 @@
+{
+  "task": 345,
+  "slug": "horizontal-separator-centered-glyph",
+  "branch": "fleet/345-horizontal-separator-centered-glyph",
+  "worktree": ".invar/worktrees/345-horizontal-separator-centered-glyph",
+  "tmuxSession": "invar/345-horizontal-separator-centered-glyph",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-345-horizontal-separator-centered-glyph.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "6fb563b3396b63ad0d0b72c9c2f94c858456ee9f",
+  "startedAt": "2026-07-30T10:07:25-04:00"
+}
