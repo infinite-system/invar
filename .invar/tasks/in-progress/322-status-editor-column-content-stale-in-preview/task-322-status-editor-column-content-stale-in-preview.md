@@ -1,6 +1,6 @@
 # 322 — status: editorColumnContent stays 'source-text-editor' in preview-only mode
 
-State: active
+State: IN-PROGRESS
 Engine: codex
 Model: 5.6-sol
 Effort: low

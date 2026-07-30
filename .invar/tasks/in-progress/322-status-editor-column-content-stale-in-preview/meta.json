@@ -1,0 +1,15 @@
+{
+  "task": 322,
+  "slug": "status-editor-column-content-stale-in-preview",
+  "branch": "fleet/322-status-editor-column-content-stale-in-preview",
+  "worktree": ".invar/worktrees/322-status-editor-column-content-stale-in-preview",
+  "tmuxSession": "invar/322-status-editor-column-content-stale-in-preview",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-low-322-status-editor-column-content-stale-in-preview.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "1fc71e9df75506377d9ae2b0aa0ee3493d064537",
+  "startedAt": "2026-07-30T00:55:01-04:00"
+}

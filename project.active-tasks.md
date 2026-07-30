@@ -6,11 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 - #323 [quit-confirmation-dialog-modern](.invar/tasks/in-progress/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md)  [building]
   `tmux attach -t invar/323-quit-confirmation-dialog-modern`
+- #322 [status-editor-column-content-stale-in-preview](.invar/tasks/in-progress/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)  [building]
+  `tmux attach -t invar/322-status-editor-column-content-stale-in-preview`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -84,10 +86,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (3) — stamp Priority: into these task files
+## NO PRIORITY GROUP (2) — stamp Priority: into these task files
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
-- #322 [322-status-editor-column-content-stale-in-preview](.invar/tasks/active/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)
 
 ## RECENTLY COMPLETED (last 15 of 109 — full log: project.tasks-completed.md)
 - #329 [tasks-watch-animation-tick-restored](.invar/tasks/completed/329-tasks-watch-animation-tick-restored/task-329-tasks-watch-animation-tick-restored.md) — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
