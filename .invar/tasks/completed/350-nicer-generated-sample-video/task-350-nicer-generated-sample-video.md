@@ -1,6 +1,6 @@
 # #350 — the generated sample video becomes something worth watching
 
-State: IN-PROGRESS
+State: COMPLETED — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
 Priority: user-directed
 Engine: claude
 Environment: linux
