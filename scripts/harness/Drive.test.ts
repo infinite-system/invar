@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import { HarnessSmoke } from './HarnessSmoke';
 import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
 import { Drive } from './Drive';
+import type { PtyTestDriver } from './PtyTestDriver';
 
 class TestDrive extends Drive.$Class {
   static parsedActions(argumentList: readonly string[]) {
@@ -52,6 +53,16 @@ class TestDrive extends Drive.$Class {
     status: Readonly<Record<string, unknown>>,
   ): readonly string[] {
     return this.pendingSettledStatusNames(status);
+  }
+
+  static async performParsedAction(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    argumentList: readonly string[],
+  ): Promise<void> {
+    const action = this.parseOptions(argumentList).actions[0];
+    if (!action) throw new Error('The test drive requires one action');
+    await this.performAction(driver, statusPath, action, 80, 4, 1_000);
   }
 
   static publishedStatus(output: string): Readonly<Record<string, unknown>> {
@@ -152,6 +163,68 @@ describe('Drive action completion', () => {
     expect(() => TestDrive.parsedActions(['--wait-for-text', 'NEVER'])).toThrow(
       'must follow --key, --wheel, or --click',
     );
+  });
+
+  test('holds status completion until the action paints its click target', async () => {
+    const temporaryDirectory = mkdtempSync(
+      join(tmpdir(), 'invar-drive-status-paint-test-'),
+    );
+    const statusPath = join(temporaryDirectory, 'status.json');
+    const hiddenTargetSnapshot = await snapshotForRows(['Settings opening']);
+    const paintedTargetSnapshot = await snapshotForRows([
+      'Mirror activity bar on right',
+    ]);
+    let currentSnapshot = hiddenTargetSnapshot;
+    let screenChangeWaitStarted = false;
+    let actionCompleted = false;
+    let releasePaint: () => void = () => {};
+    const paintRelease = new Promise<void>((resolvePaint) => {
+      releasePaint = resolvePaint;
+    });
+    await Bun.write(statusPath, JSON.stringify({ settingsOpen: false }));
+    const driver = {
+      snapshot: () => currentSnapshot,
+      sendKeys: () => {
+        void Bun.write(statusPath, JSON.stringify({ settingsOpen: true }));
+      },
+      awaitScreenChange: async () => {
+        screenChangeWaitStarted = true;
+        await paintRelease;
+      },
+    } as unknown as PtyTestDriver.Model;
+
+    try {
+      const actionCompletion = TestDrive.performParsedAction(
+        driver,
+        statusPath,
+        ['--key', 'Control+,', '--wait-for-status', 'settingsOpen=true'],
+      ).then(() => {
+        actionCompleted = true;
+      });
+      const observationDeadline = performance.now() + 1_000;
+      while (
+        !screenChangeWaitStarted &&
+        !actionCompleted &&
+        performance.now() < observationDeadline
+      ) {
+        await Bun.sleep(1);
+      }
+
+      expect(screenChangeWaitStarted).toBeTrue();
+      expect(actionCompleted).toBeFalse();
+      expect(() =>
+        TestDrive.textPosition(currentSnapshot, 'Mirror activity bar on right'),
+      ).toThrow('Click target text is not visible');
+
+      currentSnapshot = paintedTargetSnapshot;
+      releasePaint();
+      await actionCompletion;
+      expect(
+        TestDrive.textPosition(currentSnapshot, 'Mirror activity bar on right'),
+      ).toEqual({ column: 0, row: 0 });
+    } finally {
+      await HarnessSmoke.Class.removeTemporaryDirectory(temporaryDirectory);
+    }
   });
 });
 

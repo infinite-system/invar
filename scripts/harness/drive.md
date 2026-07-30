@@ -32,8 +32,10 @@ without waiting for the prefix to paint:
 bun run drive --key Control+k --key '['
 ```
 
-Use `--frame-silent` after another legitimate no-paint action. When repaint is
-not the real result, attach a named condition to the preceding action:
+Use `--frame-silent` after another legitimate no-paint action. When a
+published state and its repaint are both the result, attach a named status
+condition to the preceding action. The action completes only after the status
+matches and the changed screen is observable:
 
 ```sh
 bun run drive \

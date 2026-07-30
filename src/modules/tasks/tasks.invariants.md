@@ -142,12 +142,15 @@ from the surface the workspace opened.
 **Scope:** Shell tasks, workspace contribution lifecycle, and the no-file
 built-in. Manual task reruns remain registered commands. `problemMatcher` is
 accepted and deliberately ignored because diagnostics parsing is outside this
-capability. PTY fixtures for unrelated subsystems explicitly disable only the
-built-in convenience through `TasksOptions.builtInDefaultEnabled`; the tasks
-smoke enables and verifies it.
+capability. PTY fixtures for unrelated subsystems disable the built-in
+convenience and automatic folder-open launch through `TasksOptions`. The
+tasks, reserved-chord, and workspace-tabs smokes explicitly enable and verify
+the automatic path.
 
 **Mechanism:** `Tasks.opened` resolves once, registers `Tasks: Run <label>`,
-then calls `TaskLauncher.launchFolderOpen`.
+then calls `TaskLauncher.launchFolderOpen` when automatic launch is enabled.
+The harness can keep resolved task configuration and manual commands available
+while it disables that call.
 `TaskTerminalLaunchPort.present` receives `transferFocus=false` for automatic
 folder-open work and `true` for a manually invoked task command. The built-in is
 exactly
@@ -163,12 +166,14 @@ on open; a missing `claude` remains a legible shell failure in the terminal.
 `scripts/harness/smoke-tasks-harness.ts` observes `.vscode`, `.invar`, and both
 branches of the built-in resume-or-fresh command in real PTYs;
 `scripts/harness/smoke-reserved-chord-harness.ts` opens a file beside an
-automatic task and drives `Ctrl+,` into Settings.
+automatic task and drives `Ctrl+,` into Settings;
+`scripts/harness/smoke-workspace-tabs-harness.ts` retains one automatic task
+panel world per workspace.
 
 **Impossible if true:** A folder-open task waits for a manual command; the
 built-in silently leaves an empty pane after `--continue` has no session; an
 automatic task terminal and the newly opened editor both claim the next
-keystroke.
+keystroke; an unrelated PTY smoke launches a task declared by its workspace.
 
 **Verification:** `bun test src/modules/tasks/Tasks.test.ts
 src/modules/tasks/TaskLauncher.test.ts && bun

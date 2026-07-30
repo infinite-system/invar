@@ -88,7 +88,6 @@ class $Drive {
       rows: options.rows,
       homeDirectory,
       environment: {
-        INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '0',
         TUI_STATUS_PATH: statusPath,
       },
     });
@@ -697,6 +696,7 @@ class $Drive {
           ),
         timeoutMilliseconds,
       );
+      await driver.awaitScreenChange(timeoutMilliseconds);
       return;
     }
     this.sendAction(driver, resolvedAction, columns, rows);
