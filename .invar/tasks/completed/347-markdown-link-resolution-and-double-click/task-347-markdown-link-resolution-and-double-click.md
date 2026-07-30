@@ -1,6 +1,6 @@
 # #347 — markdown links: red misresolution investigated; double-click opens
 
-State: IN-PROGRESS
+State: COMPLETED — 27a42bfe — document-relative link resolution + double-click open; #377-379 from bycatch
 Priority: user-directed
 Engine: claude
 Environment: linux

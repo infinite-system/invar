@@ -17,6 +17,8 @@ Two deliverables, both driven in the real application first.
 ## Red-link census — driven, then classified
 
 Instrument: [census-347-red-links-in-task-reports.ts](census-347-red-links-in-task-reports.ts).
+(Both task-folder scripts are committed on the branch, so their links here resolve
+once the conductor lands the merge.)
 It boots the real application on this repository, opens one real task document
 through Quick Open, waits for the preview to finish parsing, wheels the preview
 from top to bottom, and collects every run of cells painted in the theme error
