@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // A real-PTY drive of workspace tasks: configuration precedence, folder-open
-// launch, terminal grouping, visible failures, the built-in fallback, and the
-// independent native agent pane.
+// launch, terminal grouping, shell variable handoff, visible failures, the
+// built-in fallback, and the independent native agent pane.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -9,6 +9,7 @@
 // invariant: File sources report displaced built-ins (src/modules/tasks/tasks.invariants.md)
 // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
 // invariant: Each task owns one terminal (src/modules/tasks/tasks.invariants.md)
+// invariant: Task variables resolve pass through or refuse (src/modules/tasks/tasks.invariants.md)
 // invariant: Unsupported tasks fail visibly (src/modules/tasks/tasks.invariants.md)
 import { chmodSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -254,6 +255,52 @@ try {
   );
 
   console.log(
+    '== harness tasks: unknown task variables reach the real shell unchanged ==',
+  );
+  await Bun.write(
+    join(invarDirectory, 'tasks.json'),
+    taskConfiguration([
+      {
+        label: 'Shell Expansion',
+        type: 'shell',
+        command: '/bin/sh',
+        args: [
+          '-lc',
+          `printf 'SHELL_EXPANDED=%s\\n' ` +
+            '"${LOCAL_DIR#/some/prefix}"; exec /bin/sh -i',
+        ],
+        runOptions: { runOn: 'folderOpen' },
+      },
+    ]),
+  );
+  driven = await nextDriver({
+    LOCAL_DIR: '/some/prefix/realized',
+  });
+  status = await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'the task with shell parameter expansion launched without a variable error',
+    (candidate) =>
+      Array.isArray(candidate.taskLaunchedLabels) &&
+      candidate.taskLaunchedLabels.includes('Shell Expansion') &&
+      Array.isArray(candidate.taskErrors) &&
+      !candidate.taskErrors.some((message) =>
+        String(message).includes('${LOCAL_DIR#/some/prefix}'),
+      ),
+  );
+  await driven.driver.awaitGridCondition(
+    'the real shell expanded the unchanged task expression',
+    (snapshot) => snapshot.findText('SHELL_EXPANDED=/realized') !== null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    taskIdentifiers(status).length === 1,
+    'the shell expansion task owns one running terminal',
+  );
+  HarnessSmoke.Class.pass(
+    'unknown task syntax passed through unchanged and the real shell expanded it',
+  );
+
+  console.log(
     '== harness tasks positive control: unsupported inputs report visibly ==',
   );
   await Bun.write(
@@ -264,10 +311,6 @@ try {
         type: 'process',
         command: '/bin/true',
         runOptions: { runOn: 'folderOpen' },
-      },
-      {
-        ...shellTask('Unsupported Variable', 'UNREACHABLE'),
-        args: ['-lc', 'printf "${workspaceRoot}"'],
       },
       {
         ...shellTask('Missing File Context', 'UNREACHABLE'),
@@ -294,9 +337,6 @@ try {
         String(message).includes('unsupported type "process"'),
       ) &&
       candidate.taskErrors.some((message) =>
-        String(message).includes('${workspaceRoot}'),
-      ) &&
-      candidate.taskErrors.some((message) =>
         String(message).includes('${file} requires an active document'),
       ) &&
       candidate.taskErrors.some((message) =>
@@ -310,18 +350,17 @@ try {
     'unsupported errors are legible inside task-owned terminals',
     (snapshot) =>
       snapshot.findText('Unsupported Proces') !== null &&
-      snapshot.findText('Unsupported Variab') !== null &&
       snapshot.findText('Missing File Conte') !== null &&
       snapshot.findText('Unsupported Input') !== null &&
       snapshot.findText('Unsupported Comman') !== null &&
       snapshot.findText('Displaced: Claude') !== null,
   );
   HarnessSmoke.Class.requireCondition(
-    taskIdentifiers(status).length === 5,
-    'the positive control rendered all five planted errors',
+    taskIdentifiers(status).length === 4,
+    'the positive control rendered all four planted errors',
   );
   HarnessSmoke.Class.pass(
-    'missing file context and unsupported variable classes were observed RED by users',
+    'missing file context and refused variable classes were observed RED by users',
   );
 
   console.log(

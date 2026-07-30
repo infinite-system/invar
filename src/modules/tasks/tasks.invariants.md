@@ -6,42 +6,55 @@ terminal-process launch adapter. The task shape is compatible with
 
 ## Reality-based invariants
 
-### Unsupported variables fail before the shell
+### Task variables resolve pass through or refuse
 
-**Invariant:** If a task contains a supported `${...}` variable, then
-configuration resolution replaces it from that task's workspace, active
-document, or app environment before the shell starts. If a file variable has
-no active document, or the variable is unsupported, then resolution stops that
-task and names the refused variable before any shell starts.
+**Invariant:** If a task command or argument contains `${...}`, then
+`TaskConfiguration` resolves a supported variable, preserves an unknown
+expression for the shell, or refuses a missing file context, `${input:...}`,
+or `${command:...}` before launch.
 
 **Scope:** Variable substitution in task `command` and `args`. Ordinary shell
 variables that do not use the `${...}` task-variable form remain shell input.
 Supported variables are `${workspaceFolder}`, `${workspaceFolderBasename}`,
 `${file}`, `${fileBasename}`, `${fileDirname}`, `${fileExtname}`,
 `${relativeFile}`, `${cwd}`, `${pathSeparator}`, `${userHome}`, and
-`${env:NAME}`. `${input:...}` and `${command:...}` remain unsupported.
+`${env:NAME}`. Unknown expressions include shell parameter expansions such as
+`${LOCAL_DIR#/some/prefix}`.
+
+**Components:**
+- *Supported variables resolve* — `TaskConfiguration` replaces the known
+  schema from the task workspace, active document, and app environment.
+- *Unknown expressions pass through* — `TaskConfiguration` returns each
+  unmatched `${...}` expression byte-for-byte for the shell.
+- *Context and interaction gaps refuse* — file variables without an active
+  document, `${input:...}`, and `${command:...}` stop before launch.
 
 **Mechanism:** `TaskConfiguration.substituteTaskVariables` resolves the
-supported schema from its explicit workspace root and active document, plus
-the app `Environment`. Undefined environment variables resolve to an empty
-string, which matches VS Code. The method throws a configuration issue for a
-missing file context or an unsupported variable. `TaskLauncher.report` renders
-that issue through a dedicated terminal.
+supported schema and returns the original regex match for an unknown
+expression, which follows VS Code's
+[`return replacement.id` fallback](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/configurationResolver/common/variableResolver.ts#L292-L297).
+`requireActiveDocument` and the refused prefixes throw configuration issues;
+VS Code also
+[throws when no editor supplies a file path](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/configurationResolver/common/variableResolver.ts#L114-L120).
+`TaskLauncher.report` renders each issue through a dedicated terminal.
 
-**Generates:** Config-origin errors instead of shell-dependent `bad
-substitution` messages or literal dollar-brace commands.
+**Generates:** VS Code-compatible shell expansion for unknown expressions;
+empty values for undefined `${env:NAME}`; config-origin errors for interactive
+features Invar does not implement and for file variables that lack context.
 
 **Evidence:** `src/modules/tasks/TaskConfiguration.test.ts` `environment
 variables resolve from the app environment and undefined values become empty`,
 `predefined variables use the selected workspace root and active document`,
-`each file variable refuses resolution without an active document`, and `input
-and command variables stay outside the supported boundary`;
-`scripts/harness/smoke-tasks-harness.ts` `unsupported inputs report visibly`.
+`unknown task variables pass through unchanged in command and args`, `each
+file variable refuses resolution without an active document`, and `input and
+command variables stay outside the supported boundary`;
+`scripts/harness/smoke-tasks-harness.ts` drives
+`${LOCAL_DIR#/some/prefix}` through a real shell.
 
 **Impossible if true:** A task process receives an unresolved
-`${workspaceRoot}` string; a file variable reaches a shell without an active
-document; `${input:...}` or `${command:...}` reaches a shell; an unsupported
-variable disappears without a visible error naming it.
+`${workspaceFolder}` string; an unknown `${...}` expression is changed or
+refused before its shell sees it; a file variable reaches a shell without an
+active document; `${input:...}` or `${command:...}` reaches a shell.
 
 **Verification:** `bun test src/modules/tasks/TaskConfiguration.test.ts && bun
 scripts/harness/smoke-tasks-harness.ts`
