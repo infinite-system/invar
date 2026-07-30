@@ -849,7 +849,12 @@ class $RootView {
         const content = panelHost.resolvedCells[index]?.content;
         const localColumn = Number(event.x) - Number(body.x);
         const localRow = Number(event.y) - Number(body.y);
-        content?.onPointerMove?.(localColumn, localRow);
+        content?.onPointerMove?.(localColumn, localRow, {
+          screenColumn: Number(event.x),
+          screenRow: Number(event.y),
+          button: event.button,
+          modifiers: event.modifiers,
+        });
         const tooltipText = content?.tooltipAt?.(localColumn, localRow) ?? null;
         if (tooltipText) {
           tooltip.point(tooltipText, Number(event.x), Number(event.y));
@@ -870,6 +875,12 @@ class $RootView {
           content?.onPointerDrag?.(
             (event.x as number) - (body.x as number),
             (event.y as number) - (body.y as number),
+            {
+              screenColumn: Number(event.x),
+              screenRow: Number(event.y),
+              button: event.button,
+              modifiers: event.modifiers,
+            },
           );
           renderer.requestRender();
           return;
@@ -900,6 +911,12 @@ class $RootView {
           content?.onPointerUp?.(
             (event.x as number) - (body.x as number),
             (event.y as number) - (body.y as number),
+            {
+              screenColumn: Number(event.x),
+              screenRow: Number(event.y),
+              button: event.button,
+              modifiers: event.modifiers,
+            },
           );
           renderer.requestRender();
           return;

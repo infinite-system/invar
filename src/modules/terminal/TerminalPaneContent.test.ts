@@ -48,8 +48,11 @@ test('primary-screen wheel input glides through shared momentum without writing 
   expect(backend.writes).toHaveLength(childWritesBeforeWheel);
 });
 
-test('mouse-tracking and alternate-screen wheel input is SGR-forwarded without moving scrollback', async () => {
-  for (const modeSequence of ['\x1b[?1000h', '\x1b[?1049h']) {
+test('mouse-tracking and alternate-screen wheel input is protocol-forwarded without moving scrollback', async () => {
+  for (const [modeSequence, expectedWheelBytes] of [
+    ['\x1b[?1000h', '\x1b[Md#"'],
+    ['\x1b[?1049h', '\x1b[<68;3;2M'],
+  ] as const) {
     const { backend, instance, pane } = makePane();
     backend.feed(
       `${Array.from(
@@ -70,7 +73,56 @@ test('mouse-tracking and alternate-screen wheel input is SGR-forwarded without m
       pane.tickScroll(1 / 30);
     }
 
-    expect(backend.writes.slice(writesBeforeWheel)).toEqual(['\x1b[<68;3;2M']);
+    expect(backend.writes.slice(writesBeforeWheel)).toEqual([
+      expectedWheelBytes,
+    ]);
     expect(instance.scrollTop).toBe(scrollTopBeforeWheel);
   }
+});
+
+test('mouse-tracking gives child cells exact SGR clicks while pane gutters stay host-owned', async () => {
+  const { backend, instance, pane } = makePane();
+  backend.feed('\x1b[?1000h\x1b[?1006h');
+  await instance.flush();
+  const writesBeforePointer = backend.writes.length;
+  const pointerContext = {
+    screenColumn: 40,
+    screenRow: 20,
+    button: 0,
+    modifiers: { alt: false, shift: false, ctrl: false },
+  };
+
+  pane.onPointerDown(5, 2, pointerContext);
+  pane.onPointerUp(5, 2, pointerContext);
+
+  expect(backend.writes.slice(writesBeforePointer)).toEqual([
+    '\x1b[<0;4;2M',
+    '\x1b[<0;4;2m',
+  ]);
+  const writesBeforeGutterClick = backend.writes.length;
+  pane.onPointerDown(0, 0, pointerContext);
+  pane.onPointerUp(0, 0, pointerContext);
+  expect(backend.writes).toHaveLength(writesBeforeGutterClick);
+});
+
+test('mouse-tracking off keeps terminal selection local and writes no pointer bytes', () => {
+  const { backend, instance, pane } = makePane();
+  const writesBeforePointer = backend.writes.length;
+  const renderRevisionBeforePointer = instance.renderRevision.value;
+  const pointerContext = {
+    screenColumn: 40,
+    screenRow: 20,
+    button: 0,
+    modifiers: { alt: false, shift: false, ctrl: false },
+  };
+
+  pane.onPointerDown(5, 2, pointerContext);
+  pane.onPointerDrag(8, 2, pointerContext);
+  pane.onPointerUp(8, 2, pointerContext);
+
+  expect(backend.writes).toHaveLength(writesBeforePointer);
+  expect(instance.renderRevision.value).toBeGreaterThan(
+    renderRevisionBeforePointer,
+  );
+  expect(pane.hasSelection()).toBe(true);
 });

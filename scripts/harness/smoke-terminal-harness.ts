@@ -165,9 +165,13 @@ const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-harness-home-'));
 
 const statusPath = join(homeDirectory, 'status.json');
 
-const childInputPath = join(homeDirectory, 'wheel-input.bin');
+const childClickInputPath = join(homeDirectory, 'click-input.bin');
 
-const childScriptPath = join(homeDirectory, 'wheel-child.py');
+const childWheelInputPath = join(homeDirectory, 'wheel-input.bin');
+
+const childMouseOffInputPath = join(homeDirectory, 'mouse-off-input.bin');
+
+const childScriptPath = join(homeDirectory, 'child-io-fixture.py');
 
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
 
@@ -188,12 +192,21 @@ await Bun.write(
     'previous = termios.tcgetattr(sys.stdin.fileno())',
     'tty.setraw(sys.stdin.fileno())',
     'try:',
-    "    os.write(sys.stdout.fileno(), b'\\x1b[?1000h\\x1b[?1006h\\x1b[?1049hCHILD-MODE-READY\\r\\n')",
-    '    wheel = os.read(sys.stdin.fileno(), 64)',
-    `    open(${JSON.stringify(childInputPath)}, 'wb').write(wheel)`,
-    '    os.read(sys.stdin.fileno(), 1)',
+    "    if sys.argv[1] == 'mouse-on':",
+    "        os.write(sys.stdout.fileno(), b'\\x1b[?1000h\\x1b[?1006h\\x1b[?1049h\\x1b[HMOUSE-TARGET\\r\\nCHILD-MODE-READY')",
+    "        click = b''",
+    "        while not click.endswith(b'm'):",
+    '            click += os.read(sys.stdin.fileno(), 64)',
+    `        open(${JSON.stringify(childClickInputPath)}, 'wb').write(click)`,
+    '        wheel = os.read(sys.stdin.fileno(), 64)',
+    `        open(${JSON.stringify(childWheelInputPath)}, 'wb').write(wheel)`,
+    '        os.read(sys.stdin.fileno(), 1)',
+    "        os.write(sys.stdout.fileno(), b'\\x1b[?1049l\\x1b[?1000l\\x1b[?1006l')",
+    '    else:',
+    "        os.write(sys.stdout.fileno(), b'MOUSE-OFF-READY')",
+    '        plain_input = os.read(sys.stdin.fileno(), 64)',
+    `        open(${JSON.stringify(childMouseOffInputPath)}, 'wb').write(plain_input)`,
     'finally:',
-    "    os.write(sys.stdout.fileno(), b'\\x1b[?1049l\\x1b[?1000l\\x1b[?1006l')",
     '    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, previous)',
     '',
   ].join('\n'),
@@ -525,13 +538,15 @@ try {
   );
 
   console.log(
-    '== harness terminal: child modes own wheel bytes, not host scrollback ==',
+    '== harness terminal: child cells own click and wheel bytes, not host input ==',
   );
-  driver.sendText(`python3 ${childScriptPath}`);
+  driver.sendText(`python3 ${childScriptPath} mouse-on`);
   driver.sendKeys('Enter');
-  await driver.awaitSnapshot(
+  const mouseTargetSnapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('CHILD-MODE-READY') !== null,
   );
+  const mouseTarget = mouseTargetSnapshot.findText('MOUSE-TARGET');
+  if (!mouseTarget) throw new Error('The child mouse target disappeared');
   const childModeStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -542,13 +557,24 @@ try {
   const scrollContentRowsBeforeChildWheel = Number(
     childModeStatus.terminalScrollContentRows,
   );
+  driver.sendMouseClick({
+    column: mouseTarget.column + 3,
+    row: mouseTarget.row,
+    button: 'left',
+  });
+  const childClickBytes = await awaitFileBytes(childClickInputPath);
+  const childClickText = new TextDecoder().decode(childClickBytes);
+  HarnessSmoke.Class.requireCondition(
+    childClickText === '\x1b[<0;4;1M\x1b[<0;4;1m',
+    `child received exact SGR click ${JSON.stringify(childClickText)}`,
+  );
   driver.sendMouse({
     kind: 'wheel',
     column: panelRectangle.left + Math.floor(panelRectangle.width / 2),
     row: panelRectangle.top + 6,
     direction: 'up',
   });
-  const childWheelBytes = await awaitFileBytes(childInputPath);
+  const childWheelBytes = await awaitFileBytes(childWheelInputPath);
   const childWheelText = new TextDecoder().decode(childWheelBytes);
   HarnessSmoke.Class.requireCondition(
     /^\x1b\[<64;\d+;\d+M$/.test(childWheelText),
@@ -574,6 +600,33 @@ try {
     statusPath,
     'the child exits alternate-screen and mouse-tracking modes',
     (status) => status.terminalWheelForwardedToChild === false,
+  );
+
+  console.log('== harness terminal: mouse mode off keeps clicks in Invar ==');
+  driver.sendText(`python3 ${childScriptPath} mouse-off`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('MOUSE-OFF-READY') !== null,
+  );
+  const mouseOffBaseline = HarnessSmoke.Class.readStatus(statusPath);
+  const mouseOffTarget = driver.snapshot().findText('MOUSE-OFF-READY');
+  if (!mouseOffTarget) throw new Error('The mouse-off target disappeared');
+  driver.sendMouseClick({
+    column: mouseOffTarget.column + 3,
+    row: mouseOffTarget.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'mouse-mode-off click completes an Invar frame before keyboard input',
+    (status) => Number(status.frame) > Number(mouseOffBaseline.frame),
+  );
+  driver.sendText('q');
+  const mouseOffInput = await awaitFileBytes(childMouseOffInputPath);
+  HarnessSmoke.Class.requireCondition(
+    new TextDecoder().decode(mouseOffInput) === 'q',
+    'mouse mode off writes no pointer bytes to the child',
   );
 
   const clockSnapshot = await driver.awaitGridCondition(
