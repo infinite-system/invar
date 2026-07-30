@@ -76,8 +76,9 @@ layout; a test result changing when an unrelated tmux client is resized.
 ### Harness app homes are complete and isolated
 
 **Invariant:** If a behavioral contract or `Drive` launches Invar, then that run owns a fresh user
-home with config, data, state, and cache directories. It never reads or writes the caller's user
-settings.
+home with config, data, state, and cache directories, and its own app diagnostic log. It never
+reads or writes the caller's user settings, and it never appends to the repository-relative
+diagnostic log that every other instance in the same working tree also appends to.
 
 **Scope:** `scripts/behavioral-contracts.sh`, `scripts/tui-harness.sh`, `scripts/harness/Drive.ts`,
 and app launches through `PtyTestDriver` that supply `homeDirectory`. Recorded-stream unit fixtures
@@ -89,29 +90,42 @@ temporary home. It seeds the deliberate settings fixture there and removes the h
 new temporary home for each invocation. `PtyTestDriver` completes every supplied home, sets the four
 XDG paths, suppresses the built-in first-run task, and prevents every folder-open task from launching
 unless a task-focused smoke explicitly enables both behaviors. Task configuration and manual task
-commands remain observable while automatic launch is suppressed.
+commands remain observable while automatic launch is suppressed. `PtyTestDriver` also declares
+`TUI_LOG_PATH` inside that home and a `TUI_LOG_INSTANCE` identity, and it drops both variables when
+they arrive from the caller's environment. `Logging` writes to the declared path and stamps every
+line with the declared identity; `DiagnosticLog` reads only the lines carrying the driver's own
+identity, so a leftover line and a concurrent instance's line are both rejected.
 
 **Generates:** default-first drives; explicit contract settings that cannot be shadowed by user
 preferences; no harness write to `~/.config/invar/settings.json`; working Bun lookup after HOME
-isolation.
+isolation; per-run diagnostic logs that two concurrent smokes cannot interleave; a diagnostic
+reader that answers from its own instance or answers nothing.
 
 **Evidence:** `scripts/behavioral-contracts.sh`; `scripts/tui-harness.sh`;
 `scripts/harness/PtyTestDriver.ts`; `scripts/harness/PtyTestDriver.test.ts`;
 `scripts/harness/smoke-tasks-harness.ts`;
 `scripts/harness/smoke-reserved-chord-harness.ts`;
 `scripts/harness/smoke-workspace-tabs-harness.ts`;
-`.invar/tasks/active/233-wrap-contract-red-settings-leak/233-drive-wrap-settings-polarity.ts`.
+`.invar/tasks/active/233-wrap-contract-red-settings-leak/233-drive-wrap-settings-polarity.ts`;
+`src/modules/system/Logging.ts`; `scripts/harness/DiagnosticLog.ts`;
+`scripts/harness/DiagnosticLog.test.ts`;
+`.invar/tasks/in-progress/90-harness-diagnostic-provenance-guard/probe-90-diagnostic-log-provenance.ts`
+drives two concurrent instances and requires a planted foreign line to be rejected.
 
 **Impossible if true:** a behavioral result changing when the caller changes `wordWrap`; an empty
 probe because Bun was looked up below a new bare home; a contract or drive rewriting the caller's
-settings file; a repository task configuration launching inside an unrelated registered smoke.
+settings file; a repository task configuration launching inside an unrelated registered smoke; a
+driven instance appending to `artifacts/tui.log`; a harness verdict computed from a diagnostic line
+another instance wrote; a diagnostic line with no writing instance on it.
 
-**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts && bun run drive --size 10 &&
-bun run drive --size 100000 && scripts/behavioral-contracts.sh`
+**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts scripts/harness/DiagnosticLog.test.ts
+src/modules/system/Logging.test.ts && bun run drive --size 10 &&
+bun run drive --size 100000 && scripts/behavioral-contracts.sh && bun
+.invar/tasks/in-progress/90-harness-diagnostic-provenance-guard/probe-90-diagnostic-log-provenance.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Harness teardown bypasses product quit confirmation only when declared
 
