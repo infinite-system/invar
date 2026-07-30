@@ -331,6 +331,26 @@ class $LayoutModel {
     ) {
       panelRight = Math.min(panelRight, rightDockSplitterLeft);
     }
+    const panelFillTop = panelSplitterTop;
+    const panelFillRows = options.bottomPanelVisible
+      ? totalRows - panelFillTop
+      : 0;
+    const primaryDockRemainderLeft = activityBarLeft + activityBarColumns;
+    const primaryDockRemainderColumns =
+      primaryDockVisible &&
+      options.sidebarPosition === 'left' &&
+      options.leftDockVerticalSpan === 'ends-at-panel'
+        ? Math.max(0, panelLeft - primaryDockRemainderLeft)
+        : 0;
+    const rightDockRemainderLeft = panelRight;
+    const rightDockRemainderColumns =
+      options.rightDockVisible &&
+      options.rightDockVerticalSpan === 'ends-at-panel'
+        ? Math.max(
+            0,
+            totalColumns - rightActivityBarColumns - rightDockRemainderLeft,
+          )
+        : 0;
 
     return {
       activityBar: {
@@ -374,6 +394,18 @@ class $LayoutModel {
         top: 0,
         width: rightActivityBarColumns,
         height: rightActivityBarColumns > 0 ? totalRows : 0,
+      },
+      primaryDockRemainder: {
+        left: primaryDockRemainderLeft,
+        top: panelFillTop,
+        width: primaryDockRemainderColumns,
+        height: primaryDockRemainderColumns > 0 ? panelFillRows : 0,
+      },
+      rightDockRemainder: {
+        left: rightDockRemainderLeft,
+        top: panelFillTop,
+        width: rightDockRemainderColumns,
+        height: rightDockRemainderColumns > 0 ? panelFillRows : 0,
       },
       bottomPanelSplitter: {
         left: panelLeft,
@@ -479,6 +511,8 @@ export interface LayoutSlotGeometry {
   rightDockSplitter: LayoutRectangle;
   rightDock: LayoutRectangle;
   rightActivityBar: LayoutRectangle;
+  primaryDockRemainder: LayoutRectangle;
+  rightDockRemainder: LayoutRectangle;
   bottomPanelSplitter: LayoutRectangle;
   bottomPanel: LayoutRectangle;
 }

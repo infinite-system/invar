@@ -557,6 +557,16 @@ class $RootView {
       title: '',
       backgroundColor: readPalette().panel,
     });
+    const primaryDockRemainder = new BoxRenderable(renderer, {
+      id: 'primary-dock-remainder',
+      position: 'absolute',
+      backgroundColor: readPalette().panel,
+    });
+    const rightDockRemainder = new BoxRenderable(renderer, {
+      id: 'right-dock-remainder',
+      position: 'absolute',
+      backgroundColor: readPalette().panel,
+    });
     const panelContentsList = new PanelContentsList.Class(panelHost);
     const panelContentsListRenderable = new TextRenderable(renderer, {
       id: 'panel-contents-list',
@@ -1177,11 +1187,15 @@ class $RootView {
       const visible = panelHost.visible.value;
       if (visible === panelMounted) return;
       if (visible) {
+        layoutCanvas.add(primaryDockRemainder);
+        layoutCanvas.add(rightDockRemainder);
         layoutCanvas.add(panelActionBarRenderable);
         layoutCanvas.add(panelDividerRenderable);
         layoutCanvas.add(panelControlBarRenderable);
         layoutCanvas.add(panelBox);
       } else {
+        layoutCanvas.remove(primaryDockRemainder);
+        layoutCanvas.remove(rightDockRemainder);
         layoutCanvas.remove(panelActionBarRenderable);
         layoutCanvas.remove(panelDividerRenderable);
         layoutCanvas.remove(panelControlBarRenderable);
@@ -1311,6 +1325,18 @@ class $RootView {
       rightDockBox.width = layoutSlotGeometry.rightDock.width;
       rightDockBox.height = layoutSlotGeometry.rightDock.height;
       if (panelHost.visible.value) {
+        primaryDockRemainder.left =
+          layoutSlotGeometry.primaryDockRemainder.left;
+        primaryDockRemainder.top = layoutSlotGeometry.primaryDockRemainder.top;
+        primaryDockRemainder.width =
+          layoutSlotGeometry.primaryDockRemainder.width;
+        primaryDockRemainder.height =
+          layoutSlotGeometry.primaryDockRemainder.height;
+        rightDockRemainder.left = layoutSlotGeometry.rightDockRemainder.left;
+        rightDockRemainder.top = layoutSlotGeometry.rightDockRemainder.top;
+        rightDockRemainder.width = layoutSlotGeometry.rightDockRemainder.width;
+        rightDockRemainder.height =
+          layoutSlotGeometry.rightDockRemainder.height;
         panelTabBarProjection = PanelTabBar.Class.project({
           width: layoutSlotGeometry.bottomPanelSplitter.width,
           spaces: panelHost.spaces.value,
@@ -1521,6 +1547,8 @@ class $RootView {
     }
     function update(): void {
       const palette = readPalette();
+      primaryDockRemainder.backgroundColor = palette.panel;
+      rightDockRemainder.backgroundColor = palette.panel;
       const modalOverlayOwnsScreen = overlayLayer.modalOverlayOwnsScreen;
       synchronizeWorkspaceTabMount();
       synchronizePanelMount();
