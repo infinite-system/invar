@@ -1,6 +1,6 @@
 # 327 — RESEARCH: Invarnet p2p streaming underlay — one machine feeds millions (map, no implementation)
 
-State: active
+State: IN-PROGRESS
 Engine: codex
 Model: 5.6-sol
 Effort: high

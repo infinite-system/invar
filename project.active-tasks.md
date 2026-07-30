@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/in-progress/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md)  [building]
+  `tmux attach -t invar/327-invarnet-p2p-streaming-underlay-research`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 - #322 [status-editor-column-content-stale-in-preview](.invar/tasks/in-progress/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)  [building]
