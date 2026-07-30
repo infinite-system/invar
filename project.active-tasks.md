@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/in-progress/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md)  [building]
+  `tmux attach -t invar/351-quick-open-search-bar-vanishes-list-corrupts`
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/in-progress/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md)  [building]
   `tmux attach -t invar/342-tasks-json-panes-fail-to-load`
 - #340 [file-tree-reveals-open-file](.invar/tasks/in-progress/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md)  [building]
@@ -14,8 +16,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (15)
-- #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/active/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md)
+## USER-DIRECTED (14)
 - #350 [nicer-generated-sample-video](.invar/tasks/active/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/active/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)

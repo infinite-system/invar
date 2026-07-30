@@ -1,6 +1,6 @@
 # #351 — quick open: search bar vanishes and the list corrupts on scroll
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
