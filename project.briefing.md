@@ -58,40 +58,50 @@ WATCHERS: fleet-watch Monitor bva4qa3i4 persistent; cron 86218567 :07/:37 loop p
 
 CONTEXT DISCIPLINE: anchor at natural boundaries AND before 85%; this anchor written at 86%.
 
-## RESUME ANCHOR 11 — 2026-07-29 ~22:0x (39 landed; compaction imminent)
+## RESUME ANCHOR 12 (2026-07-30 ~00:5x — THE TRANSPLANT; supersedes 11)
 
-Main GREEN at 277c4aae+. 39 landed. Since anchor 10: #308 landed 284d53c1
-(view-only md mode); #312 phases 1-2 landed b0f78747 (vue block syntax +
-routing); BUILD FIX 35402196 (compiler-sfc esm-browser import — CJS broke
-bun build --compile; gate now has 'binary build' step per USER directive
-'bun run build must be run'); steer.sh hardened 039107df (composer-cleared
-is ONLY delivery proof — compaction spinner false-positived #314's steer
-14m; memory updated); dispatch.sh writes stub task records 4ba5d6be (land
-needs task-<name>.md; #313/#312 stalled on it); all meta.json newline-swept
-601e7385 (my json.dump broke 3 builder gates).
+**You are the conductor, possibly a FRESH incarnation in ~/dev/invar (project dir
+-home-parallels-dev-invar). This is the resurrection drill the user designed: prove you
+recover identity + state + lessons from disk alone.** Prior life: -home-parallels-dev-ibr
+transcripts; memory seeded to your project dir with a TRANSPLANT NOTE on top.
 
-LANES (4): 300-eight-ui-nitpicks-bundled (TEN items, 4h+ — at landing:
-complete ALL constituent records); 314-harness-and-tooling-integrity-bundle
-(#314+#292+#297 — was BLOCKED on my newlines, steered via hand-Enter to
-merge main + re-gate through hook; lands on GATE_EXIT=0 + hash);
-320-terminal-pane-fidelity-two-bundle (#320 theme bg/palette + #321 DEC-2026
-flicker — #320 corrects #315's fixed-xterm overshoot); 317-splitter row.
+STATE: repo renamed tui-editor -> invar (mv + git worktree repair + functional sweep;
+recorded fixtures and historic records deliberately untouched). Full ENFORCING gate ran
+GREEN from ~/dev/invar (5eb10e69) — the rename is instrument-validated. USER LAW landed
+with it: never hardcode the repo root; derive (git rev-parse / cwd).
 
-QUEUE: #319 tasks pane → #301 chords → #323 quit dialog (needs bundle's
-#303/#316/#318) → #324 3D demo+video → #325 A/V sync research map →
-#326 vendor modularity STAGE-1 (SAME-AGENT two-stage: at plan-READY do
-NOT land/close the lane — plan to user, steer approval into same session)
-→ #322 status lie → backlog (#283 solo, #272, #269-271, #255-258,
-#260-262, 25x). WAIT USER: #241 #242, capsule, orphans 200/205.
+LANDED: 47 today incl. #300 ten-nitpick bundle (ec651408), #324 media plugin (f9394d58),
+#325 A/V map (90b64204), #320+#321 fidelity (f64f85ef), #319, #317, #314 bundle, #301.
+All sessions archived by cwd-resolved rollout + commit-hash verdicts.
 
-NORTH STAR added verbatim: 'our own internet between Invar instances'
-(presence → ledger sync → projected panes → fleet mesh; prefer
-location-independent seams). New records #322-#326 all verbatim.
+FLEET: STILL. No builders, no orphans (200/205/326/bc-idle killed by exact name with user
+approval). Worktrees parked: 194-reserved-chord, 200-pool, 205-flake-population,
+326-vendor (holds the REVISED plan on fleet/326-...), old agent-*, /tmp gate trees
+(repaired, user said keep).
 
-LAWS (delta): binary-build gate step exists; steer only via steer.sh
-(composer-cleared proof); rollout by session-meta cwd; verdict forms
-a/b/c by COMMIT HASH; census #214 at 18 pool events; codex medium
-REFUSED->high; State: not Status:; meta.json needs trailing newline
-(use print(json.dumps)+newline or echo >>). Watchers: Monitor
-bfz27vcz0 + cron 38059f05 :07/:37 — REARM BOTH after session restart.
-User's claude symlink verified 2.1.220 after #313-probe damage.
+QUEUE (dispatch order, user-directed first): #329 tasks:watch animation tick (60fps diff
+frames; design in record) -> #323 quit dialog -> #326 STAGE 2 (REVISED plan approved
+direction: runtime install via signed registry artifacts, network-edge gating, declared
+kernel overrides; plan file in the task folder is the brief base; fresh session OK) ->
+#322 status-lie family (now 2 instances) -> #327 Invarnet p2p research (4-invariant
+reduction in record is the test target) -> backlog (#283, #272, #269-271, 25x cluster).
+WAIT FOR USER: #241 #242; capsule HELD.
+
+WATCHERS (re-arm from ~/dev/invar, ONE each):
+  Monitor(command: "cd /home/parallels/dev/invar && bash scripts/fleet/fleet-watch.sh", persistent: true)
+  CronCreate(cron: "7,37 * * * *", prompt: "/loop keep going till all tasks are done", recurring: true)
+fleet-watch now: CTX speedometer on every event batch, CHECKPOINT at 85% (ANCHOR
+PROTOCOL = family 0 project.conductor.md + top of conductor skill), content-keyed READY
+stamps (rewritten reports re-fire), steer.sh treats [Pasted Content] chips as composer
+occupants. Gauge: scripts/context-usage.sh (repo-local, transplant-aware).
+
+LAWS DELTA since 11: read-the-verdict via cwd-resolved rollout hook-chain extraction
+(GATE_EXIT=0 + 'merge-gate GREEN' + commit hash, 7-char abbrev in hook output); a
+re-delivered report is a NEW event; a chip is a composer occupant; never hardcode repo
+root; bundle landings complete ALL constituent records; census tally per landing (#214
+at 31 pool events 07-29).
+
+USER CONTEXT: he watches tasks:watch (animation broken until #329); his iv was closed
+for the rename — colors/flicker fixes confirmed by him live. North star: Indranet
+Invarnet (#327). He may be GRADING you against the old incarnation — reconstruct fully,
+say what you know, then continue the queue.
