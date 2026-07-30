@@ -1097,6 +1097,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: completion harness" bun scripts/harness/smoke-completion-harness.ts
   parallel_safe_full_tmux_smoke "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
   parallel_safe_smoke "smoke: workspace tabs harness" bun scripts/harness/smoke-workspace-tabs-harness.ts
+  parallel_safe_smoke "smoke: workspace layout isolation harness" bun scripts/harness/smoke-workspace-layout-isolation-harness.ts
   parallel_safe_full_tmux_smoke "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh
   parallel_safe_full_tmux_smoke "smoke: selection"   bash scripts/smoke-selection.sh
   # invariant: The conformance corpus replaces the tmux ring (scripts/harness/harness.invariants.md)
