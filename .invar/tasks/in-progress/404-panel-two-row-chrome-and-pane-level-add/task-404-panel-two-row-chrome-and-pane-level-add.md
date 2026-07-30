@@ -1,6 +1,6 @@
 # #404 — panel chrome v2: two rows, tab close buttons, pane-level add
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux

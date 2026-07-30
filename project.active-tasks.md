@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/in-progress/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md)  [building]
+  `tmux attach -t invar/404-panel-two-row-chrome-and-pane-level-add`
 - #402 [invar-monitoring-plugin](.invar/tasks/in-progress/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md)  [building]
   `tmux attach -t invar/402-invar-monitoring-plugin`
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
