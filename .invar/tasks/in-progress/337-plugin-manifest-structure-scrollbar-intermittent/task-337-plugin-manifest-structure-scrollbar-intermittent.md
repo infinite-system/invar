@@ -1,6 +1,6 @@
 # #337 — plugin-manifest smoke: structure scrollbar settled-geometry intermittent
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: verification-integrity
 Engine: claude
 Environment: linux
