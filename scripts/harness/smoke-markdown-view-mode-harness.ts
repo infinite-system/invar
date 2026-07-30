@@ -126,7 +126,9 @@ async function drivePersistence(): Promise<void> {
         status.markdownViewMode === 'preview' &&
         status.markdownPreviewOpen === true &&
         status.markdownPaneFocus === 'preview' &&
-        status.markdownParsing === false,
+        status.markdownParsing === false &&
+        status.editorSurfaceIdentifier === 'markdown.preview' &&
+        status.editorColumnContent === 'markdown.preview',
     );
     const previewSnapshot = await driver.awaitGridCondition(
       'the rendered Alpha preview fills the editor column without source',
@@ -136,8 +138,10 @@ async function drivePersistence(): Promise<void> {
         candidate.findText('  1 ▏# Alpha') === null,
     );
     HarnessSmoke.Class.requireCondition(
-      previewSnapshot.findText('╭─Preview') !== null,
-      'preview-only paints its rendered pane',
+      previewSnapshot.findText('╭─Preview') !== null &&
+        HarnessSmoke.Class.readStatus(statusPath).editorColumnContent ===
+          'markdown.preview',
+      'preview-only paints and publishes its rendered pane',
     );
     driver.sendRawInputWithoutFrameExpectation('x');
     driver.sendKeys('Control+Shift+v');
@@ -145,7 +149,10 @@ async function drivePersistence(): Promise<void> {
       driver,
       statusPath,
       'the next semantic frame shows that the editing key changed nothing',
-      (status) => status.markdownViewMode === 'editor',
+      (status) =>
+        status.markdownViewMode === 'editor' &&
+        status.editorSurfaceIdentifier === '' &&
+        status.editorColumnContent === 'source-text-editor',
     );
     HarnessSmoke.Class.requireCondition(
       Number(afterEditingKey.bufferRevision) === editorRevision &&
@@ -310,7 +317,9 @@ async function drivePreviewScale(lineCount: number): Promise<void> {
         status.markdownViewMode === 'preview' &&
         status.markdownPreviewOpen === true &&
         status.markdownParsing === false &&
-        Number(status.markdownPreviewContentRows) > 0,
+        Number(status.markdownPreviewContentRows) > 0 &&
+        status.editorSurfaceIdentifier === 'markdown.preview' &&
+        status.editorColumnContent === 'markdown.preview',
       30_000,
     );
     await driver.awaitGridCondition(

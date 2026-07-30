@@ -341,7 +341,13 @@ async function driveHalfBlockAnimation(): Promise<void> {
       statusPath,
       'the 3D demo opens at small geometry',
       (status) =>
-        status.mediaMode === 'demo' && Number(status.mediaFrameIndex) >= 2,
+        status.mediaMode === 'demo' &&
+        Number(status.mediaFrameIndex) >= 2 &&
+        status.panelActiveContent === 'media-demo' &&
+        status.terminalVisible === false &&
+        status.terminalFocused === false &&
+        status.terminalColumns === 0 &&
+        status.terminalRows === 0,
     );
     const initialWorkingSetBytes = Number(initialStatus.mediaWorkingSetBytes);
     const initialBufferGeneration = Number(initialStatus.mediaBufferGeneration);

@@ -100,7 +100,8 @@ try {
     statusPath,
     'the agent pane is visible and active with screen height published',
     (status) =>
-      status.terminalVisible === true &&
+      status.panelVisible === true &&
+      status.terminalVisible === false &&
       status.panelActiveContent === 'agent' &&
       typeof status.height === 'number',
   );
@@ -137,8 +138,10 @@ try {
     statusPath,
     'the agent chord opens and focuses the registered agent pane',
     (status) =>
-      status.terminalVisible === true &&
-      status.terminalFocused === true &&
+      status.panelVisible === true &&
+      status.panelFocused === true &&
+      status.terminalVisible === false &&
+      status.terminalFocused === false &&
       status.panelActiveContent === 'agent' &&
       String(status.panelContentIds).includes('agent'),
   );

@@ -141,7 +141,7 @@ async function focusPanelBeforeOpeningDialog(
     statusPath,
     `${expectedContentIdentifier} is focused before the dialog opens`,
     (candidate) =>
-      candidate.terminalFocused === true &&
+      candidate.panelFocused === true &&
       candidate.panelActiveContent === expectedContentIdentifier,
   );
 }
@@ -1357,6 +1357,7 @@ try {
     statusPath,
     'the terminal panel is visible',
     (candidate) =>
+      candidate.panelVisible === true &&
       candidate.terminalVisible === true &&
       candidate.terminalFocused === true &&
       candidate.panelActiveContent === 'terminal',
@@ -1437,14 +1438,15 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the terminal panel closes before the agent-only case',
-    (candidate) => candidate.terminalVisible === false,
+    (candidate) =>
+      candidate.panelVisible === false && candidate.terminalVisible === false,
   );
   await clickStatusMarker(driver, ' ✦ ');
   await awaitStatusPublication(
     statusPath,
     'the agent-only panel is visible',
     (candidate) =>
-      candidate.terminalVisible === true &&
+      candidate.panelVisible === true &&
       candidate.panelActiveContent === 'agent',
   );
   await focusPanelBeforeOpeningDialog(driver, statusPath, 'agent');

@@ -91,9 +91,9 @@ async function openAgentPane(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.panelActiveContent === 'agent' && status.terminalFocused === true",
+    "status condition: status.panelActiveContent === 'agent' && status.panelFocused === true",
     (status) =>
-      status.panelActiveContent === 'agent' && status.terminalFocused === true,
+      status.panelActiveContent === 'agent' && status.panelFocused === true,
   );
 }
 

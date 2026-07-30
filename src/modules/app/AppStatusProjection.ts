@@ -30,6 +30,17 @@ class $AppStatusProjection {
 
   static snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     const editor = ports.workspaceSet.active.editor;
+    const editorColumnContentIdentifier =
+      ports.workspaceSet.active.editorSurfaces.occupyingClaim?.identifier ??
+      ports.view.editorColumnContentIdentifier();
+    const panelViewportColumns = ports.view.panelViewportColumns();
+    const panelViewportRows = ports.view.panelViewportRows();
+    const terminalCellIndex = ports.panelHost.resolvedCells.findIndex(
+      (cell) => cell.content.id === 'terminal',
+    );
+    const panelCellSpans = ports.panelHost.cellSpans(panelViewportColumns);
+    const terminalIsPainted =
+      ports.panelHost.visible.value && terminalCellIndex >= 0;
     const openInputOverlays = [
       ...(ports.findBar.open.value ? ['findBar'] : []),
       ...(ports.goToLinePrompt.open.value ? ['goToLine'] : []),
@@ -234,9 +245,16 @@ class $AppStatusProjection {
       bufferLiveCount: ports.workspaceSet.active.buffers.liveCount,
       activeBufferIndex: ports.workspaceSet.active.buffers.activeIndex.value,
       pendingCloseTab: ports.workspaceSet.active.pendingCloseTabIndex.value,
-      // Bottom panel / terminal state (drives smoke-terminal assertions without pane-scraping).
-      terminalVisible: ports.panelHost.visible.value,
-      terminalFocused: ports.panelHost.focused.value,
+      panelVisible: ports.panelHost.visible.value,
+      panelFocused: ports.panelHost.focused.value,
+      panelColumns: ports.panelHost.visible.value ? panelViewportColumns : 0,
+      panelRows: ports.panelHost.visible.value ? panelViewportRows : 0,
+      // The terminal fields describe the terminal only while its content is in the painted panel set.
+      terminalVisible: terminalIsPainted,
+      terminalFocused:
+        terminalIsPainted &&
+        ports.panelHost.focused.value &&
+        ports.panelHost.focusedContent?.id === 'terminal',
       panelActiveContent:
         ports.panelHost.focusedContent?.id ?? ports.panelHost.activeId.value,
       panelContentIds: ports.panelHost.order.value,
@@ -252,8 +270,10 @@ class $AppStatusProjection {
       panelHeadingGeometry: ports.view.panelHeadingGeometry(),
       panelSeparatorGeometry: ports.view.panelSeparatorGeometry(),
       panelListGeometry: ports.view.panelContentsListRegion(),
-      terminalColumns: ports.view.panelViewportColumns(),
-      terminalRows: ports.view.panelViewportRows(),
+      terminalColumns: terminalIsPainted
+        ? (panelCellSpans[terminalCellIndex]?.columns ?? 0)
+        : 0,
+      terminalRows: terminalIsPainted ? panelViewportRows : 0,
       // Split state: which cells occupy the slot, which one has the keyboard, and each cell's converged
       // column width — the driving smoke reads this to prove 2-up render, focus routing, and re-flow.
       panelCellIds: ports.panelHost.resolvedCells.map(
@@ -261,7 +281,7 @@ class $AppStatusProjection {
       ),
       panelFocusedIndex: ports.panelHost.focusedIndex.value,
       panelCellColumns: ports.panelHost
-        .cellSpans(ports.view.panelViewportColumns())
+        .cellSpans(panelViewportColumns)
         .map((span) => span.columns),
       primaryDockVisible: ports.primaryDockHost.visible.value,
       primaryDockFocused: ports.primaryDockHost.focused.value,
@@ -284,7 +304,7 @@ class $AppStatusProjection {
       // views its content still holds for open buffers. Together they are uninstall symmetry made
       // observable: a withdrawn contribution leaves no occupant AND no live view.
       // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
-      editorColumnContent: ports.view.editorColumnContentIdentifier(),
+      editorColumnContent: editorColumnContentIdentifier,
       sourceTextViewsForOpenBuffers: ports.workspaceSet.entries.value.reduce(
         (total, workspace) => total + workspace.sourceTextViewsForOpenBuffers,
         0,
