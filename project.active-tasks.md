@@ -6,15 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #375 [tasks-live-attach-icon-invisible](.invar/tasks/in-progress/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md)  [building]
+  `tmux attach -t invar/375-tasks-live-attach-icon-invisible`
 - #347 [markdown-link-resolution-and-double-click](.invar/tasks/in-progress/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md)  [building]
   `tmux attach -t invar/347-markdown-link-resolution-and-double-click`
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/in-progress/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)  [building]
   `tmux attach -t invar/346-panel-tab-bar-workspace-content-spaces`
 
-## USER-DIRECTED (15)
+## USER-DIRECTED (14)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
-- #375 [tasks-live-attach-icon-invisible](.invar/tasks/active/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
 - #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)

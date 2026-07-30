@@ -1,6 +1,6 @@
 # #375 — tasks live view: attach icon invisible; attach target goes stale
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
