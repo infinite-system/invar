@@ -370,7 +370,8 @@ class $RootView {
     // SHARED-FILE CHANGE (activity bar, Task 7): the VS-Code activity bar is a self-contained pane
     // controller. RootView constructs it, mounts its 4-col `bar` at the FAR LEFT of the main row (before
     // the sidebar), and calls activityBar.update() each frame. It owns no active-view state — clicks +
-    // its keybindings switch the per-workspace Workspace.sidebarView through Workspace.showSidebarView.
+    // its keybindings switch the per-workspace Workspace.primaryPaneContentIdentifier through
+    // Workspace.focusPrimaryPane.
     const activityBar = new ActivityBar.Class({
       renderer,
       identifier: 'activity-bar',
