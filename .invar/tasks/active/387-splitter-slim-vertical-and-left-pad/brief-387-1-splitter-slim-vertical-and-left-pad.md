@@ -37,19 +37,20 @@ former extent). One verification pass at the end.
   keep the current vertical; parts 2 collapses, part 3 still lands.
 - Commit BEFORE writing READY; the report header carries the real commit
   hash and GATE_EXIT read from the hook output. Report goes to the MAIN
-  checkout task folder (absolute path):
-  /home/parallels/dev/invar/.invar/tasks/in-progress/387-splitter-slim-vertical-and-left-pad/report-387-splitter-slim-vertical-and-left-pad.md
+  checkout task folder: the main checkout is at `/home/parallels/dev/invar`;
+  write the report into its in-progress task folder for this task, file name
+  `report-387-splitter-slim-vertical-and-left-pad.md`.
 
 ## Invariants in scope
 
-- "Splitter paint and hit testing share one geometry" — src/modules/ui/ui.invariants.md — the pad cell and glyph swap must not split paint from hit geometry.
-- The splitter visual-weight record refined by #345 (locate it in src/modules/ui/ui.invariants.md by grepping for the U+2501 adoption) — the vertical adoption refines it again; propose wording.
-- "Layout slots derive from one configuration" — src/modules/layout/layout.invariants.md — the pad must not become a second layout quantity derived outside resolve.
-- "The right dock stays a bounded minority of the row" — src/modules/layout/layout.invariants.md — landed minutes ago (#383); your vertical splitter work touches the same chrome; do not disturb the live maximum wiring.
+- "Splitter paint and hit testing share one geometry" — [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the pad cell and glyph swap must not split paint from hit geometry.
+- The splitter visual-weight record refined by #345 (locate it in [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) by grepping for the U+2501 adoption) — the vertical adoption refines it again; propose wording.
+- "Layout slots derive from one configuration" — [src/modules/layout/layout.invariants.md](../../../../src/modules/layout/layout.invariants.md) — the pad must not become a second layout quantity derived outside resolve.
+- "The right dock stays a bounded minority of the row" — [src/modules/layout/layout.invariants.md](../../../../src/modules/layout/layout.invariants.md) — landed minutes ago (#383); your vertical splitter work touches the same chrome; do not disturb the live maximum wiring.
 
 ## Bycatch expected
 
-Report per AGENTS.md's bycatch taxonomy (runtime defects, invariant
+Report per [AGENTS.md](../../../../AGENTS.md)'s bycatch taxonomy (runtime defects, invariant
 violations in function, comment drift, distillation possibilities,
 generator drift, plain nonsense). Carry a Bycatch section even when it
 reads None observed.
