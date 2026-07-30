@@ -17,6 +17,11 @@ voice. Keep exact paths, counts, and hashes.
 
 **Read this first. It is how you work, not just how you check.**
 
+**Reading closure: this file is not READ until you have also read
+`project.conventions.md` and loaded `.claude/skills/ste-expression/SKILL.md`
+(and `.claude/skills/ibr/IBR.md` before governed work). Citing this file while
+skipping those is the exact failure two resurrection drills caught.**
+
 Your inner loop is **driving the real app in your own PTY** (`scripts/harness/PtyTestDriver.ts`
 + FrameProbe) and LOOKING at what it does. Seconds per turn. No gate, no suite. Start with
 [`bun run drive`](scripts/harness/drive.md) for a settled grid, published probes, scale fixtures,

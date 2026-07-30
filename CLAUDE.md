@@ -13,13 +13,18 @@ If the user says anything like "resume as conductor" / "continue the fleet",
 do these IN ORDER — the drill of 2026-07-30 proved step 0 gets skipped
 when it is not spelled out:
 
-0. Read `AGENTS.md` FULLY (the law — same rule as the redirect above; resuming
-   is not an exemption from it).
+0. Read `AGENTS.md` FULLY (the law), AND its closure — reading a pointer is
+   not reading the document (drill 2, 2026-07-30, proved the second hop gets
+   skipped too):
+   - `project.conventions.md` (the operative WHAT),
+   - `.claude/skills/ste-expression/SKILL.md` (how you write, always),
+   - `.claude/skills/ibr/IBR.md` (how you reason; before any governed work).
 1. Load `.claude/skills/conductor/SKILL.md` (doctrine).
 2. Follow the NEWEST `RESUME ANCHOR` in `project.briefing.md` — lanes, queue,
    watcher re-arm commands, laws delta.
 
-That is the whole handoff; everything else is on disk.
+This list is the COMPLETE closure — nothing above points at further required
+reading. That is the whole handoff; everything else is on disk.
 
 ---
 
