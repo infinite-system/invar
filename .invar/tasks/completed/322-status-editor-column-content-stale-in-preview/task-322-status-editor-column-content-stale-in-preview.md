@@ -1,6 +1,6 @@
 # 322 — status: editorColumnContent stays 'source-text-editor' in preview-only mode
 
-State: IN-PROGRESS
+State: COMPLETED — 0f871cbc — status/editor columns read the shared projection seam; combined-tree gate green
 Engine: codex
 Model: 5.6-sol
 Effort: low

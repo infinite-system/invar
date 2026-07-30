@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
-- #322 [status-editor-column-content-stale-in-preview](.invar/tasks/in-progress/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)  [building]
-  `tmux attach -t invar/322-status-editor-column-content-stale-in-preview`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -39,7 +37,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 [harness-diagnostic-provenance-guard](.invar/tasks/active/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (18)
+## FLAKE-EVIDENCE (19)
+- #334 [structure-pane-no-file-open-transient](.invar/tasks/active/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md)
 - #260 [first-click-of-a-session-lands-nowhere](.invar/tasks/active/260-first-click-of-a-session-lands-nowhere/task-260-first-click-of-a-session-lands-nowhere.md)
 - #257 [last-row-right-border-blank-cell](.invar/tasks/active/257-last-row-right-border-blank-cell/task-257-last-row-right-border-blank-cell.md)
 - #255 [extensions-row-locator-wrapped-label](.invar/tasks/active/255-extensions-row-locator-wrapped-label/task-255-extensions-row-locator-wrapped-label.md)
@@ -91,12 +90,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 111 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 112 — full log: project.tasks-completed.md)
 - #329 [tasks-watch-animation-tick-restored](.invar/tasks/completed/329-tasks-watch-animation-tick-restored/task-329-tasks-watch-animation-tick-restored.md) — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
 - #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/completed/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md) — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
 - #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
 - #324 [terminal-3d-demo-and-video-playback](.invar/tasks/completed/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md) — f9394d58 — removable Animated Media plugin: cube/torus/video, flyweight+two-buffer+memory-flat proven, ffmpeg both polarities, removal build green
 - #323 [quit-confirmation-dialog-modern](.invar/tasks/completed/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md) — e8e57083 — Quit now asks: one modal confirmation behind Ctrl+Q/Cmd+Q/F10/Quit at the shared overlay seam; No default, Yes the only shutdown path, negative answers keep dirty state; harness teardown bypasses via INVAR_HARNESS_DIRECT_QUIT with two-way positive control.
+- #322 [status-editor-column-content-stale-in-preview](.invar/tasks/completed/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md) — 0f871cbc — status/editor columns read the shared projection seam; combined-tree gate green
 - #321 [terminal-flicker-child-tui-repaints](.invar/tasks/completed/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md) — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)
 - #320 [terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/completed/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md) — c8c8723a — terminal defaults + ANSI palette theme-derived, VSCode model; child-explicit lanes stay exact (landed in #320 bundle merge f64f85ef)
 - #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/completed/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md) — f64f85ef — terminal theme fidelity (VSCode palette + theme defaults) + DEC 2026 synchronized child repaints; tasks:watch flicker gone
@@ -106,4 +106,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #316 [terminal-list-close-icon-matches-tabs](.invar/tasks/completed/316-terminal-list-close-icon-matches-tabs/task-316-terminal-list-close-icon-matches-tabs.md) — cd7abe37 — one panelClose glyph across list/tabs/panel (landed in #300 bundle merge ec651408)
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
 - #314 [harness-and-tooling-integrity-bundle](.invar/tasks/completed/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md) — 331a8d33 — harness/tooling integrity: Drive paint-condition waits, dispatch root-relative pointers, folder-open task isolation
-- #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
