@@ -14,6 +14,7 @@ import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
+import { HierarchicalRowIndent } from '../ui/HierarchicalRowIndent';
 import type { FileTree } from './FileTree';
 
 class $TreePaneRenderer {
@@ -34,7 +35,7 @@ class $TreePaneRenderer {
       const hovered = rowIndex === hoveredIndex;
       // No selection arrow — the row background is the selection signal (the '›' marker was noise).
       const marker = ' ';
-      const indent = '  '.repeat(row.depth);
+      const indent = HierarchicalRowIndent.Class.text(row.depth);
       const icon = context.icon(row.name, row.isDir, row.expanded);
       const completeLabel = `${marker}${indent}${icon} ${row.name}`;
       let label = TextCoordinates.Class.displayColumnWindow(

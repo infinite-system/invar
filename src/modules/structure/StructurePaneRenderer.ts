@@ -29,6 +29,7 @@ import type { Palette } from '../theme/ThemePalettes';
 import type { SymbolMarkSet } from '../theme/ThemeIcons';
 import type { InterfaceGlyphVocabulary } from '../theme/ThemeIcons';
 import { TextFieldPainter } from '../ui/TextFieldPainter';
+import { HierarchicalRowIndent } from '../ui/HierarchicalRowIndent';
 import type { StructureOutline } from './StructureOutline';
 
 class $StructurePaneRenderer {
@@ -72,7 +73,7 @@ class $StructurePaneRenderer {
       const rowIndex = top + visibleIndex;
       const selected = rowIndex === selectedIndex;
       const hovered = rowIndex === hoveredIndex;
-      const indent = '  '.repeat(row.depth);
+      const indent = HierarchicalRowIndent.Class.text(row.depth);
       const foldMark = row.hasChildren
         ? row.childrenVisible
           ? (context.foldOpenGlyph ?? 'v')

@@ -111,6 +111,13 @@ describe('StructurePaneContent', () => {
     expect(activations.count).toBe(0);
     expect(pane.onPointerDown(0, 2)).toBe(true);
     expect(outline.selectedIndex.value).toBe(1);
+    expect(
+      (
+        pane as unknown as {
+          foldControlColumn(rowIndex: number): number;
+        }
+      ).foldControlColumn(1),
+    ).toBe(2);
     // Focus stays host-owned in the right dock: the click activates without touching the
     // workspace's primary-pane focus model.
     expect(workspaceFocus.value).toBe('editor');

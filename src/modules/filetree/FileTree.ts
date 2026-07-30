@@ -3,6 +3,7 @@ import { ref, shallowRef, type Ref } from 'vue';
 import { Files, type DirEntry } from '../system/Files';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import { TextCoordinates } from '../text/TextCoordinates';
+import { HierarchicalRowIndent } from '../ui/HierarchicalRowIndent';
 
 // A lazily-expanded file tree. Children are read only when a directory is expanded, and the
 // flattened visible list is a plain getter over the expansion state — no reactive node per
@@ -121,7 +122,11 @@ class $FileTree {
       (widestWidth, row) =>
         Math.max(
           widestWidth,
-          1 + row.depth * 2 + 1 + 1 + TextCoordinates.Class.lineWidth(row.name),
+          1 +
+            HierarchicalRowIndent.Class.width(row.depth) +
+            1 +
+            1 +
+            TextCoordinates.Class.lineWidth(row.name),
         ),
       0,
     );

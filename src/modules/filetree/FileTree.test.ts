@@ -34,6 +34,7 @@ test('expanding a directory reveals its children indented, cost only on expand',
   expect(rows.length).toBe(4);
   const child = rows.find((row) => row.name === 'c.ts');
   expect(child?.depth).toBe(1);
+  expect(tree.contentWidth).toBe(8);
 });
 
 test('activating a file returns its path to open', () => {

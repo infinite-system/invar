@@ -20,6 +20,7 @@ import type {
 import type { TextInputAction } from '../text/TextInputModel';
 import { TextInputKey } from '../text/TextInputKey';
 import { ThemeIcons } from '../theme/ThemeIcons';
+import { HierarchicalRowIndent } from '../ui/HierarchicalRowIndent';
 import type { StructureWorkspace } from './StructureWorkspace';
 import { StructurePaneRenderer } from './StructurePaneRenderer';
 
@@ -160,7 +161,7 @@ class $StructurePaneContent implements PaneContent {
 
   protected foldControlColumn(rowIndex: number): number {
     const row = this.activeWorkspace().outline.rows.value[rowIndex];
-    return row ? 1 + row.depth * 2 : -1;
+    return row ? 1 + HierarchicalRowIndent.Class.width(row.depth) : -1;
   }
 
   onPointerMove(_column: number, row: number): boolean {

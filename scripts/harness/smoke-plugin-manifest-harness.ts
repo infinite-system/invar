@@ -1487,9 +1487,46 @@ try {
       status.structureDepthIsOverridden === true &&
       Number(status.structureRows) > rowsBeforeFold,
   );
-  await driver.awaitGridCondition(
-    'depth two paints the nested method without a filter',
-    (snapshot) => snapshot.findText('deepSymbolMethod') !== null,
+  const nestedStructureSnapshot = await driver.awaitGridCondition(
+    'depth two paints three compact hierarchy levels without a filter',
+    (snapshot) =>
+      snapshot.findText('OuterSpace') !== null &&
+      snapshot.findText('InnerClass') !== null &&
+      snapshot.findText('deepSymbolMethod') !== null,
+  );
+  const rightDockBounds = (
+    HarnessSmoke.Class.readStatus(statusPath).layoutSlots as
+      Record<string, { left: number; width: number }> | undefined
+  )?.rightDock;
+  HarnessSmoke.Class.requireCondition(
+    rightDockBounds !== undefined,
+    'the compact structure proof publishes right-dock bounds',
+  );
+  const positionInsideRightDock = (
+    marker: string,
+  ): { row: number; column: number } | null => {
+    for (let row = 0; row < nestedStructureSnapshot.rows; row += 1) {
+      const column = nestedStructureSnapshot
+        .rowText(row)
+        .indexOf(marker, rightDockBounds!.left);
+      if (
+        column >= rightDockBounds!.left &&
+        column + marker.length <= rightDockBounds!.left + rightDockBounds!.width
+      ) {
+        return { row, column };
+      }
+    }
+    return null;
+  };
+  const outerSpacePosition = positionInsideRightDock('OuterSpace');
+  const innerClassPosition = positionInsideRightDock('InnerClass');
+  const deepMethodPosition = positionInsideRightDock('deepSymbolMethod');
+  HarnessSmoke.Class.requireCondition(
+    outerSpacePosition !== null &&
+      innerClassPosition?.column === outerSpacePosition.column + 1 &&
+      deepMethodPosition?.column === outerSpacePosition.column + 2,
+    `structure hierarchy advances one cell at each of three nesting levels ` +
+      `(${outerSpacePosition?.column},${innerClassPosition?.column},${deepMethodPosition?.column})`,
   );
   HarnessSmoke.Class.pass(
     'row folds and the file depth override shape the same outline projection',

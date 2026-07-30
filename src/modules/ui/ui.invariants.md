@@ -906,6 +906,42 @@ scripts/harness/smoke-overlay-dialog-harness.ts`
 
 **Last refined:** 2026-07-29
 
+### Hierarchical pane rows share one compact indent
+
+**Invariant:** If a file-tree or structure row is nested at depth N, then its row mark starts
+exactly N cells farther right than the same row at depth zero. Adjacent levels remain distinct, and
+render width and pointer hit geometry use the same indentation.
+
+**Scope:** File-tree rows, structure rows, structure fold-control hit targets, and file-tree content
+width. Editor text indentation and popup hierarchy are outside this rule.
+
+**Mechanism:** `HierarchicalRowIndent` is the one generator for indentation text and width.
+`TreePaneRenderer`, `FileTree`, `StructurePaneRenderer`, and `StructurePaneContent` consume it
+instead of multiplying depth locally.
+
+**Generates:** One compact cell per nesting level in both panes; matching horizontal extents;
+fold-control clicks that stay aligned with their painted control.
+
+**Evidence:** `src/modules/ui/HierarchicalRowIndent.ts`;
+`src/modules/ui/HierarchicalRowIndent.test.ts`;
+`src/modules/filetree/TreePaneRenderer.ts`;
+`src/modules/filetree/FileTree.ts`;
+`src/modules/structure/StructurePaneRenderer.ts`;
+`src/modules/structure/StructurePaneContent.ts`.
+
+**Impossible if true:** A depth-three file-tree row and structure row starting at different
+indentation; either pane advancing two cells per level; compact paint leaving the structure fold
+hit target at its old column.
+
+**Verification:** `bun test src/modules/ui/HierarchicalRowIndent.test.ts
+src/modules/filetree/TreePaneRenderer.test.ts src/modules/filetree/FileTree.test.ts
+src/modules/structure/StructurePaneRenderer.test.ts
+src/modules/structure/StructurePaneContent.test.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Overlay keyboard actions have visible mouse paths
 
 **Invariant:** If an overlay exposes an action through a keyboard binding, then it exposes a visible

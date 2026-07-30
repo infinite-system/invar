@@ -221,3 +221,32 @@ test('semantic classes color or emphasize the one kind glyph in both themes', ()
     }
   }
 });
+
+test('structure row starts advance one cell at every nested level', () => {
+  const outline = makeOutline();
+  outline.rows.value = Array.from({ length: 4 }, (_unusedValue, depth) => ({
+    depth,
+    name: `level${depth}`,
+    symbolClass: 'value' as const,
+    line: depth,
+    column: 0,
+    endLine: depth,
+  }));
+  outline.status.value = 'ready';
+  const rendered = StructurePaneRenderer.Class.render({
+    outline,
+    structureFocused: false,
+    palette: ThemePalettes.Class.DARK,
+    symbolMarks: ThemeIcons.Class.symbolMarksFor('unicode'),
+    structureMarks: ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+    defaultDepth: 4,
+    height: 4,
+    innerWidth: 30,
+    viewportWidth: 29,
+  });
+  const rows = renderedText(rendered).split('\n').slice(1);
+  const valueMark = ThemeIcons.Class.symbolMarksFor('unicode').value;
+
+  expect(rows.map((row) => row.indexOf(valueMark))).toEqual([3, 4, 5, 6]);
+  outline.dispose();
+});
