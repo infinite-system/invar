@@ -240,6 +240,7 @@ class $CommandDefaults {
         id: 'go.bottom',
         title: 'Go: Bottom of File',
         category: 'Go',
+        actionIcons: { panelSeparator: 'goToBottom' },
         when: hasDocument,
         run: () => getEditor().gotoBottom(),
       },

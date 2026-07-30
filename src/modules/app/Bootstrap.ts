@@ -52,6 +52,7 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { PanelHost, type PanelContentSet } from '../ui/PanelHost';
+import { PanelWorkspaceState } from '../ui/PanelWorkspaceState';
 import { ActivitySurface } from '../ui/ActivitySurface';
 import { PanelHostFocusSet } from '../ui/PanelHostFocusSet';
 import { PanelAddPopup } from '../ui/PanelAddPopup';
@@ -288,11 +289,16 @@ class $Bootstrap {
       _request: PaneRuntimeRequest,
     ): boolean => false;
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
+    let persistPanelWorkspaceState = (): void => {};
+    let restorePanelWorkspaceState = (
+      _workspace: Workspace.Instance,
+    ): void => {};
     const panelHostFocusSet = new PanelHostFocusSet.Class();
     const panelHost = new PanelHost.Class({
       focusSet: panelHostFocusSet,
       contentOrder: settings.panelContentOrder,
       persistContentOrder: () => settings.save(),
+      persistWorkspaceState: () => persistPanelWorkspaceState(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
     });
     const workspacePanelWorlds = new Map<
@@ -326,6 +332,7 @@ class $Bootstrap {
       workspaceSet.onActiveWorkspaceChanged((workspace) => {
         activeWorkspacePanelWorld = workspacePanelWorldFor(workspace);
         panelHost.selectContentSet(activeWorkspacePanelWorld.contentSet);
+        restorePanelWorkspaceState(workspace);
         reconnectPanelWorldDependencies();
       });
     const stopDisposingWorkspacePanelWorlds = workspaceSet.onWorkspaceDisposed(
@@ -443,6 +450,8 @@ class $Bootstrap {
     }
     statusBarSegments.register(CoreStatusBarSegments.Class);
     let panelAddPopup: PanelAddPopup.Instance | null = null;
+    let panelPaneAddPopup: PanelAddPopup.Instance | null = null;
+    let pendingPanelSplitTargetIdentifier: string | null = null;
 
     // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J / Ctrl+backtick)
     // AND the status-bar terminal button. Opening it beside an existing agent region creates the
@@ -538,6 +547,10 @@ class $Bootstrap {
       toggleTerminal,
       toggleAgent,
       (anchor) => panelAddPopup?.show(anchor),
+      (anchor, splitTargetIdentifier) => {
+        pendingPanelSplitTargetIdentifier = splitTargetIdentifier ?? null;
+        panelPaneAddPopup?.show(anchor);
+      },
       toggleRightDock,
       activateQuickOpenSelection,
       revealFindMatch,
@@ -625,6 +638,8 @@ class $Bootstrap {
     const createRuntimePane = (
       kind: string,
       additionalInstance = false,
+      process?: PaneRuntimeRequest['process'],
+      labelOverride?: string,
     ): PaneContent | null => {
       const anyExisting = panelHost.contentOfKind(kind) !== null;
       const identity = paneRuntimes.allocateInstanceIdentity(
@@ -635,10 +650,11 @@ class $Bootstrap {
       if (!identity) return null;
       const content = paneRuntimes.createPane(kind, {
         identifier: identity.identifier,
-        label: identity.label,
+        label: labelOverride ?? identity.label,
         columns: view.panelViewportColumns() || 80,
         rows: view.panelViewportRows() || 24,
         workingDirectory: workspaceSet.active.root,
+        process,
       });
       if (!content) return null;
       runtimePanes.set(content.id, content);
@@ -784,6 +800,7 @@ class $Bootstrap {
 
     const createAgent = (
       additionalInstance = false,
+      labelOverride?: string,
     ): AgentPaneContent.Model => {
       const anyExisting = panelHost.contentOfKind('agent') !== null;
       const instanceNumber =
@@ -799,7 +816,9 @@ class $Bootstrap {
         : 'agent';
       const identifier =
         instanceNumber === 1 ? scopedKind : `${scopedKind}-${instanceNumber}`;
-      const label = instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`;
+      const label =
+        labelOverride ??
+        (instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`);
       // Real Claude (when `claude` is on PATH) runs in the workspace root so it operates in the project.
       const agentPane = AgentFactory.Class.create({
         identifier,
@@ -937,6 +956,99 @@ class $Bootstrap {
       ],
       addContent: addPanelContent,
     });
+    const nextWindowLabel = (baseLabel: string): string => {
+      const count = panelHost.orderedContents.filter((content) => {
+        const label = content.instanceLabel ?? '';
+        return label === baseLabel || label.startsWith(`${baseLabel} `);
+      }).length;
+      return count === 0 ? baseLabel : `${baseLabel} ${count + 1}`;
+    };
+    const addPaneWindow = (kind: string): void => {
+      const content =
+        kind === 'invar-agent'
+          ? createAgent(true, nextWindowLabel('Invar Agent'))
+          : kind === 'claude-agent'
+            ? createRuntimePane(
+                'terminal',
+                true,
+                { command: 'claude' },
+                nextWindowLabel('AI Agent (Claude)'),
+              )
+            : createRuntimePane('terminal', true);
+      if (!content) return;
+      const splitTargetIdentifier = pendingPanelSplitTargetIdentifier;
+      pendingPanelSplitTargetIdentifier = null;
+      if (
+        splitTargetIdentifier &&
+        panelHost.addContentToGroup(content.id, splitTargetIdentifier)
+      ) {
+        return;
+      }
+      panelHost.showContent(content.id);
+    };
+    panelPaneAddPopup = new PanelAddPopup.Class({
+      popup: boundedListPopup,
+      overlayCoordinator,
+      title: 'Add window',
+      addableKinds: () => [
+        { kind: 'terminal', label: 'Terminal' },
+        { kind: 'claude-agent', label: 'AI Agent (Claude)' },
+        { kind: 'invar-agent', label: 'Invar Agent' },
+      ],
+      addContent: addPaneWindow,
+    });
+    let restoringPanelWorkspaceState = false;
+    const restoredPanelWorkspaceState = new WeakSet<Workspace.Instance>();
+    const persistedPaneKind = (content: PaneContent): string =>
+      content instanceof AgentPaneContent.Class
+        ? 'invar-agent'
+        : (content.kind ?? content.id) === 'database'
+          ? 'database'
+          : (content.instanceLabel ?? '').startsWith('AI Agent (Claude)')
+            ? 'claude-agent'
+            : 'terminal';
+    persistPanelWorkspaceState = (): void => {
+      if (restoringPanelWorkspaceState) return;
+      const workspaceRoot = workspaceSet.active.root;
+      settings.panelWorkspaceStates.value = {
+        ...settings.panelWorkspaceStates.value,
+        [workspaceRoot]: PanelWorkspaceState.Class.snapshot(
+          panelHost,
+          persistedPaneKind,
+        ),
+      };
+      settings.save();
+    };
+    const restorePane = (kind: string, label: string): PaneContent | null => {
+      if (kind === 'database') return panelHost.contentOfKind('database');
+      if (kind === 'invar-agent') return createAgent(true, label);
+      if (kind === 'claude-agent') {
+        return createRuntimePane(
+          'terminal',
+          true,
+          { command: 'claude' },
+          label,
+        );
+      }
+      return createRuntimePane('terminal', true, undefined, label);
+    };
+    restorePanelWorkspaceState = (workspace): void => {
+      if (restoredPanelWorkspaceState.has(workspace)) return;
+      restoredPanelWorkspaceState.add(workspace);
+      const state = settings.panelWorkspaceStates.value[workspace.root];
+      if (!state || state.spaces.length === 0) return;
+      restoringPanelWorkspaceState = true;
+      try {
+        panelHost.restoreWorkspaceState(
+          PanelWorkspaceState.Class.restore(state, (pane) =>
+            restorePane(pane.kind, pane.label),
+          ),
+        );
+      } finally {
+        restoringPanelWorkspaceState = false;
+      }
+    };
+    restorePanelWorkspaceState(workspaceSet.active);
     app.onDispose(() => {
       testVoiceBackend?.dispose();
       terminalFollowController?.dispose();

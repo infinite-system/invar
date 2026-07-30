@@ -55,7 +55,7 @@ test('click activates and the visible close affordance closes the same row', () 
     'agent',
     'output',
   ]);
-  expect(list.visible).toBe(false);
+  expect(list.visible).toBe(true);
 });
 
 test('dragging a row reorders the live split through the host', () => {
@@ -63,7 +63,7 @@ test('dragging a row reorders the live split through the host', () => {
   let persistenceCount = 0;
   const host = new PanelHost.Class({
     contentOrder: order,
-    persistContentOrder: () => {
+    persistWorkspaceState: () => {
       persistenceCount += 1;
     },
   });
@@ -74,12 +74,13 @@ test('dragging a row reorders the live split through the host', () => {
   host.show();
   host.togglePanelList();
   const list = new PanelContentsList.Class(host);
+  persistenceCount = 0;
 
   list.pointerDown(2, 0);
   list.pointerDrag(1);
   list.pointerUp();
 
-  expect(order.value).toEqual(['terminal', 'agent', 'output']);
+  expect(order.value).toEqual(['agent', 'terminal', 'output']);
   expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
     'terminal',
     'agent',
@@ -87,8 +88,45 @@ test('dragging a row reorders the live split through the host', () => {
   ]);
   expect(persistenceCount).toBe(1);
   host.dispose();
-  expect(order.value).toEqual(['terminal', 'agent', 'output']);
+  expect(order.value).toEqual(['agent', 'terminal', 'output']);
   expect(persistenceCount).toBe(1);
+});
+
+test('a row split button requests a new member for that group and joined members paint group glyphs', () => {
+  const host = new PanelHost.Class();
+  host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
+  host.register(new FakeContent('agent', 'Invar Agent', 'A', 'agent'));
+  host.split(['terminal', 'agent']);
+  host.show();
+  host.togglePanelList();
+  const splitTargets: string[] = [];
+  const list = new PanelContentsList.Class(host, (identifier) =>
+    splitTargets.push(identifier),
+  );
+
+  expect(list.pointerDown(list.width - 3, 0)).toBe(true);
+  expect(splitTargets).toEqual(['terminal']);
+  const text = list
+    .render(
+      ThemePalettes.Class.DARK,
+      ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+    )
+    .chunks.map((chunk) => chunk.text)
+    .join('');
+  expect(text).toContain('├');
+  expect(text).toContain('└');
+});
+
+test('the pinned list width can shrink and clamps to its declared bounds', () => {
+  const host = new PanelHost.Class();
+  const list = new PanelContentsList.Class(host);
+
+  list.setWidth(12);
+  expect(list.width).toBe(12);
+  list.setWidth(2);
+  expect(list.width).toBe(10);
+  list.setWidth(100);
+  expect(list.width).toBe(40);
 });
 
 test('the list selects visibility among multiple open instances of one kind', () => {

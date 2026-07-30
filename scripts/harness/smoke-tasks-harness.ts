@@ -570,12 +570,11 @@ try {
   await awaitTaskStatus(
     driven.driver,
     driven.homeDirectory,
-    'the native agent pane opens beside the running task terminal',
+    'the native agent pane opens as a full-width group while the task stays live',
     (candidate) =>
-      candidate.agentTitle === 'Claude' &&
-      taskIdentifiers(candidate).length === 1 &&
       Array.isArray(candidate.panelCellIds) &&
-      candidate.panelCellIds.includes('agent'),
+      candidate.panelCellIds.join(',') === 'agent' &&
+      candidate.panelActiveContent === 'agent',
   );
   await driven.driver.awaitGridCondition(
     'the native agent composer remains visible and usable',

@@ -32,14 +32,19 @@ interface EditorActionSegment {
 }
 
 interface ControlSegment {
-  readonly action: 'pane-list' | 'add' | 'expand' | 'close';
+  readonly action: 'pane-list' | 'pane-add' | 'expand' | 'close';
   readonly startColumn: number;
   readonly endColumnExclusive: number;
 }
 
 interface TabBarGeometry {
   readonly row: number;
+  readonly tabRow: number;
   readonly tabs: readonly WorkspaceTabSegment[];
+  readonly spaceAdd: {
+    readonly startColumn: number;
+    readonly endColumnExclusive: number;
+  } | null;
   readonly editorActions: readonly EditorActionSegment[];
   readonly drag: {
     readonly left: number;
@@ -234,8 +239,6 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column panel content starts without a rounded frame`,
     );
     const initialTabBar = tabBar(status);
-    const lastTab = initialTabBar.tabs.at(-1);
-    const firstEditorAction = initialTabBar.editorActions[0];
     const lastEditorAction = initialTabBar.editorActions.at(-1);
     const firstControl = initialTabBar.controls[0];
     HarnessSmoke.Class.requireCondition(
@@ -246,36 +249,35 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           true,
       `${columns}-column workspace tabs publish by space identity`,
     );
-    const expectedEditorActionIdentifiers =
-      columns === 120 ? ['view.toggleWordWrap', 'editor.goToLine'] : [];
+    const expectedEditorActionIdentifiers = [
+      'view.toggleWordWrap',
+      'editor.goToLine',
+      'go.bottom',
+    ];
     HarnessSmoke.Class.requireCondition(
       JSON.stringify(
         initialTabBar.editorActions.map((action) => action.commandId),
       ) === JSON.stringify(expectedEditorActionIdentifiers),
-      `${columns}-column editor actions publish separately and truncate before tabs`,
+      `${columns}-column editor actions publish on the splitter row independently of tabs`,
     );
     HarnessSmoke.Class.requireCondition(
       initialTabBar.drag.width >= 1,
-      `${columns}-column tabs leave a live drag span`,
+      `${columns}-column splitter actions leave a live drag span`,
     );
     HarnessSmoke.Class.requireCondition(
       JSON.stringify(
         initialTabBar.controls.map((control) => control.action),
-      ) === JSON.stringify(['add', 'expand', 'close']),
-      `${columns}-column tab row retains all three right controls`,
+      ) === JSON.stringify(['pane-add', 'expand', 'close']),
+      `${columns}-column splitter row retains all three right controls`,
     );
     HarnessSmoke.Class.requireCondition(
-      (lastTab
-        ? lastTab.endColumnExclusive ===
-          (firstEditorAction?.startColumn ?? initialTabBar.drag.left)
+      (lastEditorAction
+        ? lastEditorAction.endColumnExclusive === initialTabBar.drag.left
         : true) &&
-        (lastEditorAction
-          ? lastEditorAction.endColumnExclusive === initialTabBar.drag.left
-          : true) &&
         firstControl !== undefined &&
         initialTabBar.drag.left + initialTabBar.drag.width ===
           firstControl.startColumn,
-      `${columns}-column row order is tabs then actions then drag then controls with no gap or overlap`,
+      `${columns}-column splitter row is actions then drag then controls with no gap or overlap`,
     );
     // The drag span stands off from the leading run by a PAINT pad: the pad cells are blank and
     // the rest of the published rectangle is the centered mark. The pad count comes from the
@@ -371,7 +373,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         );
       }
     }
-    if (initialTabBar.editorActions.length === 2) {
+    if (initialTabBar.editorActions.length === 3) {
       for (const action of initialTabBar.editorActions) {
         const actionCells = tabRowSnapshot
           .rowCells(initialTabBar.row)
@@ -418,6 +420,12 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       );
     }
 
+    const activeTerminalTab = tabBar(status).tabs.find((tab) =>
+      tab.spaceIdentifier.startsWith('terminal-space-'),
+    );
+    if (!activeTerminalTab)
+      throw new Error('Missing active Terminal tab geometry');
+    clickSegment(driver, tabBar(status).tabRow, activeTerminalTab);
     driver.sendKeys('Alt+PageDown');
     status = await HarnessSmoke.Class.awaitStatus(
       driver,
@@ -431,7 +439,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       tab.spaceIdentifier.startsWith('terminal-space-'),
     );
     if (!terminalTab) throw new Error('Missing Terminal tab geometry');
-    clickSegment(driver, tabBar(status).row, terminalTab);
+    clickSegment(driver, tabBar(status).tabRow, terminalTab);
     status = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -440,11 +448,9 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         String(candidate.panelActiveSpace).startsWith('terminal-space-'),
     );
 
-    const add = tabBar(status).controls.find(
-      (control) => control.action === 'add',
-    );
+    const add = tabBar(status).spaceAdd;
     if (!add) throw new Error('Missing Add geometry');
-    clickSegment(driver, tabBar(status).row, add);
+    clickSegment(driver, tabBar(status).tabRow, add);
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -466,20 +472,6 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         candidate.panelSpaceLabels.includes('Terminal 2'),
     );
 
-    const expand = tabBar(status).controls.find(
-      (control) => control.action === 'expand',
-    );
-    if (!expand) throw new Error('Missing Expand geometry');
-    clickSegment(driver, tabBar(status).row, expand);
-    status = await HarnessSmoke.Class.awaitStatus(
-      driver,
-      statusPath,
-      `${columns}-column Expand keeps the tab spaces`,
-      (candidate) =>
-        candidate.panelExpanded === true &&
-        Array.isArray(candidate.panelSpaceLabels) &&
-        candidate.panelSpaceLabels.includes('Database'),
-    );
     const close = tabBar(status).controls.find(
       (control) => control.action === 'close',
     );
@@ -493,6 +485,27 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         candidate.panelVisible === false &&
         Array.isArray(candidate.panelSpaceLabels) &&
         candidate.panelSpaceLabels.includes('Terminal 2'),
+    );
+    driver.sendKeys('Control+j');
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column terminal shortcut reopens the retained spaces`,
+      (candidate) => candidate.panelVisible === true,
+    );
+    const expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand) throw new Error('Missing Expand geometry');
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column Expand keeps the tab spaces`,
+      (candidate) =>
+        candidate.panelExpanded === true &&
+        Array.isArray(candidate.panelSpaceLabels) &&
+        candidate.panelSpaceLabels.includes('Database'),
     );
     HarnessSmoke.Class.pass(
       `${columns}x${rows} tab row keyboard, mouse, Add, expand, and close`,
