@@ -42,6 +42,15 @@ for attempt in 1 2 3 4 5 6 7 8; do
   # (#314). Codex echoes submitted messages higher in the transcript, so
   # only the last lines near the prompt count as "still in the composer".
   pane_tail="$(printf '%s' "$pane_text" | tail -8)"
+  # A long message can collapse into a "[Pasted Content N chars]" chip: the
+  # message tail is then ABSENT from the pane while the text still sits in
+  # the composer (2026-07-29, #326 — the tail check passed and the steer sat
+  # unsubmitted 13 minutes). A visible chip near the prompt is a composer
+  # occupant regardless of the tail check.
+  if printf '%s' "$pane_tail" | grep -qF -- '[Pasted Content'; then
+    tmux send-keys -t "$session_name" Enter
+    continue
+  fi
   if ! printf '%s' "$pane_tail" | grep -qF -- "$message_tail"; then
     if printf '%s' "$pane_text" | grep -qE 'esc to interrupt|• Working'; then
       echo "steer: DELIVERED to $session_name — composer cleared, builder processing (attempt $attempt)"
