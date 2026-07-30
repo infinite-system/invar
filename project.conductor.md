@@ -59,6 +59,13 @@ run these five steps, in order, each ending in a commit:**
 survive the project it goes to doctrine; if it must run without being remembered it
 becomes a self-tested script.**
 
+**07-30, from two resurrection drills:** instructions survive ONE dereference, never
+two. Drill 1: the fresh conductor entered via the skill and skipped AGENTS.md (the
+redirect above it). Drill 2, after the fix: it read AGENTS.md but not what AGENTS.md
+says to read. An entry point must enumerate its COMPLETE reading closure inline — a
+pointer to a pointer is unread by construction. Same law as briefs: cold-start
+orientation must be self-contained (family 9).
+
 
 ## 1. THE UNREACHABLE WAIT — asking for evidence of a change that will not happen
 
