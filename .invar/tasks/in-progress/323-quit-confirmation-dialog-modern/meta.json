@@ -1,0 +1,15 @@
+{
+  "task": 323,
+  "slug": "quit-confirmation-dialog-modern",
+  "branch": "fleet/323-quit-confirmation-dialog-modern",
+  "worktree": ".invar/worktrees/323-quit-confirmation-dialog-modern",
+  "tmuxSession": "invar/323-quit-confirmation-dialog-modern",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-323-quit-confirmation-dialog-modern.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "46a6c433400f81dfb53b8de6d324da0f5fe7c584",
+  "startedAt": "2026-07-30T00:19:23-04:00"
+}

@@ -1,6 +1,6 @@
 # 323 — quit confirmation: modern dialog on Ctrl+Q/Cmd+Q (Yes/No, keyboard + mouse, close button)
 
-State: active
+State: IN-PROGRESS
 Engine: codex
 Model: 5.6-sol
 Effort: high
