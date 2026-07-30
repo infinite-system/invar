@@ -11,7 +11,9 @@
 // invariant: Stable regions stay byte-identical across actions (scripts/harness/harness.invariants.md)
 // invariant: Harness output history stays bounded (scripts/harness/harness.invariants.md)
 // invariant: Harness app homes are complete and isolated (scripts/harness/harness.invariants.md)
-import { mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OpenPty } from '../../src/modules/terminal/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
@@ -127,8 +129,24 @@ class $PtyTestDriver {
   >();
   private disposalPromise: Promise<void> | null = null;
   private disposed = false;
+  private readonly diagnosticLogPathValue: string;
+  private readonly diagnosticLogInstanceValue: string;
 
   constructor(private readonly options: PtyTestDriverOptions) {
+    // invariant: Harness app homes are complete and isolated (scripts/harness/harness.invariants.md)
+    // The app diagnostic log is repository-relative by default, so every instance launched from
+    // one working tree appends to one file. Give this run its own file AND its own identity: the
+    // path stops the interleaving, the identity lets a reader reject a leftover or a foreign line.
+    this.diagnosticLogInstanceValue =
+      options.environment?.TUI_LOG_INSTANCE ??
+      `harness-${randomBytes(6).toString('hex')}`;
+    this.diagnosticLogPathValue =
+      options.environment?.TUI_LOG_PATH ??
+      join(
+        options.homeDirectory ??
+          mkdtempSync(join(tmpdir(), 'invar-harness-diagnostic-log-')),
+        'tui.log',
+      );
     const columns = options.columns ?? 120;
     const rows = options.rows ?? 40;
     const repositoryRoot = options.repositoryRoot ?? process.cwd();
@@ -220,6 +238,17 @@ class $PtyTestDriver {
    *  it for external process facts such as peak resident memory. */
   get processId(): number {
     return this.child.pid;
+  }
+
+  /** This run's own app diagnostic log. Read it through `DiagnosticLog`, never by tailing
+   *  the repository-relative default, which every concurrent instance also appends to. */
+  get diagnosticLogPath(): string {
+    return this.diagnosticLogPathValue;
+  }
+
+  /** The identity every line this run writes carries. A reader rejects every other line. */
+  get diagnosticLogInstance(): string {
+    return this.diagnosticLogInstanceValue;
   }
 
   sendKeys(...keyNames: string[]): void {
@@ -799,6 +828,8 @@ class $PtyTestDriver {
           'TUI_FRAME_PATH',
           'TUI_FRAME_DUMP',
           'TUI_OBSERVE',
+          'TUI_LOG_PATH',
+          'TUI_LOG_INSTANCE',
         ].includes(key)
       ) {
         continue;
@@ -811,6 +842,8 @@ class $PtyTestDriver {
     environment.INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS = '1';
     // invariant: Harness teardown bypasses product quit confirmation only when declared (scripts/harness/harness.invariants.md)
     environment.INVAR_HARNESS_DIRECT_QUIT = '1';
+    environment.TUI_LOG_PATH = this.diagnosticLogPathValue;
+    environment.TUI_LOG_INSTANCE = this.diagnosticLogInstanceValue;
     if (options.homeDirectory) {
       const configHome = join(options.homeDirectory, '.config');
       const dataHome = join(options.homeDirectory, '.local', 'share');

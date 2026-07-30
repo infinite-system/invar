@@ -4,13 +4,14 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import { TextFieldPainter } from '../../src/modules/ui/TextFieldPainter';
+import { DiagnosticLog } from './DiagnosticLog';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -24,20 +25,17 @@ interface ScrollbarDiagnostic {
   readonly height: number;
 }
 
-function latestRightDockScrollbarDiagnostic(): ScrollbarDiagnostic | null {
-  let logText: string;
-  try {
-    logText = readFileSync(join(process.cwd(), 'artifacts', 'tui.log'), 'utf8');
-  } catch {
-    return null;
-  }
-  const currentBootStart = logText.lastIndexOf('Boot start');
-  if (currentBootStart < 0) return null;
-  const currentBootLog = logText.slice(currentBootStart);
-  const latestLine = currentBootLog
-    .split('\n')
-    .filter((line) => line.includes('bar right-dock-scrollbar-v:'))
-    .at(-1);
+// The geometry source is this driven instance's OWN diagnostic log, guarded by instance
+// identity. The earlier form tailed the repository-relative artifacts/tui.log and sliced at
+// the last `Boot start`, which a concurrent instance's boot marker moves; two concurrent runs
+// then shared one slice with no way to tell the lines apart (measured 2026-07-30).
+function latestRightDockScrollbarDiagnostic(
+  driver: PtyTestDriver.Model,
+): ScrollbarDiagnostic | null {
+  const latestLine = DiagnosticLog.Class.latestLineContaining(
+    driver,
+    'bar right-dock-scrollbar-v:',
+  );
   if (!latestLine) return null;
   const match =
     /scrollSize=(?<scrollSize>\d+) viewportSize=(?<viewportSize>\d+) scrollPosition=(?<scrollPosition>\d+).*laidX=(?<column>\d+) laidY=(?<row>\d+) laidW=(?<width>\d+) laidH=(?<height>\d+)/.exec(
@@ -1043,9 +1041,9 @@ try {
   const initialStructureRows = Number(outlineReadyStatus.structureRows);
   await driver.awaitGridCondition(
     'the structure scrollbar publishes its settled dock-height geometry',
-    () => (latestRightDockScrollbarDiagnostic()?.height ?? 0) > 1,
+    () => (latestRightDockScrollbarDiagnostic(driver)?.height ?? 0) > 1,
   );
-  const scrollbarDiagnostic = latestRightDockScrollbarDiagnostic();
+  const scrollbarDiagnostic = latestRightDockScrollbarDiagnostic(driver);
   HarnessSmoke.Class.requireCondition(
     scrollbarDiagnostic !== null,
     'the overflowing structure outline publishes right-dock scrollbar geometry',
