@@ -54,3 +54,6 @@ before treating them as two defects.
   two hook runs overlapping several worktree gates; isolated run ALL-PASS;
   later hooks green. Retried-and-still-failed under pool overlap = strongest
   starvation datapoint yet (16th-17th today).
+- 2026-07-29 #308 bycatch commit gate: editor smoke one starvation-class
+  retry (18th today). ALSO: broken claude symlink (313 probe) failed agent
+  smokes across several gate attempts before repair — env-caused, not census.
