@@ -146,10 +146,6 @@ class $TasksDashboardOverview {
       () => this.heartbeatTick(),
       $TasksDashboardOverview.DATA_HEARTBEAT_MILLISECONDS,
     );
-    this.motionHeartbeatTimer = setInterval(
-      () => this.motionHeartbeatTick(),
-      $TasksDashboardOverview.MOTION_HEARTBEAT_MILLISECONDS,
-    );
   }
 
   protected stopHeartbeatTimers(): void {
@@ -195,6 +191,22 @@ class $TasksDashboardOverview {
     this.dependencies.requestRender();
   }
 
+  protected syncMotionHeartbeatTimer(): void {
+    const motionIsObserved =
+      this.dependencies.isObserved() && this.hasLiveMotion();
+    if (!motionIsObserved) {
+      if (this.motionHeartbeatTimer !== null)
+        clearInterval(this.motionHeartbeatTimer);
+      this.motionHeartbeatTimer = null;
+      return;
+    }
+    if (this.motionHeartbeatTimer !== null) return;
+    this.motionHeartbeatTimer = setInterval(
+      () => this.motionHeartbeatTick(),
+      $TasksDashboardOverview.MOTION_HEARTBEAT_MILLISECONDS,
+    );
+  }
+
   protected hasLiveMotion(): boolean {
     if (this.gateGlance.value?.exitCode === null) return true;
     return (
@@ -205,6 +217,10 @@ class $TasksDashboardOverview {
           (row.phase === 'exploring' || row.phase === 'building'),
       )
     );
+  }
+
+  motionHeartbeatAtRest(): boolean {
+    return this.motionHeartbeatTimer === null;
   }
 
   protected cycleIsDue(): boolean {
@@ -312,6 +328,7 @@ class $TasksDashboardOverview {
     }
     this.rows.value = [...fleetRows, ...rows];
     this.clampSelection();
+    this.syncMotionHeartbeatTimer();
     this.version.value += 1;
     this.dependencies.requestRender();
   }

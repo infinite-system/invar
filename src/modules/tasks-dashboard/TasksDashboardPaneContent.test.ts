@@ -44,6 +44,7 @@ function makeFixture() {
   const application = {
     theme: {
       glyphLevel: ref('unicode'),
+      glyphVocabulary: { activityTasks: '▶' },
       palette: ThemePalettes.Class.DARK,
       taskActionIcons: {
         workspace: 'W',
@@ -107,6 +108,7 @@ test('the pane renders the lens rows and its revision moves with every model cha
   );
   expect(rendered).toContain('#902');
   expect(rendered).toContain('#901');
+  expect(pane.icon).toBe('▶');
   overview.setLens('done');
   expect(pane.renderRevision.value).not.toBe(revisionBefore);
   fixture.dispose();

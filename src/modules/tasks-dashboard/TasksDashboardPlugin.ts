@@ -343,6 +343,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       tasksCycling: overview.cycling.value,
       tasksSelectedFile: selectedFile,
       tasksAnimationPaint: overview.animationPaint.value,
+      tasksAnimationAtRest: overview.motionHeartbeatAtRest(),
       tasksFleetScopeMatches: overview.fleetScopeMatches.value,
       tasksActionNotice: overview.actionNotice.value?.message ?? null,
       tasksGateExitCode: overview.gateGlance.value?.exitCode ?? null,

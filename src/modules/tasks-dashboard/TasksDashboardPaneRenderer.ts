@@ -263,33 +263,9 @@ class $TasksDashboardPaneRenderer {
       return;
     }
 
-    const motionStep = Math.floor(
-      context.animationPaint / TASKS_MOTION_PAINTS_PER_STEP,
-    );
-    const exploring = row.phase === 'exploring';
-    const breathFrame =
-      TASKS_BUILDING_BREATH_FRAMES[
-        motionStep % TASKS_BUILDING_BREATH_FRAMES.length
-      ]!;
-    const glyph =
-      row.standing === 'ready'
-        ? '◉'
-        : row.standing === 'building'
-          ? exploring
-            ? TASKS_EXPLORING_GLYPHS[
-                motionStep % TASKS_EXPLORING_GLYPHS.length
-              ]!
-            : breathFrame.glyph
-          : context.lens === 'done'
-            ? '✔'
-            : ' ';
+    const glyph = context.lens === 'done' ? '✔' : ' ';
     const glyphColour =
-      row.standing === 'ready' || context.lens === 'done'
-        ? context.palette.added
-        : exploring
-          ? TASKS_EXPLORING_RAMP[motionStep % TASKS_EXPLORING_RAMP.length]!
-              .color
-          : breathFrame.color;
+      context.lens === 'done' ? context.palette.added : context.palette.dim;
     const pieces: Array<[string, string]> = [
       [` ${glyph} `, glyphColour],
       [
@@ -377,10 +353,27 @@ class $TasksDashboardPaneRenderer {
       context.animationPaint / TASKS_MOTION_PAINTS_PER_STEP,
     );
     const pieces: Array<[string, string]> = [[' ', context.palette.dim]];
-    if (row.standing === 'ready') pieces.push(['READY', context.palette.added]);
+    if (row.standing === 'ready')
+      pieces.push(['◉ READY', context.palette.added]);
     else if (row.phase !== null) {
       const ramp =
         row.phase === 'exploring' ? TASKS_EXPLORING_RAMP : TASKS_BUILDING_RAMP;
+      const motionFrame =
+        row.phase === 'exploring'
+          ? {
+              glyph:
+                TASKS_EXPLORING_GLYPHS[
+                  motionStep % TASKS_EXPLORING_GLYPHS.length
+                ]!,
+              color:
+                TASKS_EXPLORING_RAMP[motionStep % TASKS_EXPLORING_RAMP.length]!
+                  .color,
+            }
+          : TASKS_BUILDING_BREATH_FRAMES[
+              motionStep % TASKS_BUILDING_BREATH_FRAMES.length
+            ]!;
+      pieces.push([motionFrame.glyph, motionFrame.color]);
+      pieces.push([' ', context.palette.dim]);
       for (
         let phaseLetterIndex = 0;
         phaseLetterIndex < row.phase.length;
