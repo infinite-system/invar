@@ -3,7 +3,6 @@ import type { RewriteProvider } from './RewriteProvider.interface';
 import type { SourceTextView } from '../workspace/SourceTextView.interface';
 import type { EditorContribution } from '../editor/EditorContributions';
 import { TextCoordinates } from '../text/TextCoordinates';
-import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import type { Workspace } from '../workspace/Workspace';
 // prettier-ignore
@@ -175,7 +174,10 @@ class $InlineRewriteWorkspace
               line: editor.cursor.line.value,
               column: editor.cursor.col.value,
             },
-            languageId: LanguageRegistry.Class.forPath(editor.document.path),
+            languageId: this.workspace.documentSyntax.languageAtLine(
+              editor.document,
+              editor.cursor.line.value,
+            ),
           },
           revision: editor.document.revision.value,
           dirty: editor.document.dirty,

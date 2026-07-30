@@ -38,6 +38,8 @@ import type {
 import type { TextDocument } from '../text/TextDocument';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { ProviderRegistry } from '../plugins/ProviderRegistry';
+import { DocumentSyntax } from '../syntax/DocumentSyntax';
+import { LanguageProviderRouter } from './LanguageProviderRouter';
 
 // A workspace: one project root with its open buffers, documents, and generic contribution
 // lifecycle. WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -57,6 +59,18 @@ class $Workspace {
   }
 
   root = '';
+  // The host carries one type-blind phone book per workspace. Consumer-owned interfaces supply
+  // typing only at register and resolve call sites.
+  // invariant: Provider rendezvous is host carried (src/modules/plugins/plugins.invariants.md)
+  providers = new ProviderRegistry.Class();
+  documentSyntax = new DocumentSyntax.Class(this.providers);
+  protected readonly languageProviderRouter = new LanguageProviderRouter.Class(
+    this.providers,
+  );
+  protected readonly disposeLanguageProviderRouter = this.providers.register(
+    'language',
+    this.languageProviderRouter,
+  );
   // The set of open editor buffers behind the tab bar (item 10a): opening a file ADDS or FOCUSES a
   // tab, never replaces. Flyweight — a bounded recent set (and any dirty background buffer) holds
   // live documents; older clean tabs dehydrate to a light handle and rehydrate on activation.
@@ -66,10 +80,6 @@ class $Workspace {
   // Contributions claim the editor surface here and the host asks them capability questions. It
   // never learns which surface is up.
   editorSurfaces = new EditorSurfaceClaims.Class();
-  // The host carries one type-blind phone book per workspace. Consumer-owned interfaces supply
-  // typing only at register and resolve call sites.
-  // invariant: Provider rendezvous is host carried (src/modules/plugins/plugins.invariants.md)
-  providers = new ProviderRegistry.Class();
   protected readonly contributions: WorkspaceContribution[] = [];
   protected readonly contributorDisposers = new Map<
     WorkspaceContributor,
@@ -164,6 +174,7 @@ class $Workspace {
 
   protected createSourceTextView(): SourceTextView {
     const view = this.sourceTextViews.createView();
+    view.attachDocumentSyntax(this.documentSyntax);
     // Word wrap is global: every view reads the SAME settings.wordWrap when settings are attached,
     // so the mode is consistent across tabs and the empty view. Views made before attachSettings
     // are retro-attached there.
@@ -259,7 +270,7 @@ class $Workspace {
     if (!document) return null;
     return (
       this.languageProvider?.statusNotice(document) ??
-      (this.languageProvider
+      (this.languageProviderRouter.supportsDocument(document)
         ? null
         : 'Language features unavailable — no provider installed')
     );
@@ -318,7 +329,9 @@ class $Workspace {
   }
 
   completionTriggerCharacters(): readonly string[] {
-    return this.languageProvider?.completionTriggerCharacters ?? [];
+    const document = this.languageRequestDocument;
+    if (!document) return [];
+    return this.languageProvider?.completionTriggerCharacters(document) ?? [];
   }
 
   /** Diagnostics whose range covers a document position — surfaced in the hover card so an errored
@@ -480,6 +493,7 @@ class $Workspace {
     this.buffers.disposeAll();
     this.emptySourceTextView?.dispose();
     this.emptySourceTextView = null;
+    this.disposeLanguageProviderRouter();
     this.providers.dispose();
   }
 

@@ -53,7 +53,6 @@ import { shallowRef } from 'vue';
 import { ScrollbarSync } from './ScrollbarSync';
 import { OverlayLayer } from './OverlayLayer';
 import { HoverCard } from './HoverCard';
-import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 import type {
@@ -1868,8 +1867,9 @@ class $RootView {
       requestHover: (position) => workspaceSet.active.hoverAt(position),
       diagnosticsAt: (position) => workspaceSet.active.diagnosticsAt(position),
       languageForActive: () =>
-        LanguageRegistry.Class.forPath(
-          workspaceSet.active.editor.document.path,
+        workspaceSet.active.documentSyntax.languageAtLine(
+          workspaceSet.active.editor.document,
+          workspaceSet.active.editor.cursor.line.value,
         ),
     });
     // Half-block image preview for the active buffer when it is an image file. Memoises decode + render

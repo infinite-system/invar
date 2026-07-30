@@ -11,7 +11,9 @@ class MockRustProvider implements Pick<
   LanguageProvider,
   'completion' | 'completionTriggerCharacters'
 > {
-  readonly completionTriggerCharacters = ['.'];
+  completionTriggerCharacters(): readonly string[] {
+    return ['.'];
+  }
 
   async completion(
     _document: TextDocument.Instance,
@@ -57,7 +59,7 @@ test('a second provider feeds the same provider-neutral prefix filter', async ()
       .filterItems(result.items, 'push')
       .map((item) => item.label),
   ).toEqual(['push_str']);
-  expect(provider.completionTriggerCharacters).toEqual(['.']);
+  expect(provider.completionTriggerCharacters()).toEqual(['.']);
 });
 
 test('large completion lists are prefixed once before viewport rendering', () => {
