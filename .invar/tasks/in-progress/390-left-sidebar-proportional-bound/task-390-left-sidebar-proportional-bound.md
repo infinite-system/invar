@@ -1,6 +1,6 @@
 # #390 — the left dock group gets the same proportional bound
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: performance-behaviour
 Engine: codex
 Environment: linux
