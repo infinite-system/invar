@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
 - #313 child-owns-its-io-bundle  [building]
   `tmux attach -t invar/313-child-owns-its-io-bundle`
+- #312 vue-sfc-block-syntax-and-routing  [building]
+  `tmux attach -t invar/312-vue-sfc-block-syntax-and-routing`
 - #308 [markdown-view-only-mode-persistent](.invar/tasks/in-progress/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)  [building]
   `tmux attach -t invar/308-markdown-view-only-mode-persistent`
 - #300 eight-ui-nitpicks-bundled  [building]
