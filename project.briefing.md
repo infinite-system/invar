@@ -548,3 +548,57 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
   icon + stale meta.json target; user-hit twice) next, then queue: 348
   349 352 341 356 361 376 + hygiene tail.
 - #376 filed (instances:watch cpu/mem tool, cwd-based filter).
+
+## RESUME ANCHOR 18 (2026-07-30 07:3x, pre-compact — supersedes anchor 17 + deltas)
+
+Overnight/morning run, user AWAKE and directing. Goal hook: "keep going on
+the tasks". TEN landings this shift: #342 e93995e7 · #351 7f57b019 ·
+#350 4017f53c · #337 64ca4df5 · #90 21bf9c71 · #344 dc30d875 ·
+#343 68a95c11 · #345 085bfca0 · #326 98c9a7bb · #365 33024fec.
+
+### Lanes (3 live, mix 2 codex sol-medium + 1 opus-medium)
+- 346 panel tab bar (codex) — the user's ten-point panel spec. Long build.
+- 347 markdown links + double-click (opus).
+- 375 tasks live view: invisible attach icon + click-time target
+  resolution (codex, just dispatched).
+
+### Landing ritual (unchanged)
+Convert bycatch FIRST -> verdict log (codex: extract-gate-verdict.sh;
+claude lanes: manual log from report header + conductor verification of
+commit-on-branch and clean tree) -> land.sh with GATE_LOG (or
+GATE_OVERRIDE with named narrow-rule evidence). land.sh busy-check:
+claude lanes report idle-unconfirmed (accepted via meta.json engine);
+transient busy = background shells, wait and retry. Codex lanes may write
+reports only in their worktree — copy to main folder + commit, then land.
+
+### Queue (front first)
+348 gradients 60fps · 349 extensions pane · 352 markdown borders ·
+341 tree add/drag-drop · 356 Invar Agent plugin (analysis in task file) ·
+361 tasks-icon crash (verbatim log) · 376 instances:watch (cwd filter) ·
+hygiene tail: 353 354 355 357 358 362 363 364 366 367 368 369 370 371
+372 373 374(reclassified) · #214/#359/#360 flake family.
+
+### Standing rules re-learned this shift (operative)
+- Both-arms discrimination BEFORE accepting any "pre-existing" claim:
+  run the failing smoke standalone on main AND on the branch tree, full
+  output (never tail/grep -c), explicit cd every cell (cwd persists).
+  This caught the #326 Alt+Delete regression that was nearly landed as a
+  filed flake (#374 holds the record).
+- Manual lanes MUST update meta.json (tmuxSession/branch/worktree) —
+  the tasks live view trusts the record (user attach failure).
+- dispatch.sh codex effort floor = MEDIUM (user token policy; verified
+  live processes carry medium). Fleet mix: 2 sol-medium + 1 opus-medium.
+- Every new claude-lane brief orders: commit BEFORE READY, real hash +
+  GATE_EXIT in header, report to main-checkout folder absolute path.
+
+### Watchers
+Monitor b08ipqblm = fleet-watch (persistent; the ONE watcher — a twin
+survived compaction once, TaskStop the duplicate if two fire). Goal Stop
+hook active. Crons DISARMED permanently (user 740c5d81).
+
+### Hazards (standing)
+- NEVER drive the app with this repo as workspace + real tasks.json
+  (spawns real agents); fixtures only.
+- Twin conductor pid 3541394 asleep; ibr repo has its uncommitted
+  leftovers (user aware). Duplicate #338 already consolidated+retired.
+- User runs an older --smol build; #376 will give instances:watch.
