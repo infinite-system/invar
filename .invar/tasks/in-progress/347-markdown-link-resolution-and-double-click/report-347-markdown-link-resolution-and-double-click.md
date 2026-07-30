@@ -28,7 +28,7 @@ BEFORE the fix, on real completed reports:
 |---|---|---|
 | report-299 (structure filter uses shared input generator) | 10 | `` `TextInputModel` `` → `../../../../src/modules/text/TextInputModel.ts` — target exists |
 | report-322 (status editor column content stale in preview) | 8 | `AppStatusProjection.ts` → `../../../../src/modules/app/AppStatusProjection.ts` — target exists |
-| brief-347-2 (this task's own brief) | 2 | `CLAUDE.md` → `../../../../CLAUDE.md` — target exists |
+| brief-347-2 (this task's own brief) | 2 | its [CLAUDE.md](../../../../CLAUDE.md) and [AGENTS.md](../../../../AGENTS.md) links, both four levels up — targets exist |
 
 AFTER the fix, the same drives:
 
@@ -60,18 +60,19 @@ still resolves to nothing.
 
 **b. Anchor links — NOT a cause.** The fragment is stripped before resolution
 and always was. The anchor-bearing reds in report-322
-(`…/app.invariants.md#rendering-is-one-coarse-frame-effect`) were red because of
+(links into [app.invariants.md](../../../../src/modules/app/app.invariants.md) carrying a record fragment) were red because of
 the `../` in front, not the `#` behind: they are green now with the fragment
-untouched. A same-directory `project.invariants.md#record` resolved before the
-change too (asserted in `Workspace.test.ts`). No pure-fragment link (`](#…`)
+untouched. A same-directory link to
+[project.invariants.md](../../../../project.invariants.md) carrying a `#record`
+fragment resolved before the change too (asserted in `Workspace.test.ts`). No pure-fragment link (`](#…`)
 exists anywhere under `.invar/tasks` — zero occurrences.
 
 **c. Encoding — NOT a cause in this corpus.** `decodeURIComponent` already ran
 before the existence check, and a malformed escape already returned null. The
 six percent-encoded links under `.invar/tasks` are all external `https:` URLs,
 which are correctly classified external and painted normally. I added a
-regression assertion anyway (`../../../../name%20with%20spaces.md` resolves),
-since the upward path is the newly reachable one.
+regression assertion anyway — an upward link whose file name carries percent-encoded
+spaces resolves — since the upward path is the newly reachable one.
 
 **d. State-move rot — real, and correctly RED where it fires.** The application
 already retries the other three lifecycle states through `TaskStatePath`, so the
@@ -216,13 +217,13 @@ plus the navigation-adjacent host records.
   **Closing releases all preview work**, **Markdown view mode persists across
   Markdown documents**, **A markdown parse can outlive its source revision** —
   UPHELD, untouched; the full harness re-drives them ALL-PASS.
-- **Seams are drawn at the shared generator** (`project.invariants.md`) — UPHELD,
+- **Seams are drawn at the shared generator** ([project.invariants.md](../../../../project.invariants.md)) — UPHELD,
   and this task is a positive instance: the second double-click consumer wires into a
   generator instead of re-rolling the math, and the pre-existing consumer moved onto
   it. The new file carries the annotation.
 - **A mouse event is consumed by exactly ONE handler path; renderer and hit-testers
-  share the SAME row/geometry model** (`project.conventions.md`, interaction
-  discipline) — UPHELD by construction: one `referenceAt` call per press feeds every
+  share the SAME row/geometry model** ([project.conventions.md](../../../../project.conventions.md),
+  interaction discipline) — UPHELD by construction: one `referenceAt` call per press feeds every
   branch.
 - MISSED RECORDS: none found in markdown. One GAP, below.
 
@@ -252,10 +253,11 @@ plus the navigation-adjacent host records.
   two are not wrong in the same direction — the lint is stricter — but a builder who
   fixes lint findings is editing links the product already handles. Worth deciding
   which one is the authority.
-- **Quick Open ranks a sibling above an exact basename.** Typing the FULL basename
-  `report-299-structure-filter-uses-shared-input-generator.md` left
-  `task-299-structure-filter-uses-shared-input-generator.md` selected first (2
-  matches). Reproduced on every census run; the census script now steps the selection
+- **Quick Open ranks a sibling above an exact basename.** Typing the FULL basename of
+  [report-299](../../completed/299-structure-filter-uses-shared-input-generator/report-299-structure-filter-uses-shared-input-generator.md)
+  left
+  [task-299](../../completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md)
+  selected first (2 matches). Reproduced on every census run; the census script now steps the selection
   down to the exact name to work around it. An exact-basename query losing to a
   sibling looks like a scoring defect, not a preference. Suspect, not diagnosed.
 - **Distillation, FIXED in this commit (not a separate one, and stated here for
@@ -278,7 +280,7 @@ plus the navigation-adjacent host records.
 - `src/modules/ui/DoubleClickGesture.ts` + `.test.ts` — the shared generator.
 - `src/modules/markdown/MarkdownSplitView.ts` — one hit test, three activations.
 - `src/modules/git/GitPaneContent.ts` — wired onto the shared generator.
-- `src/modules/markdown/markdown.invariants.md` — two records refined.
+- [markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md) — two records refined.
 - `src/modules/workspace/Workspace.test.ts` — upward resolution and the boundary.
 - `scripts/harness/smoke-markdown-harness.ts` — the gated arm at both scales.
 - `.invar/tasks/in-progress/347-…/census-347-red-links-in-task-reports.ts` and
