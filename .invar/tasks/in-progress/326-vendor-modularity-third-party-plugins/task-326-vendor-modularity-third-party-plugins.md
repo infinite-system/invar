@@ -19,6 +19,34 @@ Provenance: USER-DIRECTED 2026-07-29
 > concept, agent should explore -> same agent should do it if we
 > approve the plan
 
+## User's stage-1 verdict (verbatim, 2026-07-29, GOVERNS — plan must be REVISED)
+
+> ok that would work for deep Invar enthusiasts but many ppl will use
+> iv as vi or editor replacement and want to install plugins, no one
+> will be gating and rebuilding things lmao, also Kernel modules
+> overrides should be allowed but must be stated and we gate entry to
+> each module upgrade to our network.
+
+Conductor reading, three amendments:
+1. USER-CLASS REALITY: the primary install path serves the vi-
+   replacement user — install from inside iv (or one command), takes
+   effect without gating, rebuilding, or a source checkout. The
+   source-install path may remain as the DEVELOPER path only. The
+   revised plan must solve runtime plugin loading against the compiled
+   binary honestly (can a bun-compiled iv load/transpile plugin code at
+   startup? measure/verify, cite) — if a restart is needed that is
+   acceptable; a rebuild is not.
+2. GATE MOVES TO THE NETWORK EDGE: quality gating happens ONCE per
+   module VERSION at entry to the distribution network (registry-side
+   gate: contracts, manifest, API compat, provenance) — "we gate entry
+   to each module upgrade to our network." Users install already-gated
+   versions. Ties to the Invarnet north star: the registry is a
+   network citizen.
+3. KERNEL OVERRIDES ALLOWED BUT DECLARED: third-party modules MAY
+   override kernel modules; the manifest must STATE the override
+   (declared authority), Extensions must surface it loudly, and the
+   network-edge gate scrutinizes override-carrying upgrades hardest.
+
 ## Stage 1 — EXPLORE + DESIGN (this dispatch; no product code)
 
 Deliverable: an architecture plan (project-vendor-modularity-plan.md in
