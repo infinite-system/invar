@@ -1,9 +1,9 @@
 {
   "task": 326,
   "slug": "vendor-modularity-third-party-plugins",
-  "branch": "fleet/326-vendor-modularity-third-party-plugins",
-  "worktree": ".invar/worktrees/326-vendor-modularity-third-party-plugins",
-  "tmuxSession": "invar/326-vendor-modularity-third-party-plugins",
+  "branch": "fleet/326-stage-two",
+  "worktree": ".invar/worktrees/326-stage-two",
+  "tmuxSession": "invar/326-stage-two",
   "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-326-vendor-modularity-third-party-plugins.md",
   "engine": "codex",
   "environment": "linux",
