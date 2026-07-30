@@ -523,3 +523,17 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
   smoke runs actually ran in main; always cd explicitly at cell start and
   never pipe smoke output through tail/grep -c without reading the full
   verdict once.
+
+### ANCHOR 17 DELTA 6 (07:0x) — #326 LANDED
+- #326 stage 2 LANDED 98c9a7bb (manual merge — land.sh cannot land the
+  nonstandard stage-two lane name; followed its steps by hand: no-ff
+  merge with the override reason in the message, finished/326-stage-two
+  tag, record to completed/, write-active, worktree+session removed).
+  Signed runtime vendor plugins + execve in-place restart are ON MAIN.
+  NINE landings this shift: 342 351 350 337 90 344 343 345 326.
+- Lanes (3, mix 2+1 correct): 346 panel tab bar (codex) · 347 markdown
+  links (opus) · 348 next after a lane frees. 365 gate namespacing
+  (codex) also live. Queue: 348 349 352 341 356 361 375 + hygiene tail.
+- On resume: 346/347/365 READY reports follow the established ritual
+  (convert bycatch -> verdict log -> land.sh; claude lanes get manual
+  verdict logs from report + conductor verification of commit/clean).
