@@ -338,13 +338,12 @@ of terminal behavior that needs a real shell; a second byte path around the back
 
 ### Pane chrome and child cells keep separate authority
 
-**Invariant:** Pane chrome and padding use Invar's active theme and input behavior. Child terminal
-cells use the terminal profile's default foreground and background and preserve every ANSI, 256-color,
-or truecolor request parsed by the emulator. A host theme change cannot recolor those child cells. If
-a pointer event lands on a child cell while the child has enabled mouse tracking, the child owns the
-event and receives the requested mouse-protocol bytes in its own one-based cell coordinates. With
-mouse tracking off, Invar keeps its terminal selection behavior and writes no pointer bytes to the
-child.
+**Invariant:** If Invar paints a terminal pane, then pane chrome, child default colors, and
+unmodified ANSI slots 0–15 come from the active theme; child RGB, indexed slots 16–255, and OSC 4
+palette overrides stay exact. If a pointer event lands on a child cell while the child has enabled
+mouse tracking, then the child owns the event and receives the requested mouse-protocol bytes in its
+own one-based cell coordinates. With mouse tracking off, Invar keeps its terminal selection behavior
+and writes no pointer bytes to the child.
 
 **Scope:** `TerminalEmulator` mouse mode state, `TerminalMouse`, `TerminalPaneContent`, the optional
 pointer methods on `PaneContent`, the panel-cell route in `RootView`, and `TerminalPaneRenderer`.
@@ -358,29 +357,34 @@ subtracts its child-cell padding, clamps to the emulator grid, and delegates enc
 motion, and 1006 selects SGR encoding. DECRST returns the same cells to Invar selection. The
 [xterm mouse protocol](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#Mouse%20Tracking)
 defines these modes and the one-based top-left coordinate. `TerminalPaneRenderer` maps the emulator's
-default color flags to the fixed xterm profile and maps palette or RGB flags to their exact requested
-colors. It reads the host palette only for selection, padding, and line framing. VS Code documents
-[separate terminal color roles](https://code.visualstudio.com/api/references/theme-color#integrated-terminal-colors)
-for terminal foreground, background, and ANSI slots instead of treating panel colors as terminal
-colors. Invar has no separate user terminal palette yet, so its fixed xterm profile owns these roles.
+default flags and unmodified ANSI slots 0–15 to the terminal tokens in `Palette`. It maps indexed
+slots 16–255 and RGB cells from the emulator without theme substitution. `TerminalEmulator` records
+OSC 4 overrides, and the renderer checks that child-owned map before any theme token. VS Code
+documents [separate terminal color roles](https://code.visualstudio.com/api/references/theme-color#integrated-terminal-colors)
+and publishes the [dark and light ANSI defaults](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/terminal/common/terminalColorRegistry.ts)
+that seed Invar's tokens. Invar derives terminal foreground and background from its existing
+foreground and panel roles until the palette gains distinct values.
 
 **Generates:** Child TUI buttons that receive exact clicks; drag and any-motion support only when the
 child requests those modes; pane headings, controls, borders, and padding that remain Invar-owned;
 terminal selection when tracking is off; child output whose colors remain stable while surrounding
-chrome switches theme.
+chrome switches theme; live theme changes that recolor child defaults and unmodified ANSI slots
+without changing explicit child colors.
 
 **Evidence:** [`TerminalMouse.test.ts`](TerminalMouse.test.ts);
 [`TerminalPaneContent.test.ts`](TerminalPaneContent.test.ts);
 [`smoke-terminal-harness.ts`](../../../scripts/harness/smoke-terminal-harness.ts) drives one atomic
 real click to a nested SGR child and receives exact press and release bytes at both polarity
 boundaries. The same child emits default, all 16 ANSI foreground and background slots, indexed
-256-color, and truecolor cells. FrameProbe observes their exact RGBA lanes before and after a live
-dark-to-light switch while the status chrome changes.
+256-color, truecolor, and OSC 4 cells. FrameProbe observes theme-derived defaults and unmodified ANSI
+slots before and after a live dark-to-light switch. It observes unchanged indexed, truecolor, and
+OSC 4 lanes during the same switch.
 
 **Impossible if true:** A mouse-aware child button that never receives its click; child coordinates
 that include the panel position or terminal padding; a child receiving mouse bytes after DECRST; a
 click on the pane heading or padding reaching the child; a host theme repaint changing a child
-default, ANSI, indexed, or truecolor cell; child background leaking the pane background.
+indexed, truecolor, or OSC 4 cell; a host theme repaint leaving child defaults or unmodified ANSI
+slots on the previous theme; child background using a color outside the terminal background token.
 
 **Verification:** `bun test src/modules/terminal/TerminalMouse.test.ts
 src/modules/terminal/TerminalPaneContent.test.ts && bun

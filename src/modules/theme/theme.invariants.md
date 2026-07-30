@@ -117,7 +117,8 @@ the drawing site — the `theme` module is the single source of host appearance.
 
 **Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations, including
 activity-bar, panel-heading, and editor-fold control glyphs and the file-type marks the file tree and
-the breadcrumb popup share. Child terminal cells are outside this authority and follow
+the breadcrumb popup share. Child terminal defaults and unmodified ANSI slots are terminal theme
+tokens. Explicit RGB, indexed slots 16–255, and OSC 4 overrides are outside host authority and follow
 [*Pane chrome and child cells keep separate authority*](../terminal/terminal.invariants.md#pane-chrome-and-child-cells-keep-separate-authority).
 The sole home for host color and glyph literals is `src/modules/theme`; host consumers pull tokens or
 name semantic slots, they do not mint appearance.
@@ -144,10 +145,10 @@ of naming a slot.
 **Impossible if true:** A host rendering component outside `src/modules/theme` naming a `#rrggbb`
 color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a
 vocabulary swap requiring edits to activity switching or heading-control actions; a host theme
-change recoloring a child terminal cell.
+change recoloring an explicit child RGB, indexed, or OSC 4 terminal cell; a host theme change leaving
+a child default or unmodified ANSI terminal cell on the previous palette.
 
-**Verification:** Audit hard-coded colors outside `src/modules/theme` and the terminal profile
-exception in `TerminalPaneRenderer`; `bun test src/modules/theme
+**Verification:** Audit hard-coded host colors outside `src/modules/theme`; `bun test src/modules/theme
 src/modules/ui/PanelHeading.test.ts`; `bun scripts/harness/smoke-terminal-harness.ts`.
 
 **Status:** provisional
@@ -244,7 +245,7 @@ single quantization chokepoint instead of per-consumer downsampling.
 **Evidence:** `src/modules/theme/ThemePalettes.ts` (`$quantizePalette`, `to256Hex`, `to16Hex`,
 `ANSI16`, `cube`); `truecolor quantization is identity`, `16-color quantization maps every color
 into the ANSI-16 set`, and `256 quantization keeps hex shape` in
-`src/modules/theme/__tests__/theme.test.ts`.
+`src/modules/theme/ThemePalettes.test.ts`.
 
 **Impossible if true:** A quantized palette missing a semantic key present in the source palette;
 a color emitted at `16` depth that is outside the ANSI-16 set; a truecolor hex surviving into a

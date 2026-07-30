@@ -253,6 +253,10 @@ class $TerminalInstance {
     return this.emulator.visibleLineText(row);
   }
 
+  paletteOverride(index: number): string | null {
+    return this.emulator.paletteOverride(index);
+  }
+
   dispose(): void {
     this.terminalCommandController.dispose();
     this.terminalObserver.dispose();

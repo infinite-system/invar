@@ -970,7 +970,8 @@ fallback ladder; changing a glyph vocabulary never changes input or projection b
 **Scope:** Themes, file-type icons wherever they are painted (file tree and breadcrumb popup rows
 alike), syntax colors, git/diagnostic decorations, gutter, activity-bar items, and panel-heading
 controls. Text content that is not an icon or control glyph — a filename, a `..` parent label — is
-outside the glyph-slot rule. Child terminal cells are outside host theme authority and follow
+outside the glyph-slot rule. Child terminal defaults and unmodified ANSI slots use terminal theme
+tokens. Explicit RGB, indexed slots 16–255, and OSC 4 overrides remain child-owned and follow
 [*Pane chrome and child cells keep separate authority*](src/modules/terminal/terminal.invariants.md#pane-chrome-and-child-cells-keep-separate-authority).
 
 **Mechanism:** Stands on *Terminal color and glyph support varies*. `theme.palettes.ts` /
@@ -992,7 +993,8 @@ vocabulary, so a glyph change never edits the drive).
 **Impossible if true:** A hard-coded host truecolor/nerd-glyph that breaks legibility on a limited
 terminal; a host component that colors itself without going through the theme; changing an activity
 or control glyph requiring a behavior edit or changing a hit target; a host theme change recoloring
-a child terminal cell.
+an explicit child terminal cell; a host theme change leaving child defaults or unmodified ANSI slots
+on the previous palette.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts
 src/modules/ui/PanelHeading.test.ts && bun scripts/harness/smoke-activitybar-harness.ts`; grep for
