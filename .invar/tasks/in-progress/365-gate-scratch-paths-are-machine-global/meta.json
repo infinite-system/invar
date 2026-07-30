@@ -1,0 +1,15 @@
+{
+  "task": 365,
+  "slug": "gate-scratch-paths-are-machine-global",
+  "branch": "fleet/365-gate-scratch-paths-are-machine-global",
+  "worktree": ".invar/worktrees/365-gate-scratch-paths-are-machine-global",
+  "tmuxSession": "invar/365-gate-scratch-paths-are-machine-global",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-365-gate-scratch-paths-are-machine-global.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "854875c71b056afe36f29050e08909b8e7abee24",
+  "startedAt": "2026-07-30T10:34:46-04:00"
+}

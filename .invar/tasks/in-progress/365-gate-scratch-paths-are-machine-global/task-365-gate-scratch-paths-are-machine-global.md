@@ -1,6 +1,6 @@
 # #365 — two gate scratch paths are machine-global across concurrent gates
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
