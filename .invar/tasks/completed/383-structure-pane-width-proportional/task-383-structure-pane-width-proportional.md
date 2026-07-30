@@ -1,6 +1,6 @@
 # #383 — the right panel is proportional; the editor is the prominent actor
 
-State: IN-PROGRESS
+State: COMPLETED — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
 Priority: user-directed
 Engine: claude
 Environment: linux

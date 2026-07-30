@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/in-progress/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md)  [building]
   `tmux attach -t invar/386-theme-glyphs-vanish-at-narrow-geometry`
-- #383 [structure-pane-width-proportional](.invar/tasks/in-progress/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md)  [building]
-  `tmux attach -t invar/383-structure-pane-width-proportional`
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/in-progress/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)  [building]
   `tmux attach -t invar/346-panel-tab-bar-workspace-content-spaces`
 
@@ -85,7 +83,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #124 [terminal-follow-escape-intermittent](.invar/tasks/active/124-terminal-follow-escape-intermittent/task-124-terminal-follow-escape-intermittent.md)  [ACTIVE — but see "State discrepancy" below; a fix was demonstrated and may have landed]
 - #109 [agent-permissions-quiet-tail-flake](.invar/tasks/active/109-agent-permissions-quiet-tail-flake/task-109-agent-permissions-quiet-tail-flake.md)  [ACTIVE — dispatch condition: no other builder live]
 
-## PERFORMANCE-BEHAVIOUR (9)
+## PERFORMANCE-BEHAVIOUR (10)
+- #390 [left-sidebar-proportional-bound](.invar/tasks/active/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md)
 - #185 [behavioral-contracts-shared-fixtures](.invar/tasks/active/185-behavioral-contracts-shared-fixtures/task-185-behavioral-contracts-shared-fixtures.md)
 - #175 [attribute-boot-time-irreducible-cost](.invar/tasks/active/175-attribute-boot-time-irreducible-cost/task-175-attribute-boot-time-irreducible-cost.md)  [ACTIVE — brief not yet written]
 - #160 [context-menu-wheel-double-dispatch](.invar/tasks/active/160-context-menu-wheel-double-dispatch/task-160-context-menu-wheel-double-dispatch.md)
@@ -96,7 +95,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (26)
+## ARCHITECTURE-HYGIENE (28)
+- #392 [layout-contract-hygiene](.invar/tasks/active/392-layout-contract-hygiene/task-392-layout-contract-hygiene.md)
+- #391 [splitter-bounds-coherence](.invar/tasks/active/391-splitter-bounds-coherence/task-391-splitter-bounds-coherence.md)
 - #378 [worktree-path-citations-die-at-landing](.invar/tasks/active/378-worktree-path-citations-die-at-landing/task-378-worktree-path-citations-die-at-landing.md)
 - #377 [path-confinement-needs-a-record](.invar/tasks/active/377-path-confinement-needs-a-record/task-377-path-confinement-needs-a-record.md)
 - #372 [separator-painter-ignores-glyph-tier](.invar/tasks/active/372-separator-painter-ignores-glyph-tier/task-372-separator-painter-ignores-glyph-tier.md)
@@ -128,7 +129,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 131 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 132 — full log: project.tasks-completed.md)
+- #383 [structure-pane-width-proportional](.invar/tasks/completed/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md) — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/completed/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md) — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)
 - #375 [tasks-live-attach-icon-invisible](.invar/tasks/completed/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md) — 660ed877 — visible attach icon + click-time target; #386 from bycatch
 - #365 [gate-scratch-paths-are-machine-global](.invar/tasks/completed/365-gate-scratch-paths-are-machine-global/task-365-gate-scratch-paths-are-machine-global.md) — 33024fec — gate scratch paths per-worktree; safe overlapping gates
@@ -143,4 +145,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #340 [file-tree-reveals-open-file](.invar/tasks/completed/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md) — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
 - #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/completed/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md) — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate
 - #337 [plugin-manifest-structure-scrollbar-intermittent](.invar/tasks/completed/337-plugin-manifest-structure-scrollbar-intermittent/task-337-plugin-manifest-structure-scrollbar-intermittent.md) — 64ca4df5 — ordinal settings drive repaired to label walks; gate red root-caused to #340's contributed row
-- #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/completed/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md) — eaf04d09 — video -y fix; combined-tree red proven pre-existing (#334)
