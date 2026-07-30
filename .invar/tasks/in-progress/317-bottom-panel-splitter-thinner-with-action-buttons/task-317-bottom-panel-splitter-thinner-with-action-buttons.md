@@ -1,6 +1,6 @@
 # 317 — bottom panel splitter: thinner bar + left-side editor action buttons + always-draggable
 
-State: active
+State: IN-PROGRESS
 Engine: codex
 Model: 5.6-sol
 Effort: high
