@@ -681,7 +681,8 @@ try {
   snapshot = await driver.awaitGridCondition(
     'Extensions content and active accent render after its click',
     (candidate) =>
-      candidate.findText('Space/Enter changes state') !== null &&
+      candidate.findText('Space/Enter changes') !== null &&
+      candidate.findText('state · Enter again') !== null &&
       candidate.cell(extensionsRow, 0)?.characters === '|',
   );
   await HarnessSmoke.Class.awaitStatus(
@@ -809,7 +810,9 @@ try {
   driver.sendKeys('Control+Shift+x');
   await driver.awaitGridCondition(
     'the Extensions chord renders its sidebar content',
-    (candidate) => candidate.findText('Space/Enter changes state') !== null,
+    (candidate) =>
+      candidate.findText('Space/Enter changes') !== null &&
+      candidate.findText('state · Enter again') !== null,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,

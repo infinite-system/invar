@@ -345,10 +345,7 @@ class $GitPaneContent implements PaneContent {
   protected actionAtColumn(
     column: number,
   ): 'open' | 'discard' | 'stage' | null {
-    const innerWidth = Math.max(
-      1,
-      this.application.settings.sidebarWidth.value - 2,
-    );
+    const innerWidth = this.viewportColumns;
     const actionAreaStart = Math.max(
       1,
       innerWidth -

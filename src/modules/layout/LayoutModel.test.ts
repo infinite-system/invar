@@ -24,6 +24,22 @@ function resolve(
   return LayoutModel.Class.resolve({ ...baseOptions, ...overrides });
 }
 
+function primaryDockGroupColumns(geometry: ReturnType<typeof resolve>): number {
+  return (
+    geometry.activityBar.width +
+    geometry.sidebar.width +
+    geometry.sidebarSplitter.width
+  );
+}
+
+function rightDockGroupColumns(geometry: ReturnType<typeof resolve>): number {
+  return (
+    geometry.rightDockSplitter.width +
+    geometry.rightDock.width +
+    geometry.rightActivityBar.width
+  );
+}
+
 describe('LayoutModel', () => {
   test('offers four named presets instead of axis permutations', () => {
     const presets = LayoutModel.Class.presets();
@@ -102,62 +118,122 @@ describe('LayoutModel', () => {
   });
 
   test.each([64, 80, 100, 120, 160, 200, 400] as const)(
-    'a %d-column row keeps the editor wider than the right dock at the persisted default width',
+    'a %d-column row keeps the editor wider than both dock groups at the persisted default widths',
     (totalColumns) => {
       const geometry = resolve({ totalColumns, rightDockColumns: 28 });
 
-      expect(geometry.rightDock.width).toBeLessThan(
+      expect(primaryDockGroupColumns(geometry)).toBeLessThan(
         geometry.editorCenter.width,
+      );
+      expect(rightDockGroupColumns(geometry)).toBeLessThan(
+        geometry.editorCenter.width,
+      );
+      expect(geometry.sidebar.width).toBeLessThanOrEqual(
+        Math.floor(totalColumns * 0.3),
       );
       expect(geometry.rightDock.width).toBeLessThanOrEqual(
         Math.floor(totalColumns * 0.3),
       );
+      expect(geometry.sidebar.width).toBeGreaterThanOrEqual(1);
       expect(geometry.rightDock.width).toBeGreaterThanOrEqual(1);
     },
   );
 
   test.each([64, 80, 100, 120, 160, 200, 400] as const)(
-    'a %d-column row keeps the editor wider than the right dock however wide the request is',
+    'a %d-column row keeps the editor wider than both dock groups however wide either request is',
     (totalColumns) => {
       const geometry = resolve({
         totalColumns,
+        sidebarColumns: Number.MAX_SAFE_INTEGER,
         rightDockColumns: Number.MAX_SAFE_INTEGER,
       });
 
-      expect(geometry.rightDock.width).toBeLessThan(
+      expect(primaryDockGroupColumns(geometry)).toBeLessThan(
         geometry.editorCenter.width,
+      );
+      expect(rightDockGroupColumns(geometry)).toBeLessThan(
+        geometry.editorCenter.width,
+      );
+      expect(geometry.sidebar.width).toBeLessThanOrEqual(
+        Math.floor(totalColumns * 0.3),
       );
       expect(geometry.rightDock.width).toBeLessThanOrEqual(
         Math.floor(totalColumns * 0.3),
+      );
+      expect(geometry.sidebar.width).toBe(
+        LayoutModel.Class.maximumPrimaryDockColumns({
+          ...baseOptions,
+          totalColumns,
+          sidebarColumns: Number.MAX_SAFE_INTEGER,
+          rightDockColumns: Number.MAX_SAFE_INTEGER,
+        }),
       );
       expect(geometry.rightDock.width).toBe(
         LayoutModel.Class.maximumRightDockColumns({
           ...baseOptions,
           totalColumns,
+          sidebarColumns: Number.MAX_SAFE_INTEGER,
           rightDockColumns: Number.MAX_SAFE_INTEGER,
         }),
       );
     },
   );
 
-  test('the right dock keeps a request that fits and gives it back after a resize', () => {
-    const draggedColumns = 33;
+  test('both docks keep requests that fit and give them back after a resize', () => {
+    const draggedSidebarColumns = 27;
+    const draggedRightDockColumns = 33;
 
     expect(
-      resolve({ totalColumns: 120, rightDockColumns: draggedColumns }).rightDock
-        .width,
-    ).toBe(draggedColumns);
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).sidebar.width,
+    ).toBe(draggedSidebarColumns);
     expect(
-      resolve({ totalColumns: 80, rightDockColumns: draggedColumns }).rightDock
-        .width,
-    ).toBe(20);
+      resolve({
+        totalColumns: 80,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).sidebar.width,
+    ).toBe(17);
     expect(
-      resolve({ totalColumns: 120, rightDockColumns: draggedColumns }).rightDock
-        .width,
-    ).toBe(draggedColumns);
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).sidebar.width,
+    ).toBe(draggedSidebarColumns);
+    expect(
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).rightDock.width,
+    ).toBe(draggedRightDockColumns);
+    expect(
+      resolve({
+        totalColumns: 80,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).rightDock.width,
+    ).toBe(22);
+    expect(
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).rightDock.width,
+    ).toBe(draggedRightDockColumns);
   });
 
-  test('the right-dock bound answers over the row the editor and the dock really share', () => {
+  test('the shared dock bound answers over the row each dock group and the editor really share', () => {
+    expect(
+      LayoutModel.Class.maximumPrimaryDockColumns({
+        ...baseOptions,
+        totalColumns: 80,
+      }),
+    ).toBe(22);
     expect(
       LayoutModel.Class.maximumRightDockColumns({
         ...baseOptions,
