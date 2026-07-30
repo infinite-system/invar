@@ -637,19 +637,19 @@ async function drivePanelSeparatorAtScale(
     );
     const splitter = splitterRectangle(status);
     const separatorSnapshot = await driver.awaitGridCondition(
-      `${columns}x scale ${lineCount}: the published drag span paints lower-half cells`,
+      `${columns}x scale ${lineCount}: the published drag span paints vertically centered line cells`,
       (snapshot) =>
         snapshot
           .rowText(splitter.top)
           .slice(splitter.left, splitter.left + splitter.width) ===
-        '▄'.repeat(splitter.width),
+        '━'.repeat(splitter.width),
     );
     HarnessSmoke.Class.requireCondition(
       separatorSnapshot
         .rowText(splitter.top)
         .slice(splitter.left, splitter.left + splitter.width) ===
-        '▄'.repeat(splitter.width),
-      `${columns}x scale ${lineCount}: the splitter shares the thin horizontal-scrollbar paint`,
+        '━'.repeat(splitter.width),
+      `${columns}x scale ${lineCount}: the splitter paints the centered mark, not the scrollbar's edge-anchored half block`,
     );
     status = await HarnessSmoke.Class.awaitStatus(
       driver,

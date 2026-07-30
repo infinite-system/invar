@@ -56,6 +56,7 @@ class $SplitterElement {
           height: Number(renderable.height),
         },
         renderable.backgroundColor,
+        'centeredLine',
       );
     };
     return renderable;

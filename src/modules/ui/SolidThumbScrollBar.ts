@@ -2,6 +2,9 @@
 // Terminal.app can rasterize stacked block glyphs with horizontal seams. A horizontal bar uses the
 // lower-half block `▄`: terminal cells are about twice as tall as they are wide, so the glyph makes
 // both axes read at the same visual weight while its transparent background preserves the pane.
+// This class asks SeparatorAppearance for that mark by name (`bottomAnchoredHalfBlock`). SplitterElement
+// shares the same painter but asks for `centeredLine`, because a splitter divides two regions instead
+// of reporting a position along one edge.
 // OpenTUI's SliderRenderable hard-codes its painter and ScrollBarRenderable constructs its slider
 // internally, so the seam is this subclass replacing the slider's whole-cell thumb rect and painter
 // (the HitTransparentText pattern: an instance override where OpenTUI offers no flag).
@@ -83,12 +86,14 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
           height: slider.height,
         },
         slider.backgroundColor,
+        'bottomAnchoredHalfBlock',
       );
       SeparatorAppearance.Class.paint(
         buffer,
         slider.orientation,
         thumbRect,
         slider.foregroundColor,
+        'bottomAnchoredHalfBlock',
       );
       for (const overviewMark of this.overviewMarks) {
         if (
