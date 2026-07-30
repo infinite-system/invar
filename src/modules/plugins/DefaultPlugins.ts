@@ -5,6 +5,7 @@ import { FileTreeContributor } from '../filetree/FileTreeContributor';
 import { GitPlugin } from '../git/GitPlugin';
 import { MarkdownPlugin } from '../markdown/MarkdownPlugin';
 import { LspPlugin } from '../lsp/LspPlugin';
+import { MediaPlugin } from '../media/MediaPlugin';
 import { TerminalPlugin } from '../terminal/TerminalPlugin';
 // prettier-ignore
 import {
@@ -26,6 +27,7 @@ class $DefaultPlugins {
       new LspPlugin.Class(),
       new VuePlugin.Class(),
       new DatabaseProviderPlugin.Class(),
+      new MediaPlugin.Class(),
       new TerminalPlugin.Class(),
       new InlineRewriteContributor.Class(),
       new EditorPlugin.Class(),

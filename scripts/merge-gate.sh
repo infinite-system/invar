@@ -927,6 +927,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: terminal"    bash scripts/smoke-terminal.sh
   parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   parallel_safe_smoke "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
+  parallel_safe_smoke "smoke: animated-media harness" bun scripts/harness/smoke-media-harness.ts
   parallel_safe_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
   parallel_safe_smoke "smoke: markdown view-mode harness" bun scripts/harness/smoke-markdown-view-mode-harness.ts
   parallel_safe_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts

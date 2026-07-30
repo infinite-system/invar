@@ -1595,6 +1595,10 @@ class $RootView {
             palette,
             glyphLevel: theme.glyphLevel.value,
             colorDepth: theme.colorDepth.value,
+            graphicsTier: resolvedGraphicsTier(),
+            screenColumn: Number(sidebarBody.x),
+            screenRow: Number(sidebarBody.y),
+            screenObscured: overlayLayer.modalOverlayOwnsScreen,
             focused: primaryDockHost.focused.value,
           }) ?? sidebarBody.content)
         : '';
@@ -1615,6 +1619,10 @@ class $RootView {
           palette,
           glyphLevel: theme.glyphLevel.value,
           colorDepth: theme.colorDepth.value,
+          graphicsTier: resolvedGraphicsTier(),
+          screenColumn: Number(editorArea.x),
+          screenRow: Number(editorArea.y),
+          screenObscured: overlayLayer.modalOverlayOwnsScreen,
           focused: sourcePaneFocused,
         });
       }
@@ -1637,6 +1645,10 @@ class $RootView {
               palette,
               glyphLevel: theme.glyphLevel.value,
               colorDepth: theme.colorDepth.value,
+              graphicsTier: resolvedGraphicsTier(),
+              screenColumn: Number(rightDockBody.x),
+              screenRow: Number(rightDockBody.y),
+              screenObscured: overlayLayer.modalOverlayOwnsScreen,
               focused: rightDockFocused,
             }) ?? rightDockBody.content)
           : ' Right dock\n\n No content';
@@ -1738,6 +1750,10 @@ class $RootView {
                 palette,
                 glyphLevel: theme.glyphLevel.value,
                 colorDepth: theme.colorDepth.value,
+                graphicsTier: resolvedGraphicsTier(),
+                screenColumn: Number(view.body.x),
+                screenRow: Number(view.body.y),
+                screenObscured: overlayLayer.modalOverlayOwnsScreen,
                 focused: cellFocused,
               }) ?? view.body.content;
             const content = span.content;
@@ -1983,6 +1999,11 @@ class $RootView {
       update();
       renderer.requestRender();
     });
+    const resolvedGraphicsTier = () =>
+      TerminalCapabilities.Class.resolveGraphicsTier(
+        settings.graphicsTier.value,
+        reportedGraphics.value,
+      );
     // The emission surface: OpenTUI's writeOut routes through the native zig writer — the SAME queue
     // as frame bytes, so an out-of-band graphics payload serializes between frames, never mid-frame.
     // The method is TypeScript-private (OpenTUI exposes no public raw-write), hence the structural cast.
@@ -2024,10 +2045,7 @@ class $RootView {
       }
       const palette = readPalette();
       const imagePath = workspaceSet.active.editor.document.path;
-      const graphicsTier = TerminalCapabilities.Class.resolveGraphicsTier(
-        settings.graphicsTier.value,
-        reportedGraphics.value,
-      );
+      const graphicsTier = resolvedGraphicsTier();
       const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
       const decodedImage = pixelEncoder
         ? imagePreview.decodedImage(imagePath)

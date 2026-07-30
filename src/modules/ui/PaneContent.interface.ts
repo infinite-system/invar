@@ -20,7 +20,11 @@ import type { Ref } from 'vue';
 import type { MomentumOptions } from '../system/Momentum';
 import type { TextInputAction } from '../text/TextInputModel';
 import type { Palette } from '../theme/ThemePalettes';
-import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
+import type {
+  GlyphLevel,
+  ColorDepth,
+  GraphicsTier,
+} from '../theme/TerminalCapabilities';
 import type {
   SplitterElement,
   SplitterElementGeometry,
@@ -199,6 +203,14 @@ export interface PaneRenderContext {
   glyphLevel: GlyphLevel;
   /** The active colour depth (truecolor → 256 → 16) — one source for every pane's gradient fallback. */
   colorDepth: ColorDepth;
+  /** The image-preview capability ladder selected by the host's one detector. */
+  graphicsTier?: GraphicsTier;
+  /** Screen-cell origin for a content-owned out-of-band pixel placement. */
+  screenColumn?: number;
+  /** Screen-cell origin for a content-owned out-of-band pixel placement. */
+  screenRow?: number;
+  /** True while a modal owns the screen and out-of-band graphics must withdraw. */
+  screenObscured?: boolean;
   /** True while the panel owns the keyboard (content may paint focus affordances). */
   focused: boolean;
 }
