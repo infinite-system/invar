@@ -132,7 +132,10 @@ async function awaitFileBytes(filePath: string): Promise<Uint8Array> {
   const deadline = performance.now() + 5_000;
   while (performance.now() < deadline) {
     const file = Bun.file(filePath);
-    if (await file.exists()) return new Uint8Array(await file.arrayBuffer());
+    if (await file.exists()) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length > 0) return bytes;
+    }
     await Bun.sleep(10);
   }
   throw new Error(`Timed out waiting for child input capture at ${filePath}`);
