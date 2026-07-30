@@ -1,6 +1,6 @@
 # #381 — typescript lsp still missing in the realized project (reopens #294 field evidence)
 
-State: IN-PROGRESS
+State: COMPLETED — d8526062 — TS LSP discovery includes the app root: every workspace gets tooltips
 Priority: user-directed
 Engine: codex
 Environment: linux
