@@ -1,6 +1,6 @@
 # #384 — quit dialog: bracketless buttons and breathing room
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux

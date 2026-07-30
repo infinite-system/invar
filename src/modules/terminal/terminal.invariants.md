@@ -116,10 +116,12 @@ DECRST. The timeout follows tmux's [one-second synchronized-output guard](https:
 the [synchronized-output protocol](https://contour-terminal.org/vt-extensions/synchronized-output/)
 defines DECSET 2026 as the begin marker and DECRST 2026 as the commit marker. `TasksWatchRenderer`
 puts alternate-screen entry, cursor-home row diffs, and screen restoration inside those markers and
-never emits a full-screen clear.
+never emits a full-screen clear. It clips each ANSI-styled logical row to the live terminal width
+before diffing, so terminal autowrap cannot create an untracked physical tail.
 
 **Generates:** Atomic child TUI updates; no timing coalescer for ordinary output; one deadlock guard
-for an unclosed child bracket; a data-tick `tasks:watch` that sends no unchanged rows.
+for an unclosed child bracket; a data-tick `tasks:watch` that sends no unchanged rows; one physical
+terminal row for each logical watch row.
 
 **Evidence:** `TerminalInstance.test.ts` `DEC 2026 holds interior writes and commits the final grid
 once`, `ordinary child writes keep their existing repaint cadence`, and `an unclosed DEC 2026 update
@@ -128,15 +130,15 @@ releases after the bounded timeout`; `scripts/tasks/TasksWatchRenderer.test.ts`;
 
 **Impossible if true:** A completed Invar frame that contains the blank or partial interior of a
 DEC 2026 child update; an unclosed bracket freezing child output beyond one second; an ordinary child
-write waiting for a synchronized-output timer; `tasks:watch` emitting CSI 2 J or rewriting an
-unchanged row.
+write waiting for a synchronized-output timer; `tasks:watch` emitting CSI 2 J, rewriting an
+unchanged row, or leaving an autowrapped tail after its model shrinks.
 
 **Verification:** `bun test src/modules/terminal/TerminalInstance.test.ts
 scripts/tasks/TasksWatchRenderer.test.ts && bun scripts/harness/smoke-terminal-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Observation never writes to the PTY
 

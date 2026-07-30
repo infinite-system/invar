@@ -1,0 +1,15 @@
+{
+  "task": 384,
+  "slug": "quit-dialog-buttons-and-padding",
+  "branch": "fleet/384-quit-dialog-buttons-and-padding",
+  "worktree": ".invar/worktrees/384-quit-dialog-buttons-and-padding",
+  "tmuxSession": "invar/384-quit-dialog-buttons-and-padding",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-384-quit-dialog-buttons-and-padding.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "1ceeb28ca840a940f6f4d408238bd9841fb92e6e",
+  "startedAt": "2026-07-30T13:16:33-04:00"
+}
