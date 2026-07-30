@@ -71,3 +71,5 @@ before treating them as two defects.
   panel-chrome, shortcut-help, scrollbar smokes; panel-chrome passed alone in
   ~1s; failures moved between harnesses, clean-start hooks green (25th-28th
   today; builder kept /tmp/merge-gate-failures.* examples).
+- 2026-07-29 #319 gate: panel-split + panel-chrome + overlay-dialog first-attempt
+  timeouts, all quiet-retry green (29th-31st today).
