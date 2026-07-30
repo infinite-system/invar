@@ -6,17 +6,22 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #340 [file-tree-reveals-open-file](.invar/tasks/in-progress/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md)  [building]
   `tmux attach -t invar/340-file-tree-reveals-open-file`
-- #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/in-progress/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md)  [building]
+- #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/in-progress/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/339-demo-supersampled-graphics-tier-resolution`
-- #334 [structure-pane-no-file-open-transient](.invar/tasks/in-progress/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md)  [building]
-  `tmux attach -t invar/334-structure-pane-no-file-open-transient`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (8)
+## USER-DIRECTED (15)
+- #350 [nicer-generated-sample-video](.invar/tasks/active/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)
+- #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
+- #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/active/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)
+- #347 [markdown-link-resolution-and-double-click](.invar/tasks/active/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md)
+- #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/active/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)
+- #345 [horizontal-separator-centered-glyph](.invar/tasks/active/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md)
+- #344 [breadcrumb-hover-highlight-padding](.invar/tasks/active/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md)
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/active/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/active/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md)
 - #341 [file-tree-add-and-drag-drop](.invar/tasks/active/341-file-tree-add-and-drag-drop/task-341-file-tree-add-and-drag-drop.md)
@@ -101,9 +106,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 114 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 115 — full log: project.tasks-completed.md)
 - #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/completed/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md) — eaf04d09 — video -y fix; combined-tree red proven pre-existing (#334)
 - #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/completed/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md) — 359ca6da — both gate intermittents were instrument defects; smokes repaired, hook gate ALL-PASS
+- #334 [structure-pane-no-file-open-transient](.invar/tasks/completed/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md) — b4695e2f — gate-blocking Drive red fixed; re-gate red is #214's pre-existing class
 - #329 [tasks-watch-animation-tick-restored](.invar/tasks/completed/329-tasks-watch-animation-tick-restored/task-329-tasks-watch-animation-tick-restored.md) — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
 - #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/completed/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md) — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
 - #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
@@ -116,4 +122,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #319 [tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/completed/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md) — 2012cf08 — tasks pane: two-line live rows, shared-seam cycle tooltip + off, padded persistent tabs, one-line items, capitalized headers
 - #318 [markdown-code-fence-uniform-background](.invar/tasks/completed/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md) — 4410e6a9 — rounded fences, uniform selectionMuted background (landed in #300 bundle merge ec651408)
 - #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/completed/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md) — ec92a8b9 — bottom panel separator: thin lower-half-cell + editor action buttons + always-draggable geometry
-- #316 [terminal-list-close-icon-matches-tabs](.invar/tasks/completed/316-terminal-list-close-icon-matches-tabs/task-316-terminal-list-close-icon-matches-tabs.md) — cd7abe37 — one panelClose glyph across list/tabs/panel (landed in #300 bundle merge ec651408)

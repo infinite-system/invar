@@ -5,7 +5,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — b4695e2f — gate-blocking Drive red fixed; re-gate red is #214's pre-existing class
 
 ## What was seen (builder evidence, #322 round 1, 2026-07-30)
 
