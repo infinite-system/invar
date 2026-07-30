@@ -602,3 +602,41 @@ hook active. Crons DISARMED permanently (user 740c5d81).
 - Twin conductor pid 3541394 asleep; ibr repo has its uncommitted
   leftovers (user aware). Duplicate #338 already consolidated+retired.
 - User runs an older --smol build; #376 will give instances:watch.
+
+## RESUME ANCHOR 19 (2026-07-30 08:2x, pre-compact — supersedes 18)
+
+User AWAKE, directing. Goal hook: "keep going on the tasks". ELEVEN
+landings: 342 351 350 337 90 344 343 345 326 365 347 (last: 27a42bfe,
+document-relative markdown links + double-click open).
+
+### Lanes (4 — user prioritization raised the cap)
+- 346 panel tab bar (codex) — LONG build, ten-point user spec.
+- 375 tasks live view attach icon + click-time target (codex).
+- 348 tasks:watch gradients time-based 60fps (opus).
+- 380 idle CPU 15-25% (codex, USER PRIORITY). Steered evidence: CPU does
+  NOT drop with tasks pane closed -> surviving timer or unconditional
+  render loop; toggle matrix in brief.
+
+### Landing ritual: unchanged (anchor 18). Claude lanes: manual verdict
+log from report header + verify commit-on-branch + clean tree; codex:
+extract-gate-verdict.sh. Bycatch converts BEFORE landing, always.
+
+### Queue (user-directed first)
+383 right panel proportional (editor prominent, holistic generator) ·
+381 realized LSP reopen (field refutes #294's clean verdict; delta-hunt
+brief in task) · 382 claude resume dialog cut off (resize propagation
+proof first) · 361 tasks-icon crash · 356 Invar Agent plugin · 349
+extensions pane · 352 markdown borders · 341 tree add/drag · 376
+instances:watch (cwd filter) · 379 quick-open ranking · hygiene tail
+353-374 377 378.
+
+### SPRAWL note (08:2x): +329 /tmp entries = two CONCURRENT GATES'
+namespaced builds + harness homes (the #365 design working); 28G free;
+NOT a leak. No deletion done.
+
+### Watchers: Monitor b08ipqblm fleet-watch (the ONE); goal hook active;
+crons disarmed. On resume re-arm per anchor-18 list if missing.
+
+### User feedback this hour: flicker/3d/video confirmed GOOD in field.
+Field bugs live: LSP realized (381), resume dialog (382), right panel
+width (383), idle CPU (380 in flight).
