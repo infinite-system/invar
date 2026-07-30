@@ -74,7 +74,7 @@ function makeContext(
         return {
           value: ref<'left' | 'right'>('right'),
           host: () => rightDockHost,
-          isVisible: () =>
+          isPainted: () =>
             rightDockHost.isContentVisible(contribution.content.id),
           reveal: () => rightDockHost.revealContent(contribution.content.id),
           show: () => rightDockHost.showContent(contribution.content.id),
@@ -278,6 +278,10 @@ test('render load is attributed per plugin and reported against the open baselin
   RenderLoadLedger.Class.record('quiet-plugin');
   expect(recording.snapshot().monitoringRenderRequestsSinceOpen).toBe(3);
   expect(recording.snapshot().monitoringStrayCandidate).toBe('noisy-plugin');
+  expect(recording.snapshot().monitoringRenderRequestsByPlugin).toEqual({
+    'noisy-plugin': 2,
+    'quiet-plugin': 1,
+  });
 
   // Hiding and re-showing must NOT erase the load raised while the pane was away.
   recording.rightDockHost.visible.value = false;

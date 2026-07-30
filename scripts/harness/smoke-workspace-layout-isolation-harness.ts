@@ -389,8 +389,10 @@ try {
   pass('primary dock width does not leak');
 
   requireCondition(
-    secondStatus.rightDockVisible === false,
-    `a new workspace keeps its right dock hidden (got ${secondStatus.rightDockVisible})`,
+    secondStatus.rightDockVisible === false &&
+      secondStatus.tasksDataHeartbeatAtRest === true,
+    `a new workspace keeps its right dock and tasks heartbeat hidden ` +
+      `(dock=${secondStatus.rightDockVisible}, heartbeatAtRest=${secondStatus.tasksDataHeartbeatAtRest})`,
   );
   pass('right dock visibility does not leak');
 

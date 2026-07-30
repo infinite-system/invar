@@ -162,9 +162,10 @@ const fleetWorktreeMarkerIndex = CHECKOUT_REPOSITORY_ROOT.indexOf(
 
 /** The main Invar checkout that owns `.invar/worktrees/`, even when this script runs in a worktree. */
 export const INVAR_FLEET_REPOSITORY_ROOT =
-  fleetWorktreeMarkerIndex < 0
+  process.env.INVAR_FLEET_REPOSITORY_ROOT?.trim() ||
+  (fleetWorktreeMarkerIndex < 0
     ? CHECKOUT_REPOSITORY_ROOT
-    : CHECKOUT_REPOSITORY_ROOT.slice(0, fleetWorktreeMarkerIndex);
+    : CHECKOUT_REPOSITORY_ROOT.slice(0, fleetWorktreeMarkerIndex));
 
 const TASK_STATES: TaskState[] = [
   'active',
@@ -1683,14 +1684,7 @@ function statsLine(tasksRoot: string): string {
 // the 95k-line source count recomputes only when the commit count moves
 // (a landing), never on schedule.
 export function tasksTreeStamp(tasksRoot: string): string {
-  const parts: string[] = [];
-  for (const state of TASK_STATES) {
-    try {
-      parts.push(String(statSync(join(tasksRoot, state)).mtimeMs));
-    } catch {
-      parts.push('0');
-    }
-  }
+  const parts = [tasksStateDirectoriesStamp(tasksRoot)];
   try {
     for (const folder of readdirSync(join(tasksRoot, 'in-progress'))) {
       const folderPath = join(tasksRoot, 'in-progress', folder);
@@ -1703,6 +1697,19 @@ export function tasksTreeStamp(tasksRoot: string): string {
     }
   } catch {
     // no in-progress directory yet
+  }
+  return parts.join(':');
+}
+
+/** The constant-cost membership stamp used before any task-folder reads. */
+export function tasksStateDirectoriesStamp(tasksRoot: string): string {
+  const parts: string[] = [];
+  for (const state of TASK_STATES) {
+    try {
+      parts.push(String(statSync(join(tasksRoot, state)).mtimeMs));
+    } catch {
+      parts.push('0');
+    }
   }
   return parts.join(':');
 }

@@ -219,7 +219,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     const dockContent = this.dockContent;
     if (!application || !dockContent) return false;
     return (
-      dockContent.isVisible() && application.workspaceSet.active === workspace
+      dockContent.isPainted() && application.workspaceSet.active === workspace
     );
   }
 

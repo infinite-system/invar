@@ -144,7 +144,9 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         return {
           ...registeredSetting,
           host: () => activeHost,
-          isVisible: () => activeHost.isContentVisible(contribution.content.id),
+          isPainted: () =>
+            activeHost.visible.value &&
+            activeHost.activeContent?.id === contribution.content.id,
           reveal: () => activeHost.revealContent(contribution.content.id),
           show: () => activeHost.showContent(contribution.content.id),
           blur: () => activeHost.blur(),

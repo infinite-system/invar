@@ -279,6 +279,9 @@ symbol outline, markdown tokens — every high-cardinality dataset.
 - *A resource lives only while observed or warm* — reactive overlays and services are materialized
   for the visible window or an explicit constant-size interaction window and evicted/disposed when
   cold.
+- *Background work follows paint* — a pane owns no timer when its exact content is not painted.
+  A visible cadence reads and rebuilds only its painted row window, with mtime stamps guarding
+  external facts that have not changed.
 
 **Mechanism:** The ivue flyweight pattern (`../ivue` flyweight-grid): columnar ground truth +
 disposable per-render facades + a two-tier sparse revision overlay (fine per-item, coarse
@@ -333,10 +336,13 @@ index contract independently requires identical edit counts across both axes.
 reads across recent switch cycles at 10 and 500,000 lines and proves the
 counter with a one-document dehydration control. Millisecond samples remain
 report-only; the operation count is the blocking scale claim.
+`scripts/harness/smoke-tasks-dashboard-harness.ts` drives hidden dock and tab
+paths, then rejects an all-tree positive control and bounds three visible
+ticks by the painted window in a 500-folder fixture.
 
 **Status:** established
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-07-30
 
 ### Held key movement accelerates within a ceiling
 

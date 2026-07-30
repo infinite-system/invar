@@ -1454,8 +1454,10 @@ class $Bootstrap {
     // deadlines, so frame-listener and paint work cannot accumulate into the next delay. At
     // quiescence the timer stops (frames and status writes cease).
     // invariant: A fast glide crosses rows in many small steps (src/modules/ui/ui.invariants.md)
+    // invariant: Cost tracks the actively observed set (project.invariants.md)
     let animationFrameCadenceTimer: ReturnType<typeof setTimeout> | null = null;
     let nextAnimationFrameDeadlineMilliseconds = 0;
+    StatusChannel.Class.update({ animationFrameCadenceTimerCount: 0 });
     // Last panel geometry pushed to the terminal — so the resize ioctl fires only on a real change.
     // The panel converge signature: total rows + each cell's id=width. Keyed on the LAYOUT, not just the
     // total width, so splitting/un-splitting/dragging the divider (which redistributes the SAME total
@@ -1468,6 +1470,7 @@ class $Bootstrap {
         clearTimeout(animationFrameCadenceTimer);
         animationFrameCadenceTimer = null;
       }
+      StatusChannel.Class.update({ animationFrameCadenceTimerCount: 0 });
       // Paused-clock: the next animation's first tick gets a fresh delta.
       lastAnimationTickMilliseconds = 0;
       nextAnimationFrameDeadlineMilliseconds = 0;
@@ -1546,6 +1549,7 @@ class $Bootstrap {
         queueMicrotask(() => renderer.requestRender());
         if (animating) scheduleAnimationFrame();
       }, delayMilliseconds);
+      StatusChannel.Class.update({ animationFrameCadenceTimerCount: 1 });
     };
 
     const frameTick = (): void => {

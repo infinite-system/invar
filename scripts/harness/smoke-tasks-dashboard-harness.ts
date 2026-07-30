@@ -118,6 +118,24 @@ function taskActionGlyphCellsAreReadable(
   );
 }
 
+function visibleTickWorkIsBounded(
+  counts: {
+    taskTreeReads: number;
+    fleetFactProbes: number;
+    sessionProbes: number;
+    rowRebuilds: number;
+  },
+  paintedRows: number,
+  heartbeatTicks: number,
+): boolean {
+  return (
+    counts.taskTreeReads === 0 &&
+    counts.fleetFactProbes <= paintedRows * heartbeatTicks &&
+    counts.sessionProbes <= heartbeatTicks &&
+    counts.rowRebuilds <= paintedRows * heartbeatTicks
+  );
+}
+
 async function selectSettingByVisibleLabel(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -325,6 +343,7 @@ try {
       status.tasksLens === 'live' &&
       status.tasksAvailable === false &&
       status.tasksAnimationAtRest === true &&
+      status.tasksDataHeartbeatAtRest === true &&
       Number(status.tasksAnimationPaint) === 0,
   );
   HarnessSmoke.Class.requireCondition(
@@ -342,6 +361,7 @@ try {
       status.rightDockFocused === true &&
       status.tasksAvailable === true &&
       status.tasksAnimationAtRest === false &&
+      status.tasksDataHeartbeatAtRest === false &&
       Number(status.tasksRows) === 5,
   );
   await driver.awaitGridCondition(
@@ -382,7 +402,9 @@ try {
     statusPath,
     'closing the tasks pane stops its surviving motion timer',
     (status) =>
-      status.rightDockVisible === false && status.tasksAnimationAtRest === true,
+      status.rightDockVisible === false &&
+      status.tasksAnimationAtRest === true &&
+      status.tasksDataHeartbeatAtRest === true,
   );
   driver.sendKeys('Control+Shift+t');
   await HarnessSmoke.Class.awaitStatus(
@@ -392,7 +414,8 @@ try {
     (status) =>
       status.rightDockVisible === true &&
       status.rightDockActiveContent === 'tasks' &&
-      status.tasksAnimationAtRest === false,
+      status.tasksAnimationAtRest === false &&
+      status.tasksDataHeartbeatAtRest === false,
   );
   await driver.awaitGridCondition(
     'the reopened tasks pane paints both live fixture rows',
@@ -401,6 +424,33 @@ try {
       snapshot.findText('#902 planted-ready') !== null,
   );
   HarnessSmoke.Class.pass('a closed tasks pane owns no surviving motion timer');
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'another right-dock tab stops both tasks timers',
+    (status) =>
+      status.rightDockActiveContent === 'structure' &&
+      status.tasksAnimationAtRest === true &&
+      status.tasksDataHeartbeatAtRest === true,
+  );
+  driver.sendKeys('Control+Shift+t');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'tasks restarts both clocks when it is painted again',
+    (status) =>
+      status.rightDockActiveContent === 'tasks' &&
+      status.tasksAnimationAtRest === false &&
+      status.tasksDataHeartbeatAtRest === false,
+  );
+  await driver.awaitGridCondition(
+    'tasks repaints its live rows after the tab switch',
+    (snapshot) =>
+      snapshot.findText('#901 planted-building') !== null &&
+      snapshot.findText('#902 planted-ready') !== null,
+  );
+  HarnessSmoke.Class.pass('an unpainted tasks tab owns no heartbeat');
 
   console.log(
     '== tasks dashboard: row actions state misses and open artifacts ==',
@@ -991,7 +1041,11 @@ const largeSettingsDirectory = join(largeHome, '.config', 'invar');
 mkdirSync(largeSettingsDirectory, { recursive: true });
 writeFileSync(
   join(largeSettingsDirectory, 'settings.json'),
-  JSON.stringify({ glyphMode: 'unicode' }),
+  JSON.stringify({
+    glyphMode: 'unicode',
+    'monitoring.dockSide': 'left',
+    'tasks.dockSide': 'right',
+  }),
 );
 const largeDriver = new PtyTestDriver.Class({
   workspaceRoot: largeRoot,
@@ -1000,6 +1054,7 @@ const largeDriver = new PtyTestDriver.Class({
   homeDirectory: largeHome,
   environment: {
     TUI_STATUS_PATH: largeStatusPath,
+    INVAR_FLEET_REPOSITORY_ROOT: largeRoot,
     COLORTERM: 'truecolor',
     NERD_FONT: '0',
     LANG: 'en_US.UTF-8',
@@ -1007,6 +1062,15 @@ const largeDriver = new PtyTestDriver.Class({
   command: [process.execPath, 'src/main.ts', largeRoot],
 });
 try {
+  largeDriver.sendKeys('Control+Shift+n');
+  await HarnessSmoke.Class.awaitStatus(
+    largeDriver,
+    largeStatusPath,
+    'the monitor paints beside the large fixture',
+    (status) =>
+      status.monitoringObserved === true &&
+      Number(status.monitoringSampleCount) > 0,
+  );
   largeDriver.sendKeys('Control+Shift+t');
   await HarnessSmoke.Class.awaitStatus(
     largeDriver,
@@ -1015,7 +1079,7 @@ try {
     (status) =>
       status.rightDockActiveContent === 'tasks' &&
       status.tasksAvailable === true &&
-      Number(status.tasksRows) === 1_001 &&
+      Number(status.tasksRows) === 1_000 &&
       Number(status.tasksAnimationPaint) >= 3,
   );
   await largeDriver.awaitGridCondition(
@@ -1031,6 +1095,65 @@ try {
   );
   HarnessSmoke.Class.pass(
     'five hundred tasks keep the compact observed projection responsive',
+  );
+  const hydrationStatus = HarnessSmoke.Class.readStatus(largeStatusPath);
+  const hydrationHeartbeatTarget =
+    Number(hydrationStatus.tasksDataHeartbeatTicks) + 3;
+  await HarnessSmoke.Class.awaitStatus(
+    largeDriver,
+    largeStatusPath,
+    'the large painted window reaches a steady data cycle',
+    (status) =>
+      Number(status.tasksDataHeartbeatTicks) >= hydrationHeartbeatTarget &&
+      Number(status.tasksFleetFactProbes) > 0,
+  );
+  const steadyBefore = HarnessSmoke.Class.readStatus(largeStatusPath);
+  const steadyHeartbeatTarget =
+    Number(steadyBefore.tasksDataHeartbeatTicks) + 3;
+  const steadyAfter = await HarnessSmoke.Class.awaitStatus(
+    largeDriver,
+    largeStatusPath,
+    'three more visible ticks stay bounded by the painted window',
+    (status) => Number(status.tasksDataHeartbeatTicks) >= steadyHeartbeatTarget,
+  );
+  const heartbeatTicks =
+    Number(steadyAfter.tasksDataHeartbeatTicks) -
+    Number(steadyBefore.tasksDataHeartbeatTicks);
+  const paintedRows = Number(steadyAfter.rightDockRows);
+  const steadyCounts = {
+    taskTreeReads:
+      Number(steadyAfter.tasksTaskTreeReads) -
+      Number(steadyBefore.tasksTaskTreeReads),
+    fleetFactProbes:
+      Number(steadyAfter.tasksFleetFactProbes) -
+      Number(steadyBefore.tasksFleetFactProbes),
+    sessionProbes:
+      Number(steadyAfter.tasksSessionProbes) -
+      Number(steadyBefore.tasksSessionProbes),
+    rowRebuilds:
+      Number(steadyAfter.tasksRowRebuilds) -
+      Number(steadyBefore.tasksRowRebuilds),
+  };
+  HarnessSmoke.Class.requireCondition(
+    !visibleTickWorkIsBounded(
+      {
+        taskTreeReads: 1,
+        fleetFactProbes: 500,
+        sessionProbes: 500,
+        rowRebuilds: 1_000,
+      },
+      paintedRows,
+      heartbeatTicks,
+    ),
+    'positive control: an all-tree tick must fail the painted-window bound',
+  );
+  HarnessSmoke.Class.requireCondition(
+    visibleTickWorkIsBounded(steadyCounts, paintedRows, heartbeatTicks),
+    `visible tick work stayed within ${paintedRows} painted rows across ${heartbeatTicks} ticks: ` +
+      JSON.stringify(steadyCounts),
+  );
+  HarnessSmoke.Class.pass(
+    'visible data ticks stay proportional to the painted window',
   );
   for (let wheelEvent = 0; wheelEvent < 40; wheelEvent += 1) {
     largeDriver.sendMouseWithoutFrameExpectation({
@@ -1052,7 +1175,7 @@ try {
     'the large fixture scrolls past the building row while held rows remain visible',
     (snapshot) =>
       snapshot.findText('#1499 scale-row') === null &&
-      snapshot.findText('scale-row') !== null,
+      snapshot.findText('#1479 scale-row') !== null,
   );
   HarnessSmoke.Class.pass(
     'an off-screen live row owns no dashboard motion timer',

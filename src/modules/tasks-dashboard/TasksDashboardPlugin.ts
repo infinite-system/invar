@@ -149,7 +149,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
 
   /** True while the tasks pane is on screen. A hidden pane owns no timer or task-tree read. */
   protected paneIsObserved(): boolean {
-    return this.dockContent?.isVisible() ?? false;
+    return this.dockContent?.isPainted() ?? false;
   }
 
   protected requireDockContent(): RegisteredDockContent {
@@ -180,7 +180,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     }
     if (
       this.autoShown &&
-      dockContent.isVisible() &&
+      dockContent.isPainted() &&
       !dockContent.host().focused.value
     ) {
       dockContent.host().hide();
@@ -349,6 +349,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     const overview = this.overview;
     if (!overview) return {};
     const selectedFile = overview.selectedTaskFilePath();
+    const observationCounts = overview.observationCounts();
     return {
       tasksLens: overview.lens.value,
       tasksRows: overview.rows.value.length,
@@ -358,6 +359,12 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       tasksSelectedFile: selectedFile,
       tasksAnimationPaint: overview.animationPaint.value,
       tasksAnimationAtRest: overview.motionHeartbeatAtRest(),
+      tasksDataHeartbeatAtRest: overview.dataHeartbeatAtRest(),
+      tasksDataHeartbeatTicks: observationCounts.dataHeartbeatTicks,
+      tasksTaskTreeReads: observationCounts.taskTreeReads,
+      tasksFleetFactProbes: observationCounts.fleetFactProbes,
+      tasksSessionProbes: observationCounts.sessionProbes,
+      tasksRowRebuilds: observationCounts.rowRebuilds,
       tasksFleetScopeMatches: overview.fleetScopeMatches.value,
       tasksActionNotice: overview.actionNotice.value?.message ?? null,
       tasksGateExitCode: overview.gateGlance.value?.exitCode ?? null,

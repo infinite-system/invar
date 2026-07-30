@@ -172,7 +172,7 @@ class $MonitoringPlugin implements ApplicationContributor {
 
   /** True while the monitoring pane is on screen. Hidden means no timer and no sample. */
   protected paneIsObserved(): boolean {
-    return this.dockContent?.isVisible() ?? false;
+    return this.dockContent?.isPainted() ?? false;
   }
 
   protected requireDockContent(): RegisteredDockContent {
@@ -251,6 +251,7 @@ class $MonitoringPlugin implements ApplicationContributor {
       monitoringRetainedDocumentBytes: stats.retainedDocumentBytes,
       monitoringRenderRequestsSinceOpen: stats.renderRequestsSinceOpen,
       monitoringOwnRenderRequestsSinceOpen: stats.ownRenderRequestsSinceOpen,
+      monitoringRenderRequestsByPlugin: stats.renderRequestsByOwnerSinceOpen,
       monitoringStrayCandidate: stats.strayCandidate()?.ownerIdentifier ?? null,
       monitoringLogging: stats.logging.value,
       monitoringLogLineCount: stats.logLineCount.value,

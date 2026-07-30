@@ -52,17 +52,22 @@ from anything but the current folder read.
 
 ### Dashboard motion exists only while observed
 
-**Invariant:** If no live task motion and no running gate is visible, then a motion tick causes
-no paint; if the pane itself is hidden, then it has no task-tree read, data timer, or motion
-timer. While visible,
+**Invariant:** If no live task motion and no running gate is painted, then a motion tick causes
+no paint; if the pane itself is not painted, then it has no task-tree read, data timer, or motion
+timer. Selected, registered, and retained are not observed. While painted, each steady data tick
+reads fleet facts only for painted task rows, lists sessions at most once for those rows, and
+rebuilds only changed painted rows. While visible,
 building, exploring, and gate motion use the exact exported CLI watch ramps and glyph frames,
 and they step on the exported wall-clock cadence, so the pane and the CLI watch show the same
 motion step at the same moment however often either repaints.
 
 **Scope:** `TasksDashboardOverview` clocks and `TasksDashboardPaneRenderer` motion paint.
 
-**Mechanism:** The pane starts and stops both ivue-owned intervals from the dock's observed ref.
-The motion tick advances only when a visible row or gate needs it. The renderer indexes the
+**Mechanism:** `RegisteredDockContent.isPainted` derives from the same side-dock state the root
+view paints: the host is visible and its exact active content is the contribution. The pane starts
+and stops both ivue-owned intervals from that predicate. A constant four-directory stamp guards
+full task-tree reads. Worktree mtimes guard fleet reads, and the current row window selects fleet
+and session facts. The motion tick advances only when a painted row or gate needs it. The renderer indexes the
 tables exported by `scripts/tasks/tasks-status.ts` at the step
 `tasksMotionStepAtElapsed(elapsedMilliseconds)` returns. The step is a pure function of elapsed
 time, never of a paint ordinal: a paint count made motion SPEED a hostage of the frame rate,
@@ -73,10 +78,12 @@ which ran the CLI watch ten times too fast at 60 fps (#348).
 `scripts/tasks/tasks-status.ts` (`tasksMotionStepAtElapsed`); and
 `src/modules/tasks-dashboard/TasksDashboardOverview.test.ts`.
 
-**Impossible if true:** A hidden dashboard timer; a held READY row that repaints; a pane-local
+**Impossible if true:** A timer for a collapsed dock, inactive tab, or inactive workspace; a
+steady visible tick that scans every task folder; a held READY row that repaints; a pane-local
 copy of a watch ramp or glyph sequence; a motion step derived from a frame or paint ordinal.
 
-**Verification:** `bun test src/modules/tasks-dashboard` and the motion arm of
+**Verification:** `bun test src/modules/tasks-dashboard` and the hidden-path, 500-folder
+painted-window, positive-control, and motion arms of
 `bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
 
 **Status:** provisional
