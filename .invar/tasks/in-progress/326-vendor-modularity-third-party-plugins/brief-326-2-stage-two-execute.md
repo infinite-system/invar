@@ -26,14 +26,14 @@ The user gave the explicit GO for stage 2. Execute the plan as revised:
    structure-outline.
 
 No push/merge/tag. Append your READY report to this folder as
-`report-326-stage-two.md`. END STATE: that file exists with driven evidence
+a new file named report-326-stage-two (extension md, this folder). END STATE: that file exists with driven evidence
 per plan item. If the plan needs a decision only the user can make, STOP at
 that item, list the decision crisply in the report, and finish everything
 decidable — the user is asleep; do not guess irreversible calls.
 
 ## Invariants in scope
 
-- project.invariants.md kernel records ("The app is built only after the
+- [project.invariants.md](../../../../project.invariants.md) kernel records ("The app is built only after the
   kernel is sealed", "Construction goes through overridable seams") — the
   relaunch design must uphold, not weaken, the seal.
 - plugins/extensions contract records; tasks contract untouched. Report
