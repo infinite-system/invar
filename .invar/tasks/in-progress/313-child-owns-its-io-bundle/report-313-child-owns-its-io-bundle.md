@@ -2,8 +2,8 @@
 
 Status: READY
 
-This bundle completes [terminal mouse passthrough to child apps (#313)](../../active/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md)
-and [child terminal colors must not be themed (#315)](../../active/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md).
+This bundle completes [terminal mouse passthrough to child apps (#313)](../../completed/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md)
+and [child terminal colors must not be themed (#315)](../../completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md).
 The worktree is clean. Both task commits passed the enforcing hook without `SKIP_GATE`.
 
 ## Shared boundary
