@@ -1,6 +1,6 @@
 # 305 — unknown ${...} task variables pass through to the shell (VSCode parity)
 
-Status: active
+State: COMPLETED — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
 Engine: codex
 Effort: medium
 Provenance: USER-DIRECTED 2026-07-29
