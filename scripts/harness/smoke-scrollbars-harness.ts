@@ -930,6 +930,45 @@ function verticalEditorScrollBarProof(
   };
 }
 
+function verticalScrollBarProofAtKnownGeometry(
+  snapshot: HarnessSnapshot.Model,
+  knownGeometry: VerticalScrollBarProof,
+): VerticalScrollBarProof | null {
+  const thumbRows: number[] = [];
+  const trackEndRowExclusive =
+    knownGeometry.trackStartRow + knownGeometry.trackLength;
+  for (
+    let row = knownGeometry.trackStartRow;
+    row < trackEndRowExclusive;
+    row++
+  ) {
+    const cell = snapshot.cell(row, knownGeometry.column);
+    if (
+      cell?.isBackgroundRgb &&
+      cell.background === knownGeometry.thumbBackground
+    ) {
+      thumbRows.push(row);
+    }
+  }
+  const thumbStartRow = thumbRows[0];
+  const thumbEndRow = thumbRows.at(-1);
+  if (
+    thumbStartRow === undefined ||
+    thumbEndRow === undefined ||
+    thumbRows.length < 2 ||
+    thumbRows.length >= knownGeometry.trackLength ||
+    thumbEndRow - thumbStartRow + 1 !== thumbRows.length
+  ) {
+    return null;
+  }
+  return {
+    ...knownGeometry,
+    thumbStartRow,
+    thumbEndRow,
+    thumbLength: thumbRows.length,
+  };
+}
+
 function verticalDiffScrollBarProof(
   snapshot: HarnessSnapshot.Model,
 ): VerticalScrollBarProof | null {
@@ -1684,6 +1723,10 @@ async function proveVerticalEditorThumbStability(
       'editor-scrollbar-v',
       modeLabel,
       diagnosticsRequired,
+      (snapshot) =>
+        markedThumbProof === null
+          ? null
+          : verticalScrollBarProofAtKnownGeometry(snapshot, markedThumbProof),
     );
     proveStableVerticalThumbInputsAndExtent(
       thumbFrames,

@@ -1,0 +1,15 @@
+{
+  "task": 339,
+  "slug": "demo-supersampled-graphics-tier-resolution",
+  "branch": "fleet/339-demo-supersampled-graphics-tier-resolution",
+  "worktree": ".invar/worktrees/339-demo-supersampled-graphics-tier-resolution",
+  "tmuxSession": "invar/339-demo-supersampled-graphics-tier-resolution",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-339-demo-supersampled-graphics-tier-resolution.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "a1c9f878491c12ee0505016308339224fea44d39",
+  "startedAt": "2026-07-30T02:39:04-04:00"
+}

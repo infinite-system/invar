@@ -7,14 +7,16 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/in-progress/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md)  [building]
+- #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/in-progress/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md)  [building]
+  `tmux attach -t invar/339-demo-supersampled-graphics-tier-resolution`
+- #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/in-progress/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/336-video-playback-ffmpeg-overwrite-flag`
-- #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/in-progress/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md)  [building]
-  `tmux attach -t invar/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (3)
+## USER-DIRECTED (5)
+- #338 [declared-graphics-tier-fails-silently](.invar/tasks/active/338-declared-graphics-tier-fails-silently/task-338-declared-graphics-tier-fails-silently.md)
+- #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
@@ -41,7 +43,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 [harness-diagnostic-provenance-guard](.invar/tasks/active/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (19)
+## FLAKE-EVIDENCE (20)
+- #337 [plugin-manifest-structure-scrollbar-intermittent](.invar/tasks/active/337-plugin-manifest-structure-scrollbar-intermittent/task-337-plugin-manifest-structure-scrollbar-intermittent.md)
 - #334 [structure-pane-no-file-open-transient](.invar/tasks/active/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md)
 - #260 [first-click-of-a-session-lands-nowhere](.invar/tasks/active/260-first-click-of-a-session-lands-nowhere/task-260-first-click-of-a-session-lands-nowhere.md)
 - #257 [last-row-right-border-blank-cell](.invar/tasks/active/257-last-row-right-border-blank-cell/task-257-last-row-right-border-blank-cell.md)
@@ -94,7 +97,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 112 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 113 — full log: project.tasks-completed.md)
+- #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/completed/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md) — 359ca6da — both gate intermittents were instrument defects; smokes repaired, hook gate ALL-PASS
 - #329 [tasks-watch-animation-tick-restored](.invar/tasks/completed/329-tasks-watch-animation-tick-restored/task-329-tasks-watch-animation-tick-restored.md) — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
 - #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/completed/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md) — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
 - #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
@@ -109,4 +113,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/completed/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md) — ec92a8b9 — bottom panel separator: thin lower-half-cell + editor action buttons + always-draggable geometry
 - #316 [terminal-list-close-icon-matches-tabs](.invar/tasks/completed/316-terminal-list-close-icon-matches-tabs/task-316-terminal-list-close-icon-matches-tabs.md) — cd7abe37 — one panelClose glyph across list/tabs/panel (landed in #300 bundle merge ec651408)
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
-- #314 [harness-and-tooling-integrity-bundle](.invar/tasks/completed/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md) — 331a8d33 — harness/tooling integrity: Drive paint-condition waits, dispatch root-relative pointers, folder-open task isolation
