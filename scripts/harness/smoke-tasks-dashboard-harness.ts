@@ -10,8 +10,99 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { FrameDump } from '../../src/modules/system/FrameProbe';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+
+async function awaitFrameDump(
+  framePath: string,
+  predicate: (frameDump: FrameDump) => boolean,
+  description: string,
+): Promise<FrameDump> {
+  const deadline = performance.now() + 5_000;
+  while (performance.now() < deadline) {
+    const frameFile = Bun.file(framePath);
+    if (await frameFile.exists()) {
+      const frameDump = (await frameFile.json()) as FrameDump;
+      if (predicate(frameDump)) return frameDump;
+    }
+    await Bun.sleep(10);
+  }
+  throw new Error(`Timed out waiting for FrameProbe: ${description}`);
+}
+
+function codePointSequenceStart(
+  codePoints: readonly string[],
+  markerCodePoints: readonly string[],
+): number {
+  for (
+    let startIndex = 0;
+    startIndex <= codePoints.length - markerCodePoints.length;
+    startIndex += 1
+  ) {
+    if (
+      markerCodePoints.every(
+        (codePoint, markerIndex) =>
+          codePoints[startIndex + markerIndex] === codePoint,
+      )
+    ) {
+      return startIndex;
+    }
+  }
+  return -1;
+}
+
+function tabBackgroundLane(
+  frameDump: FrameDump,
+  tabLabel: string,
+): { lane: string; before: string; after: string } | null {
+  const marker = ` ${tabLabel} `;
+  for (const row of frameDump.rows) {
+    const markerStart = codePointSequenceStart(
+      Array.from(row.text),
+      Array.from(marker),
+    );
+    if (markerStart < 0) continue;
+    const markerWidth = Array.from(marker).length;
+    const lanes = row.bg.slice(markerStart, markerStart + markerWidth);
+    const lane = lanes[0];
+    if (!lane || lanes.some((candidate) => candidate !== lane)) return null;
+    return {
+      lane,
+      before: row.bg[markerStart - 1] ?? 'edge',
+      after: row.bg[markerStart + markerWidth] ?? 'edge',
+    };
+  }
+  return null;
+}
+
+async function selectSettingByVisibleLabel(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  settingLabel: string,
+): Promise<void> {
+  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the selected settings label is published before navigation',
+    (status) => typeof status.settingsSelectedLabel === 'string',
+  );
+  for (let navigationStep = 0; navigationStep < 40; navigationStep += 1) {
+    if (selectionStatus.settingsSelectedLabel === settingLabel) break;
+    const previousSelectedLabel = selectionStatus.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `settings navigation advances toward ${settingLabel}`,
+      (status) => status.settingsSelectedLabel !== previousSelectedLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    selectionStatus.settingsSelectedLabel === settingLabel,
+    `${settingLabel} is discovered by its live settings label`,
+  );
+}
 
 function writeTask(
   tasksRoot: string,
@@ -88,14 +179,14 @@ writeFileSync(join(fixtureRoot, 'readme.txt'), 'fixture workspace\n');
 
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-tasks-dashboard-home-'));
 const statusPath = join(homeDirectory, 'status.json');
+const framePath = join(homeDirectory, 'frame.json');
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
 mkdirSync(settingsDirectory, { recursive: true });
-// A short cycle interval so the play arm observes a lens advance in seconds, not tens of them,
-// and a wider right dock so the full row text (attachment, duration, identity) is measurable —
-// the pane is still driven at the DEFAULT width by the absent-tree arm below.
+// A short cycle interval lets the play arm observe a lens advance in seconds, not tens of them.
+// The right dock stays at its default width so truncation is measured on the common path.
 writeFileSync(
   join(settingsDirectory, 'settings.json'),
-  JSON.stringify({ tasksDashboardCycleSeconds: 2, rightDockWidth: 60 }),
+  JSON.stringify({ tasksDashboardCycleSeconds: 2 }),
 );
 
 const driver = new PtyTestDriver.Class({
@@ -103,7 +194,12 @@ const driver = new PtyTestDriver.Class({
   columns: 150,
   rows: 40,
   homeDirectory,
-  environment: { TUI_STATUS_PATH: statusPath, COLORTERM: 'truecolor' },
+  environment: {
+    TUI_STATUS_PATH: statusPath,
+    TUI_FRAME_PATH: framePath,
+    TUI_FRAME_DUMP: '1',
+    COLORTERM: 'truecolor',
+  },
   command: [process.execPath, 'src/main.ts', fixtureRoot],
 });
 
@@ -165,11 +261,19 @@ try {
       Number(status.tasksRows) === 5,
   );
   await driver.awaitGridCondition(
-    'the live lens paints the READY and building rows',
-    (snapshot) =>
-      snapshot.findText('Tasks') !== null &&
-      snapshot.findText('#902 planted-ready READY') !== null &&
-      snapshot.findText('#901 planted-building') !== null,
+    'the live lens paints each title above its own status row',
+    (snapshot) => {
+      const readyTitle = snapshot.findText('#902 planted-ready');
+      const buildingTitle = snapshot.findText('#901 planted-building');
+      const readyStatus = snapshot.findText('READY round');
+      const buildingStatus = snapshot.findText('building  10');
+      if (!readyTitle || !buildingTitle || !readyStatus || !buildingStatus)
+        return false;
+      return (
+        readyStatus.row === readyTitle.row + 1 &&
+        buildingStatus.row === buildingTitle.row + 1
+      );
+    },
   );
   HarnessSmoke.Class.pass(
     'the live lens lists the in-progress fixture with the standing vocabulary',
@@ -237,10 +341,10 @@ try {
       status.rightDockActiveContent === 'tasks' &&
       status.rightDockFocused === true,
   );
-  const sessionPosition = driver.snapshot().findText('tmux invar/902');
+  const sessionPosition = driver.snapshot().findText('READY round');
   if (!sessionPosition)
     throw new Error(
-      'The READY task session target disappeared before its click',
+      'The READY task status target disappeared before its click',
     );
   driver.sendMouse({
     kind: 'move',
@@ -293,33 +397,105 @@ try {
     driver,
     statusPath,
     'the active lens groups the waiting fixture by priority',
-    (status) => status.tasksLens === 'active' && Number(status.tasksRows) === 4,
+    (status) => status.tasksLens === 'active' && Number(status.tasksRows) === 3,
   );
   await driver.awaitGridCondition(
-    'the active lens paints the priority group and its task',
+    'the active lens paints a capitalized group and one truncated task row',
     (snapshot) =>
-      snapshot.findText('user-directed (1)') !== null &&
-      snapshot.findText('#903 planted-waiting') !== null,
+      snapshot.findText('User-directed (1)') !== null &&
+      snapshot.findText('#903 plant…') !== null &&
+      snapshot.findText('user-directed (1)') === null,
   );
-  HarnessSmoke.Class.pass('the active lens shows the priority grouping');
+  const darkActiveFrame = await awaitFrameDump(
+    framePath,
+    (candidate) => tabBackgroundLane(candidate, 'ACTIVE') !== null,
+    'the selected Active tab under the dark theme',
+  );
+  const darkActiveBackground = tabBackgroundLane(darkActiveFrame, 'ACTIVE');
+  HarnessSmoke.Class.requireCondition(
+    darkActiveBackground !== null &&
+      darkActiveBackground.lane !== darkActiveBackground.before &&
+      darkActiveBackground.lane !== darkActiveBackground.after,
+    'the Active label and exactly one padding cell on both sides share the selected background',
+  );
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings opens above the selected Active lens',
+    (status) => status.settingsOpen === true,
+  );
+  await selectSettingByVisibleLabel(driver, statusPath, 'Theme');
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the live theme changes from dark to light',
+    (status) => status.settingsSelectedValue === 'light',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes onto the same selected Active lens',
+    (status) => status.settingsOpen === false && status.tasksLens === 'active',
+  );
+  const lightActiveFrame = await awaitFrameDump(
+    framePath,
+    (candidate) => {
+      const activeBackground = tabBackgroundLane(candidate, 'ACTIVE');
+      return (
+        activeBackground !== null &&
+        activeBackground.lane !== darkActiveBackground?.lane
+      );
+    },
+    'the persistent selected Active tab under the light theme',
+  );
+  const lightActiveBackground = tabBackgroundLane(lightActiveFrame, 'ACTIVE');
+  HarnessSmoke.Class.requireCondition(
+    lightActiveBackground !== null &&
+      lightActiveBackground.lane !== lightActiveBackground.before &&
+      lightActiveBackground.lane !== lightActiveBackground.after,
+    'the live light theme preserves the exact padded Active projection with a new theme tone',
+  );
+  HarnessSmoke.Class.pass(
+    'the active lens stays one row and its padded selected tab follows the live theme',
+  );
 
   driver.sendKeys('Right');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the done lens lists the landed fixture',
-    (status) => status.tasksLens === 'done' && Number(status.tasksRows) === 3,
+    (status) => status.tasksLens === 'done' && Number(status.tasksRows) === 2,
   );
   await driver.awaitGridCondition(
-    'the done lens paints the check, the landing commit, and the duration',
-    (snapshot) =>
-      snapshot.findText('#905 planted-landed — merged 1a2b3c4d') !== null &&
-      snapshot.findText('1h 15m') !== null,
+    'the done lens paints one truncated task row',
+    (snapshot) => snapshot.findText('#905 plant…') !== null,
   );
-  HarnessSmoke.Class.pass('the done lens carries the landing attachment');
+  HarnessSmoke.Class.pass('the done lens stays one row at the default width');
 
-  console.log('== tasks dashboard: the cycling overview plays and pauses ==');
-  driver.sendKeys('p');
+  console.log(
+    '== tasks dashboard: the cycling control explains start and stop ==',
+  );
+  const cycleStartPosition = driver.snapshot().findText('▷');
+  if (!cycleStartPosition)
+    throw new Error('The cycle start control disappeared before hover');
+  driver.sendMouse({
+    kind: 'move',
+    column: cycleStartPosition.column,
+    row: cycleStartPosition.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the stopped cycle control explains its next action',
+    (snapshot) => snapshot.findText('Start automatic lens cycling') !== null,
+  );
+  driver.sendMouseClick({
+    column: cycleStartPosition.column,
+    row: cycleStartPosition.row,
+    button: 'left',
+  });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -333,14 +509,33 @@ try {
     (status) => status.tasksLens === 'live',
     15_000,
   );
-  driver.sendKeys('p');
+  const cycleStopPosition = driver.snapshot().findText('■');
+  if (!cycleStopPosition)
+    throw new Error('The cycle stop control disappeared after start');
+  driver.sendMouse({
+    kind: 'move',
+    column: cycleStopPosition.column,
+    row: cycleStopPosition.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the running cycle control explains its next action',
+    (snapshot) => snapshot.findText('Stop automatic lens cycling') !== null,
+  );
+  driver.sendMouseClick({
+    column: cycleStopPosition.column,
+    row: cycleStopPosition.row,
+    button: 'left',
+  });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'pause holds the overview still',
-    (status) => status.tasksCycling === false,
+    'stop holds the current lens selected',
+    (status) => status.tasksCycling === false && status.tasksLens === 'live',
   );
-  HarnessSmoke.Class.pass('the cycling overview plays and pauses');
+  HarnessSmoke.Class.pass(
+    'the cycle control exposes both tooltips and stops on the current lens',
+  );
 
   console.log('== tasks dashboard: selection opens the task record ==');
   // The overview may have advanced again between the observed tick and the pause, so walk the

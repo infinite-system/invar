@@ -72,6 +72,11 @@ class $Theme {
   get taskActionIcons(): TaskActionIconSet {
     return ThemeIcons.Class.taskActionIconsFor(this.glyphLevel.value);
   }
+  /** One-cell truncation mark at the active glyph fallback tier. */
+  get ellipsisCell(): string {
+    return ThemeIcons.Class.agentTranscriptIconsFor(this.glyphLevel.value)
+      .ellipsisCell;
+  }
   /** Staging-checkbox glyphs (unchecked/checked) at the current glyph level. */
   get checkboxIcons(): CheckboxIconSet {
     return ThemeIcons.Class.checkboxIconsFor(this.glyphLevel.value);

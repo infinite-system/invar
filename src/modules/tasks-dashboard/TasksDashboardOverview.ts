@@ -17,6 +17,7 @@
 // invariant: An absent task tree is stated, never blank (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Dashboard motion exists only while observed (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Fleet extras name their repository scope (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Each dashboard lens has one stable row shape (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Reactive } from 'ivue';
@@ -363,6 +364,7 @@ class $TasksDashboardOverview {
   protected taskRows(
     record: TaskRecord,
     overrides: Partial<TasksDashboardRow>,
+    includeDetailRow: boolean,
   ): TasksDashboardRow[] {
     const fleetFacts = this.fleetFactsByFolder.get(record.folderName) ?? null;
     const shared: TasksDashboardRow = {
@@ -401,7 +403,9 @@ class $TasksDashboardOverview {
       ),
       ...overrides,
     };
-    return [shared, { ...shared, kind: 'detail' }];
+    return includeDetailRow
+      ? [shared, { ...shared, kind: 'detail' }]
+      : [shared];
   }
 
   protected buildLiveRows(): TasksDashboardRow[] {
@@ -413,13 +417,17 @@ class $TasksDashboardOverview {
         const { round, ready } = builderStanding(tasksRoot, record);
         const startedAt = startedAtMilliseconds(tasksRoot, record);
         const fleetFacts = this.fleetFactsByFolder.get(record.folderName);
-        return this.taskRows(record, {
-          standing: ready ? 'ready' : 'building',
-          phase: ready ? null : (fleetFacts?.phase ?? 'building'),
-          round,
-          durationLabel:
-            startedAt === null ? '' : formatDuration(Date.now() - startedAt),
-        });
+        return this.taskRows(
+          record,
+          {
+            standing: ready ? 'ready' : 'building',
+            phase: ready ? null : (fleetFacts?.phase ?? 'building'),
+            round,
+            durationLabel:
+              startedAt === null ? '' : formatDuration(Date.now() - startedAt),
+          },
+          true,
+        );
       });
   }
 
@@ -440,10 +448,11 @@ class $TasksDashboardOverview {
       rows.push(
         this.nonTaskRow(
           'group',
-          `${glyph} ${group ?? 'unprioritised'} (${inGroup.length})`,
+          `${glyph} ${this.capitalizedSectionName(group ?? 'unprioritised')} (${inGroup.length})`,
         ),
       );
-      for (const record of inGroup) rows.push(...this.taskRows(record, {}));
+      for (const record of inGroup)
+        rows.push(...this.taskRows(record, {}, false));
     }
     return rows;
   }
@@ -455,14 +464,24 @@ class $TasksDashboardOverview {
       .sort((left, right) => this.byNumberDescending(left, right))
       .flatMap((record) => {
         const { durationMinutes } = landingStamp(tasksRoot, record);
-        return this.taskRows(record, {
-          attachment: completedStateAttachment(record),
-          durationLabel:
-            durationMinutes === null
-              ? ''
-              : formatDuration(durationMinutes * 60000),
-        });
+        return this.taskRows(
+          record,
+          {
+            attachment: completedStateAttachment(record),
+            durationLabel:
+              durationMinutes === null
+                ? ''
+                : formatDuration(durationMinutes * 60000),
+          },
+          false,
+        );
       });
+  }
+
+  protected capitalizedSectionName(sectionName: string): string {
+    return sectionName.replace(/^[a-z]/, (firstLetter) =>
+      firstLetter.toUpperCase(),
+    );
   }
 
   // ---- selection and scroll -----------------------------------------------

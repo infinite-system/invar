@@ -140,6 +140,8 @@ test('task action icons stay one cell and keep readable ASCII fallbacks', () => 
     taskRecord: 'T',
     latestBrief: 'B',
     latestReport: 'R',
+    cycleStart: '>',
+    cycleStop: 'x',
   });
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
     for (const glyph of Object.values(
