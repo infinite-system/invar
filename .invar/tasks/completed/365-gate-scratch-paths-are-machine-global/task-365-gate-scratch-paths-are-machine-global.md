@@ -1,6 +1,6 @@
 # #365 — two gate scratch paths are machine-global across concurrent gates
 
-State: IN-PROGRESS
+State: COMPLETED — 33024fec — gate scratch paths per-worktree; safe overlapping gates
 Priority: user-directed
 Engine: codex
 Environment: linux
