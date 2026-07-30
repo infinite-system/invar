@@ -4,6 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Child synchronized updates commit as one repaint (src/modules/terminal/terminal.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -195,6 +196,25 @@ function frameLaneAt(
     }
   }
   return 'marker-missing';
+}
+
+function terminalBodyText(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+): string {
+  const endRowExclusive = Math.min(
+    snapshot.rows,
+    panelRectangle.top + panelRectangle.height,
+  );
+  const endColumnExclusive = Math.min(
+    snapshot.columns,
+    panelRectangle.left + panelRectangle.width,
+  );
+  return snapshot
+    .textRows()
+    .slice(panelRectangle.top, endRowExclusive)
+    .map((rowText) => rowText.slice(panelRectangle.left, endColumnExclusive))
+    .join('\n');
 }
 
 function requireChildColorMatrix(
@@ -848,6 +868,69 @@ try {
     statusPath,
     'the child exits alternate-screen and mouse-tracking modes',
     (status) => status.terminalWheelForwardedToChild === false,
+  );
+
+  console.log(
+    '== harness terminal: real tasks:watch commits one complete initial frame ==',
+  );
+  const tasksWatchBaselineMarker = 'TASKS-WATCH-BASELINE';
+  driver.sendText(`printf '${tasksWatchBaselineMarker}\\n'`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText(tasksWatchBaselineMarker) !== null,
+  );
+  await driver.awaitOutputCondition(
+    'the tasks:watch shell baseline reaches a completed outer frame',
+    () => {
+      const latestObservation = driver
+        .completedFrameObservationsSince(0)
+        .at(-1);
+      return (
+        latestObservation !== undefined &&
+        terminalBodyText(latestObservation.snapshot, panelRectangle).includes(
+          tasksWatchBaselineMarker,
+        )
+      );
+    },
+    5_000,
+  );
+  const tasksWatchObservationStart = driver.completedFrameObservationCount;
+  const tasksWatchScriptPath = join(
+    process.cwd(),
+    'scripts',
+    'tasks',
+    'tasks-status.ts',
+  );
+  driver.sendText(`bun ${tasksWatchScriptPath} watch`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) =>
+      candidate.findText('INVAR TASKS') !== null ||
+      candidate.findText('active ·') !== null,
+    15_000,
+  );
+  const tasksWatchObservations = driver.completedFrameObservationsSince(
+    tasksWatchObservationStart,
+  );
+  const unsafeTasksWatchFrames = tasksWatchObservations.filter(
+    (observation) => {
+      const bodyText = terminalBodyText(observation.snapshot, panelRectangle);
+      return (
+        !bodyText.includes(tasksWatchBaselineMarker) &&
+        !bodyText.includes('tasks-status.ts') &&
+        !bodyText.includes('INVAR TASKS') &&
+        !bodyText.includes('active ·')
+      );
+    },
+  );
+  HarnessSmoke.Class.requireCondition(
+    unsafeTasksWatchFrames.length === 0,
+    `real tasks:watch produced no blank or partial completed frame ` +
+      `(${tasksWatchObservations.length} outer frames)`,
+  );
+  driver.sendKeys('Control+c');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText(tasksWatchBaselineMarker) !== null,
   );
 
   console.log('== harness terminal: mouse mode off keeps clicks in Invar ==');

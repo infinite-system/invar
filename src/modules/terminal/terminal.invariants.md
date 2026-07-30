@@ -95,6 +95,46 @@ cross-oracle sample.
 
 **Last refined:** 2026-07-25
 
+### Child synchronized updates commit as one repaint
+
+**Invariant:** If a child enables DEC private mode 2026, then `TerminalInstance` withholds every
+child-output repaint until the child disables the mode and commits the final emulator grid once. If
+the child leaves the mode enabled for one second, then the timeout releases the latest grid and
+later output remains live until the child disables the mode.
+
+**Scope:** `TerminalEmulator.isSynchronizedOutputEnabled`, the child-output and metadata callbacks in
+`TerminalInstance`, and children such as `tasks:watch` that emit DEC 2026. Host output synchronization
+and ordinary children that do not enable DEC 2026 are outside the hold.
+
+**Mechanism:** `TerminalEmulator` continues to parse every byte into its one grid.
+`TerminalInstance.holdSynchronizedUpdate` suppresses only the coarse reactive repaint pulse, starts
+one bounded timer at the first held pulse, and `commitChildOutput` releases one final pulse at
+DECRST. The timeout follows tmux's [one-second synchronized-output guard](https://github.com/tmux/tmux/blob/master/screen-write.c#L1014-L1059);
+the [synchronized-output protocol](https://contour-terminal.org/vt-extensions/synchronized-output/)
+defines DECSET 2026 as the begin marker and DECRST 2026 as the commit marker. `TasksWatchRenderer`
+puts alternate-screen entry, cursor-home row diffs, and screen restoration inside those markers and
+never emits a full-screen clear.
+
+**Generates:** Atomic child TUI updates; no timing coalescer for ordinary output; one deadlock guard
+for an unclosed child bracket; a data-tick `tasks:watch` that sends no unchanged rows.
+
+**Evidence:** `TerminalInstance.test.ts` `DEC 2026 holds interior writes and commits the final grid
+once`, `ordinary child writes keep their existing repaint cadence`, and `an unclosed DEC 2026 update
+releases after the bounded timeout`; `scripts/tasks/TasksWatchRenderer.test.ts`;
+`scripts/harness/smoke-terminal-harness.ts` `real tasks:watch commits one complete initial frame`.
+
+**Impossible if true:** A completed Invar frame that contains the blank or partial interior of a
+DEC 2026 child update; an unclosed bracket freezing child output beyond one second; an ordinary child
+write waiting for a synchronized-output timer; `tasks:watch` emitting CSI 2 J or rewriting an
+unchanged row.
+
+**Verification:** `bun test src/modules/terminal/TerminalInstance.test.ts
+scripts/tasks/TasksWatchRenderer.test.ts && bun scripts/harness/smoke-terminal-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Observation never writes to the PTY
 
 **Invariant:** If `TerminalObserver` observes terminal activity, then it receives parsed emulator

@@ -39,6 +39,8 @@
 // requires every signal to fire. A checker whose only possible output is "clean" is
 // indistinguishable from a healthy repo, which is the defect class this repo has now
 // found eight times. The control fails loudly and exits non-zero.
+//
+// invariant: Child synchronized updates commit as one repaint (src/modules/terminal/terminal.invariants.md)
 
 import {
   closeSync,
@@ -55,6 +57,7 @@ import {
 } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
+import { TasksWatchRenderer } from './TasksWatchRenderer';
 
 export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
 
@@ -1322,6 +1325,7 @@ function live(
   tasksRoot: string,
   spinnerFrame?: number,
   preloadedRecords?: TaskRecord[],
+  outputLine: (line: string) => void = (line) => console.log(line),
 ): number {
   const allRecords = preloadedRecords ?? readTaskRecords(tasksRoot);
   if (preloadedRecords === undefined) {
@@ -1332,10 +1336,10 @@ function live(
     .filter((record) => record.directoryState === 'in-progress')
     .sort(byNumberDescending);
   if (records.length === 0) {
-    console.log('IN-PROGRESS: none.');
+    outputLine('IN-PROGRESS: none.');
     return 0;
   }
-  console.log(bold(`⛭ IN-PROGRESS (${records.length})`));
+  outputLine(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
     // ROUNDS. One rule for the CLI and the pane — see builderStanding above.
     const { round, ready } = builderStanding(tasksRoot, record);
@@ -1388,13 +1392,13 @@ function live(
     const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
     // Two-line row: the name owns its line; the status lives under it — the
     // row stays whole on narrow screens instead of wrapping mid-badge.
-    console.log(
+    outputLine(
       `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}`,
     );
-    console.log(
+    outputLine(
       `     ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
     );
-    console.log(
+    outputLine(
       paint('38;5;240', `       tmux attach -t invar/${record.folderName}`),
     );
   }
@@ -1550,8 +1554,9 @@ function statsLine(tasksRoot: string): string {
   return parts.join(dim('  ·  '));
 }
 
-// tasks:watch — the live view as a dashboard: spinners on building tasks,
-// READY rows still, durations ticking. Redraws every 2 s; Ctrl+C exits.
+// tasks:watch — the live view as a dashboard: building marks advance only on
+// data samples, READY rows stay still, and unchanged rows produce no bytes.
+// Ctrl+C exits.
 // Motion means work; stillness means a report is waiting for the conductor.
 // Flyweight for the watch: work is proportional to what CHANGED, not to the
 // clock. A seven-stat mtime probe decides whether the task tree is re-read;
@@ -1579,7 +1584,7 @@ export function tasksTreeStamp(tasksRoot: string): string {
 }
 
 async function watchLenses(tasksRoot: string): Promise<number> {
-  let frame = 0;
+  let dataTick = 0;
   // Deltas are measured against the moment the watch started: "what grew
   // while you were looking". The expensive samples refresh once a minute.
   const baselineCommits = commitsToday();
@@ -1587,66 +1592,59 @@ async function watchLenses(tasksRoot: string): Promise<number> {
   const baselineLanded = landedTodayStats(tasksRoot).landedToday;
   let sampledCommits = baselineCommits;
   let sampledLines = baselineLines;
-  // Alternate screen buffer + hidden cursor: a real repaint, not a stream.
-  // Plain \x1b[2J pushes each "cleared" frame into scrollback on several
-  // terminals, which reads as streaming. The alt screen has no scrollback,
-  // and exit restores the caller's screen exactly.
-  const enterAlternateScreen = '\x1b[?1049h\x1b[?25l';
-  const leaveAlternateScreen = '\x1b[?25h\x1b[?1049l';
-  process.stdout.write(enterAlternateScreen);
   const restoreScreen = (): void => {
-    process.stdout.write(leaveAlternateScreen);
+    process.stdout.write(TasksWatchRenderer.Class.restoreScreen());
     process.exit(0);
   };
   process.on('SIGINT', restoreScreen);
   process.on('SIGTERM', restoreScreen);
-  // Three cadences, one loop: PAINT at 30 fps (the spinner), DATA every ~2 s
-  // (task folders), STATS once a minute (git spawns and line counts). The
-  // spinner earns its smoothness without hammering the filesystem.
-  const PAINT_MILLISECONDS = 33;
-  const DATA_EVERY_FRAMES = 60;
-  const STATS_EVERY_FRAMES = 1800;
+  const DATA_MILLISECONDS = 2_000;
+  const STATS_MILLISECONDS = 60_000;
   let cachedRecords = readTaskRecords(tasksRoot);
   let cachedLanded = baselineLanded;
   let lastTreeStamp = tasksTreeStamp(tasksRoot);
+  let nextStatsSample = performance.now() + STATS_MILLISECONDS;
+  let previousLines: readonly string[] = [];
+  let firstFrame = true;
   for (;;) {
-    if (frame % DATA_EVERY_FRAMES === 0 || frame === 0) {
-      const stamp = tasksTreeStamp(tasksRoot);
-      if (stamp !== lastTreeStamp) {
-        lastTreeStamp = stamp;
-        cachedRecords = readTaskRecords(tasksRoot);
-        cachedLanded = landedTodayStats(tasksRoot).landedToday;
-      }
-      // Builder diffs always refresh on the tick — the worktrees are where
-      // the motion IS, and it is one cached-base spawn per builder.
-      refreshLineDeltas(cachedRecords);
-      refreshGateGlance();
+    const stamp = tasksTreeStamp(tasksRoot);
+    if (stamp !== lastTreeStamp) {
+      lastTreeStamp = stamp;
+      cachedRecords = readTaskRecords(tasksRoot);
+      cachedLanded = landedTodayStats(tasksRoot).landedToday;
     }
-    if (frame % STATS_EVERY_FRAMES === 0 && frame > 0) {
+    // Builder diffs always refresh on the data tick. The worktrees are where
+    // the motion is, and this remains one cached-base spawn per builder.
+    refreshLineDeltas(cachedRecords);
+    refreshGateGlance();
+    if (performance.now() >= nextStatsSample) {
+      nextStatsSample = performance.now() + STATS_MILLISECONDS;
       const commitsNow = commitsToday();
       if (commitsNow !== sampledCommits) {
         sampledCommits = commitsNow;
         sampledLines = sourceLineCount(); // only when a landing moved main
       }
     }
-    currentPaintFrame = frame;
-    // Home, then clear to end — repaint in place inside the alt screen.
-    process.stdout.write('\x1b[H\x1b[0J');
-    const clock = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    currentPaintFrame = dataTick;
+    const frameLines: string[] = [];
+    const outputLine = (line: string): void => {
+      frameLines.push(line);
+    };
+    const clock = new Date().toLocaleTimeString('en-GB', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     const fleet = fleetDeltaTotals();
-    console.log(
-      `${bold('INVAR TASKS')} ${dim(`· ${clock} · 30fps · Ctrl+C to exit`)}`,
+    outputLine(
+      `${bold('INVAR TASKS')} ${dim(`· ${clock} · ledger ticks · Ctrl+C to exit`)}`,
     );
-    console.log(
+    outputLine(
       `  ${bold('tonight')} ${rollingBadge('fleet-added', fleet.added, '+', green)} ${rollingBadge('fleet-removed', fleet.removed, '-', red)} ${dim(`lines in flight · ${fleet.builders} builder(s)`)}`,
     );
-    console.log('');
-    live(
-      tasksRoot,
-      Math.floor(frame / TASKS_MOTION_PAINTS_PER_STEP),
-      cachedRecords,
-    );
-    console.log('');
+    outputLine('');
+    live(tasksRoot, dataTick, cachedRecords, outputLine);
+    outputLine('');
     const completedCount = cachedRecords.filter(
       (record) => record.directoryState === 'completed',
     ).length;
@@ -1657,7 +1655,7 @@ async function watchLenses(tasksRoot: string): Promise<number> {
       now !== null && base !== null && now > base
         ? green(` +${now - base}`)
         : '';
-    console.log(
+    outputLine(
       dim(`◫ ${activeCount} active · ✔ ${completedCount} completed`) +
         dim('  ·  ') +
         `⚡${cachedLanded} landed today${delta(cachedLanded, baselineLanded)}` +
@@ -1666,8 +1664,16 @@ async function watchLenses(tasksRoot: string): Promise<number> {
         dim('  ·  ') +
         `≡ ${rollingBadge('src-lines', sampledLines ?? 0, '', (t) => t)} src lines${delta(sampledLines, baselineLines)}`,
     );
-    frame += 1;
-    await Bun.sleep(PAINT_MILLISECONDS);
+    const frameOutput = TasksWatchRenderer.Class.frame(
+      previousLines,
+      frameLines,
+      firstFrame,
+    );
+    if (frameOutput) process.stdout.write(frameOutput);
+    previousLines = frameLines;
+    firstFrame = false;
+    dataTick += 1;
+    await Bun.sleep(DATA_MILLISECONDS);
   }
 }
 
