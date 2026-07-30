@@ -1,6 +1,6 @@
 # #340 — opening a file reveals and selects it in the file tree
 
-State: IN-PROGRESS
+State: COMPLETED — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
 Priority: user-directed
 Engine: codex
 Environment: linux
