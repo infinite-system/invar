@@ -27,6 +27,14 @@ Addition (verbatim, 2026-07-29, GOVERNS equally):
 > a correct ratio cadence dependent on specific critical network
 > properties, Invar should make every node invariable.
 
+Second addition (verbatim, 2026-07-29, GOVERNS equally):
+
+> Also, leeching to an extent from non Invar instances that do not
+> contribute back should be possible but capped and limited, to
+> preserve the network.
+
+("to an extent" — the user's own correction of his "to an extend".)
+
 Naming context (same session): the user named the north star
 "Indranet Invarnet" — Indra's net; the prior verbatim north star is
 "imagine we create our own internet between Invar instances"
@@ -65,7 +73,19 @@ this task folder) covering, with citations for every ecosystem claim:
    should make every node invariable" — read as: a node's own
    performance envelope is invariant under network participation; the
    map should treat that as the acceptance criterion for every
-   candidate design.
+   candidate design. (e) NON-INVAR CONSUMERS: per the second addition,
+   nodes that are not Invar instances and contribute nothing back may
+   still consume — deliberately, as a welcome mat — but capped and
+   limited so the network is preserved. Design questions the map must
+   answer: how is a non-contributing consumer distinguished from a
+   contributing peer without an identity authority (protocol handshake,
+   allocation tokens, behavioral)? what budget does the swarm reserve
+   for altruistic serving and WHO pays it (pro-rata from every node's
+   cap, or dedicated donor slots — cf. BitTorrent optimistic unchoke as
+   prior art for bounded altruism, cite)? what happens at saturation —
+   graceful degradation for leechers first, contributors never; and how
+   does a leecher's path to becoming a contributor look (install Invar,
+   inherit an allocation)?
 3. **Server independence**: what remains centralized in each prior-art
    system (trackers, signaling, TURN, certificate roots) and the
    decentralized alternatives (DHT, rendezvous over existing relays,
