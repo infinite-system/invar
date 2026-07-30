@@ -147,6 +147,80 @@ describe('ApplicationContributions', () => {
     expect(keybindings.hasGuard('sampleAllowed')).toBe(false);
   });
 
+  test('a failed contributor is recorded while later contributors activate', () => {
+    const { manager } = createManager();
+    const failing = {
+      identifier: 'failing',
+      name: 'Failing',
+      activateApplication() {
+        throw new Error('fixture activation failed');
+      },
+    };
+    const later = {
+      identifier: 'later',
+      name: 'Later',
+      activated: false,
+      activateApplication() {
+        this.activated = true;
+      },
+    };
+    const options = (
+      manager as unknown as { options: ApplicationContributionsOptions }
+    ).options;
+    const contributions = new ApplicationContributions.Class(
+      [failing, later],
+      options,
+    );
+
+    contributions.activateAll();
+
+    expect(later.activated).toBe(true);
+    expect(contributions.entries()).toEqual([
+      expect.objectContaining({
+        identifier: 'failing',
+        failure: 'Error: fixture activation failed',
+      }),
+      expect.objectContaining({ identifier: 'later', enabled: true }),
+    ]);
+  });
+
+  test('vendor setting identities are qualified by the catalog identity', () => {
+    const { manager, settings } = createManager();
+    const options = (
+      manager as unknown as { options: ApplicationContributionsOptions }
+    ).options;
+    const vendorContributor: ApplicationContributor = {
+      identifier: 'example/playstation',
+      name: 'PlayStation Tools',
+      vendorMetadata: {
+        version: '1.0.0',
+        provenance: 'network-gated',
+        kernelOverrides: [],
+      },
+      activateApplication(context) {
+        context.registerSetting({
+          identifier: 'enabled',
+          label: 'Enabled',
+          section: 'PlayStation Tools',
+          defaultValue: true,
+          spec: { kind: 'boolean' },
+        });
+      },
+    };
+    const contributions = new ApplicationContributions.Class(
+      [vendorContributor],
+      options,
+    );
+
+    contributions.activateAll();
+
+    expect(
+      settings
+        .contributedSettingDescriptors()
+        .map((setting) => setting.identifier),
+    ).toEqual(['example/playstation.enabled']);
+  });
+
   test('a contributed dock side moves one live pane both ways', () => {
     const settings = new Settings.Class();
     const contentOrder = settings.primaryDockContentOrder;

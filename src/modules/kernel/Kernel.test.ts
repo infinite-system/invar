@@ -37,3 +37,28 @@ test('double seal is idempotent', () => {
 test('the selected class owns one process-wide instance', () => {
   expect(Kernel.Class.instance).toBe(Kernel.Class.instance);
 });
+
+test('named extensions compose in order before seal and reset restores the base', () => {
+  const kernel = new Kernel.Class();
+  class Base {
+    readonly path = ['base'];
+  }
+  let Selected = Base;
+  kernel.defineClass('invar/test/Base', Base, (selectedClass) => {
+    Selected = selectedClass as typeof Base;
+  });
+  kernel.extend('example/first', 'invar/test/Base', (Parent) => {
+    return class extends Parent {
+      readonly first = true;
+    };
+  });
+  kernel.extend('example/second', 'invar/test/Base', (Parent) => {
+    return class extends Parent {
+      readonly second = true;
+    };
+  });
+  kernel.seal();
+  expect(new Selected()).toMatchObject({ first: true, second: true });
+  kernel.reset();
+  expect(new Selected()).toEqual({ path: ['base'] });
+});

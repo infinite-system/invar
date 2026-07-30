@@ -657,28 +657,32 @@ completed and sealed — no application instance is created during plugin regist
 
 **Scope:** Boot sequence; kernel plugins; the `App` root and all module models.
 
-**Mechanism:** The kernel (vendored/adapted from `../ivue` extensible-kernel) registers
-extension classes, captures inheritance, topologically composes plugin factories, reparents
-descendants onto composed parents, applies `Reactive()`/`Static()`, replaces namespace `Class`
-bindings, then seals; construction after seal is native `new` + prototype dispatch with zero
-registry lookup. Sealing changes future construction only; it never hot-mutates existing
-instances.
+**Mechanism:** The kernel publishes a short named target catalog. Each target binds an immutable
+base class to its namespace `Class` publication function. Before seal, verified plugins register
+ordered extension factories against those names. Seal folds each target's factories over its base,
+publishes the selected class once, runs legacy seal hooks, and rejects every later registration.
+Construction after seal is native `new` plus prototype dispatch with zero registry lookup. Reset
+restores base publications for test isolation and the next process composition. A product restart,
+not reset in a live app, changes the user composition.
 
-**Generates:** The `Bootstrap` boot phase; `kernel.sealClassGraph()` before `new App.Class()`;
-plugin toggle = capture → reset → re-register → seal → reconstruct.
+**Generates:** `KernelTargets`; the `Bootstrap` seal before `new App.Class()`; declared vendor
+extensions; restart-based install, update, enable, disable, rollback, and removal.
 
-**Evidence:** `../ivue/examples/playground/src/examples/extensible-kernel/kernel.ts`
-(`sealClassGraph` composes then seals). Kernel module M1, plugins M7.
+**Evidence:** `src/modules/kernel/Kernel.ts`; `src/modules/kernel/KernelTargets.ts`;
+`src/modules/app/AppLoader.ts`; `src/modules/app/Bootstrap.ts`;
+`src/modules/kernel/Kernel.test.ts`;
+`.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/326-runtime-install-relaunch-harness.ts`.
 
 **Impossible if true:** An application singleton constructed during module evaluation or during
 plugin registration; a live instance mutated into a new class by a plugin toggle.
 
-**Verification:** A test that registers a kernel plugin, seals, constructs, and asserts the
-composed behavior is present and no instance predates the seal.
+**Verification:** `bun test src/modules/kernel/Kernel.test.ts
+src/modules/vendors/VendorPlugins.test.ts`; `bun
+.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/326-runtime-install-relaunch-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-30
 
 ### ivue owns state and OpenTUI owns projection
 
