@@ -54,3 +54,14 @@ PANE LEVEL — inside one space:
 - All prior #346/#387 wins survive: slim marks, the pad cell, drag hit
   geometry, workspace scoping, auto-cycle, idle quiescence.
 - The #384 direction holds: real-UI affordances, no bracket decoration.
+
+## Clarification (user, same day, VERBATIM)
+
+"In the same terminal i meant more terminal/agent/invar agent windows,
+not tabs, tabs are outer control to make more terminal containers,
+database containers, etc"
+
+Reading confirmed: NO nested tabs inside a container. Tabs (outer row)
+create containers; the lower-level + adds WINDOWS (panes) of Terminal /
+AI Agent (Claude) / Invar Agent side by side inside the current
+container.
