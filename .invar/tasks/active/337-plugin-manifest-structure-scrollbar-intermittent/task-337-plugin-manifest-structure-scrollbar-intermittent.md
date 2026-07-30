@@ -49,3 +49,4 @@ TWICE (attempt 1 and the retry) in /tmp/merge-gate-failures.3937812/. Same
 settled-geometry wait family. Third sighting tonight; now recurring across
 gates. Dispatch when a lane frees, with #334's status-AND-grid wait repair
 and #335's discover-once pattern as the starting hypotheses.
+#339 bycatch 2026-07-30: plugin-manifest structure-outline drive timed out TWICE in #339's hook gate (attempt logs preserved in report). Second night sighting — per this task's own trigger rule, dispatch-ready.

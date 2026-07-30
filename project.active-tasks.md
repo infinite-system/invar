@@ -6,17 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/in-progress/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md)  [building]
   `tmux attach -t invar/342-tasks-json-panes-fail-to-load`
 - #340 [file-tree-reveals-open-file](.invar/tasks/in-progress/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md)  [building]
   `tmux attach -t invar/340-file-tree-reveals-open-file`
-- #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/in-progress/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/339-demo-supersampled-graphics-tier-resolution`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (14)
+## USER-DIRECTED (15)
+- #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/active/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md)
 - #350 [nicer-generated-sample-video](.invar/tasks/active/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/active/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)
@@ -107,7 +106,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 115 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 116 — full log: project.tasks-completed.md)
+- #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/completed/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md) — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate
 - #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/completed/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md) — eaf04d09 — video -y fix; combined-tree red proven pre-existing (#334)
 - #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/completed/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md) — 359ca6da — both gate intermittents were instrument defects; smokes repaired, hook gate ALL-PASS
 - #334 [structure-pane-no-file-open-transient](.invar/tasks/completed/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md) — b4695e2f — gate-blocking Drive red fixed; re-gate red is #214's pre-existing class
@@ -122,4 +122,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/completed/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md) — f64f85ef — terminal theme fidelity (VSCode palette + theme defaults) + DEC 2026 synchronized child repaints; tasks:watch flicker gone
 - #319 [tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/completed/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md) — 2012cf08 — tasks pane: two-line live rows, shared-seam cycle tooltip + off, padded persistent tabs, one-line items, capitalized headers
 - #318 [markdown-code-fence-uniform-background](.invar/tasks/completed/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md) — 4410e6a9 — rounded fences, uniform selectionMuted background (landed in #300 bundle merge ec651408)
-- #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/completed/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md) — ec92a8b9 — bottom panel separator: thin lower-half-cell + editor action buttons + always-draggable geometry

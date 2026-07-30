@@ -16,6 +16,8 @@ Task: [supersampled graphics-tier demo resolution](task-339-demo-supersampled-gr
 
 Brief: [round 1 brief](brief-339-2-demo-supersampled-graphics-tier-resolution.md)
 
+Re-gate brief: [round 2 brief](brief-339-3-2-regate-verdict.md)
+
 ## Result
 
 The 3D demo now renders at 8× supersampling on kitty and sixel tiers.
@@ -117,6 +119,25 @@ The first removal attempt found a static test-tool import of the removable modul
 The harness now loads its optional smoke subject only when the smoke runs.
 The repeated removal build passed.
 
+## Re-gate
+
+I merged `main` into the task branch without a conflict.
+The merge commit is `fa435d8c1b524253e2d43295d9ff94d277cfc80b`.
+
+I then created the required empty commit without `SKIP_GATE`.
+The re-gate commit is `6a92212143690c7dd5076491d63400a4a5d6086b`.
+The hook reported:
+
+```text
+GATE_EXIT=0
+merge-gate: ALL-PASS
+```
+
+The retry tally named two starvation-class retries.
+`smoke: move-line harness` passed on its quiet retry.
+`smoke: panel-chrome harness` passed on its quiet retry.
+The gate did not report another retry.
+
 ## Invariant review
 
 | Record | Verdict | Evidence |
@@ -171,4 +192,4 @@ The harness proves the encoder input resolution.
 It cannot prove visible sharpness in the user’s Ghostty session through cmux.
 The remaining check is to open the 3D demo there and compare the graphics tier with half-block.
 
-No push, merge, or tag was performed.
+No push, landing merge, or tag was performed.

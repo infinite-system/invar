@@ -1,6 +1,6 @@
 # #339 — 3D demo renders at supersampled pixel resolution on graphics-capable tiers
 
-State: IN-PROGRESS
+State: COMPLETED — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate
 Priority: user-directed
 Engine: codex
 Environment: linux

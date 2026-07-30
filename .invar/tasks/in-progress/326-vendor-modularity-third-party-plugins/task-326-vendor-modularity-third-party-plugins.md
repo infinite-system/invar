@@ -93,3 +93,12 @@ The user approves/amends the plan, then THE SAME BUILDER SESSION
 implements phase 1. CONDUCTOR NOTE: do NOT land/close this lane at
 stage-1 READY — the plan goes to the user while the session stays
 alive; steer the approval (or amendments) back into the same session.
+
+## User guidance (2026-07-30, pre-stage-2): in-app restart on plugin install
+
+Plugin install must NOT require a manual reboot. VS Code model: the app
+offers "restart to apply" and relaunches ITSELF from within (re-exec
+preserving workspace/session state), the new plugin active after. Fold into
+the stage-2 plan: install -> stage artifact -> in-app restart affordance ->
+relaunch with plugin composed at kernel seal. Stage 2 still awaits explicit
+go; this narrows its design.
