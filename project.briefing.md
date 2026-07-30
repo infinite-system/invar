@@ -407,3 +407,16 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
   kill without user word; duplicate #338 folder retires after its death.
 - Builders misread "do not run merge-gate.sh" as SKIP_GATE license; briefs
   must say: let the commit hook run the gate.
+
+### ANCHOR 17 DELTA (03:4x)
+- #342 LANDED e93995e7 (negative diagnosis + smoke ratchet). #353 filed
+  from its bycatch (harness contract omits folder-open suppression). Two
+  single-occurrence gate flakes logged inside #353, not converted.
+- #350 DISPATCHED as the OPUS lane (claude opus medium), branch
+  fleet/350-nicer-generated-sample-video. dispatch's send said NOT
+  CONFIRMED but the pane shows the builder actively thinking — the
+  confirm heuristic is codex-shaped; claude delivery verified by pane
+  capture. LESSON: for claude lanes verify delivery by pane capture.
+- Lanes now: 326-stage-two (codex med), 351 (codex high), 350 (opus med).
+  Mix satisfied. Queue front after these: 343 → 344 → 345 → 346 → 347 →
+  348 → 349 → 352 → 341 → 337 (+ 353 hygiene).
