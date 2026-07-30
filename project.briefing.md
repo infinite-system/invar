@@ -2,6 +2,36 @@
 
 ## RESUME ANCHOR 20 — 2026-07-30 14:06 (written at 77.6% gauge, pre-compaction)
 
+### ANCHOR 20 — delta 2 (2026-07-30 ~16:0x, at 96% — FINAL before compaction)
+
+LANDED since delta 1: #409 (layout tiling, 91249982, narrow-rule
+markdown flake recorded into #362), #404 (panel v2, 17b89a64 — full
+three-message spec), #381 (LSP everywhere, d8526062 — compiled binary
+lacked PATH augmentation; app-root discovery added; #294 fixture blind
+spot explained), #408 (workspace isolation, 68fcad24, 2 rounds — six
+leaks closed, v2 panel covered). 27 landings today. FILED #410
+(merge-gate scratch cleanup; 2212 dead-owner files swept by hand once)
+and #411 (gate-load starvation family — retry-green machinery defect,
+evidence consolidated).
+
+ONE LANE LIVE: #393 — merge round done or near; then the two queued
+rounds: hidden-tasks-pane 30% polling (observed=painted fix +
+proportional visible tick, real-shaped fixture). Land on its green via
+the ritual (extract-gate-verdict for codex; overlap check FIRST — comm
+-12 on merge-base diffs; builder merge-forward round on semantic
+overlap).
+
+NEXT DISPATCHES when slots free: #382 (claude resume dialog cut off),
+#395 (Database connect hidden-field focus), #397 (FrameProbe misdecode),
+#403 (shrunk: record the cache bound), #405 (check against v2 PanelHost
+first), #406, #407, #410, #411, #376 (delta sampling + whoami),
+#392/#394/#396/#399/#400/#401 hygiene. User offer OPEN: flip
+~/.codex/config.toml effort to medium — awaiting their word.
+
+Post-compaction: read this anchor, verify lanes via tmux ls + git log,
+re-arm fleet-watch Monitor if TaskList shows none. Landed-today count
+and ritual live in delta 1 + anchor 20 body.
+
 ### ANCHOR 20 — delta 1 (2026-07-30 ~14:5x, written at the 85% CHECKPOINT)
 
 Since anchor 20: LANDED #402 Invar Monitoring plugin (dae7fba9, opus —
