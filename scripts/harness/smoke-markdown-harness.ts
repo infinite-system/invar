@@ -204,15 +204,32 @@ function displayColumnOfText(
 function findPreviewButton(
   snapshot: HarnessSnapshot.Model,
 ): { row: number; column: number } | null {
+  const previewGlyph = ThemeIcons.Class.actionIconsFor('unicode').preview;
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
-    const countMatch = rowText.match(/\d+\/\d+/);
-    const countColumn = countMatch?.index ?? -1;
-    if (countColumn >= 3 && rowText.includes('README.md')) {
-      return { row, column: countColumn - 3 };
-    }
+    if (!/\d+\/\d+/.test(rowText)) continue;
+    const breadcrumbRow = row + 1;
+    const previewColumn = snapshot.rowText(breadcrumbRow).indexOf(previewGlyph);
+    if (previewColumn >= 0)
+      return { row: breadcrumbRow, column: previewColumn };
   }
   return null;
+}
+
+function requirePreviewButtonPlacement(
+  snapshot: HarnessSnapshot.Model,
+  editorLeftColumn: number,
+  editorWidth: number,
+  label: string,
+): void {
+  const button = previewButton(snapshot);
+  const bufferTabRow = button.row - 1;
+  const previewGlyph = ThemeIcons.Class.actionIconsFor('unicode').preview;
+  HarnessSmoke.Class.requireCondition(
+    button.column === editorLeftColumn + editorWidth - 2 &&
+      !snapshot.rowText(bufferTabRow).includes(previewGlyph),
+    `${label} keeps the preview action at the breadcrumb right edge and absent from the buffer tab row`,
+  );
 }
 
 function previewButton(snapshot: HarnessSnapshot.Model): {
@@ -480,6 +497,78 @@ async function driveTerminalShrinkAtScale(
     );
     const dockVisiblePreviewColumns = Number(
       dockVisibleStatus.markdownPreviewViewportColumns,
+    );
+    const dockVisibleLayout = dockVisibleStatus.layoutSlots as {
+      editorCenter?: { left?: number; width?: number };
+    };
+    const wideEditorLeft = Number(dockVisibleLayout.editorCenter?.left);
+    const wideEditorWidth = Number(dockVisibleLayout.editorCenter?.width);
+    const wideActionSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line breadcrumb action settles at the editor right edge`,
+      (candidate) => findPreviewButton(candidate) !== null,
+    );
+    requirePreviewButtonPlacement(
+      wideActionSnapshot,
+      wideEditorLeft,
+      wideEditorWidth,
+      `${fixtureLineCount}-line wide view`,
+    );
+
+    scaleDriver.resize(80, 30);
+    const narrowActionStatus = await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line narrow view publishes 80 by 30`,
+      (status) =>
+        status.width === 80 &&
+        status.height === 30 &&
+        status.markdownPreviewOpen === true,
+    );
+    const narrowLayout = narrowActionStatus.layoutSlots as {
+      editorCenter?: { left?: number; width?: number };
+    };
+    const narrowEditorLeft = Number(narrowLayout.editorCenter?.left);
+    const narrowEditorWidth = Number(narrowLayout.editorCenter?.width);
+    const narrowActionSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line narrow breadcrumb preserves the preview action columns`,
+      (candidate) => {
+        const button = findPreviewButton(candidate);
+        return (
+          button !== null &&
+          button.column === narrowEditorLeft + narrowEditorWidth - 2
+        );
+      },
+    );
+    requirePreviewButtonPlacement(
+      narrowActionSnapshot,
+      narrowEditorLeft,
+      narrowEditorWidth,
+      `${fixtureLineCount}-line narrow view`,
+    );
+    const narrowButton = previewButton(narrowActionSnapshot);
+    clickCell(scaleDriver, narrowButton.column, narrowButton.row);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line breadcrumb action closes the preview by pointer`,
+      (status) => status.markdownPreviewOpen === false,
+    );
+    scaleDriver.sendKeys('Control+Shift+v');
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line unchanged preview shortcut reopens the preview`,
+      (status) => status.markdownPreviewOpen === true,
+    );
+    scaleDriver.resize(120, 40);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line action drive restores 120 by 40`,
+      (status) =>
+        status.width === 120 &&
+        status.height === 40 &&
+        status.markdownPreviewOpen === true,
     );
     await HarnessSmoke.Class.concealAutoRevealedRightDock(
       scaleDriver,
@@ -1016,7 +1105,7 @@ try {
         Number(openedMarkdownStatus.bufferRevision),
   );
   snapshot = await driver.awaitGridCondition(
-    'the auto-opened preview paints rendered content and the tab-bar toggle',
+    'the auto-opened preview paints rendered content and the breadcrumb toggle',
     (candidate) =>
       candidate.findText('╭─Preview') !== null &&
       findPreviewButton(candidate) !== null &&
@@ -1230,7 +1319,9 @@ try {
     'status condition: status.markdownPreviewOpen === false',
     (status) => status.markdownPreviewOpen === false,
   );
-  HarnessSmoke.Class.pass('the tab button closes the auto-opened preview');
+  HarnessSmoke.Class.pass(
+    'the breadcrumb button closes the auto-opened preview',
+  );
   snapshot = await driver.awaitGridCondition(
     'the preview pane is absent after the hand-close',
     (candidate) =>
@@ -1298,7 +1389,7 @@ try {
     (candidate) => {
       // Returning to README also auto-hides the structure dock (its reader closed it for this
       // document), and the toggle button rides the editor column's right edge as it widens.
-      // Clicking a pre-relayout position lands on empty tab row, so wait for the button at its
+      // Clicking a pre-relayout position lands on empty breadcrumb row, so wait for the button at its
       // settled dock-free position before measuring the click target.
       const candidateButton = findPreviewButton(candidate);
       return (

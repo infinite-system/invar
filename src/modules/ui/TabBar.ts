@@ -20,6 +20,7 @@ import {
   type WorkspaceTabBarSegment,
   type WorkspaceTabBarHover,
   type BreadcrumbBarSegment,
+  type BreadcrumbBarHover,
   type EditorTitleAction,
 } from './TabBarRenderer';
 import type { CommandRegistry } from '../commands/CommandRegistry';
@@ -49,7 +50,7 @@ class $TabBar {
   protected closePressed: number | null = null; // index of the tab whose ✕ is being pressed
   protected lastRevealedActiveIndex = -1;
   protected breadcrumbSegments: BreadcrumbBarSegment[] = [];
-  protected breadcrumbHoveredSourceIndex: number | null = null;
+  protected breadcrumbHover: BreadcrumbBarHover = null;
   protected readonly breadcrumbPicker: BreadcrumbPicker.Model;
   constructor(protected readonly dependencies: TabBarDependencies) {
     this.breadcrumbPicker = this.createBreadcrumbPicker();
@@ -105,10 +106,8 @@ class $TabBar {
       barWidth: tabBar.width as number,
       hover: this.bufferHover,
       closePressed: this.closePressed,
-      pressedTitleActionIndex: this.pressedTitleActionIndex,
       arrowPressed: this.arrowPressed,
       lastRevealedIndex: this.lastRevealedActiveIndex,
-      editorTitleActions: this.editorTitleActions(),
       projectRoot: workspaceSet.active.root,
       // The between-tab powerline separator comes from the theme's ladder — no inline glyph ladder.
       // invariant: Appearance is data with a capability fallback (project.invariants.md)
@@ -126,7 +125,13 @@ class $TabBar {
       palette: readPalette(),
       barWidth: breadcrumbBar.width as number,
       projectRoot: workspaceSet.active.root,
-      hoveredSourceIndex: this.breadcrumbHoveredSourceIndex,
+      hoveredSourceIndex:
+        this.breadcrumbHover?.kind === 'crumb'
+          ? this.breadcrumbHover.sourceIndex
+          : null,
+      hover: this.breadcrumbHover,
+      pressedTitleActionIndex: this.pressedTitleActionIndex,
+      editorTitleActions: this.editorTitleActions(),
     });
     this.breadcrumbSegments = result.segments;
     return result.text;
@@ -302,8 +307,7 @@ class $TabBar {
     };
   }
   protected wireBufferHandlers(): void {
-    const { tabBar, workspaceSet, tooltip, keybindings, commands, renderer } =
-      this.dependencies;
+    const { tabBar, workspaceSet, tooltip, renderer } = this.dependencies;
     tabBar.onMouseDown = (event) => {
       tooltip.clear();
       const localColumn = event.x - (tabBar.x as number);
@@ -317,13 +321,6 @@ class $TabBar {
         } else workspaceSet.active.activateTab(segment.index);
       } else if (segment.kind === 'badge') {
         this.openTabDropdown(segment.start);
-      } else if (segment.kind === 'titleAction') {
-        const action = this.editorTitleActions()[segment.index];
-        if (action) {
-          this.pressedTitleActionIndex = segment.index;
-          commands.run(action.commandId);
-          renderer.requestRender();
-        }
       } else {
         this.arrowPressed = segment.kind; // pressed colour shows until release
         if (segment.kind === 'arrowLeft') this.scrollTabsLeft();
@@ -332,13 +329,8 @@ class $TabBar {
       }
     };
     tabBar.onMouseUp = () => {
-      if (
-        this.arrowPressed ||
-        this.pressedTitleActionIndex !== null ||
-        this.closePressed !== null
-      ) {
+      if (this.arrowPressed || this.closePressed !== null) {
         this.arrowPressed = null;
-        this.pressedTitleActionIndex = null;
         this.closePressed = null;
         renderer.requestRender();
       }
@@ -355,23 +347,7 @@ class $TabBar {
       } else if (segment) {
         next = { kind: segment.kind, index: -1 };
       }
-      if (segment?.kind === 'titleAction') {
-        const action = this.editorTitleActions()[segment.index];
-        if (action) {
-          const bindingHint = keybindings.bindingHint(
-            action.commandId,
-            'editor',
-          );
-          tooltip.point(
-            `${action.title}${bindingHint ? ` (${bindingHint})` : ''}`,
-            event.x,
-            event.y,
-          );
-        }
-      } else if (
-        segment?.kind === 'arrowLeft' ||
-        segment?.kind === 'arrowRight'
-      ) {
+      if (segment?.kind === 'arrowLeft' || segment?.kind === 'arrowRight') {
         tooltip.point('Pan file tabs without switching', event.x, event.y);
       } else if (segment?.kind === 'badge') {
         tooltip.point('Show all open files', event.x, event.y);
@@ -384,15 +360,9 @@ class $TabBar {
       }
     };
     tabBar.onMouseOut = () => {
-      if (
-        this.bufferHover ||
-        this.arrowPressed ||
-        this.pressedTitleActionIndex !== null ||
-        this.closePressed !== null
-      ) {
+      if (this.bufferHover || this.arrowPressed || this.closePressed !== null) {
         this.bufferHover = null;
         this.arrowPressed = null;
-        this.pressedTitleActionIndex = null;
         this.closePressed = null;
         tooltip.clear();
         renderer.requestRender();
@@ -400,8 +370,14 @@ class $TabBar {
     };
   }
   protected wireBreadcrumbHandlers(): void {
-    const { breadcrumbBar, workspaceSet, tooltip, renderer } =
-      this.dependencies;
+    const {
+      breadcrumbBar,
+      workspaceSet,
+      tooltip,
+      keybindings,
+      commands,
+      renderer,
+    } = this.dependencies;
     const controlsShown = (): boolean =>
       workspaceSet.active.editor.hasDocument.value &&
       workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
@@ -411,29 +387,73 @@ class $TabBar {
       const localColumn = event.x - Number(breadcrumbBar.x);
       const segment = this.breadcrumbSegmentAt(localColumn);
       if (!segment) return;
-      this.breadcrumbPicker.show(segment, {
-        column: Number(breadcrumbBar.x) + segment.start,
-        row: Number(breadcrumbBar.y),
-      });
+      if (segment.kind === 'titleAction') {
+        const action = this.editorTitleActions()[segment.index];
+        if (action) {
+          this.pressedTitleActionIndex = segment.index;
+          commands.run(action.commandId);
+          renderer.requestRender();
+        }
+      } else {
+        this.breadcrumbPicker.show(segment, {
+          column: Number(breadcrumbBar.x) + segment.start,
+          row: Number(breadcrumbBar.y),
+        });
+      }
+    };
+    breadcrumbBar.onMouseUp = () => {
+      if (this.pressedTitleActionIndex !== null) {
+        this.pressedTitleActionIndex = null;
+        renderer.requestRender();
+      }
     };
     breadcrumbBar.onMouseMove = (event) => {
       if (!controlsShown()) return;
       const localColumn = event.x - Number(breadcrumbBar.x);
       const segment = this.breadcrumbSegmentAt(localColumn);
-      const nextHoveredSourceIndex = segment?.sourceIndex ?? null;
-      if (segment) {
+      const nextHover: BreadcrumbBarHover =
+        segment?.kind === 'titleAction'
+          ? { kind: 'titleAction', index: segment.index }
+          : segment?.kind === 'crumb'
+            ? { kind: 'crumb', sourceIndex: segment.sourceIndex }
+            : null;
+      if (segment?.kind === 'titleAction') {
+        const action = this.editorTitleActions()[segment.index];
+        const bindingHint = action
+          ? keybindings.bindingHint(action.commandId, 'editor')
+          : '';
+        if (action) {
+          tooltip.point(
+            `${action.title}${bindingHint ? ` (${bindingHint})` : ''}`,
+            event.x,
+            event.y,
+          );
+        }
+      } else if (segment?.kind === 'crumb') {
         tooltip.point(`Browse ${segment.label}`, event.x, event.y);
       } else {
         tooltip.clear();
       }
-      if (nextHoveredSourceIndex !== this.breadcrumbHoveredSourceIndex) {
-        this.breadcrumbHoveredSourceIndex = nextHoveredSourceIndex;
+      const hoverUnchanged =
+        nextHover === null
+          ? this.breadcrumbHover === null
+          : nextHover.kind === 'titleAction'
+            ? this.breadcrumbHover?.kind === 'titleAction' &&
+              this.breadcrumbHover.index === nextHover.index
+            : this.breadcrumbHover?.kind === 'crumb' &&
+              this.breadcrumbHover.sourceIndex === nextHover.sourceIndex;
+      if (!hoverUnchanged) {
+        this.breadcrumbHover = nextHover;
         renderer.requestRender();
       }
     };
     breadcrumbBar.onMouseOut = () => {
-      if (this.breadcrumbHoveredSourceIndex !== null) {
-        this.breadcrumbHoveredSourceIndex = null;
+      if (
+        this.breadcrumbHover !== null ||
+        this.pressedTitleActionIndex !== null
+      ) {
+        this.breadcrumbHover = null;
+        this.pressedTitleActionIndex = null;
         renderer.requestRender();
       }
       tooltip.clear();

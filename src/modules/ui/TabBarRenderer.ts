@@ -339,13 +339,9 @@ class $TabBarRenderer {
     const badgeText = ` ${activeIndex + 1}/${total} `;
     const badgeWidth = TextCoordinates.Class.lineWidth(badgeText);
     const arrowCellWidth = 3; // ' « ' / ' » ' — padded so the hit target is easy to click
-    const actionCellWidth = 3; // ' icon ' — same padded hit target as the pan arrows
-    const actionsWidth = context.editorTitleActions.length * actionCellWidth;
-    const overflow = totalWidth + badgeWidth + actionsWidth > barWidth;
+    const overflow = totalWidth + badgeWidth > barWidth;
     const rightControlsWidth =
-      badgeWidth +
-      actionsWidth +
-      (overflow ? 1 /* ellipsis */ + arrowCellWidth * 2 : 0);
+      badgeWidth + (overflow ? 1 /* ellipsis */ + arrowCellWidth * 2 : 0);
     const tabsAreaWidth = Math.max(1, barWidth - rightControlsWidth);
     // How many whole tabs fit when rendering forward from a given start index.
     const windowEndFrom = (start: number): number => {
@@ -460,40 +456,6 @@ class $TabBarRenderer {
       );
       column += 1;
     }
-    // The right-side action cluster: one padded cell per CONTRIBUTED editor-title command, in
-    // registration order, sitting before the strip-pan arrows. This renderer knows nothing about
-    // which plugin asked — only that a command declared an icon and its guard holds.
-    // invariant: No action requires a memorized motion (project.invariants.md)
-    for (const [actionIndex, action] of context.editorTitleActions.entries()) {
-      const start = column;
-      const active = action.toggled;
-      const hovered =
-        hover?.kind === 'titleAction' && hover.index === actionIndex;
-      const pressed = context.pressedTitleActionIndex === actionIndex;
-      const background = pressed
-        ? palette.accent
-        : active
-          ? palette.selection
-          : hovered
-            ? palette.cursorLine
-            : null;
-      const color = pressed
-        ? palette.bg
-        : active || hovered
-          ? palette.accent
-          : palette.fg;
-      const label = ` ${action.icon} `;
-      chunks.push(
-        background ? bg(background)(fg(color)(label)) : fg(color)(label),
-      );
-      column += actionCellWidth;
-      segments.push({
-        kind: 'titleAction',
-        index: actionIndex,
-        start,
-        end: column,
-      });
-    }
     if (overflow) {
       // Bigger, easy-to-hit arrows: a bolder glyph in a padded 3-cell hit target. BRIGHT (fg/accent)
       // only when more tabs exist that direction; DIM (border) at the end — so "more exists" reads.
@@ -549,9 +511,12 @@ class $TabBarRenderer {
         segments: [],
       };
     const barWidth = Math.max(1, context.barWidth);
+    const actionCellWidth = 3;
+    const actionsWidth = context.editorTitleActions.length * actionCellWidth;
+    const pathAreaWidth = Math.max(1, barWidth - actionsWidth);
     const crumbs = Breadcrumb.Class.fitPathSegments(
       Breadcrumb.Class.pathSegments(activeTab.identifier, projectRoot),
-      Math.max(1, barWidth - 2), // reserve one leading and one trailing pad
+      Math.max(1, pathAreaWidth - 2), // reserve one leading and one trailing pad
       3,
     );
     const chunks: TextChunk[] = [fg(palette.fg)(' ')];
@@ -568,6 +533,7 @@ class $TabBarRenderer {
           : styledCrumb,
       );
       segments.push({
+        kind: 'crumb',
         ...crumb,
         start: column,
         end: column + TextCoordinates.Class.lineWidth(crumb.label),
@@ -576,6 +542,43 @@ class $TabBarRenderer {
       if (!isFilename) chunks.push(fg(palette.dim)(' › '));
       if (!isFilename) column += 3;
     });
+    this.appendHorizontalGap(
+      chunks,
+      palette.fg,
+      Math.max(0, pathAreaWidth - column),
+    );
+    column = pathAreaWidth;
+    for (const [actionIndex, action] of context.editorTitleActions.entries()) {
+      const start = column;
+      const active = action.toggled;
+      const hovered =
+        context.hover?.kind === 'titleAction' &&
+        context.hover.index === actionIndex;
+      const pressed = context.pressedTitleActionIndex === actionIndex;
+      const background = pressed
+        ? palette.accent
+        : active
+          ? palette.selection
+          : hovered
+            ? palette.cursorLine
+            : null;
+      const color = pressed
+        ? palette.bg
+        : active || hovered
+          ? palette.accent
+          : palette.fg;
+      const label = ` ${action.icon} `;
+      chunks.push(
+        background ? bg(background)(fg(color)(label)) : fg(color)(label),
+      );
+      column += actionCellWidth;
+      segments.push({
+        kind: 'titleAction',
+        index: actionIndex,
+        start,
+        end: column,
+      });
+    }
     return { text: new StyledText(chunks), segments };
   }
 }
@@ -608,19 +611,13 @@ export type TabBarSegment =
       closeColumn: number;
     }
   | {
-      kind: 'titleAction';
-      index: number;
-      start: number;
-      end: number;
-    }
-  | {
       kind: 'arrowLeft' | 'arrowRight' | 'badge';
       start: number;
       end: number;
     };
 
 export type TabBarHover = {
-  kind: 'tab' | 'close' | 'titleAction' | 'arrowLeft' | 'arrowRight' | 'badge';
+  kind: 'tab' | 'close' | 'arrowLeft' | 'arrowRight' | 'badge';
   index: number;
 } | null;
 
@@ -647,15 +644,11 @@ export interface BufferTabBarRenderContext {
   separatorGlyph: string;
   hover: TabBarHover;
   closePressed: number | null;
-  /** Index of the editor-title action currently held down, or null. */
-  pressedTitleActionIndex: number | null;
   arrowPressed: 'arrowLeft' | 'arrowRight' | null;
   lastRevealedIndex: number;
-  /** Contributed editor-title affordances, already filtered by their command guards. */
-  editorTitleActions: readonly EditorTitleAction[];
 }
 
-/** One clickable affordance in the editor title row, projected from a command that declared an
+/** One clickable affordance in the breadcrumb row, projected from a command that declared an
  *  icon. The renderer never learns which plugin contributed it. */
 export interface EditorTitleAction {
   readonly commandId: string;
@@ -683,12 +676,29 @@ export interface BreadcrumbBarRenderContext {
   /** Active workspace root — the breadcrumb is the active file's path relative to it. */
   projectRoot: string;
   hoveredSourceIndex: number | null;
+  hover: BreadcrumbBarHover;
+  pressedTitleActionIndex: number | null;
+  /** Contributed editor-title affordances, already filtered by their command guards. */
+  editorTitleActions: readonly EditorTitleAction[];
 }
 
-export interface BreadcrumbBarSegment extends BreadcrumbPathSegment {
-  start: number;
-  end: number;
-}
+export type BreadcrumbBarSegment =
+  | (BreadcrumbPathSegment & {
+      kind: 'crumb';
+      start: number;
+      end: number;
+    })
+  | {
+      kind: 'titleAction';
+      index: number;
+      start: number;
+      end: number;
+    };
+
+export type BreadcrumbBarHover =
+  | { kind: 'crumb'; sourceIndex: number }
+  | { kind: 'titleAction'; index: number }
+  | null;
 
 export interface BreadcrumbBarRender {
   text: StyledText;

@@ -457,7 +457,7 @@ independently.
 **Scope:** `MarkdownWorkspace` (the per-tab preview mode and its editor-surface claim),
 `MarkdownPreviewSurface` / `MarkdownPreviewContent` (the mounted occupant), `EditorContentMount`
 (the generic host mount), `MarkdownSplitView`, `MarkdownPreview`, and the contributed editor-title
-action the tab strip renders from the `markdown.togglePreview` command. Source-jump follow crosses
+action the breadcrumb row renders from the `markdown.togglePreview` command. Source-jump follow crosses
 the generic `EditorSurfaceClaims` seam. Continuous follow also includes
 `MarkdownPlugin.markdownPreviewScrollSync` and the editor's logical-line viewport projection.
 
@@ -475,8 +475,10 @@ the generic `EditorSurfaceClaims` seam. Continuous follow also includes
   either direction.
 - *The contributed switch is symmetric* — the default is on, and off suppresses both follow
   directions without suppressing either pane's own scroll.
+- *The contributed action yields no columns* — the breadcrumb path truncates before the
+  right-aligned action, and the buffer tab row does not render the action.
 
-**Mechanism:** The tab-strip affordance and the `markdown.togglePreview` command are the SAME
+**Mechanism:** The breadcrumb-row affordance and the `markdown.togglePreview` command are the SAME
 command — the button is rendered from its `editorTitleIcon`, so there is one action, not two — and it
 flips one per-path mode on `MarkdownWorkspace`. That makes the plugin's provider claim the editor
 column; `EditorContentMount` mounts whatever claims it, handing the content the source renderable it
