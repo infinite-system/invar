@@ -47,7 +47,7 @@ class $TabBar {
   protected bufferHover: TabBarHover = null;
   protected arrowPressed: 'arrowLeft' | 'arrowRight' | null = null;
   protected pressedTitleActionIndex: number | null = null;
-  protected closePressed: number | null = null; // index of the tab whose ✕ is being pressed
+  protected closePressed: number | null = null; // index of the tab whose close control is pressed
   protected lastRevealedActiveIndex = -1;
   protected breadcrumbSegments: BreadcrumbBarSegment[] = [];
   protected breadcrumbHover: BreadcrumbBarHover = null;
@@ -60,7 +60,7 @@ class $TabBar {
   }
   /** Render the workspace/project strip; keeps the reveal index + hit-test segments. */
   renderWorkspace(): StyledText {
-    const { workspaceTabStrip, workspaceTabBar, renderer, readPalette } =
+    const { workspaceTabStrip, workspaceTabBar, renderer, theme, readPalette } =
       this.dependencies;
     const result = TabBarRenderer.Class.renderWorkspace({
       strip: workspaceTabStrip,
@@ -71,6 +71,7 @@ class $TabBar {
       barHeightValue: Number(workspaceTabBar.height),
       rendererWidth: renderer.width,
       rendererHeight: renderer.height,
+      closeGlyph: theme.glyphVocabulary.panelClose,
     });
     this.workspaceSegments = result.segments;
     this.lastRevealedWorkspaceIndex = result.revealedIndex;
@@ -112,6 +113,7 @@ class $TabBar {
       // The between-tab powerline separator comes from the theme's ladder — no inline glyph ladder.
       // invariant: Appearance is data with a capability fallback (project.invariants.md)
       separatorGlyph: ThemeIcons.Class.tabSeparatorFor(theme.glyphLevel.value),
+      closeGlyph: theme.glyphVocabulary.panelClose,
     });
     this.bufferSegments = result.segments;
     this.lastRevealedActiveIndex = result.revealedIndex;
@@ -236,7 +238,7 @@ class $TabBar {
       const segment = this.workspaceSegmentAt(primaryCoordinate);
       if (!segment) return;
       if (segment.kind === 'tab') {
-        // Horizontal tabs are two rows; the close ✕ sits on row 0 only, so the cross axis gates it.
+        // Horizontal tabs are two rows; the close control sits on row 0, so the cross axis gates it.
         const closeHit = vertical
           ? crossAxisCoordinate === segment.closeCrossAxisCoordinate
           : primaryCoordinate === segment.closePrimaryCoordinate &&
@@ -266,7 +268,7 @@ class $TabBar {
       const segment = this.workspaceSegmentAt(primaryCoordinate);
       let nextHover: WorkspaceTabBarHover = null;
       if (segment?.kind === 'tab') {
-        // Horizontal tabs are two rows; the close ✕ sits on row 0 only, so the cross axis gates it.
+        // Horizontal tabs are two rows; the close control sits on row 0, so the cross axis gates it.
         const closeHit = vertical
           ? crossAxisCoordinate === segment.closeCrossAxisCoordinate
           : primaryCoordinate === segment.closePrimaryCoordinate &&
@@ -315,7 +317,7 @@ class $TabBar {
       if (!segment) return;
       if (segment.kind === 'tab') {
         if (localColumn === segment.closeColumn) {
-          this.closePressed = segment.index; // show the pressed ✕ before the close/confirm
+          this.closePressed = segment.index; // show pressed paint before the close/confirm
           renderer.requestRender();
           workspaceSet.active.requestCloseTab(segment.index);
         } else workspaceSet.active.activateTab(segment.index);

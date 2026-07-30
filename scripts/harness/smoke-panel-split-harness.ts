@@ -9,6 +9,8 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import type { GlyphLevel } from '../../src/modules/theme/TerminalCapabilities';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -37,6 +39,175 @@ function statusButtonColumn(
   return column + 1;
 }
 
+async function driveSharedCloseGlyphTier(
+  glyphLevel: Extract<GlyphLevel, 'nerd' | 'unicode'>,
+): Promise<void> {
+  const tierHomeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-panel-close-${glyphLevel}-`),
+  );
+  const tierStatusPath = join(tierHomeDirectory, 'status.json');
+  const tierDriver = new PtyTestDriver.Class({
+    workspaceRoot: join(process.cwd(), 'fixtures'),
+    columns: 120,
+    rows: 40,
+    homeDirectory: tierHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: tierStatusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+      LANG: 'C.UTF-8',
+      NERD_FONT: glyphLevel === 'nerd' ? '1' : '0',
+    },
+  });
+  const terminalIcon = ThemeIcons.Class.terminalIconFor(glyphLevel);
+  const agentIcon = ThemeIcons.Class.agentIconFor(glyphLevel);
+  const closeGlyph =
+    ThemeIcons.Class.interfaceGlyphVocabularyFor(glyphLevel).panelClose;
+
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} close-glyph drive boots with the panel hidden`,
+      (status) => status.ready === true && status.terminalVisible === false,
+      15_000,
+    );
+    tierDriver.sendKeys('Control+p');
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} close-glyph drive opens Quick Open`,
+      (status) => status.quickOpenOpen === true,
+    );
+    tierDriver.sendText('greeter.ts');
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} close-glyph drive finds greeter.ts`,
+      (status) =>
+        status.quickOpenQuery === 'greeter.ts' &&
+        Number(status.quickOpenMatches) > 0,
+    );
+    tierDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} close-glyph drive opens one editor tab`,
+      (status) => Number(status.bufferTabCount) > 0,
+    );
+    let snapshot = await tierDriver.awaitGridCondition(
+      `${glyphLevel} status bar exposes terminal and agent controls`,
+      (candidate) =>
+        candidate.findText(` ${terminalIcon} `) !== null &&
+        candidate.findText(` ${agentIcon} `) !== null,
+    );
+    clickCell(
+      tierDriver,
+      statusButtonColumn(snapshot, ` ${terminalIcon} `),
+      snapshot.rows - 1,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} terminal opens in the panel`,
+      (status) =>
+        Array.isArray(status.panelCellIds) &&
+        status.panelCellIds.includes('terminal'),
+    );
+    snapshot = tierDriver.snapshot();
+    clickCell(
+      tierDriver,
+      statusButtonColumn(snapshot, ` ${agentIcon} `),
+      snapshot.rows - 1,
+    );
+    const splitStatus = await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} panel list opens for agent and terminal`,
+      (status) =>
+        Array.isArray(status.panelCellIds) &&
+        status.panelCellIds.includes('agent') &&
+        status.panelCellIds.includes('terminal') &&
+        status.panelListVisible === true,
+    );
+    const listGeometry = splitStatus.panelListGeometry as {
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+      visible: boolean;
+    };
+    const closeColumn = listGeometry.left + listGeometry.width - 1;
+    let terminalRow = -1;
+    const sharedGlyphSnapshot = await tierDriver.awaitGridCondition(
+      `${glyphLevel} terminal list paints the shared close glyph`,
+      (candidate) => {
+        terminalRow = -1;
+        for (
+          let row = listGeometry.top;
+          row < listGeometry.top + listGeometry.height;
+          row += 1
+        ) {
+          if (candidate.rowText(row).includes('Terminal')) {
+            terminalRow = row;
+            break;
+          }
+        }
+        return (
+          terminalRow >= 0 &&
+          candidate.cell(terminalRow, closeColumn)?.characters === closeGlyph
+        );
+      },
+    );
+    const bufferTabRow = sharedGlyphSnapshot
+      .textRows()
+      .findIndex((rowText) => /\d+\/\d+/.test(rowText));
+    const headingGeometry = splitStatus.panelHeadingGeometry as Array<{
+      row: number;
+      controls: Array<{
+        action: string;
+        startColumn: number;
+        endColumnExclusive: number;
+      }>;
+    }>;
+    const headingCloseCells = headingGeometry.flatMap((heading) =>
+      heading.controls
+        .filter((control) => control.action === 'close')
+        .map((control) =>
+          sharedGlyphSnapshot.cell(heading.row, control.startColumn + 1),
+        ),
+    );
+    const terminalListCloseCell = sharedGlyphSnapshot.cell(
+      terminalRow,
+      closeColumn,
+    );
+    HarnessSmoke.Class.requireCondition(
+      terminalListCloseCell?.characters === closeGlyph &&
+        terminalListCloseCell.characters !== 'x',
+      `${glyphLevel} terminal-list row paints shared ${JSON.stringify(closeGlyph)} instead of literal x`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      sharedGlyphSnapshot.rowText(bufferTabRow).includes(closeGlyph),
+      `${glyphLevel} buffer tab paints shared ${JSON.stringify(closeGlyph)}`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      headingCloseCells.some((cell) => cell?.characters === closeGlyph),
+      `${glyphLevel} panel heading paints shared ${JSON.stringify(closeGlyph)}`,
+    );
+    clickCell(tierDriver, closeColumn, terminalRow);
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} terminal-list close target closes that terminal`,
+      (status) =>
+        Array.isArray(status.panelCellIds) &&
+        !status.panelCellIds.includes('terminal'),
+    );
+  } finally {
+    await tierDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(tierHomeDirectory);
+  }
+}
+
 console.log('== harness panel-split: deterministic PanelHost split tests ==');
 
 const unitResult = Bun.spawnSync(
@@ -48,6 +219,12 @@ HarnessSmoke.Class.requireCondition(
   unitResult.exitCode === 0,
   'PanelHost unit tests (split layout, focus routing, per-cell resize, divider re-flow)',
 );
+
+console.log(
+  '== harness panel-split: shared close glyph in nerd and plain tiers ==',
+);
+await driveSharedCloseGlyphTier('nerd');
+await driveSharedCloseGlyphTier('unicode');
 
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-panel-split-harness-home-'),

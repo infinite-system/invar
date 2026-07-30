@@ -1,9 +1,15 @@
 import { expect, test } from 'bun:test';
 import type { KeyEvent, StyledText } from '@opentui/core';
 import { ref } from 'vue';
+import { ThemeIcons } from '../theme/ThemeIcons';
+import { ThemePalettes } from '../theme/ThemePalettes';
+import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import { PanelContentsList } from './PanelContentsList';
+import { PanelHeading } from './PanelHeading';
 import { PanelHost } from './PanelHost';
 import type { PaneContent } from './PaneContent.interface';
+import { TabBarRenderer } from './TabBarRenderer';
+import { TabStrip } from './TabStrip';
 
 class FakeContent implements PaneContent {
   readonly renderRevision = ref(0);
@@ -93,4 +99,58 @@ test('the list selects visibility among multiple open instances of one kind', ()
   ]);
   expect(list.rows[0]?.visible).toBe(false);
   expect(list.rows[1]?.visible).toBe(true);
+});
+
+test('tabs, panel headings, and panel rows project one tier-aware close token', () => {
+  const host = new PanelHost.Class();
+  host.register(new FakeContent('terminal', 'Terminal', 'T'));
+  host.showContent('terminal');
+  const list = new PanelContentsList.Class(host);
+  const strip = new TabStrip.Class('horizontal', () => [
+    {
+      identifier: '/project/file.txt',
+      label: 'file.txt',
+      active: true,
+      closable: true,
+    },
+  ]);
+
+  for (const level of ['nerd', 'unicode', 'ascii'] satisfies GlyphLevel[]) {
+    const glyphVocabulary = ThemeIcons.Class.interfaceGlyphVocabularyFor(level);
+    const expectedCloseGlyph = glyphVocabulary.panelClose;
+    const listText = list
+      .render(ThemePalettes.Class.DARK, glyphVocabulary)
+      .chunks.map((chunk) => chunk.text)
+      .join('');
+    const headingText = PanelHeading.Class.project({
+      width: 20,
+      title: 'Terminal',
+      focused: true,
+      expanded: false,
+      hoveredAction: null,
+      actions: ['close'],
+      glyphVocabulary,
+      palette: ThemePalettes.Class.DARK,
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+    const tabText = TabBarRenderer.Class.renderBuffer({
+      strip,
+      palette: ThemePalettes.Class.DARK,
+      barWidth: 30,
+      projectRoot: '/project',
+      separatorGlyph: '>',
+      closeGlyph: expectedCloseGlyph,
+      hover: null,
+      closePressed: null,
+      arrowPressed: null,
+      lastRevealedIndex: -1,
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+
+    expect(listText.endsWith(expectedCloseGlyph)).toBe(true);
+    expect(headingText.includes(expectedCloseGlyph)).toBe(true);
+    expect(tabText.includes(expectedCloseGlyph)).toBe(true);
+  }
 });

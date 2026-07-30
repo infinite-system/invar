@@ -71,6 +71,7 @@ test('buffer tab row does not render editor title actions', () => {
     barWidth: 40,
     projectRoot: '/project',
     separatorGlyph: '❯',
+    closeGlyph: '×',
     hover: null,
     closePressed: null,
     arrowPressed: null,

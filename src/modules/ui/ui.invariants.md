@@ -519,12 +519,15 @@ reorder, and close actions; if one session remains, the list is absent.
 `isContentVisible`. `PanelContentsList.pointerDown` and `pointerDrag` delegate selection, close, and
 reorder to `PanelHost`; selecting a hidden instance replaces the visible instance of the same kind
 while preserving another kind's split cell, and close unregisters and disposes the selected session.
+The row close, panel-heading close, and tab close all read the `panelClose` slot from the active
+`InterfaceGlyphVocabulary`; no consumer restates a close character.
 Panel-context keybindings delegate to the same host methods. `RootView` requests both the immediate
 frame and a next-turn `RenderRequest`, so a queued frame cannot coalesce away the projection that
 publishes the closed session list.
 
 **Generates:** VS Code-style docked session rows; visible and hidden instances in one list; per-row
-close affordances; mouse and keyboard parity without a second content registry.
+close affordances that match tabs and panel headings in every glyph tier; mouse and keyboard parity
+without a second content registry.
 
 **Rejected alternatives:** Use `BoundedListPopup` — a modal popup does not remain docked beside panel
 content and cannot continuously mirror the open split.
@@ -536,7 +539,8 @@ content and cannot continuously mirror the open split.
 **Impossible if true:** The list showing with one registered session; two registered sessions
 producing one or three rows; hiding an instance removing its row; a close row retaining its backend;
 a drag updating only presentation; a close mutating the host while the published session list remains
-stale because its render request was coalesced into an in-flight frame.
+stale because its render request was coalesced into an in-flight frame; a list row, tab, or panel
+heading drawing a different close glyph for the same active tier.
 
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts
 src/modules/ui/RenderRequest.test.ts && bun
@@ -689,6 +693,8 @@ are outside the gap-chunk rule but still return their hit segments from the pain
 **Components:**
 - *One geometry walk* — every returned segment uses the same column cursor that places its glyphs.
 - *One gap chunk* — unused width advances the cursor by its full width but allocates one styled chunk.
+- *One close token* — workspace and buffer tabs read the same active `panelClose` glyph as panel
+  headings and panel-list rows.
 
 **Mechanism:** `TabBarRenderer.appendHorizontalGap` emits one repeated-space chunk, then
 `TabBarRenderer.renderWorkspace` and `TabBarRenderer.renderBuffer` advance their existing column
