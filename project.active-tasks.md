@@ -6,16 +6,17 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
 - #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/in-progress/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/387-splitter-slim-vertical-and-left-pad`
+- #384 [quit-dialog-buttons-and-padding](.invar/tasks/in-progress/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)  [building]
+  `tmux attach -t invar/384-quit-dialog-buttons-and-padding`
 
-## USER-DIRECTED (19)
+## USER-DIRECTED (18)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
-- #384 [quit-dialog-buttons-and-padding](.invar/tasks/active/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
 - #381 [realized-typescript-lsp-still-missing](.invar/tasks/active/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)
 - #379 [quick-open-exact-basename-loses](.invar/tasks/active/379-quick-open-exact-basename-loses/task-379-quick-open-exact-basename-loses.md)
