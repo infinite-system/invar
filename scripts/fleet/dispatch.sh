@@ -215,7 +215,14 @@ if [ "$resolved_engine" = "codex" ]; then
   declared_model="${declared_model:-5.6-sol}"
   case "${declared_effort:-}" in
     ""|default) declared_effort="high";;
-    medium) echo "dispatch: WARNING — codex effort 'medium' is not allowed; using 'high'" >&2; declared_effort="high";;
+    high|xhigh) ;;
+    *)
+      # The directive named 'medium', but the INTENT is a floor: high is the
+      # minimum codex effort. Enforcing only the named value let a builder
+      # run at 'low' on 2026-07-30 (#322) — block the class, not the instance.
+      echo "dispatch: WARNING — codex effort '${declared_effort}' is below the floor; using 'high'" >&2
+      declared_effort="high"
+      ;;
   esac
 else
   declared_model="${declared_model:-fable-5}"
