@@ -453,3 +453,18 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
 - Codex-lane report lesson: #343 wrote its report only in the WORKTREE
   task folder; land.sh refused until the conductor copied it to the main
   checkout folder. #346 brief now orders absolute-path report delivery.
+
+### ANCHOR 17 DELTA 4 (06:0x)
+- #345 LANDED 085bfca0 (heavy-line centered separator; bycatch #372
+  glyph-tier gap, #373 user-visible border hole with repro). 8 landings.
+- #326 stage-2 READY delivered (signed runtime plugin install + in-place
+  execve relaunch, catalog identity/provenance, atomic selection record).
+  Its one gate run was red on the since-fixed plugin-manifest class +
+  word-delete double timeout (filed #374). Round-3 brief filed + steered:
+  merge main, re-check, re-gate through hook, append chain. Land next.
+- #347 dispatched opus (markdown link resolution rivals + double-click).
+- Lanes: 326 (codex, round-3 merge) · 346 panel tab bar (codex) ·
+  347 (opus). Queue: 348 349 352 341 356 361 + hygiene tail 353-374.
+- land.sh claude-lane note: busy-check accepts idle-unconfirmed for
+  engine=claude in meta.json; transient 'busy' comes from background
+  shells — wait and retry.
