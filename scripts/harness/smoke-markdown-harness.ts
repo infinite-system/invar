@@ -266,6 +266,77 @@ function packedThemeColor(color: string): number {
   return Number.parseInt(color.slice(1), 16);
 }
 
+function requireUniformHeadingColor(
+  snapshot: HarnessSnapshot.Model,
+  markers: readonly string[],
+  accentColor: string,
+  formerTitleColor: string,
+  label: string,
+): void {
+  const headingCells = markers.map((marker) => {
+    const position = previewMarkerPosition(snapshot, marker);
+    return snapshot.cell(position.row, position.column);
+  });
+  const packedAccent = packedThemeColor(accentColor);
+  HarnessSmoke.Class.requireCondition(
+    headingCells.every((cell) => cell?.foreground === packedAccent) &&
+      headingCells[0]?.foreground !== packedThemeColor(formerTitleColor),
+    `${label} paints H1 through H6 with one theme accent and removes the former H1 color`,
+  );
+}
+
+async function switchLiveTheme(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  scaleLabel: string,
+  direction: 'Left' | 'Right',
+  expectedTheme: 'dark' | 'light',
+): Promise<void> {
+  driver.sendKeys('Control+,');
+  let settingsStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${scaleLabel} opens Settings for a live theme switch`,
+    (status) =>
+      status.settingsOpen === true &&
+      typeof status.settingsSelectedLabel === 'string',
+  );
+  for (
+    let navigationStep = 0;
+    navigationStep < 40 && settingsStatus.settingsSelectedLabel !== 'Theme';
+    navigationStep += 1
+  ) {
+    const previousLabel = settingsStatus.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    settingsStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${scaleLabel} Settings advances toward Theme`,
+      (status) => status.settingsSelectedLabel !== previousLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    settingsStatus.settingsSelectedLabel === 'Theme',
+    `${scaleLabel} finds the live Theme setting`,
+  );
+  driver.sendKeys(direction);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${scaleLabel} switches the live theme to ${expectedTheme}`,
+    (status) =>
+      status.settingsSelectedLabel === 'Theme' &&
+      status.settingsSelectedValue === expectedTheme,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${scaleLabel} closes Settings after the live theme switch`,
+    (status) => status.settingsOpen === false,
+  );
+}
+
 async function driveTaskPresentationInTheme(
   theme: 'dark' | 'light',
 ): Promise<void> {
@@ -299,6 +370,8 @@ async function driveTaskPresentationInTheme(
       '[dead link](missing-link-target.md)',
       '',
       '[external link](https://example.com/docs)',
+      '',
+      '### Lower section',
       '',
       '## Existing section',
       '',
@@ -343,6 +416,7 @@ async function driveTaskPresentationInTheme(
         previewHasMarker(candidate, 'current link') &&
         previewHasMarker(candidate, 'dead link') &&
         previewHasMarker(candidate, 'external link') &&
+        previewHasMarker(candidate, 'Lower section') &&
         previewHasMarker(candidate, 'Existing section'),
     );
     const state = previewMarkerPosition(snapshot, 'State: IN-PROGRESS');
@@ -355,25 +429,29 @@ async function driveTaskPresentationInTheme(
 
     const heading1 = previewMarkerPosition(snapshot, 'Task presentation');
     const heading2 = previewMarkerPosition(snapshot, 'Existing section');
+    const heading3 = previewMarkerPosition(snapshot, 'Lower section');
     const prose = previewMarkerPosition(
       snapshot,
       'Prose joins across source lines.',
     );
     const heading1Cell = snapshot.cell(heading1.row, heading1.column);
     const heading2Cell = snapshot.cell(heading2.row, heading2.column);
+    const heading3Cell = snapshot.cell(heading3.row, heading3.column);
     const proseCell = snapshot.cell(prose.row, prose.column);
     HarnessSmoke.Class.requireCondition(
       heading1Cell?.isUnderline === false &&
         heading1Cell.isBold === true &&
+        heading1Cell.foreground === heading2Cell?.foreground &&
+        heading1Cell.foreground === heading3Cell?.foreground &&
         heading1Cell.foreground !== proseCell?.foreground,
-      `${theme} H1 uses bold distinct color without an underline`,
+      `${theme} H1 shares the subtitle foreground without changing its bold treatment`,
     );
     HarnessSmoke.Class.requireCondition(
       heading2Cell?.isUnderline === false &&
         heading2Cell.isBold === true &&
-        heading2Cell.foreground !== heading1Cell?.foreground &&
+        heading2Cell.foreground === heading1Cell?.foreground &&
         heading2Cell.foreground !== proseCell?.foreground,
-      `${theme} H2 keeps its bold accent treatment`,
+      `${theme} H2 keeps its bold accent treatment shared with H1`,
     );
     const palette =
       theme === 'dark' ? ThemePalettes.Class.DARK : ThemePalettes.Class.LIGHT;
@@ -651,6 +729,14 @@ async function driveTerminalShrinkAtScale(
       dockConcealedSnapshot,
       'Adjacent H6',
     );
+    const scaleHeadingMarkers = [
+      `Scale fixture ${fixtureLineCount}`,
+      'Adjacent H2',
+      'Spaced H3',
+      'Adjacent H4',
+      'Spaced H5',
+      'Adjacent H6',
+    ];
     HarnessSmoke.Class.requireCondition(
       topHeading.row === previewBorder(dockConcealedSnapshot).row + 1 &&
         dockConcealedSnapshot
@@ -678,6 +764,13 @@ async function driveTerminalShrinkAtScale(
           .includes('Before spaced H5'),
       `${fixtureLineCount}-line preview keeps only authored heading gaps across H1 through H6`,
     );
+    requireUniformHeadingColor(
+      dockConcealedSnapshot,
+      scaleHeadingMarkers,
+      ThemePalettes.Class.DARK.accent,
+      ThemePalettes.Class.DARK.keyword,
+      `${fixtureLineCount}-line dark preview`,
+    );
     HarnessSmoke.Class.requireCondition(
       dockConcealedSnapshot.cell(currentScaleLink.row, currentScaleLink.column)
         ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
@@ -688,6 +781,72 @@ async function driveTerminalShrinkAtScale(
           externalScaleLink.column,
         )?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent),
       `${fixtureLineCount}-line preview paints dead links red without changing current or external links`,
+    );
+    await switchLiveTheme(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line preview`,
+      'Right',
+      'light',
+    );
+    const lightHeadingSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line headings repaint with the live light theme`,
+      (candidate) => {
+        if (
+          !scaleHeadingMarkers.every((marker) =>
+            previewHasMarker(candidate, marker),
+          )
+        )
+          return false;
+        const title = previewMarkerPosition(
+          candidate,
+          `Scale fixture ${fixtureLineCount}`,
+        );
+        return (
+          candidate.cell(title.row, title.column)?.foreground ===
+          packedThemeColor(ThemePalettes.Class.LIGHT.accent)
+        );
+      },
+    );
+    requireUniformHeadingColor(
+      lightHeadingSnapshot,
+      scaleHeadingMarkers,
+      ThemePalettes.Class.LIGHT.accent,
+      ThemePalettes.Class.LIGHT.keyword,
+      `${fixtureLineCount}-line live light preview`,
+    );
+    await switchLiveTheme(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line preview`,
+      'Left',
+      'dark',
+    );
+    const restoredDarkHeadingSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line headings repaint after restoring the dark theme`,
+      (candidate) => {
+        if (
+          !scaleHeadingMarkers.every((marker) =>
+            previewHasMarker(candidate, marker),
+          )
+        )
+          return false;
+        const title = previewMarkerPosition(
+          candidate,
+          `Scale fixture ${fixtureLineCount}`,
+        );
+        return (
+          candidate.cell(title.row, title.column)?.foreground ===
+          packedThemeColor(ThemePalettes.Class.DARK.accent)
+        );
+      },
+    );
+    requireUniformHeadingColor(
+      restoredDarkHeadingSnapshot,
+      scaleHeadingMarkers,
+      ThemePalettes.Class.DARK.accent,
+      ThemePalettes.Class.DARK.keyword,
+      `${fixtureLineCount}-line restored dark preview`,
     );
     HarnessSmoke.Class.requireCondition(
       dockConcealedPreviewColumns > dockVisiblePreviewColumns,

@@ -66,11 +66,11 @@ test('row selectors resolve every role and heading level', () => {
   );
 });
 
-test('heading levels carry a distinct intensity ramp', () => {
+test('heading levels share the accent color without changing their attributes', () => {
   const stylesheet = MarkdownStylesheet.Class;
   const heading1 = stylesheet.textStyle('heading1');
   const heading2 = stylesheet.textStyle('heading2');
-  expect(heading1.colorSlot).toBe('keyword');
+  expect(heading1.colorSlot).toBe('accent');
   expect(heading1.bold).toBe(true);
   expect(heading1.underline).toBe(false);
   expect(heading2).toMatchObject({
@@ -79,14 +79,26 @@ test('heading levels carry a distinct intensity ramp', () => {
     italic: false,
     underline: false,
   });
-  const rampKeys = [1, 2, 3, 4, 5, 6].map((level) => {
-    const style = stylesheet.textStyle(stylesheet.headingSelector(level));
-    return `${style.colorSlot}:${style.bold}:${style.italic}:${style.underline}`;
-  });
-  // each level must be visually distinguishable from its neighbour
-  for (let level = 1; level < rampKeys.length; level++) {
-    expect(rampKeys[level]).not.toBe(rampKeys[level - 1]);
-  }
+  const headingStyles = [1, 2, 3, 4, 5, 6].map((level) =>
+    stylesheet.textStyle(stylesheet.headingSelector(level)),
+  );
+  expect(headingStyles.map((style) => style.colorSlot)).toEqual(
+    Array.from({ length: 6 }, () => 'accent'),
+  );
+  expect(
+    headingStyles.map(({ bold, italic, underline }) => ({
+      bold,
+      italic,
+      underline,
+    })),
+  ).toEqual([
+    { bold: true, italic: false, underline: false },
+    { bold: true, italic: false, underline: false },
+    { bold: false, italic: false, underline: false },
+    { bold: true, italic: false, underline: false },
+    { bold: true, italic: false, underline: false },
+    { bold: true, italic: true, underline: false },
+  ]);
 });
 
 test('inline styles overlay the element style through the stylesheet', () => {
