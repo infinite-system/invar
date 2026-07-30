@@ -5,6 +5,18 @@ import { EditorSurfaceClaims } from '../workspace/EditorSurfaceClaims';
 import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 import type { Workspace } from '../workspace/Workspace';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
+
+function createViewModeSetting(
+  initialValue: string,
+  onSave: () => void = () => {},
+): RegisteredSetting<string> {
+  return {
+    value: ref(initialValue),
+    save: onSave,
+    dispose: () => {},
+  };
+}
 
 function createHostWorkspace(path: string) {
   const editorSurfaces = new EditorSurfaceClaims.Class();
@@ -41,6 +53,7 @@ function createContribution(
     workspace: ReturnType<typeof createHostWorkspace>,
   ) => void,
   revealPreviewSourceLine: (lineIndex: number) => void = () => {},
+  viewModeSetting?: RegisteredSetting<string>,
 ) {
   const workspace = createHostWorkspace(path);
   prepareWorkspace?.(workspace);
@@ -50,6 +63,7 @@ function createContribution(
       workspace,
       previewFocused,
       revealPreviewSourceLine,
+      viewModeSetting,
     ),
   };
 }
@@ -181,6 +195,17 @@ describe('MarkdownWorkspace', () => {
     expect(workspace.editorSurfaces.activeDocumentIsKeyboardTarget).toBe(false);
   });
 
+  it('never targets the hidden source editor in view-only mode', () => {
+    const { workspace } = createContribution(
+      '/project/notes.md',
+      () => false,
+      undefined,
+      () => {},
+      createViewModeSetting('preview'),
+    );
+    expect(workspace.editorSurfaces.activeDocumentIsKeyboardTarget).toBe(false);
+  });
+
   it('forwards a source jump to its mounted preview', () => {
     const revealedSourceLines: number[] = [];
     const { workspace } = createContribution(
@@ -218,5 +243,48 @@ describe('MarkdownWorkspace', () => {
     expect(workspace.providers.resolveAll('structure')).toHaveLength(1);
     contribution.disposed();
     expect(workspace.providers.resolveAll('structure')).toHaveLength(0);
+  });
+
+  it('persists one view-only choice across Markdown tabs', () => {
+    let saveCount = 0;
+    const viewModeSetting = createViewModeSetting('editor', () => {
+      saveCount += 1;
+    });
+    const { workspace, contribution } = createContribution(
+      '/project/a.md',
+      () => false,
+      undefined,
+      () => {},
+      viewModeSetting,
+    );
+
+    expect(contribution.showingPreview).toBe(false);
+    contribution.togglePreview();
+    expect(contribution.viewOnly).toBe(true);
+    expect(viewModeSetting.value.value).toBe('preview');
+    expect(saveCount).toBe(1);
+
+    workspace.activateTab('/project/b.md');
+    expect(contribution.viewOnly).toBe(true);
+
+    contribution.togglePreview();
+    expect(contribution.showingPreview).toBe(false);
+    expect(viewModeSetting.value.value).toBe('editor');
+    expect(saveCount).toBe(2);
+  });
+
+  it('never applies view-only mode to a non-Markdown tab', () => {
+    const viewModeSetting = createViewModeSetting('preview');
+    const { workspace, contribution } = createContribution(
+      '/project/notes.md',
+      () => false,
+      undefined,
+      () => {},
+      viewModeSetting,
+    );
+    expect(contribution.viewOnly).toBe(true);
+    workspace.activateTab('/project/main.ts');
+    expect(contribution.showingPreview).toBe(false);
+    expect(contribution.viewOnly).toBe(false);
   });
 });

@@ -42,7 +42,7 @@ function createFakeSplitView() {
   return view;
 }
 
-function createContent() {
+function createContent(viewOnly = false) {
   const view = createFakeSplitView();
   const context = {
     findBar: { engineFor: () => ({ query: { value: 'needle' } }) },
@@ -53,11 +53,18 @@ function createContent() {
     }
   }
   return {
-    content: new TestContent({} as unknown as Workspace.Model, context, {
-      value: ref(0.5),
-      save() {},
-      dispose() {},
-    }),
+    content: new TestContent(
+      {} as unknown as Workspace.Model,
+      context,
+      {
+        value: ref(0.5),
+        save() {},
+        dispose() {},
+      },
+      'left',
+      undefined,
+      viewOnly,
+    ),
     view,
   };
 }
@@ -93,6 +100,12 @@ describe('MarkdownPreviewContent', () => {
     const { content, view } = createContent();
     content.yieldKeyboardToSourceEditor();
     expect(view.focusSourceCalls).toBe(1);
+  });
+
+  it('cannot yield view-only focus to the hidden source editor', () => {
+    const { content, view } = createContent(true);
+    content.yieldKeyboardToSourceEditor();
+    expect(view.focusSourceCalls).toBe(0);
   });
 
   it('owns the find target and the selection only while the preview has focus', () => {

@@ -3,6 +3,10 @@ import { TextCoordinates } from '../text/TextCoordinates';
 import { Highlighter, type LangId, type Span } from '../syntax/Highlighter';
 import type { TextDocument } from '../text/TextDocument';
 import type { EditorFrameAttribution } from './EditorFrameAttribution';
+import type {
+  DocumentSyntaxReader,
+  SyntaxRevision,
+} from '../syntax/DocumentSyntaxSource.interface';
 
 // Bracket matching (editor parity): given the cursor position, find the bracket the cursor is ON or
 // immediately AFTER, and its balanced partner. The core `find` is PURE — it takes grapheme cells per
@@ -157,7 +161,7 @@ class $BracketMatch {
     document: TextDocument.Instance,
     cursorLine: number,
     cursorColumn: number,
-    language: LangId,
+    syntax: LangId | DocumentSyntaxReader,
     frameAttribution?: EditorFrameAttribution.Model,
   ): BracketMatchResult | null {
     const revision = document.revision.value;
@@ -166,7 +170,8 @@ class $BracketMatch {
       cached?.revision === revision &&
       cached.cursorLine === cursorLine &&
       cached.cursorColumn === cursorColumn &&
-      cached.language === language
+      cached.syntax === syntax &&
+      cached.syntaxRevision === this.syntaxRevision(syntax, document)
     ) {
       return cached.result;
     }
@@ -187,14 +192,20 @@ class $BracketMatch {
       return cellsMemo.get(lineIndex) ?? null;
     };
     const isCodeBracket = (lineIndex: number, column: number): boolean => {
-      if (language === 'plain') return true; // no strings/comments to exclude in plain text
+      const lineLanguage =
+        typeof syntax === 'string'
+          ? syntax
+          : syntax.languageAtLine(document, lineIndex);
+      if (lineLanguage === 'plain') return true; // no strings/comments to exclude in plain text
       const text = frameAttribution
         ? frameAttribution.documentLine(document, lineIndex)
         : document.line(lineIndex);
       if (!spansMemo.has(lineIndex)) {
         spansMemo.set(
           lineIndex,
-          this.Highlighter.highlightLine(text, language),
+          typeof syntax === 'string'
+            ? this.Highlighter.highlightLine(text, syntax)
+            : [...syntax.spansForLine(document, lineIndex)],
         );
       }
       const spans = spansMemo.get(lineIndex)!;
@@ -218,10 +229,18 @@ class $BracketMatch {
       revision,
       cursorLine,
       cursorColumn,
-      language,
+      syntax,
+      syntaxRevision: this.syntaxRevision(syntax, document),
       result,
     });
     return result;
+  }
+
+  protected static syntaxRevision(
+    syntax: LangId | DocumentSyntaxReader,
+    document: TextDocument.Instance,
+  ): SyntaxRevision {
+    return typeof syntax === 'string' ? 0 : syntax.revision(document);
   }
 }
 
@@ -246,7 +265,8 @@ export interface BracketMatchSnapshot {
   readonly revision: number;
   readonly cursorLine: number;
   readonly cursorColumn: number;
-  readonly language: LangId;
+  readonly syntax: LangId | DocumentSyntaxReader;
+  readonly syntaxRevision: SyntaxRevision;
   readonly result: BracketMatchResult | null;
 }
 

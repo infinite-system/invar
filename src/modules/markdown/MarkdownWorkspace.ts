@@ -1,6 +1,7 @@
 import { Reactive } from 'ivue';
 import { shallowRef } from 'vue';
 import type { Settings } from '../settings/Settings';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { Workspace } from '../workspace/Workspace';
 import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
@@ -13,13 +14,13 @@ import { MarkdownStructureSource } from './MarkdownStructureSource';
 // `showingMarkdownPreview`, `toggleMarkdownPreview`) — including the `.md` extension test, in host
 // core. The host now knows only that SOMETHING may occupy the editor surface.
 //
-// The preview OPENS ITSELF: while this contribution is attached (the plugin is enabled), a Markdown
-// tab that becomes the active presented document gains its preview without a keystroke. A preview
-// the user closed by hand is remembered per path and never auto-reopened; uninstalling the plugin
-// disposes this contribution and the behaviour with it.
+// Normal use reads one persisted editor-or-preview choice for every Markdown document. The older
+// source-preview split remains an explicit compatibility value. In that value only, a Markdown tab
+// gains its split without a keystroke and remembers a hand-close per path.
 //
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
 // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+// invariant: Markdown view mode persists across Markdown documents (src/modules/markdown/markdown.invariants.md)
 // invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
 class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   declare $watch: typeof import('vue').watch;
@@ -33,6 +34,11 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     protected readonly revealMountedPreviewSourceLine: (
       lineIndex: number,
     ) => void = () => {},
+    protected readonly viewModeSetting: RegisteredSetting<string> = {
+      value: shallowRef('split'),
+      save: () => {},
+      dispose: () => {},
+    },
   ) {
     this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
     // The table of contents rides the host-carried provider rendezvous: the structure pane
@@ -63,15 +69,12 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     return new MarkdownStructureSource.Class();
   }
 
-  /** File paths whose tabs currently show the source | preview split. A set keeps the mode PER TAB,
-   *  so switching away and back does not silently discard the user's view choice. */
+  /** File paths whose tabs show the compatibility source-preview split. */
   get previewPaths() {
     return shallowRef<ReadonlySet<string>>(new Set());
   }
 
-  /** File paths whose preview the user closed BY HAND. Auto-open respects this choice: a dismissed
-   *  document stays source-only until its own toggle opens it again, while every other Markdown
-   *  document keeps the open-by-default behaviour. */
+  /** Compatibility-split paths whose preview the user closed by hand. */
   get dismissedPreviewPaths() {
     return shallowRef<ReadonlySet<string>>(new Set());
   }
@@ -79,6 +82,7 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   /** The path the preview should auto-open for right now, or '' when there is none: the active tab
    *  must be a presented Markdown document with no preview showing and no recorded hand-close. */
   protected autoOpenCandidatePath(): string {
+    if (this.viewMode !== 'split') return '';
     if (!this.previewToggleAvailable) return '';
     const path = this.activeTabPath();
     if (this.previewPaths.value.has(path)) return '';
@@ -124,14 +128,33 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   }
 
   get showingPreview(): boolean {
+    if (this.viewMode === 'preview') return this.activeFileIsMarkdown;
+    if (this.viewMode === 'editor') return false;
     return (
       this.activeFileIsMarkdown &&
       this.previewPaths.value.has(this.activeTabPath())
     );
   }
 
+  get viewMode(): 'editor' | 'preview' | 'split' {
+    const value = this.viewModeSetting.value.value;
+    if (value === 'preview' || value === 'split') return value;
+    return 'editor';
+  }
+
+  get viewOnly(): boolean {
+    return this.showingPreview && this.viewMode === 'preview';
+  }
+
   togglePreview(): void {
     if (!this.previewToggleAvailable) return;
+    if (this.viewMode !== 'split') {
+      this.viewModeSetting.value.value =
+        this.viewMode === 'preview' ? 'editor' : 'preview';
+      this.viewModeSetting.save();
+      this.workspace.focusEditor();
+      return;
+    }
     const path = this.activeTabPath();
     const nextPaths = new Set(this.previewPaths.value);
     const nextDismissed = new Set(this.dismissedPreviewPaths.value);
@@ -165,7 +188,7 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   /** But the keyboard follows the focused pane: while the rendered preview holds focus, the source
    *  editor is not the keyboard target. */
   get activeDocumentIsKeyboardTarget(): boolean {
-    return !this.mountedPreviewFocused();
+    return !this.viewOnly && !this.mountedPreviewFocused();
   }
 
   revealPresentedSourceLine(lineIndex: number): void {

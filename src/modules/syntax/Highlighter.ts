@@ -3,7 +3,7 @@ import { TextCoordinates } from '../text/TextCoordinates';
 
 // Immediate-layer syntax highlighter: per-line tokenization into semantic role spans.
 // This is the fast path that never blocks (Tree-sitter/LSP semantic tokens are the deferred
-// upgrade, slotted behind the same LanguageRegistry seam — see KNOWN_LIMITATIONS.md).
+// upgrade, slotted behind the DocumentSyntaxSource seam — see KNOWN_LIMITATIONS.md).
 //
 // invariant: The immediate layer never blocks the deferred layer (project.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
@@ -250,7 +250,7 @@ class $Highlighter {
   /** Tokenize one line of HTML (and, with `vue`, Vue-SFC template sugar: directives + interpolations).
    *  Line-local `insideTag` state, mirroring the block-comment heuristic in tokenizeCode — a tag that
    *  spans lines re-opens its attribute coloring on the next line, which is acceptable for the immediate
-   *  layer (the deferred Tree-sitter upgrade is the exact-grammar path). */
+   *  layer (a richer DocumentSyntaxSource is the exact-grammar path). */
   protected static tokenizeHtml(line: string, isVue: boolean): Span[] {
     const spans: Span[] = [];
     const appendSpan = (text: string, role: Role) => {
@@ -374,7 +374,7 @@ class $Highlighter {
   /** Tokenize one line of CSS. Line-local (block comments/values that span lines re-color per line).
    *  A property is an identifier immediately followed by ':' (keyword); selectors (.class/#id/@rule) and
    *  values/colors/units get their own roles. */
-  protected static tokenizeCss(line: string): Span[] {
+  protected static tokenizeCss(line: string, isScss = false): Span[] {
     const spans: Span[] = [];
     const appendSpan = (text: string, role: Role) => {
       if (text) spans.push({ text, role });
@@ -383,6 +383,11 @@ class $Highlighter {
     const length = line.length;
     while (index < length) {
       const character = line[index]!;
+      // SCSS line comment.
+      if (isScss && character === '/' && line[index + 1] === '/') {
+        appendSpan(line.slice(index), 'comment');
+        break;
+      }
       // Block comment (line-local)
       if (character === '/' && line[index + 1] === '*') {
         const commentEndIndex = line.indexOf('*/', index + 2);
@@ -406,6 +411,12 @@ class $Highlighter {
           'string',
         );
         index = scanIndex + 1;
+        continue;
+      }
+      // SCSS interpolation starts before the CSS color/selector branch.
+      if (isScss && line.startsWith('#{', index)) {
+        appendSpan('#{', 'operator');
+        index += 2;
         continue;
       }
       // #hex color, else #id selector
@@ -438,6 +449,15 @@ class $Highlighter {
         while (scanIndex < length && /[A-Za-z-]/.test(line[scanIndex]!))
           scanIndex++;
         appendSpan(line.slice(index, scanIndex), 'keyword');
+        index = scanIndex;
+        continue;
+      }
+      // SCSS variables and interpolation.
+      if (isScss && character === '$') {
+        let scanIndex = index + 1;
+        while (scanIndex < length && /[A-Za-z0-9_-]/.test(line[scanIndex]!))
+          scanIndex++;
+        appendSpan(line.slice(index, scanIndex), 'variable');
         index = scanIndex;
         continue;
       }
@@ -477,7 +497,7 @@ class $Highlighter {
         continue;
       }
       // punctuation
-      if (/[{}();:,>+~*=[\]]/.test(character)) {
+      if (/[{}();:,>+~*=[\]&]/.test(character)) {
         appendSpan(character, 'operator');
         index++;
         continue;
@@ -512,6 +532,8 @@ class $Highlighter {
         return this.tokenizeHtml(line, true);
       case 'css':
         return this.tokenizeCss(line);
+      case 'scss':
+        return this.tokenizeCss(line, true);
       default:
         return [{ text: line, role: 'text' }];
     }
@@ -587,6 +609,7 @@ export type LangId =
   | 'markdown'
   | 'html'
   | 'css'
+  | 'scss'
   | 'vue'
   | 'diff'
   | 'plain';

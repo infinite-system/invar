@@ -15,8 +15,8 @@ import type {
   LanguageHoverDiagnostic,
   LanguageLocation,
   LanguagePosition,
-  LanguageProvider,
 } from '../workspace/LanguageProvider.interface';
+import type { DocumentLanguageService } from '../workspace/DocumentLanguageService.interface';
 import type { Workspace } from '../workspace/Workspace';
 import type {
   WorkspaceContribution,
@@ -31,15 +31,16 @@ import { CodexRewriteProviderFactory } from './CodexRewriteProviderFactory';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: LSP is a provider plugin (src/modules/lsp/lsp.invariants.md)
+// invariant: Language services coexist by document (src/modules/workspace/workspace.invariants.md)
 // invariant: A structure source answers or declines, never blanks (src/modules/structure/structure.invariants.md)
 class $LspWorkspaceProvider
   implements
     WorkspaceContribution,
-    LanguageProvider,
+    DocumentLanguageService,
     GutterDecorationContribution,
     StructureSource
 {
-  readonly identifier = 'language' as const;
+  readonly identifier = 'document-language-service' as const;
   readonly providers: readonly WorkspaceProvider[] = [this];
   protected rootPath = '';
   protected client: LanguageClient.Model | null = null;
@@ -70,7 +71,7 @@ class $LspWorkspaceProvider
     );
   }
 
-  get completionTriggerCharacters(): readonly string[] {
+  completionTriggerCharacters(_document: LanguageDocument): readonly string[] {
     return this.client?.completionTriggerCharacters ?? [];
   }
 

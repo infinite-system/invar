@@ -309,6 +309,10 @@ describe('Drive settled observations', () => {
         resolve(import.meta.dir, 'Drive.ts'),
         '--open',
         resolve(repositoryRoot, 'project.conductor.archive.md'),
+        '--key',
+        'Control+Shift+v',
+        '--wait-for-status',
+        'markdownParsing=false',
       ],
       {
         cwd: repositoryRoot,

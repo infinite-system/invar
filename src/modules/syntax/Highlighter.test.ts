@@ -30,6 +30,20 @@ test('keywords, strings, numbers, comments get distinct roles', () => {
   ).toBe(true);
 });
 
+test('SCSS has variables, nesting, interpolation, and line comments', () => {
+  const line = '$tone: red; .card { &__title { color: #{$tone}; } // nested }';
+  const spans = Highlighter.Class.highlightLine(line, 'scss');
+
+  expect(textOf(line, 'scss')).toBe(line);
+  expect(spans).toContainEqual({ text: '$tone', role: 'variable' });
+  expect(spans).toContainEqual({ text: '&', role: 'operator' });
+  expect(spans).toContainEqual({ text: '#{', role: 'operator' });
+  expect(spans).toContainEqual({ text: '// nested }', role: 'comment' });
+  expect(Highlighter.Class.highlightLine('// nested }', 'css')).not.toEqual([
+    { text: '// nested }', role: 'comment' },
+  ]);
+});
+
 test('PascalCase identifiers are typed, call sites are funcs', () => {
   const spans = Highlighter.Class.highlightLine(
     'new Widget(); doThing()',

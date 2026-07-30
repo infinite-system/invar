@@ -50,3 +50,11 @@ All five map recommendations ACCEPTED:
 5. True SCSS highlighting ships in the first highlighting slice.
 
 State: UNBLOCKED — dispatch per the map's five phases.
+
+## Phase 1-2 LANDED bycatch notes (2026-07-29)
+
+- Bootstrap.ts imports LanguageRegistry without using it (structural query:
+  import only) — sweep in a later phase commit.
+- 100k fixture drive: built-in Claude task printed 'claude: command not
+  found' in the fixture workspace panel — expected in fixture roots, but
+  phases 3-5 acceptance drives should pin a defined behaviour.

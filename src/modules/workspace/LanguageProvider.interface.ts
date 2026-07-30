@@ -6,7 +6,7 @@ import type { WorkspaceProvider } from './WorkspaceContributor.interface';
 /** Provider-neutral semantic surface consumed by host editor features. */
 export interface LanguageProvider extends WorkspaceProvider {
   readonly identifier: 'language';
-  readonly completionTriggerCharacters: readonly string[];
+  completionTriggerCharacters(document: LanguageDocument): readonly string[];
   definition(
     document: LanguageDocument,
     position: LanguagePosition,

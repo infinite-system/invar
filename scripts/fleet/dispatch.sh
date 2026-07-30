@@ -364,6 +364,25 @@ mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
 # folder sorts under its task and a directory listing groups by task before it groups by round. The
 # sequence was resolved before DRY_RUN so the dry-run output tests the same pointer target used here.
 cp "$brief_file" "$dispatch_directory/$brief_dated_name"
+# land.sh REQUIRES task-<name>.md in the dispatch folder (it rewrites the State
+# line at landing). A bundle or renamed-slug dispatch has no matching active/
+# record to move, so WRITE A STUB now — landing #313 and #312 both stalled on
+# this exact absence (2026-07-29).
+if [ ! -f "$dispatch_directory/task-${name}.md" ]; then
+  cat > "$dispatch_directory/task-${name}.md" <<STUB
+# ${task_number} — dispatch record: ${slug}
+
+State: active
+Engine: ${resolved_engine}
+Model: ${declared_model}
+Effort: ${declared_effort}
+
+Dispatch-generated stub (no matching active/ record folder for this
+slug — bundle or renamed dispatch). The governing task records are the
+ones linked from [the brief](${brief_dated_name}); the conductor
+completes those records at landing.
+STUB
+fi
 PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
   --fix --moved-only "$dispatch_directory/$brief_dated_name"
 

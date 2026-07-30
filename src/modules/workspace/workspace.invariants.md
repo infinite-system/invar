@@ -10,6 +10,39 @@ a referenced resource stays alive) rather than adding its own._
 
 ## Chosen invariants
 
+### Language services coexist by document
+
+**Invariant:** If several language services are installed, then the host keeps one
+`LanguageProviderRouter` and selects the newest registered service that supports the subject
+document; a service for one extension cannot shadow a peer that supports another extension.
+
+**Scope:** Host-facing language requests and `DocumentLanguageService` registrations. Structure
+and syntax use their own consumer-owned sources through the same registry.
+
+**Mechanism:** The router enumerates `document-language-service` registrations newest first and
+calls the selected service through the provider-neutral language contract. Each service owns its
+client and lifecycle. The router owns neutral values when no service supports the document.
+
+**Generates:** `DocumentLanguageService`; `LanguageProviderRouter`; one permanent host-facing
+`language` provider per workspace; per-service registration and withdrawal.
+
+**Rejected alternatives:** Resolving only the newest `language` provider, which lets an unrelated
+service shadow TypeScript; putting language-extension rules in the router, which couples the host
+to provider policy.
+
+**Evidence:** `DocumentLanguageService.interface.ts`; `LanguageProviderRouter.ts`; `Workspace.ts`;
+`../lsp/LspWorkspaceProvider.ts`; `LanguageProviderRouter.test.ts`.
+
+**Impossible if true:** Installing a service for `.alt` makes TypeScript hover stop working;
+uninstalling one service disposes a peer client; the router checks a concrete language extension.
+
+**Verification:** `bun test src/modules/workspace/LanguageProviderRouter.test.ts
+src/modules/lsp/LspWorkspaceProvider.test.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Document identity survives document instance replacement
 
 **Invariant:** If a logical open document is dehydrated and later rehydrated, then every document

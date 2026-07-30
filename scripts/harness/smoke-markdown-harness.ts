@@ -251,7 +251,7 @@ async function driveTaskPresentationInTheme(
   mkdirSync(settingsDirectory, { recursive: true });
   await Bun.write(
     join(settingsDirectory, 'settings.json'),
-    JSON.stringify({ theme }),
+    JSON.stringify({ theme, markdownViewMode: 'split' }),
   );
   await Bun.write(
     join(taskFixtureRoot, 'README.md'),
@@ -418,6 +418,12 @@ async function driveTerminalShrinkAtScale(
   await Bun.write(
     join(scaleFixtureRoot, 'README.md'),
     `${scaleFixtureLines.join('\n')}\n`,
+  );
+  const scaleSettingsDirectory = join(scaleHomeDirectory, '.config', 'invar');
+  mkdirSync(scaleSettingsDirectory, { recursive: true });
+  await Bun.write(
+    join(scaleSettingsDirectory, 'settings.json'),
+    JSON.stringify({ markdownViewMode: 'split' }),
   );
   const scaleDriver = new PtyTestDriver.Class({
     workspaceRoot: scaleFixtureRoot,
@@ -914,6 +920,12 @@ const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-markdown-harness-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-markdown-harness-home-'));
 
 const statusPath = join(homeDirectory, 'status.json');
+const settingsDirectory = join(homeDirectory, '.config', 'invar');
+mkdirSync(settingsDirectory, { recursive: true });
+await Bun.write(
+  join(settingsDirectory, 'settings.json'),
+  JSON.stringify({ markdownViewMode: 'split' }),
+);
 
 const markdownLines = [
   '# Rendered heading',

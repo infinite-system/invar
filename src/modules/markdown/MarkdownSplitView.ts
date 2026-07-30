@@ -3,6 +3,7 @@
 // pane-local interactions. The MarkdownRenderable remains the one rendered-markdown projection.
 //
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
+// invariant: Markdown view mode persists across Markdown documents (src/modules/markdown/markdown.invariants.md)
 // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
 // invariant: Dead relative Markdown links have one revision-stamped verdict (src/modules/markdown/markdown.invariants.md)
 import { BoxRenderable, type CliRenderer } from '@opentui/core';
@@ -52,7 +53,7 @@ class $MarkdownSplitView {
   protected referenceDeadByTarget = new Map<string, boolean>();
 
   get focusedPane() {
-    return ref<MarkdownSplitPane>('source');
+    return ref<MarkdownSplitPane>(this.options.viewOnly ? 'preview' : 'source');
   }
   get hoveredReferencePath() {
     return ref<string | null>(null);
@@ -109,8 +110,9 @@ class $MarkdownSplitView {
     // contributed `markdownPreviewSide` setting flips the order. Only the child order and the
     // splitter's pointer direction change — the persisted ratio keeps meaning "source pane share".
     // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
-    const childRenderables =
-      this.previewSide === 'left'
+    const childRenderables = options.viewOnly
+      ? [this.previewPaneRenderable]
+      : this.previewSide === 'left'
         ? [
             this.previewPaneRenderable,
             this.dividerRenderable,
@@ -124,8 +126,10 @@ class $MarkdownSplitView {
     for (const childRenderable of childRenderables) {
       this.rootRenderable.add(childRenderable);
     }
-    options.sourceRenderable.flexGrow = 0;
-    options.sourceRenderable.flexShrink = 0;
+    if (!options.viewOnly) {
+      options.sourceRenderable.flexGrow = 0;
+      options.sourceRenderable.flexShrink = 0;
+    }
     options.parentRenderable.add(this.rootRenderable);
     this.bindPreviewEvents();
     this.previewRenderable.attachFindEngineProvider(() =>
@@ -298,6 +302,7 @@ class $MarkdownSplitView {
   }
 
   focusSource(): void {
+    if (this.options.viewOnly) return;
     this.focusedPane.value = 'source';
   }
 
@@ -412,6 +417,7 @@ class $MarkdownSplitView {
   }
 
   protected synchronizeScrollFollower(): boolean {
+    if (this.options.viewOnly) return false;
     const sourceScrollTop = this.options.sourceScrollTop();
     const previewScrollTop = this.previewViewport.scrollTop;
     const previewWidth = this.previewViewportWidth();
@@ -682,7 +688,11 @@ class $MarkdownSplitView {
   }
 
   protected paneExtentWidth(): number {
-    return Math.max(2, (Number(this.rootRenderable.width) || 80) - 1);
+    const dividerWidth = this.options.viewOnly ? 0 : 1;
+    return Math.max(
+      2,
+      (Number(this.rootRenderable.width) || 80) - dividerWidth,
+    );
   }
 
   protected sourcePaneWidth(): number {
@@ -694,6 +704,10 @@ class $MarkdownSplitView {
   }
 
   protected synchronizePaneGeometry(): void {
+    if (this.options.viewOnly) {
+      this.previewPaneRenderable.width = '100%';
+      return;
+    }
     const sourcePaneWidth = this.sourcePaneWidth();
     this.options.sourceRenderable.width = sourcePaneWidth;
     this.options.sourceRenderable.height = '100%';
@@ -733,10 +747,12 @@ class $MarkdownSplitView {
     try {
       this.preview.dispose();
       this.previewTextBuffer.dispose();
-      this.rootRenderable.remove(this.options.sourceRenderable);
-      this.options.sourceRenderable.flexGrow = 1;
-      this.options.sourceRenderable.flexShrink = 1;
-      this.options.sourceRenderable.width = '100%';
+      if (!this.options.viewOnly) {
+        this.rootRenderable.remove(this.options.sourceRenderable);
+        this.options.sourceRenderable.flexGrow = 1;
+        this.options.sourceRenderable.flexShrink = 1;
+        this.options.sourceRenderable.width = '100%';
+      }
       this.options.parentRenderable.remove(this.rootRenderable);
       this.rootRenderable.destroyRecursively();
     } catch {
@@ -761,6 +777,8 @@ export interface MarkdownSplitViewOptions {
   settings: Settings.Instance;
   splitRatioSetting?: RegisteredSetting<number>;
   scrollSyncSetting?: RegisteredSetting<boolean>;
+  /** Show only rendered Markdown. The source document stays live but its editor is not mounted. */
+  viewOnly?: boolean;
   /** Which side of the source the rendered pane occupies. Defaults to 'left'. */
   previewSide?: MarkdownPreviewSide;
   findBar: FindBar.Instance;

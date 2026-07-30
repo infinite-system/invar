@@ -35,6 +35,7 @@ class $GitComparisonContent implements EditorSurfaceContent {
       currentVersionText: request.currentVersionText,
       previousVersionPath: request.previousVersionPath,
       currentVersionPath: request.currentVersionPath,
+      documentSyntax: hostWorkspace.documentSyntax,
       parentRenderable: context.container,
       onOpenFull: () => {
         // Comparison requests carry workspace-relative paths. Resolve through the host's existing

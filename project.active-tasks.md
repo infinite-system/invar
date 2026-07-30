@@ -7,13 +7,13 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (4)
-- #314 harness-and-tooling-integrity-bundle  [building]
+- #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/in-progress/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md)  [active]  [building]
+  `tmux attach -t invar/320-terminal-pane-fidelity-two-bundle`
+- #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/in-progress/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)  [building]
+  `tmux attach -t invar/317-bottom-panel-splitter-thinner-with-action-buttons`
+- #314 [harness-and-tooling-integrity-bundle](.invar/tasks/in-progress/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md)  [active]  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/314-harness-and-tooling-integrity-bundle`
-- #312 vue-sfc-block-syntax-and-routing  [building]
-  `tmux attach -t invar/312-vue-sfc-block-syntax-and-routing`
-- #308 [markdown-view-only-mode-persistent](.invar/tasks/in-progress/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)  [building]
-  `tmux attach -t invar/308-markdown-view-only-mode-persistent`
-- #300 eight-ui-nitpicks-bundled  [building]
+- #300 [eight-ui-nitpicks-bundled](.invar/tasks/in-progress/300-eight-ui-nitpicks-bundled/task-300-eight-ui-nitpicks-bundled.md)  [active]  [building]
   `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
 ## USER-DIRECTED (3)
@@ -87,7 +87,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (10) — stamp Priority: into these task files
+## NO PRIORITY GROUP (12) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
@@ -95,15 +95,19 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 - #316 [316-terminal-list-close-icon-matches-tabs](.invar/tasks/active/316-terminal-list-close-icon-matches-tabs/task-316-terminal-list-close-icon-matches-tabs.md)
-- #317 [317-bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/active/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)
 - #318 [318-markdown-code-fence-uniform-background](.invar/tasks/active/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md)
 - #319 [319-tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/active/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)
+- #320 [320-terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/active/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md)
+- #321 [321-terminal-flicker-child-tui-repaints](.invar/tasks/active/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md)
+- #322 [322-status-editor-column-content-stale-in-preview](.invar/tasks/active/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)
 
-## RECENTLY COMPLETED (last 15 of 84 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 86 — full log: project.tasks-completed.md)
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
 - #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
 - #313 [terminal-mouse-passthrough-to-child-apps](.invar/tasks/completed/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md) — 133338ba — terminal mouse passthrough to child apps
+- #312 [vue-sfc-block-syntax-and-routing](.invar/tasks/completed/312-vue-sfc-block-syntax-and-routing/task-312-vue-sfc-block-syntax-and-routing.md) — b0f78747 — Vue SFC phases 1-2: block-aware highlighting on generic syntax + language routing
 - #311 [vue-sfc-integration-map](.invar/tasks/completed/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md) — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
+- #308 [markdown-view-only-mode-persistent](.invar/tasks/completed/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md) — 284d53c1 — markdown view-only mode, persistent across files and restarts
 - #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
@@ -113,5 +117,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
 - #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/completed/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md) — f22d86e3 — Scrollbar corner: vertical owns full height + corner, horizontal ends at its edge, grey/white parity both axes; #284 oracle banked
-- #289 [preview-scroll-sync-setting](.invar/tasks/completed/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md) — 7c65b3e8 — Markdown preview: bidirectional input-leader scroll-sync (setting, default ON) + both-axis scrollbars; activity-bar harness locator fixed by-label at the generator
-- #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references

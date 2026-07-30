@@ -94,8 +94,9 @@ text but drifts by the surrogate/cluster width once an emoji or combining mark p
 ### LSP is a provider plugin
 
 **Invariant:** If language intelligence is installed, then `LspPlugin` registers
-one `LanguageProvider` through the existing application manifest and workspace
-contribution registry; the host never imports or names the LSP module.
+one `DocumentLanguageService` through the existing application manifest and workspace
+contribution registry; the host language router delegates supported documents to it, and the
+host never imports or names the LSP module.
 
 **Scope:** Completion, diagnostics, definition, hover, document symbols, document
 synchronization, language settings, language keybindings, workspace lifecycle, and plugin
@@ -104,13 +105,13 @@ install/uninstall.
 **Components:**
 - `LspPlugin` — contributes settings, keybindings, and a
   `WorkspaceContributor` through `ApplicationContributor`.
-- `LspWorkspaceProvider` — registers itself as `LanguageProvider`,
+- `LspWorkspaceProvider` — registers itself as `DocumentLanguageService`,
   `StructureSource`, and `RewriteProviderFactory` through the one type-blind
   workspace registry. It owns one `LanguageClient` and adapts protocol results
   to each consumer-owned interface. It withdraws all three registrations on
   disposal.
-- `Workspace` — carries one provider registry, resolves language capability
-  through it, and returns neutral results when none is installed.
+- `Workspace` — carries one provider registry and one `LanguageProviderRouter`, which resolves
+  supporting document services and returns neutral results when none supports the document.
 
 **Mechanism:** `ApplicationContributions` activates the one manifest and
 `WorkspaceSet.registerContributor` attaches `LspWorkspaceProvider` to each
@@ -118,7 +119,7 @@ workspace. Disabling `LspPlugin` reverses those registrations; provider
 disposal releases its client, diagnostics, and subprocess, while
 `Workspace.languageProviderNotice` publishes the provider-empty state.
 
-**Generates:** One provider registration for all language behaviors; LSP-owned
+**Generates:** One service registration for all LSP language behaviors; LSP-owned
 settings and keybindings; symmetric install/uninstall; a host-facing
 `LanguageProvider` port in `src/modules/workspace/`.
 
@@ -128,6 +129,8 @@ recreate the coupling the provider port removes.
 
 **Evidence:** `src/modules/lsp/LspPlugin.ts`;
 `src/modules/lsp/LspWorkspaceProvider.ts`;
+`src/modules/workspace/DocumentLanguageService.interface.ts`;
+`src/modules/workspace/LanguageProviderRouter.ts`;
 `src/modules/workspace/LanguageProvider.interface.ts`;
 `src/modules/workspace/Workspace.ts`; `src/modules/lsp/LspPlugin.test.ts`;
 `scripts/harness/smoke-plugin-manifest-harness.ts`.
@@ -145,7 +148,7 @@ src/modules/lsp/LspWorkspaceProvider.test.ts`; and
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-29
 
 ### Completion is provider-neutral
 

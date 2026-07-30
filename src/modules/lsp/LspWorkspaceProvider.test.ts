@@ -5,7 +5,7 @@ import { Workspace } from '../workspace/Workspace';
 import type { StructureSource } from '../structure/StructureSource.interface';
 import { LspWorkspaceProvider } from './LspWorkspaceProvider';
 
-test('the LSP workspace contribution registers one language provider', async () => {
+test('the LSP workspace contribution registers one document service', async () => {
   const workspace = new Workspace.Class();
   const contribution = new LspWorkspaceProvider.Class(workspace, {
     preferredTypeScriptServer: ref('tsgo'),
@@ -15,7 +15,7 @@ test('the LSP workspace contribution registers one language provider', async () 
   document.loadFromText('plain text\n', '/tmp/readme.txt');
 
   expect(contribution.providers).toEqual([contribution]);
-  expect(contribution.identifier).toBe('language');
+  expect(contribution.identifier).toBe('document-language-service');
   expect(
     await contribution.completion(
       document,

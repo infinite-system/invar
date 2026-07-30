@@ -13,6 +13,7 @@ import type {
 // registry gives it.
 //
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
+// invariant: Markdown view mode persists across Markdown documents (src/modules/markdown/markdown.invariants.md)
 class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
   constructor(
     protected readonly activeWorkspace: () => MarkdownWorkspace.Model | null,
@@ -74,6 +75,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
       this.splitRatioSetting,
       this.previewSide(),
       this.scrollSyncSetting,
+      markdownWorkspace.viewOnly,
     );
   }
 }

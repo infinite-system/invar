@@ -12,6 +12,7 @@
 // invariant: One mark has one reserved meaning (src/modules/workspace/workspace.invariants.md)
 // invariant: The editor gutter reflects HEAD changes (src/modules/diff/diff.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
+// invariant: Embedded documents have more than one syntax language (src/modules/syntax/syntax.invariants.md)
 import {
   StyledText,
   fg,
@@ -28,7 +29,6 @@ import type { EditorFrameAttribution } from './EditorFrameAttribution';
 import { EditorWrap, type VisualRow } from './EditorWrap';
 import { Highlighter, type Role, type Span } from '../syntax/Highlighter';
 import type { BracketCell } from './BracketMatch';
-import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import type { Workspace } from '../workspace/Workspace';
 import type { FindInBuffer } from '../search/FindInBuffer';
@@ -75,7 +75,6 @@ class $EditorPaneRenderer {
     if (!workspace.editorSurfaces.activeDocumentIsPresented) return null;
     const editor = workspace.editor;
     if (!editor.hasDocument.value) return null;
-    const language = LanguageRegistry.Class.forPath(editor.document.path);
     const height = context.viewportHeight;
     const top = editor.viewport.scrollTop.value;
     const attributedDocument = context.frameAttribution.attributedDocument(
@@ -149,9 +148,9 @@ class $EditorPaneRenderer {
       );
     };
     const sourceFindEngine = context.findEngineFor(editor.document.path);
-    // Plain text (binary or no language) renders in the default foreground with no token spans.
-    const plainForeground =
-      editor.document.binary.value || language === 'plain';
+    // Binary placeholders render directly. Text documents, including the plain fallback, use
+    // lossless spans from the shared document syntax reader.
+    const binaryForeground = editor.document.binary.value;
     // `windowSpans` are the token spans covering EXACTLY windowText (already sliced/aligned to the
     // window), or null on the plain path. Tokenization happens ONCE per line/window at the call
     // sites; every sub-segment here is a SLICE of those spans — never a re-tokenization. Re-tokenizing
@@ -391,12 +390,14 @@ class $EditorPaneRenderer {
           row.lineIndex,
         );
         let segmentSpans: Span[] | null = null;
-        if (!plainForeground) {
+        if (!binaryForeground) {
           if (row.lineIndex !== tokenizedLineIndex) {
-            tokenizedLineSpans = Highlighter.Class.highlightLine(
-              lineText,
-              language,
-            );
+            tokenizedLineSpans = [
+              ...workspace.documentSyntax.spansForLine(
+                editor.document,
+                row.lineIndex,
+              ),
+            ];
             tokenizedLineIndex = row.lineIndex;
           }
           segmentSpans = Highlighter.Class.sliceSpans(
@@ -496,9 +497,9 @@ class $EditorPaneRenderer {
           TextCoordinates.Class.graphemeToU16(text, endGrapheme),
         );
       }
-      const logicalLineSpans = plainForeground
+      const logicalLineSpans = binaryForeground
         ? null
-        : Highlighter.Class.highlightLine(text, language);
+        : workspace.documentSyntax.spansForLine(editor.document, lineNumber);
       const lineWindowSpans =
         logicalLineSpans === null
           ? null

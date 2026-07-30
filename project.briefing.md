@@ -42,33 +42,45 @@ WATCHERS: fleet-watch Monitor bva4qa3i4 persistent; cron 86218567 :07/:37 loop p
 
 CONTEXT DISCIPLINE: anchor at natural boundaries AND before 85%; this anchor written at 86%.
 
-## RESUME ANCHOR 9 — 2026-07-29 ~20:30 (35 landed)
+## RESUME ANCHOR 10 — 2026-07-29 ~21:10 (37 landed; context 80% pre-compaction)
 
-Main GREEN. Landed since anchor 8: #294 #277 #295 #298 #296 #299 #305 #311
-(35 total). Watchers: fleet-watch Monitor + cron :07/:37 (re-arm after any
-session restart — both die with the session; builders in tmux survive, VM
-suspend/resume is clean).
+Main GREEN at 08403def+. 37 landings today. Latest: #313+#315 child-I/O
+bundle (mouse passthrough — USER CONFIRMED WORKING; child colors exact).
+Watchers: fleet-watch Monitor + cron 38059f05 :07/:37 (re-arm both after
+any session restart; builders in tmux survive; VM suspend/resume clean).
 
 FOUR LANES LIVE (user-approved 4th):
-- 300-eight-ui-nitpicks-bundled — TEN nitpicks (#300 #302 #303 #304 #306
-  #307 #309 #310 #316 #318), one commit per item, land completes all ten.
-  #318 includes rounded fence corners follow-up.
-- 313-child-owns-its-io-bundle — #313 mouse passthrough + #315 child
-  colors; chrome-vs-content boundary recorded once, shared child fixture.
+- 300-eight-ui-nitpicks-bundled — TEN items (#300 #302 #303 #304 #306
+  #307 #309 #310 #316 #318), one commit per '(#NNN)', 3h20m in. Landing:
+  complete ALL constituent active records (move to completed + State
+  line) AND create dispatch-folder stub task file if missing (land.sh
+  requires task-<folder>.md — learned on #313).
 - 308-markdown-view-only-mode-persistent — temp-HOME isolation mandatory.
-- 312-vue-sfc-block-syntax-and-routing — phases 1-2 ONLY of the accepted
-  map (completed/311-vue-sfc-integration-map/project-vue-integration-map.md);
-  user accepted ALL FIVE recommendations verbatim ("all five as
-  recommended, go ahead with 312"). Phases 3-5 are later dispatches.
+- 312-vue-sfc-block-syntax-and-routing — phases 1-2 ONLY of accepted map
+  (completed/311-vue-sfc-integration-map/project-vue-integration-map.md).
+  User accepted ALL FIVE recommendations. Phases 3-5 later, spike gates 3.
+- 314-harness-and-tooling-integrity-bundle — #314+#292+#297, one commit
+  per number.
 
-QUEUE: Bundle B (#314+#292+#297, brief /tmp/brief-314-bundle-1.md) →
-#317 splitter row → #319 tasks pane → #301 chords → #283 vue rc2 (solo)
-→ #272 → #269-#271 → #255-#258 → #260-#262 → 25x cluster.
-WAIT FOR USER: #241 #242; capsule HELD; orphans 200-pool/205-flake.
+NEXT DISPATCH: #320 (terminal default bg from OUR theme + VSCode-default
+ANSI palette; corrects #315's fixed-xterm overshoot; child-explicit lanes
+stay byte-exact) — ahead of #317 splitter → #319 tasks pane → #301
+chords → #283 vue rc2 (solo) → #272 → #269-#271 → #255-#258 → #260-#262
+→ 25x cluster. WAIT FOR USER: #241 #242; capsule HELD; orphans
+200-pool/205-flake disposition.
 
-VERDICT LAW (forms a/b/c) unchanged; hand-filed records MUST use
-'State:' not 'Status:' (land.sh contract). Bundle landing maps commits
-to records by '(#NNN)' suffixes. Census: 10 pool-flakes today in #214;
-load-bound timing metrics tallied there too. .invar/tasks.json is
-UNTRACKED+gitignored (broke every PTY drive — #314). Steer only via
-steer.sh; land only on read verdicts; grep session links by COMMIT.
+VERDICT LAW: forms (a) hook-chain quote + commit past hook; (b) builder
+gate GATE_EXIT=0 matched by COMMIT HASH; (c) red-classified-with-controls.
+SKIP_GATE commits REQUIRE one. Hand-filed records use 'State:' not
+'Status:'. Rollout identified by session-meta cwd ONLY (agent-tmux fix
+2026-07-29 — content grep matched other sessions' mentions, reported
+finished builder busy). Session links repaired by COMMIT hash grep.
+dispatch.sh: per-engine defaults codex->5.6-sol, medium effort REFUSED
+loudly -> high (USER: codex medium not allowed); tasks-status falls back
+to meta.json. .invar/tasks.json UNTRACKED+gitignored (broke every PTY
+drive — #314 owns the seam). Census #214: 15 pool events today. Steer
+only via steer.sh. context-usage.sh committed in ibr (3892f03).
+
+USER PENDING COMMS: none — vue five decisions ANSWERED ("all five as
+recommended"), #313 confirmed working by user. #320 is his freshest
+correction (filed verbatim in its record).
