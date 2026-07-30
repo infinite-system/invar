@@ -1,0 +1,18 @@
+{
+  "task": 381,
+  "slug": "realized-typescript-lsp-still-missing",
+  "branch": "fleet/381-realized-typescript-lsp-still-missing",
+  "worktree": ".invar/worktrees/381-realized-typescript-lsp-still-missing",
+  "tmuxSession": "invar/381-realized-typescript-lsp-still-missing",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-381-realized-typescript-lsp-still-missing.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "4ccb1c1bdbd044ad170b5a33bbc2d913b150c7b6",
+  "startedAt": "2026-07-30T14:46:45-04:00",
+  "landedAt": "2026-07-30T15:22:21-04:00",
+  "durationMinutes": 35,
+  "mergeCommit": "d8526062"
+}

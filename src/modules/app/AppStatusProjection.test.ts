@@ -176,7 +176,9 @@ describe('AppStatusProjection', () => {
         ],
         panelSeparatorGeometry: () => ({
           row: 9,
+          tabRow: 10,
           tabs: [],
+          spaceAdd: null,
           editorActions: [
             {
               commandId: 'view.toggleWordWrap',
@@ -214,8 +216,11 @@ describe('AppStatusProjection', () => {
           rightDockSplitter: { left: 92, top: 0, width: 1, height: 40 },
           rightDock: { left: 93, top: 0, width: 27, height: 40 },
           rightActivityBar: { left: 120, top: 0, width: 0, height: 0 },
+          primaryDockRemainder: { left: 4, top: 21, width: 0, height: 0 },
+          rightDockRemainder: { left: 92, top: 21, width: 0, height: 0 },
           bottomPanelSplitter: { left: 37, top: 21, width: 55, height: 1 },
-          bottomPanel: { left: 37, top: 22, width: 55, height: 18 },
+          bottomPanelTabs: { left: 37, top: 22, width: 55, height: 1 },
+          bottomPanel: { left: 37, top: 23, width: 55, height: 17 },
         }),
         splitterRegions: () => ({
           sidebar: { left: 36, top: 0, width: 1, height: 40, visible: true },
@@ -446,7 +451,9 @@ describe('AppStatusProjection', () => {
     ]);
     expect(publishedSnapshot.panelSeparatorGeometry).toEqual({
       row: 9,
+      tabRow: 10,
       tabs: [],
+      spaceAdd: null,
       editorActions: [
         {
           commandId: 'view.toggleWordWrap',

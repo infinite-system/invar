@@ -1,6 +1,6 @@
 # #381 — typescript lsp still missing in the realized project (reopens #294 field evidence)
 
-State: ACTIVE
+State: COMPLETED — d8526062 — TS LSP discovery includes the app root: every workspace gets tooltips
 Priority: user-directed
 Engine: codex
 Environment: linux
@@ -43,3 +43,19 @@ fix for an unreproduced bug).
   diagnostics or go-to-def — to separate "LSP dead" from "tooltip UI
   dead": if diagnostics work but hover does not, the defect is the
   hover path, not LSP discovery.)
+
+## Evidence update (user, 2026-07-30, VERBATIM)
+
+"lsp tooltips for ts only work in invar workspace nowhere else"
+
+This sharpens the frame: not repo-specific breakage (realized/blackline/
+blackline-app) but WORKSPACE-POSITION-specific — works only in the
+workspace the app was launched from (invar). Candidate generators, ranked:
+1. The language service is bound to the BOOT/first workspace and never
+   spawns (or never routes) for other workspaces — #393 observed exactly
+   one live language-service process with only the active workspace
+   retaining it; check whether hover requests from workspace B route to a
+   tsserver rooted in workspace A (wrong project root = no tooltips).
+2. tsserver discovery resolves relative to the LAUNCH cwd, not the
+   document workspace root.
+Say plainly which candidate measures true.

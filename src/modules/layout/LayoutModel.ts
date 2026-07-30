@@ -10,6 +10,10 @@ class $LayoutModel {
     return 1;
   }
 
+  protected static get BOTTOM_PANEL_TAB_ROWS(): number {
+    return 1;
+  }
+
   protected static get RIGHT_DOCK_SPLITTER_COLUMNS(): number {
     return 1;
   }
@@ -40,6 +44,7 @@ class $LayoutModel {
   }
 
   static maximumUnexpandedBottomPanelRows(totalRows: number): number {
+    // invariant: An unexpanded bottom panel leaves one editor row (src/modules/layout/layout.invariants.md)
     return Math.max(
       1,
       Math.floor(totalRows) -
@@ -331,6 +336,26 @@ class $LayoutModel {
     ) {
       panelRight = Math.min(panelRight, rightDockSplitterLeft);
     }
+    const panelFillTop = panelSplitterTop;
+    const panelFillRows = options.bottomPanelVisible
+      ? totalRows - panelFillTop
+      : 0;
+    const primaryDockRemainderLeft = activityBarLeft + activityBarColumns;
+    const primaryDockRemainderColumns =
+      primaryDockVisible &&
+      options.sidebarPosition === 'left' &&
+      options.leftDockVerticalSpan === 'ends-at-panel'
+        ? Math.max(0, panelLeft - primaryDockRemainderLeft)
+        : 0;
+    const rightDockRemainderLeft = panelRight;
+    const rightDockRemainderColumns =
+      options.rightDockVisible &&
+      options.rightDockVerticalSpan === 'ends-at-panel'
+        ? Math.max(
+            0,
+            totalColumns - rightActivityBarColumns - rightDockRemainderLeft,
+          )
+        : 0;
 
     return {
       activityBar: {
@@ -375,6 +400,18 @@ class $LayoutModel {
         width: rightActivityBarColumns,
         height: rightActivityBarColumns > 0 ? totalRows : 0,
       },
+      primaryDockRemainder: {
+        left: primaryDockRemainderLeft,
+        top: panelFillTop,
+        width: primaryDockRemainderColumns,
+        height: primaryDockRemainderColumns > 0 ? panelFillRows : 0,
+      },
+      rightDockRemainder: {
+        left: rightDockRemainderLeft,
+        top: panelFillTop,
+        width: rightDockRemainderColumns,
+        height: rightDockRemainderColumns > 0 ? panelFillRows : 0,
+      },
       bottomPanelSplitter: {
         left: panelLeft,
         top: panelSplitterTop,
@@ -384,13 +421,27 @@ class $LayoutModel {
             ? this.BOTTOM_PANEL_SPLITTER_ROWS
             : 0,
       },
-      bottomPanel: {
+      bottomPanelTabs: {
         left: panelLeft,
         top: bottomPanelExpanded
           ? 0
           : panelSplitterTop + (options.bottomPanelVisible ? 1 : 0),
         width: panelRight - panelLeft,
-        height: panelBoxRows,
+        height: options.bottomPanelVisible ? this.BOTTOM_PANEL_TAB_ROWS : 0,
+      },
+      bottomPanel: {
+        left: panelLeft,
+        top:
+          (bottomPanelExpanded
+            ? 0
+            : panelSplitterTop + (options.bottomPanelVisible ? 1 : 0)) +
+          (options.bottomPanelVisible ? this.BOTTOM_PANEL_TAB_ROWS : 0),
+        width: panelRight - panelLeft,
+        height: Math.max(
+          0,
+          panelBoxRows -
+            (options.bottomPanelVisible ? this.BOTTOM_PANEL_TAB_ROWS : 0),
+        ),
       },
     };
   }
@@ -479,6 +530,9 @@ export interface LayoutSlotGeometry {
   rightDockSplitter: LayoutRectangle;
   rightDock: LayoutRectangle;
   rightActivityBar: LayoutRectangle;
+  primaryDockRemainder: LayoutRectangle;
+  rightDockRemainder: LayoutRectangle;
   bottomPanelSplitter: LayoutRectangle;
+  bottomPanelTabs: LayoutRectangle;
   bottomPanel: LayoutRectangle;
 }

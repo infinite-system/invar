@@ -34,3 +34,15 @@ workspace only"
    (dock widths, editor/scroll, overlays, etc.).
 4. Contract: a workspace-isolation smoke arm per state class; the
    workspace records refine to name the full scoped-state set.
+
+## Addendum (user, same day, VERBATIM)
+
+"yes modular architecture should be preserved and better strengthened by
+this change"
+
+Reading: fixes land at the module seams — workspace scoping flows
+through each module's own cold-state contribution (the workspace seam),
+never through a central grab-bag of flags. If the census finds state
+that has no clean owner module, the fix includes giving it one. Seam
+rule: the shared generator is the workspace cold-state serialization;
+modules contribute to it, nothing reaches into other modules.

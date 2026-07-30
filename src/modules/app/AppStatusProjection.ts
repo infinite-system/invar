@@ -281,6 +281,10 @@ class $AppStatusProjection {
       ),
       panelActiveSpace: ports.panelHost.activeSpaceId.value,
       panelActiveSpacePaneIds: ports.panelHost.activeSpace?.contentIds ?? [],
+      panelActiveGroup: ports.panelHost.activeSpace?.activeGroupId ?? null,
+      panelGroups: ports.panelHost
+        .panelGroups()
+        .map((group) => [...group.contentIds]),
       panelTabCycling: ports.settings.panelTabCycling.value,
       panelTabCycleSeconds: ports.settings.panelTabCycleSeconds.value,
       panelExpanded: ports.panelHost.expanded.value,
@@ -501,6 +505,7 @@ export interface AppStatusProjectionPorts {
     | 'cellSpans'
     | 'panelListVisible'
     | 'panelListExpanded'
+    | 'panelGroups'
     | 'spaces'
     | 'activeSpace'
     | 'activeSpaceId'

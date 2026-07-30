@@ -2,6 +2,36 @@
 
 ## RESUME ANCHOR 20 — 2026-07-30 14:06 (written at 77.6% gauge, pre-compaction)
 
+### ANCHOR 20 — delta 1 (2026-07-30 ~14:5x, written at the 85% CHECKPOINT)
+
+Since anchor 20: LANDED #402 Invar Monitoring plugin (dae7fba9, opus —
+answers the memory question: allocator high-water RSS, NOT file cache;
+cache is bounded at 2 hydrated docs). FILED #405 (PanelHost kind tables,
+coordinate with #404), #406 (SettingSpec text kind), #407 (keybinding
+collision detection), #408 (workspace state isolation — user verbatim +
+modularity addendum), #409 (layout switch leaves unfilled space — total
+tiling contract). #403 SHRUNK (cache already bounded — record it).
+
+LANES LIVE (5): #393 (merge round + hidden-pane-30%-polling rounds
+queued), #404 (panel v2, three verbatim details), #408 (workspace
+isolation, opus — census by enumeration, must not touch #404 files),
+#409 (layout tiling, codex), #381 (TS LSP only in launch workspace —
+routing/rooting experiment, codex).
+
+CODEX EFFORT: all fleet lanes verified medium TWICE by /proc cmdline +
+TUI footers. The "sol high" the user sees is their OWN bare codex (pid
+843626, from zsh) running ~/.codex/config.toml default high. OFFERED to
+flip their config to medium — awaiting their word; do NOT touch it
+unprompted.
+
+LESSONS this window: (1) a user field report beat two green fixture
+verdicts twice — idle contracts now require REAL-SHAPED fixtures
+(hundreds of task folders); (2) overlap check before EVERY landing
+(comm -12 on merge-base diffs) is now the ritual's hard step — semantic
+merges broke the build once and needed rounds twice; (3) claude-lane
+session-link repair done by hand 3x — HARDENED into archive-session.sh
+lazy resolution this checkpoint.
+
 Supersedes anchor 19 and its deltas. State reconstructed from disk; verify with
 git log --oneline -15 and bun scripts/tasks/tasks-status.ts on resume.
 

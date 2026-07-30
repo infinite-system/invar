@@ -1,6 +1,6 @@
 # #404 — panel chrome v2: two rows, tab close buttons, pane-level add
 
-State: IN-PROGRESS
+State: COMPLETED — 17b89a64 — panel chrome v2: two rows, container tabs, full-width window groups with explicit split
 Priority: user-directed
 Engine: codex
 Environment: linux

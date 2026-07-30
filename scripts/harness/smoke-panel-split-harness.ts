@@ -122,18 +122,28 @@ async function driveSharedCloseGlyphTier(
     const splitStatus = await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
-      `${glyphLevel} two-pane space keeps its management list collapsed`,
+      `${glyphLevel} second window becomes a separate full-width group`,
       (status) =>
         Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.includes('agent') &&
-        status.panelCellIds.includes('terminal') &&
+        status.panelCellIds.join(',') === 'agent' &&
+        Array.isArray(status.panelGroups) &&
+        status.panelGroups.length === 2 &&
         status.panelListVisible === false,
     );
-    const sharedGlyphSnapshot = await tierDriver.awaitGridCondition(
-      `${glyphLevel} tab row omits per-pane title and close chrome`,
-      (candidate) =>
-        candidate.findText('Claude ×') === null &&
-        candidate.findText('Terminal ×') === null,
+    const sharedGlyphSnapshot = tierDriver.snapshot();
+    const panelTabRow = Number(
+      (splitStatus.panelSeparatorGeometry as { tabRow?: number } | null)
+        ?.tabRow,
+    );
+    HarnessSmoke.Class.requireCondition(
+      sharedGlyphSnapshot
+        .textRows()
+        .slice(panelTabRow + 1)
+        .every(
+          (rowText) =>
+            !rowText.includes('Claude ×') && !rowText.includes('Terminal ×'),
+        ),
+      `${glyphLevel} panel body omits per-pane title and close chrome`,
     );
     const bufferTabRow = sharedGlyphSnapshot
       .textRows()
@@ -247,7 +257,7 @@ try {
   );
 
   console.log(
-    '== harness panel-split: clicking Agent adds its own side-by-side pane ==',
+    '== harness panel-split: Agent opens full width, then its row explicitly adds a split ==',
   );
   clickCell(
     driver,
@@ -257,21 +267,79 @@ try {
   openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'agent,terminal' && status.panelActiveContent === 'agent'",
+    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'agent' && status.panelActiveContent === 'agent'",
     (status) =>
       Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent,terminal' &&
+      status.panelCellIds.join(',') === 'agent' &&
       status.panelActiveContent === 'agent' &&
+      Array.isArray(status.panelCellColumns),
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number((openedStatus.panelCellColumns as number[])[0]) === fullColumns,
+    'new Agent window starts full width',
+  );
+  const paneListControl = (
+    openedStatus.panelSeparatorGeometry as {
+      row: number;
+      controls: Array<{
+        action: string;
+        startColumn: number;
+        endColumnExclusive: number;
+      }>;
+    }
+  ).controls.find((control) => control.action === 'pane-list');
+  if (!paneListControl) throw new Error('Missing pane-list control geometry');
+  clickCell(
+    driver,
+    paneListControl.startColumn + 1,
+    Number((openedStatus.panelSeparatorGeometry as { row: number }).row),
+  );
+  openedStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the pane list stays pinned before explicit split',
+    (status) =>
+      status.panelListVisible === true &&
+      typeof status.panelListGeometry === 'object',
+  );
+  const panelListGeometry = openedStatus.panelListGeometry as {
+    left: number;
+    top: number;
+    width: number;
+  };
+  clickCell(
+    driver,
+    panelListGeometry.left + panelListGeometry.width - 2,
+    panelListGeometry.top + 1,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the row split button opens the pane-level Add window popup',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      Array.isArray(status.boundedListPopupItemIdentifiers) &&
+      status.boundedListPopupItemIdentifiers[0] === 'terminal',
+  );
+  driver.sendKeys('Enter');
+  openedStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'explicit split adds a new terminal to the Agent group',
+    (status) =>
+      Array.isArray(status.panelCellIds) &&
+      status.panelCellIds.join(',') === 'agent,terminal-2' &&
+      status.panelActiveContent === 'terminal-2' &&
       Array.isArray(status.panelCellColumns),
   );
   HarnessSmoke.Class.pass('two cells render left-to-right');
   HarnessSmoke.Class.requireCondition(
-    openedStatus.panelFocusedIndex === 0,
-    'newly opened agent cell is focused',
+    openedStatus.panelFocusedIndex === 1,
+    'newly split terminal cell is focused',
   );
   HarnessSmoke.Class.requireCondition(
-    openedStatus.panelListVisible === false,
-    'contents list stays hidden with two open panes',
+    openedStatus.panelListVisible === true,
+    'contents list stays pinned after the split',
   );
   const initialColumns = cellColumns(openedStatus);
   const initialLeftColumns = initialColumns[0] ?? 0;
@@ -317,6 +385,18 @@ try {
   console.log(
     '== harness panel-split: keys reach only the focused agent cell ==',
   );
+  const panelRow = Number(openedStatus.height) - 8;
+  const layoutSlots = openedStatus.layoutSlots as
+    Record<string, { left: number; top: number; width: number }> | undefined;
+  const panelLeft = Number(layoutSlots?.bottomPanel?.left ?? 0);
+  clickCell(driver, panelLeft + 5, panelRow);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the explicit split keeps independent member focus',
+    (status) =>
+      status.panelFocusedIndex === 0 && status.panelActiveContent === 'agent',
+  );
   driver.sendText('AGENTKEY');
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('AGENTKEY') !== null,
@@ -326,19 +406,15 @@ try {
   console.log(
     '== harness panel-split: click focuses terminal and stty sees its sub-width ==',
   );
-  const panelRow = Number(openedStatus.height) - 8;
-  const layoutSlots = openedStatus.layoutSlots as
-    Record<string, { left: number; top: number; width: number }> | undefined;
-  const panelLeft = Number(layoutSlots?.bottomPanel?.left ?? 0);
   const terminalClickColumn = panelLeft + initialLeftColumns + 4;
   clickCell(driver, terminalClickColumn, panelRow);
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.panelFocusedIndex === 1 && status.panelActiveContent === 'terminal'",
+    "status condition: status.panelFocusedIndex === 1 && status.panelActiveContent === 'terminal-2'",
     (status) =>
       status.panelFocusedIndex === 1 &&
-      status.panelActiveContent === 'terminal',
+      status.panelActiveContent === 'terminal-2',
   );
   HarnessSmoke.Class.pass('click moved focus to the terminal cell');
   driver.sendText('stty size');

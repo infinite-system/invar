@@ -2494,6 +2494,19 @@ try {
         Number(agentStatus.agentViewportRows),
   );
   const panelRectangle = bottomPanelSlot(expandedAgentStatus);
+  HarnessSmoke.Class.clickText(
+    overflowDriver,
+    overflowDriver.snapshot(),
+    'Claude',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    overflowDriver,
+    statusPath,
+    'the expanded agent composer owns focus before the long paste',
+    (candidate) =>
+      candidate.panelActiveContent === 'agent' &&
+      candidate.panelFocused === true,
+  );
   const wrappedTranscriptPrompt = Array.from(
     { length: 260 },
     (_unusedValue, wordIndex) =>

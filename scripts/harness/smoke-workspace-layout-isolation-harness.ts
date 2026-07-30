@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
-// Workspace layout isolation: one arm per workspace-scoped layout slot.
+// Workspace layout isolation: one arm per workspace-scoped layout slot and per v2 panel state.
 //
 // Workspace A is given a distinctive layout — a hidden primary dock, a widened primary dock, a
-// visible right dock showing Tasks, a widened right dock, and a taller bottom panel. A brand new
-// workspace B must show the application defaults for every one of those, and returning to A must
-// bring A's own values back.
+// visible right dock showing Tasks, a widened right dock, and a taller bottom panel — and a
+// distinctive panel world: a second container, a window group inside it, and a contents list
+// pinned open and dragged wider. A brand new workspace B must show the application defaults for
+// every one of those, and returning to A must bring A's own values back.
 //
 // Run it: bun scripts/harness/smoke-workspace-layout-isolation-harness.ts
 //
@@ -69,6 +70,28 @@ interface SplitterRegion {
   visible: boolean;
 }
 
+interface ScreenRectangle extends LayoutRectangle {
+  visible: boolean;
+}
+
+interface TabBarControl {
+  action: string;
+  startColumn: number;
+  endColumnExclusive: number;
+}
+
+interface HeadingGeometry {
+  contentId: string;
+  row: number;
+  controls: readonly TabBarControl[];
+}
+
+/** The PAINTED width of the pinned contents list, read from the region the renderer resolved. */
+function listWidth(status: Record<string, unknown>): number {
+  const region = status.panelListGeometry as ScreenRectangle | undefined;
+  return region?.visible ? region.width : 0;
+}
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: firstRoot,
   columns: 120,
@@ -103,6 +126,32 @@ function clickActivityItem(identifier: string): void {
     kind: 'release',
     column: activityBarColumn,
     row,
+    button: 'left',
+  });
+}
+
+/** Click one of the panel tab bar's own controls, addressed through the geometry the app paints. */
+function clickPanelControl(
+  status: Record<string, unknown>,
+  action: string,
+): void {
+  const headings = status.panelHeadingGeometry as
+    readonly HeadingGeometry[] | undefined;
+  const heading = headings?.find((entry) => entry.contentId === 'panel');
+  const control = heading?.controls.find((entry) => entry.action === action);
+  if (!heading || !control) {
+    throw new Error(`the panel tab bar paints no ${action} control`);
+  }
+  driver.sendMouse({
+    kind: 'press',
+    column: control.startColumn,
+    row: heading.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: control.startColumn,
+    row: heading.row,
     button: 'left',
   });
 }
@@ -216,6 +265,47 @@ try {
     (status) => Number(status.panelRows) > defaultPanelRows,
   );
 
+  // --- shape the v2 panel model in workspace A --------------------------------------------------
+  // Containers, window groups and the pinned contents list arrived with the panel chrome rebuild.
+  // They are workspace state by the same argument as the slot sizes, so they get the same arms.
+  driver.sendKeys('Control+Shift+a');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'workspace A adds an agent container beside its terminal one',
+    (status) => (status.panelSpaceIds as unknown[]).length >= 2,
+  );
+  driver.sendKeys('Control+Shift+s');
+  const groupedStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'workspace A groups two panes in its selected container',
+    (status) => (status.panelCellIds as unknown[]).length >= 2,
+  );
+  clickPanelControl(groupedStatus, 'pane-list');
+  const pinnedStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'workspace A pins its contents list open',
+    (status) => status.panelListVisible === true && listWidth(status) > 0,
+  );
+  // The list docks to the panel's right edge; its splitter sits immediately left of it.
+  const pinnedRegion = pinnedStatus.panelListGeometry as ScreenRectangle;
+  const pinnedWidth = pinnedRegion.width;
+  await dragBetweenCells(
+    driver,
+    pinnedRegion.left - 1,
+    pinnedRegion.top + Math.floor(pinnedRegion.height / 2),
+    pinnedRegion.left - 8,
+    pinnedRegion.top + Math.floor(pinnedRegion.height / 2),
+  );
+  await awaitStatus(
+    driver,
+    statusPath,
+    'workspace A keeps its widened contents list',
+    (status) => listWidth(status) > pinnedWidth,
+  );
+
   clickActivityItem('git');
   await awaitStatus(
     driver,
@@ -233,6 +323,9 @@ try {
   const shapedSidebarWidth = Number(shapedStatus.sidebarWidth);
   const shapedRightDockWidth = Number(shapedStatus.rightDockWidth);
   const shapedPanelRows = Number(shapedStatus.panelRows);
+  const shapedListWidth = listWidth(shapedStatus);
+  const shapedCellIds = JSON.stringify(shapedStatus.panelCellIds);
+  const shapedActiveSpace = String(shapedStatus.panelActiveSpace);
   requireCondition(
     paintedSlotWidth(shapedStatus, 'rightDock') === shapedRightDockWidth &&
       paintedSlotWidth(shapedStatus, 'bottomPanel') === shapedPanelRows,
@@ -334,6 +427,31 @@ try {
       `(got ${secondPanelStatus.panelRows}, workspace A holds ${shapedPanelRows})`,
   );
   pass('bottom panel height does not leak');
+
+  // --- one arm per workspace-scoped v2 panel state ----------------------------------------------
+  requireCondition(
+    secondPanelStatus.panelListExpanded === false &&
+      listWidth(secondPanelStatus) === 0,
+    'a new workspace opens with its contents list unpinned ' +
+      `(expanded=${secondPanelStatus.panelListExpanded}, painted width ` +
+      `${listWidth(secondPanelStatus)}, workspace A holds ${shapedListWidth})`,
+  );
+  pass('pinned contents list state does not leak');
+
+  requireCondition(
+    (secondPanelStatus.panelCellIds as unknown[]).length === 1,
+    'a new workspace opens with ONE pane in its container, not the group workspace A built ' +
+      `(got ${JSON.stringify(secondPanelStatus.panelCellIds)}, workspace A holds ${shapedCellIds})`,
+  );
+  pass('window grouping does not leak');
+
+  requireCondition(
+    JSON.stringify(secondPanelStatus.panelCellIds) !== shapedCellIds,
+    'a new workspace shows its OWN pane identifiers, not the ones workspace A registered ' +
+      `(got ${JSON.stringify(secondPanelStatus.panelCellIds)}, workspace A holds ${shapedCellIds})`,
+  );
+  pass('container pane identifiers do not leak');
+
   driver.sendKeys('Control+j');
   await awaitStatus(
     driver,
@@ -383,6 +501,19 @@ try {
       `panelRows=${restoredStatus.panelRows})`,
   );
   pass('A to B to A restores every workspace-scoped layout slot');
+
+  requireCondition(
+    listWidth(restoredStatus) === shapedListWidth &&
+      restoredStatus.panelListExpanded === true &&
+      JSON.stringify(restoredStatus.panelCellIds) === shapedCellIds &&
+      String(restoredStatus.panelActiveSpace) === shapedActiveSpace,
+    'returning to workspace A restores its v2 panel world ' +
+      `(list painted ${listWidth(restoredStatus)} of ${shapedListWidth}, ` +
+      `expanded=${restoredStatus.panelListExpanded}, ` +
+      `cells ${JSON.stringify(restoredStatus.panelCellIds)} of ${shapedCellIds}, ` +
+      `container ${restoredStatus.panelActiveSpace} of ${shapedActiveSpace})`,
+  );
+  pass('A to B to A restores the container, its group, and the pinned list');
 
   console.log('ALL PASS: workspace layout isolation');
 } finally {
