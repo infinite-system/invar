@@ -97,7 +97,7 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
     headings as unknown as readonly PanelHeadingGeometryStatus[]
   ).find((heading) => heading.contentId === 'agent');
   const contentIndex = contentIdentifiers.indexOf('agent');
-  const panelViewportRows = Number(status.terminalRows);
+  const panelViewportRows = Number(status.panelRows);
   const contentColumns = Number(cellColumns[contentIndex]);
   if (
     !agentHeading ||
@@ -401,7 +401,7 @@ try {
     statusPath,
     'the agent pane opens focused with its panel geometry published',
     (status) =>
-      status.terminalFocused === true &&
+      status.panelFocused === true &&
       status.panelActiveContent === 'agent' &&
       status.agentEngine === 'claude' &&
       status.agentSkipPermissions === true &&

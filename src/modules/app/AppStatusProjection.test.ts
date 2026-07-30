@@ -28,6 +28,7 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import type { PaneContent } from '../ui/PaneContent.interface';
 import { QuitConfirmation } from '../ui/QuitConfirmation';
 
 let temporaryRoot = '';
@@ -280,6 +281,15 @@ describe('AppStatusProjection', () => {
     ]);
     expect(initialSnapshot.editorMaximumScrollLeft).toBe(60);
     expect(initialSnapshot.editorMaximumScrollTop).toBe(30);
+    expect(initialSnapshot.editorColumnContent).toBe('source-text-editor');
+    expect(initialSnapshot.panelVisible).toBe(false);
+    expect(initialSnapshot.panelFocused).toBe(false);
+    expect(initialSnapshot.panelColumns).toBe(0);
+    expect(initialSnapshot.panelRows).toBe(0);
+    expect(initialSnapshot.terminalVisible).toBe(false);
+    expect(initialSnapshot.terminalFocused).toBe(false);
+    expect(initialSnapshot.terminalColumns).toBe(0);
+    expect(initialSnapshot.terminalRows).toBe(0);
     expect(initialSnapshot.editorFrameAttribution).toEqual({
       latestFrame: {
         documentLineReads: 0,
@@ -295,6 +305,63 @@ describe('AppStatusProjection', () => {
         layoutComputations: 0,
       },
     });
+
+    let previewIsOccupying = true;
+    const unregisterPreviewClaim = workspaceSet.active.editorSurfaces.register({
+      identifier: 'markdown.preview',
+      get occupyingEditorSurface() {
+        return previewIsOccupying;
+      },
+      activeDocumentIsPresented: true,
+      release: () => {
+        previewIsOccupying = false;
+      },
+    });
+    expect(AppStatusProjection.Class.snapshot(ports).editorColumnContent).toBe(
+      'markdown.preview',
+    );
+    previewIsOccupying = false;
+    expect(AppStatusProjection.Class.snapshot(ports).editorColumnContent).toBe(
+      'source-text-editor',
+    );
+    unregisterPreviewClaim();
+
+    const createPanelContent = (id: string): PaneContent =>
+      ({
+        id,
+        title: id,
+        renderRevision: ref(0),
+        handleKey: () => false,
+        onResize: () => {},
+        onFocus: () => {},
+        onBlur: () => {},
+        dispose: () => {},
+      }) as PaneContent;
+    panelHost.register(createPanelContent('terminal'));
+    panelHost.register(createPanelContent('media-demo'));
+    panelHost.visible.value = true;
+    panelHost.focused.value = true;
+    panelHost.activate('terminal');
+    const terminalSnapshot = AppStatusProjection.Class.snapshot(ports);
+    expect(terminalSnapshot.panelVisible).toBe(true);
+    expect(terminalSnapshot.panelFocused).toBe(true);
+    expect(terminalSnapshot.panelColumns).toBe(80);
+    expect(terminalSnapshot.panelRows).toBe(24);
+    expect(terminalSnapshot.terminalVisible).toBe(true);
+    expect(terminalSnapshot.terminalFocused).toBe(true);
+    expect(terminalSnapshot.terminalColumns).toBe(80);
+    expect(terminalSnapshot.terminalRows).toBe(24);
+    panelHost.activate('media-demo');
+    const mediaSnapshot = AppStatusProjection.Class.snapshot(ports);
+    expect(mediaSnapshot.panelActiveContent).toBe('media-demo');
+    expect(mediaSnapshot.terminalVisible).toBe(false);
+    expect(mediaSnapshot.terminalFocused).toBe(false);
+    expect(mediaSnapshot.terminalColumns).toBe(0);
+    expect(mediaSnapshot.terminalRows).toBe(0);
+    panelHost.activate('terminal');
+    expect(AppStatusProjection.Class.snapshot(ports).terminalVisible).toBe(
+      true,
+    );
 
     mouse = { type: 'down', x: 12, y: 7, button: 1 };
     narration = {

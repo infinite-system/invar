@@ -2506,7 +2506,7 @@ try {
     'the agent composer owns keyboard focus before submission',
     (candidate) =>
       candidate.panelActiveContent === 'agent' &&
-      candidate.terminalFocused === true,
+      candidate.panelFocused === true,
   );
   overflowDriver.sendKeys('Home');
   await overflowDriver.awaitGridCondition(

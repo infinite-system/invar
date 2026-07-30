@@ -269,7 +269,7 @@ try {
     driver,
     statusPath,
     'agent pane opens focused',
-    (status) => status.terminalFocused === true,
+    (status) => status.panelFocused === true,
   );
   const initialAgentSnapshot = await driver.awaitGridCondition(
     'agent composer prompt is visible before slash submission',
@@ -280,8 +280,7 @@ try {
     driver,
     statusPath,
     'clicking the discovered composer prompt focuses the Claude agent cell',
-    (status) =>
-      status.terminalFocused === true && status.agentEngine === 'claude',
+    (status) => status.panelFocused === true && status.agentEngine === 'claude',
   );
 
   console.log(
@@ -350,7 +349,7 @@ try {
     driver,
     statusPath,
     'agent panel loses focus before the settings overlay opens',
-    (status) => status.terminalFocused === false,
+    (status) => status.panelFocused === false,
   );
   driver.sendKeys('Control+,');
   await HarnessSmoke.Class.awaitStatus(
@@ -379,7 +378,7 @@ try {
     driver,
     statusPath,
     'clicking the transcript restores agent-pane focus',
-    (status) => status.terminalFocused === true,
+    (status) => status.panelFocused === true,
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(

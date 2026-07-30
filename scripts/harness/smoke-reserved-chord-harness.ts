@@ -142,7 +142,7 @@ try {
     'the editor-focus command retains small.txt as the active buffer',
   );
   HarnessSmoke.Class.requireCondition(
-    editorStatus.terminalFocused === false,
+    editorStatus.panelFocused === false,
     'automatic task presentation stays visible without claiming the editor keyboard',
   );
 
@@ -173,7 +173,7 @@ try {
   HarnessSmoke.Class.clickText(driver, snapshot, 'RESERVED-CHORD-TASK');
   await awaitStatus(
     'clicking the task terminal gives the bottom panel keyboard focus',
-    (candidate) => candidate.terminalFocused === true,
+    (candidate) => candidate.panelFocused === true,
   );
   driver.sendKeysWithoutFrameExpectation('Control+,');
   driver.sendKeys('Control+Alt+b');

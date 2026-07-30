@@ -41,7 +41,7 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
   const agentHeading = (
     headings as unknown as readonly PanelHeadingGeometryStatus[]
   ).find((heading) => heading.contentId === 'agent');
-  const panelViewportRows = Number(status.terminalRows);
+  const panelViewportRows = Number(status.panelRows);
   if (!agentHeading || panelViewportRows <= 0) return null;
   return {
     row: agentHeading.row + panelViewportRows,
