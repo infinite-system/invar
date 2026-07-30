@@ -78,6 +78,46 @@ function tabBackgroundLane(
   return null;
 }
 
+function taskActionGlyphCellsAreReadable(
+  snapshot: HarnessSnapshot.Model,
+  taskTitle: string,
+  includesSessionAction = true,
+): boolean {
+  const taskTitlePosition = snapshot.findText(taskTitle);
+  if (!taskTitlePosition) return false;
+  const actionIcons = ThemeIcons.Class.taskActionIconsFor('unicode');
+  const detailRow = taskTitlePosition.row + 1;
+  const detailText = snapshot.rowText(detailRow);
+  const expectedDetailGlyphs = [
+    ...(includesSessionAction ? [actionIcons.session] : []),
+    actionIcons.workspace,
+    actionIcons.taskRecord,
+    actionIcons.latestBrief,
+    actionIcons.latestReport,
+  ];
+  const detailGlyphsAreReadable = expectedDetailGlyphs.every((glyph) => {
+    const glyphColumn = detailText.indexOf(glyph);
+    if (glyphColumn < 0) return false;
+    const glyphCell = snapshot.cell(detailRow, glyphColumn);
+    return (
+      glyphCell !== null &&
+      glyphCell.characters === glyph &&
+      glyphCell.foreground !== glyphCell.background
+    );
+  });
+  const cyclePosition = snapshot.findText(actionIcons.cycleStart);
+  const cycleCell =
+    cyclePosition === null
+      ? null
+      : snapshot.cell(cyclePosition.row, cyclePosition.column);
+  return (
+    detailGlyphsAreReadable &&
+    cycleCell !== null &&
+    cycleCell.characters === actionIcons.cycleStart &&
+    cycleCell.foreground !== cycleCell.background
+  );
+}
+
 async function selectSettingByVisibleLabel(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -318,6 +358,14 @@ try {
   );
   HarnessSmoke.Class.pass(
     'the live lens lists the in-progress fixture with the standing vocabulary',
+  );
+  await driver.awaitGridCondition(
+    'the 150 by 40 dashboard paints every Unicode task action glyph',
+    (snapshot) =>
+      taskActionGlyphCellsAreReadable(snapshot, '#902 planted-ready'),
+  );
+  HarnessSmoke.Class.pass(
+    'the 150 by 40 dashboard keeps every Unicode task action glyph readable',
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -739,6 +787,58 @@ try {
   await driver.dispose();
 }
 
+console.log(
+  '== tasks dashboard: narrow geometry keeps every task action glyph ==',
+);
+const narrowHome = mkdtempSync(
+  join(tmpdir(), 'tui-tasks-dashboard-narrow-home-'),
+);
+const narrowStatusPath = join(narrowHome, 'status.json');
+const narrowSettingsDirectory = join(narrowHome, '.config', 'invar');
+mkdirSync(narrowSettingsDirectory, { recursive: true });
+writeFileSync(
+  join(narrowSettingsDirectory, 'settings.json'),
+  JSON.stringify({ glyphMode: 'unicode' }),
+);
+const narrowDriver = new PtyTestDriver.Class({
+  workspaceRoot: fixtureRoot,
+  columns: 120,
+  rows: 36,
+  homeDirectory: narrowHome,
+  environment: {
+    TUI_STATUS_PATH: narrowStatusPath,
+    COLORTERM: 'truecolor',
+    NERD_FONT: '0',
+    LANG: 'en_US.UTF-8',
+    PATH: `${fakeTmuxDirectory}:${process.env.PATH ?? ''}`,
+    FAKE_TMUX_SESSION_LIST: fakeTmuxSessionListPath,
+  },
+  command: [process.execPath, 'src/main.ts', fixtureRoot],
+});
+try {
+  narrowDriver.sendKeys('Control+Shift+t');
+  await HarnessSmoke.Class.awaitStatus(
+    narrowDriver,
+    narrowStatusPath,
+    'the 120 by 36 task pane opens over the fixture',
+    (status) =>
+      status.rightDockActiveContent === 'tasks' &&
+      status.rightDockFocused === true &&
+      status.tasksAvailable === true,
+  );
+  await narrowDriver.awaitGridCondition(
+    'the 120 by 36 dashboard paints every Unicode task action glyph',
+    (snapshot) =>
+      taskActionGlyphCellsAreReadable(snapshot, '#902 planted-ready'),
+  );
+  HarnessSmoke.Class.pass(
+    'the 120 by 36 dashboard keeps every Unicode task action glyph readable',
+  );
+} finally {
+  await narrowDriver.dispose();
+  await HarnessSmoke.Class.removeTemporaryDirectory(narrowHome);
+}
+
 console.log('== tasks dashboard: the attach icon keeps its ASCII fallback ==');
 const asciiHome = mkdtempSync(
   join(tmpdir(), 'tui-tasks-dashboard-ascii-home-'),
@@ -890,6 +990,11 @@ try {
     (snapshot) =>
       snapshot.findText('#1499 scale-row') !== null &&
       snapshot.findText('#1000 scale-row') === null,
+  );
+  await largeDriver.awaitGridCondition(
+    'the large fixture keeps every visible Unicode task action glyph readable',
+    (snapshot) =>
+      taskActionGlyphCellsAreReadable(snapshot, '#1499 scale-row', false),
   );
   HarnessSmoke.Class.pass(
     'five hundred tasks keep the compact observed projection responsive',
