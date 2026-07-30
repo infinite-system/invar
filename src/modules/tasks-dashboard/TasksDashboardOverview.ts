@@ -3,14 +3,14 @@
 //
 // THE CLI LENSES ARE THE PRIMITIVE. Every task fact here comes from the exported readers of
 // `scripts/tasks/tasks-status.ts` — readTaskRecords, builderStanding, startedAtMilliseconds,
-// landingStamp, agentIdentity, PRIORITY_ORDER, tasksTreeStamp. This module re-implements no
+// landingStamp, agentIdentity, PRIORITY_ORDER, tasksStateDirectoriesStamp. This module re-implements no
 // reader; it adds only what a pane can do that a terminal cannot: ivue reactivity, selection,
 // and opening the record files in the editor.
 //
 // COST TRACKS WHAT IS OBSERVED. A hidden pane owns no timer. While observed, a cheap
-// directory-stamp probe (the same seven-stat fingerprint the CLI watch uses) decides whether the
-// tree is re-read, durations re-derive once a minute, and the motion clock asks for a paint only
-// while a visible row or gate moves.
+// state-directory stamp decides whether the tree is re-read. Fleet and session facts are sampled
+// only for painted task rows. Durations re-derive once a minute for that same painted window. The
+// motion clock asks for a paint only while a painted row or gate moves.
 //
 // invariant: Task truth lives in the folders the CLI reads (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: The CLI lenses are the dashboard's one generator (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
@@ -18,7 +18,7 @@
 // invariant: Dashboard motion exists only while observed (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Fleet extras name their repository scope (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Each dashboard lens has one stable row shape (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
@@ -37,7 +37,7 @@ import {
   readTmuxSessionNames,
   startedAtMilliseconds,
   taskSessionName,
-  tasksTreeStamp,
+  tasksStateDirectoriesStamp,
   type GateGlance,
   type TaskFleetFacts,
   type TaskRecord,
@@ -83,7 +83,15 @@ class $TasksDashboardOverview {
   protected lastLensChangeAtMs = Date.now();
   protected records: TaskRecord[] = [];
   protected fleetFactsByFolder = new Map<string, TaskFleetFacts>();
+  protected fleetFactStampsByFolder = new Map<string, string>();
+  protected paintedRecordStampsByFolder = new Map<string, string>();
   protected availableSessionNames: ReadonlySet<string> = new Set();
+  protected dataHeartbeatTicks = 0;
+  protected taskTreeReads = 0;
+  protected fleetFactProbes = 0;
+  protected sessionProbes = 0;
+  protected rowRebuilds = 0;
+  protected fleetAuditOffset = 0;
 
   get lens() {
     return ref<TasksDashboardLens>('live');
@@ -167,15 +175,32 @@ class $TasksDashboardOverview {
     this.motionHeartbeatTimer = null;
   }
 
+  dataHeartbeatAtRest(): boolean {
+    return this.dataHeartbeatTimer === null;
+  }
+
+  observationCounts(): TasksDashboardObservationCounts {
+    return {
+      dataHeartbeatTicks: this.dataHeartbeatTicks,
+      taskTreeReads: this.taskTreeReads,
+      fleetFactProbes: this.fleetFactProbes,
+      sessionProbes: this.sessionProbes,
+      rowRebuilds: this.rowRebuilds,
+    };
+  }
+
   /** Re-read the tree through the CLI readers and rebuild the current lens's rows. */
   refresh(): void {
     const tasksRoot = this.tasksRootPath();
     this.available.value = existsSync(tasksRoot);
     this.records = this.available.value ? readTaskRecords(tasksRoot) : [];
-    this.refreshFleetFacts();
-    this.refreshSessionAvailability();
+    if (this.available.value) this.taskTreeReads += 1;
+    this.paintedRecordStampsByFolder.clear();
+    this.prepareFleetScope();
     this.lastProbeStamp = this.probeStamp();
     this.rebuildRows();
+    if (this.refreshPaintedFacts()) this.rebuildPaintedTaskRows();
+    this.rememberPaintedRecordStamps();
   }
 
   /** The data clock: cycling advance, the cheap tree probe, and duration re-derivation. */
@@ -185,6 +210,7 @@ class $TasksDashboardOverview {
       return;
     }
     this.heartbeatCount += 1;
+    this.dataHeartbeatTicks += 1;
     if (this.cycling.value && this.cycleIsDue()) this.advanceLens(1);
     if (this.heartbeatCount % $TasksDashboardOverview.PROBE_EVERY_TICKS === 0)
       this.probeTick();
@@ -194,7 +220,7 @@ class $TasksDashboardOverview {
         0 &&
       this.available.value
     ) {
-      this.refresh(); // durations re-derive from now(); records re-read is one small tree walk
+      this.rebuildPaintedTaskRows();
     }
   }
 
@@ -266,11 +292,11 @@ class $TasksDashboardOverview {
     return Date.now() - this.lastLensChangeAtMs >= intervalMs;
   }
 
-  /** The change fingerprint: workspace root + tree presence + the CLI's directory stamp. */
+  /** The change fingerprint: workspace root + tree presence + four state-directory stats. */
   protected probeStamp(): string {
     const tasksRoot = this.tasksRootPath();
     return existsSync(tasksRoot)
-      ? `${tasksRoot}:${tasksTreeStamp(tasksRoot)}`
+      ? `${tasksRoot}:${tasksStateDirectoriesStamp(tasksRoot)}`
       : `${tasksRoot}:absent`;
   }
 
@@ -279,61 +305,154 @@ class $TasksDashboardOverview {
       this.refresh();
       return;
     }
-    const fleetFactsChanged = this.refreshFleetFacts();
-    const sessionAvailabilityChanged = this.refreshSessionAvailability();
-    if (fleetFactsChanged || sessionAvailabilityChanged) this.rebuildRows();
+    if (this.paintedRecordChanged()) {
+      this.refresh();
+      return;
+    }
+    if (this.refreshPaintedFacts()) this.rebuildPaintedTaskRows();
   }
 
-  protected refreshFleetFacts(): boolean {
+  protected paintedRecordChanged(): boolean {
+    return this.paintedTaskRecords().some(
+      (record) =>
+        this.paintedRecordStampsByFolder.get(record.folderName) !==
+        this.paintedRecordStamp(record),
+    );
+  }
+
+  protected rememberPaintedRecordStamps(): void {
+    for (const record of this.paintedTaskRecords()) {
+      this.paintedRecordStampsByFolder.set(
+        record.folderName,
+        this.paintedRecordStamp(record),
+      );
+    }
+  }
+
+  protected paintedRecordStamp(record: TaskRecord): string {
+    const folderPath = this.taskFolderPath(record);
+    return [
+      folderPath,
+      join(folderPath, 'meta.json'),
+      record.taskFileName === null
+        ? join(folderPath, 'task-record-absent')
+        : join(folderPath, record.taskFileName),
+    ]
+      .map((path) => {
+        try {
+          return String(statSync(path).mtimeMs);
+        } catch {
+          return '0';
+        }
+      })
+      .join(':');
+  }
+
+  protected prepareFleetScope(): void {
     const fleetRepositoryRoot =
       this.dependencies.fleetRepositoryRoot?.() ?? INVAR_FLEET_REPOSITORY_ROOT;
-    const fleetScopeMatches =
+    this.fleetScopeMatches.value =
       resolve(this.dependencies.workspaceRoot()) ===
       resolve(fleetRepositoryRoot);
-    const previousFingerprint = this.fleetFactsFingerprint();
-    this.fleetScopeMatches.value = fleetScopeMatches;
     this.fleetFactsByFolder.clear();
+    this.fleetFactStampsByFolder.clear();
+    this.availableSessionNames = new Set();
     this.gateGlance.value = null;
-    if (fleetScopeMatches && this.dependencies.isObserved()) {
-      const taskFleetFacts =
-        this.dependencies.readTaskFleetFacts ?? readTaskFleetFacts;
-      for (const record of this.records) {
-        if (record.directoryState !== 'in-progress') continue;
-        this.fleetFactsByFolder.set(
-          record.folderName,
-          taskFleetFacts(fleetRepositoryRoot, record),
-        );
-      }
+    if (this.fleetScopeMatches.value && this.dependencies.isObserved()) {
       this.gateGlance.value = (
         this.dependencies.readFleetGateGlance ?? readFleetGateGlance
       )();
     }
-    return previousFingerprint !== this.fleetFactsFingerprint();
   }
 
-  protected fleetFactsFingerprint(): string {
-    return JSON.stringify({
-      scope: this.fleetScopeMatches.value,
-      facts: [...this.fleetFactsByFolder.entries()],
-      gate: this.gateGlance.value,
-    });
+  protected paintedTaskRecords(): TaskRecord[] {
+    const folderNames = new Set(
+      this.rows.value
+        .slice(
+          this.windowTop(),
+          this.windowTop() + Math.max(1, this.viewportHeight.value),
+        )
+        .map((row) => row.folderName)
+        .filter((folderName): folderName is string => folderName !== null),
+    );
+    return this.records.filter((record) => folderNames.has(record.folderName));
   }
 
-  protected refreshSessionAvailability(): boolean {
-    const previousFingerprint = [...this.availableSessionNames]
-      .sort()
-      .join('\n');
-    const hasSessionRows = this.records.some(
+  protected refreshPaintedFacts(): boolean {
+    const paintedRecords = this.paintedTaskRecords();
+    const previousFingerprint = this.paintedFactsFingerprint(paintedRecords);
+    if (this.fleetScopeMatches.value && this.dependencies.isObserved()) {
+      const fleetRepositoryRoot =
+        this.dependencies.fleetRepositoryRoot?.() ??
+        INVAR_FLEET_REPOSITORY_ROOT;
+      const taskFleetFacts =
+        this.dependencies.readTaskFleetFacts ?? readTaskFleetFacts;
+      const inProgressRecords = paintedRecords.filter(
+        (record) => record.directoryState === 'in-progress',
+      );
+      const auditedFolderName =
+        inProgressRecords.length === 0
+          ? null
+          : (inProgressRecords[this.fleetAuditOffset % inProgressRecords.length]
+              ?.folderName ?? null);
+      this.fleetAuditOffset += 1;
+      for (const record of inProgressRecords) {
+        const stamp = this.fleetFactStamp(fleetRepositoryRoot, record);
+        if (
+          this.fleetFactsByFolder.has(record.folderName) &&
+          this.fleetFactStampsByFolder.get(record.folderName) === stamp &&
+          record.folderName !== auditedFolderName
+        ) {
+          continue;
+        }
+        this.fleetFactProbes += 1;
+        this.fleetFactsByFolder.set(
+          record.folderName,
+          taskFleetFacts(fleetRepositoryRoot, record),
+        );
+        this.fleetFactStampsByFolder.set(record.folderName, stamp);
+      }
+    }
+    const hasSessionRows = paintedRecords.some(
       (record) => record.directoryState === 'in-progress',
     );
     this.availableSessionNames = hasSessionRows
       ? this.dependencies.readTmuxSessionNames
-        ? this.dependencies.readTmuxSessionNames()
-        : readTmuxSessionNames()
+        ? ((this.sessionProbes += 1), this.dependencies.readTmuxSessionNames())
+        : ((this.sessionProbes += 1), readTmuxSessionNames())
       : new Set();
-    return (
-      previousFingerprint !== [...this.availableSessionNames].sort().join('\n')
+    return previousFingerprint !== this.paintedFactsFingerprint(paintedRecords);
+  }
+
+  protected paintedFactsFingerprint(records: readonly TaskRecord[]): string {
+    return JSON.stringify({
+      facts: records.map((record) => [
+        record.folderName,
+        this.fleetFactsByFolder.get(record.folderName),
+      ]),
+      sessions: [...this.availableSessionNames].sort(),
+    });
+  }
+
+  protected fleetFactStamp(
+    fleetRepositoryRoot: string,
+    record: TaskRecord,
+  ): string {
+    const worktreePath = join(
+      fleetRepositoryRoot,
+      '.invar',
+      'worktrees',
+      record.folderName,
     );
+    return [worktreePath, join(worktreePath, '.git')]
+      .map((path) => {
+        try {
+          return String(statSync(path).mtimeMs);
+        } catch {
+          return '0';
+        }
+      })
+      .join(':');
   }
 
   // ---- lenses -------------------------------------------------------------
@@ -384,10 +503,79 @@ class $TasksDashboardOverview {
       fleetRows.push(this.nonTaskRow('gate', ''));
     }
     this.rows.value = [...fleetRows, ...rows];
+    this.rowRebuilds += this.rows.value.length;
     this.clampSelection();
     this.syncMotionHeartbeatTimer();
     this.version.value += 1;
     this.dependencies.requestRender();
+  }
+
+  /** Replace only task rows which the side-dock painter can currently project. */
+  protected rebuildPaintedTaskRows(): void {
+    const paintedFolderNames = new Set(
+      this.paintedTaskRecords().map((record) => record.folderName),
+    );
+    if (paintedFolderNames.size === 0) return;
+    const replacementRows = new Map<string, TasksDashboardRow[]>();
+    for (const record of this.records) {
+      if (!paintedFolderNames.has(record.folderName)) continue;
+      replacementRows.set(record.folderName, this.rowsForRecord(record));
+    }
+    const replacementOffsets = new Map<string, number>();
+    let rebuiltRowCount = 0;
+    const rows = this.rows.value.map((row) => {
+      if (row.folderName === null) return row;
+      const replacements = replacementRows.get(row.folderName);
+      if (!replacements) return row;
+      const offset = replacementOffsets.get(row.folderName) ?? 0;
+      const replacement = replacements[offset];
+      if (!replacement) return row;
+      replacementOffsets.set(row.folderName, offset + 1);
+      rebuiltRowCount += 1;
+      return replacement;
+    });
+    if (rebuiltRowCount === 0) return;
+    this.rows.value = rows;
+    this.rowRebuilds += rebuiltRowCount;
+    this.syncMotionHeartbeatTimer();
+    this.version.value += 1;
+    this.dependencies.requestRender();
+  }
+
+  protected rowsForRecord(record: TaskRecord): TasksDashboardRow[] {
+    if (this.lens.value === 'live') {
+      const { round, ready } = builderStanding(this.tasksRootPath(), record);
+      const startedAt = startedAtMilliseconds(this.tasksRootPath(), record);
+      return this.taskRows(
+        record,
+        {
+          standing: ready ? 'ready' : 'building',
+          phase: ready
+            ? null
+            : (this.fleetFactsByFolder.get(record.folderName)?.phase ??
+              'building'),
+          round,
+          durationLabel:
+            startedAt === null ? '' : formatDuration(Date.now() - startedAt),
+        },
+        true,
+      );
+    }
+    if (this.lens.value === 'done') {
+      const { durationMinutes } = landingStamp(this.tasksRootPath(), record);
+      return this.taskRows(
+        record,
+        {
+          attachment: completedStateAttachment(record),
+          durationLabel:
+            durationMinutes === null
+              ? ''
+              : formatDuration(durationMinutes * 60000),
+        },
+        false,
+      );
+    }
+    return this.taskRows(record, {}, false);
   }
 
   protected byNumberDescending(left: TaskRecord, right: TaskRecord): number {
@@ -632,6 +820,8 @@ class $TasksDashboardOverview {
     const next = Math.min(Math.max(0, this.scrollTop.value + rowDelta), maxTop);
     if (next === this.scrollTop.value) return;
     this.scrollTop.value = next;
+    if (this.refreshPaintedFacts()) this.rebuildPaintedTaskRows();
+    this.rememberPaintedRecordStamps();
     this.syncMotionHeartbeatTimer();
     this.version.value += 1;
   }
@@ -645,6 +835,8 @@ class $TasksDashboardOverview {
     if (!viewportChanged) return;
     this.viewportHeight.value = viewportHeight;
     this.viewportWidth.value = viewportWidth;
+    if (this.refreshPaintedFacts()) this.rebuildPaintedTaskRows();
+    this.rememberPaintedRecordStamps();
     this.syncMotionHeartbeatTimer();
   }
 
@@ -740,7 +932,7 @@ export interface TasksDashboardRow {
 export interface TasksDashboardOverviewDependencies {
   /** The active workspace root — resolved late so workspace switches re-anchor the tree. */
   workspaceRoot: () => string;
-  /** True while the pane is on screen (dock visible, tasks content active). */
+  /** True only while the side-dock painter projects the tasks content. */
   isObserved: () => boolean;
   requestRender: () => void;
   /** The contributed cycle interval, seconds per lens while the overview plays. */
@@ -758,4 +950,12 @@ export interface TasksDashboardOverviewDependencies {
 export interface TasksDashboardActionNotice {
   readonly taskNumber: number;
   readonly message: string;
+}
+
+export interface TasksDashboardObservationCounts {
+  readonly dataHeartbeatTicks: number;
+  readonly taskTreeReads: number;
+  readonly fleetFactProbes: number;
+  readonly sessionProbes: number;
+  readonly rowRebuilds: number;
 }

@@ -133,6 +133,7 @@ test('the live lens lists in-progress tasks with the CLI standing vocabulary', (
   const { overview } = fixture;
   expect(overview.available.value).toBe(true);
   expect(overview.lens.value).toBe('live');
+  overview.setViewportSize(80, 4);
   const rows = overview.rows.value;
   expect(rows.map((row) => row.taskNumber)).toEqual([902, 902, 901, 901]);
   expect(rows[0]?.standing).toBe('ready');

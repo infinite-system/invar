@@ -45,7 +45,7 @@ function makeFixture(options: { showByDefault?: boolean } = {}) {
   const dockContent = {
     value: dockSide,
     host: () => rightDockHost,
-    isVisible: () => rightDockHost.isContentVisible('structure'),
+    isPainted: () => rightDockHost.isContentVisible('structure'),
     reveal: () => rightDockHost.revealContent('structure'),
     show: () => rightDockHost.showContent('structure'),
     blur: () => rightDockHost.blur(),

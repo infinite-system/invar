@@ -134,7 +134,8 @@ export interface DockContentContribution {
 
 export interface RegisteredDockContent extends RegisteredSetting<DockSide> {
   host(): PanelHost.Instance;
-  isVisible(): boolean;
+  /** True only when the side-dock painter projects this exact content. */
+  isPainted(): boolean;
   reveal(): void;
   show(): void;
   blur(): void;

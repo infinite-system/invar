@@ -124,7 +124,7 @@ function makeContext(
         return {
           value: ref<'left' | 'right'>('right'),
           host: () => rightDockHost,
-          isVisible: () =>
+          isPainted: () =>
             rightDockHost.isContentVisible(contribution.content.id),
           reveal: () => rightDockHost.revealContent(contribution.content.id),
           show: () => rightDockHost.showContent(contribution.content.id),

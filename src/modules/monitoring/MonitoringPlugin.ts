@@ -172,7 +172,7 @@ class $MonitoringPlugin implements ApplicationContributor {
 
   /** True while the monitoring pane is on screen. Hidden means no timer and no sample. */
   protected paneIsObserved(): boolean {
-    return this.dockContent?.isVisible() ?? false;
+    return this.dockContent?.isPainted() ?? false;
   }
 
   protected requireDockContent(): RegisteredDockContent {

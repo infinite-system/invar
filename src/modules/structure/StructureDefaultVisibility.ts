@@ -31,7 +31,7 @@ class $StructureDefaultVisibility {
   protected applyingDefault = false;
 
   constructor(protected readonly options: StructureDefaultVisibilityOptions) {
-    this.autoShown = this.options.dockContent.isVisible();
+    this.autoShown = this.options.dockContent.isPainted();
     this.$watch(
       () => this.documentFingerprint,
       () => this.applyDefault(),
@@ -85,7 +85,7 @@ class $StructureDefaultVisibility {
       !this.readerClosedPaths.has(document.path) &&
       this.documentIsSupported(document);
     if (wanted) {
-      if (this.options.dockContent.isVisible()) return;
+      if (this.options.dockContent.isPainted()) return;
       // Never hijack a dock another content occupies; the default only fills an empty stage.
       if (host.visible.value) return;
       this.applyingDefault = true;
@@ -98,7 +98,7 @@ class $StructureDefaultVisibility {
     // Take back only what the policy itself put up, and never from under the user's keyboard.
     if (
       this.autoShown &&
-      this.options.dockContent.isVisible() &&
+      this.options.dockContent.isPainted() &&
       !host.focused.value
     ) {
       this.applyingDefault = true;
