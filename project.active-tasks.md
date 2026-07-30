@@ -6,15 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [building]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
+- #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/in-progress/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md)  [building]
+  `tmux attach -t invar/389-tasks-watch-overpaints-phantom-items`
 - #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/in-progress/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md)  [building]
   `tmux attach -t invar/387-splitter-slim-vertical-and-left-pad`
 
-## USER-DIRECTED (20)
+## USER-DIRECTED (19)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
-- #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/active/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
 - #384 [quit-dialog-buttons-and-padding](.invar/tasks/active/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
