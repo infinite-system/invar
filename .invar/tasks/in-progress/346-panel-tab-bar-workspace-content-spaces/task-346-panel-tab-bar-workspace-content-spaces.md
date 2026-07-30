@@ -1,6 +1,6 @@
 # #346 — bottom panel gets a workspace-scoped tab bar of content spaces
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
