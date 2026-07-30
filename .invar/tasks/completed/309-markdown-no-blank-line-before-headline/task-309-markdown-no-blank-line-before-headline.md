@@ -1,6 +1,6 @@
 # 309 — markdown preview: no injected blank line before headlines
 
-State: active
+State: COMPLETED — 1b1866e7 — authored heading gaps preserved (landed in #300 bundle merge ec651408)
 Engine: codex
 Model: 5.6-sol
 Effort: low

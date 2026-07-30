@@ -1,6 +1,6 @@
 # 310 — markdown preview: title (H1) blue like the subtitles
 
-State: active
+State: COMPLETED — f68b7c03 — one heading accent color H1-H6 (landed in #300 bundle merge ec651408)
 Engine: codex
 Model: 5.6-sol
 Effort: low

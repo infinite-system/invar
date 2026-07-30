@@ -1,6 +1,6 @@
 # 306 — file tree + structure: each sublevel indents 1 key less (more compact)
 
-State: active
+State: COMPLETED — 2f17e6b5 — shared one-cell hierarchy indent generator (landed in #300 bundle merge ec651408)
 Engine: codex
 Model: 5.6-sol
 Effort: low

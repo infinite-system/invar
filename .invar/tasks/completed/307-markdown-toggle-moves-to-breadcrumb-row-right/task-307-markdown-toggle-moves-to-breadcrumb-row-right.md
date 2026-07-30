@@ -1,6 +1,6 @@
 # 307 — markdown preview toggle moves to the breadcrumb row, right side
 
-State: active
+State: COMPLETED — 3e6490cf — preview action on breadcrumb right (landed in #300 bundle merge ec651408)
 Engine: codex
 Model: 5.6-sol
 Effort: low

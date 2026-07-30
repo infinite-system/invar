@@ -1,6 +1,6 @@
 # 302 — status bar: git user/date gets a user icon + 1-cell left margin; project name loses its extra space
 
-State: ACTIVE
+State: COMPLETED — 5b36cec3 — status bar author glyph tiers + spacing (landed in #300 bundle merge ec651408)
 Created: 2026-07-29
 Engine: codex
 Environment: linux

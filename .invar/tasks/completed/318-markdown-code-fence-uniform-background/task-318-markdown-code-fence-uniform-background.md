@@ -1,6 +1,6 @@
 # 318 — markdown preview code fences: one theme background across all rows, visible language label
 
-State: active
+State: COMPLETED — 4410e6a9 — rounded fences, uniform selectionMuted background (landed in #300 bundle merge ec651408)
 Engine: codex
 Model: 5.6-sol
 Effort: low

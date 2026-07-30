@@ -1,6 +1,6 @@
 # 300 — the depth gear menu highlights row 0 while "(current)" is 1
 
-State: ACTIVE
+State: COMPLETED — 0359c8a2 — depth menu highlights current value (landed in #300 bundle merge ec651408)
 Created: 2026-07-29
 Engine: codex
 Environment: linux

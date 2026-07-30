@@ -1,6 +1,6 @@
 # 303 — shortcuts + settings dialogs: breathe from the canvas edges, narrow to their content
 
-State: ACTIVE
+State: COMPLETED — 062038f7 — overlay dialogs content-based width + margins (landed in #300 bundle merge ec651408)
 Created: 2026-07-29
 Engine: codex
 Environment: linux

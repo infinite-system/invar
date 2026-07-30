@@ -1,6 +1,6 @@
 # 316 — terminal list close control: use the proper close icon, not "x"
 
-State: active
+State: COMPLETED — cd7abe37 — one panelClose glyph across list/tabs/panel (landed in #300 bundle merge ec651408)
 Engine: codex
 Model: 5.6-sol
 Effort: low

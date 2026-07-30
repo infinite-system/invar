@@ -1,6 +1,6 @@
 # 304 — structure rows: slimmer cache/getter marks; line numbers off by default (setting), drop the ":"
 
-State: ACTIVE
+State: COMPLETED — c3e29ef5 — one semantic structure glyph, line numbers opt-in (landed in #300 bundle merge ec651408)
 Created: 2026-07-29
 Engine: codex
 Environment: linux
