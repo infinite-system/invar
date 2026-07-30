@@ -1,0 +1,15 @@
+{
+  "task": 350,
+  "slug": "nicer-generated-sample-video",
+  "branch": "fleet/350-nicer-generated-sample-video",
+  "worktree": ".invar/worktrees/350-nicer-generated-sample-video",
+  "tmuxSession": "invar/350-nicer-generated-sample-video",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-350-nicer-generated-sample-video.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "11a697cbf0907861edf19825faba68a9ae368354",
+  "startedAt": "2026-07-30T03:33:25-04:00"
+}

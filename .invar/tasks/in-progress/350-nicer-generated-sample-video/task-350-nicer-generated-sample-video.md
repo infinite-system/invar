@@ -1,6 +1,6 @@
 # #350 — the generated sample video becomes something worth watching
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux
