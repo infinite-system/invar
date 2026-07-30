@@ -404,18 +404,24 @@ class $ThemeIcons {
         taskRecord: '\u{f15b}',
         latestBrief: '\u{f15c}',
         latestReport: '\u{f00c}',
+        cycleStart: '\u{f04b}',
+        cycleStop: '\u{f04d}',
       },
       unicode: {
         workspace: '▰',
         taskRecord: '▤',
         latestBrief: '◫',
         latestReport: '✓',
+        cycleStart: '▷',
+        cycleStop: '■',
       },
       ascii: {
         workspace: 'W',
         taskRecord: 'T',
         latestBrief: 'B',
         latestReport: 'R',
+        cycleStart: '>',
+        cycleStop: 'x',
       },
     };
   }
@@ -891,6 +897,8 @@ export interface TaskActionIconSet {
   taskRecord: string;
   latestBrief: string;
   latestReport: string;
+  cycleStart: string;
+  cycleStop: string;
 }
 
 export interface CheckboxIconSet {

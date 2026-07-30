@@ -7,6 +7,7 @@ import type { ApplicationContributionContext } from '../app/ApplicationContribut
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { TasksDashboardOverview } from './TasksDashboardOverview';
 import { TasksDashboardPaneContent } from './TasksDashboardPaneContent';
+import { TasksDashboardPaneRenderer } from './TasksDashboardPaneRenderer';
 
 function makeWorkspaceRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'tasks-dashboard-pane-'));
@@ -49,7 +50,10 @@ function makeFixture() {
         taskRecord: 'T',
         latestBrief: 'B',
         latestReport: 'R',
+        cycleStart: '>',
+        cycleStop: 'x',
       },
+      ellipsisCell: '…',
     },
     settings: { scrollbarThickness: ref(1) },
     rightDockHost: {
@@ -150,5 +154,19 @@ test('resize reserves the tab line row from the scroll viewport', () => {
   expect(overview.viewportHeight.value).toBe(11);
   expect(overview.viewportWidth.value).toBe(39);
   expect(pane.scrollbarRowOffset).toBe(1);
+  fixture.dispose();
+});
+
+test('the play control has start and stop tooltips and a second click stops cycling', () => {
+  const fixture = makeFixture();
+  const { pane, overview } = fixture;
+  const cycleColumn = TasksDashboardPaneRenderer.Class.cycleGlyphColumn();
+  expect(pane.tooltipAt(cycleColumn, 0)).toBe('Start automatic lens cycling');
+  expect(pane.onPointerDown(cycleColumn, 0)).toBe(true);
+  expect(overview.cycling.value).toBe(true);
+  expect(pane.tooltipAt(cycleColumn, 0)).toBe('Stop automatic lens cycling');
+  expect(pane.onPointerDown(cycleColumn, 0)).toBe(true);
+  expect(overview.cycling.value).toBe(false);
+  expect(overview.lens.value).toBe('live');
   fixture.dispose();
 });

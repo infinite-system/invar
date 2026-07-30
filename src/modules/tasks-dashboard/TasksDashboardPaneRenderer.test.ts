@@ -1,3 +1,4 @@
+import { RGBA } from '@opentui/core';
 import { expect, test } from 'bun:test';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { TASKS_BUILDING_BREATH_FRAMES } from '../../../scripts/tasks/tasks-status';
@@ -59,12 +60,16 @@ function makeContext(
       taskRecord: 'T',
       latestBrief: 'B',
       latestReport: 'R',
+      cycleStart: '>',
+      cycleStop: 'x',
     },
+    ellipsisCell: '…',
+    hoveredTabLineTarget: null,
     ...overrides,
   };
 }
 
-test('the live lens paints the standing vocabulary: READY holds, building marks motion', () => {
+test('the live lens gives every task one title row and one status row', () => {
   const rendered = renderedText(
     TasksDashboardPaneRenderer.Class.render(
       makeContext({
@@ -77,20 +82,44 @@ test('the live lens paints the standing vocabulary: READY holds, building marks 
             identity: 'codex·unknown·default',
           }),
           taskRow({
+            taskNumber: 902,
+            kind: 'detail',
+            label: 'planted-ready',
+            standing: 'ready',
+            round: 2,
+            identity: 'codex·unknown·default',
+          }),
+          taskRow({
             taskNumber: 901,
             label: 'planted-building',
             standing: 'building',
+            phase: 'building',
+            durationLabel: '10m',
+          }),
+          taskRow({
+            taskNumber: 901,
+            kind: 'detail',
+            label: 'planted-building',
+            standing: 'building',
+            phase: 'building',
             durationLabel: '10m',
           }),
         ],
       }),
     ),
   );
+  const renderedRows = rendered.split('\n');
   expect(rendered).toContain('LIVE');
   expect(rendered).toContain('◉');
-  expect(rendered).toContain('#902 planted-ready READY round 2');
+  expect(renderedRows[1]).toContain('#902 planted-ready');
+  expect(renderedRows[1]).not.toContain('READY');
+  expect(renderedRows[2]).toContain('READY round 2');
+  expect(renderedRows[2]).not.toContain('#902 planted-ready');
   expect(rendered).toContain(TASKS_BUILDING_BREATH_FRAMES[0]!.glyph);
-  expect(rendered).toContain('#901 planted-building  10m');
+  expect(renderedRows[3]).toContain('#901 planted-building');
+  expect(renderedRows[3]).not.toContain('10m');
+  expect(renderedRows[4]).toContain('building  10m');
+  expect(renderedRows[4]).not.toContain('#901 planted-building');
   expect(rendered).toContain('codex·unknown·default');
 });
 
@@ -165,18 +194,20 @@ test('the tab line hit test resolves every lens label and the cycle glyph', () =
       TasksDashboardPaneRenderer.Class.cycleGlyphColumn(),
     ),
   ).toEqual({ kind: 'cycle' });
-  expect(TasksDashboardPaneRenderer.Class.hitTestTabLine(0)).toBe(null);
+  expect(TasksDashboardPaneRenderer.Class.hitTestTabLine(6)).toBe(null);
 });
 
-test('the cycling glyph reflects play and pause', () => {
+test('the cycling glyph reflects start and stop through theme-owned icons', () => {
   const paused = renderedText(
     TasksDashboardPaneRenderer.Class.render(makeContext({})),
   );
   const playing = renderedText(
     TasksDashboardPaneRenderer.Class.render(makeContext({ cycling: true })),
   );
-  expect(paused).toContain('▷');
-  expect(playing).toContain('▶');
+  expect(paused).toContain('>');
+  expect(paused).not.toContain('x');
+  expect(playing).toContain('x');
+  expect(playing).not.toContain('>');
 });
 
 test('building motion advances through the CLI-exported breath frames', () => {
@@ -211,4 +242,68 @@ test('the pinned row actions share one hit and tooltip geometry', () => {
   expect(TasksDashboardPaneRenderer.Class.tooltipForAction('report')).toBe(
     'Open the latest report',
   );
+});
+
+test('active and done tasks stay on one row and truncate through the shared ellipsis', () => {
+  for (const lens of ['active', 'done'] as const) {
+    const rendered = renderedText(
+      TasksDashboardPaneRenderer.Class.render(
+        makeContext({
+          lens,
+          innerWidth: 28,
+          viewportWidth: 27,
+          rows: [
+            taskRow({
+              label: 'planted-task-with-a-long-name',
+              attachment: lens === 'done' ? 'merged 1a2b3c4d' : '',
+              identity: 'codex·5.6-sol·high',
+            }),
+          ],
+        }),
+      ),
+    );
+    expect(rendered.split('\n')).toHaveLength(2);
+    expect(rendered).toContain('#901 planted…');
+    expect(rendered).not.toContain('planted-task-with-a-long-name');
+    expect(rendered).toContain(' W  T  B  R ');
+  }
+});
+
+test('selected and hovered tabs paint exactly one padding cell on both sides', () => {
+  const tabs = TasksDashboardPaneRenderer.Class.lensTabs();
+  expect(tabs).toEqual([
+    { lens: 'live', label: 'LIVE', startColumn: 0, endColumn: 5 },
+    { lens: 'active', label: 'ACTIVE', startColumn: 7, endColumn: 14 },
+    { lens: 'done', label: 'DONE', startColumn: 16, endColumn: 21 },
+  ]);
+  const styled = TasksDashboardPaneRenderer.Class.render(
+    makeContext({
+      lens: 'active',
+      hoveredTabLineTarget: { kind: 'lens', lens: 'done' },
+    }),
+  );
+  const chunks = styled.chunks as Array<{
+    text: string;
+    bg?: { toString(): string };
+  }>;
+  const activeChunk = chunks.find((chunk) => chunk.text === ' ACTIVE ');
+  const hoveredChunk = chunks.find((chunk) => chunk.text === ' DONE ');
+  const inactiveChunk = chunks.find((chunk) => chunk.text === ' LIVE ');
+  expect(activeChunk?.bg?.toString()).toBe(
+    RGBA.fromHex(ThemePalettes.Class.DARK.selection).toString(),
+  );
+  expect(hoveredChunk?.bg?.toString()).toBe(
+    RGBA.fromHex(ThemePalettes.Class.DARK.cursorLine).toString(),
+  );
+  expect(inactiveChunk?.bg).toBeUndefined();
+});
+
+test('the cycle tooltip states both actions', () => {
+  const target = { kind: 'cycle' } as const;
+  expect(
+    TasksDashboardPaneRenderer.Class.tooltipForTabLineTarget(target, false),
+  ).toBe('Start automatic lens cycling');
+  expect(
+    TasksDashboardPaneRenderer.Class.tooltipForTabLineTarget(target, true),
+  ).toBe('Stop automatic lens cycling');
 });

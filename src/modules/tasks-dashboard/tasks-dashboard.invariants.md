@@ -267,6 +267,83 @@ the absent-tree arm of `bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
 
 **Last refined:** 2026-07-29
 
+### Each dashboard lens has one stable row shape
+
+**Invariant:** If the Live lens paints a task, then its title owns the first row and its
+standing owns the second row; if Active or Done paints a task, then all task text and actions
+stay on one truncated row. Active section names start with a capital letter.
+
+**Scope:** `TasksDashboardOverview.taskRows`, `buildLiveRows`, `buildActiveRows`,
+`buildDoneRows`, and `TasksDashboardPaneRenderer.renderRow`. Every pane width and task count.
+
+**Mechanism:** `taskRows` adds a detail row only for Live. `renderRow` reserves the pinned
+action cells and sends the remaining text through `WrapText.clipToWidth` with the active
+theme's one-cell ellipsis.
+
+**Generates:** Two-row Live items; one-row Active and Done items; capitalized Active section
+headers; one shared grapheme-safe truncation path.
+
+**Rejected alternatives:** A detail row for every lens — it doubles the Active and Done
+height without adding status information. Direct string slicing — it can split a grapheme or
+leave row actions outside their hit geometry.
+
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardOverview.test.ts` (row kinds and
+section names); `src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts` (two-row Live
+and one-row truncated lenses); `scripts/harness/smoke-tasks-dashboard-harness.ts` (default-width
+PTY projection and large-tree arm).
+
+**Impossible if true:** Live status on the title row; an Active or Done item consuming a
+second row; a lower-case Active section name; a clipped task name without the theme ellipsis.
+
+**Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardOverview.test.ts
+src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts` and
+`bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Dashboard controls state their selection and next action
+
+**Invariant:** If a lens is selected, then its label and exactly one cell on both sides keep
+the theme selection background across focus and live theme changes; if automatic lens cycling
+is stopped or running, then the cycle control shows and explains the action that the next
+activation performs.
+
+**Scope:** `TasksDashboardPaneRenderer.renderTabLine`, `lensTabs`, `hitTestTabLine`, and
+`tooltipForTabLineTarget`; `TasksDashboardPaneContent.tooltipAt` and the tab-line
+pointer-down path.
+
+**Mechanism:** `lensTabs` is the single paint and hit geometry. `renderTabLine` resolves
+selected and hovered backgrounds from the current palette and resolves cycle glyphs from
+`TaskActionIconSet`; `PaneContent.tooltipAt` routes the same hit target to the shared tooltip
+host. Stopping cycling changes only `cycling` and keeps the current lens.
+
+**Generates:** Persistent padded lens selection; theme-derived tab tones; start and stop
+glyphs; `Start automatic lens cycling` and `Stop automatic lens cycling` tooltips; stop on
+the current lens.
+
+**Rejected alternatives:** A literal play glyph or colour in the renderer — it bypasses the
+theme capability ladder. A tasks-owned tooltip surface — it would duplicate the shared
+display-only tooltip host.
+
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts` (geometry,
+palette chunks, and tooltip polarities); `src/modules/tasks-dashboard/TasksDashboardPaneContent.test.ts`
+(start and stop activation); `scripts/harness/smoke-tasks-dashboard-harness.ts` (FrameProbe
+padding and live theme switch).
+
+**Impossible if true:** A selected lens shown only by foreground colour; a selected
+background that omits either padding cell; a theme switch that keeps the old selection tone;
+a running control that still advertises start; a second click that cannot stop cycling.
+
+**Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts
+src/modules/tasks-dashboard/TasksDashboardPaneContent.test.ts` and
+`bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Task actions use the workspace and runtime seams
 
 **Invariant:** If a task action is activated, then task, brief, and report files open through
