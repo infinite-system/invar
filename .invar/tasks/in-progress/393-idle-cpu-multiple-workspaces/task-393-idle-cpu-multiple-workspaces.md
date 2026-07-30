@@ -1,6 +1,6 @@
 # #393 — CPU does not return to idle with multiple workspaces open
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
