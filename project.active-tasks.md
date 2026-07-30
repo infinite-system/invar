@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #342 [tasks-json-panes-fail-to-load](.invar/tasks/in-progress/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md)  [building]
+  `tmux attach -t invar/342-tasks-json-panes-fail-to-load`
 - #340 [file-tree-reveals-open-file](.invar/tasks/in-progress/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md)  [building]
   `tmux attach -t invar/340-file-tree-reveals-open-file`
 - #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/in-progress/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md)  [READY delivered — builder idle, awaiting landing]
@@ -14,7 +16,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (15)
+## USER-DIRECTED (14)
 - #350 [nicer-generated-sample-video](.invar/tasks/active/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/active/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)
@@ -23,7 +25,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #345 [horizontal-separator-centered-glyph](.invar/tasks/active/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md)
 - #344 [breadcrumb-hover-highlight-padding](.invar/tasks/active/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md)
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/active/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)
-- #342 [tasks-json-panes-fail-to-load](.invar/tasks/active/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md)
 - #341 [file-tree-add-and-drag-drop](.invar/tasks/active/341-file-tree-add-and-drag-drop/task-341-file-tree-add-and-drag-drop.md)
 - #338 [declared-graphics-tier-fails-silently](.invar/tasks/active/338-declared-graphics-tier-fails-silently/task-338-declared-graphics-tier-fails-silently.md)
 - #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)

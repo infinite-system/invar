@@ -1,6 +1,6 @@
 # #342 — .invar/tasks.json panes fail to load in the real app
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
