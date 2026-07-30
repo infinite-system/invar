@@ -1,6 +1,6 @@
 # #380 — an idle Invar instance burns 15-25 percent CPU
 
-State: IN-PROGRESS
+State: COMPLETED — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)
 Priority: user-directed
 Engine: codex
 Environment: linux
