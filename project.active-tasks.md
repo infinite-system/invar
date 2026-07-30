@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #409 [layout-switch-leaves-unfilled-space](.invar/tasks/in-progress/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md)  [building]
+  `tmux attach -t invar/409-layout-switch-leaves-unfilled-space`
 - #408 [workspace-state-isolation](.invar/tasks/in-progress/408-workspace-state-isolation/task-408-workspace-state-isolation.md)  [building]
   `tmux attach -t invar/408-workspace-state-isolation`
 - #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/in-progress/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md)  [building]

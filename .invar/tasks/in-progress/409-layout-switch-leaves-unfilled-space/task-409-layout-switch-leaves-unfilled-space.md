@@ -1,6 +1,6 @@
 # #409 — switching layouts back to default leaves unfilled space
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
