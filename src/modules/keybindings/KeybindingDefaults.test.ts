@@ -14,7 +14,7 @@ test('canonical bindings are cached and contain the universal quit floor', () =>
   ).toBe(true);
 });
 
-test('fold chords preserve the workspace bracket bindings without collision', () => {
+test('shared chord prefixes retain every continuation and cancel unmatched input', () => {
   const registry = registryWithCanonicalLayer();
   const modifiedBracket = {
     ctrl: true,
@@ -36,6 +36,12 @@ test('fold chords preserve the workspace bracket bindings without collision', ()
     option: false,
     super: false,
   };
+  const controlG = { ...controlK, name: 'g' };
+  expect(registry.resolve(controlK, 'editor', 1).chordPending).toBe(true);
+  expect(registry.resolve(controlG, 'editor', 2).action).toBe(
+    'editor.goToLine',
+  );
+
   const plainBracket = {
     name: '[',
     ctrl: false,
@@ -43,15 +49,20 @@ test('fold chords preserve the workspace bracket bindings without collision', ()
     option: false,
     super: false,
   };
-  expect(registry.resolve(controlK, 'editor', 1).chordPending).toBe(true);
-  expect(registry.resolve(plainBracket, 'editor', 2).action).toBe(
+  expect(registry.resolve(controlK, 'editor', 3).chordPending).toBe(true);
+  expect(registry.resolve(plainBracket, 'editor', 4).action).toBe(
     'editor.fold',
   );
   const controlL = { ...controlK, name: 'l' };
-  expect(registry.resolve(controlL, 'editor', 3).chordPending).toBe(true);
+  expect(registry.resolve(controlL, 'editor', 5).chordPending).toBe(true);
   expect(
-    registry.resolve({ ...plainBracket, name: ']' }, 'editor', 4).action,
+    registry.resolve({ ...plainBracket, name: ']' }, 'editor', 6).action,
   ).toBe('editor.unfold');
+
+  expect(registry.resolve(controlK, 'editor', 7).chordPending).toBe(true);
+  expect(registry.resolve({ ...plainBracket, name: 'z' }, 'editor', 8)).toEqual(
+    { action: null, chordPending: false, context: null },
+  );
 });
 
 test('fold chord bytes arrive through both OpenTUI parsers', () => {

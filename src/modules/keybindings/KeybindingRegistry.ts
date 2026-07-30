@@ -33,8 +33,7 @@ class $KeybindingRegistry {
   protected nextLayerSequence = 0;
   protected guards = new Map<string, () => boolean>();
   protected pendingChord: {
-    binding: Keybinding;
-    stepIndex: number;
+    candidates: PendingChordCandidate[];
     armedAtMs: number;
   } | null = null;
 
@@ -140,43 +139,55 @@ class $KeybindingRegistry {
   }
 
   /**
-   * Resolve one decoded key event in a context. Precedence: an in-flight chord's next step, then
-   * (scanning layers LAST to first — later shadows earlier): guarded singles, unguarded singles,
-   * then chord STARTS. Any non-matching event cancels a pending chord and resolves normally.
+   * Resolve one decoded key event in a context. Precedence: every matching continuation of an
+   * in-flight chord, then (scanning layers LAST to first — later shadows earlier): guarded singles,
+   * unguarded singles, then chord STARTS. Any non-matching event cancels a pending chord and
+   * resolves normally.
    */
   resolve(rawEvent: ChordEvent, context: string, nowMs: number): Resolution {
     const event = this.normalizeChordEvent(rawEvent);
     if (this.pendingChord) {
-      const { binding, stepIndex, armedAtMs } = this.pendingChord;
+      const { candidates, armedAtMs } = this.pendingChord;
       const keybindingRegistryClass = this
         .constructor as typeof $KeybindingRegistry;
       const expired =
         nowMs - armedAtMs > keybindingRegistryClass.CHORD_TIMEOUT_MILLISECONDS;
-      const nextStep = binding.steps?.[stepIndex];
-      if (!expired && nextStep && this.patternMatches(nextStep, event)) {
-        if (stepIndex + 1 >= (binding.steps?.length ?? 0)) {
-          this.pendingChord = null;
-          this.chordArmed.value = false;
+      if (!expired) {
+        const advancedCandidates: PendingChordCandidate[] = [];
+        for (const candidate of candidates) {
+          const nextStep = candidate.binding.steps?.[candidate.stepIndex];
+          if (nextStep && this.patternMatches(nextStep, event)) {
+            advancedCandidates.push({
+              binding: candidate.binding,
+              stepIndex: candidate.stepIndex + 1,
+            });
+          }
+        }
+        const completedCandidate = advancedCandidates.find(
+          (candidate) =>
+            candidate.stepIndex >= (candidate.binding.steps?.length ?? 0),
+        );
+        if (completedCandidate) {
+          this.cancelChord();
           return {
-            action: binding.action,
+            action: completedCandidate.binding.action,
             chordPending: false,
-            context: binding.context ?? 'global',
+            context: completedCandidate.binding.context ?? 'global',
           };
         }
-        this.pendingChord = {
-          binding,
-          stepIndex: stepIndex + 1,
-          armedAtMs: nowMs,
-        };
-        return { action: null, chordPending: true, context: null };
+        if (advancedCandidates.length > 0) {
+          this.pendingChord = {
+            candidates: advancedCandidates,
+            armedAtMs: nowMs,
+          };
+          return { action: null, chordPending: true, context: null };
+        }
       }
-      this.pendingChord = null; // wrong key or timeout breaks the chord; resolve this event normally
-      this.chordArmed.value = false;
+      this.cancelChord(); // wrong key or timeout breaks the chord; resolve this event normally
     }
 
-    let matchedSingle: Keybinding | null = null;
-    let matchedGuardedSingle: Keybinding | null = null;
-    let matchedChordStart: Keybinding | null = null;
+    const matchedChordStarts: Keybinding[] = [];
+    let higherLayerChordStartMatched = false;
     for (
       let layerIndex = this.layers.length - 1;
       layerIndex >= 0;
@@ -184,6 +195,9 @@ class $KeybindingRegistry {
     ) {
       const layer = this.layers[layerIndex];
       if (!layer) continue;
+      let matchedSingle: Keybinding | null = null;
+      let matchedGuardedSingle: Keybinding | null = null;
+      const layerChordStarts: Keybinding[] = [];
       for (const binding of layer.bindings) {
         if (!this.inContext(binding, context)) continue;
         if (
@@ -191,36 +205,42 @@ class $KeybindingRegistry {
           this.patternMatches(binding.chord, event) &&
           this.guardPasses(binding)
         ) {
-          if (binding.when)
-            matchedGuardedSingle = matchedGuardedSingle ?? binding;
-          else matchedSingle = matchedSingle ?? binding;
+          if (!higherLayerChordStartMatched) {
+            if (binding.when)
+              matchedGuardedSingle = matchedGuardedSingle ?? binding;
+            else matchedSingle = matchedSingle ?? binding;
+          }
         } else if (
           binding.steps?.[0] &&
           this.patternMatches(binding.steps[0], event) &&
           this.guardPasses(binding)
         ) {
-          matchedChordStart = matchedChordStart ?? binding;
+          layerChordStarts.push(binding);
         }
       }
-      // A hit in a later layer shadows everything earlier — stop at the first layer with any match.
-      if (matchedGuardedSingle || matchedSingle || matchedChordStart) break;
+      if (!higherLayerChordStartMatched && matchedGuardedSingle)
+        return {
+          action: matchedGuardedSingle.action,
+          chordPending: false,
+          context: matchedGuardedSingle.context ?? 'global',
+        };
+      if (!higherLayerChordStartMatched && matchedSingle)
+        return {
+          action: matchedSingle.action,
+          chordPending: false,
+          context: matchedSingle.context ?? 'global',
+        };
+      if (layerChordStarts.length > 0) {
+        matchedChordStarts.push(...layerChordStarts);
+        higherLayerChordStartMatched = true;
+      }
     }
-    if (matchedGuardedSingle)
-      return {
-        action: matchedGuardedSingle.action,
-        chordPending: false,
-        context: matchedGuardedSingle.context ?? 'global',
-      };
-    if (matchedSingle)
-      return {
-        action: matchedSingle.action,
-        chordPending: false,
-        context: matchedSingle.context ?? 'global',
-      };
-    if (matchedChordStart) {
+    if (matchedChordStarts.length > 0) {
       this.pendingChord = {
-        binding: matchedChordStart,
-        stepIndex: 1,
+        candidates: matchedChordStarts.map((binding) => ({
+          binding,
+          stepIndex: 1,
+        })),
         armedAtMs: nowMs,
       };
       this.chordArmed.value = true;
@@ -448,6 +468,11 @@ interface Layer {
   bindings: Keybinding[];
   tier: LayerTier;
   sequence: number;
+}
+
+interface PendingChordCandidate {
+  binding: Keybinding;
+  stepIndex: number;
 }
 
 type LayerTier = 'host' | 'plugin' | 'user';
