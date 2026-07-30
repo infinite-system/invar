@@ -9,10 +9,17 @@ not even a "one-line fix" — before reading AGENTS.md. Nothing below is law; it
 
 ## CONDUCTOR RESUME (one-line entry point)
 
-If the user says anything like "resume as conductor" / "continue the fleet":
-load `.claude/skills/conductor/SKILL.md`, then follow the NEWEST `RESUME ANCHOR`
-in `project.briefing.md` — it names the lanes, queue, watcher re-arm commands,
-and laws delta. That is the whole handoff; everything else is on disk.
+If the user says anything like "resume as conductor" / "continue the fleet",
+do these IN ORDER — the drill of 2026-07-30 proved step 0 gets skipped
+when it is not spelled out:
+
+0. Read `AGENTS.md` FULLY (the law — same rule as the redirect above; resuming
+   is not an exemption from it).
+1. Load `.claude/skills/conductor/SKILL.md` (doctrine).
+2. Follow the NEWEST `RESUME ANCHOR` in `project.briefing.md` — lanes, queue,
+   watcher re-arm commands, laws delta.
+
+That is the whole handoff; everything else is on disk.
 
 ---
 

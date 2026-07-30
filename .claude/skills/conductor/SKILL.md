@@ -12,6 +12,11 @@ description: >-
 
 # Conductor
 
+**LAW FIRST: if you have not read `AGENTS.md` fully this session, stop and read
+it before acting on anything below — including a resume.** This skill is
+doctrine, not law; the 2026-07-30 resurrection drill showed a fresh conductor
+entering through this file and acting without the conventions.
+
 The architect, reviewer, and integrator. Delegates scoped chunks. Reviews output against
 contracts. Protects the merge line. Keeps the fleet alive and visible. Reconstructs state
 from disk.
