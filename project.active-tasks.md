@@ -6,13 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #350 [nicer-generated-sample-video](.invar/tasks/in-progress/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)  [building]
   `tmux attach -t invar/350-nicer-generated-sample-video`
+- #343 [tasks-activity-icon-and-live-loader](.invar/tasks/in-progress/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)  [building]
+  `tmux attach -t invar/343-tasks-activity-icon-and-live-loader`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
 ## USER-DIRECTED (14)
+- #356 [agent-pane-is-a-decoupled-module](.invar/tasks/active/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)
 - #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/active/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)
 - #352 [markdown-code-preview-border-theme](.invar/tasks/active/352-markdown-code-preview-border-theme/task-352-markdown-code-preview-border-theme.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
@@ -21,7 +24,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/active/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)
 - #345 [horizontal-separator-centered-glyph](.invar/tasks/active/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md)
 - #344 [breadcrumb-hover-highlight-padding](.invar/tasks/active/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md)
-- #343 [tasks-activity-icon-and-live-loader](.invar/tasks/active/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)
 - #341 [file-tree-add-and-drag-drop](.invar/tasks/active/341-file-tree-add-and-drag-drop/task-341-file-tree-add-and-drag-drop.md)
 - #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)

@@ -1,6 +1,6 @@
 # #343 — tasks activity-bar icon becomes a play glyph; LIVE row gets the watch spinner
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
