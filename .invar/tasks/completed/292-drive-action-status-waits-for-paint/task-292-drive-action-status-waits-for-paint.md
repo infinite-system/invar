@@ -1,6 +1,6 @@
 # 292 — a drive action's status completion must wait for its painted target
 
-State: ACTIVE
+State: COMPLETED — 35027e0b — Drive action waits are painted-frame conditions (landed in #314 bundle merge 331a8d33)
 Created: 2026-07-29
 Engine: codex
 Environment: linux

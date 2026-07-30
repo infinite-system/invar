@@ -17,6 +17,11 @@ architecture refinement — do not start it unprompted.)
 
 > imagine we create our own internet between Invar instances
 
+Named by the user 2026-07-29 (verbatim): "Indranet Invarnet" — Indra's
+net. Follow-on exploration filed as #327 (p2p streaming underlay,
+capped transfer allocation, server independence), his words verbatim
+in the record.
+
 Conductor reduction (for seam decisions, not yet tasks): presence
 (discovery) -> shared state (ledger/records sync across instances) ->
 live surfaces (panes projected between instances; panel content-set

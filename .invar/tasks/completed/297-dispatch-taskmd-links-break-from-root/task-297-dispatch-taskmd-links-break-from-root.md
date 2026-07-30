@@ -1,6 +1,6 @@
 # 297 — the dispatch-copied TASK.md breaks every relative link (recurring checker red)
 
-State: ACTIVE
+State: COMPLETED — aca2f613 — dispatch worktree task pointers root-relative + link-linted (landed in #314 bundle merge 331a8d33)
 Created: 2026-07-29
 Engine: codex
 Environment: linux
