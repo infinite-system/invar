@@ -40,6 +40,57 @@ function rightDockGroupColumns(geometry: ReturnType<typeof resolve>): number {
   );
 }
 
+function expectTotalTiling(
+  geometry: ReturnType<typeof resolve>,
+  totalColumns: number,
+  totalRows: number,
+): void {
+  const rectangles = Object.values(geometry).filter(
+    (rectangle) => rectangle.width > 0 && rectangle.height > 0,
+  );
+  const totalArea = rectangles.reduce(
+    (area, rectangle) => area + rectangle.width * rectangle.height,
+    0,
+  );
+
+  expect(totalArea).toBe(totalColumns * totalRows);
+  for (const rectangle of rectangles) {
+    expect(rectangle.left).toBeGreaterThanOrEqual(0);
+    expect(rectangle.top).toBeGreaterThanOrEqual(0);
+    expect(rectangle.left + rectangle.width).toBeLessThanOrEqual(totalColumns);
+    expect(rectangle.top + rectangle.height).toBeLessThanOrEqual(totalRows);
+  }
+  for (
+    let firstRectangleIndex = 0;
+    firstRectangleIndex < rectangles.length;
+    firstRectangleIndex++
+  ) {
+    for (
+      let secondRectangleIndex = firstRectangleIndex + 1;
+      secondRectangleIndex < rectangles.length;
+      secondRectangleIndex++
+    ) {
+      const firstRectangle = rectangles[firstRectangleIndex]!;
+      const secondRectangle = rectangles[secondRectangleIndex]!;
+      const overlapColumns = Math.max(
+        0,
+        Math.min(
+          firstRectangle.left + firstRectangle.width,
+          secondRectangle.left + secondRectangle.width,
+        ) - Math.max(firstRectangle.left, secondRectangle.left),
+      );
+      const overlapRows = Math.max(
+        0,
+        Math.min(
+          firstRectangle.top + firstRectangle.height,
+          secondRectangle.top + secondRectangle.height,
+        ) - Math.max(firstRectangle.top, secondRectangle.top),
+      );
+      expect(overlapColumns * overlapRows).toBe(0);
+    }
+  }
+}
+
 describe('LayoutModel', () => {
   test('offers four named presets instead of axis permutations', () => {
     const presets = LayoutModel.Class.presets();
@@ -283,11 +334,51 @@ describe('LayoutModel', () => {
     ['center', 37, 95],
     ['right', 37, 120],
   ] as const)(
-    '%s alignment selects its configured horizontal slot range when docks end at the panel',
+    '%s alignment selects its configured panel range while remainder slots fill released dock columns',
     (panelAlignment, expectedLeft, expectedRight) => {
       const geometry = resolve({
         panelAlignment,
         leftDockVerticalSpan: 'ends-at-panel',
+      });
+      expect(geometry.bottomPanel.left).toBe(expectedLeft);
+      expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(
+        expectedRight,
+      );
+    },
+  );
+
+  test.each([
+    [80, 20],
+    [140, 38],
+  ] as const)(
+    'all named layout switches tile every cell exactly once at %d columns by %d rows',
+    (totalColumns, totalRows) => {
+      for (const preset of LayoutModel.Class.presets()) {
+        const geometry = resolve({
+          totalColumns,
+          totalRows,
+          primaryDockVisible: preset.primaryDockVisible,
+          rightDockVisible: preset.rightDockVisible,
+          bottomPanelVisible: preset.bottomPanelVisible,
+          sidebarPosition: preset.sidebarPosition,
+          panelAlignment: preset.panelAlignment,
+          leftDockVerticalSpan: preset.leftDockVerticalSpan,
+          rightDockVerticalSpan: preset.rightDockVerticalSpan,
+        });
+        expectTotalTiling(geometry, totalColumns, totalRows);
+      }
+    },
+  );
+
+  test.each([
+    ['center', 37, 95],
+    ['right', 37, 95],
+  ] as const)(
+    '%s alignment keeps the panel out of a full-height right dock',
+    (panelAlignment, expectedLeft, expectedRight) => {
+      const geometry = resolve({
+        panelAlignment,
+        rightDockVerticalSpan: 'full-height',
       });
       expect(geometry.bottomPanel.left).toBe(expectedLeft);
       expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(

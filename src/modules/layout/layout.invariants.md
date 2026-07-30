@@ -100,7 +100,8 @@ src/modules/ui/PanelContentsList.test.ts && bun scripts/harness/smoke-panel-spli
 
 **Invariant:** If RootView places a dock, editor center, or bottom panel edge, then that rectangle
 comes from one `LayoutModel.resolve` result over the live layout configuration and viewport; no slot
-re-derives an edge from a sibling renderable.
+re-derives an edge from a sibling renderable. After a named layout switch, the nonzero rectangles
+cover every available layout cell exactly once.
 
 **Scope:** The left primary dock, editor center, right dock, bottom panel, and their splitters in
 `RootView`, across dock visibility, sidebar position, panel alignment, and each dock vertical-span
@@ -108,15 +109,18 @@ setting; plus the named configurations offered by the command-bar Layouts menu.
 
 **Mechanism:** `LayoutModel` consumes viewport cells, configured widths/heights, visibility, and the
 layout settings, then emits every slot rectangle in one coordinate space. Center and right panel
-alignment select the two surviving horizontal ranges. A visible full-height right dock owns
-its columns, so the panel right edge stops at the right-dock splitter; an ends-at-panel right dock
-yields those columns below its splitter. A hidden dock resolves to a zero-area slot. `presets()`
+alignment select the two surviving horizontal ranges. A visible full-height right dock owns its
+columns, so the panel right edge stops at the right-dock splitter. If a dock ends at the panel,
+`LayoutModel` emits a remainder slot for its released columns below the splitter; `RootView` paints
+that plain slot with the panel background without changing panel chrome geometry. A hidden dock
+resolves to a zero-area slot. `presets()`
 publishes Default, Full-height docks, Centered panel, and Focus as named selections over those same
 axes instead of enumerating their Cartesian product. RootView applies the rectangles directly.
 
 **Generates:** Live sidebar-side changes; two visible panel alignments; independent full-height or
 ends-at-panel docks; a focus layout with zero-area side docks; four named menu presets; a reserved
-right-dock slot that future PaneContent citizens can occupy without new root math.
+right-dock slot that future PaneContent citizens can occupy without new root math; no unpainted
+region after switching between named layouts.
 
 **Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/LayoutModel.test.ts`;
 `src/modules/ui/RootView.ts`.
@@ -125,14 +129,16 @@ right-dock slot that future PaneContent citizens can occupy without new root mat
 configuration change requiring a second panel or dock formula; the bottom panel painting over the
 lower rows of a visible full-height right dock; a visible full-height dock slot stopping at the panel
 splitter; a hidden dock retaining a nonzero slot; a Layouts menu rebuilt from encoded axis
-permutations.
+permutations; named-layout slot areas summing to less or more than the available viewport, or any two
+named-layout slots overlapping.
 
-**Verification:** `bun test src/modules/layout/LayoutModel.test.ts` plus the live configuration
-geometry assertions registered in `scripts/merge-gate.sh`.
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts` plus the live configuration and
+counted named-layout tiling assertions in `bun scripts/harness/smoke-layout-harness.ts`, registered in
+`scripts/merge-gate.sh`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-30
 
 ### Default panel height scales with the viewport
 
