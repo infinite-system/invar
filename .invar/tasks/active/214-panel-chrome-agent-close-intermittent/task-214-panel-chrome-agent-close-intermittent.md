@@ -46,3 +46,7 @@ before treating them as two defects.
   (serial tail) each timed out once, quiet retry passed (7th/8th today).
 - 2026-07-29 #299 gate: scrollbar + panel-chrome timeout-class, both passed
   built-in retry (9th/10th today).
+- 2026-07-29 #313/#315 gates: bounded-list-popup + git-watch + panel-chrome
+  retry-passes (mouse gate); scrollbar markdown-border derive miss once then
+  clean full rerun + one panel-chrome starvation retry (color gate). Census
+  11th-15th pool events today.
