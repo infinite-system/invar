@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
-- #313 child-owns-its-io-bundle  [building]
-  `tmux attach -t invar/313-child-owns-its-io-bundle`
+## IN-PROGRESS (3)
 - #312 vue-sfc-block-syntax-and-routing  [building]
   `tmux attach -t invar/312-vue-sfc-block-syntax-and-routing`
 - #308 [markdown-view-only-mode-persistent](.invar/tasks/in-progress/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)  [building]
@@ -87,21 +85,22 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (12) — stamp Priority: into these task files
+## NO PRIORITY GROUP (10) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
 - #310 [310-markdown-title-blue-like-subtitles](.invar/tasks/active/310-markdown-title-blue-like-subtitles/task-310-markdown-title-blue-like-subtitles.md)
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
-- #313 [313-terminal-mouse-passthrough-to-child-apps](.invar/tasks/active/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
-- #315 [315-terminal-child-colors-must-not-be-themed](.invar/tasks/active/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md)
 - #316 [316-terminal-list-close-icon-matches-tabs](.invar/tasks/active/316-terminal-list-close-icon-matches-tabs/task-316-terminal-list-close-icon-matches-tabs.md)
 - #317 [317-bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/active/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)
 - #318 [318-markdown-code-fence-uniform-background](.invar/tasks/active/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md)
 - #319 [319-tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/active/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)
 
-## RECENTLY COMPLETED (last 15 of 81 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 84 — full log: project.tasks-completed.md)
+- #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
+- #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
+- #313 [terminal-mouse-passthrough-to-child-apps](.invar/tasks/completed/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md) — 133338ba — terminal mouse passthrough to child apps
 - #311 [vue-sfc-integration-map](.invar/tasks/completed/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md) — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
 - #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
@@ -114,6 +113,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/completed/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md) — f22d86e3 — Scrollbar corner: vertical owns full height + corner, horizontal ends at its edge, grey/white parity both axes; #284 oracle banked
 - #289 [preview-scroll-sync-setting](.invar/tasks/completed/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md) — 7c65b3e8 — Markdown preview: bidirectional input-leader scroll-sync (setting, default ON) + both-axis scrollbars; activity-bar harness locator fixed by-label at the generator
 - #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
-- #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
-- #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
-- #285 [preview-last-body-row-hit-test](.invar/tasks/completed/285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) — 5d9f0a1a — Preview last-row hit test: #289's seam change confirmed as generator fix by red control; workaround removed; boundary gated; deep-hover stall filed #293

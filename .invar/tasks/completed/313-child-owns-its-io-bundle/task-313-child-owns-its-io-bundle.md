@@ -1,6 +1,6 @@
 # 313 — BUNDLE dispatch: the child owns its I/O (#313 + #315)
 
-State: active
+State: COMPLETED — 08403def — child I/O ownership: mouse passthrough + untouched child colors
 Engine: codex
 Model: 5.6-sol
 Effort: high
