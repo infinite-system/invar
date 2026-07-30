@@ -37,7 +37,7 @@ export function deriveScrollbarThumbDragTargets(
     Record<string, Rectangle> | undefined;
   const rightDock = layoutSlots?.rightDock;
   const firstEditorLine = snapshot.findText('export const symbol000000');
-  const firstStructureLine = snapshot.findText('symbol000000 :1');
+  const firstStructureLine = snapshot.findText('▪ symbol000000');
   if (!firstEditorLine) {
     throw new Error(
       'The drag probe could not derive bar coordinates from the painted fixture.',

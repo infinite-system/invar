@@ -290,15 +290,16 @@ async function proveContinuousScrollbarThumbDrag(
     const snapshot = await driver.awaitGridCondition(
       `${lineCount}-line drag fixture paints editor and structure rows together`,
       (candidate) =>
-        candidate.findText('symbol000000 :1') !== null &&
+        candidate.findText('▪ symbol000000') !== null &&
+        candidate.findText('symbol000000 :1') === null &&
         candidate.findText('export const symbol000000') !== null,
       60_000,
     );
     const targets = deriveScrollbarThumbDragTargets(snapshot, status);
+    const targetNames = targets.map((target) => target.name).join(',');
     requireCondition(
-      targets.map((target) => target.name).join(',') ===
-        'editorHorizontal,editorVertical,rightDockVertical',
-      `${lineCount}-line drive finds both editor axes and the right-dock bar`,
+      targetNames === 'editorHorizontal,editorVertical,rightDockVertical',
+      `${lineCount}-line drive finds both editor axes and the right-dock bar (${targetNames})`,
     );
     const darkThemeScrollbarColors = requireEditorTwoAxisBarOwnershipAndColors(
       snapshot,
@@ -371,7 +372,8 @@ async function proveContinuousScrollbarThumbDrag(
       `${lineCount}-line editor repaints after the live theme switch`,
       (candidate) => {
         if (
-          candidate.findText('symbol000000 :1') === null ||
+          candidate.findText('▪ symbol000000') === null ||
+          candidate.findText('symbol000000 :1') !== null ||
           candidate.findText('export const symbol000000') === null
         ) {
           return false;

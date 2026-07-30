@@ -151,8 +151,10 @@ describe('StructurePaneContent', () => {
     expect(rendered).toContain(
       ThemeIcons.Class.glyphFor('unicode', 'structureDepth'),
     );
-    expect(rendered).toContain(`${marks.type} Widget :1`);
-    expect(rendered).toContain(`  ${marks.callable} render :2`);
+    expect(rendered).toContain(`${marks.type} Widget`);
+    expect(rendered).not.toContain('Widget :1');
+    expect(rendered).toContain(`  ${marks.callable} render`);
+    expect(rendered).not.toContain('render :2');
     outline.dispose();
   });
 

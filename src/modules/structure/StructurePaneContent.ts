@@ -29,6 +29,7 @@ class $StructurePaneContent implements PaneContent {
     protected readonly activeWorkspace: () => StructureWorkspace.Model,
     protected readonly defaultDepth: () => number = () => 1,
     protected readonly setDefaultDepth: (depth: number) => void = () => {},
+    protected readonly showLineNumbers: () => boolean = () => false,
   ) {}
 
   protected filterCaretColumn = 0;
@@ -87,6 +88,7 @@ class $StructurePaneContent implements PaneContent {
       outline.filterInput.selectionAnchor.value,
       outline.depth,
       outline.depthIsOverridden,
+      this.showLineNumbers(),
     ].join(':');
   }
 
@@ -111,6 +113,7 @@ class $StructurePaneContent implements PaneContent {
         context.glyphLevel,
         'foldClosed',
       ),
+      showLineNumbers: this.showLineNumbers(),
       setFilterCaretColumn: (column) => {
         this.filterCaretColumn = column;
       },

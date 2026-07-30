@@ -45,6 +45,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
   protected defaultDepthSetting: RegisteredSetting<number> | null = null;
+  protected showLineNumbersSetting: RegisteredSetting<boolean> | null = null;
   protected dockContent: RegisteredDockContent | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
@@ -140,6 +141,13 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       },
       changed: () => this.refreshDepthProjection(),
     });
+    this.showLineNumbersSetting = context.registerSetting({
+      identifier: 'structureShowLineNumbers',
+      label: 'Show line numbers',
+      section: this.name,
+      defaultValue: false,
+      spec: { kind: 'boolean' },
+    });
     this.defaultVisibility = this.createDefaultVisibility(
       context,
       () => showByDefaultSetting.value.value,
@@ -179,6 +187,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       () => this.activeWorkspace(),
       () => this.defaultDepthSetting?.value.value ?? 1,
       (depth) => this.updateDefaultDepth(context, depth),
+      () => this.showLineNumbersSetting?.value.value ?? false,
     );
   }
 
@@ -231,6 +240,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
     this.defaultDepthSetting = null;
+    this.showLineNumbersSetting = null;
     this.dockContent = null;
     this.application = null;
   }
@@ -377,6 +387,8 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       structureRequests: outline.requestCount.value,
       structureDepth: outline.depth,
       structureDefaultDepth: this.defaultDepthSetting?.value.value ?? 1,
+      structureShowLineNumbers:
+        this.showLineNumbersSetting?.value.value ?? false,
       structureDepthIsOverridden: outline.depthIsOverridden,
       structureFilter: outline.filterInput.value,
     };

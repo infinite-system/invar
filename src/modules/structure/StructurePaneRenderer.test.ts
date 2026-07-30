@@ -108,25 +108,21 @@ test('a rows-absent outline paints its stated reason and wraps the notice', () =
   outline.dispose();
 });
 
-test('semantic marks stay in fixed columns and getters carry the information color in both themes', () => {
+test('one kind glyph carries structure semantics and line numbers are opt-in', () => {
   const outline = makeOutline();
   outline.rows.value = [
     {
       depth: 0,
-      name: '$cachedGetter',
+      name: 'privateValue',
       symbolClass: 'value',
-      line: 0,
+      line: 42,
       column: 0,
-      endLine: 0,
+      endLine: 42,
       visibility: 'private',
-      cached: true,
-      override: true,
-      accessor: 'getter',
     },
   ];
   outline.status.value = 'ready';
-  const structureMarks =
-    ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
+  const valueMark = ThemeIcons.Class.symbolMarksFor('unicode').value;
 
   for (const palette of [ThemePalettes.Class.DARK, ThemePalettes.Class.LIGHT]) {
     const rendered = StructurePaneRenderer.Class.render({
@@ -134,28 +130,94 @@ test('semantic marks stay in fixed columns and getters carry the information col
       structureFocused: false,
       palette,
       symbolMarks: ThemeIcons.Class.symbolMarksFor('unicode'),
-      structureMarks,
+      structureMarks: ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
       defaultDepth: 1,
       height: 5,
       innerWidth: 40,
       viewportWidth: 39,
     });
     const text = renderedText(rendered);
-    expect(text).toContain(
-      `${structureMarks.structurePrivate}` +
-        `${structureMarks.structureGetter}` +
-        `${structureMarks.structureCached}` +
-        `${structureMarks.structureOverride} $cachedGetter`,
-    );
-    expect(foregroundOfText(rendered, structureMarks.structurePrivate)).toEqual(
-      fg(palette.warning)(structureMarks.structurePrivate).fg,
-    );
-    expect(foregroundOfText(rendered, structureMarks.structureGetter)).toEqual(
-      fg(palette.info)(structureMarks.structureGetter).fg,
-    );
-    expect(foregroundOfText(rendered, '$cachedGetter')).toEqual(
-      fg(palette.info)('$cachedGetter').fg,
+    expect(text).toContain(`${valueMark} privateValue`);
+    expect(text).not.toContain(':43');
+    expect(text).not.toContain(' 43');
+    expect(foregroundOfText(rendered, valueMark)).toEqual(
+      fg(palette.warning)(valueMark).fg,
     );
   }
+
+  const withLineNumber = StructurePaneRenderer.Class.render({
+    outline,
+    structureFocused: false,
+    palette: ThemePalettes.Class.DARK,
+    symbolMarks: ThemeIcons.Class.symbolMarksFor('unicode'),
+    structureMarks: ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+    defaultDepth: 1,
+    showLineNumbers: true,
+    height: 5,
+    innerWidth: 40,
+    viewportWidth: 39,
+  });
+  expect(renderedText(withLineNumber)).toContain(
+    `${valueMark} privateValue 43`,
+  );
+  expect(renderedText(withLineNumber)).not.toContain(':43');
+  expect(foregroundOfText(withLineNumber, ' 43')).toEqual(
+    fg(ThemePalettes.Class.DARK.dim)(' 43').fg,
+  );
   outline.dispose();
+});
+
+test('semantic classes color or emphasize the one kind glyph in both themes', () => {
+  const semantics = [
+    { name: 'publicValue', visibility: 'public' as const, color: 'added' },
+    {
+      name: 'protectedValue',
+      visibility: 'protected' as const,
+      color: 'modified',
+    },
+    { name: 'privateValue', visibility: 'private' as const, color: 'warning' },
+    { name: 'getterValue', accessor: 'getter' as const, color: 'info' },
+    { name: 'setterValue', accessor: 'setter' as const, color: 'info' },
+    { name: 'cachedValue', cached: true, color: 'type' },
+    { name: 'overrideValue', override: true, color: 'modified' },
+  ] as const;
+  const valueMark = ThemeIcons.Class.symbolMarksFor('unicode').value;
+
+  for (const palette of [ThemePalettes.Class.DARK, ThemePalettes.Class.LIGHT]) {
+    for (const semantic of semantics) {
+      const outline = makeOutline();
+      outline.rows.value = [
+        {
+          depth: 0,
+          name: semantic.name,
+          symbolClass: 'value',
+          line: 0,
+          column: 0,
+          endLine: 0,
+          visibility:
+            'visibility' in semantic ? semantic.visibility : undefined,
+          accessor: 'accessor' in semantic ? semantic.accessor : undefined,
+          cached: 'cached' in semantic ? semantic.cached : undefined,
+          override: 'override' in semantic ? semantic.override : undefined,
+        },
+      ];
+      outline.status.value = 'ready';
+      const rendered = StructurePaneRenderer.Class.render({
+        outline,
+        structureFocused: false,
+        palette,
+        symbolMarks: ThemeIcons.Class.symbolMarksFor('unicode'),
+        structureMarks: ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+        defaultDepth: 1,
+        height: 2,
+        innerWidth: 40,
+        viewportWidth: 39,
+      });
+      expect(renderedText(rendered)).toContain(`${valueMark} ${semantic.name}`);
+      expect(foregroundOfText(rendered, valueMark)).toEqual(
+        fg(palette[semantic.color])(valueMark).fg,
+      );
+      outline.dispose();
+    }
+  }
 });

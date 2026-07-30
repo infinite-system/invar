@@ -1037,13 +1037,15 @@ try {
       status.rightDockVisible === true &&
       status.rightDockActiveContent === 'structure' &&
       status.structureStatus === 'ready' &&
+      status.structureShowLineNumbers === false &&
       Number(status.structureRows) > 0,
   );
   await driver.awaitGridCondition(
     'the structure pane paints the outline rows',
     (snapshot) =>
       snapshot.findText('Structure') !== null &&
-      snapshot.findText('languageProbe :') !== null,
+      snapshot.findText('languageProbe') !== null &&
+      snapshot.findText('languageProbe :') === null,
   );
   HarnessSmoke.Class.pass(
     'the structure pane shows itself at the right and lists the real documentSymbol outline',
@@ -1302,13 +1304,111 @@ try {
       status.structureFilter === '' &&
       Number(status.structureRows) === initialStructureRows,
   );
-  await requireSemanticLabel('publicVisibleArm', '+    publicVisible');
-  await requireSemanticLabel('privateVisibleArm', '−    privateVisib');
-  await requireSemanticLabel('#hashPrivateArm', '−    #hashPriv');
-  await requireSemanticLabel('$cachedGetterArm', '+↤$  $cachedGet');
-  await requireSemanticLabel('overriddenArm', '+  ↑ overriddenArm');
+  await requireSemanticLabel('publicVisibleArm', 'ƒ publicVisible');
+  await requireSemanticLabel('privateVisibleArm', 'ƒ privateVisib');
+  await requireSemanticLabel('#hashPrivateArm', '▪ #hashPriv');
+  await requireSemanticLabel('$cachedGetterArm', '▪ $cachedGet');
+  await requireSemanticLabel('overriddenArm', 'ƒ overriddenArm');
   HarnessSmoke.Class.pass(
-    'the analyzer removes declaration noise and paints visibility, cache, getter, and override semantics',
+    'the analyzer removes declaration noise and paints every semantic on one kind glyph',
+  );
+
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings opens for the structure line-number polarity',
+    (status) => status.settingsOpen === true,
+  );
+  await selectSetting(driver, statusPath, 'Show line numbers');
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).settingsSelectedValue === 'off',
+    'structure line numbers default off in Settings',
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings enables structure line numbers',
+    (status) =>
+      status.settingsSelectedValue === 'on' &&
+      status.structureShowLineNumbers === true,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes onto the line-number-enabled structure pane',
+    (status) => status.settingsOpen === false,
+  );
+  driver.sendText('overriddenArm');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the enabled line-number setting narrows to its proof row',
+    (status) =>
+      status.structureFilter === 'overriddenArm' &&
+      Number(status.structureRows) === 1,
+  );
+  await driver.awaitGridCondition(
+    'the enabled line number is dimly space-separated without a colon',
+    (snapshot) =>
+      snapshot.findText('overriddenArm 49') !== null &&
+      snapshot.findText(':49') === null,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the line-number proof filter clears',
+    (status) => status.structureFilter === '',
+  );
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings reopens to restore the default line-number polarity',
+    (status) => status.settingsOpen === true,
+  );
+  await selectSetting(driver, statusPath, 'Show line numbers');
+  driver.sendKeys('Left');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings disables structure line numbers',
+    (status) =>
+      status.settingsSelectedValue === 'off' &&
+      status.structureShowLineNumbers === false,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes onto the default line-number-free structure pane',
+    (status) => status.settingsOpen === false,
+  );
+  driver.sendText('overriddenArm');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the default line-number polarity narrows to its proof row',
+    (status) =>
+      status.structureFilter === 'overriddenArm' &&
+      Number(status.structureRows) === 1,
+  );
+  await driver.awaitGridCondition(
+    'the default structure row omits both line number and colon',
+    (snapshot) =>
+      snapshot.findText('ƒ overriddenArm') !== null &&
+      snapshot.findText('overriddenArm 49') === null &&
+      snapshot.findText(':49') === null,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the default line-number proof filter clears',
+    (status) => status.structureFilter === '',
   );
 
   driver.sendText('dsm');
@@ -1480,8 +1580,10 @@ try {
   await driver.awaitGridCondition(
     'the TOC paints headings document-ordered and nested',
     (snapshot) =>
-      snapshot.findText('Doc Title :1') !== null &&
-      snapshot.findText('Section One :5') !== null,
+      snapshot.findText('Doc Title') !== null &&
+      snapshot.findText('Section One') !== null &&
+      snapshot.findText('Doc Title :') === null &&
+      snapshot.findText('Section One :') === null,
   );
   HarnessSmoke.Class.pass(
     'markdown headings become the outline through the provider seam',

@@ -451,13 +451,6 @@ class $ThemeIcons {
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
-        structurePublic: '+',
-        structureProtected: '◇',
-        structurePrivate: '−',
-        structureCached: '$',
-        structureOverride: '↑',
-        structureGetter: '↤',
-        structureSetter: '↦',
         structureDepth: '⛭',
         statusUser: '\u{f007}',
       },
@@ -490,13 +483,6 @@ class $ThemeIcons {
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
-        structurePublic: '+',
-        structureProtected: '◇',
-        structurePrivate: '−',
-        structureCached: '$',
-        structureOverride: '↑',
-        structureGetter: '↤',
-        structureSetter: '↦',
         structureDepth: '⛭',
         statusUser: '♙',
       },
@@ -516,13 +502,6 @@ class $ThemeIcons {
         overviewMark: '.',
         foldOpen: 'v',
         foldClosed: ']',
-        structurePublic: '+',
-        structureProtected: '~',
-        structurePrivate: '-',
-        structureCached: '$',
-        structureOverride: '^',
-        structureGetter: 'g',
-        structureSetter: 's',
         structureDepth: '#',
         statusUser: '@',
       },
@@ -919,13 +898,6 @@ export interface InterfaceGlyphVocabulary {
   overviewMark: string;
   foldOpen: string;
   foldClosed: string;
-  structurePublic: string;
-  structureProtected: string;
-  structurePrivate: string;
-  structureCached: string;
-  structureOverride: string;
-  structureGetter: string;
-  structureSetter: string;
   structureDepth: string;
   statusUser: string;
 }
