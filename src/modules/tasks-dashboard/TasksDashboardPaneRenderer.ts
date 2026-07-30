@@ -14,7 +14,7 @@ import {
   TASKS_EXPLORING_GLYPHS,
   TASKS_EXPLORING_RAMP,
   TASKS_GATE_RAMP,
-  TASKS_MOTION_PAINTS_PER_STEP,
+  tasksMotionStepAtElapsed,
   type GateGlance,
 } from '../../../scripts/tasks/tasks-status';
 import { TextCoordinates } from '../text/TextCoordinates';
@@ -349,8 +349,8 @@ class $TasksDashboardPaneRenderer {
     context: TasksDashboardRenderContext,
     row: TasksDashboardRow,
   ): Array<[string, string]> {
-    const motionStep = Math.floor(
-      context.animationPaint / TASKS_MOTION_PAINTS_PER_STEP,
+    const motionStep = tasksMotionStepAtElapsed(
+      context.animationElapsedMilliseconds,
     );
     const pieces: Array<[string, string]> = [[' ', context.palette.dim]];
     if (row.standing === 'ready')
@@ -405,9 +405,7 @@ class $TasksDashboardPaneRenderer {
     decorate: (chunk: TextChunk) => TextChunk,
   ): void {
     const gate = context.gateGlance;
-    const step = Math.floor(
-      context.animationPaint / TASKS_MOTION_PAINTS_PER_STEP,
-    );
+    const step = tasksMotionStepAtElapsed(context.animationElapsedMilliseconds);
     const colour =
       gate?.exitCode === 0
         ? context.palette.added
@@ -543,7 +541,7 @@ export interface TasksDashboardRenderContext {
   height: number;
   innerWidth: number;
   viewportWidth: number;
-  animationPaint: number;
+  animationElapsedMilliseconds: number;
   gateGlance: GateGlance | null;
   actionNotice: TasksDashboardActionNotice | null;
   taskActionIcons: TaskActionIconSet;

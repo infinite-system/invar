@@ -104,7 +104,7 @@ class $TasksDashboardPaneContent implements PaneContent {
       height: Math.max(1, context.height),
       innerWidth,
       viewportWidth: Math.max(1, innerWidth - this.scrollbarThicknessCells),
-      animationPaint: this.overview.animationPaint.value,
+      animationElapsedMilliseconds: this.overview.animationElapsedMilliseconds,
       gateGlance: this.overview.gateGlance.value,
       actionNotice: this.overview.actionNotice.value,
       taskActionIcons: this.application.theme.taskActionIcons,
@@ -178,7 +178,8 @@ class $TasksDashboardPaneContent implements PaneContent {
         innerWidth:
           this.overview.viewportWidth.value + this.scrollbarThicknessCells,
         viewportWidth: this.overview.viewportWidth.value,
-        animationPaint: this.overview.animationPaint.value,
+        animationElapsedMilliseconds:
+          this.overview.animationElapsedMilliseconds,
         gateGlance: this.overview.gateGlance.value,
         actionNotice: this.overview.actionNotice.value,
         taskActionIcons: this.application.theme.taskActionIcons,
@@ -221,7 +222,8 @@ class $TasksDashboardPaneContent implements PaneContent {
         innerWidth:
           this.overview.viewportWidth.value + this.scrollbarThicknessCells,
         viewportWidth: this.overview.viewportWidth.value,
-        animationPaint: this.overview.animationPaint.value,
+        animationElapsedMilliseconds:
+          this.overview.animationElapsedMilliseconds,
         gateGlance: this.overview.gateGlance.value,
         actionNotice: this.overview.actionNotice.value,
         taskActionIcons: this.application.theme.taskActionIcons,

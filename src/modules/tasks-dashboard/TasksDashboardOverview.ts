@@ -185,6 +185,19 @@ class $TasksDashboardOverview {
     }
   }
 
+  /**
+   * How long the pane's motion has run, in milliseconds. The motion tables in
+   * `tasks-status.ts` step on wall-clock time, so the pane hands them TIME and
+   * never its paint count: the pane paints at 30 fps and the CLI watch at
+   * 60 fps, and both must show the same step at the same moment (#348).
+   */
+  get animationElapsedMilliseconds(): number {
+    return (
+      this.animationPaint.value *
+      $TasksDashboardOverview.MOTION_HEARTBEAT_MILLISECONDS
+    );
+  }
+
   protected motionHeartbeatTick(): void {
     if (!this.hasLiveMotion()) return;
     this.animationPaint.value += 1;

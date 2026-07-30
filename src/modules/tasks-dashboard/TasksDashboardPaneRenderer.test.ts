@@ -4,6 +4,7 @@ import { ThemePalettes } from '../theme/ThemePalettes';
 import {
   TASKS_BUILDING_BREATH_FRAMES,
   TASKS_EXPLORING_GLYPHS,
+  TASKS_MOTION_STEP_MILLISECONDS,
 } from '../../../scripts/tasks/tasks-status';
 import {
   TasksDashboardPaneRenderer,
@@ -55,7 +56,7 @@ function makeContext(
     height: 10,
     innerWidth: 60,
     viewportWidth: 59,
-    animationPaint: 0,
+    animationElapsedMilliseconds: 0,
     gateGlance: null,
     actionNotice: null,
     taskActionIcons: {
@@ -222,12 +223,18 @@ test('live motion advances through the CLI-exported phase frames', () => {
   });
   const first = renderedText(
     TasksDashboardPaneRenderer.Class.render(
-      makeContext({ rows: [titleRow, detailRow], animationPaint: 0 }),
+      makeContext({
+        rows: [titleRow, detailRow],
+        animationElapsedMilliseconds: 0,
+      }),
     ),
   );
   const second = renderedText(
     TasksDashboardPaneRenderer.Class.render(
-      makeContext({ rows: [titleRow, detailRow], animationPaint: 10 }),
+      makeContext({
+        rows: [titleRow, detailRow],
+        animationElapsedMilliseconds: 2 * TASKS_MOTION_STEP_MILLISECONDS,
+      }),
     ),
   );
   expect(first).toContain(`${TASKS_BUILDING_BREATH_FRAMES[0]!.glyph} building`);
@@ -250,7 +257,7 @@ test('live motion advances through the CLI-exported phase frames', () => {
     TasksDashboardPaneRenderer.Class.render(
       makeContext({
         rows: [exploringTitleRow, exploringDetailRow],
-        animationPaint: 0,
+        animationElapsedMilliseconds: 0,
       }),
     ),
   );
@@ -258,7 +265,7 @@ test('live motion advances through the CLI-exported phase frames', () => {
     TasksDashboardPaneRenderer.Class.render(
       makeContext({
         rows: [exploringTitleRow, exploringDetailRow],
-        animationPaint: 10,
+        animationElapsedMilliseconds: 2 * TASKS_MOTION_STEP_MILLISECONDS,
       }),
     ),
   );
