@@ -174,11 +174,36 @@ unit assertion, and the fake ffmpeg inside the media smoke.
 `FfmpegVideoSource` is constructed only when a media video pane opens, which
 none of these three smokes does.
 
-This is a BLOCKER, reported rather than worked around. The commit needs
-either a green gate or a conductor decision. I did not touch the failing
-subsystems: panel-split, the plugin manifest settings drive, and the agent
-provider identity all belong to other tasks, and fixing them from here would
-be scope creep in three directions at once.
+This was reported as a BLOCKER rather than worked around. I did not touch the
+failing subsystems: panel-split, the plugin manifest settings drive, and the
+agent provider identity all belong to other tasks, and fixing them from here
+would be scope creep in three directions at once.
+
+### Conductor authorization for the commit
+
+The conductor accepted this off-diff triage and filed all three reds with the
+evidence above:
+
+- #359 (panel-split starvation)
+- #360 (agent-engine-switch pool flake)
+- #337 (structure-outline timeouts) escalated to carry the deterministic
+  plugin-manifest red, which reproduces on the base tree
+
+Under the narrow landing rule the conductor authorized exactly ONE
+`SKIP_GATE=1` commit, for this branch only, and will land it with a
+`GATE_OVERRIDE` naming those three pre-existing classes. The commit was made
+under that authorization and under no other. The gate chain it overrides is
+the `GATE_EXIT=1` recorded verbatim above, from a hook run that used no
+`SKIP_GATE`.
+
+The commit is `3e55ba28` on `fleet/350-nicer-generated-sample-video`
+(`3e55ba288a827927e9adfda3af24d34f85a28d89`), 24 files, 814 insertions, 3
+deletions. Its hook printed `pre-commit: SKIP_GATE=1 — skipping the full
+merge-gate (bypass acknowledged)`. `git status` is clean after it.
+
+This paragraph appears only in the conductor's copy of the report. The copy
+committed on the branch says the hash is in `git log` instead, because a
+commit cannot contain its own hash.
 
 ## Invariants answered
 
