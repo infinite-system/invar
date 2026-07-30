@@ -8,7 +8,7 @@
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
 // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
-// invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+// invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
 // invariant: The right dock control owns the status edge (src/modules/ui/ui.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -959,9 +959,9 @@ try {
     driver,
     statusPath,
     'sidebar',
-    5,
+    -5,
     0,
-    (before, after) => after.left > before.left,
+    (before, after) => after.left < before.left,
   );
   await assertSplitterStates(
     driver,
@@ -1227,18 +1227,31 @@ try {
   );
 
   console.log(
-    '== harness layout: the right dock stays a bounded minority of the row ==',
+    '== harness layout: each dock stays a bounded minority of the row ==',
   );
+  const draggedSidebarWidth = Number(status.sidebarWidth);
   const draggedRightDockWidth = Number(status.rightDockWidth);
+  const draggedPrimaryDockGroup =
+    layoutSlot(status, 'activityBar').width +
+    layoutSlot(status, 'sidebar').width +
+    layoutSlot(status, 'sidebarSplitter').width;
   const draggedRightDock = layoutSlot(status, 'rightDock');
   const draggedEditorCenter = layoutSlot(status, 'editorCenter');
+  HarnessSmoke.Class.requireCondition(
+    layoutSlot(status, 'sidebar').width === draggedSidebarWidth,
+    `the 120-column layout grants the dragged sidebar width in full (${layoutSlot(status, 'sidebar').width} of ${draggedSidebarWidth} requested)`,
+  );
   HarnessSmoke.Class.requireCondition(
     draggedRightDock.width === draggedRightDockWidth,
     `the 120-column layout grants the dragged width in full (${draggedRightDock.width} of ${draggedRightDockWidth} requested)`,
   );
   HarnessSmoke.Class.requireCondition(
-    draggedRightDock.width < draggedEditorCenter.width,
-    `the dragged right dock stays narrower than the editor at 120 columns (dock ${draggedRightDock.width}, editor ${draggedEditorCenter.width})`,
+    draggedPrimaryDockGroup < draggedEditorCenter.width,
+    `the dragged primary dock group stays narrower than the editor at 120 columns (dock ${draggedPrimaryDockGroup}, editor ${draggedEditorCenter.width})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    draggedRightDock.width + 1 < draggedEditorCenter.width,
+    `the dragged right dock group stays narrower than the editor at 120 columns (dock ${draggedRightDock.width + 1}, editor ${draggedEditorCenter.width})`,
   );
   // The dragged width no longer fits a 24-column bound at 80 columns, so the narrow layout must
   // re-clamp it. The condition is the row the right dock now occupies, not the rule under test.
@@ -1253,13 +1266,33 @@ try {
   );
   const narrowRightDock = layoutSlot(narrowStatus, 'rightDock');
   const narrowEditorCenter = layoutSlot(narrowStatus, 'editorCenter');
+  const narrowPrimaryDockGroup =
+    layoutSlot(narrowStatus, 'activityBar').width +
+    layoutSlot(narrowStatus, 'sidebar').width +
+    layoutSlot(narrowStatus, 'sidebarSplitter').width;
+  const narrowRightDockGroup =
+    layoutSlot(narrowStatus, 'rightDockSplitter').width +
+    narrowRightDock.width +
+    layoutSlot(narrowStatus, 'rightActivityBar').width;
   HarnessSmoke.Class.requireCondition(
-    narrowRightDock.width < narrowEditorCenter.width,
-    `an 80-column row keeps the editor wider than the right dock (dock ${narrowRightDock.width}, editor ${narrowEditorCenter.width})`,
+    narrowPrimaryDockGroup < narrowEditorCenter.width,
+    `an 80-column row keeps the editor wider than the primary dock group (dock ${narrowPrimaryDockGroup}, editor ${narrowEditorCenter.width})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    narrowRightDockGroup < narrowEditorCenter.width,
+    `an 80-column row keeps the editor wider than the right dock group (dock ${narrowRightDockGroup}, editor ${narrowEditorCenter.width})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    layoutSlot(narrowStatus, 'sidebar').width <= Math.floor(80 * 0.3),
+    `an 80-column primary dock claims at most 30 percent of the row (${layoutSlot(narrowStatus, 'sidebar').width} of 80)`,
   );
   HarnessSmoke.Class.requireCondition(
     narrowRightDock.width <= Math.floor(80 * 0.3),
     `an 80-column right dock claims at most 30 percent of the row (${narrowRightDock.width} of 80)`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(narrowStatus.sidebarWidth) === draggedSidebarWidth,
+    'the primary dock clamp does not rewrite the user width setting',
   );
   HarnessSmoke.Class.requireCondition(
     Number(narrowStatus.rightDockWidth) === draggedRightDockWidth,
@@ -1273,7 +1306,16 @@ try {
     'status condition: candidate.width === 120 && the right dock regained the dragged width',
     (candidate) =>
       Number(candidate.width) === 120 &&
+      layoutSlot(candidate, 'sidebar').width === draggedSidebarWidth &&
       layoutSlot(candidate, 'rightDock').width === draggedRightDockWidth,
+  );
+  const restoredPrimaryDockGroup =
+    layoutSlot(restoredStatus, 'activityBar').width +
+    layoutSlot(restoredStatus, 'sidebar').width +
+    layoutSlot(restoredStatus, 'sidebarSplitter').width;
+  HarnessSmoke.Class.requireCondition(
+    restoredPrimaryDockGroup < layoutSlot(restoredStatus, 'editorCenter').width,
+    'the restored primary dock request is still narrower than the editor',
   );
   HarnessSmoke.Class.requireCondition(
     layoutSlot(restoredStatus, 'rightDock').width <
@@ -1281,7 +1323,7 @@ try {
     'the restored dragged width is still narrower than the editor',
   );
   HarnessSmoke.Class.pass(
-    'the right dock is clamped by the row it is in and keeps the user request across resizes',
+    'both docks are clamped by the row and keep user requests across resizes',
   );
 
   driver.sendKeys('Control+q');
@@ -1334,9 +1376,21 @@ try {
       compactRightDockStatus,
       'editorCenter',
     );
+    const compactPrimaryDockGroup =
+      layoutSlot(compactRightDockStatus, 'activityBar').width +
+      layoutSlot(compactRightDockStatus, 'sidebar').width +
+      layoutSlot(compactRightDockStatus, 'sidebarSplitter').width;
+    const compactRightDockGroup =
+      layoutSlot(compactRightDockStatus, 'rightDockSplitter').width +
+      compactRightDock.width +
+      layoutSlot(compactRightDockStatus, 'rightActivityBar').width;
     HarnessSmoke.Class.requireCondition(
-      compactRightDock.width < compactEditorCenter.width,
-      `an 80-column boot opens the right dock narrower than the editor (dock ${compactRightDock.width}, editor ${compactEditorCenter.width})`,
+      compactPrimaryDockGroup < compactEditorCenter.width,
+      `an 80-column boot opens the primary dock group narrower than the editor (dock ${compactPrimaryDockGroup}, editor ${compactEditorCenter.width})`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      compactRightDockGroup < compactEditorCenter.width,
+      `an 80-column boot opens the right dock group narrower than the editor (dock ${compactRightDockGroup}, editor ${compactEditorCenter.width})`,
     );
     compactDriver.sendKeys('Control+q');
   } finally {

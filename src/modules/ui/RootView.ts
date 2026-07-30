@@ -319,6 +319,13 @@ class $RootView {
     const paneSplitters = new PaneSplitters.Class({
       renderer,
       settings,
+      // Both splitters read the same options as the painted slots. A divider cannot offer a width
+      // that the layout refuses at the current terminal size.
+      // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+      maximumSidebarSize: () =>
+        LayoutModel.Class.maximumPrimaryDockColumns(
+          buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
+        ),
     });
     const sidebarDivider = paneSplitters.sidebar.renderable;
     const rightDockSplitter = new SplitterElement.Class({
@@ -330,7 +337,7 @@ class $RootView {
       minimumSize: 16,
       // The live bound, not a fixed 70: the same generator the layout clamps with, so the divider
       // stops exactly where the painted dock stops at this terminal width.
-      // invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+      // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
       maximumSize: () =>
         LayoutModel.Class.maximumRightDockColumns(
           buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
@@ -1572,7 +1579,7 @@ class $RootView {
       workspaceTabBar.content = tabBarController.renderWorkspace();
       workspaceTabBar.fg = palette.fg;
       const primaryDockContent = primaryDockHost.activeContent;
-      const primaryDockWidth = Math.max(1, sidebarWidth() - 2);
+      const primaryDockWidth = Math.max(1, Number(sidebar.width) - 2);
       const primaryDockHeight = Math.max(1, Number(sidebar.height) - 2);
       primaryDockContent?.onResize(primaryDockWidth, primaryDockHeight);
       // Every host paint site asks the ONE resolver, never the content's own render — a content
@@ -2143,7 +2150,6 @@ class $RootView {
       tooltip,
       editorViewportHeight,
       editorViewportWidth,
-      sidebarWidth,
       scrollbarThicknessCells,
     });
     const panelHeadingGeometry = (): readonly PanelHeadingGeometry[] => {

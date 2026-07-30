@@ -304,7 +304,7 @@ class $ScrollbarSync {
     for (const pane of [
       {
         content: this.dependencies.primaryDockHost.activeContent,
-        columns: Math.max(1, this.dependencies.sidebarWidth() - 2),
+        columns: Math.max(1, Number(this.dependencies.sidebar.width) - 2),
         rows: Math.max(1, Number(this.dependencies.sidebar.height) - 2),
       },
       {
@@ -363,7 +363,7 @@ class $ScrollbarSync {
     const sidebarRegion = {
       top: 0,
       left: 0,
-      width: this.dependencies.sidebarWidth() - 2,
+      width: Math.max(1, Number(this.dependencies.sidebar.width) - 2),
       height: Math.max(1, Number(this.dependencies.sidebar.height) - 2),
     };
     this.applyBar(this.primaryDockVerticalBar, 'vertical', sidebarRegion, {
@@ -419,6 +419,5 @@ export interface ScrollbarSyncDependencies {
   tooltip: Tooltip.Instance;
   editorViewportHeight: () => number;
   editorViewportWidth: () => number;
-  sidebarWidth: () => number;
   scrollbarThicknessCells: () => number;
 }

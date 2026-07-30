@@ -247,7 +247,9 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column workspace tabs publish by space identity`,
     );
     const expectedEditorActionIdentifiers =
-      columns === 120 ? ['view.toggleWordWrap', 'editor.goToLine'] : [];
+      columns === 120
+        ? ['view.toggleWordWrap', 'editor.goToLine']
+        : ['view.toggleWordWrap'];
     HarnessSmoke.Class.requireCondition(
       JSON.stringify(
         initialTabBar.editorActions.map((action) => action.commandId),
