@@ -1,0 +1,15 @@
+{
+  "task": 389,
+  "slug": "tasks-watch-overpaints-phantom-items",
+  "branch": "fleet/389-tasks-watch-overpaints-phantom-items",
+  "worktree": ".invar/worktrees/389-tasks-watch-overpaints-phantom-items",
+  "tmuxSession": "invar/389-tasks-watch-overpaints-phantom-items",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-389-tasks-watch-overpaints-phantom-items.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "8e24efa40f59471ceffc1ffc7ea786f282888fdb",
+  "startedAt": "2026-07-30T12:50:30-04:00"
+}

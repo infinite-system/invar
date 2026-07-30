@@ -269,8 +269,19 @@ class $AppStatusProjection {
       panelContentKinds: ports.panelHost.orderedContents.map(
         (content) => content.kind ?? content.id,
       ),
+      panelSpaceIds: ports.panelHost.spaces.value.map(
+        (space) => space.identifier,
+      ),
+      panelSpaceLabels: ports.panelHost.spaces.value.map(
+        (space) => space.label,
+      ),
+      panelActiveSpace: ports.panelHost.activeSpaceId.value,
+      panelActiveSpacePaneIds: ports.panelHost.activeSpace?.contentIds ?? [],
+      panelTabCycling: ports.settings.panelTabCycling.value,
+      panelTabCycleSeconds: ports.settings.panelTabCycleSeconds.value,
       panelExpanded: ports.panelHost.expanded.value,
       panelListVisible: ports.panelHost.panelListVisible,
+      panelListExpanded: ports.panelHost.panelListExpanded.value,
       panelHeadingGeometry: ports.view.panelHeadingGeometry(),
       panelSeparatorGeometry: ports.view.panelSeparatorGeometry(),
       panelListGeometry: ports.view.panelContentsListRegion(),
@@ -411,6 +422,8 @@ export interface AppStatusProjectionPorts {
     | 'agentAudioNarration'
     | 'agentTerminalFollowMode'
     | 'agentSkipPermissions'
+    | 'panelTabCycling'
+    | 'panelTabCycleSeconds'
   >;
   readonly commands: Pick<
     InstanceType<typeof CommandRegistry.Class>,
@@ -483,6 +496,10 @@ export interface AppStatusProjectionPorts {
     | 'focusedIndex'
     | 'cellSpans'
     | 'panelListVisible'
+    | 'panelListExpanded'
+    | 'spaces'
+    | 'activeSpace'
+    | 'activeSpaceId'
   >;
   readonly primaryDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,

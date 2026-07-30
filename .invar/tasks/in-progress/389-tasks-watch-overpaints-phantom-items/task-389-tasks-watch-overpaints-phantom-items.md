@@ -1,6 +1,6 @@
 # #389 — tasks watch overpaints and shows more items than exist
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux

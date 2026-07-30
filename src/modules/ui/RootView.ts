@@ -83,14 +83,10 @@ import type { PanelHost } from './PanelHost';
 import { PanelContentsList } from './PanelContentsList';
 import { RenderRequest } from './RenderRequest';
 import {
-  PanelHeading,
-  type PanelHeadingAction,
-  type PanelHeadingProjection,
-} from './PanelHeading';
-import {
-  PanelSeparatorRow,
-  type PanelSeparatorProjection,
-} from './PanelSeparatorRow';
+  PanelTabBar,
+  type PanelTabBarAction,
+  type PanelTabBarProjection,
+} from './PanelTabBar';
 import {
   LayoutModel,
   type LayoutModelOptions,
@@ -549,8 +545,7 @@ class $RootView {
       position: 'absolute',
       height: panelHeightRows,
       flexShrink: 0,
-      border: true,
-      borderStyle: 'rounded',
+      border: false,
       flexDirection: 'row', // visible split cells lay out left-to-right; one cell = the degenerate case
       title: '',
       backgroundColor: readPalette().panel,
@@ -714,7 +709,6 @@ class $RootView {
     // frames just update widths and content.
     interface PanelCellView {
       readonly container: BoxRenderable;
-      readonly heading: TextRenderable;
       readonly body: TextRenderable;
       readonly verticalScrollBar: SolidThumbScrollBar.Model;
       readonly verticalScrollBarState: {
@@ -722,8 +716,6 @@ class $RootView {
         reportedToTrueScale: number;
       };
       readonly splitterElement: SplitterElement.Model | null;
-      headingProjection: PanelHeadingProjection | null;
-      hoveredHeadingAction: PanelHeadingAction | null;
     }
     const panelCellViews: PanelCellView[] = [];
     let mountedPanelCellCount = -1;
@@ -750,14 +742,6 @@ class $RootView {
         flexShrink: 0,
         height: '100%',
         minHeight: 0,
-      });
-      const heading = new TextRenderable(renderer, {
-        id: `panel-cell-heading-${index}`,
-        content: '',
-        width: '100%',
-        height: 1,
-        wrapMode: 'none',
-        selectable: false,
       });
       const body = new TextRenderable(renderer, {
         id: `panel-cell-${index}`,
@@ -790,7 +774,6 @@ class $RootView {
           renderer.requestRender();
         },
       });
-      container.add(heading);
       container.add(body);
       container.add(verticalScrollBar);
       // The cell at this pool index whose content is the agent, else null (for scroll/selection routing).
@@ -802,58 +785,8 @@ class $RootView {
       // AGENT it also begins a drag-selection (transcript via the shared viewport engine, composer via a
       // small manual drag), grabbing pointer capture so the drag routes here wherever it travels; a BARE
       // click (no drag) toggles a collapsed tool row on mouse-up. Other panes keep the click hit-test.
-      heading.onMouseDown = (event) => {
-        panelHost.focus();
-        panelHost.focusCell(index);
-        const view = panelCellViews[index];
-        const action = view?.headingProjection
-          ? PanelHeading.Class.controlAtColumn(
-              view.headingProjection,
-              Number(event.x) - Number(heading.x),
-            )
-          : null;
-        const content = panelHost.resolvedCells[index]?.content;
-        if (action === 'add') {
-          openPanelAddPopup({
-            column: Number(event.x),
-            row: Number(event.y),
-          });
-        } else if (action === 'expand') {
-          panelHost.toggleExpanded();
-        } else if (action === 'close' && content) {
-          panelHost.removeContent(content.id);
-        }
-        renderer.requestRender();
-      };
-      // invariant: A tooltip never intercepts input (src/modules/ui/ui.invariants.md)
-      heading.onMouseMove = (event) => {
-        const view = panelCellViews[index];
-        const control = view?.headingProjection
-          ? PanelHeading.Class.controlSegmentAtColumn(
-              view.headingProjection,
-              Number(event.x) - Number(heading.x),
-            )
-          : null;
-        const nextHoveredHeadingAction = control?.action ?? null;
-        if (view && view.hoveredHeadingAction !== nextHoveredHeadingAction) {
-          view.hoveredHeadingAction = nextHoveredHeadingAction;
-          renderer.requestRender();
-        }
-        if (control) {
-          tooltip.point(control.tooltip, Number(event.x), Number(event.y));
-        } else {
-          tooltip.clear();
-        }
-      };
-      heading.onMouseOut = () => {
-        const view = panelCellViews[index];
-        if (view?.hoveredHeadingAction) {
-          view.hoveredHeadingAction = null;
-          renderer.requestRender();
-        }
-        tooltip.clear();
-      };
       body.onMouseDown = (event: MouseEvent) => {
+        panelHost.panelListExpanded.value = false;
         panelHost.focus();
         panelHost.focusCell(index);
         const agent = agentAtCell();
@@ -1020,13 +953,10 @@ class $RootView {
       }
       const view: PanelCellView = {
         container,
-        heading,
         body,
         verticalScrollBar,
         verticalScrollBarState,
         splitterElement,
-        headingProjection: null,
-        hoveredHeadingAction: null,
       };
       panelCellViews[index] = view;
       return view;
@@ -1071,8 +1001,10 @@ class $RootView {
       currentSize: () => panelHeightRows,
       // The pad comes from the separator-row projection that also places the drag strip, so the
       // blank cell and the strip it stands off from are one composition, not two guesses.
+      // The pad comes from the tab-bar projection that also places the drag span, so the blank
+      // cell and the span it stands off from are one composition, not two guesses.
       leadingPaintPadCells: () =>
-        panelSeparatorProjection?.dragLeadingPaintPadCells ?? 0,
+        panelTabBarProjection?.dragLeadingPaintPadCells ?? 0,
       onDragStart: () => panelHost.focus(),
       onSizeChange: (height) => {
         panelHeightRows = Math.round(height);
@@ -1100,43 +1032,75 @@ class $RootView {
       selectable: false,
       zIndex: 60,
     });
-    let panelSeparatorProjection: PanelSeparatorProjection | null = null;
-    let panelControlBarProjection: PanelHeadingProjection | null = null;
+    let panelTabBarProjection: PanelTabBarProjection | null = null;
+    let hoveredPanelTabIdentifier: string | null = null;
     let hoveredPanelEditorCommandIdentifier: string | null = null;
-    let hoveredPanelControlBarAction: PanelHeadingAction | null = null;
+    let hoveredPanelControlBarAction: PanelTabBarAction | null = null;
     panelActionBarRenderable.onMouseDown = (event) => {
-      const action = panelSeparatorProjection
-        ? PanelSeparatorRow.Class.actionSegmentAtColumn(
-            panelSeparatorProjection,
-            Number(event.x) - Number(panelActionBarRenderable.x),
+      const actionBarColumn =
+        Number(event.x) - Number(panelActionBarRenderable.x);
+      const tab = panelTabBarProjection
+        ? PanelTabBar.Class.tabAtColumn(panelTabBarProjection, actionBarColumn)
+        : null;
+      const editorAction = panelTabBarProjection
+        ? PanelTabBar.Class.editorActionAtColumn(
+            panelTabBarProjection,
+            actionBarColumn,
           )
         : null;
-      if (!action) return;
-      commands.run(action.commandId);
+      if (tab) {
+        panelHost.selectSpace(tab.identifier);
+        panelHost.focus();
+      } else if (editorAction) {
+        commands.run(editorAction.commandId);
+      } else {
+        return;
+      }
       renderer.requestRender();
     };
     panelActionBarRenderable.onMouseMove = (event) => {
-      const action = panelSeparatorProjection
-        ? PanelSeparatorRow.Class.actionSegmentAtColumn(
-            panelSeparatorProjection,
-            Number(event.x) - Number(panelActionBarRenderable.x),
+      const actionBarColumn =
+        Number(event.x) - Number(panelActionBarRenderable.x);
+      const tab = panelTabBarProjection
+        ? PanelTabBar.Class.tabAtColumn(panelTabBarProjection, actionBarColumn)
+        : null;
+      const editorAction = panelTabBarProjection
+        ? PanelTabBar.Class.editorActionAtColumn(
+            panelTabBarProjection,
+            actionBarColumn,
           )
         : null;
-      const nextHoveredCommandIdentifier = action?.commandId ?? null;
+      const nextHoveredTabIdentifier = tab?.identifier ?? null;
+      const nextHoveredCommandIdentifier = editorAction?.commandId ?? null;
       if (
+        hoveredPanelTabIdentifier !== nextHoveredTabIdentifier ||
         hoveredPanelEditorCommandIdentifier !== nextHoveredCommandIdentifier
       ) {
+        hoveredPanelTabIdentifier = nextHoveredTabIdentifier;
         hoveredPanelEditorCommandIdentifier = nextHoveredCommandIdentifier;
         renderer.requestRender();
       }
-      if (action) {
-        tooltip.point(action.title, Number(event.x), Number(event.y));
+      if (tab) {
+        const space = panelHost.spaces.value.find(
+          (candidate) => candidate.identifier === tab.identifier,
+        );
+        tooltip.point(
+          space?.label ?? 'Content space',
+          Number(event.x),
+          Number(event.y),
+        );
+      } else if (editorAction) {
+        tooltip.point(editorAction.title, Number(event.x), Number(event.y));
       } else {
         tooltip.clear();
       }
     };
     panelActionBarRenderable.onMouseOut = () => {
-      if (hoveredPanelEditorCommandIdentifier !== null) {
+      if (
+        hoveredPanelTabIdentifier !== null ||
+        hoveredPanelEditorCommandIdentifier !== null
+      ) {
+        hoveredPanelTabIdentifier = null;
         hoveredPanelEditorCommandIdentifier = null;
         renderer.requestRender();
       }
@@ -1144,29 +1108,37 @@ class $RootView {
     };
     panelControlBarRenderable.onMouseDown = (event) => {
       panelHost.focus();
-      const action = panelControlBarProjection
-        ? PanelHeading.Class.controlAtColumn(
-            panelControlBarProjection,
-            Number(event.x) - Number(panelControlBarRenderable.x),
+      const action = panelTabBarProjection
+        ? PanelTabBar.Class.controlAtColumn(
+            panelTabBarProjection,
+            Number(event.x) -
+              Number(panelControlBarRenderable.x) +
+              layoutSlotGeometry.bottomPanelSplitter.width -
+              panelTabBarProjection.controlWidth,
           )
         : null;
-      if (action === 'add') {
+      if (action?.action === 'pane-list') {
+        panelHost.togglePanelList();
+      } else if (action?.action === 'add') {
         openPanelAddPopup({
           column: Number(event.x),
           row: Number(event.y),
         });
-      } else if (action === 'expand') {
+      } else if (action?.action === 'expand') {
         panelHost.toggleExpanded();
-      } else if (action === 'close') {
+      } else if (action?.action === 'close') {
         panelHost.hide();
       }
       renderer.requestRender();
     };
     panelControlBarRenderable.onMouseMove = (event) => {
-      const control = panelControlBarProjection
-        ? PanelHeading.Class.controlSegmentAtColumn(
-            panelControlBarProjection,
-            Number(event.x) - Number(panelControlBarRenderable.x),
+      const control = panelTabBarProjection
+        ? PanelTabBar.Class.controlAtColumn(
+            panelTabBarProjection,
+            Number(event.x) -
+              Number(panelControlBarRenderable.x) +
+              layoutSlotGeometry.bottomPanelSplitter.width -
+              panelTabBarProjection.controlWidth,
           )
         : null;
       const nextHoveredAction = control?.action ?? null;
@@ -1190,10 +1162,10 @@ class $RootView {
     // Clicking the panel focuses it (focus-follows-click). Blur-on-outside is handled in Bootstrap's
     // global mouse handler via panelContainsPoint.
     panelBox.onMouseDown = () => {
+      panelHost.panelListExpanded.value = false;
       panelHost.focus();
       renderer.requestRender();
     };
-    // invariant: Visible panel contents own separate headed regions (src/modules/ui/ui.invariants.md)
     function synchronizePanelMount(): void {
       const visible = panelHost.visible.value;
       if (visible === panelMounted) return;
@@ -1210,7 +1182,7 @@ class $RootView {
       }
       panelMounted = visible;
     }
-    // Resolved inner cell region of the panel slot (border-inset). Read the current LayoutModel result,
+    // Resolved cell region of the flat panel slot. Read the current LayoutModel result,
     // not the renderable's previous Yoga box: absolute slot geometry is applied during this paint, so
     // layout read-back would be one frame stale when a quiet pane first opens.
     const panelViewportColumns = (): number =>
@@ -1218,13 +1190,12 @@ class $RootView {
         ? Math.max(
             1,
             layoutSlotGeometry.bottomPanel.width -
-              2 -
               (panelContentsList.visible ? panelContentsList.width : 0),
           )
         : 0;
     const panelViewportRows = (): number =>
       panelHost.visible.value
-        ? Math.max(1, layoutSlotGeometry.bottomPanel.height - 3)
+        ? Math.max(1, layoutSlotGeometry.bottomPanel.height)
         : 0;
     const panelContainsPoint = (x: number, y: number): boolean => {
       if (!panelHost.visible.value) return false;
@@ -1333,8 +1304,15 @@ class $RootView {
       rightDockBox.width = layoutSlotGeometry.rightDock.width;
       rightDockBox.height = layoutSlotGeometry.rightDock.height;
       if (panelHost.visible.value) {
-        panelSeparatorProjection = PanelSeparatorRow.Class.project({
+        panelTabBarProjection = PanelTabBar.Class.project({
           width: layoutSlotGeometry.bottomPanelSplitter.width,
+          spaces: panelHost.spaces.value,
+          activeSpaceId: panelHost.activeSpaceId.value,
+          paneCount: panelHost.activeSpaceContents.length,
+          paneListExpanded: panelHost.panelListExpanded.value,
+          expanded: panelHost.expanded.value,
+          focused: panelHost.focused.value,
+          hoveredTabIdentifier: hoveredPanelTabIdentifier,
           editorActions: commands
             .actionsForSurface('panelSeparator')
             .flatMap((command) => {
@@ -1350,10 +1328,8 @@ class $RootView {
                   ]
                 : [];
             }),
-          hoveredCommandId: hoveredPanelEditorCommandIdentifier,
-          hoveredPanelAction: hoveredPanelControlBarAction,
-          panelFocused: panelHost.focused.value,
-          panelExpanded: panelHost.expanded.value,
+          hoveredCommandIdentifier: hoveredPanelEditorCommandIdentifier,
+          hoveredAction: hoveredPanelControlBarAction,
           glyphVocabulary: theme.glyphVocabulary,
           palette: readPalette(),
         });
@@ -1361,25 +1337,25 @@ class $RootView {
         const separatorTop = layoutSlotGeometry.bottomPanelSplitter.top;
         panelActionBarRenderable.left = separatorLeft;
         panelActionBarRenderable.top = separatorTop;
-        panelActionBarRenderable.width = panelSeparatorProjection.actionWidth;
+        panelActionBarRenderable.width = panelTabBarProjection.leadingWidth;
         panelActionBarRenderable.visible =
-          panelSeparatorProjection.actionWidth > 0;
-        panelActionBarRenderable.content = panelSeparatorProjection.actionText;
+          panelTabBarProjection.leadingWidth > 0;
+        panelActionBarRenderable.content = panelTabBarProjection.leadingText;
         panelSplitter.setGeometry({
-          left: separatorLeft + panelSeparatorProjection.dragStartColumn,
+          left: separatorLeft + panelTabBarProjection.leadingWidth,
           top: separatorTop,
-          length: panelSeparatorProjection.dragWidth,
+          length: panelTabBarProjection.dragWidth,
           visible: !panelHost.expanded.value,
         });
         panelControlBarRenderable.left =
-          separatorLeft + panelSeparatorProjection.controlStartColumn;
+          separatorLeft +
+          layoutSlotGeometry.bottomPanelSplitter.width -
+          panelTabBarProjection.controlWidth;
         panelControlBarRenderable.top = separatorTop;
-        panelControlBarRenderable.width = panelSeparatorProjection.controlWidth;
+        panelControlBarRenderable.width = panelTabBarProjection.controlWidth;
         panelControlBarRenderable.visible =
-          panelSeparatorProjection.controlWidth > 0;
-        panelControlBarProjection = panelSeparatorProjection.controlProjection;
-        panelControlBarRenderable.content =
-          panelControlBarProjection?.text ?? '';
+          panelTabBarProjection.controlWidth > 0;
+        panelControlBarRenderable.content = panelTabBarProjection.controlText;
         panelBox.left = layoutSlotGeometry.bottomPanel.left;
         panelBox.top = layoutSlotGeometry.bottomPanel.top;
         panelBox.width = layoutSlotGeometry.bottomPanel.width;
@@ -1679,10 +1655,6 @@ class $RootView {
         syncPanelCellMount(spans.length);
         panelBox.title = '';
         panelBox.backgroundColor = palette.panel;
-        panelBox.borderColor = panelFocused
-          ? palette.borderActive
-          : palette.border;
-        panelBox.titleColor = panelFocused ? palette.accent : palette.dim;
         panelContentsListRenderable.visible = panelContentsList.visible;
         panelContentsListRenderable.width = panelContentsList.visible
           ? panelContentsList.width
@@ -1692,27 +1664,14 @@ class $RootView {
           theme.glyphVocabulary,
         );
         const cellRows = panelViewportRows();
-        const panelContentTop = (panelBox.y as number) + 1; // inside the rounded border
-        const panelContentLeft = (panelBox.x as number) + 1;
+        const panelContentTop = panelBox.y as number;
+        const panelContentLeft = panelBox.x as number;
         let agentVisible = false;
         spans.forEach((span, index) => {
           const view = panelCellViews[index];
           if (!view) return;
           const cellFocused = panelFocused && index === focusedIndex;
           view.container.width = span.columns;
-          view.headingProjection = PanelHeading.Class.project({
-            width: span.columns,
-            title: span.content.title,
-            icon: span.content.icon,
-            focused: cellFocused,
-            expanded: panelHost.expanded.value,
-            hoveredAction: view.hoveredHeadingAction,
-            actions: ['close'],
-            closeTooltip: 'Close pane',
-            glyphVocabulary: theme.glyphVocabulary,
-            palette,
-          });
-          view.heading.content = view.headingProjection.text;
           view.body.fg = palette.fg;
           const agent =
             span.content instanceof AgentPaneContent.Class
@@ -2188,101 +2147,83 @@ class $RootView {
       scrollbarThicknessCells,
     });
     const panelHeadingGeometry = (): readonly PanelHeadingGeometry[] => {
-      if (!panelHost.visible.value) return [];
-      const spans = panelHost.cellSpans(panelViewportColumns());
-      let headingColumn =
-        Number(layoutCanvas.x) + layoutSlotGeometry.bottomPanel.left + 1;
-      const headings: PanelHeadingGeometry[] = [];
-      if (panelControlBarProjection) {
-        headings.push({
+      if (!panelHost.visible.value || !panelTabBarProjection) return [];
+      const row =
+        Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanelSplitter.top;
+      return [
+        {
           contentId: 'panel',
-          row:
-            Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanelSplitter.top,
+          row,
           hoveredAction: hoveredPanelControlBarAction,
-          controls: panelControlBarProjection.controls.map((control) => ({
+          controls: panelTabBarProjection.controls.map((control) => ({
             action: control.action,
             startColumn:
               Number(layoutCanvas.x) +
-              Number(panelControlBarRenderable.left) +
-              1 +
+              layoutSlotGeometry.bottomPanelSplitter.left +
               control.startColumn,
             endColumnExclusive:
               Number(layoutCanvas.x) +
-              Number(panelControlBarRenderable.left) +
-              1 +
+              layoutSlotGeometry.bottomPanelSplitter.left +
               control.endColumn,
           })),
-        });
-      }
-      for (const [index, span] of spans.entries()) {
-        const view = panelCellViews[index];
-        if (view?.headingProjection) {
-          headings.push({
-            contentId: span.content.id,
-            row:
-              Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanel.top + 1,
-            hoveredAction: view.hoveredHeadingAction,
-            controls: view.headingProjection.controls.map((control) => ({
-              action: control.action,
-              startColumn: headingColumn + control.startColumn,
-              endColumnExclusive: headingColumn + control.endColumn,
-            })),
-          });
-        }
-        headingColumn += span.columns + (index < spans.length - 1 ? 1 : 0);
-      }
-      return headings;
+        },
+        ...panelHost.resolvedCells.map((cell) => ({
+          contentId: cell.content.id,
+          row,
+          hoveredAction: null,
+          controls: [],
+        })),
+      ];
     };
     const panelSeparatorGeometry = (): PanelSeparatorGeometry | null => {
-      if (!panelHost.visible.value || !panelSeparatorProjection) return null;
+      if (!panelHost.visible.value || !panelTabBarProjection) return null;
       const screenLeft = Number(layoutCanvas.x);
       const row =
         Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanelSplitter.top;
       return {
         row,
-        editorActions: panelSeparatorProjection.actionSegments.map(
-          (action) => ({
-            commandId: action.commandId,
-            startColumn:
-              screenLeft +
-              Number(panelActionBarRenderable.left) +
-              1 +
-              action.startColumn,
-            endColumnExclusive:
-              screenLeft +
-              Number(panelActionBarRenderable.left) +
-              1 +
-              action.endColumn,
-          }),
-        ),
+        tabs: panelTabBarProjection.tabs.map((tab) => ({
+          spaceIdentifier: tab.identifier,
+          startColumn:
+            screenLeft +
+            Number(panelActionBarRenderable.left) +
+            tab.startColumn,
+          endColumnExclusive:
+            screenLeft + Number(panelActionBarRenderable.left) + tab.endColumn,
+        })),
+        editorActions: panelTabBarProjection.editorActions.map((action) => ({
+          commandId: action.commandId,
+          startColumn:
+            screenLeft +
+            Number(panelActionBarRenderable.left) +
+            action.startColumn,
+          endColumnExclusive:
+            screenLeft +
+            Number(panelActionBarRenderable.left) +
+            action.endColumn,
+        })),
         drag: {
           left:
             screenLeft +
             layoutSlotGeometry.bottomPanelSplitter.left +
-            1 +
-            panelSeparatorProjection.dragStartColumn,
+            panelTabBarProjection.leadingWidth,
           top: row,
-          width: panelSeparatorProjection.dragWidth,
+          width: panelTabBarProjection.dragWidth,
           height: 1,
           visible: panelSplitter.renderable.visible,
-          leadingPaintPadCells:
-            panelSeparatorProjection.dragLeadingPaintPadCells,
+          leadingPaintPadCells: panelTabBarProjection.dragLeadingPaintPadCells,
         },
-        controls: panelControlBarProjection
-          ? panelControlBarProjection.controls.map((control) => ({
-              action: control.action,
-              startColumn:
-                screenLeft +
-                Number(panelControlBarRenderable.left) +
-                1 +
-                control.startColumn,
-              endColumnExclusive:
-                screenLeft +
-                Number(panelControlBarRenderable.left) +
-                1 +
-                control.endColumn,
-            }))
-          : [],
+        controls: panelTabBarProjection.controls.map((control) => ({
+          action: control.action,
+          startColumn:
+            screenLeft +
+            layoutSlotGeometry.bottomPanelSplitter.left +
+            control.startColumn,
+          endColumnExclusive:
+            screenLeft +
+            layoutSlotGeometry.bottomPanelSplitter.left +
+            control.endColumn,
+        })),
       };
     };
     const focusedPanelCaretAnchor = (): {
@@ -2358,12 +2299,11 @@ class $RootView {
         left:
           Number(panelBox.x) +
           Number(panelBox.width) -
-          1 -
           (panelContentsList.visible ? panelContentsList.width : 0),
-        top: Number(panelBox.y) + 1,
+        top: Number(panelBox.y),
         width: panelContentsList.visible ? panelContentsList.width : 0,
         height: panelContentsList.visible
-          ? Math.max(0, Number(panelBox.height) - 2)
+          ? Math.max(0, Number(panelBox.height))
           : 0,
         visible: panelContentsList.visible,
       }),
@@ -2524,18 +2464,19 @@ export interface RootView {
 export interface PanelHeadingGeometry {
   readonly contentId: string;
   readonly row: number;
-  readonly hoveredAction: PanelHeadingAction | null;
+  readonly hoveredAction: PanelTabBarAction | null;
   readonly controls: readonly PanelHeadingControlGeometry[];
 }
 
 export interface PanelHeadingControlGeometry {
-  readonly action: PanelHeadingAction;
+  readonly action: PanelTabBarAction;
   readonly startColumn: number;
   readonly endColumnExclusive: number;
 }
 
 export interface PanelSeparatorGeometry {
   readonly row: number;
+  readonly tabs: readonly PanelTabGeometry[];
   readonly editorActions: readonly PanelSeparatorActionGeometry[];
   readonly drag: {
     readonly left: number;
@@ -2547,6 +2488,12 @@ export interface PanelSeparatorGeometry {
     readonly leadingPaintPadCells: number;
   };
   readonly controls: readonly PanelHeadingControlGeometry[];
+}
+
+export interface PanelTabGeometry {
+  readonly spaceIdentifier: string;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
 }
 
 export interface PanelSeparatorActionGeometry {

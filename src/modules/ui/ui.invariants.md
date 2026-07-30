@@ -609,8 +609,9 @@ caller's choice, and the hit cell is the whole cell either way.
 
 A splitter may also declare a LEADING PAINT PAD: a count of cells at the start of its long axis that
 stay blank. The pad moves where paint begins and never where the rectangle is, so the drag still
-grabs on the pad cell and across the strip's whole former extent. The bottom panel splitter declares
-one pad cell, which is the blank cell between the last separator-row action icon and the drag line.
+grabs on the pad cell and across the span's whole former extent. The bottom panel splitter declares
+one pad cell. In the panel tab row the order is tabs, actions, pad, drag span, controls, so the pad
+is the blank cell between the leading run and the drag line.
 
 **Scope:** Every pane splitter in `RootView`, `DiffView`, and `MarkdownSplitView`, including the
 sidebar, bottom panel, git regions, split panel cells, diff panes, markdown preview, and right dock.
@@ -625,8 +626,8 @@ caller. The mark names the ROLE, not an axis, and the painter picks the glyph fo
 `bottomAnchoredHalfBlock` and gets `▄` horizontally and a background fill vertically. Neither caller
 writes a glyph of its own. `SplitterElement.leadingPaintPadCells` is passed straight to the same
 painter, which skips that many cells at the rectangle's long-axis start and touches nothing else;
-the panel splitter reads its pad from `PanelSeparatorRow.project`, the same projection that places
-the drag strip.
+the panel splitter reads its pad from `PanelTabBar.project`, the same projection that places the
+drag span in the tab row.
 
 **Generates:** One-cell splitter hit zones; rest-muted, hover-lit, drag-lit behavior; one future
 splitter wire-up instead of another geometry and pointer implementation.

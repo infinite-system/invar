@@ -112,20 +112,22 @@ scripts/harness/smoke-pixel-preview-harness.ts`
 
 **Invariant:** If a host-owned rendered cell carries a color or glyph, then that value was read from
 the active theme (a `Palette` field or a semantic `GlyphSlot` / `SymbolClass` / `ActionIconSet` /
-`CheckboxIconSet` entry resolved through `Theme.Class`), never written as a literal hex or glyph at
-the drawing site — the `theme` module is the single source of host appearance.
+`TaskActionIconSet` / `CheckboxIconSet` entry resolved through `Theme.Class`), never written as a
+literal hex or glyph at the drawing site — the `theme` module is the single source of host
+appearance.
 
-**Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations, including
-activity-bar, panel-heading, and editor-fold control glyphs and the file-type marks the file tree and
-the breadcrumb popup share. Child terminal defaults and unmodified ANSI slots are terminal theme
+**Scope:** All styled output across ui, editor, syntax, diagnostics, git
+decorations, and the tasks dashboard, including activity-bar, panel-heading,
+editor-fold, and task-action control glyphs and the file-type marks the file
+tree and the breadcrumb popup share. Child terminal defaults and unmodified ANSI slots are terminal theme
 tokens. Explicit RGB, indexed slots 16–255, and OSC 4 overrides are outside host authority and follow
 [*Pane chrome and child cells keep separate authority*](../terminal/terminal.invariants.md#pane-chrome-and-child-cells-keep-separate-authority).
 The sole home for host color and glyph literals is `src/modules/theme`; host consumers pull tokens or
 name semantic slots, they do not mint appearance.
 
-**Mechanism:** `Theme` exposes `palette`, `symbolMarks`, `actionIcons`, `checkboxIcons`,
-`symbolMark()`, and `icon()` as plain getters that re-derive from `PALETTES` and the mark table on
-read. Its
+**Mechanism:** `Theme` exposes `palette`, `symbolMarks`, `actionIcons`, `taskActionIcons`,
+`checkboxIcons`, `symbolMark()`, and `icon()` as plain getters that re-derive from `PALETTES` and the
+mark table on read. Its
 `glyphVocabulary`/`glyph` surfaces resolve stable semantic slots through
 `$interfaceGlyphVocabularies`; because the data is reactive selection, a palette, vocabulary, or
 capability change reaches every consumer without changing behavior or copying appearance.
@@ -135,8 +137,9 @@ degrades icons single-cell and legible*; *One table resolves every symbol mark*;
 plugin extension points; a single grep boundary for auditing hard-coded appearance.
 
 **Evidence:** `src/modules/theme/Theme.ts` (`palette`, `symbolMarks`, `actionIcons`,
-`checkboxIcons`, `glyphVocabulary`, `glyph`, `symbolMark`, and `icon`); the color literals live only
-in `ThemePalettes.ts` and the glyph literals only in `ThemeIcons.ts`; `src/modules/ui/BreadcrumbPicker.ts`
+`taskActionIcons`, `checkboxIcons`, `glyphVocabulary`, `glyph`, `symbolMark`, and `icon`); the color
+literals live only in `ThemePalettes.ts` and the glyph literals only in `ThemeIcons.ts`;
+`src/modules/ui/BreadcrumbPicker.ts`
 and `src/modules/ui/CompletionPopup.ts` both resolve their row marks through the theme rather than
 restating a table; `ThemeIcons.test.ts` verifies the semantic slot ladder. The one known breach is
 `src/modules/ui/TabBarRenderer.ts`, which writes the dirty/active tab marker `●` as a literal instead
@@ -153,7 +156,7 @@ src/modules/ui/PanelHeading.test.ts`; `bun scripts/harness/smoke-terminal-harnes
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### One table resolves every symbol mark
 
@@ -263,22 +266,25 @@ a color emitted at `16` depth that is outside the ANSI-16 set; a truecolor hex s
 row for the active glyph level (`nerd` → `unicode` → `ascii`), measures the
 same width in the app and terminal, and renders in exactly one cell. The
 `ascii` rung is always printable, and an unknown file extension or completion
-kind resolves to a printable class, never to empty or undefined.
+kind resolves to a printable class, never to empty or undefined. Once the
+owning layout allocates that cell, terminal geometry cannot change or blank
+the resolved glyph.
 
 **Scope:** `ThemeIcons.symbolMarksFor`, `symbolMarkFor`,
-`symbolClassForFileEntry`, `iconFor`, `actionIconsFor`, `checkboxIconsFor`,
-`activityIconsFor`, `interfaceGlyphVocabularyFor`, `glyphFor`, `findIconsFor`,
+`symbolClassForFileEntry`, `iconFor`, `actionIconsFor`, `taskActionIconsFor`,
+`checkboxIconsFor`, `activityIconsFor`, `interfaceGlyphVocabularyFor`, `glyphFor`, `findIconsFor`,
 `tableBordersFor`, the status-bar icon accessors, `alertIconFor`,
 `agentTranscriptIconsFor`, and `tabSeparatorFor`, plus the `Theme` getters that call them.
 Covers file-tree,
 breadcrumb-popup, and completion-popup marks, git changes-row action buttons,
-staging checkboxes, activity-bar items, panel-heading controls, editor fold
-controls, find controls, status affordances, agent transcript cells, alerts,
-tab separators, and Markdown table borders.
+task row actions, staging checkboxes, activity-bar items, panel-heading
+controls, editor fold controls, find controls, status affordances, agent
+transcript cells, alerts, tab separators, and Markdown table borders.
 
-**Mechanism:** `$symbolMarks`, `$actionIcons`, and `$checkboxIcons` are keyed
-by `GlyphLevel`, and `$symbolMarks` and `$interfaceGlyphVocabularies` each map
-EVERY key at each level, so selection is a total lookup with no missing rung —
+**Mechanism:** `$symbolMarks`, `$actionIcons`, `$taskActionIcons`, and
+`$checkboxIcons` are keyed by `GlyphLevel`, and `$symbolMarks` and
+`$interfaceGlyphVocabularies` each map EVERY key at each level, so selection
+is a total lookup with no missing rung —
 a `Record<SymbolClass, string>` makes a missing mark a type error rather than
 an undefined cell. The `ascii` entries remain printable; icon-cell glyphs are
 authored as one cell each; the classifiers fall back (`?? 'file'`,
@@ -294,6 +300,9 @@ table-border joints in one tiered vocabulary. Which mark a slot may take is deci
 `$markOwnerships` — the marks that can meet, each paired with the surface that
 means something by it, derived from the vocabularies that paint them — under
 the rule that a mark may be shared only by owners meaning the SAME thing.
+Glyph resolution has no terminal-geometry input. The terminal emulator
+preserves OpenTUI's OSC 66 text payload before projecting cells, so capability
+negotiation cannot turn an allocated glyph into an empty oracle cell.
 
 **Generates:** Legible output on a no-nerd-font terminal; stable click
 hit-zones because button, checkbox, and fold-control columns never shift width
@@ -303,7 +312,7 @@ of exactly one cell at every tier; a closed width class without per-glyph
 exceptions.
 
 **Evidence:** `src/modules/theme/ThemeIcons.ts` (`$symbolMarks`,
-`$actionIcons`, `$checkboxIcons`, `$interfaceGlyphVocabularies`,
+`$actionIcons`, `$taskActionIcons`, `$checkboxIcons`, `$interfaceGlyphVocabularies`,
 `symbolMarkFor`, `glyphFor`, `iconFor`); `icon fallback ladder`, `unicode icon
 set resolves known extension and falls back for unknown`, `checkbox icons
 ladder`, `git action icons ladder`, `semantic interface glyph slots resolve
@@ -320,7 +329,11 @@ glyph agrees and avoids double-cell rendering` in
 surface, compares the app's width authority (`TextCoordinates.lineWidth`,
 OpenTUI's table) against an independent one (`@xterm/headless` behind
 `TerminalEmulator`), and carries a wide-glyph positive control so it can fail
-toward two.
+toward two. `src/modules/terminal/TerminalEmulatorConformance.test.ts`
+preserves OSC 66 glyph payloads at every byte boundary.
+`scripts/harness/smoke-tasks-dashboard-harness.ts` reads the task action
+cells at 150 by 40 and 120 by 36, then repeats the narrow proof over 500
+tasks.
 
 **Rejected alternatives:** Keep a known-width exception list — it preserves
 the defect and grows whenever another emoji-presentation mark lands. The full
@@ -405,11 +418,15 @@ for an unknown extension or kind; an activity or panel control choosing its
 glyph literal in behavior code; two activity or panel slots resolving to the
 same glyph at one tier; a mark carried by two surfaces that mean different
 things by it, or carried by two surfaces without a recorded reason; a recorded
-sharing reason that outlives the sharing it describes.
+sharing reason that outlives the sharing it describes; an allocated theme
+glyph cell becoming blank only after terminal capability negotiation or
+because the terminal is narrow.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts && bun
-scripts/harness/smoke-activitybar-harness.ts`
+src/modules/terminal/TerminalEmulatorConformance.test.ts && bun
+scripts/harness/smoke-activitybar-harness.ts && bun
+scripts/harness/smoke-tasks-dashboard-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-30

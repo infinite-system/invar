@@ -1,6 +1,6 @@
 # #346 — bottom panel gets a workspace-scoped tab bar of content spaces
 
-State: IN-PROGRESS
+State: COMPLETED — 068a7375 — workspace panel tab bar: generic content spaces, no pane chrome, actions kept on the row
 Priority: user-directed
 Engine: codex
 Environment: linux

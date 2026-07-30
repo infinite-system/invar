@@ -173,6 +173,7 @@ describe('AppStatusProjection', () => {
         ],
         panelSeparatorGeometry: () => ({
           row: 9,
+          tabs: [],
           editorActions: [
             {
               commandId: 'view.toggleWordWrap',
@@ -442,6 +443,7 @@ describe('AppStatusProjection', () => {
     ]);
     expect(publishedSnapshot.panelSeparatorGeometry).toEqual({
       row: 9,
+      tabs: [],
       editorActions: [
         {
           commandId: 'view.toggleWordWrap',

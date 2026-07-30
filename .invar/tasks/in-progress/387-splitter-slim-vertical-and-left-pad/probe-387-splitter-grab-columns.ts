@@ -14,9 +14,9 @@
 // end. A hole inside the run, or a run shorter than the published width, means the pad
 // took cells out of the hit area.
 //   The run does NOT have to start at the published `left`. It was measured one column
-// lower on 2026-07-30: `panelSeparatorGeometry` publishes its columns one higher than the
-// emulator grid and the PTY mouse use. Every control it describes is three cells wide, so
-// that offset never shows on a control click. Only a one-cell strip edge exposes it.
+// lower on 2026-07-30, before the panel tab-bar row landed: `panelSeparatorGeometry` then
+// published its columns one higher than the emulator grid and the PTY mouse use. On the
+// current row the two spaces agree, and the run starts exactly at the published `left`.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -75,35 +75,16 @@ try {
     (status) => status.ready === true,
     20_000,
   );
-  driver.sendKeys('Control+p');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'Quick Open is open',
-    (status) => status.quickOpenOpen === true,
-  );
-  driver.sendText('greeter.ts');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'Quick Open matches greeter.ts',
-    (status) =>
-      status.quickOpenQuery === 'greeter.ts' &&
-      Number(status.quickOpenMatches) > 0,
-  );
-  driver.sendKeys('Enter');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'one editor tab is open',
-    (status) => Number(status.bufferTabCount) > 0,
-  );
   driver.sendKeys('Control+j');
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the bottom panel is visible',
-    (candidate) => Number(separatorGeometry(candidate).drag.width) > 2,
+    (candidate) => {
+      const geometry = candidate.panelSeparatorGeometry as
+        SeparatorGeometry | null | undefined;
+      return Number(geometry?.drag?.width) > 2;
+    },
   );
 
   const strip = separatorGeometry(status).drag;

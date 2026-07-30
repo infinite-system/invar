@@ -19,7 +19,7 @@ class $DatabaseConsumerPlugin
 {
   readonly identifier = 'database-consumer';
   readonly name = 'Database Explorer';
-  readonly primaryDockContentIdentifiers = ['database'] as const;
+  readonly primaryDockContentIdentifiers = [] as const;
   readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
@@ -73,7 +73,7 @@ class $DatabaseConsumerPlugin
     this.paneContent = new DatabasePaneContent.Class(context, () =>
       this.activeWorkspace(),
     );
-    context.registerPrimaryDockContent(this.paneContent);
+    context.registerPanelContent(this.paneContent);
     this.disposeCommands = context.commands.registerAll([
       {
         id: 'view.showDatabase',
@@ -192,16 +192,15 @@ class $DatabaseConsumerPlugin
   protected showDatabase(): void {
     const application = this.application;
     if (!application) return;
-    application.primaryDockHost.showContent('database');
-    application.workspaceSet.active.focusPrimaryPane('database');
+    application.bottomPanelHost.showContent('database');
   }
 
   protected databaseOwnsFocus(): boolean {
     const application = this.application;
     return Boolean(
       application &&
-      application.primaryDockHost.focused.value &&
-      application.primaryDockHost.activeContent?.id === 'database',
+      application.bottomPanelHost.focused.value &&
+      application.bottomPanelHost.focusedContent?.id === 'database',
     );
   }
 
@@ -225,8 +224,7 @@ class $DatabaseConsumerPlugin
     const application = this.application;
     if (!application) return false;
     return (
-      application.primaryDockHost.visible.value &&
-      application.primaryDockHost.activeContent?.id === 'database' &&
+      application.bottomPanelHost.isContentVisible('database') &&
       application.workspaceSet.active === workspace
     );
   }

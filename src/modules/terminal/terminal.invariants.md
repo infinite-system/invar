@@ -48,27 +48,29 @@ input-byte fixture specifies its expected cells, cursor, metadata, or mode state
 capability or `@xterm/headless` upgrade lands with the corresponding fixture.
 
 **Scope:** `TerminalEmulator`, `TerminalEmulatorConformance.test.ts`, and the recorded fixtures in
-`src/modules/terminal/fixtures/`. The corpus specifies the OpenTUI dialect Invar uses, not every
-historical VT sequence.
+`src/modules/terminal/fixtures/`. The corpus specifies the OpenTUI dialect
+Invar uses, not every historical VT sequence.
 
 **Components:**
 - Grid semantics — SGR colors and attributes, cursor movement, erase, scroll, insertion, deletion,
   wide cells, astral characters, and combining marks have hand-authored expected cells.
-- Stateful protocols — OSC title and cwd plus DEC synchronized output, bracketed paste, mouse,
-  origin, and alternate-screen modes have explicit expected state.
+- Stateful protocols — OSC title, cwd, and explicit-width text plus DEC synchronized output,
+  bracketed paste, mouse, origin, and alternate-screen modes have explicit expected state.
 - Chunk boundaries — representative ESC, CSI, OSC, DCS, APC, DEC private-mode, CJK, astral, and
   combining sequences are split at every byte boundary across two writes.
 - Recorded dialect — real 80x24 OpenTUI boot, F1 keypress-diff, and light-theme streams pin every
   text row, cursor position, and one cell for every distinct style signature; a real shimmed Bash
   stream pins OSC 133 A/B/C/D command metadata and exit status.
-- Documented gaps — OSC 52 clipboard, OSC 10/11 color, OSC 99 notification, OSC 1337 capability,
-  and OSC 66 shell-integration requests are not implemented; XTGETTCAP DCS, Kitty keyboard and
+- Documented gaps — OSC 52 clipboard, OSC 10/11 color, OSC 99 notification, and OSC 1337 capability
+  requests are not implemented; XTGETTCAP DCS, Kitty keyboard and
   graphics probes, CSI version/pixel/modify-other-keys probes, sixel, and DEC modes 2027/2031 are
   ignored. DECRQM status replies pass back to the child without changing the grid. Cursor shape and
   OSC 8 hyperlink targets are not projected, although hyperlink underline styling remains visible.
 
 **Mechanism:** The table-driven corpus writes bytes only through `TerminalEmulator.write`, flushes
-the real asynchronous parser, and asserts the public flattened-cell seam. Recorded fixtures are
+the real asynchronous parser, and asserts the public flattened-cell seam. The OSC 66 adapter
+preserves text-sizing payloads that `@xterm/headless` would discard, then gives the payload to the
+same parser. Recorded fixtures are
 captured through `PtyTestDriver`, so the corpus also fails when OpenTUI begins emitting a dialect the
 hand-authored cases do not cover.
 
@@ -79,21 +81,22 @@ changes; retirement of the statistical tmux sentinel ring from the normal merge 
 emulator through timed end-to-end drives and adds minutes without specifying which bytes must produce
 which cells.
 
-**Evidence:** `src/modules/terminal/TerminalEmulatorConformance.test.ts` (219 tests, including
+**Evidence:** `src/modules/terminal/TerminalEmulatorConformance.test.ts` (235 tests, including
 every-byte-boundary OSC 133 cases and 4 recorded-real streams);
 `scripts/harness/record-terminal-emulator-fixtures.ts`;
 `src/modules/terminal/fixtures/`.
 
 **Impossible if true:** an emulator capability changing without an expected byte fixture; a parser
 state bug that appears only when a control or UTF-8 sequence crosses a write boundary; an OpenTUI
-dialect change silently redefining the harness oracle; the normal merge gate needing a tmux
-cross-oracle sample.
+dialect change silently redefining the harness oracle; an OSC 66 text payload
+disappearing from the grid; the normal merge gate needing a tmux cross-oracle
+sample.
 
 **Verification:** `bun test src/modules/terminal/TerminalEmulatorConformance.test.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-30
 
 ### Child synchronized updates commit as one repaint
 

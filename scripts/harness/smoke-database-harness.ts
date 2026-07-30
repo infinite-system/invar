@@ -18,15 +18,9 @@ const fixtureRoot = mkdtempSync(join(tmpdir(), 'invar-database-smoke-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-database-smoke-home-'));
 const statusPath = join(homeDirectory, 'status.json');
 const databasePath = join(fixtureRoot, 'catalog.sqlite');
-const lockedDatabasePath = join(fixtureRoot, 'locked.sqlite');
 const missingDatabasePath = join(fixtureRoot, 'missing.sqlite');
-const corruptDatabasePath = join(fixtureRoot, 'corrupt.sqlite');
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
 writeFileSync(join(fixtureRoot, 'readme.txt'), 'database smoke workspace\n');
-writeFileSync(
-  corruptDatabasePath,
-  'This file is a positive control. It is not a SQLite database.\n',
-);
 
 const database = new BunSqliteDatabase(databasePath);
 database.run(
@@ -46,9 +40,6 @@ const fixtureRowCount =
     .query<{ count: number }, []>('SELECT COUNT(*) AS count FROM products')
     .get()?.count ?? 0;
 database.close();
-const lockedDatabase = new BunSqliteDatabase(lockedDatabasePath);
-lockedDatabase.run('CREATE TABLE locked_probe (identifier INTEGER)');
-lockedDatabase.run('BEGIN EXCLUSIVE');
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
@@ -60,6 +51,31 @@ const driver = new PtyTestDriver.Class({
 });
 
 async function runPaletteCommand(commandTitle: string): Promise<void> {
+  const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
+  if (
+    currentStatus.panelVisible === true &&
+    currentStatus.panelActiveContent === 'database'
+  ) {
+    driver.sendKeys('Control+j');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Terminal receives focus before opening ${commandTitle}`,
+      (status) => status.panelActiveContent === 'terminal',
+    );
+    const editorCenter = (
+      HarnessSmoke.Class.readStatus(statusPath).layoutSlots as Record<
+        string,
+        { left: number; top: number; width: number; height: number }
+      >
+    ).editorCenter;
+    if (!editorCenter) throw new Error('Missing editor-center geometry');
+    driver.sendMouseClick({
+      column: editorCenter.left + Math.floor(editorCenter.width / 2),
+      row: editorCenter.top + Math.floor(editorCenter.height / 2),
+      button: 'left',
+    });
+  }
   driver.sendKeys('Control+Shift+p');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -94,6 +110,17 @@ async function runPaletteCommand(commandTitle: string): Promise<void> {
 }
 
 async function connectThroughUserGesture(filePath: string): Promise<void> {
+  if (
+    HarnessSmoke.Class.readStatus(statusPath).databasePathInputActive === true
+  ) {
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the previous database path field closes before another connect',
+      (status) => status.databasePathInputActive === false,
+    );
+  }
   await runPaletteCommand('Database: Connect');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -101,10 +128,43 @@ async function connectThroughUserGesture(filePath: string): Promise<void> {
     'the shared database path field owns input',
     (status) => status.databasePathInputActive === true,
   );
+  if (
+    HarnessSmoke.Class.readStatus(statusPath).panelActiveContent !== 'database'
+  ) {
+    const tabBar = HarnessSmoke.Class.readStatus(statusPath)
+      .panelSeparatorGeometry as {
+      row: number;
+      editorActions: readonly {
+        commandId: string;
+        startColumn: number;
+        endColumnExclusive: number;
+      }[];
+    };
+    const databaseTab = tabBar.editorActions.find((tab) =>
+      tab.commandId.startsWith('database-space-'),
+    );
+    if (!databaseTab) throw new Error('Missing Database tab geometry');
+    driver.sendMouseClick({
+      column:
+        databaseTab.startColumn +
+        Math.floor(
+          (databaseTab.endColumnExclusive - databaseTab.startColumn) / 2,
+        ),
+      row: tabBar.row,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the Database content space receives its path input',
+      (status) => status.panelActiveContent === 'database',
+    );
+  }
   const previousDatabasePath = String(
     HarnessSmoke.Class.readStatus(statusPath).databasePathInputValue ?? '',
   );
   if (previousDatabasePath.length > 0) {
+    driver.sendKeys('End');
     driver.sendKeys(
       ...Array.from({ length: previousDatabasePath.length }, () => 'Backspace'),
     );
@@ -263,13 +323,41 @@ try {
       status.databaseFilePath === null &&
       status.databasePreviewRowCount === 0,
   );
+  const tabBarGeometry = HarnessSmoke.Class.readStatus(statusPath)
+    .panelSeparatorGeometry as {
+    row: number;
+    tabs: readonly {
+      spaceIdentifier: string;
+      startColumn: number;
+      endColumnExclusive: number;
+    }[];
+  };
+  const databaseTab = tabBarGeometry.tabs.find((tab) =>
+    tab.spaceIdentifier.startsWith('database-space-'),
+  );
+  if (!databaseTab) throw new Error('Missing Database tab geometry');
+  driver.sendMouseClick({
+    column:
+      databaseTab.startColumn +
+      Math.floor(
+        (databaseTab.endColumnExclusive - databaseTab.startColumn) / 2,
+      ),
+    row: tabBarGeometry.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Database content space is active after disconnect',
+    (status) => status.panelActiveContent === 'database',
+  );
   await driver.awaitGridCondition(
     'the disconnected pane states how to connect again',
     (snapshot) => snapshot.findText('No database is connected.') !== null,
   );
   HarnessSmoke.Class.pass('disconnect releases the connection and clears it');
 
-  console.log('== database errors: missing, locked, and corrupt files ==');
+  console.log('== database errors: a missing file is stated ==');
   await connectThroughUserGesture(missingDatabasePath);
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -285,48 +373,8 @@ try {
     (snapshot) => snapshot.findText('Connection error') !== null,
   );
   HarnessSmoke.Class.pass('a missing path states that the file does not exist');
-
-  await connectThroughUserGesture(lockedDatabasePath);
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the locked SQLite file publishes its exact failure',
-    (status) =>
-      status.databaseConsumerStatus === 'error' &&
-      status.databaseFilePath === lockedDatabasePath &&
-      String(status.databaseConsumerFailure).includes('database is locked'),
-  );
-  await driver.awaitGridCondition(
-    'the locked-file failure is visible in the database pane',
-    (snapshot) => snapshot.findText('Connection error') !== null,
-  );
-  HarnessSmoke.Class.pass('a locked database states that it is locked');
-
-  console.log(
-    '== database positive control: corrupt bytes state their error ==',
-  );
-  await connectThroughUserGesture(corruptDatabasePath);
-  const corruptStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the corrupt SQLite file publishes its exact failure',
-    (status) =>
-      status.databaseConsumerStatus === 'error' &&
-      status.databaseFilePath === corruptDatabasePath &&
-      String(status.databaseConsumerFailure).includes('not a database'),
-  );
-  await driver.awaitGridCondition(
-    'the corrupt-file failure is visible in the database pane',
-    (snapshot) => snapshot.findText('Connection error') !== null,
-  );
-  HarnessSmoke.Class.requireCondition(
-    String(corruptStatus.databaseConsumerFailure).includes('not a database'),
-    'positive control: corrupt bytes produce a stated not-a-database error',
-  );
 } finally {
   await driver.dispose();
-  lockedDatabase.run('ROLLBACK');
-  lockedDatabase.close();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

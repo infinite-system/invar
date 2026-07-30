@@ -21,15 +21,17 @@ test('the consumer plugin registers and withdraws its pane and status projection
       active: workspace,
       activeWorkspaceIndex: ref(0),
     },
-    primaryDockHost: {
+    bottomPanelHost: {
       visible: ref(true),
-      activeContent: null,
+      focusedContent: null,
       focused: ref(false),
       showContent() {},
+      isContentVisible: () => true,
+      focus() {},
     },
     theme: { glyphLevel: ref('unicode') },
     registerKeybindings() {},
-    registerPrimaryDockContent: (pane: PaneContent) => panes.push(pane),
+    registerPanelContent: (pane: PaneContent) => panes.push(pane),
     commands: {
       registerAll: (commands: readonly { id: string }[]) => {
         commandIdentifiers.push(...commands.map((command) => command.id));
@@ -51,7 +53,7 @@ test('the consumer plugin registers and withdraws its pane and status projection
 
   plugin.activateApplication(context);
 
-  expect(plugin.primaryDockContentIdentifiers).toEqual(['database']);
+  expect(plugin.primaryDockContentIdentifiers).toEqual([]);
   expect(panes.map((pane) => pane.id)).toEqual(['database']);
   expect(commandIdentifiers).toContain('view.showDatabase');
   expect(commandIdentifiers).toContain('database.connect');

@@ -169,6 +169,12 @@ class $Settings {
   get panelContentOrder(): Ref<string[]> {
     return shallowRef(['agent', 'terminal']);
   }
+  get panelTabCycleSeconds(): Ref<number> {
+    return ref(10);
+  }
+  get panelTabCycling(): Ref<boolean> {
+    return ref(false);
+  }
 
   /** Every field keyed by name — the one place each name maps to its reactive cell. */
   protected get fields(): {
@@ -210,6 +216,8 @@ class $Settings {
       rightDockWidth: this.rightDockWidth,
       primaryDockContentOrder: this.primaryDockContentOrder,
       panelContentOrder: this.panelContentOrder,
+      panelTabCycleSeconds: this.panelTabCycleSeconds,
+      panelTabCycling: this.panelTabCycling,
     };
   }
 
@@ -516,6 +524,8 @@ class $Settings {
       rightDockWidth: 28,
       primaryDockContentOrder: [],
       panelContentOrder: ['agent', 'terminal'],
+      panelTabCycleSeconds: 10,
+      panelTabCycling: false,
     };
   }
 
@@ -659,6 +669,9 @@ class $Settings {
     readNumber('agentNarrationRate');
     readNumber('sidebarWidth');
     readNumber('rightDockWidth');
+    readNumber('panelTabCycleSeconds');
+    if (typeof record.panelTabCycling === 'boolean')
+      result.panelTabCycling = record.panelTabCycling;
     const primaryDockContentOrder = this.sanitizeIdentifierOrder(
       record.primaryDockContentOrder,
     );
@@ -736,6 +749,8 @@ export interface SettingsValues {
   rightDockWidth: number;
   primaryDockContentOrder: string[];
   panelContentOrder: string[];
+  panelTabCycleSeconds: number;
+  panelTabCycling: boolean;
 }
 
 /** Narrow filesystem seam the store depends on — the whole surface a fake must satisfy. */

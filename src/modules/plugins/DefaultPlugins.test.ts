@@ -28,7 +28,7 @@ test('the shipped application registers its built in contributions', () => {
     contributors.flatMap(
       (contributor) => contributor.primaryDockContentIdentifiers ?? [],
     ),
-  ).toEqual(['files', 'git', 'database', 'extensions']);
+  ).toEqual(['files', 'git', 'extensions']);
   expect(
     contributors.map(
       (contributor) => contributor.workspaceContributor !== undefined,
