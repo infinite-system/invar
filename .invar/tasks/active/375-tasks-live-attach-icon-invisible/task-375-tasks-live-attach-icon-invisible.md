@@ -30,3 +30,17 @@ fixed by the conductor; the app read the record correctly.)
 Manual lanes must update meta.json (tmuxSession/branch/worktree) at
 relaunch — the record is what the app trusts. Done for #326; the
 manage-tasks/conductor doctrine gains this rule.
+
+## Second defect (user, 2026-07-30 06:4x): live view does not track meta.json
+
+After the conductor repaired the #326 meta.json, the LIVE view's attach
+link still pointed at the old session — the view reads meta.json once
+(load/scan time) and never re-reads it. User attached manually.
+
+Work: the live row's attach target must track the CURRENT meta.json —
+re-read on change (the tasks tree already has a refresh path; hook
+meta.json into it) or resolve the target lazily AT CLICK TIME (probably
+the sharper fix: the click resolves from disk, so the link can never be
+stale). Add the stale-session degraded state from item 3 and assert both
+in the tasks-dashboard smoke: edit meta.json mid-session, click, prove
+the new target is used.
