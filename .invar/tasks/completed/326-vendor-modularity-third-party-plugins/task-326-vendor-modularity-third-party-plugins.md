@@ -1,6 +1,6 @@
 # 326 — vendor modularity: vendors/<vendor>/<module> third-party plugin architecture
 
-State: IN-PROGRESS
+State: COMPLETED — 98c9a7bb
 Engine: codex
 Model: 5.6-sol
 Effort: medium
