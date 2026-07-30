@@ -106,6 +106,7 @@ await Bun.write(
   settingsPath,
   JSON.stringify({
     'inlineRewrite.enabled': true,
+    markdownViewMode: 'split',
     markdownPreviewSide: 'right',
   }),
 );
@@ -314,7 +315,14 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the Markdown setting is selected',
+    'the persistent Markdown view setting is selected',
+    (status) => status.settingsSelectedLabel === 'Markdown view',
+  );
+  driver.sendKeys('Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Markdown split setting is selected',
     (status) => status.settingsSelectedLabel === 'Source/preview split',
   );
   await driver.awaitGridCondition(

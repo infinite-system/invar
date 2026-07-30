@@ -19,6 +19,7 @@ import type { RegisteredSetting } from '../settings/SettingContribution.interfac
 //
 // invariant: The host canvas is complete without plugins (project.invariants.md)
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
+// invariant: Markdown view mode persists across Markdown documents (src/modules/markdown/markdown.invariants.md)
 // invariant: Plugin settings live in contributed schema (src/modules/settings/settings.invariants.md)
 class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   readonly identifier = 'markdown';
@@ -37,13 +38,21 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   protected splitRatioSetting: RegisteredSetting<number> | null = null;
   protected previewSideSetting: RegisteredSetting<string> | null = null;
   protected scrollSyncSetting: RegisteredSetting<boolean> | null = null;
+  protected viewModeSetting: RegisteredSetting<string> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
+    const viewModeSetting = this.viewModeSetting;
+    if (!viewModeSetting) {
+      throw new Error(
+        'Markdown workspace attached before its view mode setting was registered',
+      );
+    }
     const markdownWorkspace = new MarkdownWorkspace.Class(
       workspace,
       () => this.surface?.previewContent?.previewFocused ?? false,
       (lineIndex) =>
         this.surface?.previewContent?.splitView.revealSourceLine(lineIndex),
+      viewModeSetting,
     );
     this.workspaces.set(workspace, markdownWorkspace);
     return markdownWorkspace;
@@ -51,6 +60,13 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
+    this.viewModeSetting = context.registerSetting({
+      identifier: 'markdownViewMode',
+      label: 'Markdown view',
+      section: this.name,
+      defaultValue: 'editor',
+      spec: { kind: 'enum', options: ['editor', 'preview', 'split'] },
+    });
     this.splitRatioSetting = context.registerSetting({
       identifier: 'markdownSplitRatio',
       label: 'Source/preview split',
@@ -128,6 +144,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     this.splitRatioSetting = null;
     this.previewSideSetting = null;
     this.scrollSyncSetting = null;
+    this.viewModeSetting = null;
     this.application = null;
   }
 
@@ -183,6 +200,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     const previewScroll = splitView?.previewScrollSnapshot() ?? null;
     return {
       markdownPreviewOpen: markdownWorkspace.showingPreview,
+      markdownViewMode: markdownWorkspace.viewMode,
       markdownPaneFocus: splitView?.focusedPane.value ?? 'source',
       markdownSplitRatio: this.splitRatioSetting?.value.value ?? 0.5,
       markdownPreviewSide: this.surface?.previewSide() ?? 'left',
