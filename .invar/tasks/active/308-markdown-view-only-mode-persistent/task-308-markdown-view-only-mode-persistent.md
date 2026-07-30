@@ -1,6 +1,6 @@
 # 308 — markdown view-only mode: preview-only, toggle back, persists across .md files
 
-Status: active
+State: active
 Engine: codex
 Effort: medium
 Provenance: USER-DIRECTED 2026-07-29

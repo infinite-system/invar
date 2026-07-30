@@ -1,6 +1,6 @@
 # 313 — INVESTIGATE: mouse clicks pass through to child TUI apps (Claude Code scroll button)
 
-Status: active
+State: active
 Engine: codex
 Effort: high
 Provenance: USER-DIRECTED 2026-07-29

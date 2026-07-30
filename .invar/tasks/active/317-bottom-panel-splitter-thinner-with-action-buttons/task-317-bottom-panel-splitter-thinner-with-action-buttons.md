@@ -1,6 +1,6 @@
 # 317 — bottom panel splitter: thinner bar + left-side editor action buttons + always-draggable
 
-Status: active
+State: active
 Engine: codex
 Effort: medium
 Provenance: USER-DIRECTED 2026-07-29

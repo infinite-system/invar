@@ -1,6 +1,6 @@
 # 315 — terminal + agent panes: child app colors must not be re-themed
 
-Status: active
+State: active
 Engine: codex
 Effort: high
 Provenance: USER-DIRECTED 2026-07-29

@@ -1,6 +1,6 @@
 # 314 — harness drives must isolate workspace task config
 
-Status: active
+State: active
 Engine: codex
 Effort: medium
 Provenance: CONDUCTOR-DIAGNOSED 2026-07-29 (from #305 BLOCKED gate + measured control)

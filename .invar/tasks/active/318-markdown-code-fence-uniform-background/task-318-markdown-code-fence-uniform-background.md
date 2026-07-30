@@ -1,6 +1,6 @@
 # 318 — markdown preview code fences: one theme background across all rows, visible language label
 
-Status: active
+State: active
 Engine: codex
 Effort: low
 Provenance: USER-DIRECTED 2026-07-29

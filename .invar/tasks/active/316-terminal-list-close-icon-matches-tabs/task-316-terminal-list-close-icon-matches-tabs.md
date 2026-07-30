@@ -1,6 +1,6 @@
 # 316 — terminal list close control: use the proper close icon, not "x"
 
-Status: active
+State: active
 Engine: codex
 Effort: low
 Provenance: USER-DIRECTED 2026-07-29

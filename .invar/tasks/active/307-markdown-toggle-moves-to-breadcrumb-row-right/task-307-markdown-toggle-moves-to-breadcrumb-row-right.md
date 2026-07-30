@@ -1,6 +1,6 @@
 # 307 — markdown preview toggle moves to the breadcrumb row, right side
 
-Status: active
+State: active
 Engine: codex
 Effort: low
 Provenance: USER-DIRECTED 2026-07-29

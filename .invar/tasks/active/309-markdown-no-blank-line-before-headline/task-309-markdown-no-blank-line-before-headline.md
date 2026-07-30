@@ -1,6 +1,6 @@
 # 309 — markdown preview: no injected blank line before headlines
 
-Status: active
+State: active
 Engine: codex
 Effort: low
 Provenance: USER-DIRECTED 2026-07-29

@@ -1,6 +1,6 @@
 # 306 — file tree + structure: each sublevel indents 1 key less (more compact)
 
-Status: active
+State: active
 Engine: codex
 Effort: low
 Provenance: USER-DIRECTED 2026-07-29

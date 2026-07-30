@@ -1,6 +1,6 @@
 # 319 — tasks pane: live-item two-line layout, play button tooltip/toggle, tab highlight + active state, one-line items, capitalized sections
 
-Status: active
+State: active
 Engine: codex
 Effort: medium
 Provenance: USER-DIRECTED 2026-07-29
