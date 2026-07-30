@@ -1,6 +1,6 @@
 # #409 — switching layouts back to default leaves unfilled space
 
-State: IN-PROGRESS
+State: COMPLETED — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
 Priority: user-directed
 Engine: codex
 Environment: linux

@@ -32,3 +32,10 @@ Effort: medium
 Fix 1 mechanically (label walk). For 2: find why the preview pane can lay
 out narrower under load (real layout race vs harness geometry race), make
 the assertion observe settled layout, and prove both polarities.
+
+## New arm observed (2026-07-30, #409 gate)
+
+"dark H1 shares the subtitle foreground without changing its bold
+treatment" failed once in a parallel gate on a branch touching ZERO
+markdown files; passed standalone twice immediately. Same intermittent
+family; add this assertion to the census when fixing.
