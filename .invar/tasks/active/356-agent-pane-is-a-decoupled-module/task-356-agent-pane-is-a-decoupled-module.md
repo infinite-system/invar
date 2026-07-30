@@ -42,3 +42,22 @@ it's not already cause i don't see it in the plugins section."
 
 - Module/plugin contracts from #326's work; terminal + agent pane records
   in their modules' *.invariants.md if present.
+
+## Conductor analysis (2026-07-30, answers "extracted or not listed?")
+
+BOTH module and gap confirmed. src/modules/agent/ IS a fully extracted
+module (own AgentBackend interface, provider registry, agent.invariants.md
+contract; terminal imports nothing from agent). But NO AgentPlugin exists:
+src/modules/plugins/DefaultPlugins.ts registers TerminalPlugin,
+DatabaseProviderPlugin/DatabaseConsumerPlugin, ExtensionsPlugin, etc. —
+no agent entry. Instead the agent pane is HARD-WIRED into the app shell:
+src/modules/app/Bootstrap.ts and src/modules/ui/RootView.ts reference
+AgentPaneContent/AgentFactory directly (also narration/TtsFactory,
+app/AppStatusProjection, theme/ThemeIcons).
+
+So the work is: wrap the existing module in an AgentPlugin
+ApplicationContributor, move the Bootstrap/RootView wiring into it,
+register it in DefaultPlugins, and let the extensions section's existing
+knob mechanics govern it. The database plugin pair (provider/consumer) is
+the in-repo model to follow. This also makes the Database-pane parity the
+user named automatic: same registry, same knob.
