@@ -1,6 +1,6 @@
 # #389 — tasks watch overpaints and shows more items than exist
 
-State: IN-PROGRESS
+State: COMPLETED — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)
 Priority: user-directed
 Engine: codex
 Environment: linux

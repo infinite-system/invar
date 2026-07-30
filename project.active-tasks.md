@@ -6,12 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [building]
+## IN-PROGRESS (2)
+- #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
-- #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/in-progress/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md)  [building]
-  `tmux attach -t invar/389-tasks-watch-overpaints-phantom-items`
-- #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/in-progress/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md)  [building]
+- #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/in-progress/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/387-splitter-slim-vertical-and-left-pad`
 
 ## USER-DIRECTED (19)
@@ -35,7 +33,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (23)
+## VERIFICATION-INTEGRITY (25)
+- #399 [splitter-regions-stale-rectangle](.invar/tasks/active/399-splitter-regions-stale-rectangle/task-399-splitter-regions-stale-rectangle.md)
+- #398 [panel-geometry-one-based-offset](.invar/tasks/active/398-panel-geometry-one-based-offset/task-398-panel-geometry-one-based-offset.md)
 - #397 [frameprobe-char-buffer-native-handles](.invar/tasks/active/397-frameprobe-char-buffer-native-handles/task-397-frameprobe-char-buffer-native-handles.md)
 - #385 [tasks-dashboard-smoke-status-grid-race](.invar/tasks/active/385-tasks-dashboard-smoke-status-grid-race/task-385-tasks-dashboard-smoke-status-grid-race.md)
 - #370 [legacy-smoke-tabs-perma-red](.invar/tasks/active/370-legacy-smoke-tabs-perma-red/task-370-legacy-smoke-tabs-perma-red.md)
@@ -98,7 +98,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (29)
+## ARCHITECTURE-HYGIENE (31)
+- #401 [idle-cost-convention-needs-scheduler-count](.invar/tasks/active/401-idle-cost-convention-needs-scheduler-count/task-401-idle-cost-convention-needs-scheduler-count.md)
+- #400 [script-to-src-seam-governance](.invar/tasks/active/400-script-to-src-seam-governance/task-400-script-to-src-seam-governance.md)
 - #394 [panel-contract-refinements-apply](.invar/tasks/active/394-panel-contract-refinements-apply/task-394-panel-contract-refinements-apply.md)
 - #392 [layout-contract-hygiene](.invar/tasks/active/392-layout-contract-hygiene/task-392-layout-contract-hygiene.md)
 - #391 [splitter-bounds-coherence](.invar/tasks/active/391-splitter-bounds-coherence/task-391-splitter-bounds-coherence.md)
@@ -133,7 +135,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 134 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 135 — full log: project.tasks-completed.md)
+- #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)
 - #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/completed/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md) — 157dda25 — theme glyphs survive capability negotiation (OSC 66 payloads decoded by the emulator)
 - #383 [structure-pane-width-proportional](.invar/tasks/completed/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md) — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/completed/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md) — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)
@@ -148,4 +151,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #344 [breadcrumb-hover-highlight-padding](.invar/tasks/completed/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md) — dc30d875 — breadcrumb hover highlight + one-cell pads; #369/#370 from bycatch
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/completed/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md) — 68a95c11 — play glyph + LIVE watch spinner; #371 from bycatch
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/completed/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md) — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
-- #340 [file-tree-reveals-open-file](.invar/tasks/completed/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md) — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
