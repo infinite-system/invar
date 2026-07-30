@@ -1,6 +1,6 @@
 # #342 — .invar/tasks.json panes fail to load in the real app
 
-State: IN-PROGRESS
+State: COMPLETED — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
 Priority: user-directed
 Engine: codex
 Environment: linux
