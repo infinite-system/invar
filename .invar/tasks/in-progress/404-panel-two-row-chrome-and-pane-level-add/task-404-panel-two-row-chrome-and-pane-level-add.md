@@ -86,3 +86,12 @@ carries a split button (join with another pane); split-group members
 show joined glyphs in the list; dragging a member out makes it a
 full-width group again. Example state: one container with 3 split panes
 (grouped) plus 2 full-width panes; more containers via outer tabs.
+
+## Detail 3 (user, same day, VERBATIM)
+
+"so you should still be able to re-order split panes in the right pane
+controller"
+
+Reading: reordering in the pane list covers BOTH levels — groups within
+the container list, and members WITHIN a split group (order of the
+split). Drag to reorder both.
