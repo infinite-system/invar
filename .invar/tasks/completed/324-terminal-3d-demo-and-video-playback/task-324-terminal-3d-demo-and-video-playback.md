@@ -1,6 +1,6 @@
 # 324 — terminal 3D demo (cube or crazier) + sample video playback
 
-State: IN-PROGRESS
+State: COMPLETED — f9394d58 — removable Animated Media plugin: cube/torus/video, flyweight+two-buffer+memory-flat proven, ffmpeg both polarities, removal build green
 Engine: codex
 Model: 5.6-sol
 Effort: high

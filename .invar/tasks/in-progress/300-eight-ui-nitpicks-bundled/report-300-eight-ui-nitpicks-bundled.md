@@ -176,7 +176,7 @@ the same settled frame. The next full gate was clean.
 ## Bycatch
 
 - Current `main` added the context-usage skill without adding it to the
-  required `AGENTS.md` skills index. The conventions gate caught it.
+  required [AGENTS.md](../../../../AGENTS.md) skills index. The conventions gate caught it.
   Merge commit `6ecbc17e7c568187fcb3b176c2d89d18af2a2311` adds the missing
   when-to-use line.
 - The final input-byte instrument reported p50 7.583 ms against the
