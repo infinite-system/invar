@@ -561,6 +561,190 @@ console.log(
 await driveTaskPresentationInTheme('dark');
 await driveTaskPresentationInTheme('light');
 
+/**
+ * Mouse-only link navigation on a document that sits BELOW the workspace root, the shape every
+ * task record has. An authored `../` link must resolve from the document's own directory, paint
+ * as a live link, and open on a plain double click, while a single click keeps its old meaning.
+ * Driven at both scales because the hit test is per row and per span.
+ */
+async function driveUpwardLinkAndDoubleClickAtScale(
+  fixtureLineCount: number,
+): Promise<void> {
+  const scaleLabel = `${fixtureLineCount}-line`;
+  const linkFixtureRoot = mkdtempSync(
+    join(tmpdir(), `tui-markdown-link-${fixtureLineCount}-`),
+  );
+  const linkHomeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-markdown-link-home-${fixtureLineCount}-`),
+  );
+  const linkStatusPath = join(linkHomeDirectory, 'status.json');
+  const linkSettingsDirectory = join(linkHomeDirectory, '.config', 'invar');
+  mkdirSync(linkSettingsDirectory, { recursive: true });
+  await Bun.write(
+    join(linkSettingsDirectory, 'settings.json'),
+    JSON.stringify({ theme: 'dark', markdownViewMode: 'split' }),
+  );
+  const documentDirectory = join(linkFixtureRoot, 'notes');
+  mkdirSync(documentDirectory, { recursive: true });
+  await Bun.write(
+    join(linkFixtureRoot, 'upward-target.ts'),
+    'export const openedFromAnUpwardLink = true;\n',
+  );
+  const linkFixtureLines = Array.from(
+    { length: fixtureLineCount },
+    (_unusedValue, lineIndex) => {
+      if (lineIndex === 0) return `# Upward links ${fixtureLineCount}`;
+      if (lineIndex === 2)
+        return `[live up link](../upward-target.ts) opens by double click.`;
+      if (lineIndex === 4)
+        return `[dead up link](../upward-missing.ts) stays dead.`;
+      if (lineIndex === 6)
+        return `[external up link](https://example.com/docs) stays here.`;
+      if (lineIndex === 8) return 'Plain prose that no click activates.';
+      return `Upward line ${String(lineIndex + 1).padStart(6, '0')} content`;
+    },
+  );
+  await Bun.write(
+    join(documentDirectory, 'README.md'),
+    `${linkFixtureLines.join('\n')}\n`,
+  );
+  const linkDriver = new PtyTestDriver.Class({
+    workspaceRoot: linkFixtureRoot,
+    columns: 140,
+    rows: 40,
+    homeDirectory: linkHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: linkStatusPath,
+      LANG: 'C.UTF-8',
+      NERD_FONT: '0',
+    },
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} upward-link workspace becomes ready`,
+      (status) => status.ready === true && Boolean(status.activeWorkspace),
+    );
+    // The file tree selects the `notes` folder first: expand it, then open the document inside.
+    linkDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} notes folder expands`,
+      (status) => Number(status.treeRows) > 1,
+    );
+    linkDriver.sendKeys('Down');
+    linkDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} nested document opens with a parsed preview`,
+      (status) =>
+        String(status.activeBuffer).endsWith('/notes/README.md') &&
+        status.markdownPreviewOpen === true &&
+        status.markdownParsing === false &&
+        Number(status.markdownRevision) === Number(status.bufferRevision),
+    );
+    const documentPath = String(
+      HarnessSmoke.Class.readStatus(linkStatusPath).activeBuffer,
+    );
+    const linkSnapshot = await linkDriver.awaitGridCondition(
+      `${scaleLabel} preview paints all three upward links`,
+      (candidate) =>
+        previewHasMarker(candidate, 'live up link') &&
+        previewHasMarker(candidate, 'dead up link') &&
+        previewHasMarker(candidate, 'external up link'),
+    );
+
+    // A link that walks UP out of the document's directory but stays inside the workspace root
+    // resolves; only a genuinely absent target is dead. The dead and external links in the same
+    // frame are the positive controls for this colour claim.
+    const palette = ThemePalettes.Class.DARK;
+    const liveUpLink = previewMarkerPosition(linkSnapshot, 'live up link');
+    const deadUpLink = previewMarkerPosition(linkSnapshot, 'dead up link');
+    const externalUpLink = previewMarkerPosition(
+      linkSnapshot,
+      'external up link',
+    );
+    HarnessSmoke.Class.requireCondition(
+      linkSnapshot.cell(liveUpLink.row, liveUpLink.column)?.foreground ===
+        packedThemeColor(palette.accent) &&
+        linkSnapshot.cell(deadUpLink.row, deadUpLink.column)?.foreground ===
+          packedThemeColor(palette.error) &&
+        linkSnapshot.cell(externalUpLink.row, externalUpLink.column)
+          ?.foreground === packedThemeColor(palette.accent),
+      `${scaleLabel} an upward relative link resolves while a missing one stays dead`,
+    );
+
+    // Single click keeps its existing meaning: focus the preview, start a selection, open nothing.
+    clickCell(linkDriver, liveUpLink.column + 2, liveUpLink.row);
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} single click focuses the preview`,
+      (status) => status.markdownPaneFocus === 'preview',
+    );
+    HarnessSmoke.Class.requireCondition(
+      String(HarnessSmoke.Class.readStatus(linkStatusPath).activeBuffer) ===
+        documentPath,
+      `${scaleLabel} single click on a link opens nothing`,
+    );
+
+    // Double click — the second press on the SAME span — opens it. No keyboard, no modifier.
+    // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
+    clickCell(linkDriver, liveUpLink.column + 2, liveUpLink.row);
+    clickCell(linkDriver, liveUpLink.column + 2, liveUpLink.row);
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} double click opens the upward link target`,
+      (status) => String(status.activeBuffer).endsWith('/upward-target.ts'),
+    );
+
+    // Back to the document, and a double click on an external link states why instead of opening.
+    // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+    linkDriver.sendKeys('Control+Tab');
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} the Markdown document becomes active again`,
+      (status) =>
+        String(status.activeBuffer) === documentPath &&
+        status.markdownPreviewOpen === true &&
+        status.markdownParsing === false,
+    );
+    const repaintedSnapshot = await linkDriver.awaitGridCondition(
+      `${scaleLabel} preview repaints the external link`,
+      (candidate) => previewHasMarker(candidate, 'external up link'),
+    );
+    const repaintedExternal = previewMarkerPosition(
+      repaintedSnapshot,
+      'external up link',
+    );
+    clickCell(linkDriver, repaintedExternal.column + 2, repaintedExternal.row);
+    clickCell(linkDriver, repaintedExternal.column + 2, repaintedExternal.row);
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} double click on an external link states why`,
+      (status) =>
+        String(status.markdownLinkNotice).startsWith('External link') &&
+        String(status.activeBuffer) === documentPath,
+    );
+  } finally {
+    await linkDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(linkFixtureRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(linkHomeDirectory);
+  }
+}
+
+console.log(
+  '== harness markdown: an upward relative link resolves and opens by double click ==',
+);
+await driveUpwardLinkAndDoubleClickAtScale(12);
+await driveUpwardLinkAndDoubleClickAtScale(100_000);
+
 async function driveTerminalShrinkAtScale(
   fixtureLineCount: number,
 ): Promise<void> {

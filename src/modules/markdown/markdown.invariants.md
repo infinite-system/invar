@@ -625,17 +625,28 @@ scripts/harness/smoke-markdown-harness.ts`.
 ### A file reference opens from rendered Markdown
 
 **Invariant:** If a rendered Markdown link or inline-code path resolves to a real file inside the
-workspace root, then Ctrl or Cmd click and the hovered Ctrl Enter chord open or focus that file tab.
+workspace root, then Ctrl or Cmd click, a plain double click on the same span, and the hovered
+Ctrl Enter chord all open or focus that file tab. A relative target is resolved from the DOCUMENT's
+own directory and may walk above it; the workspace root is the only confinement boundary.
 
 **Scope:** reference spans from `MarkdownParser`, `MarkdownRenderable.referenceAtCell`,
-`MarkdownSplitView` hover and activation, the wiring in `MarkdownPreviewContent`, and the host's
-generic `Workspace.resolveFileReference`.
+`MarkdownSplitView` hover and activation (modified click, double click, chord), the wiring in
+`MarkdownPreviewContent`, the shared `DoubleClickGesture`, and the host's generic
+`Workspace.resolveFileReference`.
 
 **Mechanism:** Rendering and hit-testing share the same visible `PreviewRow` and packed inline-span
-coordinates. `Workspace.resolveFileReference` — kept in the host because it is GENERIC path
-confinement with no markdown in it, and rendered documents are simply its first caller — strips
-fragments, rejects external schemes and escapes, and confirms the target exists before
-`MarkdownPreviewContent` routes it through `Workspace.openFileInTab` and moves keyboard focus to
+coordinates. One press runs ONE hit test, and every meaning that press can carry — the modified
+click, the double click, the drag that starts a selection — reads that one result, so they can
+never disagree about what sits under the pointer. The second press counts as a double click only
+when `DoubleClickGesture` (the same generator the Git log pane uses) sees the SAME reference span
+inside the interval; a press on prose carries the pressed CELL as its identity, so repeated presses
+on ordinary text never masquerade as an activation. `Workspace.resolveFileReference` — kept in the
+host because it is GENERIC path confinement with no markdown in it, and rendered documents are
+simply its first caller — strips fragments, decodes percent escapes, rejects external schemes,
+resolves the reference against the workspace root AND against the active document's own directory
+(a starting point, never a boundary — an authored `../../../../project.invariants.md` from a task
+folder must resolve), then confirms the result exists, is not a directory, and stays inside the
+workspace root before `MarkdownPreviewContent` routes it through `Workspace.openFileInTab` and moves keyboard focus to
 the editor, so the jump is immediately navigable (Back/Forward record both ends through the
 navigation records). If an exact `.invar/tasks/<state>/<task-name>/<tail>` target is absent,
 `TaskStatePath` retries the same task name and tail in the other three lifecycle states while
@@ -643,8 +654,10 @@ retaining the workspace confinement check. A Bootstrap routing guard clears a no
 selection residue on Ctrl+left-down — OpenTUI otherwise consumes the down as "extend selection"
 after any click on selectable text, and the link click silently dies before reaching the pane.
 
-**Generates:** clickable standard Markdown links; clickable backtick file paths; hover emphasis and
-an explanatory tooltip; a keyboard activation chord; focus following the opened file; the stated
+**Generates:** clickable standard Markdown links; clickable backtick file paths; mouse-only
+navigation through a document tree by double click; upward relative links in nested records that
+resolve and open; hover emphasis and an explanatory tooltip; a keyboard activation chord; focus
+following the opened file; the stated
 outcome for external or missing targets (`An unresolvable Markdown link states why`); task-record
 links that survive lifecycle-state moves without basename guessing.
 
@@ -653,21 +666,27 @@ links that survive lifecycle-state moves without basename guessing.
 `src/modules/markdown/MarkdownPreviewContent.ts` (`openReference` wiring);
 `src/modules/workspace/Workspace.ts` (`resolveFileReference`);
 `src/modules/system/TaskStatePath.ts` (the structural task-state fallback);
+`src/modules/ui/DoubleClickGesture.ts` (the shared second-press generator);
 `src/modules/app/Bootstrap.ts` (the Ctrl+click routing guard); `scripts/smoke-markdown.sh`;
-`scripts/harness/smoke-markdown-harness.ts`.
+`scripts/harness/smoke-markdown-harness.ts` (the upward-link and double-click arms at both scales);
+`src/modules/workspace/Workspace.test.ts` (upward relative resolution and the root boundary).
 
-**Impossible if true:** a valid in-root backtick path being hovered but unable to open by either
-activation; an HTTP URL or path escaping the workspace being opened as an editor file; the drawn
-reference text and its clickable cells disagreeing; a Ctrl+click on a rendered link dying because
-an earlier click left a native selection residue; a click-opened file whose editor does not hold
+**Impossible if true:** a valid in-root backtick path being hovered but unable to open by any of the
+three activations; an authored relative link that resolves on disk inside the workspace root but
+not in the preview because it walks above the document's own directory; a path escaping the
+workspace root being opened as an editor file; an HTTP URL opened as an editor file; a double click
+on prose or on empty preview space opening anything; a single click acquiring the activation
+meaning; the drawn reference text and its clickable cells disagreeing; a Ctrl+click on a rendered
+link dying because an earlier click left a native selection residue; a click-opened file whose editor does not hold
 the keyboard; a task-state fallback resolving a different task name, a different tail, or a path
 outside `.invar/tasks`.
 
-**Verification:** `bash scripts/smoke-markdown.sh && bun scripts/harness/smoke-markdown-harness.ts`.
+**Verification:** `bash scripts/smoke-markdown.sh && bun scripts/harness/smoke-markdown-harness.ts
+&& bun test src/modules/workspace/Workspace.test.ts src/modules/ui/DoubleClickGesture.test.ts`.
 
 **Status:** established
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### An unresolvable Markdown link states why
 
@@ -679,7 +698,8 @@ never the outcome. Unresolved inline-code text stays ordinary prose with no affo
 message.
 
 **Scope:** `MarkdownSplitView.referenceAt` / `bindPreviewEvents` (keeping unresolved authored
-links as references), the `notifyUnresolvedReference` option wired by `MarkdownPreviewContent`,
+links as references, for EVERY activation gesture — modified click, double click, hovered chord),
+the `notifyUnresolvedReference` option wired by `MarkdownPreviewContent`,
 `Workspace.referenceIsExternal` (the ONE scheme rule, shared with `resolveFileReference`), and
 `MarkdownPlugin` (the `markdownLinkNotice` status projection and status-bar segment).
 
@@ -693,7 +713,8 @@ successful open clears the owed notice.
 click; the smoke's missing-target and external-link positive controls; the notice-clearing rule.
 
 **Rejected alternatives:** Opening http(s) targets in a browser — out of scope for a terminal
-editor and a surprise seam. Treating unresolved backtick text as a miss — every non-path backtick
+editor and a surprise seam; a double click on an external link therefore states the same message
+rather than acquiring a new capability. Treating unresolved backtick text as a miss — every non-path backtick
 token would shout.
 
 **Evidence:** `src/modules/markdown/MarkdownSplitView.ts` (`referenceAt`, `linkNotice`, the
@@ -702,8 +723,8 @@ wiring); `src/modules/markdown/MarkdownPlugin.ts` (`segments`, `markdownLinkNoti
 `src/modules/app/Bootstrap.ts` (the Ctrl+click routing guard that keeps the click deliverable);
 `scripts/harness/smoke-markdown-harness.ts` (the "unresolvable link states why" arms).
 
-**Impossible if true:** a Ctrl+click on a rendered link that neither opens a tab nor states why;
-an http(s) link click that silently does nothing; a missing-file link click whose miss is not
+**Impossible if true:** a Ctrl+click or a double click on a rendered link that neither opens a tab
+nor states why; an http(s) link activation that silently does nothing; a missing-file link click whose miss is not
 stated; a plain backtick word acquiring a miss message.
 
 **Verification:** `bun scripts/harness/smoke-markdown-harness.ts` and
@@ -711,7 +732,7 @@ stated; a plain backtick word acquiring a miss message.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Markdown preview selection reuses shared drag behavior
 

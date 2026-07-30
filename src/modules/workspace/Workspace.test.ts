@@ -336,4 +336,60 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.openFileReference('project.invariants.md')).toBe(true);
     expect(workspace.editor.document.path).toBe(rootRelativeTarget);
   });
+
+  test('a relative link walks UP out of the document directory but never out of the workspace', () => {
+    // The authored form in this repository's task records: a document nested four levels deep
+    // links back to a root file with `../../../../`. Confining the document-relative candidate to
+    // the document's OWN directory made every such link unresolvable.
+    const deepDirectory = join(
+      workspaceDirectory,
+      '.invar',
+      'tasks',
+      'completed',
+      '347-deep-task-folder',
+    );
+    const deepDocumentPath = join(deepDirectory, 'report-347-deep.md');
+    const rootTarget = join(workspaceDirectory, 'project.invariants.md');
+    const siblingTaskDirectory = join(
+      workspaceDirectory,
+      '.invar',
+      'tasks',
+      'completed',
+      '282-sibling-task-folder',
+    );
+    const siblingTarget = join(siblingTaskDirectory, 'probe-282.ts');
+    const encodedNameTarget = join(workspaceDirectory, 'name with spaces.md');
+    makeDirectorySync(deepDirectory, { recursive: true });
+    makeDirectorySync(siblingTaskDirectory, { recursive: true });
+    writeFileSync(deepDocumentPath, '# Report\n');
+    writeFileSync(rootTarget, '# Invariants\n');
+    writeFileSync(siblingTarget, 'export const probe = true;\n');
+    writeFileSync(encodedNameTarget, '# Spaces\n');
+
+    const workspace = createWorkspace();
+    workspace.root = workspaceDirectory;
+    workspace.openFileInTab(deepDocumentPath);
+
+    expect(
+      workspace.resolveFileReference('../../../../project.invariants.md'),
+    ).toBe(rootTarget);
+    expect(
+      workspace.resolveFileReference(
+        '../../../../project.invariants.md#a-record-name',
+      ),
+    ).toBe(rootTarget);
+    expect(
+      workspace.resolveFileReference('../282-sibling-task-folder/probe-282.ts'),
+    ).toBe(siblingTarget);
+    expect(
+      workspace.resolveFileReference('../../../../name%20with%20spaces.md'),
+    ).toBe(encodedNameTarget);
+    // The workspace root stays the ONE boundary: a walk past it resolves to nothing.
+    expect(
+      workspace.resolveFileReference('../../../../../outside-the-workspace.md'),
+    ).toBeNull();
+    expect(
+      workspace.resolveFileReference('../../../../missing-in-root.md'),
+    ).toBeNull();
+  });
 });
