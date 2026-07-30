@@ -101,7 +101,17 @@ re-delivered report is a NEW event; a chip is a composer occupant; never hardcod
 root; bundle landings complete ALL constituent records; census tally per landing (#214
 at 31 pool events 07-29).
 
-USER CONTEXT: he watches tasks:watch (animation broken until #329); his iv was closed
-for the rename — colors/flicker fixes confirmed by him live. North star: Indranet
-Invarnet (#327). He may be GRADING you against the old incarnation — reconstruct fully,
-say what you know, then continue the queue.
+POST-ANCHOR DELTA (2026-07-30 ~01:2x, pre-compaction checkpoint fired at 86.9%):
+User went to LUNCH mid-handoff with instruction "keep going". TWO LANES DISPATCHED from
+~/dev/invar: #329 (tasks:watch animation tick) + #323 (quit dialog; brief warns the
+harness-teardown path must survive the confirmation — check that decision hard at
+landing). fleet-watch Monitor armed from invar cwd; cron 38059f05 alive. Land these two
+on read verdicts as they go READY. The session-handoff drill (user launches fresh
+incarnation from ~/dev/invar) is STILL PENDING — user does it after lunch; if you are
+that incarnation, the two lanes above may be live or READY — pick them up from disk.
+#326 stage-2 still awaits his explicit verdict on the revised plan.
+
+USER CONTEXT: he watches tasks:watch (animation broken until #329 lands); his iv was
+closed for the rename — colors/flicker fixes confirmed by him live. North star: Indranet
+Invarnet (#327). He may be GRADING a fresh incarnation against the old one — reconstruct
+fully, say what you know, then continue the queue.
