@@ -1,6 +1,6 @@
 # #393 — CPU does not return to idle with multiple workspaces open
 
-State: IN-PROGRESS
+State: COMPLETED — 79b325ea — tasks dashboard idle cost painted-priced: hidden panes at rest on every hide path; visible tick scales with painted rows (2.40->0.07 pts)
 Priority: user-directed
 Engine: codex
 Environment: linux
