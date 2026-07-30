@@ -640,3 +640,15 @@ crons disarmed. On resume re-arm per anchor-18 list if missing.
 ### User feedback this hour: flicker/3d/video confirmed GOOD in field.
 Field bugs live: LSP realized (381), resume dialog (382), right panel
 width (383), idle CPU (380 in flight).
+
+### ANCHOR 19 DELTA 1 (08:4x)
+- #348 LANDED 46be8818 (wall-clock gradient phase, rate-independent;
+  bycatch #385 status-vs-grid race in dashboard smoke). TWELVE landings.
+- #383 right-panel proportion DISPATCHED opus (freed lane).
+- New user tasks filed this hour: #384 quit dialog (bracketless buttons +
+  padding, style at the shared dialog painter; user design direction
+  quote recorded), #381 clarified (blackline/blackline-app too — shared
+  tsserver path, hover+second-surface reproduction), #383 widened
+  (holistic right-panel generator).
+- Lanes: 346 panel tabs (codex) · 375 attach icon (codex) · 380 idle CPU
+  (codex, priority) · 383 right panel (opus).
