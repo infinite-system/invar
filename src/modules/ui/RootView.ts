@@ -93,6 +93,7 @@ import {
 } from './PanelSeparatorRow';
 import {
   LayoutModel,
+  type LayoutModelOptions,
   type LayoutPreset,
   type LayoutSlotGeometry,
 } from '../layout/LayoutModel';
@@ -331,7 +332,13 @@ class $RootView {
       reportUnit: 'cells',
       initialSize: settings.rightDockWidth.value,
       minimumSize: 16,
-      maximumSize: 70,
+      // The live bound, not a fixed 70: the same generator the layout clamps with, so the divider
+      // stops exactly where the painted dock stops at this terminal width.
+      // invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+      maximumSize: () =>
+        LayoutModel.Class.maximumRightDockColumns(
+          buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
+        ),
       pointerDirection: -1,
       currentSize: () => settings.rightDockWidth.value,
       onDragStart: () => {
@@ -497,6 +504,11 @@ class $RootView {
     // invariant: A scrollable pane height is an input not an output (src/modules/ui/ui.invariants.md)
     // INTEGRATOR NOTE: this bottom-panel mount is the ONE shared RootView touch for the terminal; it is
     // independent of the activity-bar change landing in parallel (which touches the sidebar/left slot).
+    const initialLayoutColumns = Math.max(
+      1,
+      renderer.width -
+        (settings.workspaceTabPosition.value === 'left' ? 22 : 0),
+    );
     const initialLayoutRows = Math.max(
       1,
       renderer.height -
@@ -506,7 +518,32 @@ class $RootView {
     );
     let panelHeightRows =
       LayoutModel.Class.defaultBottomPanelRows(initialLayoutRows);
+    let currentLayoutColumns = initialLayoutColumns;
     let currentLayoutRows = initialLayoutRows;
+    // One options object for every LayoutModel question — the resolve on each frame and the right-dock
+    // splitter's live maximum. Both must read the same configuration, or the divider would allow a
+    // width the layout then refuses.
+    const buildLayoutModelOptions = (
+      totalColumns: number,
+      totalRows: number,
+    ): LayoutModelOptions => ({
+      totalColumns,
+      totalRows,
+      primaryDockVisible: primaryDockHost.visible.value,
+      activityBarVisible: settings.showActivityBar.value,
+      activityBarColumns: 4,
+      sidebarColumns: sidebarWidth(),
+      sidebarPosition: settings.sidebarPosition.value,
+      rightDockVisible: rightDockHost.visible.value,
+      rightDockColumns: settings.rightDockWidth.value,
+      rightActivityBarVisible: settings.showRightActivityBar.value,
+      bottomPanelVisible: panelHost.visible.value,
+      bottomPanelExpanded: panelHost.expanded.value,
+      bottomPanelRows: panelHeightRows,
+      panelAlignment: settings.panelAlignment.value,
+      leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
+      rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
+    });
     const panelBox = new BoxRenderable(renderer, {
       id: 'panel-box',
       position: 'absolute',
@@ -1230,24 +1267,9 @@ class $RootView {
         y < Number(bar.y) + Number(bar.height);
       return contains(activityBar.bar) || contains(rightActivityBar.bar);
     };
-    let layoutSlotGeometry: LayoutSlotGeometry = LayoutModel.Class.resolve({
-      totalColumns: 1,
-      totalRows: 1,
-      primaryDockVisible: primaryDockHost.visible.value,
-      activityBarVisible: settings.showActivityBar.value,
-      activityBarColumns: 4,
-      sidebarColumns: sidebarWidth(),
-      sidebarPosition: settings.sidebarPosition.value,
-      rightDockVisible: rightDockHost.visible.value,
-      rightDockColumns: settings.rightDockWidth.value,
-      rightActivityBarVisible: settings.showRightActivityBar.value,
-      bottomPanelVisible: panelHost.visible.value,
-      bottomPanelExpanded: panelHost.expanded.value,
-      bottomPanelRows: panelHeightRows,
-      panelAlignment: settings.panelAlignment.value,
-      leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
-      rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
-    });
+    let layoutSlotGeometry: LayoutSlotGeometry = LayoutModel.Class.resolve(
+      buildLayoutModelOptions(1, 1),
+    );
     // Resolve from the renderer's accepted viewport. A previous positive Yoga size is the previous
     // frame on terminal resize and must never override this external input.
     // invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
@@ -1264,25 +1286,11 @@ class $RootView {
           1 -
           (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
       );
+      currentLayoutColumns = totalColumns;
       currentLayoutRows = totalRows;
-      layoutSlotGeometry = LayoutModel.Class.resolve({
-        totalColumns,
-        totalRows,
-        primaryDockVisible: primaryDockHost.visible.value,
-        activityBarVisible: settings.showActivityBar.value,
-        activityBarColumns: 4,
-        sidebarColumns: sidebarWidth(),
-        sidebarPosition: settings.sidebarPosition.value,
-        rightDockVisible: rightDockHost.visible.value,
-        rightDockColumns: settings.rightDockWidth.value,
-        rightActivityBarVisible: settings.showRightActivityBar.value,
-        bottomPanelVisible: panelHost.visible.value,
-        bottomPanelExpanded: panelHost.expanded.value,
-        bottomPanelRows: panelHeightRows,
-        panelAlignment: settings.panelAlignment.value,
-        leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
-        rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
-      });
+      layoutSlotGeometry = LayoutModel.Class.resolve(
+        buildLayoutModelOptions(totalColumns, totalRows),
+      );
       editorFrameAttribution.recordLayoutComputation();
       activityBar.bar.position = 'absolute';
       activityBar.bar.left = layoutSlotGeometry.activityBar.left;
