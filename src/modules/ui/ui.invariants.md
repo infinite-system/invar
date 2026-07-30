@@ -870,28 +870,33 @@ scripts/harness/smoke-pixel-preview-harness.ts`
 
 **Invariant:** If an overlay dialog is visible, then its left, top, width, height, content viewport,
 scrollbar, and close control all fit inside the terminal's current rows and columns, including after
-a live resize.
+a live resize. Settings and Keyboard Shortcuts reserve their declared canvas margins and derive
+their width from content while those preferences fit.
 
 **Scope:** The command palette, Find and Replace, Quick Open, destructive confirmation, Settings,
 Keyboard Shortcuts, and context menu dialogs in `OverlayLayer`. `BoundedListPopup` has its own
 stricter anchored geometry record; completion is non-modal.
 
 **Mechanism:** `OverlayDialogGeometry.layout` clamps one numeric rectangle to the live
-`renderer.width` and `renderer.height`. `OverlayLayer.updateOverlayDialog` applies that rectangle to
-the box and its top-edge close control every frame. Content that exceeds the rectangle is windowed
-through `ScrollableTextViewport`, which derives its `SolidThumbScrollBar` from the same interior
-rectangle.
+`renderer.width` and `renderer.height`. Optional horizontal and vertical margins reduce the
+available canvas before centering and clamping. They shrink only when retaining them would remove
+the final dialog cell. `OverlayLayer.updateOverlayDialog` applies that rectangle to the box and its
+top-edge close control every frame. Settings and Keyboard Shortcuts measure their longest rendered
+content row and apply one width ceiling. Content that exceeds the rectangle is windowed through
+`ScrollableTextViewport`, which derives its `SolidThumbScrollBar` from the same interior rectangle.
 
-**Generates:** Resize-safe dialogs; bounded paint; shared wheel momentum, keyboard reveal, and thumb
-drag; a close target that never leaves the canvas.
+**Generates:** Resize-safe dialogs; bounded paint; canvas separation for Settings and Keyboard
+Shortcuts at both large and compact geometries; content-derived widths; shared wheel momentum,
+keyboard reveal, and thumb drag; a close target that never leaves the canvas.
 
 **Evidence:** `src/modules/ui/OverlayDialogGeometry.ts`;
 `src/modules/ui/OverlayDialogGeometry.test.ts`; `src/modules/ui/OverlayLayer.ts`;
 `scripts/harness/smoke-overlay-dialog-harness.ts`.
 
 **Impossible if true:** Resizing while Settings or Keyboard Shortcuts is open leaves any dialog edge,
-scrollbar, or close control outside the terminal; overflowing rows paint through the bottom instead of
-scrolling.
+scrollbar, or close control outside the terminal; either dialog expands to a canvas fraction after its
+content width is known; preferred margins clip the last dialog cell; overflowing rows paint through
+the bottom instead of scrolling.
 
 **Verification:** `bun test src/modules/ui/OverlayDialogGeometry.test.ts
 src/modules/ui/ScrollableTextViewport.test.ts && bun
@@ -899,7 +904,7 @@ scripts/harness/smoke-overlay-dialog-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-29
 
 ### Overlay keyboard actions have visible mouse paths
 

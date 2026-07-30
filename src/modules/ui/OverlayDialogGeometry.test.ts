@@ -53,4 +53,40 @@ describe('OverlayDialogGeometry', () => {
     expect(geometry.closeButtonLeft).toBe(0);
     expect(geometry.closeButtonWidth).toBe(1);
   });
+
+  test('reserves preferred margins while content fits', () => {
+    const geometry = OverlayDialogGeometry.Class.layout({
+      screenWidth: 120,
+      screenHeight: 40,
+      desiredWidth: 78,
+      desiredHeight: 50,
+      horizontalMargin: 2,
+      verticalMargin: 3,
+    });
+
+    expect(geometry).toMatchObject({
+      left: 21,
+      top: 3,
+      width: 78,
+      height: 34,
+    });
+  });
+
+  test('margins yield before a tiny terminal clips the dialog away', () => {
+    const geometry = OverlayDialogGeometry.Class.layout({
+      screenWidth: 4,
+      screenHeight: 3,
+      desiredWidth: 78,
+      desiredHeight: 50,
+      horizontalMargin: 3,
+      verticalMargin: 3,
+    });
+
+    expect(geometry).toMatchObject({
+      left: 1,
+      top: 1,
+      width: 2,
+      height: 1,
+    });
+  });
 });

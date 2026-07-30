@@ -829,6 +829,12 @@ try {
   driver.sendKeys('Left');
   await driver.awaitScreenChange();
   driver.sendKeys('Escape');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes before workspace keyboard cycling',
+    (status) => status.settingsOpen === false,
+  );
   snapshot = await driver.awaitGridCondition(
     'the workspace strip returns to the top row',
     (candidate) => candidate.findText(secondName.slice(0, 17))?.row === 0,
