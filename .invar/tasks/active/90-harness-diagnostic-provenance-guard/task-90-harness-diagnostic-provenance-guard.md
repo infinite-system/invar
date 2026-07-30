@@ -2,10 +2,10 @@
 
 State: ACTIVE
 Created: 2026-07-28
-Engine: codex
+Engine: claude
 Environment: linux
-Model: 5.6-sol
-Effort: default
+Model: opus-5
+Effort: medium
 Priority: user-directed
 
 ## Outline
