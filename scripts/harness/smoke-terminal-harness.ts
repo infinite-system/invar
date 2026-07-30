@@ -14,6 +14,7 @@ import {
   ThemePalettes,
   type Palette,
 } from '../../src/modules/theme/ThemePalettes';
+import { tasksTreeStamp } from '../tasks/tasks-status';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -901,6 +902,8 @@ try {
     'tasks',
     'tasks-status.ts',
   );
+  const tasksWatchTasksRoot = join(process.cwd(), '.invar', 'tasks');
+  const tasksWatchTreeStampBefore = tasksTreeStamp(tasksWatchTasksRoot);
   driver.sendText(`bun ${tasksWatchScriptPath} watch`);
   driver.sendKeys('Enter');
   await driver.awaitSnapshot(
@@ -908,6 +911,35 @@ try {
       candidate.findText('INVAR TASKS') !== null ||
       candidate.findText('active ·') !== null,
     15_000,
+  );
+  const tasksWatchAnimationObservationStart =
+    driver.completedFrameObservationCount;
+  await driver.awaitOutputCondition(
+    'real tasks:watch advances a live motion row without a ledger change',
+    () => {
+      const motionFingerprints = new Set<string>();
+      for (const observation of driver.completedFrameObservationsSince(
+        tasksWatchAnimationObservationStart,
+      )) {
+        const motionLine = terminalBodyText(
+          observation.snapshot,
+          panelRectangle,
+        )
+          .split('\n')
+          .find(
+            (line) => line.includes('building') || line.includes('exploring'),
+          );
+        if (motionLine !== undefined) {
+          motionFingerprints.add(motionLine.trim());
+        }
+      }
+      return motionFingerprints.size > 1;
+    },
+    5_000,
+  );
+  HarnessSmoke.Class.requireCondition(
+    tasksTreeStamp(tasksWatchTasksRoot) === tasksWatchTreeStampBefore,
+    'real tasks:watch advances motion while the task tree stays unchanged',
   );
   const tasksWatchObservations = driver.completedFrameObservationsSince(
     tasksWatchObservationStart,
