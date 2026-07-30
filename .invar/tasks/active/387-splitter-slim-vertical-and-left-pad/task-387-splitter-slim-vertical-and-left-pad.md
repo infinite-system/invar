@@ -2,9 +2,9 @@
 
 State: ACTIVE
 Priority: user-directed
-Engine: codex
+Engine: claude
 Environment: linux
-Model: 5.6-sol
+Model: opus-5
 Effort: medium
 
 ## The request (user, 2026-07-30 ~09:1x, verbatim intent)
