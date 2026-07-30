@@ -1,6 +1,6 @@
 # 315 — terminal + agent panes: child app colors must not be re-themed
 
-State: active
+State: COMPLETED — f130ee0f — child terminal colors never re-themed
 Engine: codex
 Model: 5.6-sol
 Effort: high

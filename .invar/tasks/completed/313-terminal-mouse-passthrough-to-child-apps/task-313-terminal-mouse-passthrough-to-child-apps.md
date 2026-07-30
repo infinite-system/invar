@@ -1,6 +1,6 @@
 # 313 — INVESTIGATE: mouse clicks pass through to child TUI apps (Claude Code scroll button)
 
-State: active
+State: COMPLETED — 133338ba — terminal mouse passthrough to child apps
 Engine: codex
 Model: 5.6-sol
 Effort: high
