@@ -6,6 +6,7 @@ derived from `.invar/tasks/completed/`. Each line: number, name, and the landing
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/completed/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md) — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
+- #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/completed/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md) — 17b89a64 — panel chrome v2: two rows, container tabs, full-width window groups with explicit split
 - #402 [invar-monitoring-plugin](.invar/tasks/completed/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md) — dae7fba9 — Invar Monitoring plugin: delta CPU, heap vs RSS, file ledger, per-plugin render load
 - #390 [left-sidebar-proportional-bound](.invar/tasks/completed/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md) — 181936b7 — both docks bounded: editor is the widest actor at every geometry
 - #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)

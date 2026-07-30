@@ -6,14 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #408 [workspace-state-isolation](.invar/tasks/in-progress/408-workspace-state-isolation/task-408-workspace-state-isolation.md)  [building]
   `tmux attach -t invar/408-workspace-state-isolation`
-- #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/in-progress/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/404-panel-two-row-chrome-and-pane-level-add`
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
-- #381 [realized-typescript-lsp-still-missing](.invar/tasks/in-progress/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)  [building]
+- #381 [realized-typescript-lsp-still-missing](.invar/tasks/in-progress/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/381-realized-typescript-lsp-still-missing`
 
 ## USER-DIRECTED (17)
@@ -140,8 +138,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 140 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 141 — full log: project.tasks-completed.md)
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/completed/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md) — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
+- #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/completed/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md) — 17b89a64 — panel chrome v2: two rows, container tabs, full-width window groups with explicit split
 - #402 [invar-monitoring-plugin](.invar/tasks/completed/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md) — dae7fba9 — Invar Monitoring plugin: delta CPU, heap vs RSS, file ledger, per-plugin render load
 - #390 [left-sidebar-proportional-bound](.invar/tasks/completed/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md) — 181936b7 — both docks bounded: editor is the widest actor at every geometry
 - #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)
@@ -155,4 +154,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #350 [nicer-generated-sample-video](.invar/tasks/completed/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md) — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/completed/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md) — 46be8818 — time-based gradient phase, rate-independent; #385 from bycatch
-- #347 [markdown-link-resolution-and-double-click](.invar/tasks/completed/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md) — 27a42bfe — document-relative link resolution + double-click open; #377-379 from bycatch
