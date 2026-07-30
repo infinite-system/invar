@@ -1,6 +1,6 @@
 # 325 — RESEARCH: sound synced with video in Invar — approaches + tradeoffs (map, no implementation)
 
-State: active
+State: IN-PROGRESS
 Engine: codex
 Model: 5.6-sol
 Effort: high
