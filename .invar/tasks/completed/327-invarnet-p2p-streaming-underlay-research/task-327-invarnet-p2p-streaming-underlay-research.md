@@ -1,6 +1,6 @@
 # 327 — RESEARCH: Invarnet p2p streaming underlay — one machine feeds millions (map, no implementation)
 
-State: IN-PROGRESS
+State: COMPLETED — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
 Engine: codex
 Model: 5.6-sol
 Effort: high
