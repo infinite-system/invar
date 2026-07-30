@@ -72,15 +72,22 @@ emit_ready_events() {
 # The /tmp glob above stays for the transition and for fallback reports.
 emit_folder_report_events() {
   [ -d "$tasks_in_progress" ] || return 0
-  local task_folder folder_name report_file
+  local task_folder folder_name report_file content_hash stamp
   for task_folder in "$tasks_in_progress"/*/; do
     [ -d "$task_folder" ] || continue
     folder_name="$(basename "$task_folder")"
     for report_file in "$task_folder"report-*; do
       [ -e "$report_file" ] || continue
-      if [ ! -f "/tmp/fleet-watch-report-${folder_name}-$(basename "$report_file").seen" ]; then
+      # Stamp by CONTENT, not filename: a builder steered to re-gate REWRITES
+      # its report in place — same name, new verdict. A filename stamp went
+      # blind to #300's re-gate and #326's revision on 2026-07-29; the user
+      # caught both by attaching (the human as fallback instrument). A changed
+      # report is a new event.
+      content_hash="$(md5sum "$report_file" | cut -c1-12)"
+      stamp="/tmp/fleet-watch-report-${folder_name}-$(basename "$report_file").${content_hash}.seen"
+      if [ ! -f "$stamp" ]; then
         echo "READY: ${report_file}"
-        touch "/tmp/fleet-watch-report-${folder_name}-$(basename "$report_file").seen"
+        touch "$stamp"
       fi
     done
   done
@@ -315,6 +322,18 @@ if [ "${1:-}" = "--self-test" ]; then
   # ABSENT arm: with nothing planted, no event may fire.
   quiet="$( { emit_ready_events; emit_gate_events; } | grep -c . || true)"
   [ "$quiet" = "0" ] || { echo "FAIL absent arm — events with nothing planted: $quiet"; failures=1; }
+  # REPORT-REWRITE arm: an updated report (same filename, new content) must fire again.
+  report_sandbox="$sandbox/in-progress/999-selftest-lane"
+  mkdir -p "$report_sandbox"
+  echo "first verdict" > "$report_sandbox/report-999-selftest-lane.md"
+  first="$(tasks_in_progress="$sandbox/in-progress" emit_folder_report_events | grep -c '^READY:' || true)"
+  second="$(tasks_in_progress="$sandbox/in-progress" emit_folder_report_events | grep -c '^READY:' || true)"
+  echo "revised verdict" > "$report_sandbox/report-999-selftest-lane.md"
+  third="$(tasks_in_progress="$sandbox/in-progress" emit_folder_report_events | grep -c '^READY:' || true)"
+  [ "$first" = "1" ] || { echo "FAIL report present arm (got $first)"; failures=1; }
+  [ "$second" = "0" ] || { echo "FAIL report seen-stamp arm (got $second)"; failures=1; }
+  [ "$third" = "1" ] || { echo "FAIL report REWRITE arm — updated report stayed silent (got $third)"; failures=1; }
+  rm -f /tmp/fleet-watch-report-999-selftest-lane-*.seen
   # SPEEDOMETER present arm: an event batch must carry exactly one CTX line.
   planted="/tmp/selftest-$$-ctx-READY.md"; echo x > "$planted"
   gauge="$sandbox/gauge.sh"; echo 'echo "CONTEXT_TOKENS=1234 RAW_PCT=1% COMPACT_PCT=2%"' > "$gauge"
