@@ -697,6 +697,7 @@ class $Drive {
           ),
         timeoutMilliseconds,
       );
+      await driver.awaitScreenChange(timeoutMilliseconds);
       return;
     }
     this.sendAction(driver, resolvedAction, columns, rows);
