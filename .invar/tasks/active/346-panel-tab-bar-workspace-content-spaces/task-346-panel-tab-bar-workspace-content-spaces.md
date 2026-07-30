@@ -45,3 +45,16 @@ Effort: high
 - What happens to the panel split (Ctrl+Shift+S agent|terminal split) when
   tabs exist — a tab shows one space; does split live inside a space?
 - Migration of existing panelContentOrder ids into per-workspace tab sets.
+
+## Addendum (user, same session): right-side pane list collapses
+
+5. The pane list on the right side of the panel becomes HIDDEN by default.
+   On the tab row's right end, show only a count chip (e.g. "3") — and only
+   when MORE than 2 panes exist (for terminals). Clicking the chip expands
+   the list from the right side to what it is today; clicking away (or the
+   chip again) collapses it back.
+6. The DEFAULT view is exactly two panes side by side. The workspace's
+   .invar/tasks.json folderOpen tasks fill them: "Claude" in the LEFT pane,
+   "Terminal" in the RIGHT pane (declaration order = left-to-right). This
+   depends on #342 (tasks.json panes must load at all) — sequence #342
+   before or into this task's verification.
