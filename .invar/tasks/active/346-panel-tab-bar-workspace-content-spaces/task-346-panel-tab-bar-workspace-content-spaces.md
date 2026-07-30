@@ -63,3 +63,10 @@ Effort: high
    panes/stack glyph (e.g. ▦ or ☰ family; pick what reads at one cell and
    has an ASCII-tier fallback). Make it look deliberate: icon + count as one
    chip, hover highlight consistent with the tab hover treatment.
+
+8. Close buttons SURVIVE the title removal (user, same session): each
+   terminal pane keeps its close control for ease of use even though the
+   title line goes. Builder proposes where it sits without the title row —
+   likely on the pane's tab, or a corner glyph on the pane itself. This
+   resolves the open question from the conductor notes ("where do close
+   controls live once titles go") in favor of keeping them visible.

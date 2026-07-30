@@ -2,7 +2,7 @@ READY
 
 # #334 (structure pane no-file-open transient)
 
-Commit: `c6c9dc8b71d1994971c2269038684045329b03f9`
+Commit: `c6c9dc8bc055b2c1904e3198fb95a4e86c558d61`
 
 The worktree is clean.
 
