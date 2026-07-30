@@ -3,9 +3,9 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { PanelTabBar } from './PanelTabBar';
 
-function project(paneCount: number) {
+function project(paneCount: number, width = 80) {
   return PanelTabBar.Class.project({
-    width: 80,
+    width,
     spaces: [
       {
         identifier: 'terminal-space',
@@ -32,6 +32,21 @@ function project(paneCount: number) {
     expanded: false,
     focused: true,
     hoveredTabIdentifier: null,
+    editorActions: [
+      {
+        commandId: 'view.toggleWordWrap',
+        title: 'View: Toggle Word Wrap',
+        icon: '↵',
+        toggled: false,
+      },
+      {
+        commandId: 'editor.goToLine',
+        title: 'Editor: Go to Line',
+        icon: '↕',
+        toggled: false,
+      },
+    ],
+    hoveredCommandIdentifier: null,
     hoveredAction: null,
     glyphVocabulary: ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
     palette: ThemePalettes.Class.DARK,
@@ -50,6 +65,25 @@ test('the tab bar paints and hit-tests workspace content spaces from one project
   expect(
     projection.controls.some((control) => control.action === 'pane-list'),
   ).toBe(false);
+  expect(projection.editorActions.map((action) => action.commandId)).toEqual([
+    'view.toggleWordWrap',
+    'editor.goToLine',
+  ]);
+  expect(
+    PanelTabBar.Class.editorActionAtColumn(
+      projection,
+      projection.editorActions[0]?.startColumn ?? -1,
+    )?.commandId,
+  ).toBe('view.toggleWordWrap');
+  expect(projection.tabs.at(-1)?.endColumn).toBe(
+    projection.editorActions[0]?.startColumn,
+  );
+  expect(projection.editorActions.at(-1)?.endColumn).toBe(
+    projection.leadingWidth,
+  );
+  expect(projection.leadingWidth + projection.dragWidth).toBe(
+    projection.controls[0]?.startColumn ?? -1,
+  );
 });
 
 test('the pane count chip appears only above two panes', () => {
@@ -62,4 +96,11 @@ test('the pane count chip appears only above two panes', () => {
     PanelTabBar.Class.controlAtColumn(projection, chip?.startColumn ?? -1)
       ?.action,
   ).toBe('pane-list');
+});
+
+test('editor actions truncate before tabs and the drag cell', () => {
+  const projection = project(2, 26);
+  expect(projection.tabs.length).toBe(2);
+  expect(projection.editorActions).toEqual([]);
+  expect(projection.dragWidth).toBe(1);
 });

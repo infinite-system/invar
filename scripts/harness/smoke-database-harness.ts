@@ -326,14 +326,14 @@ try {
   const tabBarGeometry = HarnessSmoke.Class.readStatus(statusPath)
     .panelSeparatorGeometry as {
     row: number;
-    editorActions: readonly {
-      commandId: string;
+    tabs: readonly {
+      spaceIdentifier: string;
       startColumn: number;
       endColumnExclusive: number;
     }[];
   };
-  const databaseTab = tabBarGeometry.editorActions.find((tab) =>
-    tab.commandId.startsWith('database-space-'),
+  const databaseTab = tabBarGeometry.tabs.find((tab) =>
+    tab.spaceIdentifier.startsWith('database-space-'),
   );
   if (!databaseTab) throw new Error('Missing Database tab geometry');
   driver.sendMouseClick({

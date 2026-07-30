@@ -41,20 +41,30 @@ class $PanelTabBar {
         tooltip: 'Close panel',
       },
     ];
-    const controlWidth = controlDefinitions.reduce(
+    const preferredControlWidth = controlDefinitions.reduce(
       (sum, control) => sum + TextCoordinates.Class.lineWidth(control.text),
       0,
     );
-    const tabWidth = Math.max(0, width - Math.min(width, controlWidth));
-    const tabChunks: TextChunk[] = [];
+    const minimumDragWidth = Math.min(1, width);
+    const controlWidth = Math.min(
+      preferredControlWidth,
+      Math.max(0, width - minimumDragWidth),
+    );
+    const availableLeadingWidth = Math.max(
+      0,
+      width - controlWidth - minimumDragWidth,
+    );
+    const leadingChunks: TextChunk[] = [];
     const tabs: PanelTabBarTabSegment[] = [];
     let column = 0;
     for (const space of options.spaces) {
+      const remainingTabWidth = Math.max(0, availableLeadingWidth - column);
+      if (remainingTabWidth === 0) break;
       const text = ` ${space.label} `;
       const visibleText = TextCoordinates.Class.displayColumnWindow(
         text,
         0,
-        Math.max(0, tabWidth - column),
+        remainingTabWidth,
       );
       const visibleWidth = TextCoordinates.Class.lineWidth(visibleText);
       if (visibleWidth <= 0) break;
@@ -67,7 +77,7 @@ class $PanelTabBar {
             ? options.palette.fg
             : options.palette.dim,
       )(visibleText);
-      tabChunks.push(
+      leadingChunks.push(
         active
           ? bg(options.palette.selection)(styled)
           : hovered
@@ -84,14 +94,48 @@ class $PanelTabBar {
       column += visibleWidth;
     }
     const tabsWidth = column;
-    column = width - Math.min(width, controlWidth);
+    const actionCellWidth = 3;
+    const visibleActionCount = Math.min(
+      options.editorActions.length,
+      Math.floor(
+        Math.max(0, availableLeadingWidth - tabsWidth) / actionCellWidth,
+      ),
+    );
+    const editorActions: PanelTabBarEditorActionSegment[] = [];
+    for (const action of options.editorActions.slice(0, visibleActionCount)) {
+      const text = `\u00a0${action.icon}\u00a0`;
+      const hovered = action.commandId === options.hoveredCommandIdentifier;
+      const actionText = fg(
+        action.toggled || hovered ? options.palette.accent : options.palette.fg,
+      )(text);
+      leadingChunks.push(
+        action.toggled
+          ? bg(options.palette.selection)(actionText)
+          : hovered
+            ? bg(options.palette.cursorLine)(actionText)
+            : actionText,
+      );
+      editorActions.push({
+        commandId: action.commandId,
+        title: action.title,
+        startColumn: column,
+        endColumn: column + actionCellWidth,
+      });
+      column += actionCellWidth;
+    }
+    const actionWidth = editorActions.length * actionCellWidth;
+    const leadingWidth = tabsWidth + actionWidth;
+    const dragWidth = Math.max(0, width - leadingWidth - controlWidth);
+    column = width - controlWidth;
     const controlChunks: TextChunk[] = [];
     const controls: PanelTabBarControlSegment[] = [];
     for (const control of controlDefinitions) {
+      const remainingControlWidth = Math.max(0, width - column);
+      if (remainingControlWidth === 0) break;
       const visibleText = TextCoordinates.Class.displayColumnWindow(
         control.text,
         0,
-        Math.max(0, width - column),
+        remainingControlWidth,
       );
       const visibleWidth = TextCoordinates.Class.lineWidth(visibleText);
       if (visibleWidth <= 0) break;
@@ -117,11 +161,15 @@ class $PanelTabBar {
       column += visibleWidth;
     }
     return {
-      tabText: new StyledText(tabChunks),
+      leadingText: new StyledText(leadingChunks),
       controlText: new StyledText(controlChunks),
       tabsWidth,
-      controlWidth: width - (controls[0]?.startColumn ?? width),
+      actionWidth,
+      leadingWidth,
+      dragWidth,
+      controlWidth,
       tabs,
+      editorActions,
       controls,
     };
   }
@@ -148,6 +196,17 @@ class $PanelTabBar {
       ) ?? null
     );
   }
+
+  static editorActionAtColumn(
+    projection: PanelTabBarProjection,
+    column: number,
+  ): PanelTabBarEditorActionSegment | null {
+    return (
+      projection.editorActions.find(
+        (action) => column >= action.startColumn && column < action.endColumn,
+      ) ?? null
+    );
+  }
 }
 
 export namespace PanelTabBar {
@@ -166,22 +225,42 @@ export interface PanelTabBarOptions {
   readonly expanded: boolean;
   readonly focused: boolean;
   readonly hoveredTabIdentifier: string | null;
+  readonly editorActions: readonly PanelTabBarEditorAction[];
+  readonly hoveredCommandIdentifier: string | null;
   readonly hoveredAction: PanelTabBarAction | null;
   readonly glyphVocabulary: InterfaceGlyphVocabulary;
   readonly palette: Palette;
 }
 
 export interface PanelTabBarProjection {
-  readonly tabText: StyledText;
+  readonly leadingText: StyledText;
   readonly controlText: StyledText;
   readonly tabsWidth: number;
+  readonly actionWidth: number;
+  readonly leadingWidth: number;
+  readonly dragWidth: number;
   readonly controlWidth: number;
   readonly tabs: readonly PanelTabBarTabSegment[];
+  readonly editorActions: readonly PanelTabBarEditorActionSegment[];
   readonly controls: readonly PanelTabBarControlSegment[];
 }
 
 export interface PanelTabBarTabSegment {
   readonly identifier: string;
+  readonly startColumn: number;
+  readonly endColumn: number;
+}
+
+export interface PanelTabBarEditorAction {
+  readonly commandId: string;
+  readonly title: string;
+  readonly icon: string;
+  readonly toggled: boolean;
+}
+
+export interface PanelTabBarEditorActionSegment {
+  readonly commandId: string;
+  readonly title: string;
   readonly startColumn: number;
   readonly endColumn: number;
 }

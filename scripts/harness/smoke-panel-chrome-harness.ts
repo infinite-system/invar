@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// Drive the workspace panel tab bar through its keyboard and mouse paths.
+// Drive the mixed workspace-tab and editor-action row through its keyboard and mouse paths.
 // Run: bun scripts/harness/smoke-panel-chrome-harness.ts
-// ALL-PASS means one flat tab row selects spaces, Add creates another space,
-// and the panel-level expand and close controls use their painted geometry.
+// ALL-PASS means tabs survive when editor actions truncate, both action shortcuts work,
+// wide action buttons use their painted geometry, and all panel controls still work.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -18,7 +18,13 @@ import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-interface TabSegment {
+interface WorkspaceTabSegment {
+  readonly spaceIdentifier: string;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+interface EditorActionSegment {
   readonly commandId: string;
   readonly startColumn: number;
   readonly endColumnExclusive: number;
@@ -32,7 +38,8 @@ interface ControlSegment {
 
 interface TabBarGeometry {
   readonly row: number;
-  readonly editorActions: readonly TabSegment[];
+  readonly tabs: readonly WorkspaceTabSegment[];
+  readonly editorActions: readonly EditorActionSegment[];
   readonly drag: {
     readonly left: number;
     readonly width: number;
@@ -89,6 +96,80 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       (status) => status.ready === true,
       15_000,
     );
+    driver.sendKeys('Control+p');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column Quick Open appears before the editor-action drive`,
+      (status) => status.quickOpenOpen === true,
+    );
+    driver.sendText('greeter.ts');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column Quick Open finds the shared source fixture`,
+      (status) =>
+        status.quickOpenQuery === 'greeter.ts' &&
+        Number(status.quickOpenMatches) > 0,
+    );
+    driver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column source fixture opens before shortcut checks`,
+      (status) => String(status.activeBuffer).endsWith('/greeter.ts'),
+    );
+    driver.sendKeys('F1');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column command palette opens for editor focus`,
+      (status) => status.paletteOpen === true,
+    );
+    driver.sendText('View: Focus Editor');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column editor-focus command is the sole palette match`,
+      (status) =>
+        status.paletteQuery === 'View: Focus Editor' &&
+        Number(status.paletteMatches) === 1,
+    );
+    driver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column editor owns focus before shortcut checks`,
+      (status) => status.focus === 'editor' && status.paletteOpen === false,
+    );
+    driver.sendKeys('Alt+z');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column word-wrap shortcut turns wrap on`,
+      (status) => status.wordWrap === true,
+    );
+    driver.sendKeys('Alt+z');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column word-wrap shortcut turns wrap off`,
+      (status) => status.wordWrap === false,
+    );
+    driver.sendKeys('Alt+g');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column go-to-line shortcut opens the shared prompt`,
+      (status) => status.goToLineOpen === true,
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column Escape closes the shortcut-opened prompt`,
+      (status) => status.goToLineOpen === false,
+    );
     driver.sendKeys('Control+Shift+a');
     let status = await HarnessSmoke.Class.awaitStatus(
       driver,
@@ -104,10 +185,10 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         ),
     );
     const initialSnapshot = await driver.awaitGridCondition(
-      `${columns}-column tab row paints both space labels without pane headings`,
+      `${columns}-column tab row paints both space tabs without pane headings`,
       (snapshot) =>
         snapshot.findText('Terminal') !== null &&
-        snapshot.findText('Database') !== null &&
+        snapshot.findText(columns === 120 ? 'Database' : 'Datab') !== null &&
         snapshot.findText('Claude ×') === null,
     );
     const panelSlot = (
@@ -130,17 +211,25 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column panel content starts without a rounded frame`,
     );
     const initialTabBar = tabBar(status);
-    const lastTab = initialTabBar.editorActions.at(-1);
+    const lastTab = initialTabBar.tabs.at(-1);
+    const firstEditorAction = initialTabBar.editorActions[0];
+    const lastEditorAction = initialTabBar.editorActions.at(-1);
     const firstControl = initialTabBar.controls[0];
     HarnessSmoke.Class.requireCondition(
-      initialTabBar.editorActions.length === 2 &&
-        initialTabBar.editorActions[0]?.commandId.startsWith(
-          'terminal-space-',
-        ) === true &&
-        initialTabBar.editorActions[1]?.commandId.startsWith(
-          'database-space-',
-        ) === true,
-      `${columns}-column published editor actions are the two workspace tabs`,
+      initialTabBar.tabs.length === 2 &&
+        initialTabBar.tabs[0]?.spaceIdentifier.startsWith('terminal-space-') ===
+          true &&
+        initialTabBar.tabs[1]?.spaceIdentifier.startsWith('database-space-') ===
+          true,
+      `${columns}-column workspace tabs publish by space identity`,
+    );
+    const expectedEditorActionIdentifiers =
+      columns === 120 ? ['view.toggleWordWrap', 'editor.goToLine'] : [];
+    HarnessSmoke.Class.requireCondition(
+      JSON.stringify(
+        initialTabBar.editorActions.map((action) => action.commandId),
+      ) === JSON.stringify(expectedEditorActionIdentifiers),
+      `${columns}-column editor actions publish separately and truncate before tabs`,
     );
     HarnessSmoke.Class.requireCondition(
       initialTabBar.drag.width >= 1,
@@ -154,12 +243,16 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
     );
     HarnessSmoke.Class.requireCondition(
       (lastTab
-        ? lastTab.endColumnExclusive === initialTabBar.drag.left
+        ? lastTab.endColumnExclusive ===
+          (firstEditorAction?.startColumn ?? initialTabBar.drag.left)
         : true) &&
+        (lastEditorAction
+          ? lastEditorAction.endColumnExclusive === initialTabBar.drag.left
+          : true) &&
         firstControl !== undefined &&
         initialTabBar.drag.left + initialTabBar.drag.width ===
           firstControl.startColumn,
-      `${columns}-column row order is tabs then drag then controls with no gap or overlap`,
+      `${columns}-column row order is tabs then actions then drag then controls with no gap or overlap`,
     );
     const tabRowSnapshot = await driver.awaitGridCondition(
       `${columns}-column published drag span paints centered heavy-line cells`,
@@ -180,6 +273,52 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         ) === '━'.repeat(initialTabBar.drag.width),
       `${columns}-column splitter paints centered marks between tabs and controls`,
     );
+    if (initialTabBar.editorActions.length === 2) {
+      for (const action of initialTabBar.editorActions) {
+        const actionCells = tabRowSnapshot
+          .rowCells(initialTabBar.row)
+          .slice(action.startColumn, action.endColumnExclusive);
+        HarnessSmoke.Class.requireCondition(
+          actionCells.length === 3 &&
+            actionCells[0]?.characters.trim().length === 0 &&
+            (actionCells[1]?.characters.trim().length ?? 0) > 0 &&
+            actionCells[2]?.characters.trim().length === 0,
+          `${columns}-column ${action.commandId} icon has one painted padding cell on each side`,
+        );
+      }
+      HarnessSmoke.Class.requireCondition(
+        status.wordWrap === false && status.goToLineOpen === false,
+        `${columns}-column editor-action effects start absent before clicks`,
+      );
+      clickSegment(driver, initialTabBar.row, initialTabBar.editorActions[0]!);
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}-column word-wrap button turns wrap on`,
+        (candidate) => candidate.wordWrap === true,
+      );
+      clickSegment(driver, initialTabBar.row, initialTabBar.editorActions[0]!);
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}-column word-wrap button turns wrap off`,
+        (candidate) => candidate.wordWrap === false,
+      );
+      clickSegment(driver, initialTabBar.row, initialTabBar.editorActions[1]!);
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}-column go-to-line button opens the shared prompt`,
+        (candidate) => candidate.goToLineOpen === true,
+      );
+      driver.sendKeys('Escape');
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}-column Escape closes the button-opened prompt`,
+        (candidate) => candidate.goToLineOpen === false,
+      );
+    }
 
     driver.sendKeys('Alt+PageDown');
     status = await HarnessSmoke.Class.awaitStatus(
@@ -190,8 +329,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         candidate.panelActiveSpace === 'database-space-1' &&
         JSON.stringify(candidate.panelCellIds) === JSON.stringify(['database']),
     );
-    const terminalTab = tabBar(status).editorActions.find((tab) =>
-      tab.commandId.startsWith('terminal-space-'),
+    const terminalTab = tabBar(status).tabs.find((tab) =>
+      tab.spaceIdentifier.startsWith('terminal-space-'),
     );
     if (!terminalTab) throw new Error('Missing Terminal tab geometry');
     clickSegment(driver, tabBar(status).row, terminalTab);

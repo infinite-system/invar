@@ -1028,29 +1028,50 @@ class $RootView {
     });
     let panelTabBarProjection: PanelTabBarProjection | null = null;
     let hoveredPanelTabIdentifier: string | null = null;
+    let hoveredPanelEditorCommandIdentifier: string | null = null;
     let hoveredPanelControlBarAction: PanelTabBarAction | null = null;
     panelActionBarRenderable.onMouseDown = (event) => {
+      const actionBarColumn =
+        Number(event.x) - Number(panelActionBarRenderable.x);
       const tab = panelTabBarProjection
-        ? PanelTabBar.Class.tabAtColumn(
+        ? PanelTabBar.Class.tabAtColumn(panelTabBarProjection, actionBarColumn)
+        : null;
+      const editorAction = panelTabBarProjection
+        ? PanelTabBar.Class.editorActionAtColumn(
             panelTabBarProjection,
-            Number(event.x) - Number(panelActionBarRenderable.x),
+            actionBarColumn,
           )
         : null;
-      if (!tab) return;
-      panelHost.selectSpace(tab.identifier);
-      panelHost.focus();
+      if (tab) {
+        panelHost.selectSpace(tab.identifier);
+        panelHost.focus();
+      } else if (editorAction) {
+        commands.run(editorAction.commandId);
+      } else {
+        return;
+      }
       renderer.requestRender();
     };
     panelActionBarRenderable.onMouseMove = (event) => {
+      const actionBarColumn =
+        Number(event.x) - Number(panelActionBarRenderable.x);
       const tab = panelTabBarProjection
-        ? PanelTabBar.Class.tabAtColumn(
+        ? PanelTabBar.Class.tabAtColumn(panelTabBarProjection, actionBarColumn)
+        : null;
+      const editorAction = panelTabBarProjection
+        ? PanelTabBar.Class.editorActionAtColumn(
             panelTabBarProjection,
-            Number(event.x) - Number(panelActionBarRenderable.x),
+            actionBarColumn,
           )
         : null;
       const nextHoveredTabIdentifier = tab?.identifier ?? null;
-      if (hoveredPanelTabIdentifier !== nextHoveredTabIdentifier) {
+      const nextHoveredCommandIdentifier = editorAction?.commandId ?? null;
+      if (
+        hoveredPanelTabIdentifier !== nextHoveredTabIdentifier ||
+        hoveredPanelEditorCommandIdentifier !== nextHoveredCommandIdentifier
+      ) {
         hoveredPanelTabIdentifier = nextHoveredTabIdentifier;
+        hoveredPanelEditorCommandIdentifier = nextHoveredCommandIdentifier;
         renderer.requestRender();
       }
       if (tab) {
@@ -1062,13 +1083,19 @@ class $RootView {
           Number(event.x),
           Number(event.y),
         );
+      } else if (editorAction) {
+        tooltip.point(editorAction.title, Number(event.x), Number(event.y));
       } else {
         tooltip.clear();
       }
     };
     panelActionBarRenderable.onMouseOut = () => {
-      if (hoveredPanelTabIdentifier !== null) {
+      if (
+        hoveredPanelTabIdentifier !== null ||
+        hoveredPanelEditorCommandIdentifier !== null
+      ) {
         hoveredPanelTabIdentifier = null;
+        hoveredPanelEditorCommandIdentifier = null;
         renderer.requestRender();
       }
       tooltip.clear();
@@ -1280,6 +1307,22 @@ class $RootView {
           expanded: panelHost.expanded.value,
           focused: panelHost.focused.value,
           hoveredTabIdentifier: hoveredPanelTabIdentifier,
+          editorActions: commands
+            .actionsForSurface('panelSeparator')
+            .flatMap((command) => {
+              const iconName = command.actionIcons?.panelSeparator;
+              return iconName
+                ? [
+                    {
+                      commandId: command.id,
+                      title: command.title,
+                      icon: theme.actionIcons[iconName],
+                      toggled: command.toggled?.() ?? false,
+                    },
+                  ]
+                : [];
+            }),
+          hoveredCommandIdentifier: hoveredPanelEditorCommandIdentifier,
           hoveredAction: hoveredPanelControlBarAction,
           glyphVocabulary: theme.glyphVocabulary,
           palette: readPalette(),
@@ -1288,18 +1331,14 @@ class $RootView {
         const separatorTop = layoutSlotGeometry.bottomPanelSplitter.top;
         panelActionBarRenderable.left = separatorLeft;
         panelActionBarRenderable.top = separatorTop;
-        panelActionBarRenderable.width = panelTabBarProjection.tabsWidth;
-        panelActionBarRenderable.visible = panelTabBarProjection.tabsWidth > 0;
-        panelActionBarRenderable.content = panelTabBarProjection.tabText;
+        panelActionBarRenderable.width = panelTabBarProjection.leadingWidth;
+        panelActionBarRenderable.visible =
+          panelTabBarProjection.leadingWidth > 0;
+        panelActionBarRenderable.content = panelTabBarProjection.leadingText;
         panelSplitter.setGeometry({
-          left: separatorLeft + panelTabBarProjection.tabsWidth,
+          left: separatorLeft + panelTabBarProjection.leadingWidth,
           top: separatorTop,
-          length: Math.max(
-            0,
-            layoutSlotGeometry.bottomPanelSplitter.width -
-              panelTabBarProjection.tabsWidth -
-              panelTabBarProjection.controlWidth,
-          ),
+          length: panelTabBarProjection.dragWidth,
           visible: !panelHost.expanded.value,
         });
         panelControlBarRenderable.left =
@@ -2137,8 +2176,8 @@ class $RootView {
         Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanelSplitter.top;
       return {
         row,
-        editorActions: panelTabBarProjection.tabs.map((tab) => ({
-          commandId: tab.identifier,
+        tabs: panelTabBarProjection.tabs.map((tab) => ({
+          spaceIdentifier: tab.identifier,
           startColumn:
             screenLeft +
             Number(panelActionBarRenderable.left) +
@@ -2146,18 +2185,24 @@ class $RootView {
           endColumnExclusive:
             screenLeft + Number(panelActionBarRenderable.left) + tab.endColumn,
         })),
+        editorActions: panelTabBarProjection.editorActions.map((action) => ({
+          commandId: action.commandId,
+          startColumn:
+            screenLeft +
+            Number(panelActionBarRenderable.left) +
+            action.startColumn,
+          endColumnExclusive:
+            screenLeft +
+            Number(panelActionBarRenderable.left) +
+            action.endColumn,
+        })),
         drag: {
           left:
             screenLeft +
             layoutSlotGeometry.bottomPanelSplitter.left +
-            panelTabBarProjection.tabsWidth,
+            panelTabBarProjection.leadingWidth,
           top: row,
-          width: Math.max(
-            0,
-            layoutSlotGeometry.bottomPanelSplitter.width -
-              panelTabBarProjection.tabsWidth -
-              panelTabBarProjection.controlWidth,
-          ),
+          width: panelTabBarProjection.dragWidth,
           height: 1,
           visible: panelSplitter.renderable.visible,
         },
@@ -2424,6 +2469,7 @@ export interface PanelHeadingControlGeometry {
 
 export interface PanelSeparatorGeometry {
   readonly row: number;
+  readonly tabs: readonly PanelTabGeometry[];
   readonly editorActions: readonly PanelSeparatorActionGeometry[];
   readonly drag: {
     readonly left: number;
@@ -2433,6 +2479,12 @@ export interface PanelSeparatorGeometry {
     readonly visible: boolean;
   };
   readonly controls: readonly PanelHeadingControlGeometry[];
+}
+
+export interface PanelTabGeometry {
+  readonly spaceIdentifier: string;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
 }
 
 export interface PanelSeparatorActionGeometry {
