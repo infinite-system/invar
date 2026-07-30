@@ -1762,7 +1762,9 @@ function allLenses(tasksRoot: string): number {
 // dashboard's seam) executes nothing — no lens run, no process.exit.
 if (import.meta.main) {
   const repositoryRoot = join(import.meta.dir, '..', '..');
-  const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
+  // Callers can isolate the external task ledger while they drive the real CLI watch process.
+  const tasksRoot =
+    process.env.INVAR_TASKS_ROOT ?? join(repositoryRoot, '.invar', 'tasks');
 
   if (process.argv.includes('watch')) {
     await watchLenses(tasksRoot);

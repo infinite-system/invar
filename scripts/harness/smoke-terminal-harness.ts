@@ -357,6 +357,8 @@ const childMouseOffInputPath = join(homeDirectory, 'mouse-off-input.bin');
 
 const childScriptPath = join(homeDirectory, 'child-io-fixture.py');
 
+const tasksWatchTasksRoot = join(homeDirectory, 'tasks-watch-tasks');
+
 const foregroundColorFixture = Array.from({ length: 16 }, (_, colorIndex) => {
   const ansiCode = colorIndex < 8 ? 30 + colorIndex : 90 + (colorIndex - 8);
   return `\x1b[${ansiCode}m${colorIndex.toString(16).toUpperCase()}`;
@@ -409,6 +411,28 @@ await Bun.write(
     `        open(${JSON.stringify(childMouseOffInputPath)}, 'wb').write(plain_input)`,
     'finally:',
     '    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, previous)',
+    '',
+  ].join('\n'),
+);
+
+for (const taskState of ['active', 'in-progress', 'completed', 'retired']) {
+  mkdirSync(join(tasksWatchTasksRoot, taskState), { recursive: true });
+}
+const tasksWatchFixtureFolder = join(
+  tasksWatchTasksRoot,
+  'in-progress',
+  '999-tasks-watch-motion-fixture',
+);
+mkdirSync(tasksWatchFixtureFolder);
+await Bun.write(
+  join(tasksWatchFixtureFolder, 'task-999-tasks-watch-motion-fixture.md'),
+  [
+    '# Task watch motion fixture',
+    '',
+    'State: IN-PROGRESS',
+    'Engine: codex',
+    'Model: fixture',
+    'Effort: high',
     '',
   ].join('\n'),
 );
@@ -902,9 +926,10 @@ try {
     'tasks',
     'tasks-status.ts',
   );
-  const tasksWatchTasksRoot = join(process.cwd(), '.invar', 'tasks');
   const tasksWatchTreeStampBefore = tasksTreeStamp(tasksWatchTasksRoot);
-  driver.sendText(`bun ${tasksWatchScriptPath} watch`);
+  driver.sendText(
+    `INVAR_TASKS_ROOT=${tasksWatchTasksRoot} bun ${tasksWatchScriptPath} watch`,
+  );
   driver.sendKeys('Enter');
   await driver.awaitSnapshot(
     (candidate) =>
