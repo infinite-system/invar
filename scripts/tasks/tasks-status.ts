@@ -57,7 +57,10 @@ import {
 } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
-import { TasksWatchRenderer } from './TasksWatchRenderer';
+import {
+  TasksWatchRenderer,
+  type TasksWatchAnimationRow,
+} from './TasksWatchRenderer';
 
 export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
 
@@ -872,6 +875,7 @@ export const TASKS_BUILDING_BREATH_FRAMES: readonly TaskMotionFrame[] = [
   { glyph: '·', ansi: '38;5;30', color: '#008787' },
 ];
 export const TASKS_MOTION_PAINTS_PER_STEP = 5;
+export const TASKS_BUILDING_MONOCHROME_GLYPHS = ['·', '•', '●', '•'] as const;
 
 // Lines of code, live, as the agents write: each in-progress task's worktree
 // diffed against its merge-base with main — committed AND uncommitted edits
@@ -1326,6 +1330,9 @@ function live(
   spinnerFrame?: number,
   preloadedRecords?: TaskRecord[],
   outputLine: (line: string) => void = (line) => console.log(line),
+  outputAnimatedLine?: (
+    lineForAnimationFrame: (animationFrame: number) => string,
+  ) => void,
 ): number {
   const allRecords = preloadedRecords ?? readTaskRecords(tasksRoot);
   if (preloadedRecords === undefined) {
@@ -1343,12 +1350,6 @@ function live(
   for (const record of records) {
     // ROUNDS. One rule for the CLI and the pane — see builderStanding above.
     const { round, ready } = builderStanding(tasksRoot, record);
-    const breath =
-      spinnerFrame === undefined
-        ? null
-        : (TASKS_BUILDING_BREATH_FRAMES[
-            spinnerFrame % TASKS_BUILDING_BREATH_FRAMES.length
-          ] ?? null);
     const roundSuffix =
       round > 1 ? ` ${paint('38;5;179', `round ${round}`)}` : '';
     // EXPLORING vs BUILDING. Until the worktree diff shows one changed line,
@@ -1363,41 +1364,65 @@ function live(
     const exploring = !firstEditSeen.has(record.folderName);
     const phaseWord = exploring ? 'exploring' : 'building';
     const phaseRamp = exploring ? TASKS_EXPLORING_RAMP : TASKS_BUILDING_RAMP;
-    const phaseGlyph =
-      breath === null
-        ? paint(exploring ? '38;5;153' : '38;5;45', exploring ? '➤' : '●')
-        : exploring
-          ? paint(
-              TASKS_EXPLORING_RAMP[
-                (spinnerFrame ?? 0) % TASKS_EXPLORING_RAMP.length
-              ]?.ansi ?? '38;5;153',
-              TASKS_EXPLORING_GLYPHS[
-                (spinnerFrame ?? 0) % TASKS_EXPLORING_GLYPHS.length
-              ] ?? '➤',
-            )
-          : paint(breath.ansi, breath.glyph);
-    const statusBadge = ready
-      ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
-      : `${phaseGlyph} ${
-          spinnerFrame === undefined
-            ? paint(exploring ? '38;5;153' : '38;5;44', phaseWord)
-            : gradientWord(phaseWord, spinnerFrame, phaseRamp)
-        }${roundSuffix}`;
     const startedAt = startedAtMilliseconds(tasksRoot, record);
-    const runningFor =
-      startedAt === null
-        ? ''
-        : `  ${cyan(formatDuration(Date.now() - startedAt))}`;
     const identity = agentIdentity(record);
     const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
+    const lineDeltaSuffix = lineDeltaBadge(record.folderName);
+    const lineForAnimationFrame = (currentAnimationFrame?: number): string => {
+      const animationFrame = currentAnimationFrame ?? 0;
+      const breath =
+        currentAnimationFrame === undefined
+          ? null
+          : (TASKS_BUILDING_BREATH_FRAMES[
+              animationFrame % TASKS_BUILDING_BREATH_FRAMES.length
+            ] ?? null);
+      const phaseGlyph =
+        breath === null
+          ? paint(exploring ? '38;5;153' : '38;5;45', exploring ? '➤' : '●')
+          : exploring
+            ? paint(
+                TASKS_EXPLORING_RAMP[
+                  animationFrame % TASKS_EXPLORING_RAMP.length
+                ]?.ansi ?? '38;5;153',
+                TASKS_EXPLORING_GLYPHS[
+                  animationFrame % TASKS_EXPLORING_GLYPHS.length
+                ] ?? '➤',
+              )
+            : paint(
+                breath.ansi,
+                colourEnabled
+                  ? breath.glyph
+                  : (TASKS_BUILDING_MONOCHROME_GLYPHS[
+                      animationFrame % TASKS_BUILDING_MONOCHROME_GLYPHS.length
+                    ] ?? breath.glyph),
+              );
+      const statusBadge = ready
+        ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(currentAnimationFrame) : green(' — awaiting landing')}`
+        : `${phaseGlyph} ${
+            currentAnimationFrame === undefined
+              ? paint(exploring ? '38;5;153' : '38;5;44', phaseWord)
+              : gradientWord(phaseWord, animationFrame, phaseRamp)
+          }${roundSuffix}`;
+      const runningFor =
+        startedAt === null
+          ? ''
+          : `  ${cyan(formatDuration(Date.now() - startedAt))}`;
+      return `     ${statusBadge}${runningFor}${lineDeltaSuffix}${identitySuffix}`;
+    };
+    const rowAnimates =
+      !ready || (gateGlanceCache !== null && gateGlanceCache.exitCode === null);
     // Two-line row: the name owns its line; the status lives under it — the
     // row stays whole on narrow screens instead of wrapping mid-badge.
     outputLine(
       `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}`,
     );
-    outputLine(
-      `     ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
-    );
+    if (rowAnimates && outputAnimatedLine !== undefined) {
+      outputAnimatedLine((animationFrame) =>
+        lineForAnimationFrame(animationFrame),
+      );
+    } else {
+      outputLine(lineForAnimationFrame(spinnerFrame));
+    }
     outputLine(
       paint('38;5;240', `       tmux attach -t invar/${record.folderName}`),
     );
@@ -1584,7 +1609,6 @@ export function tasksTreeStamp(tasksRoot: string): string {
 }
 
 async function watchLenses(tasksRoot: string): Promise<number> {
-  let dataTick = 0;
   // Deltas are measured against the moment the watch started: "what grew
   // while you were looking". The expensive samples refresh once a minute.
   const baselineCommits = commitsToday();
@@ -1592,7 +1616,9 @@ async function watchLenses(tasksRoot: string): Promise<number> {
   const baselineLanded = landedTodayStats(tasksRoot).landedToday;
   let sampledCommits = baselineCommits;
   let sampledLines = baselineLines;
+  const tasksWatchRenderer = new TasksWatchRenderer.Class();
   const restoreScreen = (): void => {
+    tasksWatchRenderer.dispose();
     process.stdout.write(TasksWatchRenderer.Class.restoreScreen());
     process.exit(0);
   };
@@ -1604,7 +1630,6 @@ async function watchLenses(tasksRoot: string): Promise<number> {
   let cachedLanded = baselineLanded;
   let lastTreeStamp = tasksTreeStamp(tasksRoot);
   let nextStatsSample = performance.now() + STATS_MILLISECONDS;
-  let previousLines: readonly string[] = [];
   let firstFrame = true;
   for (;;) {
     const stamp = tasksTreeStamp(tasksRoot);
@@ -1625,10 +1650,22 @@ async function watchLenses(tasksRoot: string): Promise<number> {
         sampledLines = sourceLineCount(); // only when a landing moved main
       }
     }
-    currentPaintFrame = dataTick;
+    currentPaintFrame = tasksWatchRenderer.animationFrame;
     const frameLines: string[] = [];
+    const animationRows: TasksWatchAnimationRow[] = [];
+    const animatedLineRenderers: Array<(animationFrame: number) => string> = [];
     const outputLine = (line: string): void => {
       frameLines.push(line);
+    };
+    const outputAnimatedLine = (
+      lineForAnimationFrame: (animationFrame: number) => string,
+    ): void => {
+      animationRows.push({
+        rowIndex: frameLines.length,
+        line: lineForAnimationFrame(tasksWatchRenderer.animationFrame),
+      });
+      animatedLineRenderers.push(lineForAnimationFrame);
+      frameLines.push(animationRows.at(-1)?.line ?? '');
     };
     const clock = new Date().toLocaleTimeString('en-GB', {
       hour12: false,
@@ -1637,13 +1674,19 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     });
     const fleet = fleetDeltaTotals();
     outputLine(
-      `${bold('INVAR TASKS')} ${dim(`· ${clock} · ledger ticks · Ctrl+C to exit`)}`,
+      `${bold('INVAR TASKS')} ${dim(`· ${clock} · 60fps motion · ledger ticks · Ctrl+C to exit`)}`,
     );
     outputLine(
       `  ${bold('tonight')} ${rollingBadge('fleet-added', fleet.added, '+', green)} ${rollingBadge('fleet-removed', fleet.removed, '-', red)} ${dim(`lines in flight · ${fleet.builders} builder(s)`)}`,
     );
     outputLine('');
-    live(tasksRoot, dataTick, cachedRecords, outputLine);
+    live(
+      tasksRoot,
+      tasksWatchRenderer.animationFrame,
+      cachedRecords,
+      outputLine,
+      outputAnimatedLine,
+    );
     outputLine('');
     const completedCount = cachedRecords.filter(
       (record) => record.directoryState === 'completed',
@@ -1664,15 +1707,34 @@ async function watchLenses(tasksRoot: string): Promise<number> {
         dim('  ·  ') +
         `≡ ${rollingBadge('src-lines', sampledLines ?? 0, '', (t) => t)} src lines${delta(sampledLines, baselineLines)}`,
     );
-    const frameOutput = TasksWatchRenderer.Class.frame(
-      previousLines,
+    const animationRowsForFrame =
+      animationRows.length === 0
+        ? null
+        : (animationFrame: number): readonly TasksWatchAnimationRow[] => {
+            for (
+              let animationRowIndex = 0;
+              animationRowIndex < animationRows.length;
+              animationRowIndex += 1
+            ) {
+              const animationRow = animationRows[animationRowIndex];
+              const animatedLineRenderer =
+                animatedLineRenderers[animationRowIndex];
+              if (
+                animationRow === undefined ||
+                animatedLineRenderer === undefined
+              ) {
+                continue;
+              }
+              animationRow.line = animatedLineRenderer(animationFrame);
+            }
+            return animationRows;
+          };
+    tasksWatchRenderer.renderDataFrame(
       frameLines,
+      animationRowsForFrame,
       firstFrame,
     );
-    if (frameOutput) process.stdout.write(frameOutput);
-    previousLines = frameLines;
     firstFrame = false;
-    dataTick += 1;
     await Bun.sleep(DATA_MILLISECONDS);
   }
 }
