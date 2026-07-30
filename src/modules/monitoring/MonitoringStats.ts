@@ -241,6 +241,18 @@ class $MonitoringStats {
     );
   }
 
+  /** Live per-owner load since the monitor opened, without waiting for its next sample tick. */
+  get renderRequestsByOwnerSinceOpen(): Readonly<Record<string, number>> {
+    return Object.fromEntries(
+      RenderLoadLedger.Class.counts()
+        .filter((entry) => entry.requestCountSinceBaseline > 0)
+        .map((entry) => [
+          entry.ownerIdentifier,
+          entry.requestCountSinceBaseline,
+        ]),
+    );
+  }
+
   /** Take the expensive census on the reader's explicit request, and record what it cost. */
   async takeCensus(): Promise<void> {
     this.census.value = await RuntimeSample.Class.census();

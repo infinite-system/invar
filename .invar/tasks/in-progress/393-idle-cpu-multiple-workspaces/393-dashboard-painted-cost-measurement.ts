@@ -178,6 +178,28 @@ async function measureArm(label: string): Promise<void> {
   const after = HarnessSmoke.Class.readStatus(statusPath);
   const delta = (name: string): number =>
     Number(after[name] ?? 0) - Number(before[name] ?? 0);
+  const pluginRenderRequestsBefore =
+    (before.monitoringRenderRequestsByPlugin as
+      Record<string, number> | undefined) ?? {};
+  const pluginRenderRequestsAfter =
+    (after.monitoringRenderRequestsByPlugin as
+      Record<string, number> | undefined) ?? {};
+  const pluginIdentifiers = new Set([
+    ...Object.keys(pluginRenderRequestsBefore),
+    ...Object.keys(pluginRenderRequestsAfter),
+  ]);
+  const pluginRenderRequests = Object.fromEntries(
+    [...pluginIdentifiers]
+      .map(
+        (pluginIdentifier) =>
+          [
+            pluginIdentifier,
+            Number(pluginRenderRequestsAfter[pluginIdentifier] ?? 0) -
+              Number(pluginRenderRequestsBefore[pluginIdentifier] ?? 0),
+          ] as const,
+      )
+      .filter(([_pluginIdentifier, requestCount]) => requestCount !== 0),
+  );
   console.log(
     JSON.stringify({
       label,
@@ -196,6 +218,10 @@ async function measureArm(label: string): Promise<void> {
       fleetFactProbes: delta('tasksFleetFactProbes'),
       sessionProbes: delta('tasksSessionProbes'),
       rowRebuilds: delta('tasksRowRebuilds'),
+      pluginRenderRequests,
+      tasksDashboardRenderRequests:
+        pluginRenderRequests['tasks-dashboard'] ?? 0,
+      terminalRenderRequests: pluginRenderRequests.terminal ?? 0,
     }),
   );
 }

@@ -648,13 +648,6 @@ try {
       candidate.findText(secondTerminalMarker) !== null &&
       candidate.findText(firstTerminalMarker) === null,
   );
-  driver.sendKeys('Control+j');
-  await awaitStatus(
-    driver,
-    statusPath,
-    'the retained terminal closes before editor language gestures',
-    (status) => status.panelVisible === false,
-  );
   pass('workspace panel worlds isolate both polarities');
   pass('workspace round trips preserve terminal processes and scrollback');
   pass(
@@ -694,6 +687,13 @@ try {
     'two open workspaces retain one live Git watcher',
   );
   pass('two idle workspaces own zero animation cadence timers');
+  driver.sendKeys('Control+j');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the retained terminal closes before editor language gestures',
+    (status) => status.panelVisible === false,
+  );
 
   console.log(
     '== harness workspace tabs: language features follow each workspace root ==',

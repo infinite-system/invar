@@ -251,6 +251,7 @@ class $MonitoringPlugin implements ApplicationContributor {
       monitoringRetainedDocumentBytes: stats.retainedDocumentBytes,
       monitoringRenderRequestsSinceOpen: stats.renderRequestsSinceOpen,
       monitoringOwnRenderRequestsSinceOpen: stats.ownRenderRequestsSinceOpen,
+      monitoringRenderRequestsByPlugin: stats.renderRequestsByOwnerSinceOpen,
       monitoringStrayCandidate: stats.strayCandidate()?.ownerIdentifier ?? null,
       monitoringLogging: stats.logging.value,
       monitoringLogLineCount: stats.logLineCount.value,
