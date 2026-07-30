@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [building]
+  `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 - #325 [audio-video-sync-research](.invar/tasks/in-progress/325-audio-video-sync-research/task-325-audio-video-sync-research.md)  [building]
   `tmux attach -t invar/325-audio-video-sync-research`
 - #324 [terminal-3d-demo-and-video-playback](.invar/tasks/in-progress/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md)  [building]
@@ -85,7 +87,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (11) — stamp Priority: into these task files
+## NO PRIORITY GROUP (10) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
@@ -96,7 +98,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #318 [318-markdown-code-fence-uniform-background](.invar/tasks/active/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md)
 - #322 [322-status-editor-column-content-stale-in-preview](.invar/tasks/active/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)
 - #323 [323-quit-confirmation-dialog-modern](.invar/tasks/active/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md)
-- #326 [326-vendor-modularity-third-party-plugins](.invar/tasks/active/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)
 
 ## RECENTLY COMPLETED (last 15 of 95 — full log: project.tasks-completed.md)
 - #321 [terminal-flicker-child-tui-repaints](.invar/tasks/completed/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md) — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)
