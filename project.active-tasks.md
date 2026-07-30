@@ -14,7 +14,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (14)
+## USER-DIRECTED (13)
 - #352 [markdown-code-preview-border-theme](.invar/tasks/active/352-markdown-code-preview-border-theme/task-352-markdown-code-preview-border-theme.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/active/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)
@@ -24,7 +24,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #344 [breadcrumb-hover-highlight-padding](.invar/tasks/active/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md)
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/active/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)
 - #341 [file-tree-add-and-drag-drop](.invar/tasks/active/341-file-tree-add-and-drag-drop/task-341-file-tree-add-and-drag-drop.md)
-- #338 [declared-graphics-tier-fails-silently](.invar/tasks/active/338-declared-graphics-tier-fails-silently/task-338-declared-graphics-tier-fails-silently.md)
 - #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)

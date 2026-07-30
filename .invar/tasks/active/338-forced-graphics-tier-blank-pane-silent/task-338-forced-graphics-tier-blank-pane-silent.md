@@ -56,3 +56,15 @@ there (or the gap is shared and this task covers both).
   ("Missing ffmpeg is loud and harmless" is the model: absence is LOUD; an
   unrenderable tier is currently silent).
 - src/modules/image contract if one exists — shared capability-tier rules.
+
+## Consolidated from the twin conductor's duplicate filing (a1c9f878, retired)
+
+The second conductor reproduced the same defect independently and located
+the code site: `resolveGraphicsTier` (src/modules/theme/TerminalCapabilities.ts)
+returns a non-auto declaration unconditionally. Declared wins by design;
+the defect is the SILENCE, not the precedence. Its probe pair lives at
+tmp/probe-media-demo-kitty.ts (PAINTED 0) vs tmp/probe-media-demo-default.ts
+(PAINTED 549). Direction it proposed (consistent with this file): visible
+hint at the paint site when a declared kitty/sixel tier is not reported by
+the terminal; never auto-downgrade silently. smoke-media arms force
+halfblock and so never see this class.
