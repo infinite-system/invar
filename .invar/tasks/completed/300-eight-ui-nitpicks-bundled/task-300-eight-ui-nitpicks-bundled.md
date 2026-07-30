@@ -1,6 +1,6 @@
 # 300 — dispatch record: eight-ui-nitpicks-bundled
 
-State: active
+State: COMPLETED — ec651408 — ten UI nitpicks: depth menu, status chrome, dialog margins, structure glyphs, indent, breadcrumb preview, heading gaps+accent, close glyph, rounded fences
 Engine: codex
 Model: 5.6-sol
 Effort: high

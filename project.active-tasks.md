@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
-- #300 [eight-ui-nitpicks-bundled](.invar/tasks/in-progress/300-eight-ui-nitpicks-bundled/task-300-eight-ui-nitpicks-bundled.md)  [active]  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -95,7 +93,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #322 [322-status-editor-column-content-stale-in-preview](.invar/tasks/active/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)
 - #323 [323-quit-confirmation-dialog-modern](.invar/tasks/active/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md)
 
-## RECENTLY COMPLETED (last 15 of 97 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 98 — full log: project.tasks-completed.md)
 - #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
 - #324 [terminal-3d-demo-and-video-playback](.invar/tasks/completed/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md) — f9394d58 — removable Animated Media plugin: cube/torus/video, flyweight+two-buffer+memory-flat proven, ffmpeg both polarities, removal build green
 - #321 [terminal-flicker-child-tui-repaints](.invar/tasks/completed/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md) — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)
