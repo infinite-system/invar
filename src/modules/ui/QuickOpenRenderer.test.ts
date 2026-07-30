@@ -14,6 +14,39 @@ describe('QuickOpenRenderer.contentRowCount', () => {
   });
 });
 
+describe('QuickOpenRenderer row geometry', () => {
+  test('clips every long result to one bounded display row', () => {
+    const quickOpen = new QuickOpen.Class();
+    quickOpen.open.value = true;
+    quickOpen.matches.value = [
+      {
+        path: 'in-progress/326-vendor-modularity-third-party-plugins/brief-326.md',
+        score: 0,
+      },
+      {
+        path: 'completed/326-another-long-task-folder/report-326.md',
+        score: 1,
+      },
+    ];
+    quickOpen.selectedIndex.value = 0;
+
+    const renderedText = QuickOpenRenderer.Class.render({
+      quickOpen,
+      palette: ThemePalettes.Class.DARK,
+      innerWidth: 16,
+      maxRows: 2,
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+    const renderedRows = renderedText.split('\n');
+
+    expect(renderedRows).toHaveLength(2);
+    for (const renderedRow of renderedRows) {
+      expect(renderedRow).toHaveLength(16);
+    }
+  });
+});
+
 describe('QuickOpenRenderer file-enumeration messages', () => {
   test('complete empty degraded empty and failed enumeration render distinct states', () => {
     const quickOpen = new QuickOpen.Class();
