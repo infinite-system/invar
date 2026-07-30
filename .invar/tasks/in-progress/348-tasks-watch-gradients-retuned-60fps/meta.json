@@ -1,0 +1,15 @@
+{
+  "task": 348,
+  "slug": "tasks-watch-gradients-retuned-60fps",
+  "branch": "fleet/348-tasks-watch-gradients-retuned-60fps",
+  "worktree": ".invar/worktrees/348-tasks-watch-gradients-retuned-60fps",
+  "tmuxSession": "invar/348-tasks-watch-gradients-retuned-60fps",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-348-tasks-watch-gradients-retuned-60fps.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "94c330ef6c8bd9cb29fe086042f3b9497f95b03d",
+  "startedAt": "2026-07-30T11:01:50-04:00"
+}

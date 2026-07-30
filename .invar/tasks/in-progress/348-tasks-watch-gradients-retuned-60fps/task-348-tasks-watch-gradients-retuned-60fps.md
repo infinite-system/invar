@@ -1,6 +1,6 @@
 # #348 — tasks:watch gradients retuned for 60fps
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux
