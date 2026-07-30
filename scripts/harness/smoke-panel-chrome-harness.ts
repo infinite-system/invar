@@ -311,14 +311,16 @@ async function awaitPopup(
 ): Promise<{
   status: StatusSnapshot;
   geometry: Rectangle & { listTop: number; listLeft: number };
+  terminalRowIndex: number;
+  agentRowIndex: number;
 }> {
   const status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the Add panel bounded list is open with two items',
+    'the Add panel bounded list is open with three contributed items',
     (candidate) =>
       candidate.boundedListPopupOpen === true &&
-      Number(candidate.boundedListPopupMatches) === 2 &&
+      Number(candidate.boundedListPopupMatches) === 3 &&
       candidate.boundedListPopupGeometry !== null,
     timeoutMilliseconds,
   );
@@ -326,19 +328,38 @@ async function awaitPopup(
     (Rectangle & { listTop: number; listLeft: number }) | undefined;
   if (!geometry) throw new Error('Missing Add panel popup geometry');
   const snapshot = await driver.awaitGridCondition(
-    'the Add popup paints Terminal and Agent through the bounded list',
+    'the Add popup paints 3D Demo, Terminal, and Agent through the bounded list',
     (candidate) =>
       candidate.findText('Add') !== null &&
-      candidate.rowText(geometry.listTop).includes('Terminal') &&
-      candidate.rowText(geometry.listTop + 1).includes('Agent'),
+      [0, 1, 2]
+        .map((rowOffset) => candidate.rowText(geometry.listTop + rowOffset))
+        .join('\n')
+        .includes('3D Demo') &&
+      [0, 1, 2]
+        .map((rowOffset) => candidate.rowText(geometry.listTop + rowOffset))
+        .join('\n')
+        .includes('Terminal') &&
+      [0, 1, 2]
+        .map((rowOffset) => candidate.rowText(geometry.listTop + rowOffset))
+        .join('\n')
+        .includes('Agent'),
   );
+  const popupText = [0, 1, 2]
+    .map((rowOffset) => snapshot.rowText(geometry.listTop + rowOffset))
+    .join('\n');
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('Add') !== null &&
-      snapshot.rowText(geometry.listTop).includes('Terminal') &&
-      snapshot.rowText(geometry.listTop + 1).includes('Agent'),
-    'Add popup paints Terminal and Agent through the bounded list',
+      popupText.includes('3D Demo') &&
+      popupText.includes('Terminal') &&
+      popupText.includes('Agent'),
+    'Add popup paints 3D Demo, Terminal, and Agent through the bounded list',
   );
-  return { status, geometry };
+  return {
+    status,
+    geometry,
+    terminalRowIndex: popupRowIndex(snapshot, geometry, 'Terminal'),
+    agentRowIndex: popupRowIndex(snapshot, geometry, 'Agent'),
+  };
 }
 
 async function openAddPopup(
@@ -374,6 +395,19 @@ function clickPopupRow(
     row: geometry.listTop + rowIndex,
     button: 'left',
   });
+}
+
+function popupRowIndex(
+  snapshot: HarnessSnapshot.Model,
+  geometry: Rectangle & { listTop: number; listLeft: number },
+  label: string,
+): number {
+  for (let rowIndex = 0; rowIndex < 3; rowIndex++) {
+    if (snapshot.rowText(geometry.listTop + rowIndex).includes(label)) {
+      return rowIndex;
+    }
+  }
+  throw new Error(`Add panel item is not visible: ${label}`);
 }
 
 function dockGeometry(status: StatusSnapshot): string {
@@ -986,7 +1020,7 @@ try {
     '== harness panel-chrome: Add creates and selects independent instances ==',
   );
   let popup = await openAddPopup(driver, statusPath);
-  clickPopupRow(driver, popup.geometry, 0);
+  clickPopupRow(driver, popup.geometry, popup.terminalRowIndex);
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -1013,6 +1047,7 @@ try {
       Array.isArray(candidate.panelCellIds) &&
       candidate.panelCellIds.join(',') === 'terminal',
   );
+  await driver.awaitScreenChange();
   HarnessSmoke.Class.pass('contents-list selection swaps same-kind visibility');
 
   list = contentsListRectangle(status);
@@ -1029,7 +1064,7 @@ try {
   HarnessSmoke.Class.pass('contents-list close destroys only Terminal 2');
 
   popup = await openAddPopup(driver, statusPath);
-  clickPopupRow(driver, popup.geometry, 1);
+  clickPopupRow(driver, popup.geometry, popup.agentRowIndex);
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -1043,7 +1078,7 @@ try {
   HarnessSmoke.Class.pass('Agent selection adds the second offered kind');
 
   popup = await openAddPopup(driver, statusPath);
-  clickPopupRow(driver, popup.geometry, 1);
+  clickPopupRow(driver, popup.geometry, popup.agentRowIndex);
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -1066,6 +1101,7 @@ try {
       Array.isArray(candidate.panelCellIds) &&
       candidate.panelCellIds.join(',') === 'agent,terminal',
   );
+  await driver.awaitScreenChange();
   list = contentsListRectangle(status);
   clickCell(driver, list.left + list.width - 1, list.top + 2);
   await HarnessSmoke.Class.awaitStatus(

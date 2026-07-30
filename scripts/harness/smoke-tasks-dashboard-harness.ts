@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FrameDump } from '../../src/modules/system/FrameProbe';
 import { HarnessSmoke } from './HarnessSmoke';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
 async function awaitFrameDump(
@@ -205,6 +206,10 @@ const driver = new PtyTestDriver.Class({
 
 // Walk the Extensions selection to a named row by LOOKING for it (the list grows as plugins are
 // contributed; an ordinal Down would silently land on a neighbour).
+function selectedExtensionsRow(snapshot: HarnessSnapshot.Model): string {
+  return snapshot.textRows().find((rowText) => rowText.includes('› [')) ?? '';
+}
+
 async function selectExtensionsRow(rowLabel: string): Promise<void> {
   driver.sendKeys('Control+Shift+x');
   await HarnessSmoke.Class.awaitStatus(
@@ -222,11 +227,15 @@ async function selectExtensionsRow(rowLabel: string): Promise<void> {
   );
   for (
     let selectionStep = 0;
-    selectionStep < 14 && driver.snapshot().findText(`› ${rowLabel}`) === null;
+    selectionStep < 32 && driver.snapshot().findText(`› ${rowLabel}`) === null;
     selectionStep++
   ) {
+    const previousSelectedRow = selectedExtensionsRow(driver.snapshot());
     driver.sendKeys('Down');
-    await driver.awaitScreenChange();
+    await driver.awaitGridCondition(
+      `the Extensions selection advances from ${previousSelectedRow}`,
+      (snapshot) => selectedExtensionsRow(snapshot) !== previousSelectedRow,
+    );
   }
   if (driver.snapshot().findText(`› ${rowLabel}`) === null) {
     throw new Error(`Extensions row is not reachable: ${rowLabel}`);
