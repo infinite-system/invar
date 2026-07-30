@@ -14,8 +14,8 @@ class $PaneSplitters {
       orientation: 'vertical',
       reportUnit: 'cells',
       initialSize: dependencies.settings.sidebarWidth.value,
-      minimumSize: 18,
-      maximumSize: 70,
+      minimumSize: 1,
+      maximumSize: dependencies.maximumSidebarSize,
       pointerDirection: () =>
         dependencies.settings.sidebarPosition.value === 'left' ? 1 : -1,
       currentSize: () => dependencies.settings.sidebarWidth.value,
@@ -40,4 +40,5 @@ export namespace PaneSplitters {
 export interface PaneSplittersDependencies {
   renderer: CliRenderer;
   settings: Settings.Instance;
+  maximumSidebarSize: () => number;
 }

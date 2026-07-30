@@ -143,8 +143,11 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness quick-open: Ctrl+P opens the modal ==');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('alpha.txt') !== null,
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the compact file tree is ready before Quick Open starts',
+    (status) => status.ready === true && Number(status.treeRows) > 0,
     15_000,
   );
   driver.sendKeys('Control+p');

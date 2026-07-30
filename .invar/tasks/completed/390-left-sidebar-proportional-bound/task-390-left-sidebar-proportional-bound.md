@@ -1,6 +1,6 @@
 # #390 — the left dock group gets the same proportional bound
 
-State: IN-PROGRESS
+State: COMPLETED — 181936b7 — both docks bounded: editor is the widest actor at every geometry
 Priority: performance-behaviour
 Engine: codex
 Environment: linux

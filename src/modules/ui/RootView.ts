@@ -323,6 +323,13 @@ class $RootView {
     const paneSplitters = new PaneSplitters.Class({
       renderer,
       settings,
+      // Both splitters read the same options as the painted slots. A divider cannot offer a width
+      // that the layout refuses at the current terminal size.
+      // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+      maximumSidebarSize: () =>
+        LayoutModel.Class.maximumPrimaryDockColumns(
+          buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
+        ),
     });
     const sidebarDivider = paneSplitters.sidebar.renderable;
     const rightDockSplitter = new SplitterElement.Class({
@@ -334,7 +341,7 @@ class $RootView {
       minimumSize: 16,
       // The live bound, not a fixed 70: the same generator the layout clamps with, so the divider
       // stops exactly where the painted dock stops at this terminal width.
-      // invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+      // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
       maximumSize: () =>
         LayoutModel.Class.maximumRightDockColumns(
           buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
@@ -552,6 +559,16 @@ class $RootView {
       border: false,
       flexDirection: 'row', // visible split cells lay out left-to-right; one cell = the degenerate case
       title: '',
+      backgroundColor: readPalette().panel,
+    });
+    const primaryDockRemainder = new BoxRenderable(renderer, {
+      id: 'primary-dock-remainder',
+      position: 'absolute',
+      backgroundColor: readPalette().panel,
+    });
+    const rightDockRemainder = new BoxRenderable(renderer, {
+      id: 'right-dock-remainder',
+      position: 'absolute',
       backgroundColor: readPalette().panel,
     });
     const panelContentsList = new PanelContentsList.Class(
@@ -1228,6 +1245,8 @@ class $RootView {
       const visible = panelHost.visible.value;
       if (visible === panelMounted) return;
       if (visible) {
+        layoutCanvas.add(primaryDockRemainder);
+        layoutCanvas.add(rightDockRemainder);
         layoutCanvas.add(panelActionBarRenderable);
         layoutCanvas.add(panelDividerRenderable);
         layoutCanvas.add(panelControlBarRenderable);
@@ -1235,6 +1254,8 @@ class $RootView {
         layoutCanvas.add(panelTabControlRenderable);
         layoutCanvas.add(panelBox);
       } else {
+        layoutCanvas.remove(primaryDockRemainder);
+        layoutCanvas.remove(rightDockRemainder);
         layoutCanvas.remove(panelActionBarRenderable);
         layoutCanvas.remove(panelDividerRenderable);
         layoutCanvas.remove(panelControlBarRenderable);
@@ -1365,6 +1386,18 @@ class $RootView {
       rightDockBox.width = layoutSlotGeometry.rightDock.width;
       rightDockBox.height = layoutSlotGeometry.rightDock.height;
       if (panelHost.visible.value) {
+        primaryDockRemainder.left =
+          layoutSlotGeometry.primaryDockRemainder.left;
+        primaryDockRemainder.top = layoutSlotGeometry.primaryDockRemainder.top;
+        primaryDockRemainder.width =
+          layoutSlotGeometry.primaryDockRemainder.width;
+        primaryDockRemainder.height =
+          layoutSlotGeometry.primaryDockRemainder.height;
+        rightDockRemainder.left = layoutSlotGeometry.rightDockRemainder.left;
+        rightDockRemainder.top = layoutSlotGeometry.rightDockRemainder.top;
+        rightDockRemainder.width = layoutSlotGeometry.rightDockRemainder.width;
+        rightDockRemainder.height =
+          layoutSlotGeometry.rightDockRemainder.height;
         panelTabBarProjection = PanelTabBar.Class.project({
           width: layoutSlotGeometry.bottomPanelSplitter.width,
           spaces: panelHost.spaces.value,
@@ -1594,6 +1627,8 @@ class $RootView {
     }
     function update(): void {
       const palette = readPalette();
+      primaryDockRemainder.backgroundColor = palette.panel;
+      rightDockRemainder.backgroundColor = palette.panel;
       const modalOverlayOwnsScreen = overlayLayer.modalOverlayOwnsScreen;
       synchronizeWorkspaceTabMount();
       synchronizePanelMount();
@@ -1653,7 +1688,7 @@ class $RootView {
       workspaceTabBar.content = tabBarController.renderWorkspace();
       workspaceTabBar.fg = palette.fg;
       const primaryDockContent = primaryDockHost.activeContent;
-      const primaryDockWidth = Math.max(1, sidebarWidth() - 2);
+      const primaryDockWidth = Math.max(1, Number(sidebar.width) - 2);
       const primaryDockHeight = Math.max(1, Number(sidebar.height) - 2);
       primaryDockContent?.onResize(primaryDockWidth, primaryDockHeight);
       // Every host paint site asks the ONE resolver, never the content's own render — a content
@@ -2224,7 +2259,6 @@ class $RootView {
       tooltip,
       editorViewportHeight,
       editorViewportWidth,
-      sidebarWidth,
       scrollbarThicknessCells,
     });
     const panelHeadingGeometry = (): readonly PanelHeadingGeometry[] => {

@@ -1,0 +1,18 @@
+{
+  "task": 409,
+  "slug": "layout-switch-leaves-unfilled-space",
+  "branch": "fleet/409-layout-switch-leaves-unfilled-space",
+  "worktree": ".invar/worktrees/409-layout-switch-leaves-unfilled-space",
+  "tmuxSession": "invar/409-layout-switch-leaves-unfilled-space",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-409-layout-switch-leaves-unfilled-space.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "f1a3d5aa31b8cc5fc928fdd2082883b06f96c043",
+  "startedAt": "2026-07-30T14:44:40-04:00",
+  "landedAt": "2026-07-30T15:09:07-04:00",
+  "durationMinutes": 24,
+  "mergeCommit": "91249982"
+}

@@ -147,6 +147,51 @@ exercised end-to-end once git/LSP is wired into the editor (M4/M5).
 
 **Last refined:** 2026-07-27
 
+### Render load is attributed at the contribution boundary
+
+**Invariant:** If a contribution asks for a repaint, then the host counts that request against the
+contributor's identifier, at the one closure through which every contributed render request already
+passes. A plugin never counts its own frames, and no second render path exists to escape the count.
+
+**Scope:** The `requestRender` supplied in `ApplicationContributions.activate`, and
+`src/modules/system/RenderLoadLedger.ts`.
+
+**Mechanism:** Stands on *Rendering is one coarse frame effect* and *Plugin boundaries grant one
+authority*. A contribution receives its render capability from the activation context and has no
+other way to reach the frame, so wrapping that one capability sees every request a plugin can raise.
+Attribution BY THE HOST, at the seam, is what makes a stray plugin findable at all: self-reported
+counters are absent exactly in the plugin that misbehaves, and a plugin that forgot to instrument
+itself would read as the quietest one in the application.
+
+**Generates:** the wrap in `activate` keyed to `contributor.identifier`; `RenderLoadLedger` counting
+totals and a since-baseline delta; the Invar Monitoring lens sorting contributions by load; the
+absence of any per-plugin render counter inside plugin code.
+
+**Rejected alternatives:** Have each plugin report its own load — the stray plugin is the one that
+does not. Count frames instead of requests — a burst of requests coalesced into one frame would read
+as cheap while it is exactly the load worth finding. Count inside the frame effect — the effect no
+longer knows who asked.
+
+**Evidence:** `src/modules/app/ApplicationContributions.ts` (the `requestRender` wrap);
+`src/modules/system/RenderLoadLedger.ts`; `src/modules/system/RenderLoadLedger.test.ts`;
+`src/modules/monitoring/MonitoringPlugin.test.ts`;
+`scripts/harness/smoke-monitoring-harness.ts` (a driven Tasks Dashboard lens change is attributed to
+`tasks-dashboard`, not to the host and not to the monitor). Positive control 2026-07-30: keying the
+wrap to a constant `'host'` instead of the contributor made the smoke fail with `FAIL the monitor
+names its own render load beside the load it attributes to others`.
+
+**Impossible if true:** a contributed render request that reaches the frame uncounted; a render
+counter living inside a plugin; a load figure attributed to the host when a named contribution
+raised it.
+
+**Verification:** `bun test src/modules/system/RenderLoadLedger.test.ts
+src/modules/monitoring/MonitoringPlugin.test.ts`; `bun
+scripts/harness/smoke-monitoring-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-30
+
 ### Quit requires explicit confirmation
 
 **Invariant:** If a user invokes quit, then Invar opens one modal confirmation with No focused and

@@ -18,14 +18,13 @@ class $LayoutModel {
     return 1;
   }
 
-  protected static get MINIMUM_RIGHT_DOCK_COLUMNS(): number {
+  protected static get MINIMUM_DOCK_CONTENT_COLUMNS(): number {
     return 1;
   }
 
-  /** The largest share of the terminal row the right dock may claim. The editor is the prominent
-   *  actor, so the dock is a bounded minority of the row at every width. */
-  // invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
-  protected static get MAXIMUM_RIGHT_DOCK_PROPORTION(): number {
+  /** The largest share of the terminal row either complete dock group may claim. */
+  // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+  protected static get MAXIMUM_DOCK_PROPORTION(): number {
     return 0.3;
   }
 
@@ -68,50 +67,85 @@ class $LayoutModel {
       : 0;
   }
 
-  /** The whole left group: activity bar, sidebar, and the sidebar splitter. */
-  protected static primaryDockGroupColumns(
+  protected static primaryDockChromeColumns(
     options: LayoutModelOptions,
   ): number {
-    const sidebarColumns = options.primaryDockVisible
-      ? Math.max(1, Math.floor(options.sidebarColumns))
-      : 0;
     const primaryDockSplitterColumns = options.primaryDockVisible ? 1 : 0;
+    return this.activityBarColumns(options) + primaryDockSplitterColumns;
+  }
+
+  protected static rightDockChromeColumns(options: LayoutModelOptions): number {
     return (
-      this.activityBarColumns(options) +
-      sidebarColumns +
-      primaryDockSplitterColumns
+      (options.rightDockVisible ? this.RIGHT_DOCK_SPLITTER_COLUMNS : 0) +
+      this.rightActivityBarColumns(options)
     );
   }
 
-  /** The columns the editor center and the right dock divide between them: the row minus the left
-   *  group, the right-dock splitter, and the right activity bar. */
-  protected static sharedEditorAndRightDockColumns(
+  protected static maximumDockContentColumns(
+    totalColumns: number,
+    otherDockGroupColumns: number,
+    dockChromeColumns: number,
+  ): number {
+    const proportionalBound = Math.floor(
+      totalColumns * this.MAXIMUM_DOCK_PROPORTION,
+    );
+    const sharedEditorAndDockGroupColumns = Math.max(
+      0,
+      totalColumns - otherDockGroupColumns,
+    );
+    const editorPrecedenceBound =
+      Math.floor((sharedEditorAndDockGroupColumns - 1) / 2) - dockChromeColumns;
+    return Math.max(
+      this.MINIMUM_DOCK_CONTENT_COLUMNS,
+      Math.min(proportionalBound, editorPrecedenceBound),
+    );
+  }
+
+  protected static requestedPrimaryDockGroupColumns(
     options: LayoutModelOptions,
   ): number {
-    return Math.max(
-      0,
-      Math.max(1, Math.floor(options.totalColumns)) -
-        this.primaryDockGroupColumns(options) -
-        this.RIGHT_DOCK_SPLITTER_COLUMNS -
-        this.rightActivityBarColumns(options),
+    const contentColumns = options.primaryDockVisible
+      ? Math.max(
+          this.MINIMUM_DOCK_CONTENT_COLUMNS,
+          Math.floor(options.sidebarColumns),
+        )
+      : 0;
+    return this.primaryDockChromeColumns(options) + contentColumns;
+  }
+
+  protected static requestedRightDockGroupColumns(
+    options: LayoutModelOptions,
+  ): number {
+    const contentColumns = options.rightDockVisible
+      ? Math.max(
+          this.MINIMUM_DOCK_CONTENT_COLUMNS,
+          Math.floor(options.rightDockColumns),
+        )
+      : 0;
+    return this.rightDockChromeColumns(options) + contentColumns;
+  }
+
+  /** The widest primary-dock content this layout allows after its activity bar and splitter take
+   *  their columns. The complete group stays bounded and strictly narrower than the editor. */
+  // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+  static maximumPrimaryDockColumns(options: LayoutModelOptions): number {
+    const totalColumns = Math.max(1, Math.floor(options.totalColumns));
+    return this.maximumDockContentColumns(
+      totalColumns,
+      this.requestedRightDockGroupColumns(options),
+      this.primaryDockChromeColumns(options),
     );
   }
 
-  /** The widest right dock this layout allows. Two bounds apply and the smaller one wins: a fixed
-   *  share of the whole row, and one column less than an even split of what the editor center and
-   *  the dock share, which keeps the editor strictly wider. */
-  // invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+  /** The widest right-dock content this layout allows after its splitter and optional activity bar
+   *  take their columns. The complete group stays bounded and strictly narrower than the editor. */
+  // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
   static maximumRightDockColumns(options: LayoutModelOptions): number {
     const totalColumns = Math.max(1, Math.floor(options.totalColumns));
-    const proportionalBound = Math.floor(
-      totalColumns * this.MAXIMUM_RIGHT_DOCK_PROPORTION,
-    );
-    const editorPrecedenceBound = Math.floor(
-      (this.sharedEditorAndRightDockColumns(options) - 1) / 2,
-    );
-    return Math.max(
-      this.MINIMUM_RIGHT_DOCK_COLUMNS,
-      Math.min(proportionalBound, editorPrecedenceBound),
+    return this.maximumDockContentColumns(
+      totalColumns,
+      this.requestedPrimaryDockGroupColumns(options),
+      this.rightDockChromeColumns(options),
     );
   }
 
@@ -189,20 +223,26 @@ class $LayoutModel {
     const totalRows = Math.max(1, Math.floor(options.totalRows));
     const primaryDockVisible = options.primaryDockVisible;
     const activityBarColumns = this.activityBarColumns(options);
+    // Stored dock widths are requests. Every resolve clamps only the painted content, so a narrow
+    // row cannot rewrite either setting and a later wider row restores the requested widths.
+    // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
     const sidebarColumns = primaryDockVisible
-      ? Math.max(1, Math.floor(options.sidebarColumns))
+      ? Math.min(
+          Math.max(
+            this.MINIMUM_DOCK_CONTENT_COLUMNS,
+            Math.floor(options.sidebarColumns),
+          ),
+          this.maximumPrimaryDockColumns(options),
+        )
       : 0;
     const primaryDockSplitterColumns = primaryDockVisible ? 1 : 0;
     const rightDockSplitterColumns = options.rightDockVisible
       ? this.RIGHT_DOCK_SPLITTER_COLUMNS
       : 0;
-    // The requested width is a REQUEST, not the answer. The bound is re-applied on every resolve,
-    // so a terminal resize re-clamps it and a wider terminal restores the user's dragged width.
-    // invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
     const rightDockColumns = options.rightDockVisible
       ? Math.min(
           Math.max(
-            this.MINIMUM_RIGHT_DOCK_COLUMNS,
+            this.MINIMUM_DOCK_CONTENT_COLUMNS,
             Math.floor(options.rightDockColumns),
           ),
           this.maximumRightDockColumns(options),
@@ -210,10 +250,9 @@ class $LayoutModel {
       : 0;
     const rightActivityBarColumns = this.rightActivityBarColumns(options);
     const rightDockGroupColumns =
-      (options.rightDockVisible
-        ? rightDockColumns + rightDockSplitterColumns
-        : 0) + rightActivityBarColumns;
-    const primaryDockGroupColumns = this.primaryDockGroupColumns(options);
+      rightDockColumns + rightDockSplitterColumns + rightActivityBarColumns;
+    const primaryDockGroupColumns =
+      sidebarColumns + activityBarColumns + primaryDockSplitterColumns;
     const editorColumns = Math.max(
       1,
       totalColumns - primaryDockGroupColumns - rightDockGroupColumns,
@@ -297,6 +336,26 @@ class $LayoutModel {
     ) {
       panelRight = Math.min(panelRight, rightDockSplitterLeft);
     }
+    const panelFillTop = panelSplitterTop;
+    const panelFillRows = options.bottomPanelVisible
+      ? totalRows - panelFillTop
+      : 0;
+    const primaryDockRemainderLeft = activityBarLeft + activityBarColumns;
+    const primaryDockRemainderColumns =
+      primaryDockVisible &&
+      options.sidebarPosition === 'left' &&
+      options.leftDockVerticalSpan === 'ends-at-panel'
+        ? Math.max(0, panelLeft - primaryDockRemainderLeft)
+        : 0;
+    const rightDockRemainderLeft = panelRight;
+    const rightDockRemainderColumns =
+      options.rightDockVisible &&
+      options.rightDockVerticalSpan === 'ends-at-panel'
+        ? Math.max(
+            0,
+            totalColumns - rightActivityBarColumns - rightDockRemainderLeft,
+          )
+        : 0;
 
     return {
       activityBar: {
@@ -340,6 +399,18 @@ class $LayoutModel {
         top: 0,
         width: rightActivityBarColumns,
         height: rightActivityBarColumns > 0 ? totalRows : 0,
+      },
+      primaryDockRemainder: {
+        left: primaryDockRemainderLeft,
+        top: panelFillTop,
+        width: primaryDockRemainderColumns,
+        height: primaryDockRemainderColumns > 0 ? panelFillRows : 0,
+      },
+      rightDockRemainder: {
+        left: rightDockRemainderLeft,
+        top: panelFillTop,
+        width: rightDockRemainderColumns,
+        height: rightDockRemainderColumns > 0 ? panelFillRows : 0,
       },
       bottomPanelSplitter: {
         left: panelLeft,
@@ -459,6 +530,8 @@ export interface LayoutSlotGeometry {
   rightDockSplitter: LayoutRectangle;
   rightDock: LayoutRectangle;
   rightActivityBar: LayoutRectangle;
+  primaryDockRemainder: LayoutRectangle;
+  rightDockRemainder: LayoutRectangle;
   bottomPanelSplitter: LayoutRectangle;
   bottomPanelTabs: LayoutRectangle;
   bottomPanel: LayoutRectangle;

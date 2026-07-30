@@ -24,6 +24,73 @@ function resolve(
   return LayoutModel.Class.resolve({ ...baseOptions, ...overrides });
 }
 
+function primaryDockGroupColumns(geometry: ReturnType<typeof resolve>): number {
+  return (
+    geometry.activityBar.width +
+    geometry.sidebar.width +
+    geometry.sidebarSplitter.width
+  );
+}
+
+function rightDockGroupColumns(geometry: ReturnType<typeof resolve>): number {
+  return (
+    geometry.rightDockSplitter.width +
+    geometry.rightDock.width +
+    geometry.rightActivityBar.width
+  );
+}
+
+function expectTotalTiling(
+  geometry: ReturnType<typeof resolve>,
+  totalColumns: number,
+  totalRows: number,
+): void {
+  const rectangles = Object.values(geometry).filter(
+    (rectangle) => rectangle.width > 0 && rectangle.height > 0,
+  );
+  const totalArea = rectangles.reduce(
+    (area, rectangle) => area + rectangle.width * rectangle.height,
+    0,
+  );
+
+  expect(totalArea).toBe(totalColumns * totalRows);
+  for (const rectangle of rectangles) {
+    expect(rectangle.left).toBeGreaterThanOrEqual(0);
+    expect(rectangle.top).toBeGreaterThanOrEqual(0);
+    expect(rectangle.left + rectangle.width).toBeLessThanOrEqual(totalColumns);
+    expect(rectangle.top + rectangle.height).toBeLessThanOrEqual(totalRows);
+  }
+  for (
+    let firstRectangleIndex = 0;
+    firstRectangleIndex < rectangles.length;
+    firstRectangleIndex++
+  ) {
+    for (
+      let secondRectangleIndex = firstRectangleIndex + 1;
+      secondRectangleIndex < rectangles.length;
+      secondRectangleIndex++
+    ) {
+      const firstRectangle = rectangles[firstRectangleIndex]!;
+      const secondRectangle = rectangles[secondRectangleIndex]!;
+      const overlapColumns = Math.max(
+        0,
+        Math.min(
+          firstRectangle.left + firstRectangle.width,
+          secondRectangle.left + secondRectangle.width,
+        ) - Math.max(firstRectangle.left, secondRectangle.left),
+      );
+      const overlapRows = Math.max(
+        0,
+        Math.min(
+          firstRectangle.top + firstRectangle.height,
+          secondRectangle.top + secondRectangle.height,
+        ) - Math.max(firstRectangle.top, secondRectangle.top),
+      );
+      expect(overlapColumns * overlapRows).toBe(0);
+    }
+  }
+}
+
 describe('LayoutModel', () => {
   test('offers four named presets instead of axis permutations', () => {
     const presets = LayoutModel.Class.presets();
@@ -109,62 +176,122 @@ describe('LayoutModel', () => {
   });
 
   test.each([64, 80, 100, 120, 160, 200, 400] as const)(
-    'a %d-column row keeps the editor wider than the right dock at the persisted default width',
+    'a %d-column row keeps the editor wider than both dock groups at the persisted default widths',
     (totalColumns) => {
       const geometry = resolve({ totalColumns, rightDockColumns: 28 });
 
-      expect(geometry.rightDock.width).toBeLessThan(
+      expect(primaryDockGroupColumns(geometry)).toBeLessThan(
         geometry.editorCenter.width,
+      );
+      expect(rightDockGroupColumns(geometry)).toBeLessThan(
+        geometry.editorCenter.width,
+      );
+      expect(geometry.sidebar.width).toBeLessThanOrEqual(
+        Math.floor(totalColumns * 0.3),
       );
       expect(geometry.rightDock.width).toBeLessThanOrEqual(
         Math.floor(totalColumns * 0.3),
       );
+      expect(geometry.sidebar.width).toBeGreaterThanOrEqual(1);
       expect(geometry.rightDock.width).toBeGreaterThanOrEqual(1);
     },
   );
 
   test.each([64, 80, 100, 120, 160, 200, 400] as const)(
-    'a %d-column row keeps the editor wider than the right dock however wide the request is',
+    'a %d-column row keeps the editor wider than both dock groups however wide either request is',
     (totalColumns) => {
       const geometry = resolve({
         totalColumns,
+        sidebarColumns: Number.MAX_SAFE_INTEGER,
         rightDockColumns: Number.MAX_SAFE_INTEGER,
       });
 
-      expect(geometry.rightDock.width).toBeLessThan(
+      expect(primaryDockGroupColumns(geometry)).toBeLessThan(
         geometry.editorCenter.width,
+      );
+      expect(rightDockGroupColumns(geometry)).toBeLessThan(
+        geometry.editorCenter.width,
+      );
+      expect(geometry.sidebar.width).toBeLessThanOrEqual(
+        Math.floor(totalColumns * 0.3),
       );
       expect(geometry.rightDock.width).toBeLessThanOrEqual(
         Math.floor(totalColumns * 0.3),
+      );
+      expect(geometry.sidebar.width).toBe(
+        LayoutModel.Class.maximumPrimaryDockColumns({
+          ...baseOptions,
+          totalColumns,
+          sidebarColumns: Number.MAX_SAFE_INTEGER,
+          rightDockColumns: Number.MAX_SAFE_INTEGER,
+        }),
       );
       expect(geometry.rightDock.width).toBe(
         LayoutModel.Class.maximumRightDockColumns({
           ...baseOptions,
           totalColumns,
+          sidebarColumns: Number.MAX_SAFE_INTEGER,
           rightDockColumns: Number.MAX_SAFE_INTEGER,
         }),
       );
     },
   );
 
-  test('the right dock keeps a request that fits and gives it back after a resize', () => {
-    const draggedColumns = 33;
+  test('both docks keep requests that fit and give them back after a resize', () => {
+    const draggedSidebarColumns = 27;
+    const draggedRightDockColumns = 33;
 
     expect(
-      resolve({ totalColumns: 120, rightDockColumns: draggedColumns }).rightDock
-        .width,
-    ).toBe(draggedColumns);
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).sidebar.width,
+    ).toBe(draggedSidebarColumns);
     expect(
-      resolve({ totalColumns: 80, rightDockColumns: draggedColumns }).rightDock
-        .width,
-    ).toBe(20);
+      resolve({
+        totalColumns: 80,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).sidebar.width,
+    ).toBe(17);
     expect(
-      resolve({ totalColumns: 120, rightDockColumns: draggedColumns }).rightDock
-        .width,
-    ).toBe(draggedColumns);
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).sidebar.width,
+    ).toBe(draggedSidebarColumns);
+    expect(
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).rightDock.width,
+    ).toBe(draggedRightDockColumns);
+    expect(
+      resolve({
+        totalColumns: 80,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).rightDock.width,
+    ).toBe(22);
+    expect(
+      resolve({
+        totalColumns: 120,
+        sidebarColumns: draggedSidebarColumns,
+        rightDockColumns: draggedRightDockColumns,
+      }).rightDock.width,
+    ).toBe(draggedRightDockColumns);
   });
 
-  test('the right-dock bound answers over the row the editor and the dock really share', () => {
+  test('the shared dock bound answers over the row each dock group and the editor really share', () => {
+    expect(
+      LayoutModel.Class.maximumPrimaryDockColumns({
+        ...baseOptions,
+        totalColumns: 80,
+      }),
+    ).toBe(22);
     expect(
       LayoutModel.Class.maximumRightDockColumns({
         ...baseOptions,
@@ -214,11 +341,51 @@ describe('LayoutModel', () => {
     ['center', 37, 95],
     ['right', 37, 120],
   ] as const)(
-    '%s alignment selects its configured horizontal slot range when docks end at the panel',
+    '%s alignment selects its configured panel range while remainder slots fill released dock columns',
     (panelAlignment, expectedLeft, expectedRight) => {
       const geometry = resolve({
         panelAlignment,
         leftDockVerticalSpan: 'ends-at-panel',
+      });
+      expect(geometry.bottomPanel.left).toBe(expectedLeft);
+      expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(
+        expectedRight,
+      );
+    },
+  );
+
+  test.each([
+    [80, 20],
+    [140, 38],
+  ] as const)(
+    'all named layout switches tile every cell exactly once at %d columns by %d rows',
+    (totalColumns, totalRows) => {
+      for (const preset of LayoutModel.Class.presets()) {
+        const geometry = resolve({
+          totalColumns,
+          totalRows,
+          primaryDockVisible: preset.primaryDockVisible,
+          rightDockVisible: preset.rightDockVisible,
+          bottomPanelVisible: preset.bottomPanelVisible,
+          sidebarPosition: preset.sidebarPosition,
+          panelAlignment: preset.panelAlignment,
+          leftDockVerticalSpan: preset.leftDockVerticalSpan,
+          rightDockVerticalSpan: preset.rightDockVerticalSpan,
+        });
+        expectTotalTiling(geometry, totalColumns, totalRows);
+      }
+    },
+  );
+
+  test.each([
+    ['center', 37, 95],
+    ['right', 37, 95],
+  ] as const)(
+    '%s alignment keeps the panel out of a full-height right dock',
+    (panelAlignment, expectedLeft, expectedRight) => {
+      const geometry = resolve({
+        panelAlignment,
+        rightDockVerticalSpan: 'full-height',
       });
       expect(geometry.bottomPanel.left).toBe(expectedLeft);
       expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(

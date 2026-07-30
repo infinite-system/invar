@@ -1,0 +1,15 @@
+{
+  "task": 408,
+  "slug": "workspace-state-isolation",
+  "branch": "fleet/408-workspace-state-isolation",
+  "worktree": ".invar/worktrees/408-workspace-state-isolation",
+  "tmuxSession": "invar/408-workspace-state-isolation",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-408-workspace-state-isolation.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "d727ba1adb0e38cb071e84d67a1a41ec1e14d672",
+  "startedAt": "2026-07-30T14:38:06-04:00"
+}
