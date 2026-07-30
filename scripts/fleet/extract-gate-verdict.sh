@@ -37,7 +37,11 @@ slug="${2:?usage: extract-gate-verdict.sh <number> <slug>}"
 if [ -n "${ROLLOUT_GLOB:-}" ]; then
   rollout="$ROLLOUT_GLOB"
 else
-  rollout=$(grep -l "$number-$slug" "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | tail -1 || true)
+  # Select by the builder's cwd, never by slug text: conductor steers and fleet
+  # narration plant slugs in OTHER sessions' rollouts (the #280/#289 mis-archive
+  # lesson). The cwd field names the worktree only in the owning session.
+  rollout=$(grep -l "\"cwd\":\"[^\"]*worktrees/$number-$slug\"" \
+    "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | tail -1 || true)
 fi
 if [ -z "$rollout" ] || [ ! -f "$rollout" ]; then
   echo "REFUSED: no rollout names $number-$slug" >&2; exit 2

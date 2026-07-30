@@ -11,5 +11,7 @@
   "effort": "high",
   "heldFromMain": false,
   "baseCommit": "a1c9f878491c12ee0505016308339224fea44d39",
-  "startedAt": "2026-07-30T02:39:04-04:00"
+  "startedAt": "2026-07-30T02:39:04-04:00",
+  "round": 3,
+  "roundBriefedAtMs": 1785395325151
 }

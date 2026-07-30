@@ -134,3 +134,28 @@ implicated.
   [#322 (status editor-column content stale in preview) report](../../completed/322-status-editor-column-content-stale-in-preview/report-322-status-editor-column-content-stale-in-preview.md)
   identified the same missing record. This task added the narrow Drive
   condition but did not author the app record.
+- Re-gate bycatch: the panel-chrome harness timed out while it waited for
+  `Terminal 2 list close removes only that instance`. The gate's automatic
+  retry reproduced the timeout. Not fixed.
+
+## Re-gate
+
+Combined-tree commit: `5aa22fad42e8e87dc85eff9257af4918887238e4`
+
+I merged `main` at `38fba3630422e60030bd79738849e6925dbe3b4b`.
+I then ran `git commit --allow-empty -m "re-gate #334 combined tree"` without
+`SKIP_GATE`.
+
+The gate quoted this unrelated red after its one automatic retry:
+
+```text
+FAIL  smoke: panel-chrome harness
+error: Timed out waiting for the Terminal 2 list close removes only that instance
+```
+
+The hook blocked the empty commit, so no re-gate commit hash exists. Its
+quoted verdict was:
+
+```text
+GATE_EXIT=1
+```
