@@ -336,8 +336,34 @@ its terminal processes, agent sessions, task processes, scrollback, transcript, 
 and focus selection alive. Selecting it again restores that exact world.
 
 **Scope:** `WorkspaceSet` activation, opening, closing, and disposal; the bottom `PanelHost`;
-runtime-created panes, declared task panes, and agent panes in `Bootstrap`. Dock hosts are outside
-this rule.
+runtime-created panes, declared task panes, and agent panes in `Bootstrap`. Dock GEOMETRY — both
+docks' visibility and width, the right dock's content, and the bottom panel's height — is scoped by
+*Layout slot sizes are workspace scoped* (`src/modules/layout/layout.invariants.md`), which reaches
+the dock hosts through their own workspace contribution. Dock MEMBERSHIP stays shared: a dock's
+contents are singleton views that project whichever workspace is active.
+
+**The complete workspace-scoped set.** Every row travels with the workspace; nothing else does.
+Each row names the module that owns it, so a new scoped value is a new contribution rather than a
+new line in a central snapshot.
+
+| State | Owner | Scoped by |
+| --- | --- | --- |
+| Bottom-panel pane membership, order, visibility, focus, expansion, active pane, split layout, focused cell, spaces, pane-list expansion | `PanelHost` | `PanelContentSet` per workspace |
+| Terminal, agent, and task pane sessions with their scrollback and transcripts | `PaneRuntimes` | the same content set |
+| Primary-dock visibility and width; right-dock visibility, content, and width; bottom-panel height | `LayoutSlots` | `WorkspaceLayout` contribution |
+| Which content the primary dock shows, and whether focus is the editor or the primary pane | `Workspace` | `focus`, `primaryPaneContentIdentifier` |
+| Open editor tabs, active tab, cursor, selection, scroll offsets, folds, dirty buffers | `OpenBufferSet`, `DocumentHandle` | per-workspace instances |
+| File-tree expansion, selection, and scroll | `FileTreeWorkspace` | per-workspace contribution |
+| Source-control model state and its watcher | `GitWorkspace` | per-workspace contribution |
+| Language-client documents and diagnostics | `LspWorkspaceProvider` | per-workspace contribution |
+
+**Application preferences are NOT workspace state** and stay shared by every workspace: theme, glyph
+and graphics tier, word wrap, indent guides, reduced motion, scroll physics, scrollbar thickness,
+activity-bar visibility on either side, sidebar position, panel alignment, both dock vertical spans,
+workspace-tab position, panel content order, activity-bar order, panel tab cycling, and every agent
+and narration setting. Transient overlays — find, go to line, quick open, the command palette, the
+settings panel, context menus, popups, and the quit confirmation — are application-modal by design
+and are dismissed rather than carried.
 
 **Components:**
 - *Isolation* — a pane identifier owned by workspace A is never registered or visible in workspace
@@ -366,12 +392,14 @@ workspace-close cleanup without disturbing a surviving world.
 **Evidence:** `src/modules/workspace/WorkspaceSet.ts`; `src/modules/ui/PanelHost.ts`;
 `src/modules/ui/PaneRuntimes.ts`; `src/modules/app/Bootstrap.ts`;
 `src/modules/workspace/WorkspaceSet.test.ts`; `src/modules/ui/PanelHost.test.ts`;
-`src/modules/ui/PaneRuntimes.test.ts`; `scripts/harness/smoke-workspace-tabs-harness.ts`.
+`src/modules/ui/PaneRuntimes.test.ts`; `scripts/harness/smoke-workspace-tabs-harness.ts`;
+`scripts/harness/smoke-workspace-layout-isolation-harness.ts` (the geometry rows of the table).
 
 **Impossible if true:** Opening B shows A's task or terminal identifiers; creating Terminal in B
 adds it to A; returning to A loses its terminal output or agent transcript; a workspace switch kills
 a hidden shell; closing A disposes a pane owned by B; terminal plugin withdrawal leaves a terminal
-alive in an inactive workspace world.
+alive in an inactive workspace world; a row of the table above scoped by a host branch instead of by
+the owning module's own contribution.
 
 **Verification:** `bun test src/modules/workspace/WorkspaceSet.test.ts
 src/modules/ui/PanelHost.test.ts src/modules/ui/PaneRuntimes.test.ts

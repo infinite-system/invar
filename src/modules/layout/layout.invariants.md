@@ -134,6 +134,76 @@ geometry assertions registered in `scripts/merge-gate.sh`.
 
 **Last refined:** 2026-07-25
 
+### Layout slot sizes are workspace scoped
+
+**Invariant:** If more than one workspace is open, then each workspace owns its own primary-dock
+visibility and width, right-dock visibility, content, and width, and bottom-panel height. Selecting a
+workspace shows exactly the values that workspace was left with, and a workspace opened now starts at
+the application defaults rather than at whatever another workspace was dragged to.
+
+**Scope:** `LayoutSlots`, `WorkspaceLayout`, `WorkspaceLayoutContributor`, the two dock hosts'
+`visible` and `activeId`, and the three splitter drags in `RootView` and `PaneSplitters`. The
+remaining `LayoutModelOptions` inputs are application PREFERENCES and stay shared by every workspace:
+activity-bar visibility on either side, sidebar position, panel alignment, and both dock vertical
+spans. Which content the PRIMARY dock shows is scoped separately, by
+`Workspace.primaryPaneContentIdentifier`, because that identifier is also the workspace focus target.
+
+**Components:**
+- *One owner per size* — `LayoutSlots` holds the three live sizes. Before it existed two of them sat
+  in the settings store beside genuine preferences and the third was a local variable inside the root
+  view. A value with no owner cannot be scoped.
+- *Scoping is a contribution* — `WorkspaceLayout` is an ordinary `WorkspaceContribution`. It captures
+  on `suspended` and restores on `resumed`, the same lifecycle the source-control watcher, the
+  language client, and the file tree already ride. No host branch decides what travels.
+- *Defaults are captured once* — `WorkspaceLayoutContributor` reads the application defaults at its
+  first attachment and never again. Reading them live would restore the leak by another route: widen
+  workspace A, open workspace B, and B would be born at A's width because A's width had become the
+  default.
+- *A drag writes two things with two meanings* — the live slot, which is this workspace's geometry,
+  and the settings field, which is the size the next session's workspaces start at. A settings-panel
+  edit reaches only the workspace on screen.
+- *Restoring geometry never moves the keyboard* — the restore writes dock visibility directly rather
+  than through `show()` and `hide()`, which also claim focus. Where the keyboard sits belongs to the
+  workspace focus model and is restored by its own path.
+
+**Mechanism:** `Bootstrap` seeds `LayoutSlots` from the settings defaults, wires one
+`WorkspaceLayoutSlotPorts` adapter over the slots and the two dock hosts, and registers
+`WorkspaceLayoutContributor` on the workspace set once the view exists. `WorkspaceSet.activate`
+suspends the outgoing workspace before changing the index and resumes the incoming one afterwards, so
+capture always precedes restore.
+
+**Generates:** Per-workspace dock widths and bottom-panel height; a right dock that opens in one
+project and stays shut in another; a new project that opens at the user's default geometry; a
+splitter drag that stops rewriting every other open project's layout.
+
+**Rejected alternatives:** Keep the sizes in the settings store and snapshot them per workspace in
+the host — the settings store would then hold values that are not settings, and every new scoped
+value would need another line in a central snapshot. Give the docks their own `PanelContentSet` the
+way the bottom panel has one — dock contents are singleton views that project the active workspace,
+so a per-workspace content set would empty every dock but the first.
+
+**Evidence:** `src/modules/layout/LayoutSlots.ts`; `src/modules/layout/WorkspaceLayout.ts`;
+`src/modules/layout/WorkspaceLayoutContributor.ts`;
+`src/modules/layout/WorkspaceLayoutSlotPorts.interface.ts`;
+`src/modules/layout/WorkspaceLayout.test.ts`;
+`src/modules/layout/WorkspaceLayoutContributor.test.ts`;
+`src/modules/app/Bootstrap.ts` (the ports adapter and the registration);
+`src/modules/ui/PaneSplitters.ts`; `src/modules/ui/RootView.ts`;
+`scripts/harness/smoke-workspace-layout-isolation-harness.ts`.
+
+**Impossible if true:** Widening one project's sidebar widening another project's sidebar; opening a
+second project inheriting the first project's dock widths or bottom-panel height; a right dock opened
+in one project appearing in the next; returning to a project showing another project's geometry; a
+restored layout stealing the keyboard.
+
+**Verification:** `bun test src/modules/layout/WorkspaceLayout.test.ts
+src/modules/layout/WorkspaceLayoutContributor.test.ts src/modules/layout/LayoutSlots.test.ts && bun
+scripts/harness/smoke-workspace-layout-isolation-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-30
+
 ### Default panel height scales with the viewport
 
 **Invariant:** If RootView opens the bottom panel without a user-resized height, then

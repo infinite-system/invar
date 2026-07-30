@@ -93,6 +93,7 @@ import {
   type LayoutPreset,
   type LayoutSlotGeometry,
 } from '../layout/LayoutModel';
+import type { LayoutSlots } from '../layout/LayoutSlots';
 import type { StatusBarSegments } from './StatusBarSegments';
 import type {
   EditorSurfaceContent,
@@ -133,6 +134,7 @@ class $RootView {
     toggleRightDock: () => void,
     activateQuickOpen: () => void,
     revealFindMatch: () => void,
+    layoutSlots: LayoutSlots.Instance,
   ): RootView {
     const root = renderer.root;
     const editorFrameAttribution = new EditorFrameAttribution.Class();
@@ -144,11 +146,14 @@ class $RootView {
     // context the tooltip masks addToHitGrid through) routes EVERY subsequent drag to that renderable
     // regardless of where the pointer travels — the robust pattern for any thin divider/thumb. OpenTUI
     // releases the capture itself on the up event (firing drag-end), so no manual clear is needed.
-    // Sidebar↔editor width divider: a vertical SplitterModel in CELLS whose size IS the sidebar width,
-    // bound to settings.sidebarWidth so a drag persists + live-applies. onSizeChange writes the setting.
-    // settings.sidebarWidth is the SINGLE source of truth: the settings panel AND the drag both write
-    // it, and the layout reads it here — so changing it in Ctrl+, resizes live, and dragging persists.
-    const sidebarWidth = (): number => Math.round(settings.sidebarWidth.value);
+    // Sidebar↔editor width divider: a vertical SplitterModel in CELLS whose size IS the sidebar width.
+    // The live width is `layoutSlots.primaryDockColumns`, which the WORKSPACE owns — the layout
+    // module's per-workspace contribution swaps it on every workspace switch. `settings.sidebarWidth`
+    // stays the width a fresh workspace starts at; the settings panel writes it and Bootstrap
+    // forwards that edit to the workspace on screen, so changing it in Ctrl+, still resizes live.
+    // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+    const sidebarWidth = (): number =>
+      Math.round(layoutSlots.primaryDockColumns.value);
     const column = new BoxRenderable(renderer, {
       id: 'root-column',
       flexDirection: 'column',
@@ -319,6 +324,7 @@ class $RootView {
     const paneSplitters = new PaneSplitters.Class({
       renderer,
       settings,
+      layoutSlots,
       // Both splitters read the same options as the painted slots. A divider cannot offer a width
       // that the layout refuses at the current terminal size.
       // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
@@ -333,7 +339,7 @@ class $RootView {
       identifier: 'right-dock-divider',
       orientation: 'vertical',
       reportUnit: 'cells',
-      initialSize: settings.rightDockWidth.value,
+      initialSize: layoutSlots.rightDockColumns.value,
       minimumSize: 16,
       // The live bound, not a fixed 70: the same generator the layout clamps with, so the divider
       // stops exactly where the painted dock stops at this terminal width.
@@ -343,15 +349,21 @@ class $RootView {
           buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
         ),
       pointerDirection: -1,
-      currentSize: () => settings.rightDockWidth.value,
+      // Same two meanings as the sidebar divider: the live slot belongs to this workspace, the
+      // setting is what the next fresh workspace starts at.
+      // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+      currentSize: () => layoutSlots.rightDockColumns.value,
       onDragStart: () => {
         rightDockHost.focus();
         panelHost.blur();
       },
       onSizeChange: (width) => {
-        settings.rightDockWidth.value = Math.round(width);
+        layoutSlots.rightDockColumns.value = Math.round(width);
       },
-      onDragEnd: () => settings.save(),
+      onDragEnd: () => {
+        settings.rightDockWidth.value = layoutSlots.rightDockColumns.value;
+        settings.save();
+      },
     });
     // OpenTUI fires BOTH drag-end AND up on release, so guard the persist with an active-drag flag —
     // otherwise the release saves twice (still a per-drag write, but the invariant is exactly one).
@@ -519,8 +531,14 @@ class $RootView {
         1 -
         (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
     );
-    let panelHeightRows =
-      LayoutModel.Class.defaultBottomPanelRows(initialLayoutRows);
+    // The bottom panel's height is a workspace-owned slot like the two dock widths. Its default
+    // depends on the terminal size, which only this view knows, so the view seeds the slot the
+    // first time it is built and the layout module owns it from then on.
+    // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+    if (layoutSlots.bottomPanelRows.value <= 0) {
+      layoutSlots.bottomPanelRows.value =
+        LayoutModel.Class.defaultBottomPanelRows(initialLayoutRows);
+    }
     let currentLayoutColumns = initialLayoutColumns;
     let currentLayoutRows = initialLayoutRows;
     // One options object for every LayoutModel question — the resolve on each frame and the right-dock
@@ -538,11 +556,11 @@ class $RootView {
       sidebarColumns: sidebarWidth(),
       sidebarPosition: settings.sidebarPosition.value,
       rightDockVisible: rightDockHost.visible.value,
-      rightDockColumns: settings.rightDockWidth.value,
+      rightDockColumns: layoutSlots.rightDockColumns.value,
       rightActivityBarVisible: settings.showRightActivityBar.value,
       bottomPanelVisible: panelHost.visible.value,
       bottomPanelExpanded: panelHost.expanded.value,
-      bottomPanelRows: panelHeightRows,
+      bottomPanelRows: layoutSlots.bottomPanelRows.value,
       panelAlignment: settings.panelAlignment.value,
       leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
       rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
@@ -550,7 +568,7 @@ class $RootView {
     const panelBox = new BoxRenderable(renderer, {
       id: 'panel-box',
       position: 'absolute',
-      height: panelHeightRows,
+      height: layoutSlots.bottomPanelRows.value,
       flexShrink: 0,
       border: false,
       flexDirection: 'row', // visible split cells lay out left-to-right; one cell = the degenerate case
@@ -1000,12 +1018,12 @@ class $RootView {
       identifier: 'panel-divider',
       orientation: 'horizontal',
       reportUnit: 'cells',
-      initialSize: panelHeightRows,
+      initialSize: layoutSlots.bottomPanelRows.value,
       minimumSize: 3,
       maximumSize: () =>
         LayoutModel.Class.maximumUnexpandedBottomPanelRows(currentLayoutRows),
       pointerDirection: -1,
-      currentSize: () => panelHeightRows,
+      currentSize: () => layoutSlots.bottomPanelRows.value,
       // The pad comes from the separator-row projection that also places the drag strip, so the
       // blank cell and the strip it stands off from are one composition, not two guesses.
       // The pad comes from the tab-bar projection that also places the drag span, so the blank
@@ -1014,7 +1032,7 @@ class $RootView {
         panelTabBarProjection?.dragLeadingPaintPadCells ?? 0,
       onDragStart: () => panelHost.focus(),
       onSizeChange: (height) => {
-        panelHeightRows = Math.round(height);
+        layoutSlots.bottomPanelRows.value = Math.round(height);
         renderer.requestRender();
       },
     });

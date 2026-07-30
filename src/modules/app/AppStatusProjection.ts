@@ -13,6 +13,7 @@ import { StatusChannel, type StatusSnapshot } from '../system/StatusChannel';
 import { ContextMenu } from '../ui/ContextMenu';
 import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { CompletionPopup } from '../ui/CompletionPopup';
+import type { LayoutSlots } from '../layout/LayoutSlots';
 import { PanelHost } from '../ui/PanelHost';
 import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
@@ -237,12 +238,15 @@ class $AppStatusProjection {
       shortcutHelpRowCount: ports.shortcutHelp.open.value
         ? ports.shortcutHelp.rows().length
         : 0,
-      sidebarWidth: ports.settings.sidebarWidth.value,
+      // The LIVE dock sizes, which belong to the workspace on screen — not the stored defaults a
+      // fresh workspace starts at.
+      // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+      sidebarWidth: ports.layoutSlotSizes.primaryDockColumns.value,
       sidebarPosition: ports.settings.sidebarPosition.value,
       panelAlignment: ports.settings.panelAlignment.value,
       leftDockVerticalSpan: ports.settings.leftDockVerticalSpan.value,
       rightDockVerticalSpan: ports.settings.rightDockVerticalSpan.value,
-      rightDockWidth: ports.settings.rightDockWidth.value,
+      rightDockWidth: ports.layoutSlotSizes.rightDockColumns.value,
       // Editor buffer tabs (item 10a). liveBufferCount proves the FLYWEIGHT: it must stay far below
       // tabCount (the two-document recent set + any dirty background buffer stay live).
       bufferTabCount: ports.workspaceSet.active.buffers.count,
@@ -504,6 +508,10 @@ export interface AppStatusProjectionPorts {
   readonly primaryDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,
     'visible' | 'focused' | 'activeId' | 'orderedContents'
+  >;
+  readonly layoutSlotSizes: Pick<
+    LayoutSlots.Model,
+    'primaryDockColumns' | 'rightDockColumns' | 'bottomPanelRows'
   >;
   readonly pluginPrimaryDockContentIdentifiers: readonly string[];
   readonly statusProjectionContributions: Pick<

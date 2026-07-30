@@ -17,6 +17,8 @@ import { App } from './App';
 import { Kernel } from '../kernel/Kernel';
 import { Workspace } from '../workspace/Workspace';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
+import { LayoutSlots } from '../layout/LayoutSlots';
+import { WorkspaceLayoutContributor } from '../layout/WorkspaceLayoutContributor';
 import { Theme } from '../theme/Theme';
 import { TerminalCapabilities } from '../theme/TerminalCapabilities';
 import { CommandRegistry } from '../commands/CommandRegistry';
@@ -194,6 +196,16 @@ class $Bootstrap {
       spec: { kind: 'boolean' },
     });
     app.onDispose(() => codeFoldingEnabled.dispose());
+    // The live layout slot sizes, seeded from the stored defaults. From here they belong to the
+    // workspace on screen; `WorkspaceLayoutContributor` below gives every workspace its own set.
+    // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+    const layoutSlots = new LayoutSlots.Class();
+    layoutSlots.primaryDockColumns.value = Math.round(
+      settings.sidebarWidth.value,
+    );
+    layoutSlots.rightDockColumns.value = Math.round(
+      settings.rightDockWidth.value,
+    );
     const workspaceSet = new WorkspaceSet.Class(settings, {
       awaitNextViewPaint: () =>
         new Promise<void>((resolve) => {
@@ -541,6 +553,57 @@ class $Bootstrap {
       toggleRightDock,
       activateQuickOpenSelection,
       revealFindMatch,
+      layoutSlots,
+    );
+    // Every workspace keeps its own dock widths, dock visibility, right-dock content, and bottom
+    // panel height. The layout module owns those values; this is only the wiring that tells it
+    // which live cells they are. Registered after the view exists, so the defaults it captures are
+    // the seeded ones rather than zeroes.
+    // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+    const workspaceLayoutContributor = new WorkspaceLayoutContributor.Class({
+      workspaceIsActive: (workspace) =>
+        workspaceSet.count > 0 && workspaceSet.active === workspace,
+      ports: {
+        readSlots: () => ({
+          primaryDockVisible: primaryDockHost.visible.value,
+          primaryDockColumns: layoutSlots.primaryDockColumns.value,
+          rightDockVisible: rightDockHost.visible.value,
+          rightDockColumns: layoutSlots.rightDockColumns.value,
+          rightDockContentIdentifier: rightDockHost.activeId.value,
+          bottomPanelRows: layoutSlots.bottomPanelRows.value,
+        }),
+        applySlots: (values) => {
+          layoutSlots.primaryDockColumns.value = values.primaryDockColumns;
+          layoutSlots.rightDockColumns.value = values.rightDockColumns;
+          layoutSlots.bottomPanelRows.value = values.bottomPanelRows;
+          // Visibility only. `show()` and `hide()` also move the keyboard, and where the keyboard
+          // sits is the workspace focus model's own state, restored by its own path — a restore
+          // that called them would hand the keyboard to whichever dock happened to be open.
+          primaryDockHost.visible.value = values.primaryDockVisible;
+          if (!values.primaryDockVisible) primaryDockHost.blur();
+          if (values.rightDockContentIdentifier) {
+            rightDockHost.activate(values.rightDockContentIdentifier);
+          }
+          rightDockHost.visible.value = values.rightDockVisible;
+          if (!values.rightDockVisible) rightDockHost.blur();
+          renderer.requestRender();
+        },
+      },
+    });
+    app.onDispose(workspaceSet.registerContributor(workspaceLayoutContributor));
+    // A settings-panel edit still resizes the dock on screen. It changes the workspace the user is
+    // looking at, never the hidden ones — those keep the widths they were left at.
+    app.$watch(
+      () => settings.sidebarWidth.value,
+      (width) => {
+        layoutSlots.primaryDockColumns.value = Math.round(width);
+      },
+    );
+    app.$watch(
+      () => settings.rightDockWidth.value,
+      (width) => {
+        layoutSlots.rightDockColumns.value = Math.round(width);
+      },
     );
     editorInteractionIsAvailable = () =>
       !view.modalOverlayOwnsScreen() && !completionPopup.open;
@@ -1093,6 +1156,7 @@ class $Bootstrap {
       primaryDockHost,
       rightDockHost,
       statusProjectionContributions,
+      layoutSlotSizes: layoutSlots,
       pluginPrimaryDockContentIdentifiers,
       view,
       get mouse() {
@@ -1166,6 +1230,13 @@ class $Bootstrap {
       // Contributed editor surfaces subscribe their own paint signals.
       editorSurfaceContents.observePaintSignals();
       void settings.workspaceTabPosition.value;
+      // The workspace-owned layout slot sizes. They are read only INDIRECTLY, inside the layout
+      // resolve, so they are touched here for the same reason document.revision is: a splitter drag
+      // and a workspace switch both change geometry and must repaint.
+      // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+      void layoutSlots.primaryDockColumns.value;
+      void layoutSlots.rightDockColumns.value;
+      void layoutSlots.bottomPanelRows.value;
       void workspaceSet.entries.value;
       void workspaceSet.activeWorkspaceIndex.value;
       void workspaceTabStrip.scrollOffset.value;

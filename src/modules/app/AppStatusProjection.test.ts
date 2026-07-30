@@ -9,6 +9,7 @@ import { ref } from 'vue';
 import { AgentPaneContent } from '../agent/AgentPaneContent';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
+import { LayoutSlots } from '../layout/LayoutSlots';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { FindBar } from '../search/FindBar';
@@ -109,6 +110,7 @@ describe('AppStatusProjection', () => {
     const panelHost = new PanelHost.Class();
     const primaryDockHost = new PanelHost.Class();
     const rightDockHost = new PanelHost.Class();
+    const layoutSlots = new LayoutSlots.Class();
     // The terminal's status now arrives the way every contributed runtime's does — through the
     // contribution channel, not a host-held pane reference.
     const statusProjectionContributions = {
@@ -137,6 +139,7 @@ describe('AppStatusProjection', () => {
       primaryDockHost,
       rightDockHost,
       statusProjectionContributions,
+      layoutSlotSizes: layoutSlots,
       pluginPrimaryDockContentIdentifiers: ['git', 'extensions'],
       view: {
         editorColumnContentIdentifier: () => 'source-text-editor',
