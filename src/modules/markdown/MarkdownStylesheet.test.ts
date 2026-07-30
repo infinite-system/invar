@@ -114,6 +114,26 @@ test('inline styles overlay the element style through the stylesheet', () => {
   });
 });
 
+test('code fence rows share one background and rounded frame vocabulary', () => {
+  const stylesheet = MarkdownStylesheet.Class;
+  expect(stylesheet.textStyle('codeBlock').backgroundSlot).toBe(
+    'selectionMuted',
+  );
+  expect(stylesheet.textStyle('codeBorder')).toMatchObject({
+    colorSlot: 'fg',
+    backgroundSlot: 'selectionMuted',
+  });
+  expect(stylesheet.prefixStyle('codeContent').backgroundSlot).toBe(
+    'selectionMuted',
+  );
+  expect(stylesheet.vocabulary.codeFrame).toMatchObject({
+    topLeft: '╭',
+    topRight: '╮',
+    bottomLeft: '╰',
+    bottomRight: '╯',
+  });
+});
+
 test('pane padding gives body text breathing room from the pane edges', () => {
   const padding = MarkdownStylesheet.Class.panePadding;
   expect(padding.left).toBeGreaterThanOrEqual(2);

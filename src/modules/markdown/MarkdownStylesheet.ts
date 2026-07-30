@@ -49,8 +49,8 @@ class $MarkdownStylesheet {
       paragraph: this.buildRule(1, 1, 'fg', inherit, {}),
       blockquote: this.buildRule(1, 1, 'dim', inherit, { italic: true }),
       listItem: this.buildRule(0, 0, 'fg', inherit, {}),
-      codeBlock: this.buildRule(1, 1, 'string', 'panel', {}),
-      codeBorder: this.buildRule(1, 1, 'border', inherit, {}),
+      codeBlock: this.buildRule(1, 1, 'string', 'selectionMuted', {}),
+      codeBorder: this.buildRule(1, 1, 'fg', 'selectionMuted', {}),
       table: this.buildRule(1, 1, 'fg', inherit, {}),
       tableHeader: this.buildRule(0, 0, 'fg', inherit, { bold: true }),
       tableBody: this.buildRule(0, 0, 'fg', inherit, {}),
@@ -82,7 +82,7 @@ class $MarkdownStylesheet {
   > {
     const rules: Partial<Record<PreviewRowRole, MarkdownTextStyle>> = {
       quote: this.buildTextStyle('accent', null, { bold: true }),
-      codeContent: this.buildTextStyle('border', 'panel', {}),
+      codeContent: this.buildTextStyle('border', 'selectionMuted', {}),
     };
     return Object.freeze(rules);
   }
@@ -111,10 +111,10 @@ class $MarkdownStylesheet {
       listIndentPerLevel: 2,
       ruleGlyph: '─',
       codeFrame: Object.freeze({
-        topLeft: '┌',
-        topRight: '┐',
-        bottomLeft: '└',
-        bottomRight: '┘',
+        topLeft: '╭',
+        topRight: '╮',
+        bottomLeft: '╰',
+        bottomRight: '╯',
         horizontal: '─',
         vertical: '│',
       }),

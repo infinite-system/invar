@@ -254,10 +254,29 @@ class $MarkdownRenderable extends BoxRenderable {
       chunks.push(fg(palette.fg)(''));
       return;
     }
+    if (row.role === 'codeBorder') {
+      const rowStyle = stylesheet.textStyle(
+        stylesheet.rowSelector(row.role, row.block?.kind ?? null, undefined),
+      );
+      const panePaddingText = stylesheet.panePaddingText;
+      const rowText = row.overrideText ?? '';
+      if (rowText.startsWith(panePaddingText)) {
+        chunks.push(fg(palette.fg)(panePaddingText));
+        chunks.push(
+          this.styledChunk(
+            rowText.slice(panePaddingText.length),
+            rowStyle,
+            palette,
+          ),
+        );
+      } else {
+        chunks.push(this.styledChunk(rowText, rowStyle, palette));
+      }
+      return;
+    }
     if (
       row.role === 'status' ||
       row.role === 'rule' ||
-      row.role === 'codeBorder' ||
       row.role === 'tableSeparator'
     ) {
       const rowStyle = stylesheet.textStyle(

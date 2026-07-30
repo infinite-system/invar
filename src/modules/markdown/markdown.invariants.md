@@ -237,7 +237,9 @@ the active palette, so a theme change restyles the preview without touching the 
 vocabulary object holds the structural glyphs, and `spacingBetweenBlocks` preserves the authored
 gap before headings while collapsing other adjacent margins CSS-style. A heading at the document
 edge starts on the first preview body row. Every heading level uses the theme `accent` slot. The
-level-one and level-two headings keep bold text with no underline. `blockSelector`/`rowSelector` are the only
+level-one and level-two headings keep bold text with no underline. Code header, body, and footer
+rows each resolve the `selectionMuted` background per row; the header uses readable `fg`, and the
+shared code-frame vocabulary supplies rounded corners. `blockSelector`/`rowSelector` are the only
 translation from parsed blocks and row roles into selectors.
 
 **Generates:** uniform pane padding (the breathing room between text and pane edges); the
@@ -245,7 +247,8 @@ one theme-derived heading color with the existing level-specific attributes and 
 heading starts with no synthetic blank row;
 single-spaced list runs that still separate
 from paragraphs; the quote bar on every wrapped quote row; code frames whose right edge stays on
-one content column while long physical code rows remain reachable by horizontal scroll; consistent
+one content column while long physical code rows remain reachable by horizontal scroll; one rounded
+code surface whose header, body, and footer recolor together with the theme; consistent
 presentation across every element without per-element literals.
 
 **Rejected alternatives:** per-element literals scattered through projection and paint — the
@@ -263,7 +266,8 @@ both themes).
 `MarkdownRenderable.ts`; a palette slot chosen in the painter outside the stylesheet (the pane
 fg/bg defaults excepted); an underlined H1; heading levels with different foreground colors; two
 elements resolving the same presentation question through different code paths; a heading with
-more blank rows before it than the source authored.
+more blank rows before it than the source authored; a transparent code header or footer around a
+background-painted body; square code-frame corners.
 
 **Verification:** `bun test src/modules/markdown/MarkdownStylesheet.test.ts && bun
 scripts/harness/smoke-markdown-harness.ts`

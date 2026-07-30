@@ -330,8 +330,12 @@ test('code fence borders stay aligned while long rows create horizontal overflow
 
   const rows = preview.allRows(40, ThemeIcons.Class.tableBordersFor('unicode'));
   const codeRows = rows.filter((row) => row.role === 'codeContent');
+  const codeBorderRows = rows.filter((row) => row.role === 'codeBorder');
   const contentColumns = preview.totalColumns(40);
   expect(codeRows).toHaveLength(2);
+  expect(codeBorderRows).toHaveLength(2);
+  expect(preview.textForRow(codeBorderRows[0]!)).toMatch(/^  ╭ ts ─+╮$/);
+  expect(preview.textForRow(codeBorderRows[1]!)).toMatch(/^  ╰─+╯$/);
   expect(contentColumns).toBeGreaterThan(40);
   for (const row of codeRows) {
     const text = preview.textForRow(row);
