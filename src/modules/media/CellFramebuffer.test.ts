@@ -36,3 +36,23 @@ test('resize replaces one working set and then stays stable', () => {
   expect(framebuffer.rgba).toBe(resizedRgba);
   expect(framebuffer.depth).toBe(resizedDepth);
 });
+
+test('supersampling multiplies both pixel axes and keeps one fixed working set', () => {
+  const framebuffer = new CellFramebuffer.Class(12, 7, 8);
+  const rgba = framebuffer.rgba;
+  const depth = framebuffer.depth;
+  const generation = framebuffer.bufferGeneration;
+
+  expect(framebuffer.width).toBe(12 * 8);
+  expect(framebuffer.height).toBe(7 * 2 * 8);
+  expect(framebuffer.workingSetBytes).toBe(12 * 7 * 2 * 8 * 8 * 8);
+  for (let frameIndex = 0; frameIndex < 200; frameIndex++) {
+    framebuffer.clear(frameIndex % 255, 20, 30);
+    framebuffer.setPixel(40, 60, 200, 210, 220, 0.5);
+    expect(framebuffer.resize(12, 7, 8)).toBe(false);
+  }
+
+  expect(framebuffer.rgba).toBe(rgba);
+  expect(framebuffer.depth).toBe(depth);
+  expect(framebuffer.bufferGeneration).toBe(generation);
+});
