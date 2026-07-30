@@ -1,4 +1,4 @@
-# #375 — the tasks live view attach-link icon is invisible
+# #375 — tasks live view: attach icon invisible; attach target goes stale
 
 State: ACTIVE
 Priority: user-directed
