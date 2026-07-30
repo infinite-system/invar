@@ -9,6 +9,14 @@ import type { ApplicationContributionContext } from '../app/ApplicationContribut
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { TasksDashboardPlugin } from './TasksDashboardPlugin';
 
+class $AvailableSessionTasksDashboardPlugin
+  extends TasksDashboardPlugin.$Class
+{
+  protected override currentTmuxSessionNames(): ReadonlySet<string> {
+    return new Set(['invar/901-planted-building']);
+  }
+}
+
 interface RecordingContext {
   context: ApplicationContributionContext;
   rightDockHost: PanelHost.Instance;
@@ -89,6 +97,7 @@ function makeContext(
         glyphLevel: ref('unicode'),
         palette: ThemePalettes.Class.DARK,
         taskActionIcons: {
+          session: 'S',
           workspace: 'W',
           taskRecord: 'T',
           latestBrief: 'B',
@@ -287,14 +296,14 @@ test('an absent tree keeps tasks.open a stated no-op, never a crash', () => {
 
 test('the detail row attaches through the terminal runtime and states a missing report', () => {
   const workspaceRoot = makeWorkspaceRoot(true);
-  const plugin = new TasksDashboardPlugin.Class();
+  const plugin = new $AvailableSessionTasksDashboardPlugin();
   const recording = makeContext(workspaceRoot);
   plugin.activateApplication(recording.context);
   recording.commandRunners.get('view.showTasks')?.();
   const pane = recording.dockContents[0]!;
   pane.onResize(60, 10);
-  // Scope row, task row, detail row. The session occupies the detail prefix.
-  expect(pane.onPointerDown?.(5, 3)).toBe(true);
+  // Scope row, task row, detail row. The session is the first pinned action.
+  expect(pane.onPointerDown?.(45, 3)).toBe(true);
   expect(recording.runtimeRequests).toHaveLength(1);
   expect(recording.runtimeRequests[0]?.kind).toBe('terminal');
   expect(recording.runtimeRequests[0]?.request.process).toEqual({

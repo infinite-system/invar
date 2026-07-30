@@ -402,10 +402,10 @@ class $ThemeIcons {
     };
   }
 
-  /** Tasks-pane actions: open worktree, task record, latest brief, and latest report. */
+  /** Tasks-pane file actions. The attach action reuses the terminal glyph generator. */
   protected static get TASK_ACTION_ICONS(): Record<
     GlyphLevel,
-    TaskActionIconSet
+    Omit<TaskActionIconSet, 'session'>
   > {
     return {
       nerd: {
@@ -682,7 +682,10 @@ class $ThemeIcons {
   }
 
   static taskActionIconsFor(level: GlyphLevel): TaskActionIconSet {
-    return this.TASK_ACTION_ICONS[level];
+    return {
+      session: this.TERMINAL_ICONS[level],
+      ...this.TASK_ACTION_ICONS[level],
+    };
   }
 
   static checkboxIconsFor(level: GlyphLevel): CheckboxIconSet {
@@ -890,6 +893,7 @@ export interface ActionIconSet {
 }
 
 export interface TaskActionIconSet {
+  session: string;
   workspace: string;
   taskRecord: string;
   latestBrief: string;

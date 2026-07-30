@@ -75,6 +75,7 @@ function makeFixture(options?: { withTree?: boolean }): Fixture {
           startedAt: new Date(pastFilingMs).toISOString(),
           round: 2,
           roundBriefedAtMs: pastFilingMs,
+          tmuxSession: 'planted-ready-session',
         }),
       },
     );
@@ -105,9 +106,14 @@ function makeFixture(options?: { withTree?: boolean }): Fixture {
       lineDelta: { added: record.taskNumber, removed: 1 },
       phase: record.taskNumber === 901 ? 'exploring' : 'building',
       worktreePath: join(root, '.invar', 'worktrees', record.folderName),
-      sessionName: `invar/${record.folderName}`,
     }),
     readFleetGateGlance: () => null,
+    readTmuxSessionNames: () =>
+      new Set([
+        'invar/901-planted-building',
+        'planted-ready-session',
+        'planted-new-session',
+      ]),
   });
   overview.startObservation();
   return {
@@ -187,6 +193,38 @@ test('selection resolves the task record file path for opening', () => {
       'task-902-planted-ready.md',
     ),
   );
+  fixture.dispose();
+});
+
+test('session state follows meta and activation re-reads the current target', () => {
+  const fixture = makeFixture();
+  const { overview } = fixture;
+  expect(overview.rows.value[0]?.sessionName).toBe('planted-ready-session');
+  expect(overview.rows.value[0]?.sessionAvailable).toBe(true);
+  const metaPath = join(
+    fixture.root,
+    '.invar',
+    'tasks',
+    'in-progress',
+    '902-planted-ready',
+    'meta.json',
+  );
+  writeFileSync(
+    metaPath,
+    JSON.stringify({ tmuxSession: 'planted-missing-session' }),
+  );
+  overview.refresh();
+  expect(overview.rows.value[0]?.sessionName).toBe('planted-missing-session');
+  expect(overview.rows.value[0]?.sessionAvailable).toBe(false);
+  writeFileSync(
+    metaPath,
+    JSON.stringify({ tmuxSession: 'planted-new-session' }),
+  );
+  expect(overview.rows.value[0]?.sessionName).toBe('planted-missing-session');
+  expect(overview.currentSessionTarget(0)).toEqual({
+    sessionName: 'planted-new-session',
+    available: true,
+  });
   fixture.dispose();
 });
 

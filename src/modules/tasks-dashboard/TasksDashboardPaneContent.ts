@@ -191,7 +191,7 @@ class $TasksDashboardPaneContent implements PaneContent {
     );
     return action === null
       ? null
-      : TasksDashboardPaneRenderer.Class.tooltipForAction(action);
+      : TasksDashboardPaneRenderer.Class.tooltipForAction(action, taskRow);
   }
 
   onPointerDown(column: number, row: number): boolean {

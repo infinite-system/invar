@@ -20,6 +20,7 @@ import type {
   RegisteredDockContent,
 } from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
+import { readTmuxSessionNames } from '../../../scripts/tasks/tasks-status';
 import { TasksDashboardOverview } from './TasksDashboardOverview';
 import { TasksDashboardPaneContent } from './TasksDashboardPaneContent';
 import type { TasksDashboardAction } from './TasksDashboardPaneRenderer';
@@ -128,7 +129,12 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       isObserved: () => this.paneIsObserved(),
       requestRender: () => context.requestRender(),
       cycleSeconds,
+      readTmuxSessionNames: () => this.currentTmuxSessionNames(),
     });
+  }
+
+  protected currentTmuxSessionNames(): ReadonlySet<string> {
+    return readTmuxSessionNames();
   }
 
   protected createPaneContent(
@@ -194,10 +200,18 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     this.lastAction = `${action}:${row.taskNumber}`;
     overview.clearActionNotice();
     if (action === 'session') {
-      if (row.sessionName === null) {
+      const currentSessionTarget = overview.currentSessionTarget(rowIndex);
+      if (currentSessionTarget === null) {
         overview.stateActionMiss(
           row.taskNumber,
           `No builder session exists for #${row.taskNumber}.`,
+        );
+        return true;
+      }
+      if (!currentSessionTarget.available) {
+        overview.stateActionMiss(
+          row.taskNumber,
+          `Builder session is missing: ${currentSessionTarget.sessionName}.`,
         );
         return true;
       }
@@ -213,7 +227,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
             : application.workspaceSet.active.root,
         process: {
           command: 'tmux',
-          arguments: ['attach', '-t', row.sessionName],
+          arguments: ['attach', '-t', currentSessionTarget.sessionName],
         },
       });
     }
