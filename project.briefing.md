@@ -441,3 +441,15 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
   needs builder idle — wait, retry.
 - Queue: 344 345 346 347 348 349 352 341 356 361 362 353 357 358 363 364
   359 360 (+#326 stage-2 in flight).
+
+### ANCHOR 17 DELTA 3 (05:4x)
+- More landings: #90 21bf9c71 (isolation census + provenance guard;
+  bycatch #365-368), #344 dc30d875 (breadcrumb hover; bycatch #369/#370),
+  #343 68a95c11 (play glyph + LIVE spinner; #371 git-watch flake filed;
+  post-landing spot smokes green). 7 landings this shift.
+- Lanes: 326-stage-two (codex med) · 345 separator glyph (opus med) ·
+  346 panel tab bar ten-point spec (codex med, just dispatched).
+- Queue: 347 348 349 352 341 356 361 362 353 357 358 363-371 tail.
+- Codex-lane report lesson: #343 wrote its report only in the WORKTREE
+  task folder; land.sh refused until the conductor copied it to the main
+  checkout folder. #346 brief now orders absolute-path report delivery.
