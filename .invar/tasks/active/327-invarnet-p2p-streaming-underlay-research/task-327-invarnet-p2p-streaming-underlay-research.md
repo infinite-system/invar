@@ -132,8 +132,52 @@ this task folder) covering, with citations for every ecosystem claim:
    the acceptance instrument — design it). Explicit out-of-scope
    boundary + ranked open questions for the user.
 
+## Calibration (user, verbatim, 2026-07-29 — GOVERNS priority + framing)
+
+> why don't we IBR this thang, lol, but yeah this is just research, not
+> even critical for Invar to succeed, we do not need to make ppl flock
+> to Invar to share illegal content, this is not what it's about but if
+> a simple invariant exist for our network have simple invariants that
+> make network itself resilient and strong and does share some
+> capability somehow that's the right signal and path to follow
+
+Priority: NOT critical-path; research lane only. Content-sharing per se
+is not the point — the SIGNAL is whether simple invariants exist.
+
+## Conductor's IBR reduction (2026-07-29, session; the map tests this)
+
+Candidate invariant set (four, with bounded leeching DERIVED not added):
+
+1. ENVELOPE INVARIANCE — a node's own performance envelope is
+   unchanged by participation; cap derived from measured slack, never
+   promised. Generates: capability-ratio caps, auto-calc, backoff.
+2. CONSUMPTION IMPLIES CONTRIBUTION — within the envelope. Generates:
+   supply scales with demand (anti-fragile under load).
+3. FRAGMENTS INERT IN ISOLATION — deliverable, not decodable.
+   Generates: relay deniability, cache-anywhere, no hot pieces.
+4. NO DISTINGUISHED NODE — every role playable by any node; survives
+   any departure. Generates: server independence.
+
+Derived boundary: non-contributors consume ONLY the surplus remaining
+after 1+2 are honored (surplus-only altruism = the second addition).
+
+Impossibility set: the network never DEMANDS (only accepts offered
+slack); never PROMISES delivery (best-effort from aggregate surplus);
+saturation degrades service, never nodes; no fragment incriminates its
+relay. Self-similarity: invariant 1 is Invar's name-invariant at
+network scale.
+
 ## Acceptance
 
 Map committed (record-only, SKIP_GATE correct with written verdict);
 READY report summarises the recommendation and the user-facing
 questions. The user reviews before any implementation task exists.
+
+The map's PRIMARY success criterion (per the calibration): test the
+four-invariant reduction — does it GENERATE the whole design space the
+arms survey, and does its impossibility set hold? For each prior-art
+system in arm 1, name WHICH invariant it violates and show that the
+violation is why it collapsed (or which invariant it proves where it
+scaled). If the reduction fails — a fifth invariant is genuinely
+needed, or one of the four is not load-bearing — say so explicitly;
+breaking the candidate set is a valid and valuable outcome.
