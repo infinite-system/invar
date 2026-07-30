@@ -2,6 +2,16 @@
 
 ## RESUME ANCHOR 20 — 2026-07-30 14:06 (written at 77.6% gauge, pre-compaction)
 
+### ANCHOR 20 — delta 4 (2026-07-30 ~19:5x): #393 LANDED — PAUSE IS NOW ACTIVE
+
+#393 landed at 79b325ea (summary in the completed folder: 9 rounds, two
+builders, evidence re-attributed mid-task, one refuted red
+classification). Fleet is EMPTY. The user's review pause is IN FORCE:
+no dispatches, no queue draining, no experiments, until the user's
+word. #412 (monitoring LSP CPU rows) filed and queued. fleet-watch
+Monitor stays armed; crons stay disarmed (740c5d81). User should
+rebuild to get the idle fix.
+
 ### ANCHOR 20 — delta 3 (2026-07-30 ~17:5x, post-compaction — OPERATIVE ORDER)
 
 USER ORDER (verbatim): "keep cooking on this, have a break after this
