@@ -7,10 +7,11 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: The tasks dashboard is a pane content citizen (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: An absent task tree is stated, never blank (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FrameDump } from '../../src/modules/system/FrameProbe';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -136,6 +137,33 @@ function writeTask(
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tasks-dashboard-'));
 const tasksRoot = join(fixtureRoot, '.invar', 'tasks');
 const pastFilingMs = Date.now() - 600_000;
+const fakeTmuxDirectory = join(fixtureRoot, 'fake-bin');
+const fakeTmuxSessionListPath = join(fixtureRoot, 'fake-tmux-sessions.txt');
+mkdirSync(fakeTmuxDirectory, { recursive: true });
+writeFileSync(
+  fakeTmuxSessionListPath,
+  'planted-new-session\ninvar/901-planted-building\n',
+);
+writeFileSync(
+  join(fakeTmuxDirectory, 'tmux'),
+  [
+    '#!/usr/bin/env bun',
+    'const argumentsAfterScript = Bun.argv.slice(2);',
+    "if (argumentsAfterScript[0] === 'list-sessions') {",
+    '  process.stdout.write(await Bun.file(process.env.FAKE_TMUX_SESSION_LIST!).text());',
+    '  process.exit(0);',
+    '}',
+    "if (argumentsAfterScript[0] === 'attach') {",
+    "  const targetIndex = argumentsAfterScript.indexOf('-t') + 1;",
+    "  console.log(`FAKE TMUX ATTACH ${argumentsAfterScript[targetIndex] ?? 'missing-target'}`);",
+    '  process.exit(0);',
+    '}',
+    "console.error('Fake tmux received an unsupported command. Update the tasks dashboard fixture.');",
+    'process.exit(2);',
+    '',
+  ].join('\n'),
+);
+chmodSync(join(fakeTmuxDirectory, 'tmux'), 0o755);
 writeTask(
   tasksRoot,
   'in-progress',
@@ -162,6 +190,7 @@ writeTask(
       startedAt: new Date(pastFilingMs).toISOString(),
       round: 2,
       roundBriefedAtMs: pastFilingMs,
+      tmuxSession: 'planted-dead-session',
     }),
   },
 );
@@ -187,7 +216,7 @@ mkdirSync(settingsDirectory, { recursive: true });
 // The right dock stays at its default width so truncation is measured on the common path.
 writeFileSync(
   join(settingsDirectory, 'settings.json'),
-  JSON.stringify({ tasksDashboardCycleSeconds: 2 }),
+  JSON.stringify({ tasksDashboardCycleSeconds: 2, glyphMode: 'unicode' }),
 );
 
 const driver = new PtyTestDriver.Class({
@@ -200,6 +229,10 @@ const driver = new PtyTestDriver.Class({
     TUI_FRAME_PATH: framePath,
     TUI_FRAME_DUMP: '1',
     COLORTERM: 'truecolor',
+    NERD_FONT: '0',
+    LANG: 'en_US.UTF-8',
+    PATH: `${fakeTmuxDirectory}:${process.env.PATH ?? ''}`,
+    FAKE_TMUX_SESSION_LIST: fakeTmuxSessionListPath,
   },
   command: [process.execPath, 'src/main.ts', fixtureRoot],
 });
@@ -278,8 +311,8 @@ try {
       const buildingTitle = snapshot.findText('#901 planted-building');
       if (!readyTitle || !buildingTitle) return false;
       return (
-        snapshot.rowText(readyTitle.row + 1).includes('READY') &&
-        snapshot.rowText(buildingTitle.row + 1).includes('building')
+        snapshot.rowText(readyTitle.row + 1).includes('DEGRADE') &&
+        snapshot.rowText(buildingTitle.row + 1).includes('buildin')
       );
     },
   );
@@ -354,16 +387,52 @@ try {
     throw new Error(
       'The READY task status target disappeared before its click',
     );
+  const sessionDetailRow = sessionTitlePosition.row + 1;
+  const sessionGlyph = ThemeIcons.Class.taskActionIconsFor('unicode').session;
+  const sessionActionColumn = driver
+    .snapshot()
+    .rowText(sessionDetailRow)
+    .indexOf(sessionGlyph);
+  if (sessionActionColumn < 0)
+    throw new Error('The Unicode attach icon is absent from the detail row');
   driver.sendMouse({
     kind: 'move',
-    column: sessionTitlePosition.column,
-    row: sessionTitlePosition.row + 1,
+    column: sessionActionColumn,
+    row: sessionDetailRow,
     button: 'none',
   });
-  await driver.awaitScreenChange();
+  await driver.awaitGridCondition(
+    'the missing session icon explains the stale target',
+    (snapshot) =>
+      snapshot.findText(
+        'Builder tmux session is missing: planted-dead-session',
+      ) !== null,
+  );
+  const sessionIconCell = driver
+    .snapshot()
+    .cell(sessionDetailRow, sessionActionColumn);
+  HarnessSmoke.Class.requireCondition(
+    sessionIconCell !== null &&
+      sessionIconCell.characters.trim().length > 0 &&
+      sessionIconCell.foreground !== sessionIconCell.background,
+    'the Unicode attach icon occupies a readable terminal cell',
+  );
+  await driver.awaitGridCondition(
+    'the dead session states a degraded live row',
+    (snapshot) => snapshot.rowText(sessionDetailRow).includes('! DEGRADE'),
+  );
+  writeFileSync(
+    join(tasksRoot, 'in-progress', '902-planted-ready', 'meta.json'),
+    JSON.stringify({
+      startedAt: new Date(pastFilingMs).toISOString(),
+      round: 2,
+      roundBriefedAtMs: pastFilingMs,
+      tmuxSession: 'planted-new-session',
+    }),
+  );
   driver.sendMouseClick({
-    column: sessionTitlePosition.column,
-    row: sessionTitlePosition.row + 1,
+    column: sessionActionColumn,
+    row: sessionDetailRow,
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(
@@ -383,13 +452,20 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the gone tmux session states itself in the terminal pane',
+    'the current meta target opens in the terminal pane',
     (status) =>
       String(status.panelActiveContent) === 'tasks-session-902' &&
-      status.terminalExited === true,
+      (status.panelContentIds as string[]).includes('tasks-session-902'),
     15_000,
   );
-  HarnessSmoke.Class.pass('row actions use the workspace and terminal seams');
+  await driver.awaitGridCondition(
+    'the mid-session meta edit selects the new attach target',
+    (snapshot) =>
+      snapshot.findText('FAKE TMUX ATTACH planted-new-session') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'the attach icon is visible, stale targets degrade, and activation re-reads meta',
+  );
 
   driver.sendKeys('Control+Shift+t');
   await HarnessSmoke.Class.awaitStatus(
@@ -541,8 +617,26 @@ try {
     'stop holds the current lens selected',
     (status) => status.tasksCycling === false && status.tasksLens === 'live',
   );
+  await driver.awaitGridCondition(
+    'the attach icon remains readable after the live light-theme switch',
+    (snapshot) => {
+      const readyTitle = snapshot.findText('#902 planted-ready');
+      if (!readyTitle) return false;
+      const attachCell = snapshot.cell(
+        readyTitle.row + 1,
+        snapshot
+          .rowText(readyTitle.row + 1)
+          .indexOf(ThemeIcons.Class.taskActionIconsFor('unicode').session),
+      );
+      return (
+        attachCell !== null &&
+        attachCell.characters.trim().length > 0 &&
+        attachCell.foreground !== attachCell.background
+      );
+    },
+  );
   HarnessSmoke.Class.pass(
-    'the cycle control exposes both tooltips and stops on the current lens',
+    'the cycle control stops on the current lens and the light-theme attach icon stays readable',
   );
 
   console.log('== tasks dashboard: selection opens the task record ==');
@@ -645,6 +739,63 @@ try {
   await driver.dispose();
 }
 
+console.log('== tasks dashboard: the attach icon keeps its ASCII fallback ==');
+const asciiHome = mkdtempSync(
+  join(tmpdir(), 'tui-tasks-dashboard-ascii-home-'),
+);
+const asciiStatusPath = join(asciiHome, 'status.json');
+const asciiSettingsDirectory = join(asciiHome, '.config', 'invar');
+mkdirSync(asciiSettingsDirectory, { recursive: true });
+writeFileSync(
+  join(asciiSettingsDirectory, 'settings.json'),
+  JSON.stringify({ glyphMode: 'ascii' }),
+);
+const asciiDriver = new PtyTestDriver.Class({
+  workspaceRoot: fixtureRoot,
+  columns: 150,
+  rows: 40,
+  homeDirectory: asciiHome,
+  environment: {
+    TUI_STATUS_PATH: asciiStatusPath,
+    COLORTERM: 'truecolor',
+    PATH: `${fakeTmuxDirectory}:${process.env.PATH ?? ''}`,
+    FAKE_TMUX_SESSION_LIST: fakeTmuxSessionListPath,
+  },
+  command: [process.execPath, 'src/main.ts', fixtureRoot],
+});
+try {
+  asciiDriver.sendKeys('Control+Shift+t');
+  await HarnessSmoke.Class.awaitStatus(
+    asciiDriver,
+    asciiStatusPath,
+    'the ASCII task pane shows the current live rows',
+    (status) =>
+      status.rightDockActiveContent === 'tasks' &&
+      status.tasksAvailable === true,
+  );
+  await asciiDriver.awaitGridCondition(
+    'the ASCII attach action paints a non-blank fallback cell',
+    (snapshot) => {
+      const readyTitle = snapshot.findText('#902 planted-ready');
+      if (!readyTitle) return false;
+      const attachCell = snapshot.cell(
+        readyTitle.row + 1,
+        snapshot
+          .rowText(readyTitle.row + 1)
+          .indexOf(ThemeIcons.Class.taskActionIconsFor('ascii').session),
+      );
+      return (
+        attachCell?.characters === '>' &&
+        attachCell.foreground !== attachCell.background
+      );
+    },
+  );
+  HarnessSmoke.Class.pass('the attach action remains visible in ASCII mode');
+} finally {
+  await asciiDriver.dispose();
+  await HarnessSmoke.Class.removeTemporaryDirectory(asciiHome);
+}
+
 console.log('== tasks dashboard: an absent task tree states itself ==');
 const bareRoot = mkdtempSync(join(tmpdir(), 'tui-tasks-dashboard-bare-'));
 writeFileSync(join(bareRoot, 'readme.txt'), 'no task tree here\n');
@@ -703,12 +854,23 @@ const largeHome = mkdtempSync(
   join(tmpdir(), 'tui-tasks-dashboard-large-home-'),
 );
 const largeStatusPath = join(largeHome, 'status.json');
+const largeSettingsDirectory = join(largeHome, '.config', 'invar');
+mkdirSync(largeSettingsDirectory, { recursive: true });
+writeFileSync(
+  join(largeSettingsDirectory, 'settings.json'),
+  JSON.stringify({ glyphMode: 'unicode' }),
+);
 const largeDriver = new PtyTestDriver.Class({
   workspaceRoot: largeRoot,
   columns: 120,
   rows: 36,
   homeDirectory: largeHome,
-  environment: { TUI_STATUS_PATH: largeStatusPath, COLORTERM: 'truecolor' },
+  environment: {
+    TUI_STATUS_PATH: largeStatusPath,
+    COLORTERM: 'truecolor',
+    NERD_FONT: '0',
+    LANG: 'en_US.UTF-8',
+  },
   command: [process.execPath, 'src/main.ts', largeRoot],
 });
 try {

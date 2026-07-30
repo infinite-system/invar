@@ -21,6 +21,7 @@ function taskRow(overrides: Partial<TasksDashboardRow>): TasksDashboardRow {
   return {
     kind: 'task',
     label: 'planted-task',
+    folderName: '901-planted-task',
     taskNumber: 901,
     standing: null,
     phase: null,
@@ -31,6 +32,7 @@ function taskRow(overrides: Partial<TasksDashboardRow>): TasksDashboardRow {
     addedLines: null,
     removedLines: null,
     sessionName: null,
+    sessionAvailable: null,
     worktreePath: null,
     taskFilePath: null,
     latestBriefFilePath: null,
@@ -59,6 +61,7 @@ function makeContext(
     gateGlance: null,
     actionNotice: null,
     taskActionIcons: {
+      session: 'S',
       workspace: 'W',
       taskRecord: 'T',
       latestBrief: 'B',
@@ -272,16 +275,45 @@ test('the pinned row actions share one hit and tooltip geometry', () => {
   const row = taskRow({
     kind: 'detail',
     sessionName: 'invar/901-planted-task',
+    sessionAvailable: true,
   });
-  expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 5)).toBe(
+  expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 45)).toBe(
     'session',
   );
   expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 57)).toBe(
     'report',
   );
-  expect(TasksDashboardPaneRenderer.Class.tooltipForAction('report')).toBe(
+  expect(TasksDashboardPaneRenderer.Class.tooltipForAction('report', row)).toBe(
     'Open the latest report',
   );
+  expect(
+    TasksDashboardPaneRenderer.Class.tooltipForAction('session', row),
+  ).toBe('Attach to builder tmux session: invar/901-planted-task');
+  expect(
+    renderedText(
+      TasksDashboardPaneRenderer.Class.render(
+        makeContext({ rows: [row], innerWidth: 60, viewportWidth: 59 }),
+      ),
+    ),
+  ).toContain(' S  W  T  B  R ');
+});
+
+test('a missing builder session paints a loud degraded row and tooltip', () => {
+  const row = taskRow({
+    kind: 'detail',
+    sessionName: 'planted-missing-session',
+    sessionAvailable: false,
+    standing: 'ready',
+  });
+  const rendered = renderedText(
+    TasksDashboardPaneRenderer.Class.render(
+      makeContext({ rows: [row], innerWidth: 60, viewportWidth: 59 }),
+    ),
+  );
+  expect(rendered).toContain('! DEGRADED');
+  expect(
+    TasksDashboardPaneRenderer.Class.tooltipForAction('session', row),
+  ).toBe('Builder tmux session is missing: planted-missing-session');
 });
 
 test('active and done tasks stay on one row and truncate through the shared ellipsis', () => {

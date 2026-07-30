@@ -158,6 +158,7 @@ test('action icons ladder: real glyphs on nerd/unicode, letters as the ascii fal
 
 test('task action icons stay one cell and keep readable ASCII fallbacks', () => {
   expect(ThemeIcons.Class.taskActionIconsFor('ascii')).toEqual({
+    session: '>',
     workspace: 'W',
     taskRecord: 'T',
     latestBrief: 'B',

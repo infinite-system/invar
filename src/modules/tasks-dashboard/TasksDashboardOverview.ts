@@ -33,7 +33,9 @@ import {
   readTaskRecords,
   readFleetGateGlance,
   readTaskFleetFacts,
+  readTmuxSessionNames,
   startedAtMilliseconds,
+  taskSessionName,
   tasksTreeStamp,
   type GateGlance,
   type TaskFleetFacts,
@@ -76,6 +78,7 @@ class $TasksDashboardOverview {
   protected lastLensChangeAtMs = Date.now();
   protected records: TaskRecord[] = [];
   protected fleetFactsByFolder = new Map<string, TaskFleetFacts>();
+  protected availableSessionNames: ReadonlySet<string> = new Set();
 
   get lens() {
     return ref<TasksDashboardLens>('live');
@@ -165,6 +168,7 @@ class $TasksDashboardOverview {
     this.available.value = existsSync(tasksRoot);
     this.records = this.available.value ? readTaskRecords(tasksRoot) : [];
     this.refreshFleetFacts();
+    this.refreshSessionAvailability();
     this.lastProbeStamp = this.probeStamp();
     this.rebuildRows();
   }
@@ -241,7 +245,9 @@ class $TasksDashboardOverview {
       this.refresh();
       return;
     }
-    if (this.refreshFleetFacts()) this.rebuildRows();
+    const fleetFactsChanged = this.refreshFleetFacts();
+    const sessionAvailabilityChanged = this.refreshSessionAvailability();
+    if (fleetFactsChanged || sessionAvailabilityChanged) this.rebuildRows();
   }
 
   protected refreshFleetFacts(): boolean {
@@ -277,6 +283,23 @@ class $TasksDashboardOverview {
       facts: [...this.fleetFactsByFolder.entries()],
       gate: this.gateGlance.value,
     });
+  }
+
+  protected refreshSessionAvailability(): boolean {
+    const previousFingerprint = [...this.availableSessionNames]
+      .sort()
+      .join('\n');
+    const hasSessionRows = this.records.some(
+      (record) => record.directoryState === 'in-progress',
+    );
+    this.availableSessionNames = hasSessionRows
+      ? this.dependencies.readTmuxSessionNames
+        ? this.dependencies.readTmuxSessionNames()
+        : readTmuxSessionNames()
+      : new Set();
+    return (
+      previousFingerprint !== [...this.availableSessionNames].sort().join('\n')
+    );
   }
 
   // ---- lenses -------------------------------------------------------------
@@ -361,6 +384,7 @@ class $TasksDashboardOverview {
     return {
       kind,
       label,
+      folderName: null,
       taskNumber: null,
       standing: null,
       phase: null,
@@ -371,6 +395,7 @@ class $TasksDashboardOverview {
       addedLines: null,
       removedLines: null,
       sessionName: null,
+      sessionAvailable: null,
       worktreePath: null,
       taskFilePath: null,
       latestBriefFilePath: null,
@@ -387,6 +412,7 @@ class $TasksDashboardOverview {
     const shared: TasksDashboardRow = {
       kind: 'task',
       label: this.shortName(record),
+      folderName: record.folderName,
       taskNumber: record.taskNumber,
       standing: null,
       phase: null,
@@ -397,8 +423,10 @@ class $TasksDashboardOverview {
       addedLines: fleetFacts?.lineDelta?.added ?? null,
       removedLines: fleetFacts?.lineDelta?.removed ?? null,
       sessionName:
-        record.directoryState === 'in-progress'
-          ? (fleetFacts?.sessionName ?? `invar/${record.folderName}`)
+        record.directoryState === 'in-progress' ? record.tmuxSession : null,
+      sessionAvailable:
+        record.directoryState === 'in-progress' && record.tmuxSession !== null
+          ? this.availableSessionNames.has(record.tmuxSession)
           : null,
       worktreePath:
         fleetFacts?.worktreePath ??
@@ -594,6 +622,29 @@ class $TasksDashboardOverview {
     this.version.value += 1;
   }
 
+  /** Resolve the attach target from disk at activation time, never from the painted row snapshot. */
+  currentSessionTarget(
+    rowIndex: number,
+  ): { sessionName: string; available: boolean } | null {
+    const row = this.rows.value[rowIndex];
+    if (
+      !row ||
+      (row.kind !== 'task' && row.kind !== 'detail') ||
+      row.folderName === null
+    ) {
+      return null;
+    }
+    const sessionName = taskSessionName(this.tasksRootPath(), row.folderName);
+    if (sessionName === null) return null;
+    const availableSessionNames = this.dependencies.readTmuxSessionNames
+      ? this.dependencies.readTmuxSessionNames()
+      : readTmuxSessionNames();
+    return {
+      sessionName,
+      available: availableSessionNames.has(sessionName),
+    };
+  }
+
   dispose(): void {
     this.stopHeartbeatTimers();
     if (this.observationStarted) this.$stopEffects();
@@ -614,6 +665,7 @@ export interface TasksDashboardRow {
   kind: 'group' | 'scope' | 'gate' | 'task' | 'detail';
   /** Group rows: the heading text. Task rows: the task's short name (folder minus number). */
   label: string;
+  folderName: string | null;
   taskNumber: number | null;
   /** READY holds still, building carries the motion vocabulary; null outside the live lens. */
   standing: 'ready' | 'building' | null;
@@ -630,6 +682,7 @@ export interface TasksDashboardRow {
   addedLines: number | null;
   removedLines: number | null;
   sessionName: string | null;
+  sessionAvailable: boolean | null;
   worktreePath: string | null;
   /** Absolute path of the task's `task-<n>-<slug>.md`, or null when the folder has none. */
   taskFilePath: string | null;
@@ -652,6 +705,7 @@ export interface TasksDashboardOverviewDependencies {
     record: TaskRecord,
   ) => TaskFleetFacts;
   readFleetGateGlance?: () => GateGlance | null;
+  readTmuxSessionNames?: () => ReadonlySet<string>;
 }
 
 export interface TasksDashboardActionNotice {

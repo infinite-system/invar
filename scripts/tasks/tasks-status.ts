@@ -30,9 +30,9 @@
 // THIS FILE IS ALSO THE SEAM. The in-app tasks dashboard pane
 // (src/modules/tasks-dashboard/) imports the exported readers below —
 // readTaskRecords, builderStanding, startedAtMilliseconds, landingStamp,
-// tasksTreeStamp — so the terminal lenses and the pane read the SAME
-// generator. The CLI entry point runs only under `import.meta.main`, so an
-// import executes nothing.
+// taskSessionName, readTmuxSessionNames, tasksTreeStamp — so the terminal
+// lenses and the pane read the SAME generator. The CLI entry point runs only
+// under `import.meta.main`, so an import executes nothing.
 //
 // POSITIVE CONTROL. `--self-test` builds a throwaway task tree in a temp directory
 // containing one planted instance of each signal, runs the same analysis over it, and
@@ -93,6 +93,8 @@ export interface TaskRecord {
   assignedEngine: string | null;
   assignedModel: string | null;
   assignedEffort: string | null;
+  /** The dispatch-time builder session from meta.json, or the standard folder-derived fallback. */
+  tmuxSession: string | null;
 }
 
 export interface TaskMotionColour {
@@ -108,7 +110,6 @@ export interface TaskFleetFacts {
   readonly lineDelta: { added: number; removed: number } | null;
   readonly phase: 'exploring' | 'building';
   readonly worktreePath: string | null;
-  readonly sessionName: string;
 }
 
 // A header field like `Engine: codex` from a task file's front block.
@@ -240,11 +241,17 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
         engine?: string;
         model?: string;
         effort?: string;
+        tmuxSession?: string;
       } | null = null;
       try {
         dispatchMeta = JSON.parse(
           readFileSync(join(folderPath, 'meta.json'), 'utf8'),
-        ) as { engine?: string; model?: string; effort?: string };
+        ) as {
+          engine?: string;
+          model?: string;
+          effort?: string;
+          tmuxSession?: string;
+        };
       } catch {
         dispatchMeta = null;
       }
@@ -284,6 +291,13 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
           headerField(taskFileText, 'Model') ?? dispatchMeta?.model ?? null,
         assignedEffort:
           headerField(taskFileText, 'Effort') ?? dispatchMeta?.effort ?? null,
+        tmuxSession:
+          typeof dispatchMeta?.tmuxSession === 'string' &&
+          dispatchMeta.tmuxSession.trim().length > 0
+            ? dispatchMeta.tmuxSession.trim()
+            : directoryState === 'in-progress'
+              ? `invar/${folderName}`
+              : null,
       });
     }
   }
@@ -426,9 +440,8 @@ function renderActiveView(records: TaskRecord[]): string {
           ? 'READY delivered — builder idle, awaiting landing'
           : 'building';
       outputLines.push(`${taskLine(record)}  [${builderStatus}]`);
-      // The attach command rides the entry, so joining the session is one
-      // copy-paste. Session naming is dispatch.sh's convention: invar/<folder-name>.
-      outputLines.push(`  \`tmux attach -t invar/${record.folderName}\``);
+      // The attach command rides the entry, so joining the current session is one copy-paste.
+      outputLines.push(`  \`tmux attach -t ${record.tmuxSession}\``);
     }
     outputLines.push('');
   }
@@ -1247,8 +1260,44 @@ export function readTaskFleetFacts(
     lineDelta,
     phase: firstEditSeen.has(record.folderName) ? 'building' : 'exploring',
     worktreePath: existsSync(worktreePath) ? worktreePath : null,
-    sessionName: `invar/${record.folderName}`,
   };
+}
+
+/** Re-read one in-progress task's current attach target directly from meta.json. */
+export function taskSessionName(
+  tasksRoot: string,
+  folderName: string,
+): string | null {
+  const fallbackSessionName = `invar/${folderName}`;
+  const folderPath = join(tasksRoot, 'in-progress', folderName);
+  if (!existsSync(folderPath)) return null;
+  try {
+    const meta = JSON.parse(
+      readFileSync(join(folderPath, 'meta.json'), 'utf8'),
+    ) as { tmuxSession?: unknown };
+    return typeof meta.tmuxSession === 'string' &&
+      meta.tmuxSession.trim().length > 0
+      ? meta.tmuxSession.trim()
+      : fallbackSessionName;
+  } catch {
+    return fallbackSessionName;
+  }
+}
+
+/** Read the tmux server once, so any number of task rows share one liveness sample. */
+export function readTmuxSessionNames(): ReadonlySet<string> {
+  const result = Bun.spawnSync(
+    ['tmux', 'list-sessions', '-F', '#{session_name}'],
+    { stdout: 'pipe', stderr: 'ignore' },
+  );
+  if (result.exitCode !== 0) return new Set();
+  return new Set(
+    result.stdout
+      .toString()
+      .split('\n')
+      .map((sessionName) => sessionName.trim())
+      .filter((sessionName) => sessionName.length > 0),
+  );
 }
 
 // The round stamp from a task's meta.json, written by round-brief.sh at the
@@ -1424,7 +1473,7 @@ function live(
       outputLine(lineForAnimationFrame(spinnerFrame));
     }
     outputLine(
-      paint('38;5;240', `       tmux attach -t invar/${record.folderName}`),
+      paint('38;5;240', `       tmux attach -t ${record.tmuxSession}`),
     );
   }
   return 0;
@@ -1598,9 +1647,13 @@ export function tasksTreeStamp(tasksRoot: string): string {
   }
   try {
     for (const folder of readdirSync(join(tasksRoot, 'in-progress'))) {
-      parts.push(
-        String(statSync(join(tasksRoot, 'in-progress', folder)).mtimeMs),
-      );
+      const folderPath = join(tasksRoot, 'in-progress', folder);
+      parts.push(String(statSync(folderPath).mtimeMs));
+      try {
+        parts.push(String(statSync(join(folderPath, 'meta.json')).mtimeMs));
+      } catch {
+        parts.push('0');
+      }
     }
   } catch {
     // no in-progress directory yet
