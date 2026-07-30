@@ -1,5 +1,6 @@
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
+import { RenderLoadLedger } from '../system/RenderLoadLedger';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Settings } from '../settings/Settings';
 import type { PaneContent } from '../ui/PaneContent.interface';
@@ -72,6 +73,13 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     const registrationDisposers: (() => void)[] = [];
     const context: ApplicationContributionContext = {
       ...this.options,
+      // Every render request a contributor raises crosses THIS closure, so the host attributes it
+      // here — one counter at the boundary, never a second render model inside the plugin.
+      // invariant: Render load is attributed at the contribution boundary (src/modules/app/app.invariants.md)
+      requestRender: RenderLoadLedger.Class.attribute(
+        contributor.identifier,
+        this.options.requestRender,
+      ),
       applicationContributions: this,
       registerKeybindings: (bindings) => {
         registrationDisposers.push(

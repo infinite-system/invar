@@ -54,6 +54,32 @@ class $OpenBufferSet {
     return this.entries.value.filter((entry) => entry.buffer !== null).length;
   }
 
+  /**
+   * What each open tab RETAINS right now: whether it holds a live document, and how many UTF-16
+   * units that document carries. A dehydrated entry retains a path, a position, and nothing else,
+   * so its retained length is zero.
+   *
+   * This set decides what is hydrated and what is released, so it is the one honest place to ask.
+   * Any consumer that wants a memory ledger reads it here rather than walking documents itself.
+   * The rows are plain data — no document leaves the set.
+   *
+   * invariant: N open tabs do not cost N live documents (src/modules/workspace/workspace.invariants.md)
+   */
+  documentLedger(): readonly RetainedDocumentRow[] {
+    const activeIndex = this.activeIndex.value;
+    return this.entries.value.map((entry, index) => ({
+      path: entry.path,
+      hydrated: entry.buffer !== null,
+      active: index === activeIndex,
+      dirty:
+        index === activeIndex
+          ? (entry.buffer?.dirty ?? entry.dirty)
+          : entry.dirty,
+      retainedTextUnits: entry.documentHandle.document?.contentLength ?? 0,
+      retainedLineCount: entry.documentHandle.document?.lineCount ?? 0,
+    }));
+  }
+
   /** Tab-bar view rows: path, active flag, dirty flag — never exposes the live document. */
   tabs(): Array<{ path: string; active: boolean; dirty: boolean }> {
     const activeIndex = this.activeIndex.value;
@@ -256,6 +282,18 @@ export interface LiveBuffer {
   /** Capture the resumable position so a clean buffer can be dehydrated and later rehydrated. */
   snapshotPosition(): BufferPosition;
   restorePosition(position: BufferPosition): void;
+}
+
+/** One open tab's retained cost. `retainedTextUnits` is zero for a dehydrated entry. */
+export interface RetainedDocumentRow {
+  readonly path: string;
+  /** True while this entry holds a live document (recently active, or dirty). */
+  readonly hydrated: boolean;
+  readonly active: boolean;
+  readonly dirty: boolean;
+  /** Serialized UTF-16 units the retained document holds. JavaScript strings cost two bytes each. */
+  readonly retainedTextUnits: number;
+  readonly retainedLineCount: number;
 }
 
 export interface BufferPosition {

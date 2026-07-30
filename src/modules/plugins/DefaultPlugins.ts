@@ -6,6 +6,7 @@ import { GitPlugin } from '../git/GitPlugin';
 import { MarkdownPlugin } from '../markdown/MarkdownPlugin';
 import { LspPlugin } from '../lsp/LspPlugin';
 import { MediaPlugin } from '../media/MediaPlugin';
+import { MonitoringPlugin } from '../monitoring/MonitoringPlugin';
 import { TerminalPlugin } from '../terminal/TerminalPlugin';
 // prettier-ignore
 import {
@@ -34,6 +35,7 @@ class $DefaultPlugins {
       new StructurePlugin.Class(),
       new TasksDashboardPlugin.Class(),
       new DatabaseConsumerPlugin.Class(),
+      new MonitoringPlugin.Class(),
       new ExtensionsPlugin.Class(),
     ];
   }

@@ -1263,6 +1263,13 @@ else
   bad "tasks dashboard drive failed"
 fi
 
+echo "== CONTRACT monitoring: the monitor reads deltas, prices itself, and costs nothing while hidden =="
+if bash "$DIR/smoke-monitoring.sh"; then
+  pass "monitoring quiescence, delta reading, document ledger at both scales, heap census, logging toggle, and render-load attribution drive"
+else
+  bad "monitoring drive failed"
+fi
+
 echo "== CONTRACT go-to-line: valid, clamped, and malformed input hold at both scales =="
 if "$BUN" "$DIR/harness/smoke-go-to-line-harness.ts"; then
   pass "go-to-line prompt, reading placement, and history hold at 10 and 100,000 lines"
