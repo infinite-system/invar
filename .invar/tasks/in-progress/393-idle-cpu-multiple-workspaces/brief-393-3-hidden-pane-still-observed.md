@@ -46,3 +46,15 @@ clauses of the user's sentence.
 
 Per AGENTS.md's taxonomy; carry the section even when it reads None
 observed.
+
+## Addendum (user, same day, VERBATIM)
+
+"yes, it should not be polling at 30% CPU lmao, that's too much"
+
+Two requirements, not one: (1) hidden = zero, as briefed; (2) even when
+VISIBLE, a 1-second data tick costing ~30% CPU on a real tree is a
+defect in the tick itself — profile WHERE the tick spends (readTaskRecords
+full-tree re-walk? tmux probes per session? row rebuild?), then make the
+observed-cost proportional: watch/mtime-guarded incremental reads, probe
+only sessions whose rows are painted, rebuild only changed rows. Target:
+a visible idle dashboard on a 250-folder tree stays low single digits.
