@@ -1,6 +1,6 @@
 # #381 — typescript lsp still missing in the realized project (reopens #294 field evidence)
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux

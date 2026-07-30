@@ -6,7 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (5)
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/in-progress/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md)  [building]
   `tmux attach -t invar/409-layout-switch-leaves-unfilled-space`
 - #408 [workspace-state-isolation](.invar/tasks/in-progress/408-workspace-state-isolation/task-408-workspace-state-isolation.md)  [building]
@@ -15,12 +15,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
   `tmux attach -t invar/404-panel-two-row-chrome-and-pane-level-add`
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
+- #381 [realized-typescript-lsp-still-missing](.invar/tasks/in-progress/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)  [building]
+  `tmux attach -t invar/381-realized-typescript-lsp-still-missing`
 
-## USER-DIRECTED (18)
+## USER-DIRECTED (17)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
-- #381 [realized-typescript-lsp-still-missing](.invar/tasks/active/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)
 - #379 [quick-open-exact-basename-loses](.invar/tasks/active/379-quick-open-exact-basename-loses/task-379-quick-open-exact-basename-loses.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
