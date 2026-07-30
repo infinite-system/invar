@@ -291,40 +291,21 @@ try {
     'the File Tree setting live-applies by removing hidden rows',
   );
 
-  driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the first Git setting is selected',
-    (status) => status.settingsSelectedLabel === 'Changes/log split',
-  );
+  // Walk to every contributed row by LOOKING for its label, never by counting Down presses. The
+  // settings list grows as plugins contribute rows, so an ordinal step lands on whichever neighbour
+  // the current schema happens to put there. #340 (opening a file reveals it in the file tree) added
+  // a second File Tree row, `Reveal open file`, directly below `Show hidden files`, and that one
+  // insertion turned this drive into a deterministic gate red without touching any product promise.
+  await selectSetting(driver, statusPath, 'Changes/log split');
   await driver.awaitGridCondition(
     'the Git heading is painted above its contributed setting',
     (snapshot) =>
       snapshot.findText('Git') !== null &&
       snapshot.findText('Changes/log split') !== null,
   );
-  driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the second Git setting is selected',
-    (status) => status.settingsSelectedLabel === 'Previous/current split',
-  );
-  driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the persistent Markdown view setting is selected',
-    (status) => status.settingsSelectedLabel === 'Markdown view',
-  );
-  driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the Markdown split setting is selected',
-    (status) => status.settingsSelectedLabel === 'Source/preview split',
-  );
+  await selectSetting(driver, statusPath, 'Previous/current split');
+  await selectSetting(driver, statusPath, 'Markdown view');
+  await selectSetting(driver, statusPath, 'Source/preview split');
   await driver.awaitGridCondition(
     'the Markdown heading is painted above its contributed setting',
     (snapshot) =>
