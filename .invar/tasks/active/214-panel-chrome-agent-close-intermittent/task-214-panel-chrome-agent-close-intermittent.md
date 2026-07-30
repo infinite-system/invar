@@ -60,3 +60,10 @@ before treating them as two defects.
 - 2026-07-29 #317 gates: panel-chrome starvation retry-pass in TWO parallel
   runs + panel-split retry-pass in the final gate + one tasks-dashboard
   Extensions-reach miss that did not reproduce (19th-22nd today).
+- 2026-07-29 #301 gates: tasks-dashboard Extensions-reach miss in first hook
+  attempt (same class as #317's), unchanged second attempt green; one
+  panel-chrome starvation retry-pass; input-byte p50 9.045ms vs 6.406ms
+  report-only line under pool load (23rd-24th today). ALSO: the FAILED hook
+  left 3 test app instances live ("starting with 3 test app instance(s)
+  live") — failed-gate cleanup does not reap children; instrument defect,
+  not census.
