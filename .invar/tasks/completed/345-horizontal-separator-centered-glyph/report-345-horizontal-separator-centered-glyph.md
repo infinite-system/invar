@@ -44,9 +44,11 @@ The same drive after the change:
 The grid names WHICH glyph is in a cell. It does not say where the ink sits
 INSIDE the cell, and that is the whole question. So I measured it.
 
-Tool: [measure-345-separator-glyph-ink.py](../../../../.invar/tasks/in-progress/345-horizontal-separator-centered-glyph/measure-345-separator-glyph-ink.py)
-(committed on the branch, header explains how to run and read it). It rasterizes
-one cell of DejaVu Sans Mono, the system monospace font, and reports the ink band.
+Tool: [measure-345-separator-glyph-ink.py](measure-345-separator-glyph-ink.py). Its
+header explains how to run it and how to read every number. It rasterizes one cell of
+DejaVu Sans Mono, the system monospace font, and reports the ink band. The link is
+dead until the branch lands. The script is committed in the worktree copy of this
+folder and arrives here with the merge.
 
 | glyph | thicknessRatio | centerOffsetRatio |
 |---|---|---|
@@ -125,8 +127,8 @@ boundary paints only the lower half of that hit cell". That sentence became FALS
 the moment the splitter painted `━`. It now states the centred heavy line, and says
 why the splitter mark and the scrollbar mark differ.
 
-Its load-bearing claim — the cell that paints is the cell that receives the pointer —
-is untouched. `SplitterElement` still sizes the renderable through
+Its load-bearing claim is untouched. The cell that paints is still the cell that
+receives the pointer. `SplitterElement` still sizes the renderable through
 `CROSS_AXIS_CELL_COUNT`, and OpenTUI still stamps that same rectangle into the hit
 grid. The glyph never entered hit testing. Its **Impossible if true** list gained one
 entry: a horizontal splitter cell holding the scrollbar's `▄`. Its **Evidence**
@@ -219,6 +221,30 @@ task changed, and splitting it would leave the file self-contradictory between c
 paints scrollbar tracks and thumbs, which are not separators. The name lies about half
 its consumers. Renaming it touches two consumers and two records, so it is a task, not
 a fix.
+
+**5. The task-link linter is blind to the exact link form every task record uses. NOT FIXED.**
+`bun scripts/tasks/lint-task-links.ts` on this report exits 0. That green is not
+worth much. I gave it a positive control and found it catches only ONE of two
+classes:
+
+  - A dead SIBLING link (`[bogus](report-345-missing.md)`) exits 1 and names the
+    line. Correct.
+  - A dead REPO link that climbs out of the task folder
+    (`[bogus](../../../../src/modules/ui/NoSuchFile.ts)`) exits 0 and prints
+    nothing. Reproduced 3 times, twice inside this very report.
+
+  The `../../../../` form is what AGENTS.md's own "relative to the file that contains
+  it" rule produces for every repo file cited from a task folder. It is the majority of
+  links in every brief and report we write. So the pre-READY lint step named in
+  AGENTS.md validates almost nothing in practice. The script's own header says "Dead
+  relative Markdown links stay errors", with no carve-out, and its `--self-test` claims
+  "a dead src link is not rescued by task-state fallback" and passes. So either the
+  check has a hole or the header and the self-test overstate it. I could not tell which
+  without reading the resolver, and I stopped there. Either way it is an instrument
+  that reports green on a defect it claims to catch.
+
+  Consequence for THIS report: I resolved all 8 relative links by hand instead. 7 exist
+  now. The 8th is the measuring-script link noted above, dead until the branch lands.
 
 No flaky-class smoke fired. #214 (panel-chrome), #359 (panel-split), and #362 (markdown
 preview clipping) all passed in this gate run.

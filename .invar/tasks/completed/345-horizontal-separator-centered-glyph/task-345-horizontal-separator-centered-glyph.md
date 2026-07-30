@@ -1,6 +1,6 @@
 # #345 — horizontal panel separator glyph sits vertically centered
 
-State: IN-PROGRESS
+State: COMPLETED — 085bfca0 — centered heavy-line separator; #372/#373 from bycatch
 Priority: user-directed
 Engine: claude
 Environment: linux
