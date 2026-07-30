@@ -605,6 +605,19 @@ hook active. Crons DISARMED permanently (user 740c5d81).
 
 ## RESUME ANCHOR 19 (2026-07-30 08:2x, pre-compact — supersedes 18)
 
+### ANCHOR 19 — delta 3 (2026-07-30 ~11:4x)
+
+- LANDED #380 at 5a1a52a7 (idle CPU: motion only while painted, 33%->2%); summary written.
+- FILED user-directed: #387 slim vertical splitter + 1-cell left pad on bottom splitter
+  (scope WIDENED by user: on positive verdict, apply the slim splitter EVERYWHERE in the app);
+  #388 go-to-line + wrap-line keyboard shortcuts; #389 tasks:watch overpaints phantom rows
+  (regression from the 60fps fix — user report verbatim in the task file).
+- Lanes live: 346 (codex), 383 (opus, right panel proportional), 386 (codex, glyph vanish).
+  At cap 2 codex + 1 opus. Next dispatch when a lane frees, user-directed first:
+  387 -> 389 -> 388 -> 384 -> 381 -> 382 -> 361 -> 356.
+- extract-gate-verdict.sh writes its OWN log and prints the path — never redirect its
+  stdout onto the same path (clobbers the sentinel; hit once, harmless, re-ran).
+
 User AWAKE, directing. Goal hook: "keep going on the tasks". ELEVEN
 landings: 342 351 350 337 90 344 343 345 326 365 347 (last: 27a42bfe,
 document-relative markdown links + double-click open).
