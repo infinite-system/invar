@@ -10,6 +10,7 @@ import type {
   PaneRenderContext,
   PaneWheelContext,
 } from '../ui/PaneContent.interface';
+import { DoubleClickGesture } from '../ui/DoubleClickGesture';
 import { SplitterElement } from '../ui/SplitterElement';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { FileRow } from './GitRows';
@@ -54,8 +55,9 @@ class $GitPaneContent implements PaneContent {
   protected viewportColumns = 1;
   protected viewportRows = 1;
   protected readonly splitter: SplitterElement.Model;
-  protected lastLogClickFlatIndex = -1;
-  protected lastLogClickTimestampMilliseconds = 0;
+  /** The log pane's share of the one double-click clock (the same generator the Markdown preview
+   *  uses to open a link). */
+  protected readonly logRowDoubleClick = new DoubleClickGesture.Class();
 
   get id(): string {
     return 'git';
@@ -195,13 +197,10 @@ class $GitPaneContent implements PaneContent {
       return true;
     }
     if (hit.region === 'log') {
-      const clickTimestampMilliseconds = Date.now();
       const isDoubleClick =
-        hit.index === this.lastLogClickFlatIndex &&
-        clickTimestampMilliseconds - this.lastLogClickTimestampMilliseconds <
-          450;
-      this.lastLogClickFlatIndex = hit.index;
-      this.lastLogClickTimestampMilliseconds = clickTimestampMilliseconds;
+        this.logRowDoubleClick.recordPressAndDetectDoubleClick(
+          `log-row:${hit.index}`,
+        );
       workspace.panel.region.value = 'log';
       workspace.panel.setLogSelection(hit.index);
       if (isDoubleClick) workspace.activateLogRow(hit.index);
