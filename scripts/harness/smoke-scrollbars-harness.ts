@@ -224,6 +224,12 @@ async function proveContinuousScrollbarThumbDrag(
     join(tmpdir(), `tui-scrollbar-drag-home-${lineCount}-`),
   );
   const statusPath = join(homeDirectory, 'status.json');
+  const settingsDirectory = join(homeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    JSON.stringify({ markdownViewMode: 'split' }),
+  );
   const symbolLineCount = Math.min(500, lineCount);
   const lines = Array.from({ length: lineCount }, (_unusedValue, lineIndex) => {
     if (lineIndex >= symbolLineCount) return '// scale filler';
@@ -523,7 +529,7 @@ async function proveContinuousScrollbarThumbDrag(
           Number(candidate.markdownPreviewViewportColumns),
       60_000,
     );
-    const previewSnapshot = await driver.awaitGridCondition(
+    let previewSnapshot = await driver.awaitGridCondition(
       `${lineCount}-line Markdown preview paints its long fenced row`,
       (candidate) =>
         candidate.findText('╭─Preview') !== null &&
@@ -539,13 +545,21 @@ async function proveContinuousScrollbarThumbDrag(
         Number(candidate.frame) > Number(previewStatus.frame),
       60_000,
     );
-    const previewBorder = previewSnapshot.findText('╭─Preview');
-    if (!previewBorder) {
-      throw new Error('The Markdown preview border disappeared.');
-    }
-    const previewTargets = deriveMarkdownPreviewScrollbarThumbDragTargets(
-      previewSnapshot,
-      armedPreviewStatus,
+    let previewTargets: readonly ScrollbarThumbDragTarget[] = [];
+    previewSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line settled Markdown frame publishes complete scrollbar geometry`,
+      (candidate) => {
+        try {
+          previewTargets = deriveMarkdownPreviewScrollbarThumbDragTargets(
+            candidate,
+            armedPreviewStatus,
+          );
+          return previewTargets.length === 2;
+        } catch {
+          return false;
+        }
+      },
+      60_000,
     );
     requireCondition(
       previewTargets.map((target) => target.name).join(',') ===

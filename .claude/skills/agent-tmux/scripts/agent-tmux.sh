@@ -303,8 +303,13 @@ _rollout() {
   local cwd; cwd="$(tmux display-message -t "$(_sess "$1")" -p '#{pane_current_path}' 2>/dev/null)"
   [ -n "$cwd" ] || return 0
   local newest="" f
+  # Match by the SESSION META cwd (first line), never by content grep: any other
+  # live session that merely MENTIONS this cwd (steer text, fleet chatter) would
+  # match first and its growth would report a finished builder as busy forever
+  # (observed 2026-07-29 landing #313 — same defect class as slug-grep
+  # session-link repair; match by identity, not mention).
   for f in $(ls -1t "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | head -40); do
-    if grep -qlF "$cwd" "$f" 2>/dev/null; then newest="$f"; break; fi
+    if head -c 2048 "$f" 2>/dev/null | grep -qF "\"cwd\":\"$cwd\""; then newest="$f"; break; fi
   done
   printf '%s' "$newest"
 }

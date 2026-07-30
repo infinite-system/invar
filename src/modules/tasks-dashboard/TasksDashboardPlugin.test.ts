@@ -93,7 +93,10 @@ function makeContext(
           taskRecord: 'T',
           latestBrief: 'B',
           latestReport: 'R',
+          cycleStart: '>',
+          cycleStop: 'x',
         },
+        ellipsisCell: '…',
       },
       registerKeybindings: () => {
         recording.keybindings += 1;

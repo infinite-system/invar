@@ -167,6 +167,24 @@ describe('AppStatusProjection', () => {
             ],
           },
         ],
+        panelSeparatorGeometry: () => ({
+          row: 9,
+          editorActions: [
+            {
+              commandId: 'view.toggleWordWrap',
+              startColumn: 14,
+              endColumnExclusive: 17,
+            },
+          ],
+          drag: {
+            left: 17,
+            top: 9,
+            width: 20,
+            height: 1,
+            visible: true,
+          },
+          controls: [],
+        }),
         panelContentsListRegion: () => ({
           left: 0,
           top: 0,
@@ -341,6 +359,24 @@ describe('AppStatusProjection', () => {
         ],
       },
     ]);
+    expect(publishedSnapshot.panelSeparatorGeometry).toEqual({
+      row: 9,
+      editorActions: [
+        {
+          commandId: 'view.toggleWordWrap',
+          startColumn: 14,
+          endColumnExclusive: 17,
+        },
+      ],
+      drag: {
+        left: 17,
+        top: 9,
+        width: 20,
+        height: 1,
+        visible: true,
+      },
+      controls: [],
+    });
     expect(StatusChannel.Class.snapshot.agentTitle).toBe('Codex (working…)');
     expect(StatusChannel.Class.snapshot.primaryDockFocused).toBe(false);
 

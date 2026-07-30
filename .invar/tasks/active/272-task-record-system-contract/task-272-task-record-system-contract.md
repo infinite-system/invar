@@ -5,7 +5,7 @@ Created: 2026-07-29
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: medium
+Effort: high
 Priority: architecture-hygiene
 
 ## Outline
@@ -43,3 +43,12 @@ The #291 sweep left 316 non-mechanically-fixable bare references and one
 illustrative dead link across 48 legacy records (no unique target — the
 linter refuses to choose). Manual triage belongs to this task's record-
 system pass.
+
+## Bycatch from #314 (2026-07-29)
+
+- scripts/fleet has NO fleet invariants record — dispatch/land/steer
+  guard behaviour lives in shell comments + prose only; unify in a
+  domain record.
+- project.fleet-operations.md drift: still describes agent-dispatches/
+  records and full-brief TASK.md copies; dispatch.sh now uses
+  .invar/tasks/in-progress/ and a root-relative TASK.md pointer (#297).

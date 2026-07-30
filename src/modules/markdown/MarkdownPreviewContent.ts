@@ -19,6 +19,7 @@ import type { RegisteredSetting } from '../settings/SettingContribution.interfac
 // KEYBOARD moves, and only while the rendered pane holds focus.
 //
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
+// invariant: Markdown view mode persists across Markdown documents (src/modules/markdown/markdown.invariants.md)
 // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
 // invariant: Markdown preview selection reuses shared drag behavior (src/modules/markdown/markdown.invariants.md)
 class $MarkdownPreviewContent implements EditorSurfaceContent {
@@ -28,6 +29,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
     protected readonly splitRatioSetting: RegisteredSetting<number>,
     protected readonly previewSide: MarkdownPreviewSide = 'left',
     protected readonly scrollSyncSetting?: RegisteredSetting<boolean>,
+    protected readonly viewOnly = false,
   ) {
     this.view = this.createSplitView();
   }
@@ -82,6 +84,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
         context.tooltip.point(message, screenColumn, screenRow);
         if (gesture === 'activate') this.view.linkNotice.value = message;
       },
+      viewOnly: this.viewOnly,
     });
   }
 
@@ -135,6 +138,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
   /** Escape hands the keyboard back to the embedded source editor. It does NOT close the split —
    *  the preview mode is per tab and only its own toggle changes it. */
   yieldKeyboardToSourceEditor(): void {
+    if (this.viewOnly) return;
     this.view.focusSource();
   }
 

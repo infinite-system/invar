@@ -168,6 +168,49 @@ describe('multi-step chords', () => {
     expect(done.chordPending).toBe(false);
   });
 
+  test('shared prefixes retain distinct continuations across layers', () => {
+    const registry = new KeybindingRegistry.Class();
+    registry.registerLayer('canonical', [
+      {
+        steps: [
+          { key: 'k', ctrl: true },
+          { key: 'a', ctrl: true },
+        ],
+        action: 'canonical.a',
+      },
+      {
+        steps: [
+          { key: 'k', ctrl: true },
+          { key: 'b', ctrl: true },
+        ],
+        action: 'canonical.b',
+      },
+    ]);
+    registry.registerUserLayer('user', [
+      {
+        steps: [
+          { key: 'k', ctrl: true },
+          { key: 'a', ctrl: true },
+        ],
+        action: 'user.a',
+      },
+    ]);
+
+    expect(
+      registry.resolve(chord('k', { ctrl: true }), 'editor', 0).chordPending,
+    ).toBe(true);
+    expect(
+      registry.resolve(chord('a', { ctrl: true }), 'editor', 100).action,
+    ).toBe('user.a');
+
+    expect(
+      registry.resolve(chord('k', { ctrl: true }), 'editor', 200).chordPending,
+    ).toBe(true);
+    expect(
+      registry.resolve(chord('b', { ctrl: true }), 'editor', 300).action,
+    ).toBe('canonical.b');
+  });
+
   test('a wrong key breaks the chord and resolves normally', () => {
     const registry = registryWithDefaults();
     registry.registerGuard('editorHasSelection', () => false);

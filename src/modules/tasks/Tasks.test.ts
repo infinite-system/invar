@@ -114,3 +114,48 @@ test('an unrelated harness may suppress only the built-in convenience', () => {
   expect(launchedTaskLabels).toEqual([[]]);
   expect(tasks.statusSnapshot().taskConfiguredLabels).toEqual([]);
 });
+
+test('an unrelated harness keeps configured tasks inert and manually available', () => {
+  const commands = new CommandRegistry.Class();
+  const folderOpenCalls: string[][] = [];
+  const manualCalls: string[] = [];
+  const launcher = {
+    launchFolderOpen: (
+      _workspaceRoot: string,
+      configuredTasks: readonly TaskDefinition[],
+    ) => {
+      folderOpenCalls.push(configuredTasks.map((task) => task.label));
+    },
+    launchAndPresent: (_workspaceRoot: string, task: TaskDefinition) => {
+      manualCalls.push(task.label);
+    },
+    disposeWorkspace: () => {},
+  } as unknown as TaskLauncher.Model;
+  const tasks = new Tasks.Class({
+    commands,
+    launcher,
+    folderOpenTaskLaunchEnabled: false,
+    resolveConfiguration: () => ({
+      source: '.invar/tasks.json',
+      tasks: [configuredTask(0, 'Repository Task', true)],
+      issues: [],
+    }),
+  });
+
+  tasks.attachWorkspace({} as Workspace.Model).opened('/unrelated-harness');
+
+  expect(folderOpenCalls).toEqual([]);
+  expect(tasks.statusSnapshot()).toMatchObject({
+    taskConfiguredLabels: ['Repository Task'],
+    taskLaunchedLabels: [],
+  });
+  expect(commands.all().map((command) => command.title)).toEqual([
+    'Tasks: Run Repository Task',
+  ]);
+
+  commands.run(`tasks.run.${encodeURIComponent('/unrelated-harness')}.0`);
+  expect(manualCalls).toEqual(['Repository Task']);
+  expect(tasks.statusSnapshot().taskLaunchedLabels).toEqual([
+    'Repository Task',
+  ]);
+});

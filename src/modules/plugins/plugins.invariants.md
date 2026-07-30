@@ -58,8 +58,9 @@ outside the registry.
   changing the consumer. Withdrawal reveals the earlier provider again.
 - *A consumer can enumerate* — `resolveAll` returns every registration for a capability,
   oldest first, for capabilities whose providers each answer a subset of subjects (the
-  structure sources, per file type). The pick among them belongs to the consumer; the registry
-  stays type-blind.
+  structure, syntax, and language sources, per document). The consumer selects the newest
+  registration that answers its subject, so a provider cannot shadow a peer subject it declines.
+  The pick belongs to the consumer; the registry stays type-blind.
 - *Reactive withdrawal* — register, withdraw, and dispose advance the revision.
 
 **Mechanism:** The host owns only identifier-to-value storage and lifetime. Providers register

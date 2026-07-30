@@ -1,0 +1,18 @@
+{
+  "task": 319,
+  "slug": "tasks-pane-layout-tabs-and-play-button-polish",
+  "branch": "fleet/319-tasks-pane-layout-tabs-and-play-button-polish",
+  "worktree": ".invar/worktrees/319-tasks-pane-layout-tabs-and-play-button-polish",
+  "tmuxSession": "invar/319-tasks-pane-layout-tabs-and-play-button-polish",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-319-tasks-pane-layout-tabs-and-play-button-polish.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "3c271cf4b0ade6a92c1333073f6e9396893469a9",
+  "startedAt": "2026-07-29T22:17:13-04:00",
+  "landedAt": "2026-07-29T22:49:41-04:00",
+  "durationMinutes": 32,
+  "mergeCommit": "2012cf08"
+}

@@ -46,3 +46,30 @@ before treating them as two defects.
   (serial tail) each timed out once, quiet retry passed (7th/8th today).
 - 2026-07-29 #299 gate: scrollbar + panel-chrome timeout-class, both passed
   built-in retry (9th/10th today).
+- 2026-07-29 #313/#315 gates: bounded-list-popup + git-watch + panel-chrome
+  retry-passes (mouse gate); scrollbar markdown-border derive miss once then
+  clean full rerun + one panel-chrome starvation retry (color gate). Census
+  11th-15th pool events today.
+- 2026-07-29 #312 gates: panel-split timed out INCLUDING built-in retries in
+  two hook runs overlapping several worktree gates; isolated run ALL-PASS;
+  later hooks green. Retried-and-still-failed under pool overlap = strongest
+  starvation datapoint yet (16th-17th today).
+- 2026-07-29 #308 bycatch commit gate: editor smoke one starvation-class
+  retry (18th today). ALSO: broken claude symlink (313 probe) failed agent
+  smokes across several gate attempts before repair — env-caused, not census.
+- 2026-07-29 #317 gates: panel-chrome starvation retry-pass in TWO parallel
+  runs + panel-split retry-pass in the final gate + one tasks-dashboard
+  Extensions-reach miss that did not reproduce (19th-22nd today).
+- 2026-07-29 #301 gates: tasks-dashboard Extensions-reach miss in first hook
+  attempt (same class as #317's), unchanged second attempt green; one
+  panel-chrome starvation retry-pass; input-byte p50 9.045ms vs 6.406ms
+  report-only line under pool load (23rd-24th today). ALSO: the FAILED hook
+  left 3 test app instances live ("starting with 3 test app instance(s)
+  live") — failed-gate cleanup does not reap children; instrument defect,
+  not census.
+- 2026-07-29 #320/#321 gates: concurrent hook runs timed out in panel-split,
+  panel-chrome, shortcut-help, scrollbar smokes; panel-chrome passed alone in
+  ~1s; failures moved between harnesses, clean-start hooks green (25th-28th
+  today; builder kept /tmp/merge-gate-failures.* examples).
+- 2026-07-29 #319 gate: panel-split + panel-chrome + overlay-dialog first-attempt
+  timeouts, all quiet-retry green (29th-31st today).

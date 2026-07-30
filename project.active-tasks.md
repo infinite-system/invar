@@ -6,12 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #313 child-owns-its-io-bundle  [building]
-  `tmux attach -t invar/313-child-owns-its-io-bundle`
-- #311 [vue-sfc-integration-map](.invar/tasks/in-progress/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md)  [building]
-  `tmux attach -t invar/311-vue-sfc-integration-map`
-- #300 eight-ui-nitpicks-bundled  [building]
+## IN-PROGRESS (4)
+- #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [building]
+  `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
+- #325 [audio-video-sync-research](.invar/tasks/in-progress/325-audio-video-sync-research/task-325-audio-video-sync-research.md)  [building]
+  `tmux attach -t invar/325-audio-video-sync-research`
+- #324 [terminal-3d-demo-and-video-playback](.invar/tasks/in-progress/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md)  [building]
+  `tmux attach -t invar/324-terminal-3d-demo-and-video-playback`
+- #300 [eight-ui-nitpicks-bundled](.invar/tasks/in-progress/300-eight-ui-nitpicks-bundled/task-300-eight-ui-nitpicks-bundled.md)  [active]  [building]
   `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
 ## USER-DIRECTED (3)
@@ -85,34 +87,31 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (13) — stamp Priority: into these task files
+## NO PRIORITY GROUP (10) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
-- #308 [308-markdown-view-only-mode-persistent](.invar/tasks/active/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
 - #310 [310-markdown-title-blue-like-subtitles](.invar/tasks/active/310-markdown-title-blue-like-subtitles/task-310-markdown-title-blue-like-subtitles.md)
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
-- #313 [313-terminal-mouse-passthrough-to-child-apps](.invar/tasks/active/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
-- #315 [315-terminal-child-colors-must-not-be-themed](.invar/tasks/active/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md)
 - #316 [316-terminal-list-close-icon-matches-tabs](.invar/tasks/active/316-terminal-list-close-icon-matches-tabs/task-316-terminal-list-close-icon-matches-tabs.md)
-- #317 [317-bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/active/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)
 - #318 [318-markdown-code-fence-uniform-background](.invar/tasks/active/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md)
-- #319 [319-tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/active/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)
+- #322 [322-status-editor-column-content-stale-in-preview](.invar/tasks/active/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)
+- #323 [323-quit-confirmation-dialog-modern](.invar/tasks/active/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md)
 
-## RECENTLY COMPLETED (last 15 of 80 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 95 — full log: project.tasks-completed.md)
+- #321 [terminal-flicker-child-tui-repaints](.invar/tasks/completed/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md) — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)
+- #320 [terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/completed/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md) — c8c8723a — terminal defaults + ANSI palette theme-derived, VSCode model; child-explicit lanes stay exact (landed in #320 bundle merge f64f85ef)
+- #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/completed/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md) — f64f85ef — terminal theme fidelity (VSCode palette + theme defaults) + DEC 2026 synchronized child repaints; tasks:watch flicker gone
+- #319 [tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/completed/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md) — 2012cf08 — tasks pane: two-line live rows, shared-seam cycle tooltip + off, padded persistent tabs, one-line items, capitalized headers
+- #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/completed/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md) — ec92a8b9 — bottom panel separator: thin lower-half-cell + editor action buttons + always-draggable geometry
+- #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
+- #314 [harness-and-tooling-integrity-bundle](.invar/tasks/completed/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md) — 331a8d33 — harness/tooling integrity: Drive paint-condition waits, dispatch root-relative pointers, folder-open task isolation
+- #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
+- #313 [terminal-mouse-passthrough-to-child-apps](.invar/tasks/completed/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md) — 133338ba — terminal mouse passthrough to child apps
+- #312 [vue-sfc-block-syntax-and-routing](.invar/tasks/completed/312-vue-sfc-block-syntax-and-routing/task-312-vue-sfc-block-syntax-and-routing.md) — b0f78747 — Vue SFC phases 1-2: block-aware highlighting on generic syntax + language routing
+- #311 [vue-sfc-integration-map](.invar/tasks/completed/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md) — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
+- #308 [markdown-view-only-mode-persistent](.invar/tasks/completed/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md) — 284d53c1 — markdown view-only mode, persistent across files and restarts
 - #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
+- #301 [keybinding-chord-prefix-single-arm](.invar/tasks/completed/301-keybinding-chord-prefix-single-arm/task-301-keybinding-chord-prefix-single-arm.md) — 2eab05ae — chord resolver arms every shared-prefix continuation; #267 experiment is the permanent regression
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
-- #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
-- #296 [per-workspace-terminal-worlds](.invar/tasks/completed/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md) — 55772cef — per-workspace terminal worlds: panel content sets isolate + restore per workspace
-- #295 [vscode-task-variable-schema](.invar/tasks/completed/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md) — 371cbdb7 — VS Code task variables: env + predefined set, boundary refusals
-- #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/completed/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md) — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
-- #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
-- #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
-- #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/completed/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md) — f22d86e3 — Scrollbar corner: vertical owns full height + corner, horizontal ends at its edge, grey/white parity both axes; #284 oracle banked
-- #289 [preview-scroll-sync-setting](.invar/tasks/completed/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md) — 7c65b3e8 — Markdown preview: bidirectional input-leader scroll-sync (setting, default ON) + both-axis scrollbars; activity-bar harness locator fixed by-label at the generator
-- #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
-- #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
-- #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
-- #285 [preview-last-body-row-hit-test](.invar/tasks/completed/285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) — 5d9f0a1a — Preview last-row hit test: #289's seam change confirmed as generator fix by red control; workaround removed; boundary gated; deep-hover stall filed #293
-- #284 [scrollbar-theme-captured-at-construction](.invar/tasks/completed/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md) — 29d815ea — Scrollbar colours follow the live theme: derive-per-frame at the shared painter, census clean, two-scale switch contract

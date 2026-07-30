@@ -5,9 +5,10 @@
 // invariant: The tasks dashboard is a pane content citizen (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
+// invariant: Dashboard controls state their selection and next action (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 import type { KeyEvent, StyledText } from '@opentui/core';
 import { Reactive } from 'ivue';
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type {
   PaneContent,
@@ -15,7 +16,10 @@ import type {
 } from '../ui/PaneContent.interface';
 import type { TasksDashboardOverview } from './TasksDashboardOverview';
 import { TasksDashboardPaneRenderer } from './TasksDashboardPaneRenderer';
-import type { TasksDashboardAction } from './TasksDashboardPaneRenderer';
+import type {
+  TasksDashboardAction,
+  TasksDashboardTabLineTarget,
+} from './TasksDashboardPaneRenderer';
 
 class $TasksDashboardPaneContent implements PaneContent {
   constructor(
@@ -59,6 +63,10 @@ class $TasksDashboardPaneContent implements PaneContent {
     return computed(() => this.readRenderVersion());
   }
 
+  get hoveredTabLineTarget() {
+    return shallowRef<TasksDashboardTabLineTarget | null>(null);
+  }
+
   protected readRenderVersion(): string {
     return [
       this.overview.version.value,
@@ -73,6 +81,10 @@ class $TasksDashboardPaneContent implements PaneContent {
       this.overview.animationPaint.value,
       this.overview.gateGlance.value?.exitCode,
       this.overview.actionNotice.value?.message,
+      this.hoveredTabLineTarget.value?.kind,
+      this.hoveredTabLineTarget.value?.kind === 'lens'
+        ? this.hoveredTabLineTarget.value.lens
+        : '',
     ].join(':');
   }
 
@@ -95,6 +107,8 @@ class $TasksDashboardPaneContent implements PaneContent {
       gateGlance: this.overview.gateGlance.value,
       actionNotice: this.overview.actionNotice.value,
       taskActionIcons: this.application.theme.taskActionIcons,
+      ellipsisCell: this.application.theme.ellipsisCell,
+      hoveredTabLineTarget: this.hoveredTabLineTarget.value,
     });
   }
 
@@ -113,11 +127,14 @@ class $TasksDashboardPaneContent implements PaneContent {
     return this.overview.windowTop() + row - 1;
   }
 
-  onPointerMove(_column: number, row: number): boolean {
+  onPointerMove(column: number, row: number): boolean {
     if (row === 0) {
       this.overview.hoveredIndex.value = -1;
+      this.hoveredTabLineTarget.value =
+        TasksDashboardPaneRenderer.Class.hitTestTabLine(column);
       return true;
     }
+    this.hoveredTabLineTarget.value = null;
     const rowIndex = this.rowIndexAt(row);
     const rows = this.overview.rows.value;
     this.overview.hoveredIndex.value =
@@ -129,10 +146,20 @@ class $TasksDashboardPaneContent implements PaneContent {
 
   onPointerOut(): void {
     this.overview.hoveredIndex.value = -1;
+    this.hoveredTabLineTarget.value = null;
   }
 
   tooltipAt(column: number, row: number): string | null {
-    if (row <= 0) return null;
+    if (row === 0) {
+      const target = TasksDashboardPaneRenderer.Class.hitTestTabLine(column);
+      return target === null
+        ? null
+        : TasksDashboardPaneRenderer.Class.tooltipForTabLineTarget(
+            target,
+            this.overview.cycling.value,
+          );
+    }
+    if (row < 0) return null;
     const taskRow = this.overview.rows.value[this.rowIndexAt(row)];
     if (!taskRow) return null;
     const action = TasksDashboardPaneRenderer.Class.taskActionAt(
@@ -154,6 +181,8 @@ class $TasksDashboardPaneContent implements PaneContent {
         gateGlance: this.overview.gateGlance.value,
         actionNotice: this.overview.actionNotice.value,
         taskActionIcons: this.application.theme.taskActionIcons,
+        ellipsisCell: this.application.theme.ellipsisCell,
+        hoveredTabLineTarget: this.hoveredTabLineTarget.value,
       },
       taskRow,
       column,
@@ -176,31 +205,32 @@ class $TasksDashboardPaneContent implements PaneContent {
     const rowIndex = this.rowIndexAt(row);
     const taskRow = this.overview.rows.value[rowIndex];
     if (!taskRow) return false;
-    if (taskRow.kind === 'detail') {
-      const action = TasksDashboardPaneRenderer.Class.taskActionAt(
-        {
-          rows: this.overview.rows.value,
-          lens: this.overview.lens.value,
-          cycling: this.overview.cycling.value,
-          available: this.overview.available.value,
-          windowTop: this.overview.windowTop(),
-          selectedIndex: this.overview.selectedIndex.value,
-          hoveredIndex: this.overview.hoveredIndex.value,
-          paneFocused: true,
-          palette: this.application.theme.palette,
-          height: this.overview.viewportHeight.value + 1,
-          innerWidth:
-            this.overview.viewportWidth.value + this.scrollbarThicknessCells,
-          viewportWidth: this.overview.viewportWidth.value,
-          animationPaint: this.overview.animationPaint.value,
-          gateGlance: this.overview.gateGlance.value,
-          actionNotice: this.overview.actionNotice.value,
-          taskActionIcons: this.application.theme.taskActionIcons,
-        },
-        taskRow,
-        column,
-      );
-      if (action === null) return false;
+    const action = TasksDashboardPaneRenderer.Class.taskActionAt(
+      {
+        rows: this.overview.rows.value,
+        lens: this.overview.lens.value,
+        cycling: this.overview.cycling.value,
+        available: this.overview.available.value,
+        windowTop: this.overview.windowTop(),
+        selectedIndex: this.overview.selectedIndex.value,
+        hoveredIndex: this.overview.hoveredIndex.value,
+        paneFocused: true,
+        palette: this.application.theme.palette,
+        height: this.overview.viewportHeight.value + 1,
+        innerWidth:
+          this.overview.viewportWidth.value + this.scrollbarThicknessCells,
+        viewportWidth: this.overview.viewportWidth.value,
+        animationPaint: this.overview.animationPaint.value,
+        gateGlance: this.overview.gateGlance.value,
+        actionNotice: this.overview.actionNotice.value,
+        taskActionIcons: this.application.theme.taskActionIcons,
+        ellipsisCell: this.application.theme.ellipsisCell,
+        hoveredTabLineTarget: this.hoveredTabLineTarget.value,
+      },
+      taskRow,
+      column,
+    );
+    if (action !== null) {
       const performed = this.performAction(action, rowIndex);
       if (
         performed &&
@@ -210,6 +240,7 @@ class $TasksDashboardPaneContent implements PaneContent {
       }
       return performed;
     }
+    if (taskRow.kind === 'detail') return false;
     if (!this.overview.setSelection(rowIndex)) return false;
     if (this.performAction('task', rowIndex))
       this.application.rightDockHost.blur();

@@ -45,12 +45,15 @@ mutating any observable state, or ranking a spread-out match tighter (lower) tha
 only by being looked up in that map — no action path bypasses the registry.
 
 **Scope:** `CommandRegistry` (the `commands` map, `register`/`registerAll`, `run`, `all`,
-`filtered`, `runSelected`) and the default command set in `CommandDefaults`.
+`filtered`, `runSelected`, and `actionsForSurface`), the default command set in `CommandDefaults`,
+and command-contributed editor-title and panel-separator buttons.
 
 **Mechanism:** Every action is added to one private `Map<string, Command>`; the palette lists it
 via `all`/`filtered` and executes the selection via `runSelected`, while a keybinding executes the
 same command via `run(id)`. Both dispatch paths resolve the command out of the one map, so there
-is no second way to reach an action.
+is no second way to reach an action. `Command.actionIcons` can name a theme icon for a declared
+surface. `actionsForSurface` applies the same guard and returns commands in registration order;
+painted buttons call `run(id)`.
 
 **Generates:** The command-palette-for-everything surface; rebindable keybindings that name a
 command id rather than a hard-wired handler; the *No action requires a memorized motion* guarantee
@@ -58,8 +61,8 @@ for this module.
 
 **Evidence:** `src/modules/commands/CommandRegistry.ts` (`commands` map, `register`, `run`,
 `runSelected`); `src/modules/commands/CommandDefaults.ts` (`registerDefaultCommands`); `registry
-filters by query and runs the selected command` in
-`src/modules/commands/__tests__/commands.test.ts`.
+filters by query and runs the selected command` and `named action surfaces share command guards
+without leaking into each other` in `src/modules/commands/CommandRegistry.test.ts`.
 
 **Impossible if true:** A user-reachable action absent from the registry map, or a command executed
 by any path other than a lookup in that map (a hidden handler the palette cannot list or a keybinding
@@ -69,7 +72,7 @@ cannot name).
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-29
 
 ### A command runs only when its guard holds
 

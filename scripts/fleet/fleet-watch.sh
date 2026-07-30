@@ -197,6 +197,65 @@ emit_sprawl_events() {
   fi
 }
 
+# THE CONDUCTOR'S SPEEDOMETER. Context % must be MECHANICAL, not remembered: every
+# event batch (READY, gate sentinel, DEAD/QUIET, SPRAWL) carries one CTX line read
+# from the conductor's live session jsonl, so the conductor sees the gauge exactly
+# when it acts. Analysis only; a missing or failing gauge must never silence the
+# events themselves (the events are the payload, the gauge is the rider).
+CONTEXT_GAUGE_SCRIPT="${CONTEXT_GAUGE_SCRIPT:-${repository_root}/scripts/context-usage.sh}"
+
+emit_context_speedometer() {
+  [ -f "$CONTEXT_GAUGE_SCRIPT" ] || return 0
+  local gauge_line
+  gauge_line="$(bash "$CONTEXT_GAUGE_SCRIPT" 2>/dev/null | grep -m1 'CONTEXT_TOKENS=' || true)"
+  [ -n "$gauge_line" ] && echo "CTX: ${gauge_line}"
+  return 0
+}
+
+# THE COMPACTION CHECKPOINT. At CHECKPOINT_PCT of the compaction gauge (default
+# 85 — i.e. ~15% of runway left) one CHECKPOINT event fires UNCONDITIONALLY (not
+# riding an event batch — a quiet fleet must still warn) telling the conductor to
+# run the ANCHOR PROTOCOL in project.conductor.md BEFORE the context compacts:
+# anchor, lesson sweep, mechanics hardening. One event per crossing: the stamp
+# clears when the gauge falls back under the bar (compaction or session restart).
+CHECKPOINT_PCT="${CHECKPOINT_PCT:-85}"
+CHECKPOINT_STAMP="${CHECKPOINT_STAMP:-/tmp/fleet-watch-checkpoint.fired}"
+
+emit_checkpoint_event() {
+  [ -f "$CONTEXT_GAUGE_SCRIPT" ] || return 0
+  local gauge_line compact_pct
+  gauge_line="$(bash "$CONTEXT_GAUGE_SCRIPT" 2>/dev/null | grep -m1 'CONTEXT_TOKENS=' || true)"
+  [ -n "$gauge_line" ] || return 0
+  compact_pct="$(printf '%s' "$gauge_line" | sed -n 's/.*COMPACT_PCT=\([0-9]*\).*/\1/p')"
+  [ -n "$compact_pct" ] || return 0
+  if [ "$compact_pct" -ge "$CHECKPOINT_PCT" ]; then
+    if [ ! -f "$CHECKPOINT_STAMP" ]; then
+      echo "CHECKPOINT: context at ${compact_pct}% of compaction gauge — run the ANCHOR PROTOCOL (project.conductor.md) NOW, before compact: anchor + lesson sweep + mechanics hardening. ${gauge_line}"
+      touch "$CHECKPOINT_STAMP"
+    fi
+  else
+    rm -f "$CHECKPOINT_STAMP"
+  fi
+  return 0
+}
+
+run_cycle_emitters() {
+  emit_ready_events
+  emit_folder_report_events
+  emit_silent_events
+  emit_gate_events
+  emit_sprawl_events
+}
+
+emit_cycle() {
+  local cycle_events
+  cycle_events="$(run_cycle_emitters)"
+  if [ -n "$cycle_events" ]; then
+    printf '%s\n' "$cycle_events"
+    emit_context_speedometer
+  fi
+}
+
 if [ "${1:-}" = "--self-test" ]; then
   sandbox="$(mktemp -d /tmp/fleet-watch-selftest-XXXXXX)"
   failures=0
@@ -256,6 +315,36 @@ if [ "${1:-}" = "--self-test" ]; then
   # ABSENT arm: with nothing planted, no event may fire.
   quiet="$( { emit_ready_events; emit_gate_events; } | grep -c . || true)"
   [ "$quiet" = "0" ] || { echo "FAIL absent arm — events with nothing planted: $quiet"; failures=1; }
+  # SPEEDOMETER present arm: an event batch must carry exactly one CTX line.
+  planted="/tmp/selftest-$$-ctx-READY.md"; echo x > "$planted"
+  gauge="$sandbox/gauge.sh"; echo 'echo "CONTEXT_TOKENS=1234 RAW_PCT=1% COMPACT_PCT=2%"' > "$gauge"
+  ctx_present="$(CONTEXT_GAUGE_SCRIPT="$gauge" emit_cycle | grep -c '^CTX: CONTEXT_TOKENS=1234' || true)"
+  [ "$ctx_present" = "1" ] || { echo "FAIL speedometer present arm (got $ctx_present)"; failures=1; }
+  rm -f "$planted" "${planted}.seen"
+  # SPEEDOMETER broken-gauge arm: a failing gauge must never silence the events.
+  planted="/tmp/selftest-$$-ctx2-READY.md"; echo x > "$planted"
+  broken="$sandbox/broken-gauge.sh"; echo 'exit 1' > "$broken"
+  events_survive="$(CONTEXT_GAUGE_SCRIPT="$broken" emit_cycle | grep -c "READY: ${planted}" || true)"
+  [ "$events_survive" = "1" ] || { echo "FAIL speedometer broken-gauge arm — events silenced (got $events_survive)"; failures=1; }
+  rm -f "$planted" "${planted}.seen"
+  # SPEEDOMETER absent arm: a quiet cycle emits no CTX line (rider needs a payload).
+  ctx_quiet="$(CONTEXT_GAUGE_SCRIPT="$gauge" emit_cycle | grep -c '^CTX:' || true)"
+  [ "$ctx_quiet" = "0" ] || { echo "FAIL speedometer absent arm — CTX without events: $ctx_quiet"; failures=1; }
+  # CHECKPOINT present arm: gauge over the bar fires once, then stays silent.
+  hot_gauge="$sandbox/hot-gauge.sh"; echo 'echo "CONTEXT_TOKENS=340000 RAW_PCT=85.0% COMPACT_PCT=92.7%"' > "$hot_gauge"
+  cp_stamp="$sandbox/checkpoint.fired"
+  first="$(CONTEXT_GAUGE_SCRIPT="$hot_gauge" CHECKPOINT_STAMP="$cp_stamp" emit_checkpoint_event | grep -c '^CHECKPOINT:' || true)"
+  second="$(CONTEXT_GAUGE_SCRIPT="$hot_gauge" CHECKPOINT_STAMP="$cp_stamp" emit_checkpoint_event | grep -c '^CHECKPOINT:' || true)"
+  [ "$first" = "1" ] || { echo "FAIL checkpoint present arm (got $first)"; failures=1; }
+  [ "$second" = "0" ] || { echo "FAIL checkpoint once-per-crossing arm (got $second)"; failures=1; }
+  # CHECKPOINT reset arm: gauge back under the bar clears the stamp so a later crossing fires again.
+  cool_gauge="$sandbox/cool-gauge.sh"; echo 'echo "CONTEXT_TOKENS=40000 RAW_PCT=10.0% COMPACT_PCT=11.0%"' > "$cool_gauge"
+  CONTEXT_GAUGE_SCRIPT="$cool_gauge" CHECKPOINT_STAMP="$cp_stamp" emit_checkpoint_event >/dev/null
+  refire="$(CONTEXT_GAUGE_SCRIPT="$hot_gauge" CHECKPOINT_STAMP="$cp_stamp" emit_checkpoint_event | grep -c '^CHECKPOINT:' || true)"
+  [ "$refire" = "1" ] || { echo "FAIL checkpoint reset arm (got $refire)"; failures=1; }
+  # CHECKPOINT absent arm: a healthy gauge emits nothing.
+  calm_cp="$(CONTEXT_GAUGE_SCRIPT="$cool_gauge" CHECKPOINT_STAMP="$sandbox/cp2.fired" emit_checkpoint_event | grep -c . || true)"
+  [ "$calm_cp" = "0" ] || { echo "FAIL checkpoint absent arm (got $calm_cp)"; failures=1; }
   rm -rf "$sandbox"
   if [ "$failures" = "0" ]; then
     echo "SELF-TEST: all arms fire, clean state stays silent."
@@ -266,10 +355,7 @@ fi
 
 while true; do
   touch "$HEARTBEAT_FILE"
-  emit_ready_events
-  emit_folder_report_events
-  emit_silent_events
-  emit_gate_events
-  emit_sprawl_events
+  emit_cycle
+  emit_checkpoint_event
   sleep "$CYCLE_SECONDS"
 done

@@ -1,0 +1,18 @@
+{
+  "task": 312,
+  "slug": "vue-sfc-block-syntax-and-routing",
+  "branch": "fleet/312-vue-sfc-block-syntax-and-routing",
+  "worktree": ".invar/worktrees/312-vue-sfc-block-syntax-and-routing",
+  "tmuxSession": "invar/312-vue-sfc-block-syntax-and-routing",
+  "transcript": "tmp/transcripts/transcript-codex-unknown-default-312-vue-sfc-block-syntax-and-routing.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "b221d8bc746177dcd0be06c53299cf8c56541c45",
+  "startedAt": "2026-07-29T20:23:43-04:00",
+  "landedAt": "2026-07-29T21:23:50-04:00",
+  "durationMinutes": 60,
+  "mergeCommit": "b0f78747"
+}

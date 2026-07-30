@@ -2,7 +2,8 @@
 
 State: active
 Engine: codex
-Effort: medium
+Model: 5.6-sol
+Effort: high
 Provenance: CONDUCTOR-DIAGNOSED 2026-07-29 (from #305 BLOCKED gate + measured control)
 
 ## Defect

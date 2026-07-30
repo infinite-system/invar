@@ -16,6 +16,18 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ## The instruments
 
+### `bun .invar/tasks/in-progress/313-child-owns-its-io-bundle/313-child-io-diagnostic-probe.ts [columns] [rows]`
+Real nested-child mouse and color fingerprint through `PtyTestDriver` and FrameProbe. The child
+enables SGR mouse mode, paints default, ANSI, and truecolor controls, and records one real click.
+`clickBytes=none` means Invar swallowed the click. Exact press and release bytes prove routing and
+child-local coordinates. Each color line prints FrameProbe's four RGBA lanes for one child cell.
+USE IT WHEN: changing terminal mouse routing, pane padding, terminal default colors, ANSI palette
+mapping, or child-color isolation. Drive at 100×30 and 160×50 for geometry parity.
+KNOWN RESULT (2026-07-29): before the child-cell route, both geometries printed `clickBytes=none`.
+After the route, both print `ESC[<0;4;1M ESC[<0;4;1m`. Before color isolation, default foreground
+and background were the dark Invar theme lanes `169,177,214,255` and `22,22,30,255`, while ANSI
+white, ANSI black, and truecolor controls stayed exact.
+
 ### `bun .invar/tasks/*/282-scrollbar-drag-broken-and-horizontal-thickness/282-scrollbar-drag-history-probe.ts [repository-root] [line-count] [theme] [focus-click]`
 Real PTY press-move-release fingerprints for the editor's horizontal and vertical thumbs and the
 structure right-dock thumb. It builds a bounded fixture with 500 structure symbols and extends it

@@ -13,6 +13,7 @@ test('the shipped application registers its built in contributions', () => {
     ['git', 'Git'],
     ['markdown', 'Markdown'],
     ['language', 'Language Intelligence'],
+    ['vue', 'Vue'],
     ['database-provider', 'SQLite Provider'],
     ['terminal', 'Terminal'],
     ['inline-rewrite', 'Inline Rewrite'],
@@ -32,6 +33,7 @@ test('the shipped application registers its built in contributions', () => {
       (contributor) => contributor.workspaceContributor !== undefined,
     ),
   ).toEqual([
+    true,
     true,
     true,
     true,

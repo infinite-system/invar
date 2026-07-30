@@ -755,6 +755,12 @@ step "coverage ratchet (no undeclared assertion loss)" bun scripts/check-coverag
 step "dropped reactive observations (report-only findings, gated instrument)" bun scripts/check-reactive-observation.ts
 # 2) Unit tests.
 step "unit tests (bun test)" bun test
+# USER DIRECTIVE 2026-07-29 ("bun run build must be run"): #312's compiler-sfc
+# import broke `bun build --compile` while every gate stayed green — tests and
+# tsc do not trace what the binary bundler traces. The shipped artifact must
+# compile on every gate. Output goes to a scratch path so the gate never
+# clobbers a developer's dist/iv.
+step "binary build (bun run build compiles)" bun build --compile --minify --external web-tree-sitter src/main.ts --outfile /tmp/merge-gate-binary-build/iv
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
 # They remain serial within one gate because they launch a long sequence of
 # applications; their blocking verdicts use state, ordering, and counts.
@@ -922,6 +928,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   parallel_safe_smoke "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
   parallel_safe_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
+  parallel_safe_smoke "smoke: markdown view-mode harness" bun scripts/harness/smoke-markdown-view-mode-harness.ts
   parallel_safe_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
   parallel_safe_smoke "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
   serial_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts

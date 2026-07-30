@@ -1,0 +1,18 @@
+{
+  "task": 320,
+  "slug": "terminal-pane-fidelity-two-bundle",
+  "branch": "fleet/320-terminal-pane-fidelity-two-bundle",
+  "worktree": ".invar/worktrees/320-terminal-pane-fidelity-two-bundle",
+  "tmuxSession": "invar/320-terminal-pane-fidelity-two-bundle",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-320-terminal-pane-fidelity-two-bundle.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "898d876e3e71dc59cf91f8b0adc488d1ccefd793",
+  "startedAt": "2026-07-29T21:23:27-04:00",
+  "landedAt": "2026-07-29T22:45:33-04:00",
+  "durationMinutes": 82,
+  "mergeCommit": "f64f85ef"
+}

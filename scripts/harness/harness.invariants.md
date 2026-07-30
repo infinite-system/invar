@@ -87,7 +87,9 @@ that do not launch Invar are outside this rule.
 temporary home. It seeds the deliberate settings fixture there and removes the home at exit.
 `tui-harness.sh` passes that home and its four XDG paths to every tmux session. `Drive` already owns a
 new temporary home for each invocation. `PtyTestDriver` completes every supplied home, sets the four
-XDG paths, and suppresses the built-in first-run task unless a drive explicitly enables it.
+XDG paths, suppresses the built-in first-run task, and prevents every folder-open task from launching
+unless a task-focused smoke explicitly enables both behaviors. Task configuration and manual task
+commands remain observable while automatic launch is suppressed.
 
 **Generates:** default-first drives; explicit contract settings that cannot be shadowed by user
 preferences; no harness write to `~/.config/invar/settings.json`; working Bun lookup after HOME
@@ -95,11 +97,14 @@ isolation.
 
 **Evidence:** `scripts/behavioral-contracts.sh`; `scripts/tui-harness.sh`;
 `scripts/harness/PtyTestDriver.ts`; `scripts/harness/PtyTestDriver.test.ts`;
+`scripts/harness/smoke-tasks-harness.ts`;
+`scripts/harness/smoke-reserved-chord-harness.ts`;
+`scripts/harness/smoke-workspace-tabs-harness.ts`;
 `.invar/tasks/active/233-wrap-contract-red-settings-leak/233-drive-wrap-settings-polarity.ts`.
 
 **Impossible if true:** a behavioral result changing when the caller changes `wordWrap`; an empty
 probe because Bun was looked up below a new bare home; a contract or drive rewriting the caller's
-settings file.
+settings file; a repository task configuration launching inside an unrelated registered smoke.
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts && bun run drive --size 10 &&
 bun run drive --size 100000 && scripts/behavioral-contracts.sh`
@@ -403,9 +408,9 @@ sampling after synchronized-output quiescence alone is not sufficient when the a
 frames. If the outcome includes content that must not change, then the action must also change a
 required comparison region while the invariant region stays byte-identical.
 
-**Scope:** `PtyTestDriver`, `ContentInvarianceOptions`, every
-`scripts/harness/smoke-*-harness.ts` port, and shared harness helpers. Frame counts may diagnose output
-volume, but they never identify the state a waiter expects. Fixture operations that consume
+**Scope:** `PtyTestDriver`, `Drive` action completion, `ContentInvarianceOptions`, every
+`scripts/harness/smoke-*-harness.ts` port, and shared harness helpers. Frame counts may diagnose
+output volume, but they never identify the state a waiter expects. Fixture operations that consume
 app-produced external state — `runGit`, file reads or writes, directory or permission changes, and
 spawned processes — must first observe that state at its authoritative disk or process boundary.
 A WAIT MUST BE A CONDITION, and three shapes fail that requirement, not just the frame-ordinal one:
@@ -427,7 +432,9 @@ the liveness condition, and compares the invariant region's serialized cells byt
 `HarnessSmoke.awaitScrollPosition` checks the exact published coordinate before polling, so an
 already-satisfied clamp resolves without requiring input to repaint. A frame-history check that also
 requires a process side effect keeps collecting until both the side effect and its named frame
-observation have occurred.
+observation have occurred. A `Drive` status completion first polls its named status predicate, then
+waits for the action's changed screen from the pre-action baseline. Status publication cannot release
+the next click before its target paints.
 
 **Generates:** already-satisfied fast paths; transition waits named for visible outcomes; timeout
 errors containing the predicate description and final relevant grid region; frame coalescing and
@@ -445,6 +452,7 @@ legitimate awaited repaint across the interval boundary.
 **Evidence:** `scripts/harness/PtyTestDriver.ts` (`awaitGridCondition`, `awaitScreenChange`,
 `collectCompletedFrameObservationsUntil`, `assertContentInvariantAcrossAction`); the recorded-stream
 cases in `scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/HarnessSmoke.test.ts`;
+`scripts/harness/Drive.test.ts`;
 `scripts/harness/smoke-editor-harness.ts`; `scripts/harness/smoke-goto-definition-harness.ts`;
 `scripts/harness/smoke-agent-pane-ux-harness.ts`. The COST of the two shapes this record did not
 originally forbid, measured 2026-07-25: both produced ~50% flakes that `retry-once-on-timeout` then
@@ -462,14 +470,15 @@ command frame before it judges reduced-motion first-frame completeness.
 predicate waiting for another frame; two coalesced invalidations requiring two completed frames; a
 visual assertion sampling the grid after only status publication or output quiescence; a post-action
 wait whose predicate the pre-action state already satisfied (so the wait returns immediately and the
-next step races); a bare `Bun.sleep` standing between a drive and the assertion that verifies it; a
+next step races); a `Drive` status completion returning before its action paints a changed screen; a
+bare `Bun.sleep` standing between a drive and the assertion that verifies it; a
 visual stability claim expressed as frame silence; a content-invariance assertion with no required
 changed region proving the action occurred; `runGit`, a file operation, or a spawned process consuming
 state produced asynchronously by the app before a deadline-bounded disk or process observation proves
 that state exists; a frame-history assertion ending on an external proof before its subject frame is
 observed; a primitive that promises to await the next synchronized frame.
 
-**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
+**Verification:** `bun test scripts/harness/Drive.test.ts scripts/harness/PtyTestDriver.test.ts
 scripts/harness/SynchronizedOutputQuiescence.test.ts scripts/harness/HarnessSmoke.test.ts && bun
 scripts/harness/smoke-terminal-stage-harness.ts`
 

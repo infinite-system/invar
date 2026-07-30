@@ -19,6 +19,47 @@ they are genuinely a new family. If you cannot find the family, that is the find
 
 ---
 
+## 0. THE ANCHOR PROTOCOL — READ FIRST — surviving compaction (user-directed 2026-07-29)
+
+The conductor is an amnesiac: context compacts intermittently and everything not on
+disk is gone. The user's framing, verbatim: "We are basically making amnesia context
+based agent remember its identity and lessons over intermittent compactions of its
+context." The protocol makes survival MECHANICAL, not remembered.
+
+**Trigger — never from memory.** fleet-watch fires a `CHECKPOINT:` event at
+CHECKPOINT_PCT (default 85) of the compaction gauge — roughly 15% of runway left —
+once per crossing, even when the fleet is quiet. Every event batch also carries a
+`CTX:` speedometer line, so the gauge is seen at every gate. The gauge itself is
+`scripts/context-usage.sh` (repo-local; the context-usage skill documents it).
+
+**On CHECKPOINT (or whenever COMPACT_PCT ≥ 85 is seen): stop starting new work and
+run these five steps, in order, each ending in a commit:**
+
+1. **ANCHOR** — write/replace the RESUME ANCHOR in `project.briefing.md`: lanes with
+   verdict state, queue with contracts, laws delta since the last anchor, watcher
+   re-arm lines (Monitor command + cron spec verbatim). The anchor is STATE — it may
+   be pruned when stale (user-approved).
+2. **LESSON SWEEP** — split what the session learned by DURABILITY CLASS:
+   - instance lessons (this bug, this task) → task records / the census; they are
+     already home.
+   - fundamental lessons (generator-level, would recur in any project) → THIS FILE as
+     a numbered family, and the conductor's auto-memory if global.
+   The test: would the lesson still be true if every current task were deleted? Then
+   it is doctrine, not an incident.
+3. **MECHANICS HARDENING** — any ritual performed by hand twice or more this session
+   becomes a script WITH A SELF-TEST before compact (the verdict-extraction, steer,
+   land, archive-repair scripts were all born this way). A manual ritual dies at
+   compaction; a self-tested script survives any number of them.
+4. **WATCHERS** — verify the anchor names the exact Monitor command and cron spec so
+   the next incarnation re-arms in one action each.
+5. **CLEAN TREES** — `git status` in both repos must be clean; uncommitted work is
+   the one thing no protocol can resurrect.
+
+**The one-line rule: if it must survive the session it goes to disk; if it must
+survive the project it goes to doctrine; if it must run without being remembered it
+becomes a self-tested script.**
+
+
 ## 1. THE UNREACHABLE WAIT — asking for evidence of a change that will not happen
 
 **The rule.** A result condition is only safe when the result is REACHABLE. Before writing

@@ -32,7 +32,6 @@ import {
   type EditorColumnRasterProjectionPort,
   type EditorColumnSymbolHoverPort,
 } from '../ui/EditorColumnDefault';
-import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { BracketMatch } from './BracketMatch';
 import type { EditorFrameAttribution } from './EditorFrameAttribution';
 import { SourceTextPaneContent } from './SourceTextPaneContent';
@@ -144,7 +143,7 @@ class $EditorPlugin
         editor.document,
         editor.cursor.line.value,
         editor.cursor.col.value,
-        LanguageRegistry.Class.forPath(editor.document.path),
+        workspace.documentSyntax,
       )?.match ?? null
     );
   }

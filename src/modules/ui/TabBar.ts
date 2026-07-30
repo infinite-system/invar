@@ -84,8 +84,8 @@ class $TabBar {
   protected editorTitleActions(): readonly EditorTitleAction[] {
     const { commands, theme } = this.dependencies;
     const actions: EditorTitleAction[] = [];
-    for (const command of commands.editorTitleActions()) {
-      const iconName = command.editorTitleIcon;
+    for (const command of commands.actionsForSurface('editorTitle')) {
+      const iconName = command.actionIcons?.editorTitle;
       if (!iconName) continue; // unreachable: the registry filters on it, but keeps the type honest
       actions.push({
         commandId: command.id,

@@ -23,7 +23,6 @@ function createHostWorkspace(path: string) {
 function activate(path = '/project/notes.md') {
   const plugin = new MarkdownPlugin.Class();
   const workspace = createHostWorkspace(path);
-  plugin.attachWorkspace(workspace);
   const commands = new CommandRegistry.Class();
   const editorSurfaceContents = new EditorSurfaceContents.Class();
   const context = {
@@ -41,6 +40,7 @@ function activate(path = '/project/notes.md') {
     }),
   } as unknown as ApplicationContributionContext;
   plugin.activateApplication(context);
+  plugin.attachWorkspace(workspace);
   return { plugin, workspace, commands, editorSurfaceContents };
 }
 
@@ -51,9 +51,9 @@ describe('MarkdownPlugin', () => {
     expect(editorSurfaceContents.claimingProvider).toBeNull();
   });
 
-  // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
-  it('claims the editor column when a Markdown tab auto-opens its preview', () => {
-    const { editorSurfaceContents } = activate();
+  it('claims the editor column when the Markdown toggle opens preview mode', () => {
+    const { commands, editorSurfaceContents } = activate();
+    commands.run('markdown.togglePreview');
     expect(editorSurfaceContents.claimingProvider?.identifier).toBe(
       'markdown.preview',
     );
@@ -63,39 +63,42 @@ describe('MarkdownPlugin', () => {
   // markdown-shaped port. The tab bar renders whatever declares an icon.
   it('offers its toggle as an icon-bearing command whose guard follows the active tab', () => {
     const { commands } = activate();
-    const actions = commands.editorTitleActions();
+    const actions = commands.actionsForSurface('editorTitle');
     expect(actions.map((command) => command.id)).toEqual([
       'markdown.togglePreview',
     ]);
-    expect(actions[0]?.editorTitleIcon).toBe('preview');
-    // The auto-opened preview reports the toggle as already ON.
-    expect(actions[0]?.toggled?.()).toBe(true);
+    expect(actions[0]?.actionIcons?.editorTitle).toBe('preview');
+    expect(actions[0]?.toggled?.()).toBe(false);
   });
 
-  it('reports the toggle as OFF once the preview is closed by hand', () => {
+  it('reports the toggle as ON once view-only preview is selected', () => {
     const { plugin, workspace, commands } = activate();
     plugin.controllerFor(workspace).togglePreview();
-    expect(commands.editorTitleActions()[0]?.toggled?.()).toBe(false);
+    expect(commands.actionsForSurface('editorTitle')[0]?.toggled?.()).toBe(
+      true,
+    );
   });
 
   it('withdraws the toggle affordance for a non-Markdown tab', () => {
     const { commands } = activate('/project/main.ts');
-    expect(commands.editorTitleActions()).toEqual([]);
+    expect(commands.actionsForSurface('editorTitle')).toEqual([]);
   });
 
   it('runs the toggle through the one registry, by command id', () => {
     const { plugin, workspace, commands } = activate();
-    expect(plugin.controllerFor(workspace).showingPreview).toBe(true);
-    commands.run('markdown.togglePreview');
     expect(plugin.controllerFor(workspace).showingPreview).toBe(false);
+    commands.run('markdown.togglePreview');
+    expect(plugin.controllerFor(workspace).showingPreview).toBe(true);
   });
 
   it('projects its own status fields, with no host involvement', () => {
-    const { plugin } = activate();
+    const { plugin, commands } = activate();
+    commands.run('markdown.togglePreview');
     const snapshot = (
       plugin as unknown as { statusSnapshot: () => Record<string, unknown> }
     ).statusSnapshot();
     expect(snapshot.markdownPreviewOpen).toBe(true);
+    expect(snapshot.markdownViewMode).toBe('preview');
     expect(snapshot.markdownPaneFocus).toBe('source');
     expect(snapshot.markdownSplitRatio).toBe(0.5);
     expect(snapshot.markdownPreviewSide).toBe('left');

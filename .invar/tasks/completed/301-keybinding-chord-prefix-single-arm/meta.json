@@ -1,0 +1,18 @@
+{
+  "task": 301,
+  "slug": "keybinding-chord-prefix-single-arm",
+  "branch": "fleet/301-keybinding-chord-prefix-single-arm",
+  "worktree": ".invar/worktrees/301-keybinding-chord-prefix-single-arm",
+  "tmuxSession": "invar/301-keybinding-chord-prefix-single-arm",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-301-keybinding-chord-prefix-single-arm.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "60872a932f64760630bd41debd6d2818f6460120",
+  "startedAt": "2026-07-29T22:19:12-04:00",
+  "landedAt": "2026-07-29T22:35:55-04:00",
+  "durationMinutes": 16,
+  "mergeCommit": "2eab05ae"
+}

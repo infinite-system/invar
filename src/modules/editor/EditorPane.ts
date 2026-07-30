@@ -18,7 +18,6 @@ import type { EditorFrameAttribution } from './EditorFrameAttribution';
 import { EditorWrap, type VisualRow } from './EditorWrap';
 import { EditorPaneRenderer } from './EditorPaneRenderer';
 import { BracketMatch } from './BracketMatch';
-import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { ScrollGesture } from '../ui/ScrollGesture';
 import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
 import { SelectableText } from '../ui/SelectableText';
@@ -72,7 +71,7 @@ class $EditorPane {
             editor.document,
             editor.cursor.line.value,
             editor.cursor.col.value,
-            LanguageRegistry.Class.forPath(editor.document.path),
+            workspaceSet.active.documentSyntax,
             this.deps.frameAttribution,
           )
         : null;

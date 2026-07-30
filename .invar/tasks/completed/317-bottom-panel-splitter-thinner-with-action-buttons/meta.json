@@ -1,0 +1,18 @@
+{
+  "task": 317,
+  "slug": "bottom-panel-splitter-thinner-with-action-buttons",
+  "branch": "fleet/317-bottom-panel-splitter-thinner-with-action-buttons",
+  "worktree": ".invar/worktrees/317-bottom-panel-splitter-thinner-with-action-buttons",
+  "tmuxSession": "invar/317-bottom-panel-splitter-thinner-with-action-buttons",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-317-bottom-panel-splitter-thinner-with-action-buttons.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "dad421d3041e103b555fd776a3d7a8fe3ba96df2",
+  "startedAt": "2026-07-29T21:34:54-04:00",
+  "landedAt": "2026-07-29T22:18:21-04:00",
+  "durationMinutes": 43,
+  "mergeCommit": "ec92a8b9"
+}

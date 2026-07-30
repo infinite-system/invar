@@ -146,17 +146,17 @@ test('the active lens groups by priority and selection skips group headings', ()
   expect(rows.map((row) => row.kind)).toEqual([
     'group',
     'task',
-    'detail',
     'group',
     'task',
-    'detail',
   ]);
-  expect(rows[0]?.label).toContain('user-directed');
-  expect(rows[3]?.label).toContain('unprioritised');
+  expect(rows[0]?.label).toContain('User-directed');
+  expect(rows[0]?.label).not.toContain(' user-directed');
+  expect(rows[2]?.label).toContain('Unprioritised');
+  expect(rows[2]?.label).not.toContain(' unprioritised');
   // The initial selection lands on the first TASK row, never a heading.
   expect(overview.selectedIndex.value).toBe(1);
   overview.moveSelection(1);
-  expect(overview.selectedIndex.value).toBe(4);
+  expect(overview.selectedIndex.value).toBe(3);
   overview.moveSelection(-1);
   expect(overview.selectedIndex.value).toBe(1);
   fixture.dispose();
@@ -167,7 +167,7 @@ test('the done lens carries the landing attachment and the meta duration', () =>
   const { overview } = fixture;
   overview.setLens('done');
   const rows = overview.rows.value;
-  expect(rows).toHaveLength(2);
+  expect(rows).toHaveLength(1);
   expect(rows[0]?.taskNumber).toBe(905);
   expect(rows[0]?.attachment).toBe('merged 1a2b3c4d');
   expect(rows[0]?.durationLabel).toBe('1h 15m');

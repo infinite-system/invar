@@ -33,6 +33,7 @@ import {
   type OptimizedBuffer,
   type RenderContext,
 } from '@opentui/core';
+import { SeparatorAppearance } from './SeparatorAppearance';
 
 class $SolidThumbScrollBar extends ScrollBarRenderable {
   protected overviewMarks: readonly ScrollbarOverviewMark[] = [];
@@ -72,50 +73,23 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
     // mouse-down hit-test calls.
     paintSurface.renderSelf = (buffer: OptimizedBuffer): void => {
       const thumbRect = paintSurface.getThumbRect();
-      if (slider.orientation === 'vertical') {
-        buffer.fillRect(
-          slider.x,
-          slider.y,
-          slider.width,
-          slider.height,
-          slider.backgroundColor,
-        );
-        buffer.fillRect(
-          thumbRect.x,
-          thumbRect.y,
-          thumbRect.width,
-          thumbRect.height,
-          slider.foregroundColor,
-        );
-      } else {
-        const paintRow = slider.y + Math.max(0, slider.height - 1);
-        for (
-          let trackColumn = slider.x;
-          trackColumn < slider.x + slider.width;
-          trackColumn++
-        ) {
-          buffer.setCellWithAlphaBlending(
-            trackColumn,
-            paintRow,
-            '▄',
-            slider.backgroundColor,
-            selectedClass.$transparentBackground,
-          );
-        }
-        for (
-          let thumbColumn = thumbRect.x;
-          thumbColumn < thumbRect.x + thumbRect.width;
-          thumbColumn++
-        ) {
-          buffer.setCellWithAlphaBlending(
-            thumbColumn,
-            paintRow,
-            '▄',
-            slider.foregroundColor,
-            selectedClass.$transparentBackground,
-          );
-        }
-      }
+      SeparatorAppearance.Class.paint(
+        buffer,
+        slider.orientation,
+        {
+          x: slider.x,
+          y: slider.y,
+          width: slider.width,
+          height: slider.height,
+        },
+        slider.backgroundColor,
+      );
+      SeparatorAppearance.Class.paint(
+        buffer,
+        slider.orientation,
+        thumbRect,
+        slider.foregroundColor,
+      );
       for (const overviewMark of this.overviewMarks) {
         if (
           overviewMark.trackOffset < 0 ||
@@ -171,10 +145,6 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
       Math.min(Math.floor(virtualThumbStart / 2), trackLength - length),
     );
     return { start, length };
-  }
-
-  protected static get $transparentBackground(): RGBA {
-    return RGBA.fromValues(0, 0, 0, 0);
   }
 
   /** Re-assert the slider's viewport AFTER the scroll state settled — the slider clamps viewPortSize

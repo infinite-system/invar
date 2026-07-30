@@ -25,6 +25,7 @@ import type {
   LanguageCompletionItem,
   LanguageRange,
 } from './LanguageProvider.interface';
+import type { DocumentSyntaxReader } from '../syntax/DocumentSyntaxSource.interface';
 
 export interface SourceTextView extends LiveBuffer {
   // --- the document and the view state over it ---------------------------
@@ -43,6 +44,7 @@ export interface SourceTextView extends LiveBuffer {
   attachWordWrap(source: Ref<boolean>): void;
   readonly wordWrap: Ref<boolean>;
   attachCodeFolding(source: Ref<boolean>): void;
+  attachDocumentSyntax(source: DocumentSyntaxReader): void;
   readonly codeFoldingEnabled: boolean;
   /** Adopt the fold state persisted beside the document, so collapsed regions survive this view. */
   attachFoldState(foldState: DocumentFoldState): void;

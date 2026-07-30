@@ -879,6 +879,8 @@ class $Bootstrap {
       launcher: taskLauncher,
       builtInDefaultEnabled:
         Environment.Class.env('INVAR_TEST_SUPPRESS_BUILT_IN_TASK') !== '1',
+      folderOpenTaskLaunchEnabled:
+        Environment.Class.env('INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS') !== '1',
     });
     const disposeTasksContribution = workspaceSet.registerContributor(tasks);
     const disposeTasksStatus = statusProjectionContributions.register({

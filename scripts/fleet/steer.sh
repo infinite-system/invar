@@ -33,23 +33,26 @@ message_tail="${message: -40}"
 tmux send-keys -t "$session_name" "$message"
 tmux send-keys -t "$session_name" Enter
 
-for attempt in 1 2 3 4 5; do
+for attempt in 1 2 3 4 5 6 7 8; do
   sleep 2
   pane_text="$(tmux capture-pane -p -t "$session_name")"
-  # Strongest signal: the builder is processing (spinner present).
-  if printf '%s' "$pane_text" | grep -qE 'esc to interrupt|• Working'; then
-    echo "steer: DELIVERED to $session_name — builder is processing (attempt $attempt)"
-    exit 0
-  fi
-  # Second signal: the composer tail no longer shows the message (codex
-  # echoes submitted messages higher in the transcript, so only the last
-  # lines near the prompt count as "still in the composer").
+  # THE ONLY acceptance: the composer area near the prompt no longer shows
+  # the message. A spinner is NOT proof — 2026-07-29 a COMPACTION spinner
+  # matched while the steer sat composed and unsubmitted for 14 minutes
+  # (#314). Codex echoes submitted messages higher in the transcript, so
+  # only the last lines near the prompt count as "still in the composer".
   pane_tail="$(printf '%s' "$pane_text" | tail -8)"
   if ! printf '%s' "$pane_tail" | grep -qF -- "$message_tail"; then
-    echo "steer: DELIVERED to $session_name — composer cleared (attempt $attempt)"
+    if printf '%s' "$pane_text" | grep -qE 'esc to interrupt|• Working'; then
+      echo "steer: DELIVERED to $session_name — composer cleared, builder processing (attempt $attempt)"
+    else
+      echo "steer: DELIVERED to $session_name — composer cleared (attempt $attempt)"
+    fi
     exit 0
   fi
-  # Message still visible near the prompt — likely stuck in the composer.
+  # Message still visible near the prompt — stuck in the composer. Mid-turn
+  # codex queues on Enter; keep pressing across attempts (8 x 2s outlasts a
+  # short compaction) rather than accepting a spinner as delivery.
   tmux send-keys -t "$session_name" Enter
 done
 

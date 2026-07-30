@@ -95,7 +95,11 @@ export interface PaneContent {
   haltHorizontalScrollMomentum?(): void;
   scrollToColumn?(column: number): void;
   /** Optional hover projection in content-local cells. */
-  onPointerMove?(column: number, row: number): boolean;
+  onPointerMove?(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean;
   /** Optional display-only tooltip at a content-local cell. The host owns dwell and projection. */
   tooltipAt?(column: number, row: number): string | null;
   /** Optional pointer-leave notification for clearing transient hover state. */
@@ -108,8 +112,16 @@ export interface PaneContent {
     context?: PanePointerContext,
   ): boolean;
   /** Optional continuation/end of a pointer drag begun inside this content. */
-  onPointerDrag?(column: number, row: number): boolean;
-  onPointerUp?(column: number, row: number): boolean;
+  onPointerDrag?(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean;
+  onPointerUp?(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean;
   /** Consume a bulk-text paste (clipboard / dictation) while the panel is focused; return true if it
    *  was handled. Optional — a content that has no text sink (a read-only log) omits it. */
   handlePaste?(text: string): boolean;

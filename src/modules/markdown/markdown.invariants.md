@@ -504,8 +504,8 @@ all follower writes. The split supplies preview extents, selection writes, and c
 input, and selection drag. Fenced code keeps physical lines intact, so its widest line supplies the
 horizontal extent while prose remains viewport-bound.
 
-**Generates:** the auto-opened preview default (see `The Markdown preview opens itself and sits on
-the configured side`); source and preview together; table-of-contents jumps that reveal both panes;
+**Generates:** the explicit split compatibility mode (see `The Markdown preview opens itself and
+sits on the configured side`); source and preview together; table-of-contents jumps that reveal both panes;
 live edit reparsing; bidirectional input-led scroll follow; the default-on
 `markdownPreviewScrollSync` contributed setting; independent scrolling while it is off; one
 clickable and keyboard-bound toggle; vertical and horizontal preview bars; persistent pane geometry.
@@ -533,11 +533,10 @@ scripts/harness/smoke-markdown-harness.ts && bun scripts/harness/smoke-scrollbar
 
 ### The Markdown preview opens itself and sits on the configured side
 
-**Invariant:** If the markdown plugin is enabled and a Markdown tab becomes the active presented
-document, then its preview opens without a keystroke, on the side named by the plugin's contributed
-`markdownPreviewSide` setting (default LEFT of the source), with keyboard focus staying on the
-source pane; a preview the user closed by hand stays closed for that document until its own toggle
-reopens it; disabling the plugin removes the auto-open and the pane with it.
+**Invariant:** If the markdown plugin's compatibility `markdownViewMode` is `split` and a Markdown
+tab becomes the active presented document, then its preview opens without a keystroke. It opens on
+the configured side and leaves keyboard focus on source. A preview closed by hand stays closed for
+that document until its toggle reopens it. Disabling the plugin removes the pane.
 
 **Scope:** `MarkdownWorkspace` (the auto-open watcher and the dismissed-path memory),
 `MarkdownPlugin` (the contributed setting), `MarkdownPreviewSurface` (the side in the mount
@@ -552,7 +551,7 @@ must already see the dismissal, or it re-opens the pane. The persisted split rat
 the SOURCE pane's share on either side: only the child order and the splitter's pointer direction
 flip, and the mount identity carries the side so a settings flip rebuilds the split.
 
-**Generates:** the preview-open default for every Markdown tab; per-document dismissal memory; the
+**Generates:** the explicit split-mode default for every Markdown tab; per-document dismissal memory; the
 `Preview side` settings row; auto-open that never moves the keyboard; uninstall symmetry (disposing
 the contribution stops the watcher and drops the claim).
 
@@ -569,13 +568,55 @@ persisted ratio for the flipped side — one ratio with one meaning survives the
 pointer direction); `MarkdownPreviewSurface.ts:40-45` (the side keys the mount identity).
 
 **Impossible if true:** an active presented Markdown tab showing only raw source with no recorded
-hand-close while the plugin is enabled; a hand-closed document auto-reopening on reactivation; the
+hand-close while compatibility split mode is enabled; a hand-closed document auto-reopening on reactivation; the
 preview mounting right of the source while the setting says `left`; an auto-open or a stale preview
 pane surviving plugin uninstall.
 
 **Verification:** `bun test src/modules/markdown/MarkdownWorkspace.test.ts
 src/modules/markdown/MarkdownPreviewSurface.test.ts src/modules/markdown/MarkdownPlugin.test.ts
 src/modules/markdown/MarkdownSplitView.test.ts && bun scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Markdown view mode persists across Markdown documents
+
+**Invariant:** If `markdownViewMode` is `preview`, then every active Markdown document shows only
+its rendered preview. The source editor is absent and editing keys cannot mutate the document. If
+the mode is `editor`, the source editor returns with full editing. The choice applies to later
+Markdown documents and survives restart. A non-Markdown document always uses its normal surface.
+
+**Scope:** The Markdown plugin's contributed `markdownViewMode` setting, `MarkdownWorkspace`,
+`MarkdownPreviewSurface`, `MarkdownPreviewContent`, and `MarkdownSplitView`. The explicit `split`
+value preserves the older source-preview compatibility mode.
+
+**Mechanism:** `MarkdownPlugin` registers `markdownViewMode` through the contributed settings seam.
+`MarkdownWorkspace.togglePreview` changes `editor` to `preview` or `preview` to `editor`, then saves
+the registered setting. `showingPreview` reads that one setting for every Markdown path.
+`MarkdownPreviewSurface` passes the view-only fact to its content. `MarkdownSplitView` then mounts
+only the preview pane and starts with preview focus. The surface claim reports that the document is
+not the keyboard target, so editor mutations cannot receive view-only input. The Markdown extension
+guard prevents the setting from claiming any other file type.
+
+**Generates:** one persistent choice across tab close, another Markdown open, and process restart;
+a full-width rendered preview with no source pane; a toggle that restores the editor; inert editing
+keys in view-only mode; unchanged behavior for non-Markdown files.
+
+**Rejected alternatives:** Store the choice per path, because a later Markdown file would forget
+it. Store it on `Workspace`, because Markdown owns the policy. Leave the hidden editor as the
+keyboard target, because editing keys could mutate text that the user cannot see.
+
+**Evidence:** `MarkdownPlugin.ts`; `MarkdownWorkspace.ts`; `MarkdownPreviewSurface.ts`;
+`MarkdownPreviewContent.ts`; `MarkdownSplitView.ts`; `MarkdownWorkspace.test.ts`;
+`MarkdownPlugin.test.ts`; `scripts/harness/smoke-markdown-harness.ts`.
+
+**Impossible if true:** a second Markdown file returning to editor after preview mode was selected;
+an editing key changing the hidden source; restart losing the selected mode; a TypeScript file
+showing rendered Markdown; preview mode painting a source pane beside the rendered pane.
+
+**Verification:** `bun test src/modules/markdown && bun
+scripts/harness/smoke-markdown-harness.ts`.
 
 **Status:** provisional
 

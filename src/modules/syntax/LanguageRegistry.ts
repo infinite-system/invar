@@ -1,8 +1,8 @@
 import { Static } from 'ivue/extras';
 import type { LangId } from './Highlighter';
 
-// Maps a file to its language id. The seam where a Tree-sitter grammar would register a
-// richer provider; today it selects the immediate tokenizer language.
+// Maps an ordinary file to its fallback tokenizer language. Document syntax sources override this
+// fallback through the workspace provider registry.
 //
 // invariant: Construction goes through overridable seams (project.invariants.md)
 
@@ -30,10 +30,9 @@ class $LanguageRegistry {
       xml: 'html',
       svg: 'html',
       css: 'css',
-      scss: 'css',
+      scss: 'scss',
       less: 'css',
       sass: 'css',
-      vue: 'vue',
     };
     return languagesByExtension;
   }

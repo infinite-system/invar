@@ -4,11 +4,16 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Child synchronized updates commit as one repaint (src/modules/terminal/terminal.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
-import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
+import type { FrameDump } from '../../src/modules/system/FrameProbe';
+import {
+  ThemePalettes,
+  type Palette,
+} from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -128,10 +133,186 @@ async function awaitFileBytes(filePath: string): Promise<Uint8Array> {
   const deadline = performance.now() + 5_000;
   while (performance.now() < deadline) {
     const file = Bun.file(filePath);
-    if (await file.exists()) return new Uint8Array(await file.arrayBuffer());
+    if (await file.exists()) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length > 0) return bytes;
+    }
     await Bun.sleep(10);
   }
   throw new Error(`Timed out waiting for child input capture at ${filePath}`);
+}
+
+async function awaitFrameDump(
+  framePath: string,
+  predicate: (frameDump: FrameDump) => boolean,
+  description: string,
+): Promise<FrameDump> {
+  const deadline = performance.now() + 5_000;
+  while (performance.now() < deadline) {
+    const frameFile = Bun.file(framePath);
+    if (await frameFile.exists()) {
+      const frameDump = (await frameFile.json()) as FrameDump;
+      if (predicate(frameDump)) return frameDump;
+    }
+    await Bun.sleep(10);
+  }
+  throw new Error(`Timed out waiting for FrameProbe: ${description}`);
+}
+
+function codePointSequenceStart(
+  codePoints: readonly string[],
+  markerCodePoints: readonly string[],
+): number {
+  for (
+    let startIndex = 0;
+    startIndex <= codePoints.length - markerCodePoints.length;
+    startIndex += 1
+  ) {
+    if (
+      markerCodePoints.every(
+        (codePoint, markerIndex) =>
+          codePoints[startIndex + markerIndex] === codePoint,
+      )
+    ) {
+      return startIndex;
+    }
+  }
+  return -1;
+}
+
+function frameLaneAt(
+  frameDump: FrameDump,
+  marker: string,
+  markerCellOffset: number,
+  lane: 'fg' | 'bg',
+): string {
+  for (const row of frameDump.rows) {
+    const markerStart = codePointSequenceStart(
+      Array.from(row.text),
+      Array.from(marker),
+    );
+    if (markerStart >= 0) {
+      return row[lane][markerStart + markerCellOffset] ?? 'missing';
+    }
+  }
+  return 'marker-missing';
+}
+
+function terminalBodyText(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+): string {
+  const endRowExclusive = Math.min(
+    snapshot.rows,
+    panelRectangle.top + panelRectangle.height,
+  );
+  const endColumnExclusive = Math.min(
+    snapshot.columns,
+    panelRectangle.left + panelRectangle.width,
+  );
+  return snapshot
+    .textRows()
+    .slice(panelRectangle.top, endRowExclusive)
+    .map((rowText) => rowText.slice(panelRectangle.left, endColumnExclusive))
+    .join('\n');
+}
+
+function requireChildColorMatrix(
+  frameDump: FrameDump,
+  observationName: string,
+  palette: Palette,
+): void {
+  const ansiColors = [
+    palette.terminalAnsiBlack,
+    '#123456',
+    palette.terminalAnsiGreen,
+    palette.terminalAnsiYellow,
+    palette.terminalAnsiBlue,
+    palette.terminalAnsiMagenta,
+    palette.terminalAnsiCyan,
+    palette.terminalAnsiWhite,
+    palette.terminalAnsiBrightBlack,
+    palette.terminalAnsiBrightRed,
+    palette.terminalAnsiBrightGreen,
+    palette.terminalAnsiBrightYellow,
+    palette.terminalAnsiBrightBlue,
+    palette.terminalAnsiBrightMagenta,
+    palette.terminalAnsiBrightCyan,
+    palette.terminalAnsiBrightWhite,
+  ].map((color) => {
+    const red = Number.parseInt(color.slice(1, 3), 16);
+    const green = Number.parseInt(color.slice(3, 5), 16);
+    const blue = Number.parseInt(color.slice(5, 7), 16);
+    return `${red},${green},${blue},255`;
+  });
+  for (let colorIndex = 0; colorIndex < ansiColors.length; colorIndex += 1) {
+    HarnessSmoke.Class.requireCondition(
+      frameLaneAt(frameDump, 'FG16-0123456789ABCDEF', 5 + colorIndex, 'fg') ===
+        ansiColors[colorIndex],
+      `${observationName} keeps ANSI foreground ${colorIndex} exact`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      frameLaneAt(frameDump, 'BG16-0123456789ABCDEF', 5 + colorIndex, 'bg') ===
+        ansiColors[colorIndex],
+      `${observationName} keeps ANSI background ${colorIndex} exact`,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'DEFAULT-D', 8, 'fg') ===
+      rgbaLane(palette.terminalForeground) &&
+      frameLaneAt(frameDump, 'DEFAULT-D', 8, 'bg') ===
+        rgbaLane(palette.terminalBackground),
+    `${observationName} derives the terminal default foreground and background from theme data`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'OSC4-O', 5, 'fg') === '18,52,86,255',
+    `${observationName} keeps the child OSC 4 ANSI override exact`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'INDEX-I', 6, 'fg') === '255,0,0,255' &&
+      frameLaneAt(frameDump, 'INDEX-I', 6, 'bg') === '0,0,255,255',
+    `${observationName} keeps 256-color foreground and background exact`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'TRUE-T', 5, 'fg') === '18,52,86,255' &&
+      frameLaneAt(frameDump, 'TRUE-T', 5, 'bg') === '101,67,33,255',
+    `${observationName} keeps truecolor foreground and background exact`,
+  );
+}
+
+function rgbaLane(color: string): string {
+  const red = Number.parseInt(color.slice(1, 3), 16);
+  const green = Number.parseInt(color.slice(3, 5), 16);
+  const blue = Number.parseInt(color.slice(5, 7), 16);
+  return `${red},${green},${blue},255`;
+}
+
+async function selectSettingByVisibleLabel(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  settingLabel: string,
+): Promise<void> {
+  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the selected settings label is published before navigation',
+    (status) => typeof status.settingsSelectedLabel === 'string',
+  );
+  for (let navigationStep = 0; navigationStep < 40; navigationStep += 1) {
+    if (selectionStatus.settingsSelectedLabel === settingLabel) break;
+    const previousSelectedLabel = selectionStatus.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `settings navigation advances toward ${settingLabel}`,
+      (status) => status.settingsSelectedLabel !== previousSelectedLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    selectionStatus.settingsSelectedLabel === settingLabel,
+    `${settingLabel} is discovered by its live settings label`,
+  );
 }
 
 async function observeTerminalScrollStateRemainsUnchangedFor(
@@ -165,9 +346,25 @@ const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-harness-home-'));
 
 const statusPath = join(homeDirectory, 'status.json');
 
-const childInputPath = join(homeDirectory, 'wheel-input.bin');
+const framePath = join(homeDirectory, 'frame.json');
 
-const childScriptPath = join(homeDirectory, 'wheel-child.py');
+const childClickInputPath = join(homeDirectory, 'click-input.bin');
+
+const childWheelInputPath = join(homeDirectory, 'wheel-input.bin');
+
+const childMouseOffInputPath = join(homeDirectory, 'mouse-off-input.bin');
+
+const childScriptPath = join(homeDirectory, 'child-io-fixture.py');
+
+const foregroundColorFixture = Array.from({ length: 16 }, (_, colorIndex) => {
+  const ansiCode = colorIndex < 8 ? 30 + colorIndex : 90 + (colorIndex - 8);
+  return `\x1b[${ansiCode}m${colorIndex.toString(16).toUpperCase()}`;
+}).join('');
+
+const backgroundColorFixture = Array.from({ length: 16 }, (_, colorIndex) => {
+  const ansiCode = colorIndex < 8 ? 40 + colorIndex : 100 + (colorIndex - 8);
+  return `\x1b[${ansiCode}m${colorIndex.toString(16).toUpperCase()}`;
+}).join('');
 
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
 
@@ -188,12 +385,28 @@ await Bun.write(
     'previous = termios.tcgetattr(sys.stdin.fileno())',
     'tty.setraw(sys.stdin.fileno())',
     'try:',
-    "    os.write(sys.stdout.fileno(), b'\\x1b[?1000h\\x1b[?1006h\\x1b[?1049hCHILD-MODE-READY\\r\\n')",
-    '    wheel = os.read(sys.stdin.fileno(), 64)',
-    `    open(${JSON.stringify(childInputPath)}, 'wb').write(wheel)`,
-    '    os.read(sys.stdin.fileno(), 1)',
+    "    if sys.argv[1] == 'mouse-on':",
+    "        os.write(sys.stdout.fileno(), b'\\x1b]4;1;rgb:12/34/56\\x1b\\\\\\x1b[?1000h\\x1b[?1006h\\x1b[?1049h\\x1b[HMOUSE-TARGET\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'DEFAULT-D\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'OSC4-\\x1b[31mO\\x1b[0m\\r\\n')",
+    `        os.write(sys.stdout.fileno(), ${JSON.stringify(`FG16-${foregroundColorFixture}\x1b[0m\r\n`)}.encode('latin1'))`,
+    `        os.write(sys.stdout.fileno(), ${JSON.stringify(`BG16-${backgroundColorFixture}\x1b[0m\r\n`)}.encode('latin1'))`,
+    "        os.write(sys.stdout.fileno(), b'INDEX-\\x1b[38;5;196;48;5;21mI\\x1b[0m\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'TRUE-\\x1b[38;2;18;52;86;48;2;101;67;33mT\\x1b[0m\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'CHILD-MODE-READY')",
+    "        click = b''",
+    "        while not click.endswith(b'm'):",
+    '            click += os.read(sys.stdin.fileno(), 64)',
+    `        open(${JSON.stringify(childClickInputPath)}, 'wb').write(click)`,
+    '        wheel = os.read(sys.stdin.fileno(), 64)',
+    `        open(${JSON.stringify(childWheelInputPath)}, 'wb').write(wheel)`,
+    '        os.read(sys.stdin.fileno(), 1)',
+    "        os.write(sys.stdout.fileno(), b'\\x1b]104;1\\x1b\\\\\\x1b[?1049l\\x1b[?1000l\\x1b[?1006l')",
+    '    else:',
+    "        os.write(sys.stdout.fileno(), b'MOUSE-OFF-READY')",
+    '        plain_input = os.read(sys.stdin.fileno(), 64)',
+    `        open(${JSON.stringify(childMouseOffInputPath)}, 'wb').write(plain_input)`,
     'finally:',
-    "    os.write(sys.stdout.fileno(), b'\\x1b[?1049l\\x1b[?1000l\\x1b[?1006l')",
     '    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, previous)',
     '',
   ].join('\n'),
@@ -223,6 +436,8 @@ const driver = new PtyTestDriver.Class({
   homeDirectory,
   environment: {
     TUI_STATUS_PATH: statusPath,
+    TUI_FRAME_PATH: framePath,
+    TUI_FRAME_DUMP: '1',
   },
 });
 
@@ -525,12 +740,80 @@ try {
   );
 
   console.log(
-    '== harness terminal: child modes own wheel bytes, not host scrollback ==',
+    '== harness terminal: child cells own click and wheel bytes, not host input ==',
   );
-  driver.sendText(`python3 ${childScriptPath}`);
+  driver.sendText(`python3 ${childScriptPath} mouse-on`);
   driver.sendKeys('Enter');
+  const mouseTargetSnapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('CHILD-MODE-READY') !== null,
+  );
+  const mouseTarget = mouseTargetSnapshot.findText('MOUSE-TARGET');
+  if (!mouseTarget) throw new Error('The child mouse target disappeared');
+  const darkFrameDump = await awaitFrameDump(
+    framePath,
+    (candidate) => candidate.rows.some((row) => row.text.includes('TRUE-T')),
+    'the child color matrix under the dark theme',
+  );
+  requireChildColorMatrix(
+    darkFrameDump,
+    'dark theme',
+    ThemePalettes.Class.DARK,
+  );
+  const darkStatusBackground =
+    darkFrameDump.rows[darkFrameDump.height - 1]?.bg[10] ?? 'missing';
+  const settingsButtonColumn = driver
+    .snapshot()
+    .rowText(statusBarRow)
+    .lastIndexOf('⚙');
+  HarnessSmoke.Class.requireCondition(
+    settingsButtonColumn >= 0,
+    'the status bar exposes its themed settings affordance',
+  );
+  driver.sendMouseClick({
+    column: settingsButtonColumn,
+    row: statusBarRow,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'settings opens above the running child terminal',
+    (status) => status.settingsOpen === true,
+  );
+  await selectSettingByVisibleLabel(driver, statusPath, 'Theme');
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the live theme setting changes from dark to light',
+    (status) => status.settingsSelectedValue === 'light',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'settings closes over the same running child terminal',
+    (status) => status.settingsOpen === false,
+  );
   await driver.awaitSnapshot(
     (candidate) => candidate.findText('CHILD-MODE-READY') !== null,
+  );
+  const lightFrameDump = await awaitFrameDump(
+    framePath,
+    (candidate) =>
+      candidate.rows.some((row) => row.text.includes('TRUE-T')) &&
+      candidate.rows[candidate.height - 1]?.bg[10] !== darkStatusBackground,
+    'the unchanged child color matrix and changed chrome under the light theme',
+  );
+  requireChildColorMatrix(
+    lightFrameDump,
+    'live light theme',
+    ThemePalettes.Class.LIGHT,
+  );
+  HarnessSmoke.Class.requireCondition(
+    lightFrameDump.rows[lightFrameDump.height - 1]?.bg[10] !==
+      darkStatusBackground,
+    'live theme switch repaints host status chrome around unchanged child cells',
   );
   const childModeStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -542,13 +825,24 @@ try {
   const scrollContentRowsBeforeChildWheel = Number(
     childModeStatus.terminalScrollContentRows,
   );
+  driver.sendMouseClick({
+    column: mouseTarget.column + 3,
+    row: mouseTarget.row,
+    button: 'left',
+  });
+  const childClickBytes = await awaitFileBytes(childClickInputPath);
+  const childClickText = new TextDecoder().decode(childClickBytes);
+  HarnessSmoke.Class.requireCondition(
+    childClickText === '\x1b[<0;4;1M\x1b[<0;4;1m',
+    `child received exact SGR click ${JSON.stringify(childClickText)}`,
+  );
   driver.sendMouse({
     kind: 'wheel',
     column: panelRectangle.left + Math.floor(panelRectangle.width / 2),
     row: panelRectangle.top + 6,
     direction: 'up',
   });
-  const childWheelBytes = await awaitFileBytes(childInputPath);
+  const childWheelBytes = await awaitFileBytes(childWheelInputPath);
   const childWheelText = new TextDecoder().decode(childWheelBytes);
   HarnessSmoke.Class.requireCondition(
     /^\x1b\[<64;\d+;\d+M$/.test(childWheelText),
@@ -574,6 +868,96 @@ try {
     statusPath,
     'the child exits alternate-screen and mouse-tracking modes',
     (status) => status.terminalWheelForwardedToChild === false,
+  );
+
+  console.log(
+    '== harness terminal: real tasks:watch commits one complete initial frame ==',
+  );
+  const tasksWatchBaselineMarker = 'TASKS-WATCH-BASELINE';
+  driver.sendText(`printf '${tasksWatchBaselineMarker}\\n'`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText(tasksWatchBaselineMarker) !== null,
+  );
+  await driver.awaitOutputCondition(
+    'the tasks:watch shell baseline reaches a completed outer frame',
+    () => {
+      const latestObservation = driver
+        .completedFrameObservationsSince(0)
+        .at(-1);
+      return (
+        latestObservation !== undefined &&
+        terminalBodyText(latestObservation.snapshot, panelRectangle).includes(
+          tasksWatchBaselineMarker,
+        )
+      );
+    },
+    5_000,
+  );
+  const tasksWatchObservationStart = driver.completedFrameObservationCount;
+  const tasksWatchScriptPath = join(
+    process.cwd(),
+    'scripts',
+    'tasks',
+    'tasks-status.ts',
+  );
+  driver.sendText(`bun ${tasksWatchScriptPath} watch`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) =>
+      candidate.findText('INVAR TASKS') !== null ||
+      candidate.findText('active ·') !== null,
+    15_000,
+  );
+  const tasksWatchObservations = driver.completedFrameObservationsSince(
+    tasksWatchObservationStart,
+  );
+  const unsafeTasksWatchFrames = tasksWatchObservations.filter(
+    (observation) => {
+      const bodyText = terminalBodyText(observation.snapshot, panelRectangle);
+      return (
+        !bodyText.includes(tasksWatchBaselineMarker) &&
+        !bodyText.includes('tasks-status.ts') &&
+        !bodyText.includes('INVAR TASKS') &&
+        !bodyText.includes('active ·')
+      );
+    },
+  );
+  HarnessSmoke.Class.requireCondition(
+    unsafeTasksWatchFrames.length === 0,
+    `real tasks:watch produced no blank or partial completed frame ` +
+      `(${tasksWatchObservations.length} outer frames)`,
+  );
+  driver.sendKeys('Control+c');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText(tasksWatchBaselineMarker) !== null,
+  );
+
+  console.log('== harness terminal: mouse mode off keeps clicks in Invar ==');
+  driver.sendText(`python3 ${childScriptPath} mouse-off`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('MOUSE-OFF-READY') !== null,
+  );
+  const mouseOffBaseline = HarnessSmoke.Class.readStatus(statusPath);
+  const mouseOffTarget = driver.snapshot().findText('MOUSE-OFF-READY');
+  if (!mouseOffTarget) throw new Error('The mouse-off target disappeared');
+  driver.sendMouseClick({
+    column: mouseOffTarget.column + 3,
+    row: mouseOffTarget.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'mouse-mode-off click completes an Invar frame before keyboard input',
+    (status) => Number(status.frame) > Number(mouseOffBaseline.frame),
+  );
+  driver.sendText('q');
+  const mouseOffInput = await awaitFileBytes(childMouseOffInputPath);
+  HarnessSmoke.Class.requireCondition(
+    new TextDecoder().decode(mouseOffInput) === 'q',
+    'mouse mode off writes no pointer bytes to the child',
   );
 
   const clockSnapshot = await driver.awaitGridCondition(

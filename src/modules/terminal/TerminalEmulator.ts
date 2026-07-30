@@ -9,6 +9,7 @@ import { Terminal, type IBufferCell } from '@xterm/headless';
 
 // invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
 // invariant: Terminal emulator behavior is specified by byte fixtures (src/modules/terminal/terminal.invariants.md)
+// invariant: Pane chrome and child cells keep separate authority (src/modules/terminal/terminal.invariants.md)
 
 class $TerminalEmulator {
   protected readonly terminal: Terminal;
@@ -31,6 +32,7 @@ class $TerminalEmulator {
   protected isShellPromptActiveValue = false;
   protected lastShellIntegrationEventValue: TerminalShellIntegrationEvent | null =
     null;
+  protected readonly paletteOverrides = new Map<number, string>();
 
   constructor(columns: number, rows: number) {
     this.terminal = new Terminal({
@@ -50,6 +52,12 @@ class $TerminalEmulator {
     );
     this.terminal.parser.registerOscHandler(133, (marker) =>
       this.observeShellIntegrationMarker(marker),
+    );
+    this.terminal.parser.registerOscHandler(4, (paletteChange) =>
+      this.observePaletteChange(paletteChange),
+    );
+    this.terminal.parser.registerOscHandler(104, (paletteReset) =>
+      this.observePaletteReset(paletteReset),
     );
     this.terminal.parser.registerCsiHandler(
       { prefix: '?', final: 'h' },
@@ -266,6 +274,10 @@ class $TerminalEmulator {
     return this.terminal.buffer.active.type === 'alternate';
   }
 
+  paletteOverride(index: number): string | null {
+    return this.paletteOverrides.get(index) ?? null;
+  }
+
   /** Pull one visible cell (viewport row/column) into a flat struct. Reuses a single xterm cell
    *  object across the pull to stay allocation-free per cell — the flyweight viewport-pull.
    *
@@ -310,6 +322,65 @@ class $TerminalEmulator {
       this.isSgrMouseEncodingEnabledValue = isEnabled;
     }
     return false;
+  }
+
+  protected observePaletteChange(paletteChange: string): false {
+    const paletteParts = paletteChange.split(';');
+    for (
+      let palettePartIndex = 0;
+      palettePartIndex + 1 < paletteParts.length;
+      palettePartIndex += 2
+    ) {
+      const paletteIndex = Number(paletteParts[palettePartIndex]);
+      const color = this.normalizedPaletteColor(
+        paletteParts[palettePartIndex + 1] ?? '',
+      );
+      if (
+        Number.isInteger(paletteIndex) &&
+        paletteIndex >= 0 &&
+        paletteIndex <= 255 &&
+        color
+      ) {
+        this.paletteOverrides.set(paletteIndex, color);
+      }
+    }
+    return false;
+  }
+
+  protected observePaletteReset(paletteReset: string): false {
+    if (!paletteReset) {
+      this.paletteOverrides.clear();
+      return false;
+    }
+    for (const paletteIndexText of paletteReset.split(';')) {
+      const paletteIndex = Number(paletteIndexText);
+      if (
+        Number.isInteger(paletteIndex) &&
+        paletteIndex >= 0 &&
+        paletteIndex <= 255
+      ) {
+        this.paletteOverrides.delete(paletteIndex);
+      }
+    }
+    return false;
+  }
+
+  protected normalizedPaletteColor(colorSpecification: string): string | null {
+    if (/^#[0-9a-fA-F]{6}$/.test(colorSpecification)) {
+      return colorSpecification.toLowerCase();
+    }
+    const rgbMatch =
+      /^rgb:([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})$/.exec(
+        colorSpecification,
+      );
+    if (!rgbMatch) return null;
+    return `#${this.normalizedPaletteComponent(rgbMatch[1] ?? '')}${this.normalizedPaletteComponent(rgbMatch[2] ?? '')}${this.normalizedPaletteComponent(rgbMatch[3] ?? '')}`;
+  }
+
+  protected normalizedPaletteComponent(component: string): string {
+    const maximum = 16 ** component.length - 1;
+    const value = Math.round((Number.parseInt(component, 16) * 255) / maximum);
+    return value.toString(16).padStart(2, '0');
   }
 
   protected static get DEFAULT_SCROLLBACK_LINE_COUNT(): number {

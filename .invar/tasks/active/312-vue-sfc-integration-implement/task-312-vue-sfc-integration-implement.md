@@ -1,7 +1,8 @@
 # 312 — Vue SFC integration: IMPLEMENT from the #311 map
 
-Status: active — BLOCKED ON #311 (map + user review)
+State: active — UNBLOCKED (user accepted all five 2026-07-29)
 Engine: codex
+Model: 5.6-sol
 Effort: high
 Provenance: USER-DIRECTED 2026-07-29 (same verbatim quote as #311)
 
@@ -26,3 +27,34 @@ End state includes full Vue LSP support, delivered as a cleanly
 pluggable unit — the acceptance includes a "core untouched" polarity:
 removing the Vue plugin returns .vue files to plain-text behaviour with
 zero dangling references in core.
+
+## Pre-work from #311 bycatch (2026-07-29)
+
+- src/modules/syntax has NO syntax.invariants.md (registry/highlighter
+  exist, no domain record) — the record must be written as part of the
+  phase-1 syntax-source port work.
+- LanguageRegistry.ts comment claims a Tree-sitter registration point
+  that does not exist (static extension map only) — fix the drift when
+  the real registration port lands.
+
+## User decisions 2026-07-29 (verbatim: "all five as recommended, go ahead with 312")
+
+All five map recommendations ACCEPTED:
+1. Full LSP = diagnostics, hover, completion, definition, references,
+   document symbols, formatting, folding, Vue routing, TS coexistence.
+2. Protocol spike on the Vue server's TypeScript bridge is a BLOCKING
+   phase before product wiring.
+3. tsgo: if it cannot host/bridge the Vue TS plugin, ship a visible
+   compatibility policy.
+4. Pin one Vue Language Tools version + record its TypeScript range.
+5. True SCSS highlighting ships in the first highlighting slice.
+
+State: UNBLOCKED — dispatch per the map's five phases.
+
+## Phase 1-2 LANDED bycatch notes (2026-07-29)
+
+- Bootstrap.ts imports LanguageRegistry without using it (structural query:
+  import only) — sweep in a later phase commit.
+- 100k fixture drive: built-in Claude task printed 'claude: command not
+  found' in the fixture workspace panel — expected in fixture roots, but
+  phases 3-5 acceptance drives should pin a defined behaviour.
