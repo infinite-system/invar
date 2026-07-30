@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/in-progress/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md)  [building]
+  `tmux attach -t invar/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
@@ -37,8 +39,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 [harness-diagnostic-provenance-guard](.invar/tasks/active/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (20)
-- #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/active/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md)
+## FLAKE-EVIDENCE (19)
 - #334 [structure-pane-no-file-open-transient](.invar/tasks/active/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md)
 - #260 [first-click-of-a-session-lands-nowhere](.invar/tasks/active/260-first-click-of-a-session-lands-nowhere/task-260-first-click-of-a-session-lands-nowhere.md)
 - #257 [last-row-right-border-blank-cell](.invar/tasks/active/257-last-row-right-border-blank-cell/task-257-last-row-right-border-blank-cell.md)

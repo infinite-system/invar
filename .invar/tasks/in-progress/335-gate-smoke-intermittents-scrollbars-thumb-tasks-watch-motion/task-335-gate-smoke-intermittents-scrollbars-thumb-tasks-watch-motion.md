@@ -1,6 +1,6 @@
 # #335 — gate smoke intermittents: scrollbars wrap-off thumb + tasks:watch motion row
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: flake-evidence
 Engine: codex
 Environment: linux
