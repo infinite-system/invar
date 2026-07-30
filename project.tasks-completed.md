@@ -109,8 +109,8 @@ task file’s State line. Completion chronology in full detail: `git log -- .inv
 - #187 [wheel-at-clamp-unreachable-wait](.invar/tasks/completed/187-wheel-at-clamp-unreachable-wait/task-187-wheel-at-clamp-unreachable-wait.md)
 - #186 [max-width-rescan-at-500k](.invar/tasks/completed/186-max-width-rescan-at-500k/task-186-max-width-rescan-at-500k.md)
 - #174 [markdown-preview-omits-ragged-table](.invar/tasks/completed/174-markdown-preview-omits-ragged-table/task-174-markdown-preview-omits-ragged-table.md) — 638b5c0 — harness predicate race, not the parser: smoke asserted preview content before the preview parsed the opened revision; fix waits on markdownParsing=false + revision convergence; flip commit faeaa99 (timing, whitespace-only); positive control proved a planted parser defect still reds; bycatch filed as #212
-- #122 [editor-becomes-final-contributor](.invar/tasks/completed/122-editor-becomes-final-contributor/task-122-editor-becomes-final-contributor.md) — IN-PROGRESS
-- #114 [modularity-umbrella-provider-runtime](.invar/tasks/completed/114-modularity-umbrella-provider-runtime/task-114-modularity-umbrella-provider-runtime.md) — IN-PROGRESS
+- #122 [editor-becomes-final-contributor](.invar/tasks/completed/122-editor-becomes-final-contributor/task-122-editor-becomes-final-contributor.md) — aa2c37ca
+- #114 [modularity-umbrella-provider-runtime](.invar/tasks/completed/114-modularity-umbrella-provider-runtime/task-114-modularity-umbrella-provider-runtime.md) — 5e10f43a
 - #108 [gear-mark-four-owners-collision](.invar/tasks/completed/108-gear-mark-four-owners-collision/task-108-gear-mark-four-owners-collision.md) — merged 186f2d8, fix 82b746c (user accepted Pair A)
 - #107 [emoji-width-authority-disagreement](.invar/tasks/completed/107-emoji-width-authority-disagreement/task-107-emoji-width-authority-disagreement.md) — glyphs swapped at 966c5d1; the exception list is now empty
 - #77 [coverage-ratchet-remaining-holes](.invar/tasks/completed/77-coverage-ratchet-remaining-holes/task-77-coverage-ratchet-remaining-holes.md) — holes 1 and 2 landed at 4ab250f; hole 3 carved out to #210
