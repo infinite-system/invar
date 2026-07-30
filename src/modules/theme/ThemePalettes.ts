@@ -14,9 +14,9 @@ import type { ColorDepth } from './TerminalCapabilities';
 // distinct from the grey hover/cursor line).
 //
 // Spec roles Invar's Palette type does NOT carry (left unmapped by design — no type restructuring):
-// the syntax sub-roles parameter/property/tag/attribute, bracket-pair rotation, the terminal ANSI-16
-// set (that lives in TerminalPaneRenderer as the emulator's standard-ANSI fallback; terminal bg/fg
-// already track panel/fg), and separate surfaceRaised/input backgrounds. `dim` is one role serving
+// the syntax sub-roles parameter/property/tag/attribute, bracket-pair rotation, and separate
+// surfaceRaised/input backgrounds. Terminal defaults derive from panel/fg, while the terminal
+// ANSI-16 roles use VS Code's documented dark and light defaults. `dim` is one role serving
 // both secondary UI text (which must stay readable -> #787C99) and inactive line numbers (spec would
 // prefer a darker #363B54); readability wins, so inactive line numbers ride a touch brighter than spec.
 class $ThemePalettes {
@@ -32,6 +32,24 @@ class $ThemePalettes {
       dim: '#787c99',
       accent: '#7aa2f7',
       terminalPrompt: '#7aa2f7',
+      terminalForeground: '#a9b1d6',
+      terminalBackground: '#16161e',
+      terminalAnsiBlack: '#000000',
+      terminalAnsiRed: '#cd3131',
+      terminalAnsiGreen: '#0dbc79',
+      terminalAnsiYellow: '#e5e510',
+      terminalAnsiBlue: '#2472c8',
+      terminalAnsiMagenta: '#bc3fbc',
+      terminalAnsiCyan: '#11a8cd',
+      terminalAnsiWhite: '#e5e5e5',
+      terminalAnsiBrightBlack: '#666666',
+      terminalAnsiBrightRed: '#f14c4c',
+      terminalAnsiBrightGreen: '#23d18b',
+      terminalAnsiBrightYellow: '#f5f543',
+      terminalAnsiBrightBlue: '#3b8eea',
+      terminalAnsiBrightMagenta: '#d670d6',
+      terminalAnsiBrightCyan: '#29b8db',
+      terminalAnsiBrightWhite: '#e5e5e5',
       selection: '#2b2f41',
       selectionMuted: '#283457',
       cursorLine: '#1e202e',
@@ -72,6 +90,24 @@ class $ThemePalettes {
       dim: '#848cb5',
       accent: '#2e7de9',
       terminalPrompt: '#2e7de9',
+      terminalForeground: '#343b58',
+      terminalBackground: '#d4d6e4',
+      terminalAnsiBlack: '#000000',
+      terminalAnsiRed: '#cd3131',
+      terminalAnsiGreen: '#107c10',
+      terminalAnsiYellow: '#949800',
+      terminalAnsiBlue: '#0451a5',
+      terminalAnsiMagenta: '#bc05bc',
+      terminalAnsiCyan: '#0598bc',
+      terminalAnsiWhite: '#555555',
+      terminalAnsiBrightBlack: '#666666',
+      terminalAnsiBrightRed: '#cd3131',
+      terminalAnsiBrightGreen: '#14ce14',
+      terminalAnsiBrightYellow: '#b5ba00',
+      terminalAnsiBrightBlue: '#0451a5',
+      terminalAnsiBrightMagenta: '#bc05bc',
+      terminalAnsiBrightCyan: '#0598bc',
+      terminalAnsiBrightWhite: '#a5a5a5',
       selection: '#b7c1e3',
       selectionMuted: '#a3b6e8',
       cursorLine: '#d6d8e6',
@@ -218,6 +254,24 @@ export interface Palette {
   dim: string;
   accent: string;
   terminalPrompt: string;
+  terminalForeground: string;
+  terminalBackground: string;
+  terminalAnsiBlack: string;
+  terminalAnsiRed: string;
+  terminalAnsiGreen: string;
+  terminalAnsiYellow: string;
+  terminalAnsiBlue: string;
+  terminalAnsiMagenta: string;
+  terminalAnsiCyan: string;
+  terminalAnsiWhite: string;
+  terminalAnsiBrightBlack: string;
+  terminalAnsiBrightRed: string;
+  terminalAnsiBrightGreen: string;
+  terminalAnsiBrightYellow: string;
+  terminalAnsiBrightBlue: string;
+  terminalAnsiBrightMagenta: string;
+  terminalAnsiBrightCyan: string;
+  terminalAnsiBrightWhite: string;
   selection: string;
   selectionMuted: string;
   cursorLine: string;

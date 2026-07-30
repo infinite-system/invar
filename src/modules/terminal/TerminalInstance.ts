@@ -1,13 +1,14 @@
 // The reactive terminal service: it composes a TerminalBackend with a TerminalEmulator and wires the
 // two byte directions once, then exposes the screen reactively. Child bytes (backend.onData) feed the
-// emulator; the emulator's replies (onReply) return to the child; each parsed-write pulse bumps
-// `renderRevision` so the single coarse frame effect repaints WITHOUT a keypress (an idle shell bumps
-// nothing → idle quiescence holds). Resize drives the emulator AND the backend together, so the cell
+// emulator; the emulator's replies (onReply) return to the child. Each ordinary parsed-write pulse
+// bumps `renderRevision`; DEC 2026 holds those pulses and commits one final grid. An idle shell bumps
+// nothing, so idle quiescence holds. Resize drives the emulator AND the backend together, so the cell
 // grid and the child's SIGWINCH view never disagree.
 //
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
 // invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
 // invariant: Agent terminal reads are redacted (src/modules/terminal/terminal.invariants.md)
+// invariant: Child synchronized updates commit as one repaint (src/modules/terminal/terminal.invariants.md)
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { TerminalBackend } from './TerminalBackend.interface';
@@ -35,12 +36,20 @@ class $TerminalInstance {
   protected lastKnownIdentity = '';
   protected lastKnownWorkingDirectory = '';
   protected plainTitleFallback = '';
+  protected synchronizedUpdatePending = false;
+  protected synchronizedUpdateTimedOut = false;
+  protected synchronizedUpdateTimeoutHandle: ReturnType<
+    typeof setTimeout
+  > | null = null;
+  protected readonly synchronizedUpdateTimeoutMilliseconds: number;
 
   constructor(
     protected readonly backend: TerminalBackend,
     protected readonly emulator: TerminalEmulator.Model,
     commandOptions: TerminalInstanceCommandOptions = {},
   ) {
+    this.synchronizedUpdateTimeoutMilliseconds =
+      commandOptions.synchronizedOutputTimeoutMilliseconds ?? 1_000;
     this.plainTitleFallback = this.backend.title ?? 'Terminal';
     this.lastKnownWorkingDirectory = this.backend.cwd ?? '';
     this.terminalCommandController = new TerminalCommandController.Class({
@@ -64,26 +73,21 @@ class $TerminalInstance {
     // PTY → emulator; emulator replies → PTY; parsed pulse → one repaint; child exit → repaint.
     this.backend.onData((bytes) => this.emulator.write(bytes));
     this.emulator.onReply((data) => this.backend.write(data));
-    this.emulator.onCellsChanged(() => {
-      this.userInputAwaitingParse = false;
-      this.emulator.scrollToBottom();
-      this.outputRevision.value++;
-      this.renderRevision.value++;
-      this.terminalCommandController.notifyTerminalChanged();
-    });
+    this.emulator.onCellsChanged(() => this.observeCellsChanged());
     this.emulator.onMetadataChanged(() => {
       this.updateHeaderMetadata();
+      if (this.holdSynchronizedUpdate()) return;
       this.renderRevision.value++;
     });
     this.backend.onExit((exitCode) => {
+      this.clearSynchronizedUpdateTimeout();
       this.exited.value = true;
       this.exitCode.value = exitCode;
       this.renderRevision.value++;
     });
   }
 
-  /** Bumped on every parsed emulator pulse and on exit — the reactive paint signal the frame effect
-   *  observes so async PTY output repaints on its own. */
+  /** Bumped on every ordinary parsed pulse, each synchronized commit, and exit. */
   get renderRevision() {
     return ref(0);
   }
@@ -253,7 +257,12 @@ class $TerminalInstance {
     return this.emulator.visibleLineText(row);
   }
 
+  paletteOverride(index: number): string | null {
+    return this.emulator.paletteOverride(index);
+  }
+
   dispose(): void {
+    this.clearSynchronizedUpdateTimeout();
     this.terminalCommandController.dispose();
     this.terminalObserver.dispose();
     this.backend.kill();
@@ -262,6 +271,56 @@ class $TerminalInstance {
 
   protected createTerminalObserver(): TerminalObserver.Model {
     return new TerminalObserver.Class(this.emulator);
+  }
+
+  protected observeCellsChanged(): void {
+    this.userInputAwaitingParse = false;
+    if (this.holdSynchronizedUpdate()) return;
+    if (!this.emulator.isSynchronizedOutputEnabled) {
+      this.synchronizedUpdateTimedOut = false;
+      this.clearSynchronizedUpdateTimeout();
+    }
+    this.commitChildOutput();
+  }
+
+  protected holdSynchronizedUpdate(): boolean {
+    if (
+      !this.emulator.isSynchronizedOutputEnabled ||
+      this.synchronizedUpdateTimedOut
+    ) {
+      return false;
+    }
+    this.synchronizedUpdatePending = true;
+    if (this.synchronizedUpdateTimeoutHandle === null) {
+      this.synchronizedUpdateTimeoutHandle = setTimeout(
+        () => this.releaseTimedOutSynchronizedUpdate(),
+        this.synchronizedUpdateTimeoutMilliseconds,
+      );
+    }
+    return true;
+  }
+
+  protected releaseTimedOutSynchronizedUpdate(): void {
+    this.synchronizedUpdateTimeoutHandle = null;
+    if (!this.synchronizedUpdatePending) return;
+    this.synchronizedUpdatePending = false;
+    this.synchronizedUpdateTimedOut = true;
+    this.commitChildOutput();
+  }
+
+  protected clearSynchronizedUpdateTimeout(): void {
+    if (this.synchronizedUpdateTimeoutHandle !== null) {
+      clearTimeout(this.synchronizedUpdateTimeoutHandle);
+      this.synchronizedUpdateTimeoutHandle = null;
+    }
+    this.synchronizedUpdatePending = false;
+  }
+
+  protected commitChildOutput(): void {
+    this.emulator.scrollToBottom();
+    this.outputRevision.value++;
+    this.renderRevision.value++;
+    this.terminalCommandController.notifyTerminalChanged();
   }
 
   protected redactedCurrentInputLine(): string | null {
@@ -304,6 +363,7 @@ export namespace TerminalInstance {
 export interface TerminalInstanceCommandOptions {
   typingSpeed?: () => number;
   reducedMotion?: () => boolean;
+  synchronizedOutputTimeoutMilliseconds?: number;
 }
 
 export interface TerminalInputSnapshot {

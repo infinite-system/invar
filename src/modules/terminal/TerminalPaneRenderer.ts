@@ -15,44 +15,43 @@ import type { TerminalInstance } from './TerminalInstance';
 import type { TerminalCell } from './TerminalEmulator';
 
 class $TerminalPaneRenderer {
-  protected static get DEFAULT_FOREGROUND(): string {
-    return '#c0c0c0';
-  }
-
-  protected static get DEFAULT_BACKGROUND(): string {
-    return '#000000';
-  }
-
-  // The 16 standard ANSI palette colors (0–15) as hex. 256-color indices 16–255 are computed from the
-  // 6×6×6 cube and the grayscale ramp — the standard xterm mapping — so real terminal colors render.
-  protected static get $ansiPalette(): readonly string[] {
-    const ansiPalette = [
-      '#000000',
-      '#800000',
-      '#008000',
-      '#808000',
-      '#000080',
-      '#800080',
-      '#008080',
-      '#c0c0c0',
-      '#808080',
-      '#ff0000',
-      '#00ff00',
-      '#ffff00',
-      '#0000ff',
-      '#ff00ff',
-      '#00ffff',
-      '#ffffff',
+  protected static terminalAnsiPalette(palette: Palette): readonly string[] {
+    return [
+      palette.terminalAnsiBlack,
+      palette.terminalAnsiRed,
+      palette.terminalAnsiGreen,
+      palette.terminalAnsiYellow,
+      palette.terminalAnsiBlue,
+      palette.terminalAnsiMagenta,
+      palette.terminalAnsiCyan,
+      palette.terminalAnsiWhite,
+      palette.terminalAnsiBrightBlack,
+      palette.terminalAnsiBrightRed,
+      palette.terminalAnsiBrightGreen,
+      palette.terminalAnsiBrightYellow,
+      palette.terminalAnsiBrightBlue,
+      palette.terminalAnsiBrightMagenta,
+      palette.terminalAnsiBrightCyan,
+      palette.terminalAnsiBrightWhite,
     ];
-    return ansiPalette;
   }
 
   protected static toHex(value: number): string {
     return value.toString(16).padStart(2, '0');
   }
 
-  protected static paletteToHex(index: number): string {
-    if (index < 16) return this.$ansiPalette[index] ?? '#c0c0c0';
+  protected static paletteToHex(
+    index: number,
+    palette: Palette,
+    instance: TerminalInstance.Instance,
+  ): string {
+    const childOverride = instance.paletteOverride(index);
+    if (childOverride) return childOverride;
+    if (index < 16) {
+      return (
+        this.terminalAnsiPalette(palette)[index] ?? palette.terminalForeground
+      );
+    }
     if (index < 232) {
       const cubeIndex = index - 16;
       const steps = [0, 95, 135, 175, 215, 255];
@@ -70,17 +69,29 @@ class $TerminalPaneRenderer {
   }
 
   /** The cell's foreground color as a hex string, honoring RGB / palette / default. */
-  protected static foregroundHex(cell: TerminalCell): string {
+  protected static foregroundHex(
+    cell: TerminalCell,
+    palette: Palette,
+    instance: TerminalInstance.Instance,
+  ): string {
     if (cell.isForegroundRgb) return this.rgbToHex(cell.foreground);
-    if (cell.isForegroundPalette) return this.paletteToHex(cell.foreground);
-    return this.DEFAULT_FOREGROUND;
+    if (cell.isForegroundPalette) {
+      return this.paletteToHex(cell.foreground, palette, instance);
+    }
+    return palette.terminalForeground;
   }
 
   /** The cell's background color as a hex string, honoring RGB / palette / default. */
-  protected static backgroundHex(cell: TerminalCell): string {
+  protected static backgroundHex(
+    cell: TerminalCell,
+    palette: Palette,
+    instance: TerminalInstance.Instance,
+  ): string {
     if (cell.isBackgroundRgb) return this.rgbToHex(cell.background);
-    if (cell.isBackgroundPalette) return this.paletteToHex(cell.background);
-    return this.DEFAULT_BACKGROUND;
+    if (cell.isBackgroundPalette) {
+      return this.paletteToHex(cell.background, palette, instance);
+    }
+    return palette.terminalBackground;
   }
 
   protected static styleKey(cell: TerminalCell, selected: boolean): string {
@@ -90,11 +101,12 @@ class $TerminalPaneRenderer {
   protected static chunkFor(
     text: string,
     cell: TerminalCell,
+    instance: TerminalInstance.Instance,
     palette: Palette,
     selected: boolean,
   ): TextChunk {
-    let foreground = this.foregroundHex(cell);
-    let background = this.backgroundHex(cell);
+    let foreground = this.foregroundHex(cell, palette, instance);
+    let background = this.backgroundHex(cell, palette, instance);
     if (cell.isInverse) {
       const swap = background;
       background = foreground;
@@ -132,7 +144,9 @@ class $TerminalPaneRenderer {
       let runKey = '';
       const flushRun = () => {
         if (runCell && runText) {
-          rowChunks.push(this.chunkFor(runText, runCell, palette, runSelected));
+          rowChunks.push(
+            this.chunkFor(runText, runCell, instance, palette, runSelected),
+          );
         }
         runText = '';
         runCell = null;

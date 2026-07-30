@@ -4,12 +4,16 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Child synchronized updates commit as one repaint (src/modules/terminal/terminal.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { FrameDump } from '../../src/modules/system/FrameProbe';
-import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
+import {
+  ThemePalettes,
+  type Palette,
+} from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -129,7 +133,10 @@ async function awaitFileBytes(filePath: string): Promise<Uint8Array> {
   const deadline = performance.now() + 5_000;
   while (performance.now() < deadline) {
     const file = Bun.file(filePath);
-    if (await file.exists()) return new Uint8Array(await file.arrayBuffer());
+    if (await file.exists()) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length > 0) return bytes;
+    }
     await Bun.sleep(10);
   }
   throw new Error(`Timed out waiting for child input capture at ${filePath}`);
@@ -191,28 +198,53 @@ function frameLaneAt(
   return 'marker-missing';
 }
 
+function terminalBodyText(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+): string {
+  const endRowExclusive = Math.min(
+    snapshot.rows,
+    panelRectangle.top + panelRectangle.height,
+  );
+  const endColumnExclusive = Math.min(
+    snapshot.columns,
+    panelRectangle.left + panelRectangle.width,
+  );
+  return snapshot
+    .textRows()
+    .slice(panelRectangle.top, endRowExclusive)
+    .map((rowText) => rowText.slice(panelRectangle.left, endColumnExclusive))
+    .join('\n');
+}
+
 function requireChildColorMatrix(
   frameDump: FrameDump,
   observationName: string,
+  palette: Palette,
 ): void {
   const ansiColors = [
-    '0,0,0,255',
-    '128,0,0,255',
-    '0,128,0,255',
-    '128,128,0,255',
-    '0,0,128,255',
-    '128,0,128,255',
-    '0,128,128,255',
-    '192,192,192,255',
-    '128,128,128,255',
-    '255,0,0,255',
-    '0,255,0,255',
-    '255,255,0,255',
-    '0,0,255,255',
-    '255,0,255,255',
-    '0,255,255,255',
-    '255,255,255,255',
-  ];
+    palette.terminalAnsiBlack,
+    '#123456',
+    palette.terminalAnsiGreen,
+    palette.terminalAnsiYellow,
+    palette.terminalAnsiBlue,
+    palette.terminalAnsiMagenta,
+    palette.terminalAnsiCyan,
+    palette.terminalAnsiWhite,
+    palette.terminalAnsiBrightBlack,
+    palette.terminalAnsiBrightRed,
+    palette.terminalAnsiBrightGreen,
+    palette.terminalAnsiBrightYellow,
+    palette.terminalAnsiBrightBlue,
+    palette.terminalAnsiBrightMagenta,
+    palette.terminalAnsiBrightCyan,
+    palette.terminalAnsiBrightWhite,
+  ].map((color) => {
+    const red = Number.parseInt(color.slice(1, 3), 16);
+    const green = Number.parseInt(color.slice(3, 5), 16);
+    const blue = Number.parseInt(color.slice(5, 7), 16);
+    return `${red},${green},${blue},255`;
+  });
   for (let colorIndex = 0; colorIndex < ansiColors.length; colorIndex += 1) {
     HarnessSmoke.Class.requireCondition(
       frameLaneAt(frameDump, 'FG16-0123456789ABCDEF', 5 + colorIndex, 'fg') ===
@@ -226,9 +258,15 @@ function requireChildColorMatrix(
     );
   }
   HarnessSmoke.Class.requireCondition(
-    frameLaneAt(frameDump, 'DEFAULT-D', 8, 'fg') === '192,192,192,255' &&
-      frameLaneAt(frameDump, 'DEFAULT-D', 8, 'bg') === '0,0,0,255',
-    `${observationName} keeps terminal-profile default foreground and background exact`,
+    frameLaneAt(frameDump, 'DEFAULT-D', 8, 'fg') ===
+      rgbaLane(palette.terminalForeground) &&
+      frameLaneAt(frameDump, 'DEFAULT-D', 8, 'bg') ===
+        rgbaLane(palette.terminalBackground),
+    `${observationName} derives the terminal default foreground and background from theme data`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'OSC4-O', 5, 'fg') === '18,52,86,255',
+    `${observationName} keeps the child OSC 4 ANSI override exact`,
   );
   HarnessSmoke.Class.requireCondition(
     frameLaneAt(frameDump, 'INDEX-I', 6, 'fg') === '255,0,0,255' &&
@@ -240,6 +278,13 @@ function requireChildColorMatrix(
       frameLaneAt(frameDump, 'TRUE-T', 5, 'bg') === '101,67,33,255',
     `${observationName} keeps truecolor foreground and background exact`,
   );
+}
+
+function rgbaLane(color: string): string {
+  const red = Number.parseInt(color.slice(1, 3), 16);
+  const green = Number.parseInt(color.slice(3, 5), 16);
+  const blue = Number.parseInt(color.slice(5, 7), 16);
+  return `${red},${green},${blue},255`;
 }
 
 async function selectSettingByVisibleLabel(
@@ -341,8 +386,9 @@ await Bun.write(
     'tty.setraw(sys.stdin.fileno())',
     'try:',
     "    if sys.argv[1] == 'mouse-on':",
-    "        os.write(sys.stdout.fileno(), b'\\x1b[?1000h\\x1b[?1006h\\x1b[?1049h\\x1b[HMOUSE-TARGET\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'\\x1b]4;1;rgb:12/34/56\\x1b\\\\\\x1b[?1000h\\x1b[?1006h\\x1b[?1049h\\x1b[HMOUSE-TARGET\\r\\n')",
     "        os.write(sys.stdout.fileno(), b'DEFAULT-D\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'OSC4-\\x1b[31mO\\x1b[0m\\r\\n')",
     `        os.write(sys.stdout.fileno(), ${JSON.stringify(`FG16-${foregroundColorFixture}\x1b[0m\r\n`)}.encode('latin1'))`,
     `        os.write(sys.stdout.fileno(), ${JSON.stringify(`BG16-${backgroundColorFixture}\x1b[0m\r\n`)}.encode('latin1'))`,
     "        os.write(sys.stdout.fileno(), b'INDEX-\\x1b[38;5;196;48;5;21mI\\x1b[0m\\r\\n')",
@@ -355,7 +401,7 @@ await Bun.write(
     '        wheel = os.read(sys.stdin.fileno(), 64)',
     `        open(${JSON.stringify(childWheelInputPath)}, 'wb').write(wheel)`,
     '        os.read(sys.stdin.fileno(), 1)',
-    "        os.write(sys.stdout.fileno(), b'\\x1b[?1049l\\x1b[?1000l\\x1b[?1006l')",
+    "        os.write(sys.stdout.fileno(), b'\\x1b]104;1\\x1b\\\\\\x1b[?1049l\\x1b[?1000l\\x1b[?1006l')",
     '    else:',
     "        os.write(sys.stdout.fileno(), b'MOUSE-OFF-READY')",
     '        plain_input = os.read(sys.stdin.fileno(), 64)',
@@ -708,7 +754,11 @@ try {
     (candidate) => candidate.rows.some((row) => row.text.includes('TRUE-T')),
     'the child color matrix under the dark theme',
   );
-  requireChildColorMatrix(darkFrameDump, 'dark theme');
+  requireChildColorMatrix(
+    darkFrameDump,
+    'dark theme',
+    ThemePalettes.Class.DARK,
+  );
   const darkStatusBackground =
     darkFrameDump.rows[darkFrameDump.height - 1]?.bg[10] ?? 'missing';
   const settingsButtonColumn = driver
@@ -755,7 +805,11 @@ try {
       candidate.rows[candidate.height - 1]?.bg[10] !== darkStatusBackground,
     'the unchanged child color matrix and changed chrome under the light theme',
   );
-  requireChildColorMatrix(lightFrameDump, 'live light theme');
+  requireChildColorMatrix(
+    lightFrameDump,
+    'live light theme',
+    ThemePalettes.Class.LIGHT,
+  );
   HarnessSmoke.Class.requireCondition(
     lightFrameDump.rows[lightFrameDump.height - 1]?.bg[10] !==
       darkStatusBackground,
@@ -814,6 +868,69 @@ try {
     statusPath,
     'the child exits alternate-screen and mouse-tracking modes',
     (status) => status.terminalWheelForwardedToChild === false,
+  );
+
+  console.log(
+    '== harness terminal: real tasks:watch commits one complete initial frame ==',
+  );
+  const tasksWatchBaselineMarker = 'TASKS-WATCH-BASELINE';
+  driver.sendText(`printf '${tasksWatchBaselineMarker}\\n'`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText(tasksWatchBaselineMarker) !== null,
+  );
+  await driver.awaitOutputCondition(
+    'the tasks:watch shell baseline reaches a completed outer frame',
+    () => {
+      const latestObservation = driver
+        .completedFrameObservationsSince(0)
+        .at(-1);
+      return (
+        latestObservation !== undefined &&
+        terminalBodyText(latestObservation.snapshot, panelRectangle).includes(
+          tasksWatchBaselineMarker,
+        )
+      );
+    },
+    5_000,
+  );
+  const tasksWatchObservationStart = driver.completedFrameObservationCount;
+  const tasksWatchScriptPath = join(
+    process.cwd(),
+    'scripts',
+    'tasks',
+    'tasks-status.ts',
+  );
+  driver.sendText(`bun ${tasksWatchScriptPath} watch`);
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) =>
+      candidate.findText('INVAR TASKS') !== null ||
+      candidate.findText('active ·') !== null,
+    15_000,
+  );
+  const tasksWatchObservations = driver.completedFrameObservationsSince(
+    tasksWatchObservationStart,
+  );
+  const unsafeTasksWatchFrames = tasksWatchObservations.filter(
+    (observation) => {
+      const bodyText = terminalBodyText(observation.snapshot, panelRectangle);
+      return (
+        !bodyText.includes(tasksWatchBaselineMarker) &&
+        !bodyText.includes('tasks-status.ts') &&
+        !bodyText.includes('INVAR TASKS') &&
+        !bodyText.includes('active ·')
+      );
+    },
+  );
+  HarnessSmoke.Class.requireCondition(
+    unsafeTasksWatchFrames.length === 0,
+    `real tasks:watch produced no blank or partial completed frame ` +
+      `(${tasksWatchObservations.length} outer frames)`,
+  );
+  driver.sendKeys('Control+c');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText(tasksWatchBaselineMarker) !== null,
   );
 
   console.log('== harness terminal: mouse mode off keeps clicks in Invar ==');

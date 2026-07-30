@@ -21,6 +21,18 @@ function rowText(instance: TerminalInstance.Instance, row: number): string {
   return text.replace(/\s+$/, '');
 }
 
+async function awaitCondition(
+  description: string,
+  condition: () => boolean,
+): Promise<void> {
+  const deadline = performance.now() + 500;
+  while (performance.now() < deadline) {
+    if (condition()) return;
+    await Bun.sleep(1);
+  }
+  throw new Error(`Timed out waiting for ${description}`);
+}
+
 test('scripted plain output renders into the cell grid', async () => {
   const { backend, instance } = makeInstance();
   backend.feed('hello');
@@ -34,6 +46,63 @@ test('a parsed write pulse bumps renderRevision (the repaint signal)', async () 
   backend.feed('x');
   await instance.flush();
   expect(instance.renderRevision.value).toBeGreaterThan(before);
+});
+
+test('DEC 2026 holds interior writes and commits the final grid once', async () => {
+  const { backend, instance } = makeInstance();
+  const before = instance.renderRevision.value;
+
+  backend.feed('\x1b[?2026h');
+  await instance.flush();
+  backend.feed('\x1b[2J\x1b[Hpartial');
+  await instance.flush();
+  expect(rowText(instance, 0)).toBe('partial');
+  expect(instance.renderRevision.value).toBe(before);
+
+  backend.feed('\x1b[Hcomplete');
+  await instance.flush();
+  expect(instance.renderRevision.value).toBe(before);
+  backend.feed('\x1b[?2026l');
+  await instance.flush();
+
+  expect(rowText(instance, 0)).toBe('complete');
+  expect(instance.renderRevision.value).toBe(before + 1);
+});
+
+test('ordinary child writes keep their existing repaint cadence', async () => {
+  const { backend, instance } = makeInstance();
+  const before = instance.renderRevision.value;
+  backend.feed('first');
+  await instance.flush();
+  const afterFirstWrite = instance.renderRevision.value;
+  backend.feed(' second');
+  await instance.flush();
+  expect(afterFirstWrite).toBeGreaterThan(before);
+  expect(instance.renderRevision.value).toBeGreaterThan(afterFirstWrite);
+});
+
+test('an unclosed DEC 2026 update releases after the bounded timeout', async () => {
+  const backend = new MockBackend.Class();
+  const emulator = new TerminalEmulator.Class(20, 5);
+  const instance = new TerminalInstance.Class(backend, emulator, {
+    synchronizedOutputTimeoutMilliseconds: 10,
+  });
+  const before = instance.renderRevision.value;
+
+  backend.feed('\x1b[?2026h\x1b[2J\x1b[Hheld');
+  await instance.flush();
+  expect(instance.renderRevision.value).toBe(before);
+  await awaitCondition(
+    'the synchronized output deadlock guard to release the held grid',
+    () => instance.renderRevision.value > before,
+  );
+  const afterTimeout = instance.renderRevision.value;
+
+  backend.feed(' visible');
+  await instance.flush();
+  expect(instance.renderRevision.value).toBeGreaterThan(afterTimeout);
+  expect(rowText(instance, 0)).toContain('held visible');
+  instance.dispose();
 });
 
 test('SGR color renders as an RGB/palette foreground on the exact cell', async () => {

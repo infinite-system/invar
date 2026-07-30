@@ -25,6 +25,32 @@ class $TerminalEmulatorTest {
         emulator.dispose();
       }
     });
+
+    test('OSC 4 palette overrides and OSC 104 resets remain child-owned', async () => {
+      const emulator = new TerminalEmulator.Class(20, 4);
+      try {
+        emulator.write(
+          '\x1b]4;1;rgb:12/34/56;15;#abcdef\x1b\\' +
+            '\x1b]4;300;rgb:ff/00/00;2;not-a-color\x1b\\',
+        );
+        await emulator.flush();
+        expect(emulator.paletteOverride(1)).toBe('#123456');
+        expect(emulator.paletteOverride(15)).toBe('#abcdef');
+        expect(emulator.paletteOverride(2)).toBeNull();
+        expect(emulator.paletteOverride(300)).toBeNull();
+
+        emulator.write('\x1b]104;1\x1b\\');
+        await emulator.flush();
+        expect(emulator.paletteOverride(1)).toBeNull();
+        expect(emulator.paletteOverride(15)).toBe('#abcdef');
+
+        emulator.write('\x1b]104\x1b\\');
+        await emulator.flush();
+        expect(emulator.paletteOverride(15)).toBeNull();
+      } finally {
+        emulator.dispose();
+      }
+    });
   }
 }
 
