@@ -87,3 +87,11 @@ Effort: high
    ships in the same task; the list is the close affordance. Net end state:
    no titles, no per-pane close, tabs for spaces, chip-expanded list for
    reorder/close.
+
+10. Remove the ROUNDED PANE FRAMES around bottom-panel panes entirely
+    (user, same session): the bright blue rounded borders go. The tab row
+    at the top (where the line is now) is the only chrome — actual tabs,
+    no per-pane rounded box. Goal stated: maximize space density. Focus
+    indication must survive the frame removal — builder proposes the
+    replacement focus cue (e.g. tab highlight + a minimal edge marker),
+    since the blue frame was carrying focus state.
