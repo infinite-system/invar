@@ -1,0 +1,15 @@
+{
+  "task": 308,
+  "slug": "markdown-view-only-mode-persistent",
+  "branch": "fleet/308-markdown-view-only-mode-persistent",
+  "worktree": ".invar/worktrees/308-markdown-view-only-mode-persistent",
+  "tmuxSession": "invar/308-markdown-view-only-mode-persistent",
+  "transcript": "tmp/transcripts/transcript-codex-unknown-medium-308-markdown-view-only-mode-persistent.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "unknown",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "72ab6effe4ae5169dde354b11540216fb3ca84ab",
+  "startedAt": "2026-07-29T20:15:20-04:00"
+}
