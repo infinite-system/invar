@@ -1,6 +1,6 @@
 # #408 — workspace state never leaks across workspaces
 
-State: IN-PROGRESS
+State: COMPLETED — 68fcad24 — workspace state isolation: six leaks closed, geometry workspace-owned, v2 panel covered
 Priority: user-directed
 Engine: claude
 Environment: linux
