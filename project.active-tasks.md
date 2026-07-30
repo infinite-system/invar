@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
-- #323 [quit-confirmation-dialog-modern](.invar/tasks/in-progress/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md)  [building]
-  `tmux attach -t invar/323-quit-confirmation-dialog-modern`
 - #322 [status-editor-column-content-stale-in-preview](.invar/tasks/in-progress/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)  [building]
   `tmux attach -t invar/322-status-editor-column-content-stale-in-preview`
 
@@ -19,7 +17,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (19)
+## VERIFICATION-INTEGRITY (20)
+- #332 [smoke-tabs-hardcoded-close-glyph](.invar/tasks/active/332-smoke-tabs-hardcoded-close-glyph/task-332-smoke-tabs-hardcoded-close-glyph.md)  [active]
 - #269 [smokes-assume-editor-geometry-sweep](.invar/tasks/active/269-smokes-assume-editor-geometry-sweep/task-269-smokes-assume-editor-geometry-sweep.md)
 - #261 [drive-harness-drops-shifted-control-chords](.invar/tasks/active/261-drive-harness-drops-shifted-control-chords/task-261-drive-harness-drops-shifted-control-chords.md)
 - #240 [momentum-records-placement-call](.invar/tasks/active/240-momentum-records-placement-call/task-240-momentum-records-placement-call.md)
@@ -71,7 +70,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (13)
+## ARCHITECTURE-HYGIENE (15)
+- #333 [dispatch-round-count-heading-mismatch](.invar/tasks/active/333-dispatch-round-count-heading-mismatch/task-333-dispatch-round-count-heading-mismatch.md)  [active]
+- #331 [ui-lattice-record-count-drift](.invar/tasks/active/331-ui-lattice-record-count-drift/task-331-ui-lattice-record-count-drift.md)  [active]
 - #330 [tasks-watch-clock-invariant-record](.invar/tasks/active/330-tasks-watch-clock-invariant-record/task-330-tasks-watch-clock-invariant-record.md)  [active]
 - #272 [task-record-system-contract](.invar/tasks/active/272-task-record-system-contract/task-272-task-record-system-contract.md)
 - #262 [structure-activity-action-orphaned](.invar/tasks/active/262-structure-activity-action-orphaned/task-262-structure-activity-action-orphaned.md)
@@ -90,10 +91,12 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 109 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 111 — full log: project.tasks-completed.md)
 - #329 [tasks-watch-animation-tick-restored](.invar/tasks/completed/329-tasks-watch-animation-tick-restored/task-329-tasks-watch-animation-tick-restored.md) — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
+- #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/completed/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md) — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
 - #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
 - #324 [terminal-3d-demo-and-video-playback](.invar/tasks/completed/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md) — f9394d58 — removable Animated Media plugin: cube/torus/video, flyweight+two-buffer+memory-flat proven, ffmpeg both polarities, removal build green
+- #323 [quit-confirmation-dialog-modern](.invar/tasks/completed/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md) — e8e57083 — Quit now asks: one modal confirmation behind Ctrl+Q/Cmd+Q/F10/Quit at the shared overlay seam; No default, Yes the only shutdown path, negative answers keep dirty state; harness teardown bypasses via INVAR_HARNESS_DIRECT_QUIT with two-way positive control.
 - #321 [terminal-flicker-child-tui-repaints](.invar/tasks/completed/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md) — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)
 - #320 [terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/completed/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md) — c8c8723a — terminal defaults + ANSI palette theme-derived, VSCode model; child-explicit lanes stay exact (landed in #320 bundle merge f64f85ef)
 - #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/completed/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md) — f64f85ef — terminal theme fidelity (VSCode palette + theme defaults) + DEC 2026 synchronized child repaints; tasks:watch flicker gone
@@ -104,5 +107,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
 - #314 [harness-and-tooling-integrity-bundle](.invar/tasks/completed/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md) — 331a8d33 — harness/tooling integrity: Drive paint-condition waits, dispatch root-relative pointers, folder-open task isolation
 - #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
-- #313 [terminal-mouse-passthrough-to-child-apps](.invar/tasks/completed/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md) — 133338ba — terminal mouse passthrough to child apps
-- #312 [vue-sfc-block-syntax-and-routing](.invar/tasks/completed/312-vue-sfc-block-syntax-and-routing/task-312-vue-sfc-block-syntax-and-routing.md) — b0f78747 — Vue SFC phases 1-2: block-aware highlighting on generic syntax + language routing

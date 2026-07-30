@@ -8,9 +8,13 @@
 import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+
+const sharedCloseGlyph =
+  ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode').panelClose;
 
 function halfBlockCount(snapshot: HarnessSnapshot.Model): number {
   return snapshot
@@ -712,7 +716,7 @@ async function driveKittyTier(): Promise<void> {
       'Settings exposes its close control over the pixel preview',
       (candidate) =>
         candidate.findText('Settings') !== null &&
-        candidate.findText('✕') !== null,
+        candidate.findText(sharedCloseGlyph) !== null,
     );
     await awaitOutputSequenceCountAbove(
       driver,
@@ -730,7 +734,10 @@ async function driveKittyTier(): Promise<void> {
       throw new Error('FAIL Settings title disappeared before close');
     const settingsCloseColumn = settingsSnapshot
       .rowText(settingsTitlePosition.row)
-      .indexOf('✕', settingsTitlePosition.column + 'Settings'.length);
+      .indexOf(
+        sharedCloseGlyph,
+        settingsTitlePosition.column + 'Settings'.length,
+      );
     HarnessSmoke.Class.requireCondition(
       settingsCloseColumn >= 0,
       'Settings close control is discovered from painted cells',

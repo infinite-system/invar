@@ -95,6 +95,7 @@ import { ApplicationContributions } from './ApplicationContributions';
 import { TaskLauncher } from '../tasks/TaskLauncher';
 import { Tasks } from '../tasks/Tasks';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
+import { QuitConfirmation } from '../ui/QuitConfirmation';
 
 class $Bootstrap {
   protected static awaitProjectedFrame(
@@ -270,6 +271,8 @@ class $Bootstrap {
     const findBar = new FindBar.Class();
     const quickOpen = new QuickOpen.Class();
     const goToLinePrompt = new GoToLinePrompt.Class();
+    let confirmQuit = (): void => {};
+    const quitConfirmation = new QuitConfirmation.Class(() => confirmQuit());
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     // The bottom panel slot: a generic, content-agnostic host. Its occupants come from contributed
     // RUNTIMES, built lazily on first toggle so nothing is started until the panel is opened.
@@ -360,6 +363,7 @@ class $Bootstrap {
       boundedListPopup: () => boundedListPopup.close(),
       completionPopup: dismissCompletion,
       shortcutHelp: () => shortcutHelp.close(),
+      quitConfirmation: () => quitConfirmation.dismiss(),
     });
     const statusBarSegments = new StatusBarSegments.Class();
     const statusProjectionContributions =
@@ -505,6 +509,7 @@ class $Bootstrap {
       findBar,
       quickOpen,
       goToLinePrompt,
+      quitConfirmation,
       shortcutHelp,
       overlayCoordinator,
       panelHost,
@@ -1033,6 +1038,7 @@ class $Bootstrap {
       findBar,
       quickOpen,
       goToLinePrompt,
+      quitConfirmation,
       settingsPanel,
       contextMenu,
       boundedListPopup,
@@ -1160,6 +1166,8 @@ class $Bootstrap {
       void goToLinePrompt.input.text.value;
       void goToLinePrompt.input.caret.value;
       void goToLinePrompt.input.selectionAnchor.value;
+      void quitConfirmation.open.value;
+      void quitConfirmation.focusedChoice.value;
       void findBar.open.value;
       void findBar.engine?.query.value;
       void findBar.focusedInput?.caret.value;
@@ -1406,6 +1414,27 @@ class $Bootstrap {
       app.dispose();
       options.onQuit?.();
     };
+    confirmQuit = () => {
+      void shutdown();
+    };
+    // invariant: Quit requires explicit confirmation (src/modules/app/app.invariants.md)
+    const requestQuit = (): void => {
+      // PTY harnesses use Ctrl+Q as their teardown protocol. The shared driver sets this flag by
+      // default, while Drive clears it so product exploration always follows the real dialog path.
+      if (Environment.Class.env('INVAR_HARNESS_DIRECT_QUIT') === '1') {
+        void shutdown();
+        return;
+      }
+      if (quitConfirmation.open.value) {
+        quitConfirmation.dismiss();
+        return;
+      }
+      if (workspaceSet.active.pendingCloseTabIndex.value >= 0)
+        workspaceSet.active.cancelCloseTab();
+      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
+        quitConfirmation.show(),
+      );
+    };
 
     CommandDefaults.Class.registerDefaultCommands(commands, {
       workspaceSet,
@@ -1418,7 +1447,7 @@ class $Bootstrap {
         overlayCoordinator.openExclusiveOverlay('goToLine', () =>
           goToLinePrompt.show(),
         ),
-      quit: () => void shutdown(),
+      quit: requestQuit,
       requestRender: () => app.requestRender(),
       toggleActivityBar: () => {
         settings.showActivityBar.value = !settings.showActivityBar.value;
@@ -1675,7 +1704,7 @@ class $Bootstrap {
     // The ACTION TABLE: every binding's action id -> its handler. Handlers receive the raw KeyEvent
     // for parameters that compose (shift = extend; repeat runs = acceleration).
     const actionHandlers: Record<string, (key: KeyEvent) => void> = {
-      'app.quit': () => void shutdown(),
+      'app.quit': requestQuit,
       'find.open': () => {
         const target = view.findTarget();
         if (!target) return;
@@ -2130,6 +2159,15 @@ class $Bootstrap {
       });
       if (reservedGlobalAction) {
         dispatchAction(reservedGlobalAction, key);
+        return;
+      }
+      if (quitConfirmation.open.value) {
+        if (key.name === 'escape') quitConfirmation.dismiss();
+        else if (key.name === 'left') quitConfirmation.focusPrevious();
+        else if (key.name === 'right' || key.name === 'tab')
+          quitConfirmation.focusNext();
+        else if (key.name === 'return')
+          quitConfirmation.activateFocusedChoice();
         return;
       }
       // Same MODAL contract for closing a tab with unsaved edits.

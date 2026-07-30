@@ -89,6 +89,8 @@ class $Drive {
       homeDirectory,
       environment: {
         TUI_STATUS_PATH: statusPath,
+        // invariant: Harness teardown bypasses product quit confirmation only when declared (scripts/harness/harness.invariants.md)
+        INVAR_HARNESS_DIRECT_QUIT: '0',
       },
     });
 

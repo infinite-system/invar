@@ -20,6 +20,7 @@ import { Tooltip } from '../ui/Tooltip';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { StatusProjectionContributions } from './StatusProjectionContributions';
 import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
+import type { QuitConfirmation } from '../ui/QuitConfirmation';
 
 class $AppStatusProjection {
   static publish(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
@@ -44,6 +45,7 @@ class $AppStatusProjection {
     const openInputOverlays = [
       ...(ports.findBar.open.value ? ['findBar'] : []),
       ...(ports.goToLinePrompt.open.value ? ['goToLine'] : []),
+      ...(ports.quitConfirmation.open.value ? ['quitConfirmation'] : []),
       ...(ports.quickOpen.open.value ? ['quickOpen'] : []),
       ...(ports.commands.open.value ? ['commandPalette'] : []),
       ...(ports.settingsPanel.open.value ? ['settingsPanel'] : []),
@@ -120,6 +122,8 @@ class $AppStatusProjection {
       goToLineOpen: ports.goToLinePrompt.open.value,
       goToLineValue: ports.goToLinePrompt.input.value,
       goToLineNotice: ports.goToLinePrompt.notice.value,
+      quitConfirmationOpen: ports.quitConfirmation.open.value,
+      quitConfirmationFocusedChoice: ports.quitConfirmation.focusedChoice.value,
       paletteOpen: ports.commands.open.value,
       paletteQuery: ports.commands.open.value ? ports.commands.query.value : '',
       paletteMatches: ports.commands.open.value
@@ -431,6 +435,10 @@ export interface AppStatusProjectionPorts {
   readonly goToLinePrompt: Pick<
     GoToLinePrompt.Model,
     'open' | 'input' | 'notice'
+  >;
+  readonly quitConfirmation: Pick<
+    QuitConfirmation.Model,
+    'open' | 'focusedChoice'
   >;
   readonly settingsPanel: Pick<
     InstanceType<typeof SettingsPanel.Class>,

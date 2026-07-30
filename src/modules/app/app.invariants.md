@@ -115,6 +115,43 @@ exercised end-to-end once git/LSP is wired into the editor (M4/M5).
 
 **Last refined:** 2026-07-27
 
+### Quit requires explicit confirmation
+
+**Invariant:** If a user invokes quit, then Invar opens one modal confirmation with No focused and
+does not shut down until the user explicitly activates Yes. Every dismissal leaves application
+state intact.
+
+**Scope:** The `app.quit` command and its effective Ctrl+Q, Cmd+Q, and F10 bindings. Process signals,
+startup failures, and the PTY harness's declared teardown bypass are outside this product path.
+
+**Mechanism:** `Bootstrap.requestQuit` routes both command execution and reserved bindings through
+one `QuitConfirmation` model in the exclusive overlay slot. The model resets to No each time it
+opens. Left, Right, and Tab move the visible focus; Enter activates it; Escape, No, the shared close
+control, an outside press, and a second quit chord dismiss. Only Yes calls `shutdown`. The prior quit
+path had no dirty-buffer guard: it shut down immediately even with unsaved edits. The confirmation
+is now that guard. A dismissal preserves the dirty document, while explicit Yes authorizes exit
+without saving. Opening quit cancels a pending close-tab question but does not close or clean its
+buffer.
+
+**Generates:** A centered, content-sized, rounded, themed Invar dialog; safe double-tap behavior;
+keyboard and pointer parity; one affirmative shutdown edge; dirty-buffer preservation on every
+negative edge.
+
+**Evidence:** `src/modules/ui/QuitConfirmation.ts`; `src/modules/ui/QuitConfirmation.test.ts`;
+`src/modules/app/Bootstrap.ts`; `src/modules/ui/OverlayLayer.ts`;
+`scripts/harness/smoke-quit-confirmation-harness.ts`.
+
+**Impossible if true:** One quit chord exiting immediately; No, Escape, close, outside click, or a
+second quit chord shutting down; a negative answer clearing a dirty buffer; Yes closing the dialog
+but leaving the process alive; a terminal-style y/N prompt on the quit path.
+
+**Verification:** `bun test src/modules/ui/QuitConfirmation.test.ts && bun
+scripts/harness/smoke-quit-confirmation-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-30
+
 ### Owned resources release in reverse order
 
 **Invariant:** If the app disposes, then it stops its reactive effects first, then runs owned

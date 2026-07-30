@@ -15,6 +15,7 @@ class $OverlayCoordinator {
       'boundedListPopup',
       'completionPopup',
       'shortcutHelp',
+      'quitConfirmation',
     ];
     return exclusiveOverlayNamesValue;
   }
@@ -55,7 +56,8 @@ export type ExclusiveOverlayName =
   | 'contextMenu'
   | 'boundedListPopup'
   | 'completionPopup'
-  | 'shortcutHelp';
+  | 'shortcutHelp'
+  | 'quitConfirmation';
 
 export type ExclusiveOverlayCloseActions = Readonly<
   Record<ExclusiveOverlayName, () => void>

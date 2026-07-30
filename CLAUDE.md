@@ -7,6 +7,13 @@ not even a "one-line fix" — before reading AGENTS.md. Nothing below is law; it
 
 ---
 
+## CONDUCTOR LAUNCH (preferred: fundamentals in the system prompt)
+
+Launch conductor sessions with `bash scripts/claude-conductor.sh` — it
+generates IBR + conductor doctrine into `tmp/` and appends them to the system
+prompt, the only memory tier that survives compaction unread. State is NEVER
+in the prompt; the newest `RESUME ANCHOR` on disk is always the state truth.
+
 ## CONDUCTOR RESUME (one-line entry point)
 
 If the user says anything like "resume as conductor" / "continue the fleet",

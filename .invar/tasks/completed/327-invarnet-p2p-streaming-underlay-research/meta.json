@@ -1,0 +1,18 @@
+{
+  "task": 327,
+  "slug": "invarnet-p2p-streaming-underlay-research",
+  "branch": "fleet/327-invarnet-p2p-streaming-underlay-research",
+  "worktree": ".invar/worktrees/327-invarnet-p2p-streaming-underlay-research",
+  "tmuxSession": "invar/327-invarnet-p2p-streaming-underlay-research",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-327-invarnet-p2p-streaming-underlay-research.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "77da79f99d15bee6acefe52eceeeba61143aa246",
+  "startedAt": "2026-07-30T00:59:41-04:00",
+  "landedAt": "2026-07-30T01:20:35-04:00",
+  "durationMinutes": 20,
+  "mergeCommit": "e332ebd9"
+}

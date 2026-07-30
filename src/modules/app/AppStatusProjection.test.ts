@@ -29,6 +29,7 @@ import {
 } from './AppStatusProjection';
 import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import { QuitConfirmation } from '../ui/QuitConfirmation';
 
 let temporaryRoot = '';
 
@@ -103,6 +104,7 @@ describe('AppStatusProjection', () => {
     };
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const goToLinePrompt = new GoToLinePrompt.Class();
+    const quitConfirmation = new QuitConfirmation.Class(() => {});
     const tooltip = new Tooltip.Class();
     const panelHost = new PanelHost.Class();
     const primaryDockHost = new PanelHost.Class();
@@ -123,6 +125,7 @@ describe('AppStatusProjection', () => {
       findBar,
       quickOpen,
       goToLinePrompt,
+      quitConfirmation,
       settingsPanel,
       contextMenu,
       boundedListPopup,
@@ -257,6 +260,16 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.quickOpenSelectedIdentifier).toBeNull();
     expect(initialSnapshot.quickOpenFileEnumerationState).toBe('idle');
     expect(initialSnapshot.quickOpenFileEnumerationMessage).toBe('');
+    expect(initialSnapshot.quitConfirmationOpen).toBe(false);
+    expect(initialSnapshot.quitConfirmationFocusedChoice).toBe('no');
+    quitConfirmation.show();
+    quitConfirmation.select('yes');
+    const quitSnapshot = AppStatusProjection.Class.snapshot(ports);
+    expect(quitSnapshot.quitConfirmationOpen).toBe(true);
+    expect(quitSnapshot.quitConfirmationFocusedChoice).toBe('yes');
+    expect(quitSnapshot.inputOverlay).toBe('quitConfirmation');
+    expect(quitSnapshot.openInputOverlays).toEqual(['quitConfirmation']);
+    quitConfirmation.dismiss();
     expect(initialSnapshot.pluginPrimaryDockContentIdentifiers).toEqual([
       'git',
       'extensions',

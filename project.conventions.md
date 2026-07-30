@@ -307,7 +307,9 @@ and strings.
 
 ## Git branch lifecycle
 - Branches are NEVER deleted. Terminal states are MARKED: `finished/<branch>` tag (merged into main)
-  or `orphaned/<branch>` tag (content never landed — superseded, unadopted, or a pre-rebase twin).
+  or `retired/<branch>` tag (content never landed — superseded, unadopted, or a pre-rebase twin).
+  (This line said `orphaned/` until 2026-07-30; the repo's actual tags — 32 `retired/*`, zero
+  `orphaned/*` — and AGENTS.md rule 10 both use `retired/`. #327's builder caught the drift.)
   In-flight branches carry neither. Cleanup = worktree removal only. The tags are the greppable
   historical record (`git tag -l 'finished/*'`); the labels are the provenance. Canonical doctrine:
   the /conductor SKILL.md "terminal states" section.

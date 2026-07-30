@@ -63,6 +63,10 @@ import type { Tooltip } from './Tooltip';
 import type { Theme } from '../theme/Theme';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
+import type {
+  QuitConfirmation,
+  QuitConfirmationChoice,
+} from './QuitConfirmation';
 
 class $OverlayLayer {
   get paintRevision() {
@@ -79,6 +83,7 @@ class $OverlayLayer {
       this.dependencies.boundedListPopup.open.value ||
       this.dependencies.settingsPanel.open.value ||
       this.dependencies.shortcutHelp.open.value ||
+      this.dependencies.quitConfirmation.open.value ||
       this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0
     );
   }
@@ -99,6 +104,9 @@ class $OverlayLayer {
   protected readonly confirmBox: BoxRenderable;
   protected readonly confirmText: TextRenderable;
   protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
+  protected readonly quitConfirmationBox: BoxRenderable;
+  protected readonly quitConfirmationText: TextRenderable;
+  protected readonly quitConfirmationDismissal: ModalOverlayDismissal.Model;
   protected readonly settingsBox: BoxRenderable;
   protected readonly settingsText: SelectableText.Model;
   protected readonly settingsDismissal: ModalOverlayDismissal.Model;
@@ -149,6 +157,7 @@ class $OverlayLayer {
   // (row, column-range) to a descriptor index + an action, so a mouse click edits the setting like a UI
   // app — steppers for numbers, a toggle for booleans, arrows for enums.
   protected settingsWidgetZones: SettingsWidgetZone[] = [];
+  protected quitConfirmationButtonZones: QuitConfirmationButtonZone[] = [];
   protected commandPaletteRowCount = 0;
   protected commandPaletteFirstVisible = 0;
   protected quickOpenRowCount = 0;
@@ -320,6 +329,41 @@ class $OverlayLayer {
       121,
       () => this.cancelConfirmation(),
     );
+    this.quitConfirmationBox = new BoxRenderable(renderer, {
+      id: 'quit-confirmation',
+      position: 'absolute',
+      border: true,
+      borderStyle: 'rounded',
+      title: 'Invar',
+      visible: false,
+      zIndex: 124,
+    });
+    this.quitConfirmationText = new TextRenderable(renderer, {
+      id: 'quit-confirmation-text',
+      content: '',
+      selectable: false,
+    });
+    this.quitConfirmationBox.add(this.quitConfirmationText);
+    root.add(this.quitConfirmationBox);
+    this.quitConfirmationDismissal = this.createModalDismissal(
+      'quit-confirmation',
+      123,
+      125,
+      () => dependencies.quitConfirmation.dismiss(),
+    );
+    this.quitConfirmationText.onMouseDown = (event) => {
+      const localRow = event.y - this.quitConfirmationText.y;
+      const localColumn = event.x - this.quitConfirmationText.x;
+      const button = this.quitConfirmationButtonZones.find(
+        (candidate) =>
+          candidate.row === localRow &&
+          localColumn >= candidate.startColumn &&
+          localColumn < candidate.endColumn,
+      );
+      if (!button) return;
+      dependencies.quitConfirmation.select(button.choice);
+      dependencies.quitConfirmation.activateFocusedChoice();
+    };
     // Settings panel (Ctrl+,) — overlay over the reactive settings store.
     this.settingsBox = new BoxRenderable(renderer, {
       id: 'settings-panel',
@@ -675,6 +719,7 @@ class $OverlayLayer {
       left: geometry.left,
       top: geometry.top,
       width: geometry.width,
+      glyph: this.dependencies.theme.glyph('panelClose'),
       backgroundColor: palette.panel,
       foregroundColor: input.titleColor ?? palette.accent,
     });
@@ -923,6 +968,66 @@ class $OverlayLayer {
     );
     return Math.min(maximumWidth, contentWidth + 2);
   }
+  protected quitConfirmationContent(
+    palette: Palette,
+    interiorWidth: number,
+  ): { text: StyledText; buttonZones: QuitConfirmationButtonZone[] } {
+    const question = 'Are you sure you want to quit?';
+    const hint = 'Left/Right or Tab, then Enter';
+    const yesLabel = '[ Yes ]';
+    const noLabel = '[ No ]';
+    const buttonGap = '    ';
+    const buttonRowWidth =
+      TextCoordinates.Class.lineWidth(yesLabel) +
+      TextCoordinates.Class.lineWidth(buttonGap) +
+      TextCoordinates.Class.lineWidth(noLabel);
+    const buttonRowLeft = Math.max(
+      0,
+      Math.floor((interiorWidth - buttonRowWidth) / 2),
+    );
+    const centeredLine = (line: string): string =>
+      `${' '.repeat(Math.max(0, Math.floor((interiorWidth - TextCoordinates.Class.lineWidth(line)) / 2)))}${line}`;
+    const focusedChoice =
+      this.dependencies.quitConfirmation.focusedChoice.value;
+    const buttonChunk = (
+      choice: QuitConfirmationChoice,
+      label: string,
+    ): TextChunk =>
+      focusedChoice === choice
+        ? bold(bg(palette.selection)(fg(palette.fg)(label)))
+        : fg(palette.dim)(label);
+    const text = new StyledText([
+      fg(palette.fg)('\n'),
+      fg(palette.fg)(`${centeredLine(question)}\n\n`),
+      fg(palette.fg)(' '.repeat(buttonRowLeft)),
+      buttonChunk('yes', yesLabel),
+      fg(palette.fg)(buttonGap),
+      buttonChunk('no', noLabel),
+      fg(palette.fg)(`\n\n${centeredLine(hint)}`),
+    ]);
+    const yesStartColumn = buttonRowLeft;
+    const noStartColumn =
+      yesStartColumn +
+      TextCoordinates.Class.lineWidth(yesLabel) +
+      TextCoordinates.Class.lineWidth(buttonGap);
+    return {
+      text,
+      buttonZones: [
+        {
+          row: 3,
+          startColumn: yesStartColumn,
+          endColumn: yesStartColumn + TextCoordinates.Class.lineWidth(yesLabel),
+          choice: 'yes',
+        },
+        {
+          row: 3,
+          startColumn: noStartColumn,
+          endColumn: noStartColumn + TextCoordinates.Class.lineWidth(noLabel),
+          choice: 'no',
+        },
+      ],
+    };
+  }
   /** Visible binding rows in the cheat-sheet (interior minus its fixed instruction line). */
   shortcutHelpViewportRows(): number {
     const geometry = OverlayDialogGeometry.Class.layout({
@@ -951,6 +1056,7 @@ class $OverlayLayer {
       quickOpen: this.dialogBoundsByName.get('quickOpen') ?? null,
       goToLine: this.dialogBoundsByName.get('goToLine') ?? null,
       confirmation: this.dialogBoundsByName.get('confirmation') ?? null,
+      quitConfirmation: this.dialogBoundsByName.get('quitConfirmation') ?? null,
       settingsPanel: this.dialogBoundsByName.get('settingsPanel') ?? null,
       shortcutHelp: this.dialogBoundsByName.get('shortcutHelp') ?? null,
       contextMenu: this.dialogBoundsByName.get('contextMenu') ?? null,
@@ -1304,6 +1410,47 @@ class $OverlayLayer {
         this.confirmationDismissal,
       );
     }
+    if (this.dependencies.quitConfirmation.open.value) {
+      const desiredWidth = this.contentDerivedDialogWidth(
+        [
+          'Are you sure you want to quit?',
+          '[ Yes ]    [ No ]',
+          'Left/Right or Tab, then Enter',
+        ],
+        44,
+      );
+      const desiredHeight = 8;
+      const quitGeometry = this.updateOverlayDialog(
+        this.quitConfirmationBox,
+        this.quitConfirmationDismissal,
+        palette,
+        {
+          dialogName: 'quitConfirmation',
+          title: 'Invar',
+          desiredTop: Math.max(
+            1,
+            Math.floor((renderer.height - desiredHeight) / 2),
+          ),
+          desiredWidth,
+          desiredHeight,
+          horizontalMargin: 2,
+          verticalMargin: 1,
+        },
+      );
+      const content = this.quitConfirmationContent(
+        palette,
+        quitGeometry.interiorWidth,
+      );
+      this.quitConfirmationText.content = content.text;
+      this.quitConfirmationButtonZones = content.buttonZones;
+    } else {
+      this.hideOverlayDialog(
+        'quitConfirmation',
+        this.quitConfirmationBox,
+        this.quitConfirmationDismissal,
+      );
+      this.quitConfirmationButtonZones = [];
+    }
     // Settings panel overlay — sectioned, with a clickable widget per row (steppers / toggle / arrows).
     if (settingsPanel.open.value) {
       const settingsRows = settingsPanel.rows();
@@ -1620,6 +1767,7 @@ interface OverlayDialogDismissalControl {
     left: number;
     top: number;
     width: number;
+    glyph: string;
     backgroundColor: string;
     foregroundColor: string;
   }): void;
@@ -1632,6 +1780,7 @@ type OverlayDialogName =
   | 'quickOpen'
   | 'goToLine'
   | 'confirmation'
+  | 'quitConfirmation'
   | 'settingsPanel'
   | 'shortcutHelp'
   | 'contextMenu';
@@ -1649,6 +1798,7 @@ export interface OverlayLayerDependencies {
   findBar: FindBar.Instance;
   quickOpen: QuickOpen.Instance;
   goToLinePrompt: GoToLinePrompt.Instance;
+  quitConfirmation: QuitConfirmation.Model;
   contextMenu: ContextMenu.Instance;
   boundedListPopup: BoundedListPopup.Instance;
   settingsPanel: SettingsPanel.Instance;
@@ -1661,4 +1811,11 @@ export interface OverlayLayerDependencies {
   activateQuickOpen: () => void;
   /** Reveal the find bar's current match through the bound pane (the sole scroll/selection writer). */
   revealFindMatch: () => void;
+}
+
+interface QuitConfirmationButtonZone {
+  row: number;
+  startColumn: number;
+  endColumn: number;
+  choice: QuitConfirmationChoice;
 }

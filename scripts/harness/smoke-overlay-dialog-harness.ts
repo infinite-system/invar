@@ -13,6 +13,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import {
   awaitStatusPublication,
@@ -61,6 +62,11 @@ interface BoundedPopupGeometry {
 }
 
 type CursorVisibility = 'hidden' | 'shown' | 'unobserved';
+
+const sharedCloseGlyphs = (['nerd', 'unicode', 'ascii'] as const).map(
+  (glyphLevel) =>
+    ThemeIcons.Class.interfaceGlyphVocabularyFor(glyphLevel).panelClose,
+);
 
 function cursorVisibilityFromOutput(output: string): CursorVisibility {
   const showSequenceOffset = output.lastIndexOf('\x1b[?25h');
@@ -569,9 +575,16 @@ async function dismissOutsideAndRequireConsumed(
     bounds !== null,
     `${label} publishes bounds before dismissal`,
   );
+  if (!bounds) throw new Error(`${label} did not publish bounds`);
   const snapshot = await driver.awaitGridCondition(
     `${label} paints its single-token close anchor before outside dismissal`,
-    (candidate) => candidate.findText('✕') !== null,
+    (candidate) =>
+      sharedCloseGlyphs.some((glyph) =>
+        candidate
+          .rowText(bounds.top)
+          .slice(bounds.left, bounds.left + bounds.width)
+          .includes(glyph),
+      ),
   );
   const outsidePosition = discoveredOutsideActionPosition(
     snapshot,
@@ -646,9 +659,12 @@ function discoveredClosePosition(
 ): { column: number; row: number } {
   const titlePosition = markerPosition(snapshot, title);
   const titleRow = snapshot.rowText(titlePosition.row);
-  const closeColumn = titleRow.indexOf(
-    '✕',
-    titlePosition.column + title.length,
+  const closeColumn = Math.min(
+    ...sharedCloseGlyphs
+      .map((glyph) =>
+        titleRow.indexOf(glyph, titlePosition.column + title.length),
+      )
+      .filter((column) => column >= 0),
   );
   requireCondition(
     closeColumn >= 0,
@@ -1088,7 +1104,7 @@ try {
     'Settings title and close control remain visible after resize',
     (candidate) =>
       candidate.findText('Settings') !== null &&
-      candidate.findText('✕') !== null,
+      sharedCloseGlyphs.some((glyph) => candidate.findText(glyph) !== null),
   );
   const settingsClosePosition = discoveredClosePosition(snapshot, 'Settings');
   requireCondition(settingsBounds !== null, 'Settings bounds remain available');
@@ -1229,7 +1245,7 @@ try {
     'Keyboard Shortcuts close control is visible',
     (candidate) =>
       candidate.findText('Keyboard Shortcuts') !== null &&
-      candidate.findText('✕') !== null,
+      sharedCloseGlyphs.some((glyph) => candidate.findText(glyph) !== null),
   );
   const shortcutClosePosition = discoveredClosePosition(
     snapshot,
@@ -1613,7 +1629,8 @@ try {
   );
   snapshot = await driver.awaitGridCondition(
     'the confirmation paints its single-token close anchor',
-    (candidate) => candidate.findText('✕') !== null,
+    (candidate) =>
+      sharedCloseGlyphs.some((glyph) => candidate.findText(glyph) !== null),
   );
   const confirmationClosePosition = discoveredClosePosition(
     snapshot,

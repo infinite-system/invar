@@ -215,7 +215,14 @@ if [ "$resolved_engine" = "codex" ]; then
   declared_model="${declared_model:-5.6-sol}"
   case "${declared_effort:-}" in
     ""|default) declared_effort="high";;
-    medium) echo "dispatch: WARNING — codex effort 'medium' is not allowed; using 'high'" >&2; declared_effort="high";;
+    high|xhigh) ;;
+    *)
+      # The directive named 'medium', but the INTENT is a floor: high is the
+      # minimum codex effort. Enforcing only the named value let a builder
+      # run at 'low' on 2026-07-30 (#322) — block the class, not the instance.
+      echo "dispatch: WARNING — codex effort '${declared_effort}' is below the floor; using 'high'" >&2
+      declared_effort="high"
+      ;;
   esac
 else
   declared_model="${declared_model:-fable-5}"
@@ -595,11 +602,21 @@ case "$engine" in
     done
     ;;
   codex)
-    for candidate in $(find "$native_session_store" -type f -newer "$native_session_marker" 2>/dev/null); do
-      if head -c 8000 "$candidate" | grep -q "worktrees/${name}"; then
-        native_session_file="$candidate"
-        break
-      fi
+    # codex writes the rollout file AFTER launch (~15s observed: session_meta
+    # stamped 04:19:38 for an 04:19:23 launch on 2026-07-30). A single
+    # immediate pass wrote UNRESOLVED on every healthy dispatch that day
+    # (#329, #323 both repaired by hand at landing). Wait on the same bounded
+    # window as the claude arm; the condition is the file existing AND naming
+    # this worktree in its head.
+    codex_session_deadline=$((SECONDS + 30))
+    until [ -n "$native_session_file" ] || [ "$SECONDS" -ge "$codex_session_deadline" ]; do
+      for candidate in $(find "$native_session_store" -type f -newer "$native_session_marker" 2>/dev/null); do
+        if head -c 8000 "$candidate" | grep -q "worktrees/${name}"; then
+          native_session_file="$candidate"
+          break
+        fi
+      done
+      [ -n "$native_session_file" ] || sleep 1
     done
     ;;
 esac
