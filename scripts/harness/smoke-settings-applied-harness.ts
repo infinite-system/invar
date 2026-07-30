@@ -66,6 +66,11 @@ const coveredSettingNames = new Set([
   // Plugin membership, activity reorder, and same-HOME restart are driven by the activity-bar smoke.
   'primaryDockContentOrder',
   'panelContentOrder',
+  // Workspace switching and the reconstruction adapter drive this persisted panel-world map.
+  'panelWorkspaceStates',
+  // The panel-chrome smoke drives a one-second interval and the enabled switch through visible tab changes.
+  'panelTabCycleSeconds',
+  'panelTabCycling',
 ]);
 
 const schemaSettingNames = Object.keys(Settings.$Class.DEFAULTS);
@@ -1065,27 +1070,27 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       panelContentOrderDriver.driver,
       panelContentOrderDriver.statusPath,
-      "status condition: status.panelContentOrder.join(',') === 'agent,terminal' && status.panelCellIds.join(',') === 'agent,terminal' && status.panelActiveContent === 'terminal'",
+      "status condition: status.panelContentOrder.join(',') === 'agent,terminal,database' && status.panelCellIds.join(',') === 'terminal' && status.panelActiveContent === 'terminal'",
       (status) =>
         Array.isArray(status.panelContentOrder) &&
-        status.panelContentOrder.join(',') === 'agent,terminal' &&
+        status.panelContentOrder.join(',') === 'agent,terminal,database' &&
         Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.join(',') === 'agent,terminal' &&
+        status.panelCellIds.join(',') === 'terminal' &&
         status.panelActiveContent === 'terminal',
     );
     panelContentOrderDriver.driver.sendKeys('Alt+Up');
     await HarnessSmoke.Class.awaitStatus(
       panelContentOrderDriver.driver,
       panelContentOrderDriver.statusPath,
-      "status condition: status.panelContentOrder.join(',') === 'terminal,agent' && status.panelCellIds.join(',') === 'terminal,agent'",
+      "status condition: status.panelContentOrder.join(',') === 'terminal,agent,database' && status.panelCellIds.join(',') === 'terminal'",
       (status) =>
         Array.isArray(status.panelContentOrder) &&
-        status.panelContentOrder.join(',') === 'terminal,agent' &&
+        status.panelContentOrder.join(',') === 'terminal,agent,database' &&
         Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.join(',') === 'terminal,agent',
+        status.panelCellIds.join(',') === 'terminal',
     );
     HarnessSmoke.Class.pass(
-      'panelContentOrder changes through Alt+Up and swaps the live split',
+      'panelContentOrder changes through Alt+Up without auto-splitting the active group',
     );
   } finally {
     await panelContentOrderDriver.driver.dispose();

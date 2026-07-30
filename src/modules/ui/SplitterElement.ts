@@ -46,20 +46,26 @@ class $SplitterElement {
     });
     const paintSurface = renderable as unknown as SplitterPaintSurface;
     paintSurface.renderSelf = (buffer: OptimizedBuffer): void => {
-      SeparatorAppearance.Class.paint(
+      SeparatorAppearance.Class.paint({
         buffer,
-        this.options.orientation,
-        {
+        orientation: this.options.orientation,
+        rectangle: {
           x: Number(renderable.x),
           y: Number(renderable.y),
           width: Number(renderable.width),
           height: Number(renderable.height),
         },
-        renderable.backgroundColor,
-        'centeredLine',
-      );
+        color: renderable.backgroundColor,
+        mark: 'centeredLine',
+        leadingPaintPadCells: this.leadingPaintPadCells,
+      });
     };
     return renderable;
+  }
+
+  protected get leadingPaintPadCells(): number {
+    const declared = this.options.leadingPaintPadCells;
+    return typeof declared === 'function' ? declared() : (declared ?? 0);
   }
 
   get active(): boolean {
@@ -171,6 +177,11 @@ export interface SplitterElementOptions {
   minimumSize?: number;
   maximumSize?: number | (() => number);
   extentCells?: number;
+  /**
+   * Cells at the start of the splitter's long axis that stay unpainted. Paint only: the
+   * renderable keeps its whole rectangle, so the drag hit area does not shrink by the pad.
+   */
+  leadingPaintPadCells?: number | (() => number);
   pointerDirection?: 1 | -1 | (() => 1 | -1);
   currentSize?: () => number;
   currentExtentCells?: () => number;

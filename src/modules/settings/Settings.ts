@@ -169,6 +169,15 @@ class $Settings {
   get panelContentOrder(): Ref<string[]> {
     return shallowRef(['agent', 'terminal']);
   }
+  get panelTabCycleSeconds(): Ref<number> {
+    return ref(10);
+  }
+  get panelTabCycling(): Ref<boolean> {
+    return ref(false);
+  }
+  get panelWorkspaceStates(): Ref<Record<string, PanelWorkspaceState>> {
+    return shallowRef({});
+  }
 
   /** Every field keyed by name — the one place each name maps to its reactive cell. */
   protected get fields(): {
@@ -210,6 +219,9 @@ class $Settings {
       rightDockWidth: this.rightDockWidth,
       primaryDockContentOrder: this.primaryDockContentOrder,
       panelContentOrder: this.panelContentOrder,
+      panelTabCycleSeconds: this.panelTabCycleSeconds,
+      panelTabCycling: this.panelTabCycling,
+      panelWorkspaceStates: this.panelWorkspaceStates,
     };
   }
 
@@ -394,9 +406,11 @@ class $Settings {
   }
 
   settingValue(identifier: string): SettingValue | undefined {
+    if (identifier === 'panelWorkspaceStates') return undefined;
     const hostField = this.fields[identifier as keyof SettingsValues];
     return (
-      hostField?.value ?? this.contributedSettings.get(identifier)?.value.value
+      (hostField?.value as SettingValue | undefined) ??
+      this.contributedSettings.get(identifier)?.value.value
     );
   }
 
@@ -516,6 +530,9 @@ class $Settings {
       rightDockWidth: 28,
       primaryDockContentOrder: [],
       panelContentOrder: ['agent', 'terminal'],
+      panelTabCycleSeconds: 10,
+      panelTabCycling: false,
+      panelWorkspaceStates: {},
     };
   }
 
@@ -659,6 +676,14 @@ class $Settings {
     readNumber('agentNarrationRate');
     readNumber('sidebarWidth');
     readNumber('rightDockWidth');
+    readNumber('panelTabCycleSeconds');
+    if (typeof record.panelTabCycling === 'boolean')
+      result.panelTabCycling = record.panelTabCycling;
+    const panelWorkspaceStates = this.sanitizePanelWorkspaceStates(
+      record.panelWorkspaceStates,
+    );
+    if (panelWorkspaceStates)
+      result.panelWorkspaceStates = panelWorkspaceStates;
     const primaryDockContentOrder = this.sanitizeIdentifierOrder(
       record.primaryDockContentOrder,
     );
@@ -669,6 +694,88 @@ class $Settings {
     );
     if (panelContentOrder) result.panelContentOrder = panelContentOrder;
     return result;
+  }
+
+  protected static sanitizePanelWorkspaceStates(
+    candidate: unknown,
+  ): Record<string, PanelWorkspaceState> | undefined {
+    if (
+      typeof candidate !== 'object' ||
+      candidate === null ||
+      Array.isArray(candidate)
+    ) {
+      return undefined;
+    }
+    const sanitized: Record<string, PanelWorkspaceState> = {};
+    for (const [workspaceRoot, value] of Object.entries(candidate)) {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        continue;
+      }
+      const record = value as Record<string, unknown>;
+      if (!Array.isArray(record.spaces)) continue;
+      const spaces = record.spaces.flatMap((spaceValue) => {
+        if (
+          typeof spaceValue !== 'object' ||
+          spaceValue === null ||
+          Array.isArray(spaceValue)
+        ) {
+          return [];
+        }
+        const space = spaceValue as Record<string, unknown>;
+        if (
+          typeof space.kind !== 'string' ||
+          typeof space.label !== 'string' ||
+          !Array.isArray(space.groups)
+        ) {
+          return [];
+        }
+        const groups = space.groups.flatMap((groupValue) => {
+          if (!Array.isArray(groupValue)) return [];
+          const panes = groupValue.flatMap((paneValue) => {
+            if (
+              typeof paneValue !== 'object' ||
+              paneValue === null ||
+              Array.isArray(paneValue)
+            ) {
+              return [];
+            }
+            const pane = paneValue as Record<string, unknown>;
+            return typeof pane.kind === 'string' &&
+              typeof pane.label === 'string'
+              ? [{ kind: pane.kind, label: pane.label }]
+              : [];
+          });
+          return panes.length > 0 ? [panes] : [];
+        });
+        return groups.length > 0
+          ? [
+              {
+                kind: space.kind,
+                label: space.label,
+                groups,
+                activeGroupIndex:
+                  typeof space.activeGroupIndex === 'number'
+                    ? Math.max(0, Math.floor(space.activeGroupIndex))
+                    : 0,
+              },
+            ]
+          : [];
+      });
+      sanitized[workspaceRoot] = {
+        spaces,
+        activeSpaceIndex:
+          typeof record.activeSpaceIndex === 'number'
+            ? Math.max(0, Math.floor(record.activeSpaceIndex))
+            : 0,
+        panelListExpanded: record.panelListExpanded === true,
+        panelListWidth:
+          typeof record.panelListWidth === 'number'
+            ? Math.max(10, Math.min(40, Math.round(record.panelListWidth)))
+            : 20,
+        visible: record.visible === true,
+      };
+    }
+    return sanitized;
   }
 
   protected static get $allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
@@ -736,6 +843,29 @@ export interface SettingsValues {
   rightDockWidth: number;
   primaryDockContentOrder: string[];
   panelContentOrder: string[];
+  panelTabCycleSeconds: number;
+  panelTabCycling: boolean;
+  panelWorkspaceStates: Record<string, PanelWorkspaceState>;
+}
+
+export interface PanelWorkspaceState {
+  readonly spaces: readonly PanelWorkspaceSpaceState[];
+  readonly activeSpaceIndex: number;
+  readonly panelListExpanded: boolean;
+  readonly panelListWidth: number;
+  readonly visible: boolean;
+}
+
+export interface PanelWorkspaceSpaceState {
+  readonly kind: string;
+  readonly label: string;
+  readonly groups: readonly (readonly PanelWorkspacePaneState[])[];
+  readonly activeGroupIndex: number;
+}
+
+export interface PanelWorkspacePaneState {
+  readonly kind: string;
+  readonly label: string;
 }
 
 /** Narrow filesystem seam the store depends on — the whole surface a fake must satisfy. */

@@ -55,9 +55,21 @@ archive_one() {
       echo "$session_file" > "$link_path"
       echo "archive-session: link was stale/UNRESOLVED — lazily resolved by worktree name: ${session_file}"
     else
-      echo "archive-session: FAIL — linked session file missing: ${session_file}" >&2
-      echo "  (lazy resolution found ${match_count} candidates naming worktrees/${task_folder_name}; need exactly 1)" >&2
-      return 1
+      # CLAUDE-STORE FALLBACK: claude lanes key their project dir by the
+      # worktree PATH, so the directory name contains the task folder name —
+      # unique by construction. Newest jsonl in that dir is the session.
+      # Done by hand 3x on 2026-07-30 (#383, #387, #402) before this hardening.
+      local claude_candidate
+      claude_candidate="$(ls -t "$HOME"/.claude/projects/*"${task_folder_name}"*/*.jsonl 2>/dev/null | head -1 || true)"
+      if [ -n "$claude_candidate" ] && [ -f "$claude_candidate" ]; then
+        session_file="$claude_candidate"
+        echo "$session_file" > "$link_path"
+        echo "archive-session: link was stale/UNRESOLVED — resolved from the claude store: ${session_file}"
+      else
+        echo "archive-session: FAIL — linked session file missing: ${session_file}" >&2
+        echo "  (lazy resolution found ${match_count} codex candidates and no claude-store dir naming ${task_folder_name}; need exactly 1)" >&2
+        return 1
+      fi
     fi
   fi
   mkdir -p "$archive_directory"

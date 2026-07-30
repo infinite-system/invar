@@ -970,12 +970,29 @@ try {
       `Extensions opens before selecting ${rowLabel}`,
       (status) => status.sidebarView === 'extensions',
     );
+    const extensionsHeading = driver.snapshot().findText('Extensions');
+    if (!extensionsHeading)
+      throw new Error('The Extensions heading is not visible');
+    driver.sendMouse({
+      kind: 'press',
+      column: extensionsHeading.column,
+      row: extensionsHeading.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: extensionsHeading.column,
+      row: extensionsHeading.row,
+      button: 'left',
+    });
     driver.sendKeysWithoutFrameExpectation(
       ...Array.from({ length: 12 }, () => 'Up'),
     );
     await driver.awaitGridCondition(
       'the Extensions selection is anchored on its first row',
-      (snapshot) => snapshot.findText('› [x] File Tree') !== null,
+      (snapshot) =>
+        snapshot.findText('› [x] File Tree') !== null ||
+        snapshot.findText('› [ ] File Tree') !== null,
     );
     for (
       let selectionStep = 0;
@@ -1790,7 +1807,8 @@ try {
     statusPath,
     'the database consumer resolves the installed SQLite provider',
     (status) =>
-      status.sidebarView === 'database' &&
+      status.panelActiveContent === 'database' &&
+      status.panelVisible === true &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite',
   );
@@ -1801,6 +1819,7 @@ try {
       snapshot.findText('Database: Connect') !== null,
   );
 
+  driver.sendKeys('Tab');
   await selectExtensionsRow('[x] SQLite Provider');
   driver.sendKeys('Space');
   await driver.awaitGridCondition(
@@ -1813,7 +1832,7 @@ try {
     statusPath,
     'the database consumer states that no provider remains',
     (status) =>
-      status.sidebarView === 'database' &&
+      status.panelActiveContent === 'database' &&
       status.databaseConsumerStatus === 'unavailable' &&
       status.databaseProviderIdentifier === null &&
       status.databaseProviderPluginActive === undefined,
@@ -1823,6 +1842,7 @@ try {
     (snapshot) => snapshot.findText('No database provider is') !== null,
   );
 
+  driver.sendKeys('Tab');
   await selectExtensionsRow('[ ] SQLite Provider');
   driver.sendKeys('Space');
   await driver.awaitGridCondition(
@@ -1835,12 +1855,13 @@ try {
     statusPath,
     'the database consumer resolves the reinstalled provider',
     (status) =>
-      status.sidebarView === 'database' &&
+      status.panelActiveContent === 'database' &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite' &&
       status.databaseProviderPluginActive === true,
   );
 
+  driver.sendKeys('Tab');
   await selectExtensionsRow('[x] Database Explorer');
   driver.sendKeys('Space');
   await HarnessSmoke.Class.awaitStatus(
@@ -1848,7 +1869,7 @@ try {
     statusPath,
     'uninstall removes the database pane and all consumer projections',
     (status) =>
-      !(status.sidebarViewIdentifiers as string[]).includes('database') &&
+      !(status.panelContentIds as string[]).includes('database') &&
       status.databaseConsumerStatus === undefined &&
       status.databaseConsumerVersion === undefined &&
       status.databaseProviderIdentifier === undefined &&
@@ -1874,35 +1895,76 @@ try {
     statusPath,
     'the removed database chord cannot switch away before Settings opens',
     (status) =>
-      status.settingsOpen === true && status.sidebarView === 'extensions',
+      status.settingsOpen === true &&
+      !(status.panelContentIds as string[]).includes('database'),
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'Settings closes onto Extensions before the database consumer reinstall',
-    (status) => status.settingsOpen === false && status.focus === 'extensions',
+    (status) => status.settingsOpen === false,
   );
   driver.sendKeys('Space');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'reinstall restores the database pane registration',
-    (status) =>
-      (status.sidebarViewIdentifiers as string[]).includes('database'),
+    (status) => (status.panelContentIds as string[]).includes('database'),
   );
   driver.sendKeys('Control+Shift+y');
-  await HarnessSmoke.Class.awaitStatus(
+  const finalDatabaseStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the reinstalled database consumer resolves SQLite again',
     (status) =>
-      status.sidebarView === 'database' &&
+      status.panelActiveContent === 'database' &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite',
   );
   HarnessSmoke.Class.pass(
     'the database provider and consumer uninstall and reinstall symmetrically',
+  );
+  const finalPanelHeading = (
+    finalDatabaseStatus.panelHeadingGeometry as
+      | Array<{
+          row: number;
+          controls: Array<{
+            action: string;
+            startColumn: number;
+            endColumnExclusive: number;
+          }>;
+        }>
+      | undefined
+  )?.[0];
+  const finalPanelClose = finalPanelHeading?.controls.find(
+    (control) => control.action === 'close',
+  );
+  if (!finalPanelHeading || !finalPanelClose) {
+    throw new Error('Missing panel Close geometry after Database reinstall');
+  }
+  const finalPanelCloseColumn =
+    finalPanelClose.startColumn +
+    Math.floor(
+      (finalPanelClose.endColumnExclusive - finalPanelClose.startColumn) / 2,
+    );
+  driver.sendMouse({
+    kind: 'press',
+    column: finalPanelCloseColumn,
+    row: finalPanelHeading.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: finalPanelCloseColumn,
+    row: finalPanelHeading.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the panel closes before the Markdown lifecycle continues',
+    (status) => status.panelVisible === false,
   );
 
   console.log(

@@ -61,6 +61,8 @@ describe('Settings', () => {
     expect(settings.agentTerminalFollowMode.value).toBe('off');
     expect(settings.primaryDockContentOrder.value).toEqual([]);
     expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
+    expect(settings.panelTabCycleSeconds.value).toBe(10);
+    expect(settings.panelTabCycling.value).toBe(false);
   });
 
   test('load with no files keeps every default', () => {
@@ -365,5 +367,42 @@ describe('Settings', () => {
     settings.save();
     expect(store.has(USER_PATH)).toBe(true);
     expect(store.has(PROJECT_PATH)).toBe(false); // never writes the project override
+  });
+
+  test('panel groups, list pin, and list width survive a settings relaunch per workspace', () => {
+    const { settings, store } = makeStore();
+    settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+    settings.panelWorkspaceStates.value = {
+      '/workspace': {
+        spaces: [
+          {
+            kind: 'terminal',
+            label: 'Terminal',
+            groups: [
+              [
+                { kind: 'terminal', label: 'Terminal' },
+                { kind: 'invar-agent', label: 'Invar Agent' },
+              ],
+              [{ kind: 'claude-agent', label: 'AI Agent (Claude)' }],
+            ],
+            activeGroupIndex: 1,
+          },
+        ],
+        activeSpaceIndex: 0,
+        panelListExpanded: true,
+        panelListWidth: 13,
+        visible: true,
+      },
+    };
+    settings.save();
+
+    const reloaded = new Settings.Class({
+      fileSystem: makeFakeFileSystem(Object.fromEntries(store)).fileSystem,
+    });
+    reloaded.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+
+    expect(reloaded.panelWorkspaceStates.value['/workspace']).toEqual(
+      settings.panelWorkspaceStates.value['/workspace'],
+    );
   });
 });

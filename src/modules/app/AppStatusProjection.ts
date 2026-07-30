@@ -13,6 +13,7 @@ import { StatusChannel, type StatusSnapshot } from '../system/StatusChannel';
 import { ContextMenu } from '../ui/ContextMenu';
 import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { CompletionPopup } from '../ui/CompletionPopup';
+import type { LayoutSlots } from '../layout/LayoutSlots';
 import { PanelHost } from '../ui/PanelHost';
 import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
@@ -237,12 +238,15 @@ class $AppStatusProjection {
       shortcutHelpRowCount: ports.shortcutHelp.open.value
         ? ports.shortcutHelp.rows().length
         : 0,
-      sidebarWidth: ports.settings.sidebarWidth.value,
+      // The LIVE dock sizes, which belong to the workspace on screen — not the stored defaults a
+      // fresh workspace starts at.
+      // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+      sidebarWidth: ports.layoutSlotSizes.primaryDockColumns.value,
       sidebarPosition: ports.settings.sidebarPosition.value,
       panelAlignment: ports.settings.panelAlignment.value,
       leftDockVerticalSpan: ports.settings.leftDockVerticalSpan.value,
       rightDockVerticalSpan: ports.settings.rightDockVerticalSpan.value,
-      rightDockWidth: ports.settings.rightDockWidth.value,
+      rightDockWidth: ports.layoutSlotSizes.rightDockColumns.value,
       // Editor buffer tabs (item 10a). liveBufferCount proves the FLYWEIGHT: it must stay far below
       // tabCount (the two-document recent set + any dirty background buffer stay live).
       bufferTabCount: ports.workspaceSet.active.buffers.count,
@@ -269,8 +273,23 @@ class $AppStatusProjection {
       panelContentKinds: ports.panelHost.orderedContents.map(
         (content) => content.kind ?? content.id,
       ),
+      panelSpaceIds: ports.panelHost.spaces.value.map(
+        (space) => space.identifier,
+      ),
+      panelSpaceLabels: ports.panelHost.spaces.value.map(
+        (space) => space.label,
+      ),
+      panelActiveSpace: ports.panelHost.activeSpaceId.value,
+      panelActiveSpacePaneIds: ports.panelHost.activeSpace?.contentIds ?? [],
+      panelActiveGroup: ports.panelHost.activeSpace?.activeGroupId ?? null,
+      panelGroups: ports.panelHost
+        .panelGroups()
+        .map((group) => [...group.contentIds]),
+      panelTabCycling: ports.settings.panelTabCycling.value,
+      panelTabCycleSeconds: ports.settings.panelTabCycleSeconds.value,
       panelExpanded: ports.panelHost.expanded.value,
       panelListVisible: ports.panelHost.panelListVisible,
+      panelListExpanded: ports.panelHost.panelListExpanded.value,
       panelHeadingGeometry: ports.view.panelHeadingGeometry(),
       panelSeparatorGeometry: ports.view.panelSeparatorGeometry(),
       panelListGeometry: ports.view.panelContentsListRegion(),
@@ -411,6 +430,8 @@ export interface AppStatusProjectionPorts {
     | 'agentAudioNarration'
     | 'agentTerminalFollowMode'
     | 'agentSkipPermissions'
+    | 'panelTabCycling'
+    | 'panelTabCycleSeconds'
   >;
   readonly commands: Pick<
     InstanceType<typeof CommandRegistry.Class>,
@@ -483,10 +504,19 @@ export interface AppStatusProjectionPorts {
     | 'focusedIndex'
     | 'cellSpans'
     | 'panelListVisible'
+    | 'panelListExpanded'
+    | 'panelGroups'
+    | 'spaces'
+    | 'activeSpace'
+    | 'activeSpaceId'
   >;
   readonly primaryDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,
     'visible' | 'focused' | 'activeId' | 'orderedContents'
+  >;
+  readonly layoutSlotSizes: Pick<
+    LayoutSlots.Model,
+    'primaryDockColumns' | 'rightDockColumns' | 'bottomPanelRows'
   >;
   readonly pluginPrimaryDockContentIdentifiers: readonly string[];
   readonly statusProjectionContributions: Pick<

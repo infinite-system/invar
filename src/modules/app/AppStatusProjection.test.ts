@@ -9,6 +9,7 @@ import { ref } from 'vue';
 import { AgentPaneContent } from '../agent/AgentPaneContent';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
+import { LayoutSlots } from '../layout/LayoutSlots';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { FindBar } from '../search/FindBar';
@@ -109,6 +110,7 @@ describe('AppStatusProjection', () => {
     const panelHost = new PanelHost.Class();
     const primaryDockHost = new PanelHost.Class();
     const rightDockHost = new PanelHost.Class();
+    const layoutSlots = new LayoutSlots.Class();
     // The terminal's status now arrives the way every contributed runtime's does — through the
     // contribution channel, not a host-held pane reference.
     const statusProjectionContributions = {
@@ -137,6 +139,7 @@ describe('AppStatusProjection', () => {
       primaryDockHost,
       rightDockHost,
       statusProjectionContributions,
+      layoutSlotSizes: layoutSlots,
       pluginPrimaryDockContentIdentifiers: ['git', 'extensions'],
       view: {
         editorColumnContentIdentifier: () => 'source-text-editor',
@@ -173,6 +176,9 @@ describe('AppStatusProjection', () => {
         ],
         panelSeparatorGeometry: () => ({
           row: 9,
+          tabRow: 10,
+          tabs: [],
+          spaceAdd: null,
           editorActions: [
             {
               commandId: 'view.toggleWordWrap',
@@ -186,6 +192,7 @@ describe('AppStatusProjection', () => {
             width: 20,
             height: 1,
             visible: true,
+            leadingPaintPadCells: 1,
           },
           controls: [],
         }),
@@ -209,8 +216,11 @@ describe('AppStatusProjection', () => {
           rightDockSplitter: { left: 92, top: 0, width: 1, height: 40 },
           rightDock: { left: 93, top: 0, width: 27, height: 40 },
           rightActivityBar: { left: 120, top: 0, width: 0, height: 0 },
+          primaryDockRemainder: { left: 4, top: 21, width: 0, height: 0 },
+          rightDockRemainder: { left: 92, top: 21, width: 0, height: 0 },
           bottomPanelSplitter: { left: 37, top: 21, width: 55, height: 1 },
-          bottomPanel: { left: 37, top: 22, width: 55, height: 18 },
+          bottomPanelTabs: { left: 37, top: 22, width: 55, height: 1 },
+          bottomPanel: { left: 37, top: 23, width: 55, height: 17 },
         }),
         splitterRegions: () => ({
           sidebar: { left: 36, top: 0, width: 1, height: 40, visible: true },
@@ -441,6 +451,9 @@ describe('AppStatusProjection', () => {
     ]);
     expect(publishedSnapshot.panelSeparatorGeometry).toEqual({
       row: 9,
+      tabRow: 10,
+      tabs: [],
+      spaceAdd: null,
       editorActions: [
         {
           commandId: 'view.toggleWordWrap',
@@ -454,6 +467,7 @@ describe('AppStatusProjection', () => {
         width: 20,
         height: 1,
         visible: true,
+        leadingPaintPadCells: 1,
       },
       controls: [],
     });

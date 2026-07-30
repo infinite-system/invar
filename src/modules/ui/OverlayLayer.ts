@@ -158,6 +158,7 @@ class $OverlayLayer {
   // app — steppers for numbers, a toggle for booleans, arrows for enums.
   protected settingsWidgetZones: SettingsWidgetZone[] = [];
   protected quitConfirmationButtonZones: QuitConfirmationButtonZone[] = [];
+  protected quitConfirmationHoveredChoice: QuitConfirmationChoice | null = null;
   protected commandPaletteRowCount = 0;
   protected commandPaletteFirstVisible = 0;
   protected quickOpenRowCount = 0;
@@ -362,15 +363,24 @@ class $OverlayLayer {
     this.quitConfirmationText.onMouseDown = (event) => {
       const localRow = event.y - this.quitConfirmationText.y;
       const localColumn = event.x - this.quitConfirmationText.x;
-      const button = this.quitConfirmationButtonZones.find(
-        (candidate) =>
-          candidate.row === localRow &&
-          localColumn >= candidate.startColumn &&
-          localColumn < candidate.endColumn,
-      );
+      const button = this.quitConfirmationButtonAt(localRow, localColumn);
       if (!button) return;
       dependencies.quitConfirmation.select(button.choice);
       dependencies.quitConfirmation.activateFocusedChoice();
+    };
+    this.quitConfirmationText.onMouseMove = (event) => {
+      const localRow = event.y - this.quitConfirmationText.y;
+      const localColumn = event.x - this.quitConfirmationText.x;
+      const hoveredChoice =
+        this.quitConfirmationButtonAt(localRow, localColumn)?.choice ?? null;
+      if (hoveredChoice === this.quitConfirmationHoveredChoice) return;
+      this.quitConfirmationHoveredChoice = hoveredChoice;
+      renderer.requestRender();
+    };
+    this.quitConfirmationText.onMouseOut = () => {
+      if (this.quitConfirmationHoveredChoice === null) return;
+      this.quitConfirmationHoveredChoice = null;
+      renderer.requestRender();
     };
     // Settings panel (Ctrl+,) — overlay over the reactive settings store.
     this.settingsBox = new BoxRenderable(renderer, {
@@ -590,6 +600,8 @@ class $OverlayLayer {
       this.dependencies.settingsPanel.select(zone.index);
       if (zone.action === 'dec') this.dependencies.settingsPanel.adjust(-1);
       else if (zone.action === 'inc') this.dependencies.settingsPanel.adjust(1);
+      else if (zone.action === 'companion')
+        this.dependencies.settingsPanel.toggleCompanion(zone.index);
       this.dependencies.renderer.requestRender();
     };
     this.settingsText.onMouseDrag = (event: MouseEvent) =>
@@ -820,7 +832,10 @@ class $OverlayLayer {
       );
       if (row.kind === 'number') {
         appendChunk('[-]', palette.accent, 'dec');
-        appendChunk(` ${row.valueText} `, palette.accent);
+        appendChunk(
+          ` ${row.valueText}${row.companionValueText ? 's' : ''} `,
+          palette.accent,
+        );
         appendChunk('[+]', palette.accent, 'inc');
       } else if (row.kind === 'boolean') {
         appendChunk(`[ ${row.valueText} ]`, palette.accent, 'inc');
@@ -828,6 +843,13 @@ class $OverlayLayer {
         appendChunk('<', palette.accent, 'dec');
         appendChunk(` ${row.valueText} `, palette.accent);
         appendChunk('>', palette.accent, 'inc');
+      }
+      if (row.companionValueText) {
+        appendChunk(
+          ` [${row.companionValueText}]`,
+          palette.accent,
+          'companion',
+        );
       }
       lines.push({ chunks, zones, settingIndex: row.index });
     }
@@ -968,13 +990,27 @@ class $OverlayLayer {
   protected contentDerivedDialogWidth(
     lines: readonly string[],
     maximumWidth = 84,
+    horizontalPadding = 0,
   ): number {
     const contentWidth = lines.reduce(
       (widestWidth, line) =>
         Math.max(widestWidth, TextCoordinates.Class.lineWidth(line)),
       1,
     );
-    return Math.min(maximumWidth, contentWidth + 2);
+    return Math.min(maximumWidth, contentWidth + 2 + horizontalPadding * 2);
+  }
+  protected quitConfirmationButtonAt(
+    row: number,
+    column: number,
+  ): QuitConfirmationButtonZone | null {
+    return (
+      this.quitConfirmationButtonZones.find(
+        (candidate) =>
+          candidate.row === row &&
+          column >= candidate.startColumn &&
+          column < candidate.endColumn,
+      ) ?? null
+    );
   }
   protected quitConfirmationContent(
     palette: Palette,
@@ -982,8 +1018,8 @@ class $OverlayLayer {
   ): { text: StyledText; buttonZones: QuitConfirmationButtonZone[] } {
     const question = 'Are you sure you want to quit?';
     const hint = 'Left/Right or Tab, then Enter';
-    const yesLabel = '[ Yes ]';
-    const noLabel = '[ No ]';
+    const yesLabel = '  Yes  ';
+    const noLabel = '  No  ';
     const buttonGap = '    ';
     const buttonRowWidth =
       TextCoordinates.Class.lineWidth(yesLabel) +
@@ -1003,7 +1039,9 @@ class $OverlayLayer {
     ): TextChunk =>
       focusedChoice === choice
         ? bold(bg(palette.selection)(fg(palette.fg)(label)))
-        : fg(palette.dim)(label);
+        : this.quitConfirmationHoveredChoice === choice
+          ? bg(palette.cursorLine)(fg(palette.accent)(label))
+          : fg(palette.dim)(label);
     const text = new StyledText([
       fg(palette.fg)('\n'),
       fg(palette.fg)(`${centeredLine(question)}\n\n`),
@@ -1425,12 +1463,13 @@ class $OverlayLayer {
       const desiredWidth = this.contentDerivedDialogWidth(
         [
           'Are you sure you want to quit?',
-          '[ Yes ]    [ No ]',
+          '  Yes      No  ',
           'Left/Right or Tab, then Enter',
         ],
         44,
+        2,
       );
-      const desiredHeight = 8;
+      const desiredHeight = 9;
       const quitGeometry = this.updateOverlayDialog(
         this.quitConfirmationBox,
         this.quitConfirmationDismissal,
@@ -1461,6 +1500,7 @@ class $OverlayLayer {
         this.quitConfirmationDismissal,
       );
       this.quitConfirmationButtonZones = [];
+      this.quitConfirmationHoveredChoice = null;
     }
     // Settings panel overlay — sectioned, with a clickable widget per row (steppers / toggle / arrows).
     if (settingsPanel.open.value) {
@@ -1744,7 +1784,7 @@ interface SettingsWidgetZone {
   startColumn: number;
   endColumn: number;
   index: number;
-  action: 'select' | 'dec' | 'inc';
+  action: 'select' | 'dec' | 'inc' | 'companion';
 }
 
 interface SettingsLineZone {

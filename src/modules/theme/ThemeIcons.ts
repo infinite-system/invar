@@ -210,6 +210,7 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.panelExpand, owner: 'panel expand' },
       { mark: unicodeVocabulary.panelRestore, owner: 'panel restore' },
       { mark: unicodeVocabulary.panelClose, owner: 'panel close' },
+      { mark: unicodeVocabulary.panelStack, owner: 'panel pane count' },
       {
         mark: unicodeVocabulary.fileTreeReveal,
         owner: 'file-tree reveal',
@@ -380,6 +381,7 @@ class $ThemeIcons {
         preview: '\u{f06e}',
         wordWrap: '\u{f550}',
         goToLine: '\u{f0c9}',
+        goToBottom: '\u{f103}',
       }, // fa external-link / undo / plus / minus / eye
       unicode: {
         open: '↗',
@@ -389,6 +391,7 @@ class $ThemeIcons {
         preview: '◫',
         wordWrap: '↵',
         goToLine: '↕',
+        goToBottom: '⇊',
       },
       ascii: {
         open: 'o',
@@ -398,6 +401,7 @@ class $ThemeIcons {
         preview: 'p',
         wordWrap: 'w',
         goToLine: 'g',
+        goToBottom: 'b',
       },
     };
   }
@@ -465,6 +469,7 @@ class $ThemeIcons {
         panelExpand: '\u{f065}',
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
+        panelStack: '\u{f0c9}',
         fileTreeReveal: '\u{f05b}',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
@@ -499,6 +504,7 @@ class $ThemeIcons {
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
+        panelStack: '▦',
         fileTreeReveal: '⊙',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
@@ -520,6 +526,7 @@ class $ThemeIcons {
         panelExpand: '>',
         panelRestore: '<',
         panelClose: 'x',
+        panelStack: '#',
         fileTreeReveal: 'o',
         diffPreviousChange: 'U',
         diffNextChange: 'D',
@@ -890,6 +897,7 @@ export interface ActionIconSet {
   preview: string;
   wordWrap: string;
   goToLine: string;
+  goToBottom: string;
 }
 
 export interface TaskActionIconSet {
@@ -926,6 +934,7 @@ export interface InterfaceGlyphVocabulary {
   panelExpand: string;
   panelRestore: string;
   panelClose: string;
+  panelStack: string;
   fileTreeReveal: string;
   diffPreviousChange: string;
   diffNextChange: string;

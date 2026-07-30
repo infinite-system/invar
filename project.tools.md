@@ -259,6 +259,17 @@ USE IT WHEN: changing the software renderer, its framebuffer resolution, or the 
 KNOWN RESULT (2026-07-30): 8× renders 800×384 pixels. Cube p95 was 25.002 ms. Torus p95 was
 27.770 ms. Both fit the 66.667 ms frame budget.
 
+### `bun .invar/tasks/in-progress/402-invar-monitoring-plugin/402-file-open-memory-measurement.ts`
+Answers "does opening files leak memory, and where does it sit?" by driving the real editor: it
+copies the largest repository sources into a temporary workspace, opens each through Go to File,
+takes a collected heap census at four checkpoints (boot, all open, all closed, after a second
+collection), then prints resident set, heap-used, live-after-collection, capacity, and retained
+document bytes side by side. `MEASUREMENT_FILE_COUNT` and `MEASUREMENT_GEOMETRY` tune it.
+USE IT WHEN: someone reports that memory rises and does not come back.
+KNOWN RESULT (2026-07-30, 20 files): resident set 230.6 → 234.1 → 253.8 → 236.3 MB while the live
+heap after collection moved only 21.9 → 27.9 MB and retained document bytes returned to zero. The
+resident set is allocator high-water, not retention — read the census column, never the RSS column.
+
 ### `bun scripts/check-reactive-observation.ts`
 AST census of live `Ref` reads, `shallowRef` payload reads, `Reactive()` classes and version-signalled
 plain fields, plus three report-only categories for construction-captured or module-scope reactive

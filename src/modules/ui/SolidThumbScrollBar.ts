@@ -76,25 +76,25 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
     // mouse-down hit-test calls.
     paintSurface.renderSelf = (buffer: OptimizedBuffer): void => {
       const thumbRect = paintSurface.getThumbRect();
-      SeparatorAppearance.Class.paint(
+      SeparatorAppearance.Class.paint({
         buffer,
-        slider.orientation,
-        {
+        orientation: slider.orientation,
+        rectangle: {
           x: slider.x,
           y: slider.y,
           width: slider.width,
           height: slider.height,
         },
-        slider.backgroundColor,
-        'bottomAnchoredHalfBlock',
-      );
-      SeparatorAppearance.Class.paint(
+        color: slider.backgroundColor,
+        mark: 'bottomAnchoredHalfBlock',
+      });
+      SeparatorAppearance.Class.paint({
         buffer,
-        slider.orientation,
-        thumbRect,
-        slider.foregroundColor,
-        'bottomAnchoredHalfBlock',
-      );
+        orientation: slider.orientation,
+        rectangle: thumbRect,
+        color: slider.foregroundColor,
+        mark: 'bottomAnchoredHalfBlock',
+      });
       for (const overviewMark of this.overviewMarks) {
         if (
           overviewMark.trackOffset < 0 ||

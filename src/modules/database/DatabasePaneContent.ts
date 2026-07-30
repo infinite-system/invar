@@ -322,7 +322,7 @@ class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
   onResize(_columns: number, _rows: number): void {}
 
   onFocus(): void {
-    this.application.workspaceSet.active.focusPrimaryPane('database');
+    this.application.bottomPanelHost.focus();
   }
 
   onBlur(): void {

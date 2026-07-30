@@ -8,7 +8,7 @@
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
 // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
-// invariant: The right dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
+// invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
 // invariant: The right dock control owns the status edge (src/modules/ui/ui.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -106,9 +106,65 @@ function assertPanelAlignmentGeometry(
   HarnessSmoke.Class.requireCondition(
     leftCorner !== null &&
       rightCorner !== null &&
-      leftCorner.characters.trim().length > 0 &&
-      rightCorner.characters.trim().length > 0,
-    `${context}: ${panelAlignment} slot edges are painted in the emulator frame`,
+      !['╭', '┌'].includes(leftCorner.characters) &&
+      !['╮', '┐'].includes(rightCorner.characters),
+    `${context}: ${panelAlignment} slot edges stay flat in the emulator frame`,
+  );
+}
+
+function assertTotalLayoutTiling(
+  status: StatusSnapshot,
+  context: string,
+): void {
+  const layoutSlots = status.layoutSlots as
+    Record<string, Rectangle> | undefined;
+  if (!layoutSlots) throw new Error(`${context}: missing layout slots`);
+  const rectangles = Object.values(layoutSlots).filter(
+    (rectangle) => rectangle.width > 0 && rectangle.height > 0,
+  );
+  const totalColumns = Number(status.width);
+  const totalRows = rectangles.reduce(
+    (maximumBottom, rectangle) =>
+      Math.max(maximumBottom, rectangleBottom(rectangle)),
+    0,
+  );
+  const totalArea = rectangles.reduce(
+    (area, rectangle) => area + rectangle.width * rectangle.height,
+    0,
+  );
+  let overlapArea = 0;
+  for (
+    let firstRectangleIndex = 0;
+    firstRectangleIndex < rectangles.length;
+    firstRectangleIndex++
+  ) {
+    for (
+      let secondRectangleIndex = firstRectangleIndex + 1;
+      secondRectangleIndex < rectangles.length;
+      secondRectangleIndex++
+    ) {
+      const firstRectangle = rectangles[firstRectangleIndex]!;
+      const secondRectangle = rectangles[secondRectangleIndex]!;
+      const overlapColumns = Math.max(
+        0,
+        Math.min(
+          rectangleRight(firstRectangle),
+          rectangleRight(secondRectangle),
+        ) - Math.max(firstRectangle.left, secondRectangle.left),
+      );
+      const overlapRows = Math.max(
+        0,
+        Math.min(
+          rectangleBottom(firstRectangle),
+          rectangleBottom(secondRectangle),
+        ) - Math.max(firstRectangle.top, secondRectangle.top),
+      );
+      overlapArea += overlapColumns * overlapRows;
+    }
+  }
+  HarnessSmoke.Class.requireCondition(
+    totalArea === totalColumns * totalRows && overlapArea === 0,
+    `${context}: layout slots tile ${totalColumns}x${totalRows} exactly once (area ${totalArea}, overlap ${overlapArea})`,
   );
 }
 
@@ -844,6 +900,7 @@ try {
       candidate.rightDockVerticalSpan === 'full-height',
   );
   assertPanelAlignmentGeometry(driver, status, 'Full-height docks preset');
+  assertTotalLayoutTiling(status, 'Full-height docks preset');
   assertDockVerticalSpanGeometry(
     driver,
     status,
@@ -868,6 +925,7 @@ try {
       candidate.rightDockVerticalSpan === 'ends-at-panel',
   );
   assertPanelAlignmentGeometry(driver, status, 'Centered panel preset');
+  assertTotalLayoutTiling(status, 'Centered panel preset');
   assertDockVerticalSpanGeometry(
     driver,
     status,
@@ -912,6 +970,7 @@ try {
       rectangleRight(focusEditorCenter) === Number(status.width),
     'Focus preset hides both docks, keeps the activity bar, and gives the remaining columns to the editor',
   );
+  assertTotalLayoutTiling(status, 'Focus preset');
 
   status = await selectLayoutPreset(
     driver,
@@ -931,14 +990,15 @@ try {
   let editorCenter = layoutSlot(status, 'editorCenter');
   let bottomPanel = layoutSlot(status, 'bottomPanel');
   HarnessSmoke.Class.requireCondition(
-    bottomPanel.height === 21,
-    '50-row viewport gives the bottom panel 45% of its 47 layout rows',
+    bottomPanel.height === 20,
+    '50-row viewport gives the panel body its 45% allocation after the tab row',
   );
   HarnessSmoke.Class.requireCondition(
     bottomPanel.left === editorCenter.left &&
       rectangleRight(bottomPanel) === rectangleRight(editorCenter),
     'center alignment puts the bottom panel exactly under the editor',
   );
+  assertTotalLayoutTiling(status, 'Default preset');
   const sidebarScreenRegion = splitterRegion(status, 'sidebar');
   HarnessSmoke.Class.requireCondition(
     sidebarScreenRegion.top + sidebar.height === Number(status.height) - 1,
@@ -959,9 +1019,9 @@ try {
     driver,
     statusPath,
     'sidebar',
-    5,
+    -5,
     0,
-    (before, after) => after.left > before.left,
+    (before, after) => after.left < before.left,
   );
   await assertSplitterStates(
     driver,
@@ -1227,18 +1287,31 @@ try {
   );
 
   console.log(
-    '== harness layout: the right dock stays a bounded minority of the row ==',
+    '== harness layout: each dock stays a bounded minority of the row ==',
   );
+  const draggedSidebarWidth = Number(status.sidebarWidth);
   const draggedRightDockWidth = Number(status.rightDockWidth);
+  const draggedPrimaryDockGroup =
+    layoutSlot(status, 'activityBar').width +
+    layoutSlot(status, 'sidebar').width +
+    layoutSlot(status, 'sidebarSplitter').width;
   const draggedRightDock = layoutSlot(status, 'rightDock');
   const draggedEditorCenter = layoutSlot(status, 'editorCenter');
+  HarnessSmoke.Class.requireCondition(
+    layoutSlot(status, 'sidebar').width === draggedSidebarWidth,
+    `the 120-column layout grants the dragged sidebar width in full (${layoutSlot(status, 'sidebar').width} of ${draggedSidebarWidth} requested)`,
+  );
   HarnessSmoke.Class.requireCondition(
     draggedRightDock.width === draggedRightDockWidth,
     `the 120-column layout grants the dragged width in full (${draggedRightDock.width} of ${draggedRightDockWidth} requested)`,
   );
   HarnessSmoke.Class.requireCondition(
-    draggedRightDock.width < draggedEditorCenter.width,
-    `the dragged right dock stays narrower than the editor at 120 columns (dock ${draggedRightDock.width}, editor ${draggedEditorCenter.width})`,
+    draggedPrimaryDockGroup < draggedEditorCenter.width,
+    `the dragged primary dock group stays narrower than the editor at 120 columns (dock ${draggedPrimaryDockGroup}, editor ${draggedEditorCenter.width})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    draggedRightDock.width + 1 < draggedEditorCenter.width,
+    `the dragged right dock group stays narrower than the editor at 120 columns (dock ${draggedRightDock.width + 1}, editor ${draggedEditorCenter.width})`,
   );
   // The dragged width no longer fits a 24-column bound at 80 columns, so the narrow layout must
   // re-clamp it. The condition is the row the right dock now occupies, not the rule under test.
@@ -1253,13 +1326,33 @@ try {
   );
   const narrowRightDock = layoutSlot(narrowStatus, 'rightDock');
   const narrowEditorCenter = layoutSlot(narrowStatus, 'editorCenter');
+  const narrowPrimaryDockGroup =
+    layoutSlot(narrowStatus, 'activityBar').width +
+    layoutSlot(narrowStatus, 'sidebar').width +
+    layoutSlot(narrowStatus, 'sidebarSplitter').width;
+  const narrowRightDockGroup =
+    layoutSlot(narrowStatus, 'rightDockSplitter').width +
+    narrowRightDock.width +
+    layoutSlot(narrowStatus, 'rightActivityBar').width;
   HarnessSmoke.Class.requireCondition(
-    narrowRightDock.width < narrowEditorCenter.width,
-    `an 80-column row keeps the editor wider than the right dock (dock ${narrowRightDock.width}, editor ${narrowEditorCenter.width})`,
+    narrowPrimaryDockGroup < narrowEditorCenter.width,
+    `an 80-column row keeps the editor wider than the primary dock group (dock ${narrowPrimaryDockGroup}, editor ${narrowEditorCenter.width})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    narrowRightDockGroup < narrowEditorCenter.width,
+    `an 80-column row keeps the editor wider than the right dock group (dock ${narrowRightDockGroup}, editor ${narrowEditorCenter.width})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    layoutSlot(narrowStatus, 'sidebar').width <= Math.floor(80 * 0.3),
+    `an 80-column primary dock claims at most 30 percent of the row (${layoutSlot(narrowStatus, 'sidebar').width} of 80)`,
   );
   HarnessSmoke.Class.requireCondition(
     narrowRightDock.width <= Math.floor(80 * 0.3),
     `an 80-column right dock claims at most 30 percent of the row (${narrowRightDock.width} of 80)`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(narrowStatus.sidebarWidth) === draggedSidebarWidth,
+    'the primary dock clamp does not rewrite the user width setting',
   );
   HarnessSmoke.Class.requireCondition(
     Number(narrowStatus.rightDockWidth) === draggedRightDockWidth,
@@ -1273,7 +1366,16 @@ try {
     'status condition: candidate.width === 120 && the right dock regained the dragged width',
     (candidate) =>
       Number(candidate.width) === 120 &&
+      layoutSlot(candidate, 'sidebar').width === draggedSidebarWidth &&
       layoutSlot(candidate, 'rightDock').width === draggedRightDockWidth,
+  );
+  const restoredPrimaryDockGroup =
+    layoutSlot(restoredStatus, 'activityBar').width +
+    layoutSlot(restoredStatus, 'sidebar').width +
+    layoutSlot(restoredStatus, 'sidebarSplitter').width;
+  HarnessSmoke.Class.requireCondition(
+    restoredPrimaryDockGroup < layoutSlot(restoredStatus, 'editorCenter').width,
+    'the restored primary dock request is still narrower than the editor',
   );
   HarnessSmoke.Class.requireCondition(
     layoutSlot(restoredStatus, 'rightDock').width <
@@ -1281,7 +1383,7 @@ try {
     'the restored dragged width is still narrower than the editor',
   );
   HarnessSmoke.Class.pass(
-    'the right dock is clamped by the row it is in and keeps the user request across resizes',
+    'both docks are clamped by the row and keep user requests across resizes',
   );
 
   driver.sendKeys('Control+q');
@@ -1319,8 +1421,8 @@ try {
       (candidate) => candidate.terminalVisible === true,
     );
     HarnessSmoke.Class.requireCondition(
-      layoutSlot(compactStatus, 'bottomPanel').height === 9,
-      '24-row viewport gives the bottom panel 45% of its 21 layout rows',
+      layoutSlot(compactStatus, 'bottomPanel').height === 8,
+      '24-row viewport gives the panel body its 45% allocation after the tab row',
     );
     compactDriver.sendKeys('Control+Alt+b');
     const compactRightDockStatus = await HarnessSmoke.Class.awaitStatus(
@@ -1334,10 +1436,73 @@ try {
       compactRightDockStatus,
       'editorCenter',
     );
+    const compactPrimaryDockGroup =
+      layoutSlot(compactRightDockStatus, 'activityBar').width +
+      layoutSlot(compactRightDockStatus, 'sidebar').width +
+      layoutSlot(compactRightDockStatus, 'sidebarSplitter').width;
+    const compactRightDockGroup =
+      layoutSlot(compactRightDockStatus, 'rightDockSplitter').width +
+      compactRightDock.width +
+      layoutSlot(compactRightDockStatus, 'rightActivityBar').width;
     HarnessSmoke.Class.requireCondition(
-      compactRightDock.width < compactEditorCenter.width,
-      `an 80-column boot opens the right dock narrower than the editor (dock ${compactRightDock.width}, editor ${compactEditorCenter.width})`,
+      compactPrimaryDockGroup < compactEditorCenter.width,
+      `an 80-column boot opens the primary dock group narrower than the editor (dock ${compactPrimaryDockGroup}, editor ${compactEditorCenter.width})`,
     );
+    HarnessSmoke.Class.requireCondition(
+      compactRightDockGroup < compactEditorCenter.width,
+      `an 80-column boot opens the right dock group narrower than the editor (dock ${compactRightDockGroup}, editor ${compactEditorCenter.width})`,
+    );
+    let compactPresetStatus = await selectLayoutPreset(
+      compactDriver,
+      compactStatusPath,
+      'Full-height docks',
+      (candidate) =>
+        candidate.primaryDockVisible === true &&
+        candidate.rightDockVisible === true &&
+        candidate.terminalVisible === true &&
+        candidate.rightDockVerticalSpan === 'full-height',
+    );
+    assertTotalLayoutTiling(
+      compactPresetStatus,
+      'compact Full-height docks preset',
+    );
+    compactPresetStatus = await selectLayoutPreset(
+      compactDriver,
+      compactStatusPath,
+      'Centered panel',
+      (candidate) =>
+        candidate.primaryDockVisible === true &&
+        candidate.rightDockVisible === true &&
+        candidate.terminalVisible === true &&
+        candidate.leftDockVerticalSpan === 'ends-at-panel' &&
+        candidate.rightDockVerticalSpan === 'ends-at-panel',
+    );
+    assertTotalLayoutTiling(
+      compactPresetStatus,
+      'compact Centered panel preset',
+    );
+    compactPresetStatus = await selectLayoutPreset(
+      compactDriver,
+      compactStatusPath,
+      'Focus',
+      (candidate) =>
+        candidate.primaryDockVisible === false &&
+        candidate.rightDockVisible === false &&
+        candidate.terminalVisible === false,
+    );
+    assertTotalLayoutTiling(compactPresetStatus, 'compact Focus preset');
+    compactPresetStatus = await selectLayoutPreset(
+      compactDriver,
+      compactStatusPath,
+      'Default',
+      (candidate) =>
+        candidate.primaryDockVisible === true &&
+        candidate.rightDockVisible === true &&
+        candidate.terminalVisible === true &&
+        candidate.leftDockVerticalSpan === 'full-height' &&
+        candidate.rightDockVerticalSpan === 'ends-at-panel',
+    );
+    assertTotalLayoutTiling(compactPresetStatus, 'compact Default preset');
     compactDriver.sendKeys('Control+q');
   } finally {
     await compactDriver.dispose();

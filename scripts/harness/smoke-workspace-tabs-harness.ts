@@ -534,8 +534,8 @@ try {
     (status) =>
       status.activeWorkspaceRoot === secondRoot &&
       Array.isArray(status.panelContentKinds) &&
-      status.panelContentKinds.length === 1 &&
-      status.panelContentKinds[0] === secondTaskIdentifier &&
+      status.panelContentKinds.includes(secondTaskIdentifier) &&
+      status.panelContentKinds.includes('database') &&
       Array.isArray(status.panelContentIds) &&
       !status.panelContentIds.includes(firstTaskIdentifier),
   );
@@ -632,11 +632,28 @@ try {
       !secondPanelWorldInitialStatus.panelContentIds.includes('agent@2'),
     'new terminal and agent instances were absent before their second-workspace gestures',
   );
+  driver.sendKeys('Control+j');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the second workspace selects its retained terminal group',
+    (status) =>
+      status.activeWorkspaceRoot === secondRoot &&
+      Array.isArray(status.panelCellIds) &&
+      status.panelCellIds.includes('terminal@2'),
+  );
   await driver.awaitGridCondition(
     'the second terminal scrollback returns after a workspace round trip',
     (candidate) =>
       candidate.findText(secondTerminalMarker) !== null &&
       candidate.findText(firstTerminalMarker) === null,
+  );
+  driver.sendKeys('Control+j');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the retained terminal closes before editor language gestures',
+    (status) => status.panelVisible === false,
   );
   pass('workspace panel worlds isolate both polarities');
   pass('workspace round trips preserve terminal processes and scrollback');

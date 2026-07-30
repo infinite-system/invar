@@ -12,7 +12,16 @@ import { Terminal, type IBufferCell } from '@xterm/headless';
 // invariant: Pane chrome and child cells keep separate authority (src/modules/terminal/terminal.invariants.md)
 
 class $TerminalEmulator {
+  protected static readonly OSC_66_PREFIX = new Uint8Array([
+    0x1b, 0x5d, 0x36, 0x36, 0x3b,
+  ]);
+  protected static readonly STRING_TERMINATOR_ESCAPE = 0x1b;
+  protected static readonly STRING_TERMINATOR_FINAL = 0x5c;
+  protected static readonly BELL_TERMINATOR = 0x07;
+  protected static readonly METADATA_TERMINATOR = 0x3b;
+
   protected readonly terminal: Terminal;
+  protected pendingTextSizingProtocolBytes = new Uint8Array();
   protected readonly reusableCell: { cell: IBufferCell | undefined } = {
     cell: undefined,
   };
@@ -71,7 +80,132 @@ class $TerminalEmulator {
 
   /** Feed child bytes into the parser. onCellsChanged fires once per parsed pulse (coalescing). */
   write(bytes: Uint8Array | string): void {
-    this.terminal.write(bytes as never);
+    const decodedBytes = this.decodeTextSizingProtocol(bytes);
+    if (decodedBytes.length > 0) this.terminal.write(decodedBytes as never);
+  }
+
+  protected decodeTextSizingProtocol(input: Uint8Array | string): Uint8Array {
+    const inputBytes =
+      typeof input === 'string' ? new TextEncoder().encode(input) : input;
+    const bytes = new Uint8Array(
+      this.pendingTextSizingProtocolBytes.length + inputBytes.length,
+    );
+    bytes.set(this.pendingTextSizingProtocolBytes);
+    bytes.set(inputBytes, this.pendingTextSizingProtocolBytes.length);
+    this.pendingTextSizingProtocolBytes = new Uint8Array();
+
+    const outputBytes: number[] = [];
+    let readOffset = 0;
+    const terminalEmulatorClass = this.constructor as typeof $TerminalEmulator;
+    while (readOffset < bytes.length) {
+      const protocolStart = this.indexOfSequence(
+        bytes,
+        terminalEmulatorClass.OSC_66_PREFIX,
+        readOffset,
+      );
+      if (protocolStart < 0) {
+        const retainedByteCount = this.trailingTextSizingPrefixLength(
+          bytes,
+          readOffset,
+        );
+        outputBytes.push(
+          ...bytes.slice(readOffset, bytes.length - retainedByteCount),
+        );
+        this.pendingTextSizingProtocolBytes = bytes.slice(
+          bytes.length - retainedByteCount,
+        );
+        break;
+      }
+
+      outputBytes.push(...bytes.slice(readOffset, protocolStart));
+      const metadataEnd = bytes.indexOf(
+        terminalEmulatorClass.METADATA_TERMINATOR,
+        protocolStart + terminalEmulatorClass.OSC_66_PREFIX.length,
+      );
+      if (metadataEnd < 0) {
+        this.pendingTextSizingProtocolBytes = bytes.slice(protocolStart);
+        break;
+      }
+      const terminator = this.findTextSizingTerminator(bytes, metadataEnd + 1);
+      if (terminator === null) {
+        this.pendingTextSizingProtocolBytes = bytes.slice(protocolStart);
+        break;
+      }
+      outputBytes.push(...bytes.slice(metadataEnd + 1, terminator.offset));
+      readOffset = terminator.offset + terminator.length;
+    }
+    return new Uint8Array(outputBytes);
+  }
+
+  protected findTextSizingTerminator(
+    bytes: Uint8Array,
+    startOffset: number,
+  ): { offset: number; length: number } | null {
+    const terminalEmulatorClass = this.constructor as typeof $TerminalEmulator;
+    for (
+      let byteOffset = startOffset;
+      byteOffset < bytes.length;
+      byteOffset += 1
+    ) {
+      if (bytes[byteOffset] === terminalEmulatorClass.BELL_TERMINATOR) {
+        return { offset: byteOffset, length: 1 };
+      }
+      if (
+        bytes[byteOffset] === terminalEmulatorClass.STRING_TERMINATOR_ESCAPE &&
+        bytes[byteOffset + 1] === terminalEmulatorClass.STRING_TERMINATOR_FINAL
+      ) {
+        return { offset: byteOffset, length: 2 };
+      }
+    }
+    return null;
+  }
+
+  protected indexOfSequence(
+    bytes: Uint8Array,
+    sequence: Uint8Array,
+    startOffset: number,
+  ): number {
+    for (
+      let byteOffset = startOffset;
+      byteOffset <= bytes.length - sequence.length;
+      byteOffset += 1
+    ) {
+      if (
+        sequence.every(
+          (byte, sequenceOffset) => bytes[byteOffset + sequenceOffset] === byte,
+        )
+      ) {
+        return byteOffset;
+      }
+    }
+    return -1;
+  }
+
+  protected trailingTextSizingPrefixLength(
+    bytes: Uint8Array,
+    startOffset: number,
+  ): number {
+    const terminalEmulatorClass = this.constructor as typeof $TerminalEmulator;
+    const maximumLength = Math.min(
+      terminalEmulatorClass.OSC_66_PREFIX.length - 1,
+      bytes.length - startOffset,
+    );
+    for (
+      let candidateLength = maximumLength;
+      candidateLength > 0;
+      candidateLength -= 1
+    ) {
+      const candidateStart = bytes.length - candidateLength;
+      if (
+        terminalEmulatorClass.OSC_66_PREFIX.slice(0, candidateLength).every(
+          (byte, sequenceOffset) =>
+            bytes[candidateStart + sequenceOffset] === byte,
+        )
+      ) {
+        return candidateLength;
+      }
+    }
+    return 0;
   }
 
   /** Resolve once all pending writes have been parsed (xterm parses asynchronously). Used by tests

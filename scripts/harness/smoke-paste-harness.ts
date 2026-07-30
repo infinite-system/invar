@@ -15,6 +15,7 @@ import {
   requireCondition,
 } from './HarnessSmokeSupport';
 import { BracketedPasteInput } from './BracketedPasteInput';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
@@ -38,6 +39,23 @@ const driver = new PtyTestDriver.Class({
 });
 
 driver.outputSequenceCount('\x1b[?2004h');
+
+// One reader for every pane-window text compare in this smoke. It joins the rows of a column
+// window and removes the cells that carry no payload: whitespace, and BOTH splitter marks. A
+// window can include the splitter cell beside its pane. That cell used to be blank, so whitespace
+// removal reached the payload through it. It now paints a mark, and a surviving mark lands inside
+// the pasted text and breaks a contiguous match.
+function paneWindowText(
+  snapshot: HarnessSnapshot.Model,
+  left: number,
+  columns: number,
+): string {
+  return snapshot
+    .textRows()
+    .map((rowText) => rowText.slice(left, left + columns))
+    .join('')
+    .replace(/[\s┃━]+/g, '');
+}
 
 function emittedClipboardTexts(): string[] {
   return driver
@@ -316,19 +334,8 @@ try {
   const pasteAgentPaneColumns = Number(
     agentPanelCellColumns[pasteAgentCellIndex] ?? 0,
   );
-  const agentPaneText = (
-    snapshot: ReturnType<typeof driver.snapshot>,
-  ): string =>
-    snapshot
-      .textRows()
-      .map((rowText) =>
-        rowText.slice(
-          pasteAgentPaneLeft,
-          pasteAgentPaneLeft + pasteAgentPaneColumns,
-        ),
-      )
-      .join('')
-      .replace(/\s+/g, '');
+  const agentPaneText = (snapshot: HarnessSnapshot.Model): string =>
+    paneWindowText(snapshot, pasteAgentPaneLeft, pasteAgentPaneColumns);
   for (const payloadByteCount of [10, 1024, 65_536]) {
     const payloadSuffix = `-END${payloadByteCount}`;
     const payload = exactSizePayload(
@@ -362,12 +369,19 @@ try {
   console.log(
     '== harness paste: paste survives staged and animated terminal interception ==',
   );
+  for (let deletion = 0; deletion < 30; deletion += 1) {
+    driver.sendKeysWithoutFrameExpectation('Backspace');
+  }
+  driver.sendText('terminal-tools:stage:printf STAGED_PASTE');
+  driver.sendKeys('Enter');
   const stagedPanelLayoutStatus = await awaitStatusPublication(
     statusPath,
-    'panel cell identifiers and columns are published before staged paste',
+    'the staged tool selects the terminal group and publishes its geometry',
     (status) =>
+      status.panelActiveContent === 'terminal' &&
       Array.isArray(status.panelCellIds) &&
       Array.isArray(status.panelCellColumns) &&
+      String(status.agentLastToolResult).includes('Staged without Enter') &&
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
@@ -393,32 +407,16 @@ try {
   const stagedTerminalPaneColumns = Number(
     stagedPanelCellColumns[stagedTerminalCellIndex] ?? 0,
   );
-  for (let deletion = 0; deletion < 30; deletion += 1) {
-    driver.sendKeysWithoutFrameExpectation('Backspace');
-  }
-  driver.sendText('terminal-tools:stage:printf STAGED_PASTE');
-  driver.sendKeys('Enter');
   await driver.awaitSnapshot(
-    // The agent transcript wraps at WORD boundaries, so a multi-word phrase anchor straddles rows
-    // whenever pane width shifts (the command-bar row re-wrapped it). Single tokens never split:
-    // 'reject:' appears only in the staged-command notice.
-    (candidate) =>
-      candidate.findText('$ printf STAGED_PASTE') !== null &&
-      candidate.findText('reject:') !== null,
+    (candidate) => candidate.findText('$ printf STAGED_PASTE') !== null,
   );
   driver.sendPaste('_BURST');
   await driver.awaitSnapshot((candidate) =>
-    candidate
-      .textRows()
-      .map((rowText) =>
-        rowText.slice(
-          stagedTerminalPaneLeft,
-          stagedTerminalPaneLeft + stagedTerminalPaneColumns,
-        ),
-      )
-      .join('')
-      .replace(/\s+/g, '')
-      .includes('$printfSTAGED_PASTE_BURST'),
+    paneWindowText(
+      candidate,
+      stagedTerminalPaneLeft,
+      stagedTerminalPaneColumns,
+    ).includes('$printfSTAGED_PASTE_BURST'),
   );
   pass('paste payload reaches readline intact while a command is staged');
   driver.sendKeys('Control+c');
@@ -440,41 +438,19 @@ try {
   >;
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
-  const screenRows = Number(panelLayoutStatus.height);
-  const layoutCanvasTop =
-    screenRows - 1 - (bottomPanel.top + bottomPanel.height);
   const panelCellIdentifiers = panelLayoutStatus.panelCellIds as string[];
   const panelCellColumns = panelLayoutStatus.panelCellColumns as number[];
-  const agentCellIndex = panelCellIdentifiers.indexOf('agent');
   const terminalCellIndex = panelCellIdentifiers.indexOf('terminal');
-  if (agentCellIndex < 0) throw new Error('Agent panel cell disappeared');
   if (terminalCellIndex < 0) throw new Error('Terminal panel cell disappeared');
-  const panelBodyColumn =
-    bottomPanel.left +
-    2 +
-    (agentCellIndex === 0 ? 0 : Number(panelCellColumns[0] ?? 0) + 1);
   const terminalPaneLeft =
     bottomPanel.left +
     1 +
     (terminalCellIndex === 0 ? 0 : Number(panelCellColumns[0] ?? 0) + 1);
   const terminalPaneColumns = Number(panelCellColumns[terminalCellIndex] ?? 0);
-  const panelBodyRow =
-    layoutCanvasTop + bottomPanel.top + Math.floor(bottomPanel.height / 2);
-  driver.sendMouse({
-    kind: 'press',
-    column: panelBodyColumn,
-    row: panelBodyRow,
-    button: 'left',
-  });
-  driver.sendMouse({
-    kind: 'release',
-    column: panelBodyColumn,
-    row: panelBodyRow,
-    button: 'left',
-  });
+  driver.sendRawInput('\x1b[27;6;97~');
   await awaitStatusPublication(
     statusPath,
-    'the clicked agent panel cell becomes active',
+    'the Agent shortcut selects its retained full-width group',
     (status) => status.panelActiveContent === 'agent',
   );
   driver.sendText(`terminal-tools:stage:printf ANIMATING_${'x'.repeat(100)}`);
@@ -486,29 +462,25 @@ try {
   );
   driver.sendPaste('PASTE_DURING_ANIMATION');
   await driver.awaitSnapshot((candidate) =>
-    candidate
-      .textRows()
-      .map((rowText) =>
-        rowText.slice(terminalPaneLeft, terminalPaneLeft + terminalPaneColumns),
-      )
-      .join('')
-      .replace(/\s+/g, '')
-      .includes('PASTE_DURING_ANIMATION'),
+    paneWindowText(candidate, terminalPaneLeft, terminalPaneColumns).includes(
+      'PASTE_DURING_ANIMATION',
+    ),
   );
   pass('paste payload reaches readline intact during visible typing');
   driver.sendKeys('Control+c');
   await driver.awaitScreenChange();
-  driver.sendKeys('Control+j');
+  driver.sendRawInput('\x1b[27;6;97~');
   await awaitStatusPublication(
     statusPath,
-    'Ctrl+J returns to the agent pane',
+    'the Agent shortcut selects the agent group after terminal interruption',
     (status) => status.panelActiveContent === 'agent',
   );
   driver.sendRawInput('\x1b[27;6;97~');
   await awaitStatusPublication(
     statusPath,
-    'the terminal pane is published as hidden',
-    (status) => status.terminalVisible === false,
+    'the second Agent shortcut hides the panel with the terminal group hidden',
+    (status) =>
+      status.panelVisible === false && status.terminalVisible === false,
   );
 
   console.log('== harness paste: focus recovery re-enables bracketed paste ==');

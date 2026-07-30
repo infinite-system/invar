@@ -22,13 +22,14 @@ test('the shipped application registers its built in contributions', () => {
     ['structure-navigator', 'Structure Navigator'],
     ['tasks-dashboard', 'Tasks Dashboard'],
     ['database-consumer', 'Database Explorer'],
+    ['monitoring', 'Invar Monitoring'],
     ['extensions', 'Extensions'],
   ]);
   expect(
     contributors.flatMap(
       (contributor) => contributor.primaryDockContentIdentifiers ?? [],
     ),
-  ).toEqual(['files', 'git', 'database', 'extensions']);
+  ).toEqual(['files', 'git', 'extensions']);
   expect(
     contributors.map(
       (contributor) => contributor.workspaceContributor !== undefined,
@@ -47,6 +48,8 @@ test('the shipped application registers its built in contributions', () => {
     true,
     false,
     true,
+    // Monitoring is application scope: one process, however many workspaces are open.
+    false,
     false,
   ]);
 });

@@ -5,9 +5,9 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Child synchronized updates commit as one repaint (src/modules/terminal/terminal.invariants.md)
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { FrameDump } from '../../src/modules/system/FrameProbe';
 import {
@@ -42,41 +42,34 @@ function terminalThumbRowCount(
   snapshot: HarnessSnapshot.Model,
   panelRectangle: Rectangle,
 ): number {
-  const rightBorderColumn = panelRectangle.left + panelRectangle.width - 1;
-  const thumbBackground = Number.parseInt(
-    ThemePalettes.Class.DARK.dim.slice(1),
-    16,
-  );
+  const rightmostColumn = panelRectangle.left + panelRectangle.width - 1;
+  let longestThumbRun = 0;
   for (
-    let scrollBarColumn = rightBorderColumn - 1;
-    scrollBarColumn >= rightBorderColumn - 4;
+    let scrollBarColumn = rightmostColumn;
+    scrollBarColumn >= rightmostColumn - 4;
     scrollBarColumn -= 1
   ) {
-    let longestThumbRun = 0;
     let currentThumbRun = 0;
+    let currentThumbBackground: number | null = null;
     for (
       let row = panelRectangle.top;
       row < panelRectangle.top + panelRectangle.height;
       row += 1
     ) {
       const cell = snapshot.cell(row, scrollBarColumn);
-      if (
-        cell?.characters === ' ' &&
-        cell.isBackgroundRgb &&
-        cell.background === thumbBackground
-      ) {
+      const background =
+        cell?.characters === ' ' ? (cell.background ?? null) : null;
+      if (background !== null && currentThumbBackground === background) {
         currentThumbRun += 1;
       } else {
         longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
-        currentThumbRun = 0;
+        currentThumbBackground = background;
+        currentThumbRun = background === null ? 0 : 1;
       }
     }
     longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
-    if (longestThumbRun >= 2) {
-      return longestThumbRun;
-    }
   }
-  return 0;
+  return longestThumbRun;
 }
 
 async function collectTerminalScrollFrames(
@@ -418,24 +411,84 @@ await Bun.write(
 for (const taskState of ['active', 'in-progress', 'completed', 'retired']) {
   mkdirSync(join(tasksWatchTasksRoot, taskState), { recursive: true });
 }
-const tasksWatchFixtureFolder = join(
-  tasksWatchTasksRoot,
-  'in-progress',
-  '999-tasks-watch-motion-fixture',
+const tasksWatchFixtureFolders: string[] = [];
+for (const taskNumber of [997, 998, 999]) {
+  const folderName =
+    taskNumber === 997
+      ? '997-tasks-watch-motion-fixture-with-a-long-row-PHANTOM-TAIL-must-not-wrap'
+      : `${taskNumber}-tasks-watch-shrink-fixture`;
+  const fixtureFolder = join(tasksWatchTasksRoot, 'in-progress', folderName);
+  tasksWatchFixtureFolders.push(fixtureFolder);
+  mkdirSync(fixtureFolder);
+  await Bun.write(
+    join(fixtureFolder, `task-${folderName}.md`),
+    [
+      '# Task watch motion fixture',
+      '',
+      'State: IN-PROGRESS',
+      'Engine: codex',
+      'Model: fixture',
+      'Effort: high',
+      '',
+    ].join('\n'),
+  );
+}
+
+const tasksWatchScriptPath = join(
+  process.cwd(),
+  'scripts',
+  'tasks',
+  'tasks-status.ts',
 );
-mkdirSync(tasksWatchFixtureFolder);
-await Bun.write(
-  join(tasksWatchFixtureFolder, 'task-999-tasks-watch-motion-fixture.md'),
-  [
-    '# Task watch motion fixture',
-    '',
-    'State: IN-PROGRESS',
-    'Engine: codex',
-    'Model: fixture',
-    'Effort: high',
-    '',
-  ].join('\n'),
-);
+const directTasksWatchDriver = new PtyTestDriver.Class({
+  workspaceRoot: homeDirectory,
+  columns: 60,
+  rows: 30,
+  command: [process.execPath, tasksWatchScriptPath, 'watch'],
+  environment: { INVAR_TASKS_ROOT: tasksWatchTasksRoot },
+});
+try {
+  await directTasksWatchDriver.awaitGridCondition(
+    'the direct tasks watch paints all three fixture tasks',
+    (snapshot) =>
+      snapshot.findText('IN-PROGRESS (3)') !== null &&
+      snapshot.findText('#997') !== null,
+  );
+  for (const fixtureFolder of tasksWatchFixtureFolders.slice(1)) {
+    renameSync(
+      fixtureFolder,
+      join(tasksWatchTasksRoot, 'completed', basename(fixtureFolder)),
+    );
+  }
+  const directTasksWatchShrinkSnapshot =
+    await directTasksWatchDriver.awaitGridCondition(
+      'the direct tasks watch paints the shrunken one-task model',
+      (snapshot) =>
+        snapshot.findText('IN-PROGRESS (1)') !== null &&
+        snapshot.findText('2 completed') !== null,
+    );
+  const directTasksWatchShrinkText = directTasksWatchShrinkSnapshot
+    .textRows()
+    .join('\n');
+  HarnessSmoke.Class.requireCondition(
+    (directTasksWatchShrinkText.match(/#997/g) ?? []).length === 1 &&
+      !directTasksWatchShrinkText.includes('#998') &&
+      !directTasksWatchShrinkText.includes('#999'),
+    'direct tasks:watch paints exactly the one model task after a shrink',
+  );
+  HarnessSmoke.Class.requireCondition(
+    !directTasksWatchShrinkText.includes('PHANTOM-TAIL'),
+    'direct tasks:watch leaves no autowrapped physical tail after a shrink',
+  );
+} finally {
+  await directTasksWatchDriver.dispose();
+  for (const fixtureFolder of tasksWatchFixtureFolders.slice(1)) {
+    renameSync(
+      join(tasksWatchTasksRoot, 'completed', basename(fixtureFolder)),
+      fixtureFolder,
+    );
+  }
+}
 
 console.log('== harness terminal: deterministic emulator and panel tests ==');
 
@@ -578,11 +631,16 @@ try {
 
   driver.sendText('echo hello');
   driver.sendKeys('Enter');
+  // The trimmed set is every glyph the chrome can paint at a row's two ends: pane borders,
+  // the terminal's own rules, and BOTH splitter marks. A vertical splitter used to paint a
+  // blank cell, so plain whitespace trimming reached the shell text through it; it now paints
+  // the slim mark, which the old set left in place and broke the exact-match compare.
   await driver.awaitSnapshot((snapshot) =>
     snapshot
       .textRows()
       .some(
-        (rowText) => rowText.replace(/^[\s│|╎]+|[\s│|╎]+$/g, '') === 'hello',
+        (rowText) =>
+          rowText.replace(/^[\s│|╎┃━]+|[\s│|╎┃━]+$/g, '') === 'hello',
       ),
   );
   HarnessSmoke.Class.pass('shell output completed the nested PTY round trip');
@@ -920,12 +978,6 @@ try {
     5_000,
   );
   const tasksWatchObservationStart = driver.completedFrameObservationCount;
-  const tasksWatchScriptPath = join(
-    process.cwd(),
-    'scripts',
-    'tasks',
-    'tasks-status.ts',
-  );
   const tasksWatchTreeStampBefore = tasksTreeStamp(tasksWatchTasksRoot);
   driver.sendText(
     `INVAR_TASKS_ROOT=${tasksWatchTasksRoot} bun ${tasksWatchScriptPath} watch`,
@@ -965,6 +1017,28 @@ try {
   HarnessSmoke.Class.requireCondition(
     tasksTreeStamp(tasksWatchTasksRoot) === tasksWatchTreeStampBefore,
     'real tasks:watch advances motion while the task tree stays unchanged',
+  );
+  for (const fixtureFolder of tasksWatchFixtureFolders.slice(1)) {
+    renameSync(
+      fixtureFolder,
+      join(tasksWatchTasksRoot, 'completed', basename(fixtureFolder)),
+    );
+  }
+  const shrunkenTasksWatchSnapshot = await driver.awaitSnapshot((candidate) => {
+    const bodyText = terminalBodyText(candidate, panelRectangle);
+    return (
+      bodyText.includes('IN-PROGRESS (1)') && bodyText.includes('2 completed')
+    );
+  }, 15_000);
+  const shrunkenTasksWatchBody = terminalBodyText(
+    shrunkenTasksWatchSnapshot,
+    panelRectangle,
+  );
+  HarnessSmoke.Class.requireCondition(
+    (shrunkenTasksWatchBody.match(/#997/g) ?? []).length === 1 &&
+      !shrunkenTasksWatchBody.includes('#998') &&
+      !shrunkenTasksWatchBody.includes('#999'),
+    'real tasks:watch paints exactly the one model task after a shrink',
   );
   const tasksWatchObservations = driver.completedFrameObservationsSince(
     tasksWatchObservationStart,

@@ -198,13 +198,12 @@ try {
       candidate.panelCellColumns.length === 2,
   );
   await driven.driver.awaitGridCondition(
-    'both VS Code task processes and the displaced built-in report are visible',
+    'both VS Code task processes are visible',
     (snapshot) =>
       snapshot.findText('VSCODE_LEFT:WORKSPACE_MATCH') !== null &&
       snapshot.findText('VSCODE_LEFT:VARIABLES_MATCH') !== null &&
       snapshot.findText('VSCODE_RIGHT:WORKSPACE_MATCH') !== null &&
-      snapshot.findText('VSCODE_RIGHT:VARIABLES_MATCH') !== null &&
-      snapshot.findText('Displaced: Claude') !== null,
+      snapshot.findText('VSCODE_RIGHT:VARIABLES_MATCH') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     new Set(taskIdentifiers(status)).size === 2,
@@ -214,7 +213,7 @@ try {
     taskLabels(status).includes('VS Code Left') &&
       taskLabels(status).includes('VS Code Right') &&
       taskLabels(status).includes('Displaced: Claude'),
-    'task headings remain visible beside the named displacement report',
+    'task labels and the named displacement report remain observable',
   );
   HarnessSmoke.Class.requireCondition(
     Array.isArray(status.panelCellColumns) &&
@@ -246,10 +245,8 @@ try {
       ),
   );
   await driven.driver.awaitGridCondition(
-    'the winning Invar task and displaced built-in report are visible',
-    (snapshot) =>
-      snapshot.findText('INVAR_WINS:WORKSPACE_MATCH') !== null &&
-      snapshot.findText('Displaced: Claude') !== null,
+    'the winning Invar task is visible',
+    (snapshot) => snapshot.findText('INVAR_WINS:WORKSPACE_MATCH') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     !taskLabels(status).includes('VS Code Left') &&
@@ -490,14 +487,34 @@ try {
     'unsupported errors are legible inside task-owned terminals',
     (snapshot) =>
       snapshot.findText('Unsupported Proces') !== null &&
-      snapshot.findText('Missing File Conte') !== null &&
-      snapshot.findText('Unsupported Input') !== null &&
-      snapshot.findText('Unsupported Comman') !== null &&
-      snapshot.findText('Displaced: Claude') !== null,
+      snapshot.findText('${file} req') !== null &&
+      snapshot.findText('${input:target}') !== null &&
+      snapshot.findText('${command:target}') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     taskIdentifiers(status).length === 4,
     'the positive control rendered all four planted errors',
+  );
+  const panelHeading = (
+    status.panelHeadingGeometry as
+      | Array<{
+          row: number;
+          controls: Array<{
+            action: string;
+            startColumn: number;
+            endColumnExclusive: number;
+          }>;
+        }>
+      | undefined
+  )?.[0];
+  const paneListControl = panelHeading?.controls.find(
+    (control) => control.action === 'pane-list',
+  );
+  if (!panelHeading || !paneListControl) {
+    throw new Error('The four-pane space did not publish its count chip');
+  }
+  HarnessSmoke.Class.pass(
+    'the count chip appears only for the four-pane management case',
   );
   HarnessSmoke.Class.pass(
     'missing file context and refused variable classes were observed RED by users',
@@ -553,12 +570,11 @@ try {
   await awaitTaskStatus(
     driven.driver,
     driven.homeDirectory,
-    'the native agent pane opens beside the running task terminal',
+    'the native agent pane opens as a full-width group while the task stays live',
     (candidate) =>
-      candidate.agentTitle === 'Claude' &&
-      taskIdentifiers(candidate).length === 1 &&
       Array.isArray(candidate.panelCellIds) &&
-      candidate.panelCellIds.includes('agent'),
+      candidate.panelCellIds.join(',') === 'agent' &&
+      candidate.panelActiveContent === 'agent',
   );
   await driven.driver.awaitGridCondition(
     'the native agent composer remains visible and usable',

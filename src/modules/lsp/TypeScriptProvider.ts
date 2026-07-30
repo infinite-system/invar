@@ -1,4 +1,5 @@
 import { Static } from 'ivue/extras';
+import { Environment } from '../system/Environment';
 import { Files } from '../system/Files';
 import type {
   LanguageCapabilities,
@@ -58,6 +59,10 @@ class $TypeScriptProvider implements LanguageServerProvider {
     return Files.Class;
   }
 
+  protected get Environment() {
+    return Environment.Class;
+  }
+
   static supportsPath(path: string): boolean {
     return this.$typescriptExtensions.has(
       Files.Class.extname(path).toLowerCase(),
@@ -95,13 +100,31 @@ class $TypeScriptProvider implements LanguageServerProvider {
   }
 
   protected findExecutable(command: string, rootPath: string): string | null {
-    const local = this.Files.join(rootPath, 'node_modules', '.bin', command);
-    if (this.Files.exists(local)) return local;
+    for (const toolRootPath of this.toolRootPaths(rootPath)) {
+      const localExecutable = this.Files.join(
+        toolRootPath,
+        'node_modules',
+        '.bin',
+        command,
+      );
+      if (this.Files.exists(localExecutable)) return localExecutable;
+    }
     try {
       return Bun.which(command);
     } catch {
       return null;
     }
+  }
+
+  protected toolRootPaths(workspaceRootPath: string): readonly string[] {
+    const applicationRootPath = this.applicationRootPath();
+    return applicationRootPath === workspaceRootPath
+      ? [workspaceRootPath]
+      : [workspaceRootPath, applicationRootPath];
+  }
+
+  protected applicationRootPath(): string {
+    return this.Environment.cwd;
   }
 }
 

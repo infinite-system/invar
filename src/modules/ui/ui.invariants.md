@@ -360,33 +360,35 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 ### Panel controls share paint and hit geometry
 
-**Invariant:** If the bottom panel paints an editor action or Add, Expand/Restore, or Close, then one
-row projection determines the displayed segments and the screen columns that activate them. Editor
-actions yield first at narrow widths, while at least one draggable separator cell remains between
-them and the right controls.
+**Invariant:** If the bottom panel paints an editor action, pane Add, container Add, Expand/Restore,
+or Close, then one two-row projection determines the displayed segments and the screen columns that
+activate them. The upper splitter row contains editor actions, a padded draggable span, and panel
+controls. The lower row contains closable container tabs and container Add.
 
 **Scope:** `PanelHeading`, the panel-level separator bar and generic headed panel cells in
 `RootView`, and the `PanelAddPopup` adapter. The contents-list row controls and status-bar buttons
 are outside this rule.
 
-**Mechanism:** `PanelSeparatorRow.project` reserves the right controls and one drag cell before it
-admits whole three-cell editor actions contributed through `CommandRegistry.actionsForSurface`.
-It returns action paint, action hit segments, and the action/drag/control rectangles together.
+**Mechanism:** `PanelTabBar.project` reserves the upper row's right controls and one drag cell before
+it admits whole three-cell editor actions contributed through `CommandRegistry.actionsForSurface`.
+It separately projects lower-row container tabs and container Add. It returns both rows' paint and
+hit segments with the action, tab-close, drag, and control rectangles.
 `PanelHeading.project` clips its optional title around the requested right-aligned
 control segments and returns their exact half-open column ranges, semantic glyph slots, tooltip
 labels, and `StyledText`; `controlSegmentAtColumn` resolves pointer input and hover only from those
 ranges. RootView retains both projections and points the shared `Tooltip` at each segment. Hover
-uses `palette.cursorLine`; Close uses `palette.fg`, not `palette.error`. Panel-level Add opens the
-shared bounded list, Expand toggles the host layout override, and Close hides the whole panel without
-disposing its contents. Editor actions dispatch by command id. A pane Close removes only that cell's
-owned content.
+uses `palette.cursorLine`; Close uses `palette.fg`, not `palette.error`. Container Add opens the
+shared bounded list for outer containers. Pane Add opens the same popup host for Terminal, AI Agent
+(Claude), and Invar Agent windows in the active terminal container. Expand toggles the host layout
+override, and Close hides the whole panel without disposing its contents. Editor actions dispatch
+by command id. A pane Close removes only that owned content.
 
 **Generates:** Editor buttons followed by an always-present drag segment and stable panel actions;
 close-only pane headings that survive cell resizing; identical paint and pointer boundaries;
 tooltips and hover highlights for every control; one shared dropdown implementation; distinct
 whole-panel and individual-pane close actions.
 
-**Evidence:** `src/modules/ui/PanelSeparatorRow.ts`; `src/modules/ui/PanelSeparatorRow.test.ts`;
+**Evidence:** `src/modules/ui/PanelTabBar.ts`; `src/modules/ui/PanelTabBar.test.ts`;
 `src/modules/ui/PanelHeading.ts`; `src/modules/ui/PanelAddPopup.ts`;
 `src/modules/ui/RootView.ts`; `src/modules/ui/PanelHeading.test.ts`;
 `src/modules/ui/PanelAddPopup.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
@@ -397,45 +399,49 @@ leaving an invisible clickable control; Add reimplementing popup placement or ro
 targeting whichever content happens to be active instead of the headed region; a hovered control
 changing an un-hovered sibling; Close painting in the theme error color.
 
-**Verification:** `bun test src/modules/ui/PanelSeparatorRow.test.ts
+**Verification:** `bun test src/modules/ui/PanelTabBar.test.ts
 src/modules/ui/PanelHeading.test.ts
 src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Panel content order is one persisted sequence
 
-**Invariant:** If open panel content is reordered, then `Settings.panelContentOrder`,
-`PanelHost.order`, the docked contents rows, and the left-to-right split all expose that same
-sequence immediately and after restart.
+**Invariant:** If panel windows are reordered, then each container's ordered group sequence and each
+split group's ordered member sequence appear in the docked list and visible split immediately and
+after restart. The global content order remains the stable instance registry order.
 
-**Scope:** The bottom `PanelHost`, `Settings.panelContentOrder`, `PanelContentsList`, and the
-terminal-agent split. Other `PanelHost` instances are outside this persisted bottom-panel order.
+**Scope:** The bottom `PanelHost`, `Settings.panelContentOrder`,
+`Settings.panelWorkspaceStates`, `PanelContentsList`, and explicit pane groups. Other `PanelHost`
+instances are outside this persisted bottom-panel order.
 
-**Mechanism:** `Bootstrap` injects the `Settings.panelContentOrder` ref and `Settings.save` callback
-into `PanelHost`. `PanelHost.moveContentTo` mutates that ref once, rebuilds `layout` from it, and
-persists; `PanelContentsList.rows` and `PanelHost.split` read the same order. `PanelContentsList`
-delegates its pointer lifecycle to `ContentOrderDrag`.
+**Mechanism:** `PanelSpace.groups` owns the two ordered levels. `PanelHost.moveGroup` and
+`moveGroupMember` mutate those sequences, while `detachGroupMember` turns one split member into a
+full-width group. `PanelContentsList.rows` projects the same groups. `Bootstrap` serializes them in
+`Settings.panelWorkspaceStates` under the workspace root and rebuilds the pane sessions and group
+structure once on relaunch.
 
-**Generates:** Live drag reorder; Alt+Up and Alt+Down reorder; restart persistence; the agent-first
-default `['agent', 'terminal']`.
+**Generates:** Group reorder; split-member reorder; drag-out detachment; restart persistence; the
+agent-first global registry default `['agent', 'terminal']`.
 
 **Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/ui/PanelContentsList.ts`;
-`src/modules/settings/Settings.ts`; `src/modules/ui/PanelContentsList.test.ts`;
+`src/modules/ui/PanelWorkspaceState.ts`; `src/modules/settings/Settings.ts`;
+`src/modules/ui/PanelContentsList.test.ts`; `src/modules/ui/PanelWorkspaceState.test.ts`;
 `scripts/harness/smoke-panel-split-harness.ts`.
 
-**Impossible if true:** A list row moving without its split cell moving; a keyboard reorder and drag
-reorder producing different sequences; a second boot on the same HOME restoring the old order.
+**Impossible if true:** A split member moving in the list without moving on screen; moving a group
+scrambling its members; a detached member remaining joined; a second boot restoring the old groups.
 
 **Verification:** `bun test src/modules/ui/PanelHost.test.ts
-src/modules/ui/PanelContentsList.test.ts src/modules/settings/Settings.test.ts && bun
+src/modules/ui/PanelContentsList.test.ts src/modules/ui/PanelWorkspaceState.test.ts
+src/modules/settings/Settings.test.ts && bun
 scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-30
 
 ### Activity bar order is one persisted sequence
 
@@ -516,26 +522,31 @@ scripts/harness/smoke-activitybar-harness.ts`
 
 ### The panel contents list mirrors open content
 
-**Invariant:** If the bottom panel owns more than one registered content session, then its right edge
-shows exactly one docked row per session with icon, instance title, visible state, activation, drag
-reorder, and close actions; if one session remains, the list is absent.
+**Invariant:** If the active bottom-panel container owns more than one window, then its right edge
+can pin one docked row per window with icon, instance title, group membership, visible state,
+activation, split, drag reorder, and close actions. The pin remains open or closed across ordinary
+clicks, workspace switches, and relaunch. Its vertical boundary resizes the list from 10 to 40
+columns. If one window remains, the list is absent without clearing the pin.
 
 **Scope:** `PanelContentsList`, its `RootView` renderable, and registered contents in the bottom
 `PanelHost`. Popup lists and other panel hosts are outside this rule.
 
-**Mechanism:** `PanelContentsList.rows` projects `PanelHost.orderedContents` and marks each row by
-`isContentVisible`. `PanelContentsList.pointerDown` and `pointerDrag` delegate selection, close, and
-reorder to `PanelHost`; selecting a hidden instance replaces the visible instance of the same kind
-while preserving another kind's split cell, and close unregisters and disposes the selected session.
+**Mechanism:** `PanelContentsList.rows` projects the active `PanelSpace.groups` and marks joined
+members with tree glyphs. Selection activates exactly one full-width or split group. General pane
+Add creates a new singleton group. A row split action creates a new pane in that row's group.
+Vertical drag reorders groups or members; dragging a joined member from the group indent detaches
+it. Close unregisters and disposes the selected session. `SplitterElement` owns the list boundary.
+`PanelContentSet` retains the pin and width in memory, while `Settings.panelWorkspaceStates` retains
+them across relaunch.
 The row close, panel-heading close, and tab close all read the `panelClose` slot from the active
 `InterfaceGlyphVocabulary`; no consumer restates a close character.
 Panel-context keybindings delegate to the same host methods. `RootView` requests both the immediate
 frame and a next-turn `RenderRequest`, so a queued frame cannot coalesce away the projection that
 publishes the closed session list.
 
-**Generates:** VS Code-style docked session rows; visible and hidden instances in one list; per-row
-close affordances that match tabs and panel headings in every glyph tier; mouse and keyboard parity
-without a second content registry.
+**Generates:** VS Code-style grouped session rows; visible and hidden groups in one list; explicit
+split creation; group and member reorder; drag-out detachment; sticky, resizable list state; per-row
+close affordances that match tabs and panel headings in every glyph tier.
 
 **Rejected alternatives:** Use `BoundedListPopup` — a modal popup does not remain docked beside panel
 content and cannot continuously mirror the open split.
@@ -544,11 +555,10 @@ content and cannot continuously mirror the open split.
 `src/modules/ui/RenderRequest.ts`; `src/modules/ui/RenderRequest.test.ts`;
 `src/modules/keybindings/KeybindingDefaults.ts`; `src/modules/ui/PanelContentsList.test.ts`.
 
-**Impossible if true:** The list showing with one registered session; two registered sessions
-producing one or three rows; hiding an instance removing its row; a close row retaining its backend;
-a drag updating only presentation; a close mutating the host while the published session list remains
-stale because its render request was coalesced into an in-flight frame; a list row, tab, or panel
-heading drawing a different close glyph for the same active tier.
+**Impossible if true:** The list showing with one container window; an ordinary body click closing a
+pinned list; a full-width group rendering beside another group; Add auto-splitting; a split member
+moving only in presentation; drag-out leaving a joined member; a close row retaining its backend; a
+list row, tab, or panel heading drawing a different close glyph for the same active tier.
 
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts
 src/modules/ui/RenderRequest.test.ts && bun
@@ -557,7 +567,7 @@ scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-30
 
 ### Completion reuses bounded popup geometry
 
@@ -599,11 +609,20 @@ src/modules/ui/BoundedListPopup.test.ts` and `bun scripts/harness/smoke-completi
 
 **Invariant:** If a pane boundary is resizable, then one `SplitterElement` owns its one-cell
 cross-axis geometry, pointer hit target, hover state, drag capture, and palette state; the cell that
-paints is the cell that receives the pointer. A horizontal boundary paints the vertically centered
-heavy line `━` in that hit cell, through the same appearance source as a horizontal scrollbar. The
-boundary mark sits in the middle of its row because a splitter divides two regions; the scrollbar
-mark hugs the trailing edge because a scrollbar reports a position along one edge. The painter is
-shared, the mark is the caller's choice, and the hit cell is the whole cell either way.
+paints is the cell that receives the pointer. A boundary paints the slim centered heavy line of its
+axis in that hit cell — `━` horizontally, `┃` vertically — through the same appearance source as a
+scrollbar. The two glyphs are axis siblings from one box-drawing family, so a boundary reads at the
+same weight whichever way it runs, and no splitter fills its cell. The boundary mark sits in the
+middle of its cell because a splitter divides two regions; the scrollbar mark hugs the trailing edge
+because a scrollbar reports a position along one edge. The painter is shared, the mark is the
+caller's choice, and the hit cell is the whole cell either way.
+
+A splitter may also declare a LEADING PAINT PAD: a count of cells at the start of its long axis that
+stay blank. The pad moves where paint begins and never where the rectangle is, so the drag still
+grabs on the pad cell and across the span's whole former extent. The bottom panel splitter declares
+one pad cell. In the panel splitter row the order is editor actions, pad, drag span, and controls, so
+the pad is the blank cell between the actions and line. The separate row below contains container
+tabs and container Add.
 
 **Scope:** Every pane splitter in `RootView`, `DiffView`, and `MarkdownSplitView`, including the
 sidebar, bottom panel, git regions, split panel cells, diff panes, markdown preview, and right dock.
@@ -612,10 +631,14 @@ sidebar, bottom panel, git regions, split panel cells, diff panes, markdown prev
 writes the renderable rectangle that OpenTUI both paints and stamps into the hit grid; its shared
 pointer lifecycle captures that same renderable, tracks hover plus drag, and resolves appearance
 through `palette.border` at rest and `palette.accent` while hovered or dragged.
-`SeparatorAppearance` supplies the one-cell cross-axis count and paints vertical full cells for both
-splitters and scrollbars. Its horizontal path takes a `HorizontalSeparatorMark` from the caller:
-`SplitterElement` asks for `centeredLine` and `SolidThumbScrollBar` asks for
-`bottomAnchoredHalfBlock`. Neither caller writes a glyph of its own.
+`SeparatorAppearance` supplies the one-cell cross-axis count and takes a `SeparatorMark` from the
+caller. The mark names the ROLE, not an axis, and the painter picks the glyph for the axis it paints:
+`SplitterElement` asks for `centeredLine` and gets `━` or `┃`; `SolidThumbScrollBar` asks for
+`bottomAnchoredHalfBlock` and gets `▄` horizontally and a background fill vertically. Neither caller
+writes a glyph of its own. `SplitterElement.leadingPaintPadCells` is passed straight to the same
+painter, which skips that many cells at the rectangle's long-axis start and touches nothing else;
+the panel splitter reads its pad from `PanelTabBar.project`, the same projection that places the
+drag span in the splitter row.
 
 **Generates:** One-cell splitter hit zones; rest-muted, hover-lit, drag-lit behavior; one future
 splitter wire-up instead of another geometry and pointer implementation.
@@ -624,16 +647,20 @@ splitter wire-up instead of another geometry and pointer implementation.
 `src/modules/ui/SeparatorAppearance.test.ts`; `src/modules/ui/SplitterElement.ts`;
 `src/modules/ui/SplitterElement.test.ts`;
 splitter consumers construct `SplitterElement` rather than binding pointer handlers themselves;
-`scripts/harness/smoke-panel-chrome-harness.ts` asserts the published drag span paints `━` across
-its whole width at both scales.
+`scripts/harness/smoke-panel-chrome-harness.ts` asserts the published drag span paints one blank pad
+cell and then `━` across the rest of its width at both scales, and that a drag begun on the pad cell
+and on the strip's last cell both still grow the panel. That smoke waits for a NONZERO published
+rectangle before slicing it: a zero-width rectangle made the earlier paint assertion compare two
+empty strings, so it could only pass.
 
 **Impossible if true:** A painted divider whose pointer target occupies different cells; a pane
 splitter with a private hover or drag state machine; a divider that stays accent-colored at rest or
-loses its highlight while a captured drag continues; a horizontal splitter cell holding the
-scrollbar's `▄`.
+loses its highlight while a captured drag continues; a splitter cell holding the scrollbar's `▄`; a
+vertical splitter filling its cell while the horizontal one paints a thin line; a leading paint pad
+that shortens the rectangle a drag grabs on.
 
-**Verification:** `bun test src/modules/ui/SplitterElement.test.ts` plus the splitter-state
-FrameProbe assertions registered in `scripts/merge-gate.sh`.
+**Verification:** `bun test src/modules/ui/SplitterElement.test.ts src/modules/ui/SeparatorAppearance.test.ts`
+plus the splitter-state FrameProbe assertions registered in `scripts/merge-gate.sh`.
 
 **Status:** provisional
 
@@ -641,39 +668,38 @@ FrameProbe assertions registered in `scripts/merge-gate.sh`.
 
 ### Visible panel contents own separate headed regions
 
-**Invariant:** If terminal and agent content are both visible in `PanelHost`, then each content owns a
-separate side-by-side region with its own heading and body, and adding or removing one content never
-relabels the other content as a tab under a shared heading.
+**Invariant:** If terminal and agent content belong to the selected explicit split group, then each
+content owns a separate side-by-side region with its own heading and body. Adding another content
+creates a separate full-width group unless the user invokes a row's split action.
 
-**Scope:** `PanelHost.toggleContent`, panel cells in `RootView`, the terminal and agent status
-controls, the Ctrl+Shift+S split action, and the matching command-palette actions.
+**Scope:** `PanelHost` groups, panel cells in `RootView`, `PanelContentsList`, the pane-level Add
+popup, and the explicit split action.
 
 **Components:**
 - *Pane presence* — each status control toggles only its matching content.
 - *Per-cell heading* — each visible cell projects its own `PaneContent.icon` and `PaneContent.title`.
 - *Shared split* — `PanelHost.cellSpans` and `SplitterElement` place and resize visible cells.
 
-**Mechanism:** `PanelHost.toggleContent` adds the second registered content to the shared cell layout
-or removes only the selected content. RootView mounts one heading-and-body container per resolved
-cell, while status clicks, keybindings, and palette commands call the same Bootstrap toggles.
+**Mechanism:** `PanelHost.addContentToGroup` is the explicit join. `showContent` selects one group
+without changing its membership. RootView mounts one heading-and-body container per resolved cell,
+while the pane list selects, splits, reorders, detaches, or closes through the same host model.
 
-**Generates:** A terminal region and an agent region that can coexist; one-click pane presence
-controls; Ctrl+Shift+S split acceleration; identical mouse, keyboard, and palette results.
+**Generates:** Terminal and agent regions that can coexist when explicitly grouped; full-width
+default Add; one selected group at a time; identical list and layout membership.
 
 **Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/ui/RootView.ts`;
 `src/modules/app/Bootstrap.ts`; `src/modules/commands/CommandDefaults.ts`;
 `src/modules/ui/PanelHost.test.ts`; `scripts/harness/smoke-panel-split-harness.ts`.
 
-**Impossible if true:** The agent body appearing under a terminal heading; clicking Agent replacing
-the terminal body; closing Agent also closing Terminal; mouse and Ctrl+Shift+S producing different split
-layouts.
+**Impossible if true:** The agent body appearing under a terminal heading; selecting a singleton
+group leaving the prior group visible; closing Agent also closing Terminal; Add auto-splitting.
 
 **Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
 scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-30
 
 ### The right dock control owns the status edge
 
@@ -708,14 +734,17 @@ outermost edge; a click on either visible corner control missing its painted tar
 walk determines both its styled chunks and hit segments, and each unused horizontal gap is one styled
 chunk regardless of terminal width.
 
-**Scope:** Horizontal workspace and buffer tab strips in `TabBarRenderer`. Vertical workspace tabs
-are outside the gap-chunk rule but still return their hit segments from the paint walk.
+**Scope:** Horizontal workspace and buffer tab strips in `TabBarRenderer`, plus bottom-panel
+container tabs in `PanelTabBar`. Vertical workspace tabs are outside the gap-chunk rule but still
+return their hit segments from the paint walk.
 
 **Components:**
 - *One geometry walk* — every returned segment uses the same column cursor that places its glyphs.
 - *One gap chunk* — unused width advances the cursor by its full width but allocates one styled chunk.
 - *One close token* — workspace and buffer tabs read the same active `panelClose` glyph as panel
   headings and panel-list rows.
+- *Panel container closes* — each bottom-panel container tab keeps one blank cell before its close
+  token and clips a narrow label with an ellipsis inside the same painted hit segment.
 
 **Mechanism:** `TabBarRenderer.appendHorizontalGap` emits one repeated-space chunk, then
 `TabBarRenderer.renderWorkspace` and `TabBarRenderer.renderBuffer` advance their existing column
@@ -727,7 +756,8 @@ that scales with visible tabs and controls instead of terminal width.
 **Rejected alternatives:** Emit one styled space per unused column — preserves pixels but adds
 terminal-width allocations to every repaint.
 
-**Evidence:** `src/modules/ui/TabBarRenderer.ts`; `scripts/smoke-tabs.sh` (FrameProbe locates the
+**Evidence:** `src/modules/ui/TabBarRenderer.ts`; `src/modules/ui/PanelTabBar.ts`;
+`src/modules/ui/PanelTabBar.test.ts`; `scripts/smoke-tabs.sh` (FrameProbe locates the
 right badge, then clicks the badge and adjacent arrow); `scripts/smoke-workspace-tabs.sh` (paints and
 clicks horizontal workspace tabs).
 
@@ -739,7 +769,7 @@ terminal column.
 
 **Status:** established
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-30
 
 ### The active activity item determines its dock content
 
@@ -1877,14 +1907,16 @@ bottom-right cell and the horizontal painter stops in the preceding column.
 `PaneContent` scroll bars (terminal scrollback), both `ScrollableTextViewport` bars (hover card,
 agent transcript, markdown preview), and the two `DiffView` bars. `SeparatorAppearance` owns the
 axis-specific cell treatment. It is shared with `SplitterElement`, which asks the same painter for a
-DIFFERENT horizontal mark — the vertically centered `━` — because a splitter divides two regions
-while a scrollbar reports a position along one edge. That difference is the caller's named choice,
-not a second painter.
+DIFFERENT mark — `centeredLine`, the slim `━`/`┃` pair — because a splitter divides two regions while
+a scrollbar reports a position along one edge. A scrollbar therefore keeps the FILLED vertical cell
+that a splitter no longer uses: the fill is what matches `▄`'s half-height weight on the other axis,
+and matching weight is this record's whole point. That difference is the caller's named choice, not a
+second painter.
 
 **Mechanism:** all scrollbar construction goes through ONE class, `SolidThumbScrollBar`
 (`src/modules/ui/SolidThumbScrollBar.ts`). It delegates track and thumb paint to
-`SeparatorAppearance`, which uses background fill for vertical rectangles and, for horizontal
-rectangles, the `bottomAnchoredHalfBlock` mark `▄` with a transparent
+`SeparatorAppearance`, which for the `bottomAnchoredHalfBlock` mark uses background fill on vertical
+rectangles and, on horizontal rectangles, the glyph `▄` with a transparent
 background. The lower half anchors the bar to the pane's
 trailing edge; the upper half stays open. This reads at half the height without weakening the
 whole-cell hit target. The glyph has the same shape with the dark and light palette colour pairs.
@@ -2245,7 +2277,7 @@ another content's region.
 
 ### Each panel instance owns one independent session
 
-**Invariant:** If Add creates another Terminal or Agent instance, then it receives an
+**Invariant:** If Add creates another Terminal, AI Agent (Claude), or Invar Agent instance, then it receives an
 application-unique identifier and a workspace-local instance label, owns a newly constructed
 backend/session, remains registered while its pane or workspace is hidden, and releases that owned
 session only when its heading or contents-list row closes, its owning workspace closes, its runtime
@@ -2258,14 +2290,16 @@ content kinds are outside this wave.
 **Mechanism:** `PaneRuntimes.allocateInstanceIdentity` mints scoped opaque identifiers and
 workspace-local `<Label>`/`<Label> N` names for every kind, and the owning runtime builds the session
 behind them; the host-owned agent pane uses the same numbering shape. Each workspace's
-`PanelContentSet` retains its own ordered registry but projects at most one visible instance of each
-kind; selecting another same-kind row swaps the visible cell without disposal. `removeContent`
+`PanelContentSet` retains its own ordered registry. Each container holds ordered groups, where a
+group is one full-width instance or an explicit split of two or more instances. Only one group is
+visible in a container. Add creates a full-width group and never auto-splits; the per-row split
+action alone joins a new instance to a group. `removeContent`
 unregisters exactly that identity and calls its `dispose` seam, while other instances and their
 session state survive. Workspace-world disposal and runtime withdrawal reach the same disposal
 seam for every owned instance.
 
-**Generates:** Independent Terminal 2 and Agent 2 sessions; hidden live instances selectable from the
-contents list; one terminal plus one agent visible side by side; instance-scoped close.
+**Generates:** Independent Terminal 2, AI Agent (Claude), and Invar Agent sessions; hidden live
+groups selectable from the contents list; explicit two-or-more-way splits; instance-scoped close.
 
 **Evidence:** `src/modules/ui/PaneRuntimes.ts`; `src/modules/ui/PaneRuntimes.test.ts`;
 `src/modules/terminal/TerminalPlugin.ts`; `src/modules/terminal/TerminalPaneContent.ts`;
@@ -2275,8 +2309,8 @@ contents list; one terminal plus one agent visible side by side; instance-scoped
 `scripts/harness/smoke-panel-chrome-harness.ts`.
 
 **Impossible if true:** Terminal 2 sharing Terminal 1's backend; workspace B's first terminal being
-labelled Terminal 2 because workspace A owns one; selecting a hidden instance destroying the prior
-instance; closing Agent 2 disposing Agent 1; two same-kind instances occupying simultaneous cells.
+labelled Terminal 2 because workspace A owns one; selecting a hidden group destroying the prior
+instance; closing Agent 2 disposing Agent 1; Add placing a new instance into the visible split.
 
 **Verification:** `bun test src/modules/ui/PaneRuntimes.test.ts
 src/modules/terminal/TerminalFactory.test.ts src/modules/agent/AgentFactory.test.ts
@@ -2284,7 +2318,7 @@ src/modules/ui/PanelHost.test.ts && bun scripts/harness/smoke-panel-chrome-harne
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### A focused panel routes keystrokes to its active pane content
 

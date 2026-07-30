@@ -97,40 +97,6 @@ async function openAgentPane(
   );
 }
 
-async function focusPanelCell(
-  driver: PtyTestDriver.Model,
-  statusPath: string,
-  cellIndex: number,
-): Promise<Record<string, unknown>> {
-  const status = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    `panel cell ${cellIndex} geometry is published before focusing it`,
-    (candidate) =>
-      Array.isArray(candidate.panelCellColumns) &&
-      typeof candidate.height === 'number' &&
-      typeof candidate.layoutSlots === 'object' &&
-      candidate.layoutSlots !== null,
-  );
-  const cellColumns = (status.panelCellColumns as number[]) ?? [];
-  const panelRow = Number(status.height) - 8;
-  const layoutSlots = status.layoutSlots as
-    Record<string, { left: number }> | undefined;
-  const panelLeft = Number(layoutSlots?.bottomPanel?.left ?? 0);
-  const column =
-    cellIndex === 0
-      ? panelLeft + 10
-      : panelLeft + Number(cellColumns[0] ?? 0) + 6;
-  driver.sendMouse({ kind: 'press', column, row: panelRow, button: 'left' });
-  driver.sendMouse({ kind: 'release', column, row: panelRow, button: 'left' });
-  return HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'status condition: candidate.panelFocusedIndex === cellIndex',
-    (candidate) => candidate.panelFocusedIndex === cellIndex,
-  );
-}
-
 async function driveAnimatedTerminalTools(
   homeDirectory: string,
   settingsPath: string,
@@ -187,32 +153,36 @@ async function driveAnimatedTerminalTools(
       (candidate) => snapshotHasPromptColor(candidate, 0x7aa2f7),
       15_000,
     );
-    snapshot = await driver.awaitGridCondition(
-      'the terminal header shows shell identity and a working-directory path',
-      (candidate) =>
-        candidate
-          .textRows()
-          .some((rowText) => /[^@\s]+@[^:\s]+:\S+/.test(rowText)),
-      15_000,
-    );
     HarnessSmoke.Class.requireCondition(
       snapshotHasPromptColor(snapshot, 0x7aa2f7),
       'minimal $ prompt foreground equals the terminalPrompt palette role',
     );
-    HarnessSmoke.Class.pass('header shows user@host:path from shell metadata');
-
-    driver.sendText('cd /tmp');
-    driver.sendKeys('Enter');
-    snapshot = await driver.awaitSnapshot((candidate) =>
-      candidate
-        .textRows()
-        .some((rowText) => /[^@\s]+@[^:\s]+:\/tmp/.test(rowText)),
-    );
+    const panelBodyTop =
+      Number(
+        (
+          HarnessSmoke.Class.readStatus(statusPath).panelSeparatorGeometry as {
+            tabRow?: number;
+          } | null
+        )?.tabRow,
+      ) + 1;
     HarnessSmoke.Class.requireCondition(
       snapshot
         .textRows()
-        .some((rowText) => /[^@\s]+@[^:\s]+:\/tmp/.test(rowText)),
-      'header updates live after cd',
+        .slice(panelBodyTop)
+        .every((rowText) => !rowText.includes('Terminal ×')),
+      'the terminal body has no local heading or close control',
+    );
+
+    driver.sendText('cd /tmp');
+    driver.sendKeys('Enter');
+    driver.sendText('pwd');
+    driver.sendKeys('Enter');
+    snapshot = await driver.awaitSnapshot((candidate) =>
+      candidate.textRows().join('\n').includes('/tmp'),
+    );
+    HarnessSmoke.Class.requireCondition(
+      snapshot.textRows().join('\n').includes('/tmp'),
+      'the terminal preserves its live working directory after cd',
     );
 
     console.log(
@@ -251,23 +221,22 @@ async function driveAnimatedTerminalTools(
     );
     driver.sendText(`terminal-tools:stage:printf STAGED > ${stagedPath}`);
     driver.sendKeys('Enter');
-    const splitStatus = await HarnessSmoke.Class.awaitStatus(
+    const terminalStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'agent,terminal' && status.panelFocusedIndex === 1",
+      "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal' && status.panelFocusedIndex === 0",
       (status) =>
         Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.join(',') === 'agent,terminal' &&
-        status.panelFocusedIndex === 1,
+        status.panelCellIds.join(',') === 'terminal' &&
+        status.panelFocusedIndex === 0,
     );
-    const panelCellIdentifiers = splitStatus.panelCellIds as string[];
-    const panelCellColumns = splitStatus.panelCellColumns as number[];
+    const panelCellIdentifiers = terminalStatus.panelCellIds as string[];
+    const panelCellColumns = terminalStatus.panelCellColumns as number[];
     const terminalCellIndex = panelCellIdentifiers.indexOf('terminal');
-    const agentCellIndex = panelCellIdentifiers.indexOf('agent');
     const panelLeft =
       Number(
         (
-          splitStatus.layoutSlots as
+          terminalStatus.layoutSlots as
             Record<string, { left: number }> | undefined
         )?.bottomPanel?.left ?? 0,
       ) + 1;
@@ -294,14 +263,46 @@ async function driveAnimatedTerminalTools(
     console.log(
       '== harness terminal-stage: grapheme-safe staged typing and mid-line edit ==',
     );
-    await focusPanelCell(driver, statusPath, agentCellIndex);
+    await openAgentPane(driver, statusPath);
     const emojiCommand = 'echo "test — with emoji 🦊✨"';
     driver.sendText(`terminal-tools:stage:${emojiCommand}`);
     driver.sendKeys('Enter');
-    snapshot = await driver.awaitSnapshot(
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the emoji stage request finishes before the user edits its readline buffer',
       (candidate) =>
-        terminalText(candidate).includes('echo "test — with emoji 🦊') &&
-        candidate.findText('terminal command staged') !== null,
+        candidate.agentBusy === false &&
+        String(candidate.agentLastToolResult).includes('Staged without Enter'),
+    );
+    snapshot = await driver.awaitSnapshot((candidate) =>
+      terminalText(candidate)
+        .split('\n')
+        .some(
+          (rowText) =>
+            rowText.includes('echo "test — with emoji 🦊') &&
+            rowText.includes('✨ "'),
+        ),
+    );
+    await openAgentPane(driver, statusPath);
+    driver.sendText('terminal-tools:read');
+    driver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'readTerminalInput confirms the complete staged emoji command before editing',
+      (candidate) =>
+        candidate.agentBusy === false &&
+        String(candidate.agentLastToolResult).includes(
+          `Current terminal input: ${emojiCommand}`,
+        ),
+    );
+    driver.sendKeys('Control+j');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the terminal group is active before the staged command is edited',
+      (candidate) => candidate.panelActiveContent === 'terminal',
     );
     driver.sendKeys('Left');
     driver.sendText('X');
@@ -346,7 +347,7 @@ async function driveAnimatedTerminalTools(
     await driver.awaitSnapshot((candidate) =>
       terminalText(candidate).includes('printf BROKN_COMMAND'),
     );
-    await focusPanelCell(driver, statusPath, agentCellIndex);
+    await openAgentPane(driver, statusPath);
     driver.sendText('terminal-tools:read');
     driver.sendKeys('Enter');
     await HarnessSmoke.Class.awaitStatus(
@@ -389,17 +390,23 @@ async function driveAnimatedTerminalTools(
       (candidate) =>
         candidate.findText('Current terminal input: printf') !== null,
     );
-    HarnessSmoke.Class.requireCondition(
-      terminalText(snapshot).includes('BROKN_COMMAND'),
-      'the terminal pane retains the current readline buffer while the ' +
-        'tool result expands',
+    HarnessSmoke.Class.pass(
+      'the read result reports the hidden terminal readline buffer',
     );
     driver.sendText(
       `terminal-tools:replace:printf REPLACED > ${replacementPath}`,
     );
     driver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the replacement finishes typing before the human executes it',
+      (candidate) =>
+        candidate.agentBusy === false &&
+        candidate.panelActiveContent === 'terminal',
+    );
     snapshot = await driver.awaitSnapshot((candidate) =>
-      terminalText(candidate).includes('printf REPLACED'),
+      terminalText(candidate).includes(`printf REPLACED > ${replacementPath}`),
     );
     HarnessSmoke.Class.requireCondition(
       !existsSync(replacementPath) &&
@@ -408,7 +415,7 @@ async function driveAnimatedTerminalTools(
     );
     driver.sendKeys('Enter');
     await awaitFileContents(replacementPath, 'REPLACED');
-    await focusPanelCell(driver, statusPath, agentCellIndex);
+    await openAgentPane(driver, statusPath);
     await driver.awaitSnapshot(
       (candidate) =>
         candidate.findText('terminal command user-executed') !== null,
@@ -420,7 +427,6 @@ async function driveAnimatedTerminalTools(
     console.log(
       '== harness terminal-stage: newline injection is stripped before the first byte ==',
     );
-    await focusPanelCell(driver, statusPath, agentCellIndex);
     driver.sendText(
       `terminal-tools:stage:printf SAFE\\ntouch ${injectionPath}`,
     );
@@ -445,22 +451,24 @@ async function driveAnimatedTerminalTools(
     await driver.awaitSnapshot((candidate) =>
       terminalText(candidate).includes('printf USER_BUSY'),
     );
-    await focusPanelCell(driver, statusPath, agentCellIndex);
+    await openAgentPane(driver, statusPath);
     driver.sendText(`terminal-tools:stage:printf QUEUED > ${queuedPath}`);
     driver.sendKeys('Enter');
-    snapshot = await driver.awaitSnapshot(
-      (candidate) => candidate.findText('terminal command pending') !== null,
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the busy readline buffer queues the staged agent command',
+      (candidate) =>
+        candidate.panelActiveContent === 'terminal' &&
+        String(candidate.agentLastToolResult).includes('Queued until'),
     );
     HarnessSmoke.Class.requireCondition(
-      terminalText(snapshot).includes('printf USER_BUSY') &&
-        !existsSync(queuedPath),
+      !existsSync(queuedPath),
       'agent command queues while the user owns a non-empty readline buffer',
     );
     driver.sendKeys('Control+c');
-    await driver.awaitSnapshot(
-      (candidate) =>
-        terminalText(candidate).includes('printf QUEUED') &&
-        candidate.findText('terminal command pending') === null,
+    await driver.awaitSnapshot((candidate) =>
+      terminalText(candidate).includes('printf QUEUED'),
     );
     await HarnessSmoke.Class.awaitStatus(
       driver,
@@ -477,7 +485,7 @@ async function driveAnimatedTerminalTools(
     console.log(
       '== harness terminal-stage: animated run exposes intermediate partial states ==',
     );
-    await focusPanelCell(driver, statusPath, agentCellIndex);
+    await openAgentPane(driver, statusPath);
     const animatedCommand = `printf ANIMATED_RUN > ${animatedPath} # human cadence proof xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`;
     driver.sendText(`terminal-tools:run:${animatedCommand}`);
     driver.sendKeys('Enter');

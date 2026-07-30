@@ -2,7 +2,8 @@
 // This contract drives the quit confirmation through the real PTY.
 // Run it with `bun scripts/harness/smoke-quit-confirmation-harness.ts`.
 // ALL-PASS means keyboard and mouse can choose both answers, every safe dismissal preserves a dirty
-// buffer, the shared close glyph and theme focus tone paint at 10 and 100,000 lines, and Yes exits.
+// buffer, the bracketless padded button surfaces and dialog margins paint at 10 and 100,000 lines,
+// the shared close glyph and theme focus tone paint, and Yes exits.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
@@ -55,15 +56,34 @@ function clickCell(
 
 function focusedButtonUsesTheme(
   snapshot: HarnessSnapshot.Model,
-  buttonText: '[ Yes ]' | '[ No ]',
+  buttonText: 'Yes' | 'No',
   expectedBackground: number,
 ): boolean {
   const position = snapshot.findText(buttonText);
-  return (
-    position !== null &&
-    snapshot.cell(position.row, position.column + 2)?.background ===
-      expectedBackground
-  );
+  if (!position) return false;
+  const buttonStartColumn = position.column - 2;
+  const buttonWidth = buttonText === 'Yes' ? 7 : 6;
+  return Array.from({ length: buttonWidth }, (_unusedValue, columnOffset) => {
+    const cell = snapshot.cell(position.row, buttonStartColumn + columnOffset);
+    const expectedCharacter =
+      columnOffset < 2 || columnOffset >= buttonWidth - 2
+        ? ' '
+        : buttonText[columnOffset - 2];
+    return (
+      cell !== null &&
+      cell.characters === expectedCharacter &&
+      cell.background === expectedBackground
+    );
+  }).every(Boolean);
+}
+
+function buttonStart(
+  snapshot: HarnessSnapshot.Model,
+  buttonText: 'Yes' | 'No',
+): { column: number; row: number } {
+  const position = snapshot.findText(buttonText);
+  if (!position) throw new Error(`${buttonText} button was not visible`);
+  return { column: position.column - 2, row: position.row };
 }
 
 function frameQuote(
@@ -200,10 +220,11 @@ async function driveScale(
     const bounds = quitBounds(openStatus);
     HarnessSmoke.Class.requireCondition(
       bounds.width < 50 &&
-        bounds.height === 8 &&
+        bounds.width === 36 &&
+        bounds.height === 9 &&
         Math.abs(bounds.left * 2 + bounds.width - 120) <= 1 &&
         Math.abs(bounds.top * 2 + bounds.height - 40) <= 1,
-      `scale ${lineCount}: the dialog is compact and centered`,
+      `scale ${lineCount}: the dialog is padded, compact, and centered`,
     );
     const closeGlyph =
       ThemeIcons.Class.interfaceGlyphVocabularyFor(glyphLevel).panelClose;
@@ -213,8 +234,8 @@ async function driveScale(
       `scale ${lineCount}: title, body, buttons, and shared close glyph paint`,
       (candidate) =>
         candidate.findText('Are you sure you want to quit?') !== null &&
-        candidate.findText('[ Yes ]') !== null &&
-        candidate.findText('[ No ]') !== null &&
+        candidate.findText('Yes') !== null &&
+        candidate.findText('No') !== null &&
         candidate
           .rowText(bounds.closeButtonTop)
           .slice(
@@ -224,12 +245,45 @@ async function driveScale(
           .includes(closeGlyph),
     );
     HarnessSmoke.Class.requireCondition(
-      focusedButtonUsesTheme(
-        snapshot,
-        '[ No ]',
-        parseRgbColor(palette.selection),
-      ),
+      focusedButtonUsesTheme(snapshot, 'No', parseRgbColor(palette.selection)),
       `scale ${lineCount}: No starts focused with the ${theme} theme selection tone`,
+    );
+    const interiorLeft = bounds.left + 1;
+    const interiorRight = bounds.left + bounds.width - 1;
+    const questionPosition = snapshot.findText(
+      'Are you sure you want to quit?',
+    );
+    const hintPosition = snapshot.findText('Left/Right or Tab, then Enter');
+    HarnessSmoke.Class.requireCondition(
+      questionPosition !== null &&
+        hintPosition !== null &&
+        questionPosition.column - interiorLeft >= 2 &&
+        interiorRight -
+          (questionPosition.column + 'Are you sure you want to quit?'.length) >=
+          2 &&
+        hintPosition.column - interiorLeft >= 2 &&
+        interiorRight -
+          (hintPosition.column + 'Left/Right or Tab, then Enter'.length) >=
+          2,
+      `scale ${lineCount}: body text keeps at least two blank cells from both dialog sides`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      snapshot
+        .rowText(bounds.top + bounds.height - 2)
+        .slice(interiorLeft, interiorRight)
+        .trim().length === 0,
+      `scale ${lineCount}: the final interior row is blank bottom padding`,
+    );
+    const dialogRows = Array.from(
+      { length: bounds.height - 2 },
+      (_unusedValue, rowOffset) =>
+        snapshot
+          .rowText(bounds.top + 1 + rowOffset)
+          .slice(interiorLeft, interiorRight),
+    );
+    HarnessSmoke.Class.requireCondition(
+      dialogRows.every((row) => !row.includes('[') && !row.includes(']')),
+      `scale ${lineCount}: the dialog body contains no bracket decoration`,
     );
     HarnessSmoke.Class.requireCondition(
       snapshot.findText('[y/N]') === null,
@@ -249,8 +303,23 @@ async function driveScale(
       (candidate) =>
         focusedButtonUsesTheme(
           candidate,
-          '[ Yes ]',
+          'Yes',
           parseRgbColor(palette.selection),
+        ),
+    );
+    const hoveredNoButton = buttonStart(snapshot, 'No');
+    driver.sendMouse({
+      kind: 'move',
+      column: hoveredNoButton.column,
+      row: hoveredNoButton.row,
+    });
+    snapshot = await driver.awaitGridCondition(
+      `scale ${lineCount}: hovering No paints the panel-tab hover tone across its padding`,
+      (candidate) =>
+        focusedButtonUsesTheme(
+          candidate,
+          'No',
+          parseRgbColor(palette.cursorLine),
         ),
     );
     driver.sendKeys('Right');
@@ -325,9 +394,10 @@ async function driveScale(
     );
     snapshot = await driver.awaitGridCondition(
       `scale ${lineCount}: No is visible for pointer input`,
-      (candidate) => candidate.findText('[ No ]') !== null,
+      (candidate) => candidate.findText('No') !== null,
     );
-    HarnessSmoke.Class.clickText(driver, snapshot, '[ No ]', 2);
+    const noButton = buttonStart(snapshot, 'No');
+    clickCell(driver, noButton.column, noButton.row);
     await awaitQuitClosed(
       driver,
       statusPath,
@@ -371,13 +441,12 @@ async function driveScale(
     } else {
       snapshot = await driver.awaitGridCondition(
         `scale ${lineCount}: Yes is visible for pointer activation`,
-        (candidate) => candidate.findText('[ Yes ]') !== null,
+        (candidate) => candidate.findText('Yes') !== null,
       );
-      const yesPosition = snapshot.findText('[ Yes ]');
-      if (!yesPosition) throw new Error('Yes button was not visible');
+      const yesButton = buttonStart(snapshot, 'Yes');
       driver.sendRawInputWithoutFrameExpectation(
-        `\x1b[<0;${yesPosition.column + 3};${yesPosition.row + 1}M` +
-          `\x1b[<0;${yesPosition.column + 3};${yesPosition.row + 1}m`,
+        `\x1b[<0;${yesButton.column + 1};${yesButton.row + 1}M` +
+          `\x1b[<0;${yesButton.column + 1};${yesButton.row + 1}m`,
       );
     }
     HarnessSmoke.Class.requireCondition(

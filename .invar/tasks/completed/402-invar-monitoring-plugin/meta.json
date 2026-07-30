@@ -1,0 +1,18 @@
+{
+  "task": 402,
+  "slug": "invar-monitoring-plugin",
+  "branch": "fleet/402-invar-monitoring-plugin",
+  "worktree": ".invar/worktrees/402-invar-monitoring-plugin",
+  "tmuxSession": "invar/402-invar-monitoring-plugin",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-402-invar-monitoring-plugin.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "6a7495482de807e49921488d3d76f04f983c7916",
+  "startedAt": "2026-07-30T13:34:36-04:00",
+  "landedAt": "2026-07-30T14:32:11-04:00",
+  "durationMinutes": 57,
+  "mergeCommit": "dae7fba9"
+}

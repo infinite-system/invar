@@ -1,5 +1,6 @@
 import type { CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
+import type { LayoutSlots } from '../layout/LayoutSlots';
 import type { Settings } from '../settings/Settings';
 import type { Palette } from '../theme/ThemePalettes';
 import { SplitterElement } from './SplitterElement';
@@ -8,21 +9,29 @@ class $PaneSplitters {
   readonly sidebar: SplitterElement.Model;
 
   constructor(protected readonly dependencies: PaneSplittersDependencies) {
+    // The drag writes the LIVE slot, which belongs to the workspace on screen, and persists the
+    // same number as the size a fresh workspace starts at. Two writes, two meanings: one is this
+    // workspace's geometry, the other is the application default for the next session.
+    // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
     this.sidebar = new SplitterElement.Class({
       renderer: dependencies.renderer,
       identifier: 'sidebar-divider',
       orientation: 'vertical',
       reportUnit: 'cells',
-      initialSize: dependencies.settings.sidebarWidth.value,
-      minimumSize: 18,
-      maximumSize: 70,
+      initialSize: dependencies.layoutSlots.primaryDockColumns.value,
+      minimumSize: 1,
+      maximumSize: dependencies.maximumSidebarSize,
       pointerDirection: () =>
         dependencies.settings.sidebarPosition.value === 'left' ? 1 : -1,
-      currentSize: () => dependencies.settings.sidebarWidth.value,
+      currentSize: () => dependencies.layoutSlots.primaryDockColumns.value,
       onSizeChange: (width) => {
-        dependencies.settings.sidebarWidth.value = Math.round(width);
+        dependencies.layoutSlots.primaryDockColumns.value = Math.round(width);
       },
-      onDragEnd: () => dependencies.settings.save(),
+      onDragEnd: () => {
+        dependencies.settings.sidebarWidth.value =
+          dependencies.layoutSlots.primaryDockColumns.value;
+        dependencies.settings.save();
+      },
     });
   }
 
@@ -40,4 +49,6 @@ export namespace PaneSplitters {
 export interface PaneSplittersDependencies {
   renderer: CliRenderer;
   settings: Settings.Instance;
+  layoutSlots: LayoutSlots.Instance;
+  maximumSidebarSize: () => number;
 }

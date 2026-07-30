@@ -705,18 +705,25 @@ class $TerminalEmulatorConformance {
       },
       {
         category: 'recorded-gap',
-        name: 'OpenTUI notification capability and shell integration OSC are ignored',
+        name: 'OpenTUI notification and capability OSC are ignored',
         input:
           'A' +
           '\x1b]99;i=opentui-notifications:p=?;\x1b\\' +
           '\x1b]1337;Capabilities\x1b\\' +
-          '\x1b]66;w=1; \x1b\\' +
-          '\x1b]66;s=2; \x1b\\' +
           'B',
         expectations: {
           textRows: { 0: 'AB' },
           cursor: { row: 0, column: 2 },
           replies: [],
+        },
+      },
+      {
+        category: 'OSC-modes',
+        name: 'OSC 66 preserves explicitly sized text for the cell oracle',
+        input: 'A' + '\x1b]66;w=1;❯\x1b\\' + '\x1b]66;w=1;▰\x07' + 'B',
+        expectations: {
+          textRows: { 0: 'A❯▰B' },
+          cursor: { row: 0, column: 4 },
         },
       },
       {
@@ -869,6 +876,15 @@ class $TerminalEmulatorConformance {
         expectations: {
           cursor: { row: 0, column: 0 },
           currentWorkingDirectory: 'file:///split/path',
+        },
+      },
+      {
+        category: 'chunk-split',
+        name: 'OSC 66 explicitly sized text',
+        input: 'A\x1b]66;w=1;❯\x1b\\B',
+        expectations: {
+          textRows: { 0: 'A❯B' },
+          cursor: { row: 0, column: 3 },
         },
       },
       {

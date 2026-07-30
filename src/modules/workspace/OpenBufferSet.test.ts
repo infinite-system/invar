@@ -209,3 +209,80 @@ describe('cycle', () => {
     expect(set.activeIndex.value).toBe(2);
   });
 });
+
+describe('document ledger: what each tab actually retains', () => {
+  /** A stand-in document carrying only the two facts the ledger reads. */
+  function fakeDocument(textUnits: number, lineCount: number) {
+    return { contentLength: textUnits, lineCount } as never;
+  }
+
+  function makeAttachingSet() {
+    const documentsByPath = new Map<string, unknown>([
+      ['a.ts', fakeDocument(1_000, 40)],
+      ['b.ts', fakeDocument(2_500, 90)],
+      ['c.ts', fakeDocument(9_000, 300)],
+    ]);
+    const seams: OpenBufferSetSeams = {
+      createBuffer: (path) => new FakeBuffer(path),
+      disposeBuffer: () => {},
+      opened: (handle, buffer) => {
+        handle.attach(
+          documentsByPath.get((buffer as FakeBuffer).path) as never,
+        );
+      },
+      closed: (handle, buffer) => {
+        handle.detach(
+          documentsByPath.get((buffer as FakeBuffer).path) as never,
+        );
+      },
+    };
+    return new OpenBufferSet.Class(seams);
+  }
+
+  test('a hydrated tab reports its retained text units; a cold tab reports none', () => {
+    const set = makeAttachingSet();
+    set.open('a.ts');
+    set.open('b.ts');
+    set.open('c.ts');
+    const ledger = set.documentLedger();
+    expect(ledger.length).toBe(3);
+    expect(ledger.map((row) => row.path)).toEqual(['a.ts', 'b.ts', 'c.ts']);
+    // The two-document recent window is what stays live; the oldest tab is cold.
+    expect(ledger.map((row) => row.hydrated)).toEqual([false, true, true]);
+    expect(ledger.map((row) => row.retainedTextUnits)).toEqual([
+      0, 2_500, 9_000,
+    ]);
+    expect(ledger.map((row) => row.retainedLineCount)).toEqual([0, 90, 300]);
+    expect(ledger.filter((row) => row.active).length).toBe(1);
+  });
+
+  test('retained units do not grow with tab count, which is the bounded-cache claim', () => {
+    const set = makeAttachingSet();
+    set.open('a.ts');
+    const afterOne = set
+      .documentLedger()
+      .reduce((total, row) => total + row.retainedTextUnits, 0);
+    set.open('b.ts');
+    set.open('c.ts');
+    set.open('a.ts');
+    set.open('b.ts');
+    set.open('c.ts');
+    const afterMany = set
+      .documentLedger()
+      .reduce((total, row) => total + row.retainedTextUnits, 0);
+    expect(set.count).toBe(3);
+    expect(set.liveCount).toBe(2);
+    expect(afterOne).toBe(1_000);
+    // Six activations over three tabs still retain exactly the two-document window.
+    expect(afterMany).toBe(11_500);
+  });
+
+  test('closing a tab removes its row and its retained units', () => {
+    const set = makeAttachingSet();
+    set.open('a.ts');
+    set.open('b.ts');
+    set.close(1);
+    set.close(0);
+    expect(set.documentLedger()).toEqual([]);
+  });
+});

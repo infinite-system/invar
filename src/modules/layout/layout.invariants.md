@@ -69,25 +69,26 @@ tests assert the exact ratio.
 
 ### Split arrangement follows panel content order
 
-**Invariant:** If `PanelHost` lays out more than one open bottom-panel content, then cell spans are
-ordered by `Settings.panelContentOrder`; the default sequence places agent left and terminal right.
+**Invariant:** If `PanelHost` lays out an explicit split group, then cell spans follow that group's
+persisted member sequence. Other groups remain full width and hidden until selected.
 
-**Scope:** The bottom-panel content axis in `PanelHost.split`, `toggleContent`, and
-`moveContentTo`. Cell ratios and the panel's root-slot alignment are outside this ordering rule.
+**Scope:** The bottom-panel content axis in `PanelHost.split`, `addContentToGroup`,
+`moveGroupMember`, and `detachGroupMember`. Cell ratios and the panel's root-slot alignment are
+outside this ordering rule.
 
-**Mechanism:** `PanelHost.split` filters requested identifiers through `order`, `toggleContent` builds
-new cells from `order`, and `moveContentTo` rebuilds the live `layout` after changing that same
-sequence. `Settings.defaults.panelContentOrder` is `['agent', 'terminal']`.
+**Mechanism:** `PanelGroup.contentIds` is the split order. `PanelHost.split` creates it explicitly,
+`addContentToGroup` appends a newly created pane, `moveGroupMember` reorders it, and
+`detachGroupMember` removes one member into a singleton group. `loadActiveSpace` derives the live
+layout from the selected group only.
 
-**Generates:** One ordering rule for automatic split creation, Ctrl+Shift+S split creation, drag reorder, and
-Alt+Up or Alt+Down reorder.
+**Generates:** One ordering rule for explicit split creation, split-member drag reorder, and
+drag-out detachment; no automatic split on Add.
 
 **Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/settings/Settings.ts`;
 `src/modules/app/Bootstrap.ts`; `src/modules/ui/PanelHost.test.ts`.
 
-**Impossible if true:** Opening agent and terminal with default settings placing terminal left; Ctrl+Shift+S
-and content-toggle creation producing different orders; a reordered contents list disagreeing with
-the cell spans.
+**Impossible if true:** Add changing a one-cell group into a split; a reordered split-member row
+disagreeing with the cell spans; a detached member remaining in the visible split.
 
 **Verification:** `bun test src/modules/ui/PanelHost.test.ts
 src/modules/ui/PanelContentsList.test.ts && bun scripts/harness/smoke-panel-split-harness.ts`
@@ -98,25 +99,30 @@ src/modules/ui/PanelContentsList.test.ts && bun scripts/harness/smoke-panel-spli
 
 ### Layout slots derive from one configuration
 
-**Invariant:** If RootView places a dock, editor center, or bottom panel edge, then that rectangle
-comes from one `LayoutModel.resolve` result over the live layout configuration and viewport; no slot
-re-derives an edge from a sibling renderable.
+**Invariant:** If RootView places a dock, editor center, bottom-panel splitter, container-tab row, or
+panel body edge, then that rectangle comes from one `LayoutModel.resolve` result over the live
+layout configuration and viewport; no slot re-derives an edge from a sibling renderable. After a
+named layout switch, the nonzero rectangles cover every available layout cell exactly once.
 
 **Scope:** The left primary dock, editor center, right dock, bottom panel, and their splitters in
 `RootView`, across dock visibility, sidebar position, panel alignment, and each dock vertical-span
 setting; plus the named configurations offered by the command-bar Layouts menu.
 
 **Mechanism:** `LayoutModel` consumes viewport cells, configured widths/heights, visibility, and the
-layout settings, then emits every slot rectangle in one coordinate space. Center and right panel
-alignment select the two surviving horizontal ranges. A visible full-height right dock owns
-its columns, so the panel right edge stops at the right-dock splitter; an ends-at-panel right dock
-yields those columns below its splitter. A hidden dock resolves to a zero-area slot. `presets()`
+layout settings, then emits every slot rectangle in one coordinate space. The panel allocation
+contains a one-row container-tab slot followed by a body that is one row shorter. Center and right
+panel alignment select the two surviving horizontal ranges. A visible full-height right dock owns
+its columns, so the panel right edge stops at the right-dock splitter. If a dock ends at the panel,
+`LayoutModel` emits a remainder slot for its released columns below the splitter; `RootView` paints
+that plain slot with the panel background without changing either panel chrome row. A hidden dock
+resolves to a zero-area slot. `presets()`
 publishes Default, Full-height docks, Centered panel, and Focus as named selections over those same
 axes instead of enumerating their Cartesian product. RootView applies the rectangles directly.
 
 **Generates:** Live sidebar-side changes; two visible panel alignments; independent full-height or
 ends-at-panel docks; a focus layout with zero-area side docks; four named menu presets; a reserved
-right-dock slot that future PaneContent citizens can occupy without new root math.
+right-dock slot that future PaneContent citizens can occupy without new root math; no unpainted
+region after switching between named layouts.
 
 **Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/LayoutModel.test.ts`;
 `src/modules/ui/RootView.ts`.
@@ -125,14 +131,86 @@ right-dock slot that future PaneContent citizens can occupy without new root mat
 configuration change requiring a second panel or dock formula; the bottom panel painting over the
 lower rows of a visible full-height right dock; a visible full-height dock slot stopping at the panel
 splitter; a hidden dock retaining a nonzero slot; a Layouts menu rebuilt from encoded axis
-permutations.
+permutations; named-layout slot areas summing to less or more than the available viewport, or any two
+named-layout slots overlapping.
 
-**Verification:** `bun test src/modules/layout/LayoutModel.test.ts` plus the live configuration
-geometry assertions registered in `scripts/merge-gate.sh`.
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts` plus the live configuration and
+counted named-layout tiling assertions in `bun scripts/harness/smoke-layout-harness.ts`, registered in
+`scripts/merge-gate.sh`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-30
+
+### Layout slot sizes are workspace scoped
+
+**Invariant:** If more than one workspace is open, then each workspace owns its own primary-dock
+visibility and width, right-dock visibility, content, and width, and bottom-panel height. Selecting a
+workspace shows exactly the values that workspace was left with, and a workspace opened now starts at
+the application defaults rather than at whatever another workspace was dragged to.
+
+**Scope:** `LayoutSlots`, `WorkspaceLayout`, `WorkspaceLayoutContributor`, the two dock hosts'
+`visible` and `activeId`, and the three splitter drags in `RootView` and `PaneSplitters`. The
+remaining `LayoutModelOptions` inputs are application PREFERENCES and stay shared by every workspace:
+activity-bar visibility on either side, sidebar position, panel alignment, and both dock vertical
+spans. Which content the PRIMARY dock shows is scoped separately, by
+`Workspace.primaryPaneContentIdentifier`, because that identifier is also the workspace focus target.
+
+**Components:**
+- *One owner per size* — `LayoutSlots` holds the three live sizes. Before it existed two of them sat
+  in the settings store beside genuine preferences and the third was a local variable inside the root
+  view. A value with no owner cannot be scoped.
+- *Scoping is a contribution* — `WorkspaceLayout` is an ordinary `WorkspaceContribution`. It captures
+  on `suspended` and restores on `resumed`, the same lifecycle the source-control watcher, the
+  language client, and the file tree already ride. No host branch decides what travels.
+- *Defaults are captured once* — `WorkspaceLayoutContributor` reads the application defaults at its
+  first attachment and never again. Reading them live would restore the leak by another route: widen
+  workspace A, open workspace B, and B would be born at A's width because A's width had become the
+  default.
+- *A drag writes two things with two meanings* — the live slot, which is this workspace's geometry,
+  and the settings field, which is the size the next session's workspaces start at. A settings-panel
+  edit reaches only the workspace on screen.
+- *Restoring geometry never moves the keyboard* — the restore writes dock visibility directly rather
+  than through `show()` and `hide()`, which also claim focus. Where the keyboard sits belongs to the
+  workspace focus model and is restored by its own path.
+
+**Mechanism:** `Bootstrap` seeds `LayoutSlots` from the settings defaults, wires one
+`WorkspaceLayoutSlotPorts` adapter over the slots and the two dock hosts, and registers
+`WorkspaceLayoutContributor` on the workspace set once the view exists. `WorkspaceSet.activate`
+suspends the outgoing workspace before changing the index and resumes the incoming one afterwards, so
+capture always precedes restore.
+
+**Generates:** Per-workspace dock widths and bottom-panel height; a right dock that opens in one
+project and stays shut in another; a new project that opens at the user's default geometry; a
+splitter drag that stops rewriting every other open project's layout.
+
+**Rejected alternatives:** Keep the sizes in the settings store and snapshot them per workspace in
+the host — the settings store would then hold values that are not settings, and every new scoped
+value would need another line in a central snapshot. Give the docks their own `PanelContentSet` the
+way the bottom panel has one — dock contents are singleton views that project the active workspace,
+so a per-workspace content set would empty every dock but the first.
+
+**Evidence:** `src/modules/layout/LayoutSlots.ts`; `src/modules/layout/WorkspaceLayout.ts`;
+`src/modules/layout/WorkspaceLayoutContributor.ts`;
+`src/modules/layout/WorkspaceLayoutSlotPorts.interface.ts`;
+`src/modules/layout/WorkspaceLayout.test.ts`;
+`src/modules/layout/WorkspaceLayoutContributor.test.ts`;
+`src/modules/app/Bootstrap.ts` (the ports adapter and the registration);
+`src/modules/ui/PaneSplitters.ts`; `src/modules/ui/RootView.ts`;
+`scripts/harness/smoke-workspace-layout-isolation-harness.ts`.
+
+**Impossible if true:** Widening one project's sidebar widening another project's sidebar; opening a
+second project inheriting the first project's dock widths or bottom-panel height; a right dock opened
+in one project appearing in the next; returning to a project showing another project's geometry; a
+restored layout stealing the keyboard.
+
+**Verification:** `bun test src/modules/layout/WorkspaceLayout.test.ts
+src/modules/layout/WorkspaceLayoutContributor.test.ts src/modules/layout/LayoutSlots.test.ts && bun
+scripts/harness/smoke-workspace-layout-isolation-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-30
 
 ### Default panel height scales with the viewport
 
@@ -198,46 +276,48 @@ scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Last refined:** 2026-07-25
 
-### The right dock stays a bounded minority of the row
+### Each dock stays a bounded minority of the row
 
-**Invariant:** If the right dock is visible, then its width is at most 30 percent of the terminal
-row and strictly less than the editor center width, at every terminal width and after every resize.
-The editor is the prominent actor, so no right-dock occupant can outgrow it.
+**Invariant:** If a dock is visible, then its content width is at most 30 percent of the terminal
+row and its complete group is strictly less than the editor center width after every resize. The
+editor is the prominent actor, so neither dock group can outgrow it.
 
-**Scope:** `LayoutModel.resolve` and `LayoutModel.maximumRightDockColumns`, the right-dock
-`SplitterModel` maximum supplied by `RootView`, and every content the right dock hosts. The stored
-`Settings.rightDockWidth` is a REQUEST and is outside the bound: the layout clamps what it paints and
-never rewrites the setting.
+**Scope:** `LayoutModel.resolve`, `LayoutModel.maximumPrimaryDockColumns`,
+`LayoutModel.maximumRightDockColumns`, both dock `SplitterModel` maxima supplied by `RootView`, and
+every content either dock hosts. A complete dock group includes its content, splitter, and activity
+bar. The stored `Settings.sidebarWidth` and `Settings.rightDockWidth` values are requests. The layout
+clamps what it paints and never rewrites either setting.
 
 **Components:**
-- *One bound at the panel, not per pane* — the rule lives in the right-dock layout slot, so
-  structure, tasks, and any later occupant inherit it with no pane-specific width code.
+- *One bound at each dock group, not per pane* — the rule lives in the layout slots, so every current
+  and later dock occupant inherits it with no pane-specific width code.
 - *The smaller of two bounds wins* — a fixed share of the whole row, and one column less than an
-  even split of the columns the editor center and the dock share. The second bound accounts for the
-  left dock group, the right-dock splitter, and the right activity bar.
-- *The request survives* — a drag persists the user width; a narrow terminal paints the clamped
-  width; a wider terminal gives the dragged width back with no second gesture.
+  even split of the columns the editor center and one complete dock group share. The second bound
+  accounts for the other dock group.
+- *Both requests survive* — a drag persists the user width; a narrow terminal paints the clamped
+  width; a wider terminal gives each dragged width back with no second gesture.
 
-**Mechanism:** `resolve` clamps the requested `rightDockColumns` through `maximumRightDockColumns`
-before it places any slot, so every frame and every resize re-applies the bound. `RootView` builds
-one `LayoutModelOptions` object per question and passes it to both `resolve` and the splitter's live
-`maximumSize`, so the divider stops where the painted dock stops.
+**Mechanism:** `maximumDockContentColumns` applies one proportional content cap and one editor
+precedence cap. The editor cap accounts for both groups' fixed chrome. `resolve` clamps both
+requested content widths before it places any slot, so every frame and resize re-applies the bounds.
+`RootView` passes one `LayoutModelOptions` object to `resolve` and both live splitter maxima, so each
+divider stops where its painted dock stops.
 
-**Generates:** A usable editor on an 80-column terminal with the dock open; one width law for every
-right-dock citizen; a divider whose travel matches the paint at each terminal width.
+**Generates:** A usable editor on an 80-column terminal with both docks open; one width law for every
+dock citizen; divider travel that matches paint at each terminal width.
 
 **Rejected alternatives:** A larger fixed default width, which inverts again at the next smaller
-terminal. A per-pane width, which each new right-dock occupant would have to re-derive. Rewriting
-`Settings.rightDockWidth` on a narrow terminal, which would destroy the user's dragged width.
+terminal. A per-pane width, which each new dock occupant would have to re-derive. Rewriting either
+stored width on a narrow terminal, which would destroy the user's dragged width.
 
 **Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/ui/RootView.ts`;
-`src/modules/layout/LayoutModel.test.ts` (the per-width editor-wider cases and the
-request-survives-a-resize case); `scripts/harness/smoke-layout-harness.ts` (the bounded-minority arm
+`src/modules/layout/LayoutModel.test.ts` (both per-width editor-wider cases and the
+requests-survive-a-resize case); `scripts/harness/smoke-layout-harness.ts` (the bounded-minority arm
 and the 80-column boot arm).
 
-**Impossible if true:** A right dock painted at least as wide as the editor center at any terminal
-width; a right dock claiming more than 30 percent of the row; a terminal resize leaving a dock
-wider than the new bound; a resize rewriting the persisted width setting.
+**Impossible if true:** A dock group painted at least as wide as the editor center at a supported
+terminal width; dock content claiming more than 30 percent of the row; a terminal resize leaving a
+dock wider than its new bound; a resize rewriting either persisted width setting.
 
 **Verification:** `bun test src/modules/layout/LayoutModel.test.ts && bun
 scripts/harness/smoke-layout-harness.ts`
@@ -250,7 +330,7 @@ scripts/harness/smoke-layout-harness.ts`
 
 **Invariant:** If the bottom-panel splitter reaches its maximum, then the unexpanded layout retains
 exactly one editor-center row above the one-row splitter and assigns every remaining center row to
-the panel.
+the panel's one-row container chrome and body.
 
 **Scope:** The bottom-panel `SplitterModel` maximum supplied by `RootView` and
 `LayoutModel.maximumUnexpandedBottomPanelRows`. Expanded mode is governed separately.
@@ -259,8 +339,8 @@ the panel.
 `totalRows - minimumEditorRows - bottomPanelSplitterRows`. `SplitterModel` resolves that bound for
 construction and every drag clamp, so terminal resize changes cannot preserve a stale limit.
 
-**Generates:** Near-full-height drag at every terminal size; one visible editor sliver; a bounded
-panel size that remains valid across resize.
+**Generates:** Near-full-height drag at every terminal size; one visible editor sliver; one container
+chrome row; a bounded panel body that remains valid across resize.
 
 **Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/SplitterModel.ts`;
 `src/modules/ui/RootView.ts`; `src/modules/layout/LayoutModel.test.ts`;

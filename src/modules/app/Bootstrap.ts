@@ -17,6 +17,8 @@ import { App } from './App';
 import { Kernel } from '../kernel/Kernel';
 import { Workspace } from '../workspace/Workspace';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
+import { LayoutSlots } from '../layout/LayoutSlots';
+import { WorkspaceLayoutContributor } from '../layout/WorkspaceLayoutContributor';
 import { Theme } from '../theme/Theme';
 import { TerminalCapabilities } from '../theme/TerminalCapabilities';
 import { CommandRegistry } from '../commands/CommandRegistry';
@@ -52,6 +54,7 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { PanelHost, type PanelContentSet } from '../ui/PanelHost';
+import { PanelWorkspaceState } from '../ui/PanelWorkspaceState';
 import { ActivitySurface } from '../ui/ActivitySurface';
 import { PanelHostFocusSet } from '../ui/PanelHostFocusSet';
 import { PanelAddPopup } from '../ui/PanelAddPopup';
@@ -194,6 +197,16 @@ class $Bootstrap {
       spec: { kind: 'boolean' },
     });
     app.onDispose(() => codeFoldingEnabled.dispose());
+    // The live layout slot sizes, seeded from the stored defaults. From here they belong to the
+    // workspace on screen; `WorkspaceLayoutContributor` below gives every workspace its own set.
+    // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+    const layoutSlots = new LayoutSlots.Class();
+    layoutSlots.primaryDockColumns.value = Math.round(
+      settings.sidebarWidth.value,
+    );
+    layoutSlots.rightDockColumns.value = Math.round(
+      settings.rightDockWidth.value,
+    );
     const workspaceSet = new WorkspaceSet.Class(settings, {
       awaitNextViewPaint: () =>
         new Promise<void>((resolve) => {
@@ -288,11 +301,16 @@ class $Bootstrap {
       _request: PaneRuntimeRequest,
     ): boolean => false;
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
+    let persistPanelWorkspaceState = (): void => {};
+    let restorePanelWorkspaceState = (
+      _workspace: Workspace.Instance,
+    ): void => {};
     const panelHostFocusSet = new PanelHostFocusSet.Class();
     const panelHost = new PanelHost.Class({
       focusSet: panelHostFocusSet,
       contentOrder: settings.panelContentOrder,
       persistContentOrder: () => settings.save(),
+      persistWorkspaceState: () => persistPanelWorkspaceState(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
     });
     const workspacePanelWorlds = new Map<
@@ -326,6 +344,7 @@ class $Bootstrap {
       workspaceSet.onActiveWorkspaceChanged((workspace) => {
         activeWorkspacePanelWorld = workspacePanelWorldFor(workspace);
         panelHost.selectContentSet(activeWorkspacePanelWorld.contentSet);
+        restorePanelWorkspaceState(workspace);
         reconnectPanelWorldDependencies();
       });
     const stopDisposingWorkspacePanelWorlds = workspaceSet.onWorkspaceDisposed(
@@ -398,6 +417,7 @@ class $Bootstrap {
         keybindings,
         primaryDockHost,
         rightDockHost,
+        bottomPanelHost: panelHost,
         contextMenu,
         boundedListPopup,
         overlayCoordinator,
@@ -442,6 +462,8 @@ class $Bootstrap {
     }
     statusBarSegments.register(CoreStatusBarSegments.Class);
     let panelAddPopup: PanelAddPopup.Instance | null = null;
+    let panelPaneAddPopup: PanelAddPopup.Instance | null = null;
+    let pendingPanelSplitTargetIdentifier: string | null = null;
 
     // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J / Ctrl+backtick)
     // AND the status-bar terminal button. Opening it beside an existing agent region creates the
@@ -537,9 +559,64 @@ class $Bootstrap {
       toggleTerminal,
       toggleAgent,
       (anchor) => panelAddPopup?.show(anchor),
+      (anchor, splitTargetIdentifier) => {
+        pendingPanelSplitTargetIdentifier = splitTargetIdentifier ?? null;
+        panelPaneAddPopup?.show(anchor);
+      },
       toggleRightDock,
       activateQuickOpenSelection,
       revealFindMatch,
+      layoutSlots,
+    );
+    // Every workspace keeps its own dock widths, dock visibility, right-dock content, and bottom
+    // panel height. The layout module owns those values; this is only the wiring that tells it
+    // which live cells they are. Registered after the view exists, so the defaults it captures are
+    // the seeded ones rather than zeroes.
+    // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+    const workspaceLayoutContributor = new WorkspaceLayoutContributor.Class({
+      workspaceIsActive: (workspace) =>
+        workspaceSet.count > 0 && workspaceSet.active === workspace,
+      ports: {
+        readSlots: () => ({
+          primaryDockVisible: primaryDockHost.visible.value,
+          primaryDockColumns: layoutSlots.primaryDockColumns.value,
+          rightDockVisible: rightDockHost.visible.value,
+          rightDockColumns: layoutSlots.rightDockColumns.value,
+          rightDockContentIdentifier: rightDockHost.activeId.value,
+          bottomPanelRows: layoutSlots.bottomPanelRows.value,
+        }),
+        applySlots: (values) => {
+          layoutSlots.primaryDockColumns.value = values.primaryDockColumns;
+          layoutSlots.rightDockColumns.value = values.rightDockColumns;
+          layoutSlots.bottomPanelRows.value = values.bottomPanelRows;
+          // Visibility only. `show()` and `hide()` also move the keyboard, and where the keyboard
+          // sits is the workspace focus model's own state, restored by its own path — a restore
+          // that called them would hand the keyboard to whichever dock happened to be open.
+          primaryDockHost.visible.value = values.primaryDockVisible;
+          if (!values.primaryDockVisible) primaryDockHost.blur();
+          if (values.rightDockContentIdentifier) {
+            rightDockHost.activate(values.rightDockContentIdentifier);
+          }
+          rightDockHost.visible.value = values.rightDockVisible;
+          if (!values.rightDockVisible) rightDockHost.blur();
+          renderer.requestRender();
+        },
+      },
+    });
+    app.onDispose(workspaceSet.registerContributor(workspaceLayoutContributor));
+    // A settings-panel edit still resizes the dock on screen. It changes the workspace the user is
+    // looking at, never the hidden ones — those keep the widths they were left at.
+    app.$watch(
+      () => settings.sidebarWidth.value,
+      (width) => {
+        layoutSlots.primaryDockColumns.value = Math.round(width);
+      },
+    );
+    app.$watch(
+      () => settings.rightDockWidth.value,
+      (width) => {
+        layoutSlots.rightDockColumns.value = Math.round(width);
+      },
     );
     editorInteractionIsAvailable = () =>
       !view.modalOverlayOwnsScreen() && !completionPopup.open;
@@ -624,6 +701,8 @@ class $Bootstrap {
     const createRuntimePane = (
       kind: string,
       additionalInstance = false,
+      process?: PaneRuntimeRequest['process'],
+      labelOverride?: string,
     ): PaneContent | null => {
       const anyExisting = panelHost.contentOfKind(kind) !== null;
       const identity = paneRuntimes.allocateInstanceIdentity(
@@ -634,10 +713,11 @@ class $Bootstrap {
       if (!identity) return null;
       const content = paneRuntimes.createPane(kind, {
         identifier: identity.identifier,
-        label: identity.label,
+        label: labelOverride ?? identity.label,
         columns: view.panelViewportColumns() || 80,
         rows: view.panelViewportRows() || 24,
         workingDirectory: workspaceSet.active.root,
+        process,
       });
       if (!content) return null;
       runtimePanes.set(content.id, content);
@@ -783,6 +863,7 @@ class $Bootstrap {
 
     const createAgent = (
       additionalInstance = false,
+      labelOverride?: string,
     ): AgentPaneContent.Model => {
       const anyExisting = panelHost.contentOfKind('agent') !== null;
       const instanceNumber =
@@ -798,7 +879,9 @@ class $Bootstrap {
         : 'agent';
       const identifier =
         instanceNumber === 1 ? scopedKind : `${scopedKind}-${instanceNumber}`;
-      const label = instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`;
+      const label =
+        labelOverride ??
+        (instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`);
       // Real Claude (when `claude` is on PATH) runs in the workspace root so it operates in the project.
       const agentPane = AgentFactory.Class.create({
         identifier,
@@ -911,8 +994,17 @@ class $Bootstrap {
 
     const addPanelContent = (kind: string): void => {
       const content =
-        kind === 'agent' ? createAgent(true) : createRuntimePane(kind, true);
-      if (content) panelHost.showContent(content.id);
+        kind === 'database'
+          ? panelHost.contentOfKind('database')
+          : kind === 'agent'
+            ? createAgent(true)
+            : createRuntimePane(kind, true);
+      if (content) {
+        panelHost.createSpaceForContent(
+          content.id,
+          kind === 'database' ? 'database' : 'terminal',
+        );
+      }
     };
     panelAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
@@ -921,9 +1013,105 @@ class $Bootstrap {
       addableKinds: () => [
         ...paneRuntimes.addableKinds(),
         { kind: 'agent', label: 'Agent' },
+        ...(panelHost.contentOfKind('database')
+          ? [{ kind: 'database', label: 'Database' }]
+          : []),
       ],
       addContent: addPanelContent,
     });
+    const nextWindowLabel = (baseLabel: string): string => {
+      const count = panelHost.orderedContents.filter((content) => {
+        const label = content.instanceLabel ?? '';
+        return label === baseLabel || label.startsWith(`${baseLabel} `);
+      }).length;
+      return count === 0 ? baseLabel : `${baseLabel} ${count + 1}`;
+    };
+    const addPaneWindow = (kind: string): void => {
+      const content =
+        kind === 'invar-agent'
+          ? createAgent(true, nextWindowLabel('Invar Agent'))
+          : kind === 'claude-agent'
+            ? createRuntimePane(
+                'terminal',
+                true,
+                { command: 'claude' },
+                nextWindowLabel('AI Agent (Claude)'),
+              )
+            : createRuntimePane('terminal', true);
+      if (!content) return;
+      const splitTargetIdentifier = pendingPanelSplitTargetIdentifier;
+      pendingPanelSplitTargetIdentifier = null;
+      if (
+        splitTargetIdentifier &&
+        panelHost.addContentToGroup(content.id, splitTargetIdentifier)
+      ) {
+        return;
+      }
+      panelHost.showContent(content.id);
+    };
+    panelPaneAddPopup = new PanelAddPopup.Class({
+      popup: boundedListPopup,
+      overlayCoordinator,
+      title: 'Add window',
+      addableKinds: () => [
+        { kind: 'terminal', label: 'Terminal' },
+        { kind: 'claude-agent', label: 'AI Agent (Claude)' },
+        { kind: 'invar-agent', label: 'Invar Agent' },
+      ],
+      addContent: addPaneWindow,
+    });
+    let restoringPanelWorkspaceState = false;
+    const restoredPanelWorkspaceState = new WeakSet<Workspace.Instance>();
+    const persistedPaneKind = (content: PaneContent): string =>
+      content instanceof AgentPaneContent.Class
+        ? 'invar-agent'
+        : (content.kind ?? content.id) === 'database'
+          ? 'database'
+          : (content.instanceLabel ?? '').startsWith('AI Agent (Claude)')
+            ? 'claude-agent'
+            : 'terminal';
+    persistPanelWorkspaceState = (): void => {
+      if (restoringPanelWorkspaceState) return;
+      const workspaceRoot = workspaceSet.active.root;
+      settings.panelWorkspaceStates.value = {
+        ...settings.panelWorkspaceStates.value,
+        [workspaceRoot]: PanelWorkspaceState.Class.snapshot(
+          panelHost,
+          persistedPaneKind,
+        ),
+      };
+      settings.save();
+    };
+    const restorePane = (kind: string, label: string): PaneContent | null => {
+      if (kind === 'database') return panelHost.contentOfKind('database');
+      if (kind === 'invar-agent') return createAgent(true, label);
+      if (kind === 'claude-agent') {
+        return createRuntimePane(
+          'terminal',
+          true,
+          { command: 'claude' },
+          label,
+        );
+      }
+      return createRuntimePane('terminal', true, undefined, label);
+    };
+    restorePanelWorkspaceState = (workspace): void => {
+      if (restoredPanelWorkspaceState.has(workspace)) return;
+      restoredPanelWorkspaceState.add(workspace);
+      const state = settings.panelWorkspaceStates.value[workspace.root];
+      if (!state || state.spaces.length === 0) return;
+      restoringPanelWorkspaceState = true;
+      try {
+        panelHost.restoreWorkspaceState(
+          PanelWorkspaceState.Class.restore(state, (pane) =>
+            restorePane(pane.kind, pane.label),
+          ),
+        );
+      } finally {
+        restoringPanelWorkspaceState = false;
+      }
+    };
+    restorePanelWorkspaceState(workspaceSet.active);
     app.onDispose(() => {
       testVoiceBackend?.dispose();
       terminalFollowController?.dispose();
@@ -947,12 +1135,7 @@ class $Bootstrap {
       panelHost.split(terminal ? [agent.id, terminal.id] : [agent.id]);
     };
     const focusPanelContent = (direction: -1 | 1): void => {
-      const contentCount = panelHost.resolvedCells.length;
-      if (contentCount < 2) return;
-      const nextIndex =
-        (panelHost.focusedIndex.value + direction + contentCount) %
-        contentCount;
-      panelHost.focusCell(nextIndex);
+      panelHost.cycle(direction);
     };
     const movePanelContent = (direction: -1 | 1): void => {
       const identifier = panelHost.focusedContent?.id;
@@ -986,6 +1169,26 @@ class $Bootstrap {
       theme.setGlyphLevel(
         mode === 'auto' ? TerminalCapabilities.Class.detectGlyphLevel() : mode,
       );
+    });
+    let panelTabCycleTimer: ReturnType<typeof setTimeout> | null = null;
+    app.$watchEffect(() => {
+      const cycling = settings.panelTabCycling.value;
+      const visible = panelHost.visible.value;
+      const seconds = Math.max(1, settings.panelTabCycleSeconds.value);
+      const spaceCount = panelHost.spaces.value.length;
+      void panelHost.activeSpaceId.value;
+      if (panelTabCycleTimer) clearTimeout(panelTabCycleTimer);
+      panelTabCycleTimer = null;
+      if (!cycling || !visible || spaceCount < 2) return;
+      panelTabCycleTimer = setTimeout(() => {
+        panelTabCycleTimer = null;
+        panelHost.cycle(1);
+        renderer.requestRender();
+      }, seconds * 1000);
+    });
+    app.onDispose(() => {
+      if (panelTabCycleTimer) clearTimeout(panelTabCycleTimer);
+      panelTabCycleTimer = null;
     });
     app.$watch(
       () => settings.workspaceTabPosition.value,
@@ -1065,6 +1268,7 @@ class $Bootstrap {
       primaryDockHost,
       rightDockHost,
       statusProjectionContributions,
+      layoutSlotSizes: layoutSlots,
       pluginPrimaryDockContentIdentifiers,
       view,
       get mouse() {
@@ -1138,6 +1342,13 @@ class $Bootstrap {
       // Contributed editor surfaces subscribe their own paint signals.
       editorSurfaceContents.observePaintSignals();
       void settings.workspaceTabPosition.value;
+      // The workspace-owned layout slot sizes. They are read only INDIRECTLY, inside the layout
+      // resolve, so they are touched here for the same reason document.revision is: a splitter drag
+      // and a workspace switch both change geometry and must repaint.
+      // invariant: Layout slot sizes are workspace scoped (src/modules/layout/layout.invariants.md)
+      void layoutSlots.primaryDockColumns.value;
+      void layoutSlots.rightDockColumns.value;
+      void layoutSlots.bottomPanelRows.value;
       void workspaceSet.entries.value;
       void workspaceSet.activeWorkspaceIndex.value;
       void workspaceTabStrip.scrollOffset.value;

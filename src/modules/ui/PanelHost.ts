@@ -2,7 +2,7 @@
 // only WHICH contents are visible, how the visible ones share the width, which one has the keyboard,
 // and whether the slot is visible/focused — never the contents' internals. Registering another
 // PaneContent (Output, Problems, a plugin) needs zero host changes, and two-or-more contents can
-// occupy independently headed regions side by side (terminal | agent) behind a resizable divider.
+// occupy independent regions side by side (terminal | agent) behind a resizable divider.
 // One visible cell is the degenerate case, so the same region model drives single and split layouts.
 //
 // The host holds NO renderable and NO OpenTUI dependency: RootView mounts the slot, pulls each visible
@@ -35,7 +35,9 @@ class $PanelHost {
   }
   protected readonly unregisterFromFocusSet: () => void;
   protected readonly contentSets = new Set<PanelContentSet>();
+  protected readonly sharedContents = new Map<string, PaneContent>();
   protected readonly initialContentOrder: string[];
+  protected nextPanelGroupNumber = 1;
   protected selectedContentSet: PanelContentSet;
 
   constructor(readonly options: PanelHostOptions = {}) {
@@ -60,24 +62,34 @@ class $PanelHost {
   get expanded() {
     return ref(false);
   }
-  /** The active content's id, or null when nothing is registered. This is the SINGLE-pane switcher's
-   *  selection; it is the degenerate layout used whenever no split is set. */
+  /** The focused content id in the visible group, or null when nothing is registered. */
   get activeId() {
     return ref<string | null>(null);
   }
-  /** Registered content ids in registration order — the switcher's tab order (reactive so a late
-   *  registration repaints the switcher). */
+  /** Registered content ids in creation order. Group order controls the visible list projection. */
   get order() {
     return this.options.contentOrder ?? shallowRef<string[]>([]);
   }
-  /** The split layout: the visible cells left-to-right with their width shares. EMPTY means "no split"
-   *  — the slot shows the single active content (the degenerate, backward-compatible case). */
+  /** The visible group's cells left-to-right with their width shares. Empty means a singleton group. */
   get layout() {
     return shallowRef<PanelCell[]>([]);
   }
   /** Index into the resolved visible cells that currently owns the keyboard (0 in the degenerate case). */
   get focusedIndex() {
     return ref(0);
+  }
+  /** Workspace-local content spaces. Each space owns its pane membership and split layout. */
+  get spaces() {
+    return shallowRef<PanelSpace[]>([]);
+  }
+  get activeSpaceId() {
+    return ref<string | null>(null);
+  }
+  get panelListExpanded() {
+    return ref(false);
+  }
+  get panelListWidth() {
+    return ref(20);
   }
   /** The content set currently projected by this stable host. */
   get activeContentSet(): PanelContentSet {
@@ -89,7 +101,29 @@ class $PanelHost {
   }
   /** The docked contents list is useful only when there is a choice to make. */
   get panelListVisible(): boolean {
-    return this.visible.value && this.orderedContents.length > 1;
+    return (
+      this.visible.value &&
+      this.panelListExpanded.value &&
+      this.activeSpaceContents.length > 1
+    );
+  }
+  get panelCountChipVisible(): boolean {
+    return this.visible.value && this.activeSpaceContents.length > 1;
+  }
+  get activeSpace(): PanelSpace | null {
+    const identifier = this.activeSpaceId.value;
+    return (
+      this.spaces.value.find((space) => space.identifier === identifier) ?? null
+    );
+  }
+  get activeSpaceContents(): PaneContent[] {
+    const space = this.activeSpace;
+    if (!space) return [];
+    const identifiers = new Set(space.contentIds);
+    return this.order.value
+      .filter((identifier) => identifiers.has(identifier))
+      .map((identifier) => this.contents.get(identifier))
+      .filter((content): content is PaneContent => content !== undefined);
   }
   /** Create one independent set of pane sessions and host projection state. */
   // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
@@ -100,16 +134,41 @@ class $PanelHost {
       ]),
     );
     const contentSet: PanelContentSet = {
-      contents: new Map(),
-      order: this.initialContentOrder.filter(
-        (identifier) => !ownedIdentifiers.has(identifier),
-      ),
+      contents: new Map(this.sharedContents),
+      order: [
+        ...this.initialContentOrder.filter(
+          (identifier) => !ownedIdentifiers.has(identifier),
+        ),
+        ...[...this.sharedContents.keys()].filter(
+          (identifier) => !this.initialContentOrder.includes(identifier),
+        ),
+      ],
       visible: false,
       focused: false,
       expanded: false,
       activeId: null,
       layout: [],
       focusedIndex: 0,
+      spaces: [...this.sharedContents.values()].map((content, index) => ({
+        identifier: `database-space-${index + 1}`,
+        label: index === 0 ? 'Database' : `Database ${index + 1}`,
+        kind: 'database',
+        contentIds: [content.id],
+        activeId: content.id,
+        layout: [],
+        focusedIndex: 0,
+        groups: [
+          {
+            identifier: `database-space-${index + 1}-group-1`,
+            contentIds: [content.id],
+            ratios: [1],
+          },
+        ],
+        activeGroupId: `database-space-${index + 1}-group-1`,
+      })),
+      activeSpaceId: this.sharedContents.size > 0 ? 'database-space-1' : null,
+      panelListExpanded: false,
+      panelListWidth: 20,
     };
     this.contentSets.add(contentSet);
     return contentSet;
@@ -139,7 +198,9 @@ class $PanelHost {
     const contentSetIsSelected = contentSet === this.selectedContentSet;
     const focusedContent =
       contentSetIsSelected && this.focused.value ? this.focusedContent : null;
-    const contentInstances = [...contentSet.contents.values()];
+    const contentInstances = [...contentSet.contents.values()].filter(
+      (content) => !this.sharedContents.has(content.id),
+    );
     contentSet.contents.clear();
     contentSet.order = [];
     contentSet.visible = false;
@@ -148,6 +209,10 @@ class $PanelHost {
     contentSet.activeId = null;
     contentSet.layout = [];
     contentSet.focusedIndex = 0;
+    contentSet.spaces = [];
+    contentSet.activeSpaceId = null;
+    contentSet.panelListExpanded = false;
+    contentSet.panelListWidth = 20;
     if (contentSetIsSelected) {
       focusedContent?.onBlur();
       this.visible.value = false;
@@ -156,6 +221,10 @@ class $PanelHost {
       this.activeId.value = null;
       this.layout.value = [];
       this.focusedIndex.value = 0;
+      this.spaces.value = [];
+      this.activeSpaceId.value = null;
+      this.panelListExpanded.value = false;
+      this.panelListWidth.value = 20;
     }
     this.contentSets.delete(contentSet);
     for (const content of contentInstances) {
@@ -176,6 +245,7 @@ class $PanelHost {
     }
   }
   protected synchronizeSelectedContentSet(): void {
+    this.commitActiveSpace();
     this.selectedContentSet.order = [...this.order.value];
     this.selectedContentSet.visible = this.visible.value;
     this.selectedContentSet.focused = this.focused.value;
@@ -185,6 +255,10 @@ class $PanelHost {
       ...cell,
     }));
     this.selectedContentSet.focusedIndex = this.focusedIndex.value;
+    this.selectedContentSet.spaces = this.cloneSpaces(this.spaces.value);
+    this.selectedContentSet.activeSpaceId = this.activeSpaceId.value;
+    this.selectedContentSet.panelListExpanded = this.panelListExpanded.value;
+    this.selectedContentSet.panelListWidth = this.panelListWidth.value;
   }
   protected restoreSelectedContentSet(): void {
     this.order.value = [...this.selectedContentSet.order];
@@ -196,6 +270,292 @@ class $PanelHost {
       ...cell,
     }));
     this.focusedIndex.value = this.selectedContentSet.focusedIndex;
+    this.spaces.value = this.cloneSpaces(this.selectedContentSet.spaces);
+    this.activeSpaceId.value = this.selectedContentSet.activeSpaceId;
+    this.panelListExpanded.value = this.selectedContentSet.panelListExpanded;
+    this.panelListWidth.value = this.selectedContentSet.panelListWidth;
+    this.loadActiveSpace();
+  }
+  protected cloneSpaces(spaces: readonly PanelSpace[]): PanelSpace[] {
+    return spaces.map((space) => ({
+      ...space,
+      contentIds: [...space.contentIds],
+      layout: space.layout.map((cell) => ({ ...cell })),
+      groups: space.groups?.map((group) => ({
+        ...group,
+        contentIds: [...group.contentIds],
+        ratios: [...group.ratios],
+      })),
+    }));
+  }
+  protected commitActiveSpace(): void {
+    const activeSpace = this.activeSpace;
+    if (!activeSpace) return;
+    activeSpace.activeId = this.activeId.value;
+    activeSpace.layout = this.layout.value.map((cell) => ({ ...cell }));
+    activeSpace.focusedIndex = this.focusedIndex.value;
+    const activeGroup = this.activeGroup(activeSpace);
+    if (activeGroup) {
+      const cells = this.resolvedCells;
+      activeGroup.contentIds = cells.map((cell) => cell.content.id);
+      activeGroup.ratios = cells.map((cell) => cell.ratio);
+    }
+  }
+  protected loadActiveSpace(): void {
+    const activeSpace = this.activeSpace;
+    if (!activeSpace) {
+      this.activeId.value = null;
+      this.layout.value = [];
+      this.focusedIndex.value = 0;
+      return;
+    }
+    const activeGroup = this.activeGroup(activeSpace);
+    if (!activeGroup) {
+      this.activeId.value = activeSpace.activeId;
+      this.layout.value = activeSpace.layout.map((cell) => ({ ...cell }));
+      this.focusedIndex.value = activeSpace.focusedIndex;
+      return;
+    }
+    const focusedIdentifier =
+      activeSpace.activeId &&
+      activeGroup.contentIds.includes(activeSpace.activeId)
+        ? activeSpace.activeId
+        : (activeGroup.contentIds[0] ?? null);
+    const focusedIndex = Math.max(
+      0,
+      activeGroup.contentIds.indexOf(focusedIdentifier ?? ''),
+    );
+    this.activeId.value = focusedIdentifier;
+    this.focusedIndex.value = focusedIndex;
+    this.layout.value =
+      activeGroup.contentIds.length > 1
+        ? activeGroup.contentIds.map((identifier, index) => ({
+            id: identifier,
+            ratio:
+              activeGroup.ratios[index] ?? 1 / activeGroup.contentIds.length,
+          }))
+        : [];
+    activeSpace.activeId = focusedIdentifier;
+    activeSpace.focusedIndex = focusedIndex;
+    activeSpace.layout = this.layout.value.map((cell) => ({ ...cell }));
+  }
+  protected groups(space: PanelSpace): PanelGroup[] {
+    if (space.groups) return space.groups;
+    const visibleIdentifiers =
+      space.layout.length > 1
+        ? space.layout.map((cell) => cell.id)
+        : space.activeId
+          ? [space.activeId]
+          : [];
+    const groupedIdentifiers = new Set(visibleIdentifiers);
+    const groups: PanelGroup[] = [];
+    if (visibleIdentifiers.length > 0) {
+      groups.push({
+        identifier: `${space.identifier}-group-1`,
+        contentIds: visibleIdentifiers,
+        ratios:
+          space.layout.length > 1
+            ? space.layout.map((cell) => cell.ratio)
+            : [1],
+      });
+    }
+    for (const identifier of space.contentIds) {
+      if (groupedIdentifiers.has(identifier)) continue;
+      groups.push({
+        identifier: `${space.identifier}-group-${groups.length + 1}`,
+        contentIds: [identifier],
+        ratios: [1],
+      });
+    }
+    space.groups = groups;
+    space.activeGroupId ??= groups[0]?.identifier ?? null;
+    return groups;
+  }
+  protected activeGroup(space: PanelSpace): PanelGroup | null {
+    const groups = this.groups(space);
+    return (
+      groups.find((group) => group.identifier === space.activeGroupId) ??
+      groups.find((group) => group.contentIds.includes(space.activeId ?? '')) ??
+      groups[0] ??
+      null
+    );
+  }
+  panelGroups(): readonly PanelGroup[] {
+    const space = this.activeSpace;
+    return space ? this.groups(space) : [];
+  }
+  restoreWorkspaceState(options: {
+    spaces: readonly PanelSpace[];
+    activeSpaceIndex: number;
+    panelListExpanded: boolean;
+    panelListWidth: number;
+    visible: boolean;
+  }): void {
+    this.spaces.value = this.cloneSpaces(options.spaces);
+    const activeSpace =
+      this.spaces.value[
+        Math.max(
+          0,
+          Math.min(options.activeSpaceIndex, this.spaces.value.length - 1),
+        )
+      ] ?? null;
+    this.activeSpaceId.value = activeSpace?.identifier ?? null;
+    this.panelListExpanded.value = options.panelListExpanded;
+    this.panelListWidth.value = options.panelListWidth;
+    this.visible.value = options.visible && activeSpace !== null;
+    this.loadActiveSpace();
+    this.synchronizeSelectedContentSet();
+  }
+  groupForContent(identifier: string): PanelGroup | null {
+    const space = this.activeSpace;
+    return (
+      (space
+        ? this.groups(space).find((group) =>
+            group.contentIds.includes(identifier),
+          )
+        : null) ?? null
+    );
+  }
+  protected contentSpaceKind(content: PaneContent): string {
+    return (content.kind ?? content.id) === 'database'
+      ? 'database'
+      : 'terminal';
+  }
+  protected nextSpaceLabel(kind: string): string {
+    const baseLabel = kind === 'database' ? 'Database' : 'Terminal';
+    const count = this.spaces.value.filter(
+      (space) => space.kind === kind,
+    ).length;
+    return count === 0 ? baseLabel : `${baseLabel} ${count + 1}`;
+  }
+  protected insertSpace(space: PanelSpace): void {
+    const spaces = [...this.spaces.value];
+    if (space.kind === 'terminal') {
+      const databaseIndex = spaces.findIndex(
+        (candidate) => candidate.kind === 'database',
+      );
+      spaces.splice(
+        databaseIndex < 0 ? spaces.length : databaseIndex,
+        0,
+        space,
+      );
+    } else {
+      spaces.push(space);
+    }
+    this.spaces.value = spaces;
+  }
+  protected nextSpaceIdentifier(kind: string): string {
+    let number = 1;
+    let identifier = `${kind}-space-${number}`;
+    const identifiers = new Set(
+      this.spaces.value.map((space) => space.identifier),
+    );
+    while (identifiers.has(identifier)) {
+      number += 1;
+      identifier = `${kind}-space-${number}`;
+    }
+    return identifier;
+  }
+  protected nextGroupIdentifier(space: PanelSpace): string {
+    let identifier = `${space.identifier}-group-${this.nextPanelGroupNumber}`;
+    const identifiers = new Set(
+      this.spaces.value.flatMap((candidate) =>
+        (candidate.groups ?? []).map((group) => group.identifier),
+      ),
+    );
+    while (identifiers.has(identifier)) {
+      this.nextPanelGroupNumber += 1;
+      identifier = `${space.identifier}-group-${this.nextPanelGroupNumber}`;
+    }
+    this.nextPanelGroupNumber += 1;
+    return identifier;
+  }
+  createSpaceForContent(contentId: string, kind?: string): string | null {
+    const content = this.contents.get(contentId);
+    if (!content) return null;
+    this.commitActiveSpace();
+    const spaceKind = kind ?? this.contentSpaceKind(content);
+    if (spaceKind !== 'database') {
+      for (const space of this.spaces.value) {
+        space.contentIds = space.contentIds.filter(
+          (identifier) => identifier !== contentId,
+        );
+        space.layout = space.layout.filter((cell) => cell.id !== contentId);
+        if (space.groups) {
+          space.groups = space.groups
+            .map((group) => ({
+              ...group,
+              contentIds: group.contentIds.filter(
+                (identifier) => identifier !== contentId,
+              ),
+              ratios: group.contentIds
+                .filter((identifier) => identifier !== contentId)
+                .map(() => 1),
+            }))
+            .filter((group) => group.contentIds.length > 0);
+        }
+        if (space.layout.length < 2) space.layout = [];
+        if (space.activeId === contentId) {
+          space.activeId = space.contentIds[0] ?? null;
+          space.focusedIndex = 0;
+        }
+      }
+      this.spaces.value = this.spaces.value.filter(
+        (space) => space.contentIds.length > 0,
+      );
+    }
+    const identifier = this.nextSpaceIdentifier(spaceKind);
+    const space: PanelSpace = {
+      identifier,
+      label: this.nextSpaceLabel(spaceKind),
+      kind: spaceKind,
+      contentIds: [contentId],
+      activeId: contentId,
+      layout: [],
+      focusedIndex: 0,
+      groups: [
+        {
+          identifier: `${identifier}-group-1`,
+          contentIds: [contentId],
+          ratios: [1],
+        },
+      ],
+      activeGroupId: `${identifier}-group-1`,
+    };
+    this.insertSpace(space);
+    this.activeSpaceId.value = identifier;
+    this.loadActiveSpace();
+    this.visible.value = true;
+    this.focus();
+    this.options.persistWorkspaceState?.();
+    return identifier;
+  }
+  selectSpace(identifier: string): void {
+    if (
+      identifier === this.activeSpaceId.value ||
+      !this.spaces.value.some((space) => space.identifier === identifier)
+    ) {
+      return;
+    }
+    const previousFocusedContent = this.focused.value
+      ? this.focusedContent
+      : null;
+    this.commitActiveSpace();
+    this.activeSpaceId.value = identifier;
+    this.loadActiveSpace();
+    if (this.focused.value && previousFocusedContent !== this.focusedContent) {
+      previousFocusedContent?.onBlur();
+      this.focusedContent?.onFocus();
+    }
+    this.options.persistWorkspaceState?.();
+  }
+  togglePanelList(): void {
+    if (!this.panelCountChipVisible) {
+      this.panelListExpanded.value = false;
+      return;
+    }
+    this.panelListExpanded.value = !this.panelListExpanded.value;
+    this.options.persistWorkspaceState?.();
   }
   protected setOrder(order: string[]): void {
     this.order.value = order;
@@ -204,10 +564,41 @@ class $PanelHost {
   protected removeContentFromHiddenSet(
     contentSet: PanelContentSet,
     identifier: string,
+    disposeContent = true,
   ): void {
     const content = contentSet.contents.get(identifier);
     if (!content) return;
     contentSet.contents.delete(identifier);
+    contentSet.spaces = contentSet.spaces
+      .map((space) => ({
+        ...space,
+        contentIds: space.contentIds.filter(
+          (candidateIdentifier) => candidateIdentifier !== identifier,
+        ),
+        layout: space.layout.filter((cell) => cell.id !== identifier),
+        groups: space.groups
+          ?.map((group) => ({
+            ...group,
+            contentIds: group.contentIds.filter(
+              (candidateIdentifier) => candidateIdentifier !== identifier,
+            ),
+            ratios: group.contentIds
+              .filter(
+                (candidateIdentifier) => candidateIdentifier !== identifier,
+              )
+              .map(() => 1),
+          }))
+          .filter((group) => group.contentIds.length > 0),
+        activeId: space.activeId === identifier ? null : space.activeId,
+      }))
+      .filter((space) => space.contentIds.length > 0);
+    if (
+      !contentSet.spaces.some(
+        (space) => space.identifier === contentSet.activeSpaceId,
+      )
+    ) {
+      contentSet.activeSpaceId = contentSet.spaces[0]?.identifier ?? null;
+    }
     if (!this.options.retainUnregisteredContentOrder) {
       contentSet.order = contentSet.order.filter(
         (candidateIdentifier) => candidateIdentifier !== identifier,
@@ -253,8 +644,10 @@ class $PanelHost {
       contentSet.focused = false;
       contentSet.expanded = false;
     }
-    content.dispose();
-    this.options.onContentRemoved?.(content);
+    if (disposeContent) {
+      content.dispose();
+      this.options.onContentRemoved?.(content);
+    }
   }
   /** Register a content. The first one registered becomes active. Idempotent per id. */
   register(content: PaneContent): void {
@@ -276,9 +669,105 @@ class $PanelHost {
       this.options.persistContentOrder?.();
     }
     if (this.activeId.value === null) this.activeId.value = content.id;
+    const spaceKind = this.contentSpaceKind(content);
+    let targetSpace =
+      this.activeSpace?.kind === spaceKind ? this.activeSpace : null;
+    if (!targetSpace) {
+      targetSpace =
+        this.spaces.value.find((space) => space.kind === spaceKind) ?? null;
+    }
+    if (!targetSpace) {
+      const identifier = this.nextSpaceIdentifier(spaceKind);
+      targetSpace = {
+        identifier,
+        label: this.nextSpaceLabel(spaceKind),
+        kind: spaceKind,
+        contentIds: [],
+        activeId: null,
+        layout: [],
+        focusedIndex: 0,
+        groups: [],
+        activeGroupId: null,
+      };
+      this.insertSpace(targetSpace);
+      if (this.activeSpaceId.value === null) {
+        this.activeSpaceId.value = identifier;
+      }
+    }
+    if (!targetSpace.contentIds.includes(content.id)) {
+      targetSpace.contentIds.push(content.id);
+      const groups = this.groups(targetSpace);
+      const groupIdentifier = this.nextGroupIdentifier(targetSpace);
+      groups.push({
+        identifier: groupIdentifier,
+        contentIds: [content.id],
+        ratios: [1],
+      });
+      targetSpace.activeGroupId ??= groupIdentifier;
+    }
+    if (targetSpace.activeId === null) targetSpace.activeId = content.id;
+    if (targetSpace.identifier === this.activeSpaceId.value) {
+      this.loadActiveSpace();
+    }
     // Registration may land asynchronously (for example, a plugin becoming ready). Reveal the
     // dock-style host without stealing keyboard focus from the pane the user is actively driving.
     if (this.options.showWhenContentRegistered) this.visible.value = true;
+  }
+  /** Register one application-owned content in every workspace panel world. */
+  registerShared(content: PaneContent): void {
+    if (this.sharedContents.has(content.id)) return;
+    this.sharedContents.set(content.id, content);
+    this.register(content);
+    for (const contentSet of this.contentSets) {
+      if (contentSet === this.selectedContentSet) continue;
+      contentSet.contents.set(content.id, content);
+      if (!contentSet.order.includes(content.id)) {
+        contentSet.order.push(content.id);
+      }
+      if (
+        !contentSet.spaces.some((space) =>
+          space.contentIds.includes(content.id),
+        )
+      ) {
+        const number =
+          contentSet.spaces.filter((space) => space.kind === 'database')
+            .length + 1;
+        contentSet.spaces.push({
+          identifier: `database-space-${contentSet.spaces.length + 1}`,
+          label: number === 1 ? 'Database' : `Database ${number}`,
+          kind: 'database',
+          contentIds: [content.id],
+          activeId: content.id,
+          layout: [],
+          focusedIndex: 0,
+          groups: [
+            {
+              identifier: `database-space-${contentSet.spaces.length + 1}-group-1`,
+              contentIds: [content.id],
+              ratios: [1],
+            },
+          ],
+          activeGroupId: `database-space-${contentSet.spaces.length + 1}-group-1`,
+        });
+        contentSet.activeSpaceId ??= contentSet.spaces[0]?.identifier ?? null;
+      }
+    }
+  }
+  /** Withdraw one application-owned content from every workspace and dispose it once. */
+  removeSharedContent(identifier: string): void {
+    const content = this.sharedContents.get(identifier);
+    if (!content) return;
+    this.sharedContents.delete(identifier);
+    for (const contentSet of this.contentSets) {
+      if (!contentSet.contents.has(identifier)) continue;
+      if (contentSet === this.selectedContentSet) {
+        this.detachContent(identifier);
+      } else {
+        this.removeContentFromHiddenSet(contentSet, identifier, false);
+      }
+    }
+    content.dispose();
+    this.options.onContentRemoved?.(content);
   }
   /** Whether a content id is registered. */
   has(id: string): boolean {
@@ -380,17 +869,30 @@ class $PanelHost {
   }
   /** Cycle the single-pane active content (for a switcher key); wraps. */
   cycle(delta: number): void {
-    const ids = this.order.value;
-    if (ids.length < 2) return;
-    const current = Math.max(0, ids.indexOf(this.activeId.value ?? ''));
-    const next = (current + delta + ids.length) % ids.length;
-    const nextId = ids[next];
-    if (nextId) this.activate(nextId);
+    const spaces = this.spaces.value;
+    if (spaces.length < 2) return;
+    const current = Math.max(
+      0,
+      spaces.findIndex(
+        (space) => space.identifier === this.activeSpaceId.value,
+      ),
+    );
+    const next = (current + delta + spaces.length) % spaces.length;
+    const nextSpace = spaces[next];
+    if (nextSpace) this.selectSpace(nextSpace.identifier);
   }
   /** Put the given registered contents side by side in the slot, left to right. Unknown ids are
    *  dropped; an empty/all-unknown list clears the split (back to single-pane). Optional ratios set the
    *  initial shares (defaults to equal). */
   split(ids: string[], ratios?: number[]): void {
+    const owningSpace = this.spaces.value.find(
+      (space) =>
+        ids.length > 0 &&
+        ids.every((identifier) => space.contentIds.includes(identifier)),
+    );
+    if (owningSpace && owningSpace.identifier !== this.activeSpaceId.value) {
+      this.selectSpace(owningSpace.identifier);
+    }
     const requestedIdentifiers = new Set(
       ids.filter((id) => this.contents.has(id)),
     );
@@ -418,64 +920,207 @@ class $PanelHost {
       }));
       if (this.focusedIndex.value >= valid.length) this.focusedIndex.value = 0;
       this.activeId.value = valid[this.focusedIndex.value] ?? valid[0] ?? null;
+      const space = this.activeSpace;
+      if (space) {
+        const identifiers = new Set(valid);
+        const previousGroups = this.groups(space);
+        const insertionIndex = Math.max(
+          0,
+          previousGroups.findIndex((group) =>
+            group.contentIds.some((identifier) => identifiers.has(identifier)),
+          ),
+        );
+        const remainingGroups = previousGroups
+          .map((group) => ({
+            ...group,
+            contentIds: group.contentIds.filter(
+              (identifier) => !identifiers.has(identifier),
+            ),
+            ratios: group.ratios.filter(
+              (_ratio, index) =>
+                !identifiers.has(group.contentIds[index] ?? ''),
+            ),
+          }))
+          .filter((group) => group.contentIds.length > 0);
+        const group: PanelGroup = {
+          identifier: this.nextGroupIdentifier(space),
+          contentIds: [...valid],
+          ratios: this.layout.value.map((cell) => cell.ratio),
+        };
+        remainingGroups.splice(
+          Math.min(insertionIndex, remainingGroups.length),
+          0,
+          group,
+        );
+        space.groups = remainingGroups;
+        space.activeGroupId = group.identifier;
+      }
     });
+    this.commitActiveSpace();
+    this.options.persistWorkspaceState?.();
   }
   /** Focus/activate an open content selected from the docked contents list. */
   activateOpenContent(id: string): void {
     this.showContent(id);
   }
-  /** Select one open instance for visibility. An instance replaces the visible instance of its own
-   *  kind; a previously absent kind joins the split. This keeps multiple sessions open while at most
-   *  one instance per shared renderer/controller kind is projected at once. */
+  /** Select the full-width pane or explicit split group that contains one open instance. */
   showContent(id: string): void {
     const content = this.contents.get(id);
     if (!content) return;
-    const visibleCells = this.resolvedCells;
-    if (!this.visible.value || visibleCells.length === 0) {
-      this.retargetFocus(() => {
-        this.layout.value = [];
-        this.activeId.value = id;
-        this.focusedIndex.value = 0;
-      });
-      this.show();
-      return;
-    }
-    const visibleIndex = visibleCells.findIndex(
-      (cell) => cell.content.id === id,
+    const owningSpace = this.spaces.value.find((space) =>
+      space.contentIds.includes(id),
     );
-    if (visibleIndex >= 0) {
-      this.focus();
-      this.focusCell(visibleIndex);
-      return;
+    if (owningSpace && owningSpace.identifier !== this.activeSpaceId.value) {
+      this.selectSpace(owningSpace.identifier);
     }
-    const contentKind = content.kind ?? content.id;
-    const sameKindIndex = visibleCells.findIndex(
-      (cell) => (cell.content.kind ?? cell.content.id) === contentKind,
-    );
-    if (sameKindIndex >= 0) {
-      this.retargetFocus(() => {
-        if (visibleCells.length === 1) {
-          this.layout.value = [];
-        } else {
-          this.layout.value = visibleCells.map((cell, index) => ({
-            id: index === sameKindIndex ? id : cell.content.id,
-            ratio: cell.ratio,
-          }));
-        }
-        this.focusedIndex.value = sameKindIndex;
-        this.activeId.value = id;
-      });
-      this.focus();
-      return;
-    }
-    const visibleIdentifiers = visibleCells.map((cell) => cell.content.id);
-    visibleIdentifiers.push(id);
-    this.split(visibleIdentifiers);
-    const addedIndex = this.resolvedCells.findIndex(
-      (cell) => cell.content.id === id,
-    );
-    if (addedIndex >= 0) this.focusCell(addedIndex);
+    const space = this.activeSpace;
+    const group = space
+      ? this.groups(space).find((candidate) =>
+          candidate.contentIds.includes(id),
+        )
+      : null;
+    this.retargetFocus(() => {
+      if (space && group) space.activeGroupId = group.identifier;
+      this.loadActiveSpace();
+      const index = this.resolvedCells.findIndex(
+        (cell) => cell.content.id === id,
+      );
+      this.focusedIndex.value = Math.max(0, index);
+      this.activeId.value = id;
+    });
     this.focus();
+    this.visible.value = true;
+    this.commitActiveSpace();
+  }
+
+  /** Join an already registered pane to the explicit split group that contains `targetIdentifier`. */
+  addContentToGroup(id: string, targetIdentifier: string): boolean {
+    if (id === targetIdentifier || !this.contents.has(id)) return false;
+    const space = this.activeSpace;
+    if (!space) return false;
+    const groups = this.groups(space);
+    const targetGroup = groups.find((group) =>
+      group.contentIds.includes(targetIdentifier),
+    );
+    const sourceGroup = groups.find((group) => group.contentIds.includes(id));
+    if (!targetGroup || sourceGroup === targetGroup) return false;
+    if (sourceGroup) {
+      sourceGroup.contentIds = sourceGroup.contentIds.filter(
+        (identifier) => identifier !== id,
+      );
+      sourceGroup.ratios = sourceGroup.contentIds.map(
+        () => 1 / Math.max(1, sourceGroup.contentIds.length),
+      );
+    }
+    space.groups = groups.filter((group) => group.contentIds.length > 0);
+    targetGroup.contentIds.push(id);
+    targetGroup.ratios = targetGroup.contentIds.map(
+      () => 1 / targetGroup.contentIds.length,
+    );
+    space.activeGroupId = targetGroup.identifier;
+    space.activeId = id;
+    this.loadActiveSpace();
+    this.focusCell(targetGroup.contentIds.length - 1);
+    this.visible.value = true;
+    this.focus();
+    this.commitActiveSpace();
+    this.options.persistWorkspaceState?.();
+    return true;
+  }
+
+  /** Detach one split member into a new full-width group at a group-list position. */
+  detachGroupMember(identifier: string, targetGroupIndex: number): boolean {
+    const space = this.activeSpace;
+    if (!space) return false;
+    const groups = this.groups(space);
+    const sourceGroup = groups.find((group) =>
+      group.contentIds.includes(identifier),
+    );
+    if (!sourceGroup || sourceGroup.contentIds.length < 2) return false;
+    sourceGroup.contentIds = sourceGroup.contentIds.filter(
+      (candidate) => candidate !== identifier,
+    );
+    sourceGroup.ratios = sourceGroup.contentIds.map(
+      () => 1 / sourceGroup.contentIds.length,
+    );
+    const detachedGroup: PanelGroup = {
+      identifier: this.nextGroupIdentifier(space),
+      contentIds: [identifier],
+      ratios: [1],
+    };
+    const clampedIndex = Math.max(0, Math.min(targetGroupIndex, groups.length));
+    groups.splice(clampedIndex, 0, detachedGroup);
+    space.activeGroupId = detachedGroup.identifier;
+    space.activeId = identifier;
+    this.loadActiveSpace();
+    this.options.persistWorkspaceState?.();
+    return true;
+  }
+
+  /** Reorder one member within its split group. */
+  moveGroupMember(identifier: string, targetMemberIndex: number): boolean {
+    const space = this.activeSpace;
+    if (!space) return false;
+    const group = this.groups(space).find((candidate) =>
+      candidate.contentIds.includes(identifier),
+    );
+    if (!group || group.contentIds.length < 2) return false;
+    const sourceIndex = group.contentIds.indexOf(identifier);
+    const clampedIndex = Math.max(
+      0,
+      Math.min(targetMemberIndex, group.contentIds.length - 1),
+    );
+    if (sourceIndex === clampedIndex) return false;
+    group.contentIds.splice(sourceIndex, 1);
+    group.contentIds.splice(clampedIndex, 0, identifier);
+    group.ratios = group.contentIds.map(() => 1 / group.contentIds.length);
+    if (space.activeGroupId === group.identifier) this.loadActiveSpace();
+    this.options.persistWorkspaceState?.();
+    return true;
+  }
+
+  /** Reorder a full-width or split group as one list unit. */
+  moveGroup(groupIdentifier: string, targetGroupIndex: number): boolean {
+    const space = this.activeSpace;
+    if (!space) return false;
+    const groups = this.groups(space);
+    const sourceIndex = groups.findIndex(
+      (group) => group.identifier === groupIdentifier,
+    );
+    const clampedIndex = Math.max(
+      0,
+      Math.min(targetGroupIndex, groups.length - 1),
+    );
+    if (sourceIndex < 0 || sourceIndex === clampedIndex) return false;
+    const [group] = groups.splice(sourceIndex, 1);
+    if (!group) return false;
+    groups.splice(clampedIndex, 0, group);
+    this.options.persistWorkspaceState?.();
+    return true;
+  }
+
+  /** Close one outer content container and every owned pane session inside it. */
+  closeSpace(identifier: string): void {
+    const space = this.spaces.value.find(
+      (candidate) => candidate.identifier === identifier,
+    );
+    if (!space) return;
+    const ownedIdentifiers = space.contentIds.filter(
+      (contentIdentifier) => !this.sharedContents.has(contentIdentifier),
+    );
+    for (const contentIdentifier of ownedIdentifiers) {
+      this.removeContent(contentIdentifier);
+    }
+    const nextSpaces = this.spaces.value.filter(
+      (candidate) => candidate.identifier !== identifier,
+    );
+    this.spaces.value = nextSpaces;
+    if (this.activeSpaceId.value === identifier) {
+      this.activeSpaceId.value = nextSpaces[0]?.identifier ?? null;
+      this.loadActiveSpace();
+    }
+    if (nextSpaces.length === 0) this.hide();
+    this.options.persistWorkspaceState?.();
   }
   /** Make one registered content the visible single-pane occupant WITHOUT taking the keyboard —
    *  the reveal a default-visibility policy performs. `showContent` stays the user's own gesture
@@ -489,6 +1134,7 @@ class $PanelHost {
       this.focusedIndex.value = 0;
     });
     this.visible.value = true;
+    this.commitActiveSpace();
   }
   /** Move registered content one row in the user order and immediately reflow any live split. */
   moveContent(id: string, direction: -1 | 1): void {
@@ -550,6 +1196,7 @@ class $PanelHost {
       this.activeId.value = focusedIdentifier;
     });
     this.options.persistContentOrder?.();
+    this.commitActiveSpace();
   }
 
   /** Backward-compatible drag name used by the bottom-panel contents list. */
@@ -646,15 +1293,65 @@ class $PanelHost {
     if (!this.options.retainUnregisteredContentOrder) {
       this.options.persistContentOrder?.();
     }
+    const nextSpaces = this.spaces.value
+      .map((space) => ({
+        ...space,
+        contentIds: space.contentIds.filter((identifier) => identifier !== id),
+        layout: space.layout.filter((cell) => cell.id !== id),
+        groups: space.groups
+          ?.map((group) => ({
+            ...group,
+            contentIds: group.contentIds.filter(
+              (identifier) => identifier !== id,
+            ),
+            ratios: group.contentIds
+              .filter((identifier) => identifier !== id)
+              .map(() => 1),
+          }))
+          .filter((group) => group.contentIds.length > 0),
+        activeId: space.activeId === id ? null : space.activeId,
+      }))
+      .filter((space) => space.contentIds.length > 0);
+    this.spaces.value = nextSpaces;
+    if (
+      !nextSpaces.some((space) => space.identifier === this.activeSpaceId.value)
+    ) {
+      this.activeSpaceId.value = nextSpaces[0]?.identifier ?? null;
+      this.loadActiveSpace();
+    } else {
+      this.commitActiveSpace();
+    }
+    this.options.persistWorkspaceState?.();
     return content;
   }
   /** Collapse any split back to the single active content. */
   unsplit(): void {
     if (this.layout.value.length === 0) return;
+    const space = this.activeSpace;
+    const group = space ? this.activeGroup(space) : null;
+    const focusedIdentifier = this.focusedContent?.id ?? this.activeId.value;
+    if (space && group && group.contentIds.length > 1) {
+      const groups = this.groups(space);
+      const groupIndex = groups.indexOf(group);
+      const singleGroups = group.contentIds.map((identifier) => ({
+        identifier: this.nextGroupIdentifier(space),
+        contentIds: [identifier],
+        ratios: [1],
+      }));
+      groups.splice(groupIndex, 1, ...singleGroups);
+      space.activeGroupId =
+        singleGroups.find((candidate) =>
+          candidate.contentIds.includes(focusedIdentifier ?? ''),
+        )?.identifier ??
+        singleGroups[0]?.identifier ??
+        null;
+    }
     this.retargetFocus(() => {
       this.layout.value = [];
       this.focusedIndex.value = 0;
     });
+    this.commitActiveSpace();
+    this.options.persistWorkspaceState?.();
   }
   /** Give the keyboard to the visible cell at `index` (click-to-focus). Clamped to the visible range. */
   focusCell(index: number): void {
@@ -672,12 +1369,12 @@ class $PanelHost {
       this.focusedIndex.value = clamped;
       this.activeId.value = focusedIdentifier;
     });
+    this.commitActiveSpace();
   }
   /** Toggle one registered content's visible region. Opening a second content places both side by
    *  side in panel order and focuses the newly opened region. Closing one split region leaves
    *  the other mounted; closing the only region hides the slot. This is the one action shared by each
    *  content's status-bar button and keyboard accelerator. */
-  // invariant: Visible panel contents own separate headed regions (src/modules/ui/ui.invariants.md)
   toggleContent(id: string): void {
     if (!this.contents.has(id)) return;
     if (!this.visible.value) {
@@ -687,6 +1384,7 @@ class $PanelHost {
         this.focusedIndex.value = 0;
       });
       this.show();
+      this.commitActiveSpace();
       return;
     }
     const visibleCells = this.resolvedCells;
@@ -710,6 +1408,7 @@ class $PanelHost {
         this.activeId.value = id;
       });
       this.focus();
+      this.commitActiveSpace();
       return;
     }
     if (visibleCells.length === 1) {
@@ -747,6 +1446,7 @@ class $PanelHost {
         ),
       );
     });
+    this.commitActiveSpace();
   }
   /** Move the divider between cell `dividerIndex` and the next one to `boundaryFraction` (a [0,1] share
    *  of the WHOLE slot, measured from the left edge — exactly what a ratio-mode SplitterModel reports).
@@ -777,6 +1477,7 @@ class $PanelHost {
       id: cell.id,
       ratio: next[index] ?? 0,
     }));
+    this.commitActiveSpace();
   }
   /** Distribute `totalColumns` across the visible cells by ratio, reserving one column per interior
    *  divider. Integer columns; the last cell absorbs the rounding remainder; every cell keeps at least
@@ -853,17 +1554,26 @@ class $PanelHost {
     this.unregisterFromFocusSet();
     for (const contentSet of this.contentSets) {
       for (const content of contentSet.contents.values()) {
+        if (this.sharedContents.has(content.id)) continue;
         content.dispose();
         this.options.onContentRemoved?.(content);
       }
       contentSet.contents.clear();
     }
     this.contentSets.clear();
+    for (const content of this.sharedContents.values()) {
+      content.dispose();
+      this.options.onContentRemoved?.(content);
+    }
+    this.sharedContents.clear();
     if (!this.options.contentOrder) this.setOrder([]);
     this.activeId.value = null;
     this.layout.value = [];
     this.focusedIndex.value = 0;
     this.expanded.value = false;
+    this.spaces.value = [];
+    this.activeSpaceId.value = null;
+    this.panelListExpanded.value = false;
   }
 }
 
@@ -899,6 +1609,7 @@ export interface PanelHostOptions {
   persistContentOrder?: () => void;
   retainUnregisteredContentOrder?: boolean;
   onContentRemoved?: (content: PaneContent) => void;
+  persistWorkspaceState?: () => void;
 }
 
 /** One independently retained pane world. The stable host copies this state on selection. */
@@ -911,4 +1622,26 @@ export interface PanelContentSet {
   activeId: string | null;
   layout: PanelCell[];
   focusedIndex: number;
+  spaces: PanelSpace[];
+  activeSpaceId: string | null;
+  panelListExpanded: boolean;
+  panelListWidth: number;
+}
+
+export interface PanelSpace {
+  readonly identifier: string;
+  readonly label: string;
+  readonly kind: string;
+  contentIds: string[];
+  activeId: string | null;
+  layout: PanelCell[];
+  focusedIndex: number;
+  groups?: PanelGroup[];
+  activeGroupId?: string | null;
+}
+
+export interface PanelGroup {
+  readonly identifier: string;
+  contentIds: string[];
+  ratios: number[];
 }

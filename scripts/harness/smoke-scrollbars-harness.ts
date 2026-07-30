@@ -10,6 +10,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -1290,62 +1291,34 @@ function agentThumbRowCount(
   snapshot: HarnessSnapshot.Model,
   panelRectangle: Rectangle,
 ): number {
-  const paneRows = snapshot
-    .textRows()
-    .map((rowText, row) => ({
-      rowText: rowText.slice(
-        panelRectangle.left,
-        panelRectangle.left + panelRectangle.width,
-      ),
-      row,
-    }))
-    .filter(
-      ({ rowText, row }) =>
-        row > panelRectangle.top &&
-        row < panelRectangle.top + panelRectangle.height - 1 &&
-        rowText.startsWith('│') &&
-        rowText.endsWith('│'),
-    );
-  if (paneRows.length === 0) return 0;
-  const rightBorderColumn =
-    panelRectangle.left +
-    Math.max(
-      ...paneRows.map(({ rowText }) => rowText.trimEnd().lastIndexOf('│')),
-    );
-  const scrollBarColumn = rightBorderColumn - 1;
-  const blankBackgrounds = paneRows.map(({ rowText, row }) => {
-    const cell = snapshot.cell(row, scrollBarColumn);
-    return rowText[scrollBarColumn - panelRectangle.left] === ' '
-      ? (cell?.background ?? null)
-      : null;
-  });
-  const backgroundCounts = new Map<number, number>();
-  for (const background of blankBackgrounds) {
-    if (background === null) continue;
-    backgroundCounts.set(
-      background,
-      (backgroundCounts.get(background) ?? 0) + 1,
-    );
-  }
-  const paneBackground = [...backgroundCounts.entries()].sort(
-    (firstBackground, secondBackground) =>
-      secondBackground[1] - firstBackground[1],
-  )[0]?.[0];
+  const thumbBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.dim.slice(1),
+    16,
+  );
+  const rightmostColumn = panelRectangle.left + panelRectangle.width - 1;
   let longestThumbRun = 0;
-  let currentThumbRun = 0;
-  let currentThumbBackground: number | null = null;
-  for (const background of [...blankBackgrounds, null]) {
-    if (
-      background !== null &&
-      background !== paneBackground &&
-      background === currentThumbBackground
+  for (
+    let scrollBarColumn = rightmostColumn;
+    scrollBarColumn >= rightmostColumn - 4;
+    scrollBarColumn -= 1
+  ) {
+    let currentThumbRun = 0;
+    for (
+      let row = panelRectangle.top;
+      row < panelRectangle.top + panelRectangle.height;
+      row += 1
     ) {
-      currentThumbRun += 1;
-    } else {
-      longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
-      currentThumbBackground =
-        background !== paneBackground ? background : null;
-      currentThumbRun = currentThumbBackground === null ? 0 : 1;
+      const cell = snapshot.cell(row, scrollBarColumn);
+      if (
+        cell?.characters === ' ' &&
+        cell.isBackgroundRgb &&
+        cell.background === thumbBackground
+      ) {
+        currentThumbRun += 1;
+        longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
+      } else {
+        currentThumbRun = 0;
+      }
     }
   }
   return longestThumbRun;
@@ -2521,6 +2494,19 @@ try {
         Number(agentStatus.agentViewportRows),
   );
   const panelRectangle = bottomPanelSlot(expandedAgentStatus);
+  HarnessSmoke.Class.clickText(
+    overflowDriver,
+    overflowDriver.snapshot(),
+    'Claude',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    overflowDriver,
+    statusPath,
+    'the expanded agent composer owns focus before the long paste',
+    (candidate) =>
+      candidate.panelActiveContent === 'agent' &&
+      candidate.panelFocused === true,
+  );
   const wrappedTranscriptPrompt = Array.from(
     { length: 260 },
     (_unusedValue, wordIndex) =>
