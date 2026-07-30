@@ -29,3 +29,11 @@ Effort: medium
   adoption refines the same record — propose wording.
 - Check the #373 border-hole task's territory is untouched (different
   defect, same neighborhood — do not chase).
+
+## Scope widening (user, same day)
+
+"if thinner vertical splitter works, apply that splitter everywhere in the
+app" — on a positive verdict for the slim vertical, sweep EVERY splitter
+surface (panel splits, editor splits, bottom panel, any sidebar) to the slim
+pair. Enumerate the splitter paint sites first (census, not memory); one
+shared painter is the preferred shape if the sites duplicate.
