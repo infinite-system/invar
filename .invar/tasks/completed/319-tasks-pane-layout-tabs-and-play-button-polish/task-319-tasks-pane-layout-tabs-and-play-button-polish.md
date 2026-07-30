@@ -1,6 +1,6 @@
 # 319 — tasks pane: live-item two-line layout, play button tooltip/toggle, tab highlight + active state, one-line items, capitalized sections
 
-State: IN-PROGRESS
+State: COMPLETED — 2012cf08 — tasks pane: two-line live rows, shared-seam cycle tooltip + off, padded persistent tabs, one-line items, capitalized headers
 Engine: codex
 Model: 5.6-sol
 Effort: high
