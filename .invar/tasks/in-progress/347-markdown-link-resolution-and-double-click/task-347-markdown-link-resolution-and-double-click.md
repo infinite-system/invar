@@ -1,6 +1,6 @@
 # #347 — markdown links: red misresolution investigated; double-click opens
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux
