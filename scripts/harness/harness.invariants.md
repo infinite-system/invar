@@ -87,7 +87,9 @@ that do not launch Invar are outside this rule.
 temporary home. It seeds the deliberate settings fixture there and removes the home at exit.
 `tui-harness.sh` passes that home and its four XDG paths to every tmux session. `Drive` already owns a
 new temporary home for each invocation. `PtyTestDriver` completes every supplied home, sets the four
-XDG paths, and suppresses the built-in first-run task unless a drive explicitly enables it.
+XDG paths, suppresses the built-in first-run task, and prevents every folder-open task from launching
+unless a task-focused smoke explicitly enables both behaviors. Task configuration and manual task
+commands remain observable while automatic launch is suppressed.
 
 **Generates:** default-first drives; explicit contract settings that cannot be shadowed by user
 preferences; no harness write to `~/.config/invar/settings.json`; working Bun lookup after HOME
@@ -95,11 +97,14 @@ isolation.
 
 **Evidence:** `scripts/behavioral-contracts.sh`; `scripts/tui-harness.sh`;
 `scripts/harness/PtyTestDriver.ts`; `scripts/harness/PtyTestDriver.test.ts`;
+`scripts/harness/smoke-tasks-harness.ts`;
+`scripts/harness/smoke-reserved-chord-harness.ts`;
+`scripts/harness/smoke-workspace-tabs-harness.ts`;
 `.invar/tasks/active/233-wrap-contract-red-settings-leak/233-drive-wrap-settings-polarity.ts`.
 
 **Impossible if true:** a behavioral result changing when the caller changes `wordWrap`; an empty
 probe because Bun was looked up below a new bare home; a contract or drive rewriting the caller's
-settings file.
+settings file; a repository task configuration launching inside an unrelated registered smoke.
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts && bun run drive --size 10 &&
 bun run drive --size 100000 && scripts/behavioral-contracts.sh`

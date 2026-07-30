@@ -112,6 +112,7 @@ async function createDriver(
       TUI_STATUS_PATH: join(homeDirectory, 'status.json'),
       INVAR_AGENT_BACKEND: 'echo',
       INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '0',
+      INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS: '0',
       INVAR_TASK_DEFINED: 'defined-environment',
       ...environment,
     },

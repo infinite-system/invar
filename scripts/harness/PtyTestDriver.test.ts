@@ -466,6 +466,8 @@ describe('PtyTestDriver child environment', () => {
           XDG_CACHE_HOME: process.env.XDG_CACHE_HOME,
           INVAR_TEST_SUPPRESS_BUILT_IN_TASK:
             process.env.INVAR_TEST_SUPPRESS_BUILT_IN_TASK,
+          INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS:
+            process.env.INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS,
         }),
       );
       process.stdout.write(${JSON.stringify(recordedFrame('HOME READY'))});
@@ -492,6 +494,7 @@ describe('PtyTestDriver child environment', () => {
         XDG_STATE_HOME: join(homeDirectory, '.local', 'state'),
         XDG_CACHE_HOME: join(homeDirectory, '.cache'),
         INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '1',
+        INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS: '1',
       });
       for (const directoryPath of [
         join(homeDirectory, '.config', 'invar'),

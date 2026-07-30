@@ -93,14 +93,16 @@ class $Tasks implements WorkspaceContributor {
         }),
       );
     }
-    this.options.launcher.launchFolderOpen(
-      root,
-      configuration.tasks,
-      configuration.issues,
-    );
-    state.launchedLabels = configuration.tasks
-      .filter((task) => task.runOnFolderOpen)
-      .map((task) => task.label);
+    if (this.options.folderOpenTaskLaunchEnabled !== false) {
+      this.options.launcher.launchFolderOpen(
+        root,
+        configuration.tasks,
+        configuration.issues,
+      );
+      state.launchedLabels = configuration.tasks
+        .filter((task) => task.runOnFolderOpen)
+        .map((task) => task.label);
+    }
   }
 
   protected disposed(
@@ -140,6 +142,7 @@ export interface TasksOptions {
   readonly commands: CommandRegistry.Instance;
   readonly launcher: TaskLauncher.Model;
   readonly builtInDefaultEnabled?: boolean;
+  readonly folderOpenTaskLaunchEnabled?: boolean;
   readonly resolveConfiguration?: (
     workspaceRoot: string,
   ) => TaskConfigurationResult;

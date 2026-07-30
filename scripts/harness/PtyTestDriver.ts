@@ -808,6 +808,7 @@ class $PtyTestDriver {
     environment.TERM = 'xterm-256color';
     environment.COLORTERM = 'truecolor';
     environment.INVAR_TEST_SUPPRESS_BUILT_IN_TASK = '1';
+    environment.INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS = '1';
     if (options.homeDirectory) {
       const configHome = join(options.homeDirectory, '.config');
       const dataHome = join(options.homeDirectory, '.local', 'share');

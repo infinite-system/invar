@@ -61,6 +61,7 @@ const driver = new PtyTestDriver.Class({
   environment: {
     TUI_STATUS_PATH: statusPath,
     INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '0',
+    INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS: '0',
   },
 });
 
