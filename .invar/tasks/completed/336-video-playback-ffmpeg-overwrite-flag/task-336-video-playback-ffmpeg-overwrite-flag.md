@@ -1,6 +1,6 @@
 # #336 — video playback dies: ffmpeg refuses to overwrite the fifo (missing -y)
 
-State: IN-PROGRESS
+State: COMPLETED — eaf04d09 — video -y fix; combined-tree red proven pre-existing (#334)
 Priority: user-directed
 Engine: codex
 Environment: linux
