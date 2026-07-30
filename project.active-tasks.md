@@ -6,17 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #365 [gate-scratch-paths-are-machine-global](.invar/tasks/in-progress/365-gate-scratch-paths-are-machine-global/task-365-gate-scratch-paths-are-machine-global.md)  [building]
   `tmux attach -t invar/365-gate-scratch-paths-are-machine-global`
 - #347 [markdown-link-resolution-and-double-click](.invar/tasks/in-progress/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md)  [building]
   `tmux attach -t invar/347-markdown-link-resolution-and-double-click`
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/in-progress/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)  [building]
   `tmux attach -t invar/346-panel-tab-bar-workspace-content-spaces`
-- #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (13)
+## USER-DIRECTED (14)
+- #375 [tasks-live-attach-icon-invisible](.invar/tasks/active/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
 - #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)
@@ -120,7 +119,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 125 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 126 — full log: project.tasks-completed.md)
 - #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #350 [nicer-generated-sample-video](.invar/tasks/completed/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md) — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
 - #345 [horizontal-separator-centered-glyph](.invar/tasks/completed/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md) — 085bfca0 — centered heavy-line separator; #372/#373 from bycatch
@@ -135,4 +134,4 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #334 [structure-pane-no-file-open-transient](.invar/tasks/completed/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md) — b4695e2f — gate-blocking Drive red fixed; re-gate red is #214's pre-existing class
 - #329 [tasks-watch-animation-tick-restored](.invar/tasks/completed/329-tasks-watch-animation-tick-restored/task-329-tasks-watch-animation-tick-restored.md) — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
 - #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/completed/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md) — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
-- #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
+- #326 [vendor-modularity-third-party-plugins](.invar/tasks/completed/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md) — IN-PROGRESS

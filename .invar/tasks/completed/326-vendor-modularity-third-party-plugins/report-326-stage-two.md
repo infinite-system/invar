@@ -226,7 +226,9 @@ It was not changed.
 
 ### Conductor authorization and final commit
 
-The conductor accepted the panel-split red as the filed pre-existing task #359 class.
+The conductor accepted the panel-split red as the filed pre-existing
+[panel-split agent-terminal order task (#359)](../../active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md)
+class.
 The conductor measured main standalone green in five of five runs and this tree green in three of
 four runs.
 The intermittent result differs from the deterministic Alt+Delete regression fixed above.
@@ -242,5 +244,7 @@ pre-commit: SKIP_GATE=1 — skipping the full merge-gate (bypass acknowledged).
 The final commit is `ef1da11dbfd6a94f857b245e60f5e9df65fb4394`
 (`Complete signed vendor plugins and repair Alt Delete discovery`).
 The task worktree is clean.
-The conductor will land with `GATE_OVERRIDE` citing the filed panel-split task #359 and
-panel-chrome task #214.
+The conductor will land with `GATE_OVERRIDE` citing the filed
+[panel-split agent-terminal order task (#359)](../../active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md)
+and
+[panel-chrome intermittent task (#214)](../../active/214-panel-chrome-agent-close-intermittent/task-214-panel-chrome-agent-close-intermittent.md).
