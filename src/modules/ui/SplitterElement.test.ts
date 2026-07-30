@@ -28,6 +28,7 @@ afterEach(() => {
 
 async function createSplitter(
   orientation: 'vertical' | 'horizontal' = 'vertical',
+  leadingPaintPadCells = 0,
 ): Promise<SplitterElement.Model> {
   const setup = await createTestRenderer({ width: 80, height: 24 });
   renderer = setup.renderer;
@@ -44,6 +45,7 @@ async function createSplitter(
     maximumSize: 40,
     pointerDirection: orientation === 'horizontal' ? -1 : 1,
     currentSize: () => 20,
+    leadingPaintPadCells,
     onSizeChange: () => {},
   });
   renderer.root.add(splitter.renderable);
@@ -120,5 +122,40 @@ describe('SplitterElement', () => {
 
     const row = captureCharFrame?.().split('\n')[10] ?? '';
     expect(row.slice(5, 25)).toBe('━'.repeat(20));
+  });
+
+  test('vertical splitters paint the slim axis sibling of the horizontal mark', async () => {
+    const splitter = await createSplitter('vertical');
+    splitter.setGeometry({ left: 7, top: 4, length: 6 });
+    splitter.updateAppearance(darkPalette);
+    await renderOnce?.();
+
+    const rows = captureCharFrame?.().split('\n') ?? [];
+    const paintedColumn = rows
+      .slice(4, 10)
+      .map((row) => row.slice(7, 8))
+      .join('');
+    expect(paintedColumn).toBe('┃'.repeat(6));
+  });
+
+  test('a leading paint pad blanks the first cells and never moves the hit rectangle', async () => {
+    const splitter = await createSplitter('horizontal', 1);
+    splitter.setGeometry({ left: 5, top: 10, length: 20 });
+    splitter.updateAppearance(darkPalette);
+    await renderOnce?.();
+
+    const row = captureCharFrame?.().split('\n')[10] ?? '';
+    expect(row.slice(5, 6)).toBe(' ');
+    expect(row.slice(6, 25)).toBe('━'.repeat(19));
+    expect(splitter.renderable.left).toBe(5);
+    expect(splitter.renderable.width).toBe(20);
+  });
+
+  test('the pad cell still grabs: a drag begun on it resizes', async () => {
+    const splitter = await createSplitter('horizontal', 1);
+    splitter.setGeometry({ left: 5, top: 10, length: 20 });
+    await renderOnce?.();
+    await mockMouse?.drag(5, 10, 5, 6);
+    expect(splitter.size).toBe(24);
   });
 });

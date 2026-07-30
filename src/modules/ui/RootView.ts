@@ -1069,6 +1069,10 @@ class $RootView {
         LayoutModel.Class.maximumUnexpandedBottomPanelRows(currentLayoutRows),
       pointerDirection: -1,
       currentSize: () => panelHeightRows,
+      // The pad comes from the separator-row projection that also places the drag strip, so the
+      // blank cell and the strip it stands off from are one composition, not two guesses.
+      leadingPaintPadCells: () =>
+        panelSeparatorProjection?.dragLeadingPaintPadCells ?? 0,
       onDragStart: () => panelHost.focus(),
       onSizeChange: (height) => {
         panelHeightRows = Math.round(height);
@@ -2261,6 +2265,8 @@ class $RootView {
           width: panelSeparatorProjection.dragWidth,
           height: 1,
           visible: panelSplitter.renderable.visible,
+          leadingPaintPadCells:
+            panelSeparatorProjection.dragLeadingPaintPadCells,
         },
         controls: panelControlBarProjection
           ? panelControlBarProjection.controls.map((control) => ({
@@ -2537,6 +2543,8 @@ export interface PanelSeparatorGeometry {
     readonly width: number;
     readonly height: number;
     readonly visible: boolean;
+    /** Cells at the drag strip's left that stay unpainted. Paint only: the strip still grabs there. */
+    readonly leadingPaintPadCells: number;
   };
   readonly controls: readonly PanelHeadingControlGeometry[];
 }

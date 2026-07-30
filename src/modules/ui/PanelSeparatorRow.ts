@@ -10,6 +10,13 @@ import {
 
 // invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelSeparatorRow {
+  /**
+   * One blank cell stands between the last action icon and the drag line's first painted cell.
+   * It is a PAINT pad, never a layout quantity: `dragStartColumn` and `dragWidth` do not move,
+   * so the drag strip still grabs at the pad cell and across its whole former extent.
+   */
+  static readonly DRAG_LEADING_PAINT_PAD_CELLS = 1;
+
   static project(options: PanelSeparatorRowOptions): PanelSeparatorProjection {
     const width = Math.max(0, Math.floor(options.width));
     const preferredControlWidth = 10;
@@ -75,6 +82,10 @@ class $PanelSeparatorRow {
       actionWidth,
       dragStartColumn: actionWidth,
       dragWidth,
+      dragLeadingPaintPadCells: Math.min(
+        this.DRAG_LEADING_PAINT_PAD_CELLS,
+        Math.max(0, dragWidth - 1),
+      ),
       controlStartColumn: actionWidth + dragWidth,
       controlWidth,
       controlProjection,
@@ -122,6 +133,7 @@ export interface PanelSeparatorProjection {
   readonly actionWidth: number;
   readonly dragStartColumn: number;
   readonly dragWidth: number;
+  readonly dragLeadingPaintPadCells: number;
   readonly controlStartColumn: number;
   readonly controlWidth: number;
   readonly controlProjection: PanelHeadingProjection | null;

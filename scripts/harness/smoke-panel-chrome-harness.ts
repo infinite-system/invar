@@ -56,12 +56,25 @@ interface SeparatorActionLocation {
 interface SeparatorGeometry {
   readonly row: number;
   readonly editorActions: readonly SeparatorActionLocation[];
-  readonly drag: Rectangle;
+  readonly drag: Rectangle & { readonly leadingPaintPadCells: number };
   readonly controls: readonly {
     action: 'add' | 'expand' | 'close';
     startColumn: number;
     endColumnExclusive: number;
   }[];
+}
+
+function splitterMarkRun(
+  snapshot: HarnessSnapshot.Model,
+  row: number,
+): { firstColumn: number; lastColumn: number } {
+  const text = Array.from(snapshot.rowText(row));
+  const firstColumn = text.indexOf('\u2501');
+  const lastColumn = text.lastIndexOf('\u2501');
+  if (firstColumn < 0) {
+    throw new Error(`No splitter mark painted on row ${row}`);
+  }
+  return { firstColumn, lastColumn };
 }
 
 function clickCell(
@@ -635,22 +648,10 @@ async function drivePanelSeparatorAtScale(
         separator.drag.left + separator.drag.width === firstControl.startColumn,
       `${columns}x scale ${lineCount}: row order is buttons then drag then controls with no gap or overlap`,
     );
-    const splitter = splitterRectangle(status);
-    const separatorSnapshot = await driver.awaitGridCondition(
-      `${columns}x scale ${lineCount}: the published drag span paints vertically centered line cells`,
-      (snapshot) =>
-        snapshot
-          .rowText(splitter.top)
-          .slice(splitter.left, splitter.left + splitter.width) ===
-        '━'.repeat(splitter.width),
-    );
-    HarnessSmoke.Class.requireCondition(
-      separatorSnapshot
-        .rowText(splitter.top)
-        .slice(splitter.left, splitter.left + splitter.width) ===
-        '━'.repeat(splitter.width),
-      `${columns}x scale ${lineCount}: the splitter paints the centered mark, not the scrollbar's edge-anchored half block`,
-    );
+    // The settle wait comes FIRST. The published splitter rectangle is zero-width until the
+    // layout pass for this width lands, and a zero-width rectangle turns every paint check below
+    // into `'' === ''` — an assertion that can only pass. The wait now also demands a nonzero
+    // width, so the slice it feeds is always real cells.
     status = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -660,11 +661,39 @@ async function drivePanelSeparatorAtScale(
         const candidateSeparator = separatorGeometry(candidate);
         return (
           candidateSplitter.left > 0 &&
+          candidateSplitter.width > 0 &&
           candidateSplitter.width === candidateSeparator.drag.width
         );
       },
     );
     separator = separatorGeometry(status);
+    const splitter = splitterRectangle(status);
+    // The drag strip stands off from the action icon on its left by a PAINT pad: the pad cells are
+    // blank and the rest of the published rectangle is the centered mark. The pad count comes from
+    // the published geometry, never a literal, so this reads the app's own composition.
+    const padCellCount = separator.drag.leadingPaintPadCells;
+    const expectedSplitterCells =
+      ' '.repeat(padCellCount) + '━'.repeat(splitter.width - padCellCount);
+    const separatorSnapshot = await driver.awaitGridCondition(
+      `${columns}x scale ${lineCount}: the published drag span paints a blank pad then centered line cells`,
+      (snapshot) =>
+        snapshot
+          .rowText(splitter.top)
+          .slice(splitter.left, splitter.left + splitter.width) ===
+        expectedSplitterCells,
+    );
+    HarnessSmoke.Class.requireCondition(
+      splitter.width > 0 &&
+        separatorSnapshot
+          .rowText(splitter.top)
+          .slice(splitter.left, splitter.left + splitter.width) ===
+          expectedSplitterCells,
+      `${columns}x scale ${lineCount}: the splitter paints the centered mark, not the scrollbar's edge-anchored half block`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      padCellCount === (splitter.width > 1 ? 1 : 0),
+      `${columns}x scale ${lineCount}: exactly one blank pad cell precedes the mark whenever the strip is wider than one cell`,
+    );
 
     if (separator.editorActions.length === 2) {
       HarnessSmoke.Class.requireCondition(
@@ -762,6 +791,76 @@ async function drivePanelSeparatorAtScale(
         separatorGeometry(draggedStatus).drag.width >= 1,
         `${columns}x scale ${lineCount}: the drag segment remains nonzero after movement`,
       );
+
+      // The pad is PAINT, never geometry. Both ENDS of the published rectangle must still grab:
+      // the blank pad cell at the left edge, and the last cell of the former extent at the right.
+      // A pad that had been taken out of the hit rectangle would leave one of these dead.
+      // The drag above already grew the panel toward its maximum, so these two SHRINK it: a
+      // grow assertion here could be unsatisfiable at the maximum, and an unsatisfiable wait
+      // measures nothing. One row each keeps both drags clear of the three-row minimum.
+      // Columns come from the SPLITTER REGION, which is the space the emulator grid and the PTY
+      // mouse both use. `panelSeparatorGeometry` publishes the same columns plus one, and every
+      // control it describes is three cells wide, so that offset never shows on a control click.
+      // A one-cell strip EDGE has no such slack, so it must not be addressed from there. The
+      // region is re-read through a freshness wait before each drag: it publishes a zero-width
+      // rectangle until the layout pass for the current size lands.
+      // The two drags move in OPPOSITE directions, one row each: the first shrinks and the second
+      // restores. A pair that both pushed the same way could ask the panel to pass a bound it is
+      // already sitting on, and a wait for something that cannot happen measures nothing.
+      let grabStatus = draggedStatus;
+      for (const [edgeName, edgeColumnOf, rowDelta] of [
+        ['the blank pad cell', (rect: Rectangle) => rect.left, 1],
+        [
+          'the last cell of the drag strip',
+          (rect: Rectangle) => rect.left + rect.width - 1,
+          -1,
+        ],
+      ] as const) {
+        const panelBeforeEdgeDrag = rectangle(grabStatus, 'bottomPanel');
+        const edgeRow = separatorGeometry(grabStatus).row;
+        const edgeSnapshot = await driver.awaitGridCondition(
+          `${columns}x scale ${lineCount}: the splitter mark is painted before the ${edgeName} drag`,
+          (snapshot) =>
+            Array.from(snapshot.rowText(edgeRow)).indexOf('\u2501') >= 0,
+        );
+        const markRun = splitterMarkRun(edgeSnapshot, edgeRow);
+        const edgeColumn = edgeColumnOf({
+          left: markRun.firstColumn - padCellCount,
+          top: edgeRow,
+          width: markRun.lastColumn - markRun.firstColumn + 1 + padCellCount,
+          height: 1,
+          visible: true,
+        });
+        const edgeTargetRow = Math.max(0, edgeRow + rowDelta);
+        driver.sendMouse({
+          kind: 'press',
+          column: edgeColumn,
+          row: edgeRow,
+          button: 'left',
+        });
+        driver.sendMouse({
+          kind: 'move',
+          column: edgeColumn,
+          row: edgeTargetRow,
+          button: 'left',
+        });
+        driver.sendMouse({
+          kind: 'release',
+          column: edgeColumn,
+          row: edgeTargetRow,
+          button: 'left',
+        });
+        grabStatus = await HarnessSmoke.Class.awaitStatus(
+          driver,
+          statusPath,
+          `${columns}x scale ${lineCount}: a drag begun on ${edgeName} still resizes the panel`,
+          (candidate) =>
+            rectangle(candidate, 'bottomPanel').top !== panelBeforeEdgeDrag.top,
+        );
+        HarnessSmoke.Class.pass(
+          `${columns}x scale ${lineCount}: a drag begun on ${edgeName} still resizes the panel`,
+        );
+      }
     }
   } finally {
     driver.dispose();

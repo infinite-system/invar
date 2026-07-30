@@ -1,17 +1,28 @@
-// Shared one-cell separator appearance. Vertical separators fill their cell. Horizontal separators
-// paint one cell row, and the caller names WHICH horizontal mark its role wants, because the two
-// roles that share this painter want opposite things inside that cell:
+// Shared one-cell separator appearance. The caller names WHICH mark its ROLE wants, and this
+// painter picks the glyph for the axis it is asked to paint. The mark is not an axis name: the
+// two roles that share this painter want opposite things inside the same cell, on both axes.
 //
-//   centeredLine ('━') marks a BOUNDARY BETWEEN two regions, so its ink sits in the vertical middle
-//     of the row. A pane splitter uses it. Measured in DejaVu Sans Mono, its ink centre sits on the
-//     cell centre and it fills 0.13 of the cell height.
-//   bottomAnchoredHalfBlock ('▄') marks a POSITION ALONG an edge, so its ink hugs the trailing edge
-//     of the row and leaves the upper half open. A horizontal scrollbar track and thumb use it: it
-//     fills 0.50 of the cell height, which is the same apparent thickness as a one-cell-wide
-//     vertical bar in terminals whose cells are about twice as tall as they are wide, and that
-//     weight is what makes a thumb read as a graspable bar.
+//   centeredLine marks a BOUNDARY BETWEEN two regions, so its ink sits in the middle of the cell
+//     across the separator's thin direction. A pane splitter uses it. Measured in DejaVu Sans
+//     Mono, the horizontal '━' puts its ink centre on the cell centre and fills 0.13 of the cell
+//     height; the vertical '┃' is its axis sibling from the same box-drawing family, so both axes
+//     read at the same slim weight. A filled cell reads far heavier on the vertical axis than
+//     '━' does on the horizontal one, which is why a splitter never fills.
+//   bottomAnchoredHalfBlock marks a POSITION ALONG an edge, so its ink hugs the trailing edge of
+//     the cell and leaves the other half open. A scrollbar track and thumb use it. Horizontally
+//     that is '▄', which fills 0.50 of the cell height — the same apparent thickness as the
+//     FILLED cell it uses vertically, in terminals whose cells are about twice as tall as they
+//     are wide. That weight is what makes a thumb read as a graspable bar, and it is why the
+//     vertical scrollbar keeps its filled cell while the vertical splitter does not.
 //
-// Both marks paint over a transparent background, so the theme surface stays visible around them.
+// Both centeredLine marks paint over a transparent background, so the theme surface stays visible
+// around them. The vertical bottomAnchoredHalfBlock fills with BACKGROUND colour on blank cells
+// because macOS Terminal.app can rasterize stacked block glyphs with horizontal seams.
+//
+// leadingPaintPadCells leaves cells at the start of the separator's LONG axis unpainted. It moves
+// where paint BEGINS and never where the caller's rectangle is, so the renderable that owns the
+// rectangle keeps its whole hit area. That is the pad the bottom panel splitter uses to stand off
+// from the action icon on its left.
 //
 // invariant: One scrollbar painter gives each axis equal visual weight (src/modules/ui/ui.invariants.md)
 // invariant: Splitter paint and hit testing share one geometry (src/modules/ui/ui.invariants.md)
@@ -23,27 +34,47 @@ class $SeparatorAppearance {
     return 1;
   }
 
-  static paint(
-    buffer: OptimizedBuffer,
-    orientation: 'vertical' | 'horizontal',
-    rectangle: SeparatorPaintRectangle,
-    color: RGBA,
-    horizontalMark: HorizontalSeparatorMark,
-  ): void {
-    if (orientation === 'vertical') {
+  static paint(options: SeparatorPaintOptions): void {
+    const {
+      buffer,
+      orientation,
+      rectangle,
+      color,
+      mark,
+      leadingPaintPadCells = 0,
+    } = options;
+    const padCellCount = Math.max(0, Math.floor(leadingPaintPadCells));
+    if (orientation === 'vertical' && mark === 'bottomAnchoredHalfBlock') {
       buffer.fillRect(
         rectangle.x,
-        rectangle.y,
+        rectangle.y + padCellCount,
         rectangle.width,
-        rectangle.height,
+        Math.max(0, rectangle.height - padCellCount),
         color,
       );
       return;
     }
-    const glyph = this.horizontalGlyphFor(horizontalMark);
+    const glyph = this.glyphFor(orientation, mark);
+    if (orientation === 'vertical') {
+      const paintColumn = rectangle.x;
+      for (
+        let paintRow = rectangle.y + padCellCount;
+        paintRow < rectangle.y + rectangle.height;
+        paintRow += 1
+      ) {
+        buffer.setCellWithAlphaBlending(
+          paintColumn,
+          paintRow,
+          glyph,
+          color,
+          this.$transparentBackground,
+        );
+      }
+      return;
+    }
     const paintRow = rectangle.y + Math.max(0, rectangle.height - 1);
     for (
-      let paintColumn = rectangle.x;
+      let paintColumn = rectangle.x + padCellCount;
       paintColumn < rectangle.x + rectangle.width;
       paintColumn += 1
     ) {
@@ -57,8 +88,12 @@ class $SeparatorAppearance {
     }
   }
 
-  static horizontalGlyphFor(horizontalMark: HorizontalSeparatorMark): string {
-    return horizontalMark === 'centeredLine' ? '━' : '▄';
+  static glyphFor(
+    orientation: SeparatorOrientation,
+    mark: SeparatorMark,
+  ): string {
+    if (mark === 'bottomAnchoredHalfBlock') return '▄';
+    return orientation === 'vertical' ? '┃' : '━';
   }
 
   protected static get $transparentBackground(): RGBA {
@@ -71,12 +106,22 @@ export namespace SeparatorAppearance {
   export let Class = $Class;
 }
 
-export type HorizontalSeparatorMark =
-  'centeredLine' | 'bottomAnchoredHalfBlock';
+export type SeparatorOrientation = 'vertical' | 'horizontal';
+
+export type SeparatorMark = 'centeredLine' | 'bottomAnchoredHalfBlock';
 
 export interface SeparatorPaintRectangle {
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
+}
+
+export interface SeparatorPaintOptions {
+  readonly buffer: OptimizedBuffer;
+  readonly orientation: SeparatorOrientation;
+  readonly rectangle: SeparatorPaintRectangle;
+  readonly color: RGBA;
+  readonly mark: SeparatorMark;
+  readonly leadingPaintPadCells?: number;
 }
