@@ -1,6 +1,6 @@
 # 308 — markdown view-only mode: preview-only, toggle back, persists across .md files
 
-State: IN-PROGRESS
+State: COMPLETED — 284d53c1 — markdown view-only mode, persistent across files and restarts
 Engine: codex
 Model: 5.6-sol
 Effort: medium

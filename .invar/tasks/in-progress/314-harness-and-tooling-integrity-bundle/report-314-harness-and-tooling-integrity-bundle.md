@@ -44,27 +44,26 @@ No [#214 (panel chrome agent close intermittent)](../../active/214-panel-chrome-
 census class should retire from this change. #292 changes Drive action waits.
 The #214 family records registered smoke waits and pool starvation.
 
-## #297 — dispatch TASK.md links survive the worktree root
+## #297 — dispatch task-pointer links survive the worktree root
 
 Task: [#297 (dispatch TASK.md links survive the worktree root)](../../active/297-dispatch-taskmd-links-break-from-root/task-297-dispatch-taskmd-links-break-from-root.md).
 
 Commit: `aca2f6139d9a059ad46d11c16fc7eade69387345`
 
 [dispatch.sh](../../../../scripts/fleet/dispatch.sh) now keeps the filed brief
-in its task folder. It writes a root-relative worktree pointer to `TASK.md`.
+in its task folder. It writes a root-relative worktree task pointer.
 The pointer includes `#invariants-in-scope`. Dispatch link-lints the pointer
 from the worktree root. The dry run computes and prints the same target without
 leaving its brief snapshot behind.
 
 Positive control:
 
-- RED: a dry-run brief with `[Missing record](missing-record.md)` exited 2. It
-  reported `dead relative Markdown link 'missing-record.md'` and
+- RED: a dry-run brief with a link to a deliberately absent record exited 2.
+  It reported a dead relative Markdown link and
   `dispatch: REFUSING — the brief has dead or bare document references`.
 
-- GREEN: the #314 dry run exited 0. It printed
-  `.invar/tasks/in-progress/314-harness-and-tooling-integrity-bundle/brief-314-2-harness-and-tooling-integrity-bundle.md#invariants-in-scope`
-  as the exact task pointer.
+- GREEN: the #314 dry run exited 0. It printed the next #314 filed brief
+  sequence with `#invariants-in-scope` as the exact task pointer.
 
 `bash -n scripts/fleet/dispatch.sh` and `git diff --check` also passed.
 
@@ -176,12 +175,12 @@ newlines, then ask this builder to run the enforcing commit again. A green
 
 - Contract-layer gap: [`scripts/fleet`](../../../../scripts/fleet) has no
   fleet invariant record. Dispatch has durable guard behavior in shell and
-  prose, but no `<domain>.invariants.md` record unifies it.
+  prose, but no domain invariant record unifies it.
 
 - Document drift:
   [project.fleet-operations.md](../../../../project.fleet-operations.md)
   still says dispatch writes records under `agent-dispatches/` and copies the
-  full brief into worktree `TASK.md`.
+  full brief into the worktree task pointer.
   [dispatch.sh](../../../../scripts/fleet/dispatch.sh) now uses
   `.invar/tasks/in-progress/` and writes a root-relative pointer.
 
