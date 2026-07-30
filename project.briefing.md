@@ -420,3 +420,24 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
 - Lanes now: 326-stage-two (codex med), 351 (codex high), 350 (opus med).
   Mix satisfied. Queue front after these: 343 → 344 → 345 → 346 → 347 →
   348 → 349 → 352 → 341 → 337 (+ 353 hygiene).
+
+### ANCHOR 17 DELTA 2 (05:0x)
+- LANDED tonight so far: #342 e93995e7, #351 7f57b019 (+#354/#355 bycatch),
+  #350 4017f53c (mandelbrot; narrow-rule over #359/#360/#337 reds),
+  #337 64ca4df5 (ordinal->label walks; root cause was #340's contributed
+  row; +#362/#363/#364 bycatch). #338 duplicate consolidated+retired
+  (twin conductor asleep per user).
+- User filed live: #356 agent pane = decoupled "Invar Agent" plugin
+  (analysis in task file: module exists, plugin wrapper missing, wired in
+  Bootstrap/RootView); #361 tasks-icon click -> panel warnings ->
+  terminal buffer crash (verbatim log in task); #90 PROMOTED user-directed
+  (full test-isolation census + provenance fix).
+- Lanes: 326-stage-two (codex med) · 343 (codex med, round-3: merge main
+  + re-gate after #337 unblock) · 90 (opus med, census+fix).
+- dispatch.sh codex floor is now MEDIUM (supersedes 07-29 high floor).
+- Claude-lane lessons: steer.sh/send confirm heuristics are codex-shaped —
+  verify delivery by pane capture; claude builders may write READY before
+  committing — briefs now order commit-before-READY; land.sh busy-check
+  needs builder idle — wait, retry.
+- Queue: 344 345 346 347 348 349 352 341 356 361 362 353 357 358 363 364
+  359 360 (+#326 stage-2 in flight).
