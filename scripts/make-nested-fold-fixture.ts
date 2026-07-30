@@ -28,8 +28,7 @@ import { dirname } from 'node:path';
 
 const DEFAULT_LINE_COUNT = 500_000;
 
-const DEFAULT_OUTPUT_PATH =
-  '/home/parallels/dev/tui-editor/tmp/invar-scale-test/nested.json';
+const DEFAULT_OUTPUT_PATH = `${process.cwd()}/tmp/invar-scale-test/nested.json`;
 
 /**
  * Lines per emitted chunk. Bounds peak string size while writing so generating a 78 MB fixture

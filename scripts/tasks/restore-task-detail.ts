@@ -17,7 +17,11 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const tasksRoot = '/home/parallels/dev/tui-editor/.invar/tasks';
+import { execSync } from 'node:child_process';
+const repositoryRoot = execSync('git rev-parse --show-toplevel', {
+  encoding: 'utf8',
+}).trim();
+const tasksRoot = `${repositoryRoot}/.invar/tasks`;
 
 /** Full detail, keyed by task number. Absent = the list entry is genuinely a single line. */
 const DETAIL: Record<number, string> = {

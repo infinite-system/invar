@@ -9,7 +9,13 @@
 # Output: one line, machine-parseable:  CONTEXT_TOKENS=<n> PCT=<n>% FILE=<path>
 set -euo pipefail
 
-project_dir="${CONTEXT_PROJECT_DIR:-$HOME/.claude/projects/-home-parallels-dev-ibr}"
+# Transplant-aware default (2026-07-30): prefer the invar-cwd conductor project
+# dir; fall back to the pre-transplant ibr dir where older transcripts live.
+default_project_dir="$HOME/.claude/projects/-home-parallels-dev-invar"
+if ! ls "$default_project_dir"/*.jsonl >/dev/null 2>&1; then
+  default_project_dir="$HOME/.claude/projects/-home-parallels-dev-ibr"
+fi
+project_dir="${CONTEXT_PROJECT_DIR:-$default_project_dir}"
 # Budget resolution, most authoritative first: explicit override, then the
 # harness's own CLAUDE_CODE_AUTO_COMPACT_WINDOW (present in every Bash call's
 # environment — adapts automatically when the user changes the setting),

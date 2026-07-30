@@ -23,7 +23,10 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 
-const repositoryRoot = '/home/parallels/dev/tui-editor';
+import { execSync } from 'node:child_process';
+const repositoryRoot = execSync('git rev-parse --show-toplevel', {
+  encoding: 'utf8',
+}).trim();
 
 const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
 

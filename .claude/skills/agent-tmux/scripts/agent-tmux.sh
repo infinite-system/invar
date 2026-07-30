@@ -53,7 +53,7 @@ _profile() {
       LAUNCH_ENV='env -u CLAUDE_CODE_CHILD_SESSION CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1 '
       ;;
     codex)
-      # VERIFIED 2026-07-28 against a live interactive codex (gpt-5.6-sol) in tui-editor.
+      # VERIFIED 2026-07-28 against a live interactive codex (gpt-5.6-sol) in this repo (then named tui-editor).
       # READY: the composer prompt sits at column 0 as a bare '>' glyph. NOTE it is always
       # present (codex keeps a hint in the composer), so READY is NOT discriminating on its
       # own — idle here means "matches READY and does NOT match BUSY", which works only

@@ -763,7 +763,7 @@ is silent >20 min AND the tree is dirty with no new commit, the builder likely d
 preserve the tree as a WIP commit on its branch, read the transcript tail to diagnose, and
 either relaunch with a resume round-brief or take over. Never kill anything; never treat user
 Invar instances as builders. (3) STALE-MONITOR — TaskList: fleet-watch missing? re-arm it (one
-idempotent Monitor). (4) CHECKOUT-SYNC — the user's checkout /home/parallels/dev/tui-editor
+idempotent Monitor). (4) CHECKOUT-SYNC — the user's checkout /home/parallels/dev/invar
 must be clean; main moves only by landings. (5) CONFLICT-QUEUE — any finished branch
 mid-conflict-resolution: confirm a builder is on it, else round-brief one. If everything
 reconciles clean, say so in one line and stop — this sweep exists for drift, not narration.
@@ -777,7 +777,7 @@ IDs drift on each recreate. The words are the durable artifact.
 ### Hourly orchestration loop — `7 * * * *` (every hour at :07)
 
 ```
-Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (tui-editor/.claude/skills/conductor/SKILL.md). Do in order:
+Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (.claude/skills/conductor/SKILL.md). Do in order:
 
 (1) BACKLOG FIRST — before ANY creative experiment, drain real work. Sources of truth, in order: (a) the user's requests in this session still unmerged; (b) active builder agents' reported remaining work (task notifications / SendMessage pins); (c) project.handoff.md's resume anchor + any open goal list. For each UNFINISHED task: confirm a builder is actively driving it (worktree writes / gate activity / branch commits in the last cycle). If dormant on a GREEN gate, drive the merge; if stalled, nudge with a precise fix OR take it over. Do NOT start a creative experiment while any user-requested task is unmerged.
 
@@ -785,7 +785,7 @@ Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (tui
 
 (3) ONLY once the real backlog is drained AND the user is away — invent + execute ONE creative IDE-parity experiment: reduce a real user need to its invariant, build on an experiment-* branch off LATEST main, gate it. NEVER merge experiments to main (provenance decides main, not quality). If the user is actively present and directing, skip experiments — their direction IS the backlog.
 
-(4) Append lessons to /home/parallels/dev/tui-editor/project.conductor.md; when a lesson generalizes into doctrine, REFINE the /conductor SKILL.md and commit. If you change a cron prompt, recreate the cron AND update the skill's verbatim copy — the words are the durable artifact (crons are session-only and die on restart; this fire may be running on a restored cron proving exactly that). A cron prompt that names a RETIRED rule re-teaches it on every fire: check any rule you are about to cite by name against the skill before acting on it.
+(4) Append lessons to /home/parallels/dev/invar/project.conductor.md; when a lesson generalizes into doctrine, REFINE the /conductor SKILL.md and commit. If you change a cron prompt, recreate the cron AND update the skill's verbatim copy — the words are the durable artifact (crons are session-only and die on restart; this fire may be running on a restored cron proving exactly that). A cron prompt that names a RETIRED rule re-teaches it on every fire: check any rule you are about to cite by name against the skill before acting on it.
 
 (5) Fleet hygiene: verify builders by evidence (worktree writes, gate logs, branch commits — never process counts; never kill user Invar instances). Cap builders ~2-3. NO GATE WHILE ANY BUILDER IS LIVE — a gate and a builder's verification phase are the same resource, and "looks quiet" is not idle (a reading-phase builder reaches its own tests minutes later, inside the gate's window). Gates MAY overlap each other; builders are the blocker. Remember a `git commit` launches a gate you did not type, so enumerate live builders by `/proc/<pid>/cwd` before committing too. Take the exception deliberately and write down why, or HOLD. The conductor also holds its OWN heavy work (tsc/tests/smokes) while any gate runs. Verify by DRIVING the real user path. Keep the user's checkout synced to origin/main (clean ff after each landing; rebase their local doc commits on top when present). Report concisely, and run `date` before stamping a time — do not invent one.
 ```

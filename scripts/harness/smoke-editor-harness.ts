@@ -53,7 +53,7 @@ const repositoryRoot = process.cwd();
 
 const fixtureRoot = join(repositoryRoot, 'fixtures');
 
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-editor-harness-home-'));
+const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-harness-home-'));
 
 const statusPath = join(homeDirectory, 'status.json');
 

@@ -37,7 +37,7 @@
 
 set -uo pipefail
 
-REPOSITORY_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo /home/parallels/dev/tui-editor)"
+REPOSITORY_ROOT="$(git rev-parse --show-toplevel)"
 
 # A builder is a process whose CWD is inside .invar/worktrees/. Resolved through /proc, never through
 # argv: `pkill -f merge-gate.sh` once matched codex processes whose BRIEF TEXT said "do NOT run
