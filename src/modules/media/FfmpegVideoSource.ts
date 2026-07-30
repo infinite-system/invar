@@ -90,6 +90,7 @@ class $FfmpegVideoSource implements VideoFrameSource {
       '-hide_banner',
       '-loglevel',
       'error',
+      '-y',
       '-f',
       'lavfi',
       '-i',
