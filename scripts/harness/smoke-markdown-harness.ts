@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
-// Byte-level Markdown split-preview contract: task metadata line breaks, heading styles in both
-// themes, dead-link painting, the auto-opened LEFT preview, bidirectional user-led scroll sync and
-// its contributed switch, per-document hand-close memory, the contributed side setting, rendered
-// links, persisted splitter, edge-selection autoscroll/copy/paste, and independent source/preview
-// find all cross the real PTY.
+// Byte-level Markdown split-preview contract: task metadata line breaks, authored heading spacing
+// at both scales, heading styles in both themes, dead-link painting, the auto-opened LEFT preview,
+// bidirectional user-led scroll sync and its contributed switch, per-document hand-close memory,
+// the contributed side setting, rendered links, persisted splitter, edge-selection
+// autoscroll/copy/paste, and independent source/preview find all cross the real PTY.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -143,6 +143,18 @@ function previewHasMarker(
     const column = rowText.indexOf(marker, previewPosition.column);
     return column >= 0 && column < rightColumn;
   });
+}
+
+function previewBodyRowText(
+  snapshot: HarnessSnapshot.Model,
+  row: number,
+): string {
+  return snapshot
+    .rowText(row)
+    .slice(
+      previewBorder(snapshot).column + 1,
+      previewPaneRightColumn(snapshot),
+    );
 }
 
 function previewRowContaining(
@@ -416,15 +428,27 @@ async function driveTerminalShrinkAtScale(
     { length: fixtureLineCount },
     (_unusedValue, lineIndex) => {
       if (lineIndex === 0) return `# Scale fixture ${fixtureLineCount}`;
-      if (lineIndex === 1) return '[current scale link](README.md)';
-      if (lineIndex === 2 || lineIndex === 4 || lineIndex === 6) return '';
-      if (lineIndex === 3) return '[dead scale link](missing-scale.md)';
-      if (lineIndex === 5)
+      if (lineIndex === 1) return 'Before adjacent H2';
+      if (lineIndex === 2) return '## Adjacent H2';
+      if (lineIndex === 3) return 'Before spaced H3';
+      if (lineIndex === 4) return '';
+      if (lineIndex === 5) return '### Spaced H3';
+      if (lineIndex === 6) return 'Before adjacent H4';
+      if (lineIndex === 7) return '#### Adjacent H4';
+      if (lineIndex === 8) return 'Before spaced H5';
+      if (lineIndex === 9) return '';
+      if (lineIndex === 10) return '##### Spaced H5';
+      if (lineIndex === 11) return 'Before adjacent H6';
+      if (lineIndex === 12) return '###### Adjacent H6';
+      if (lineIndex === 13) return '[current scale link](README.md)';
+      if (lineIndex === 14 || lineIndex === 16 || lineIndex === 18) return '';
+      if (lineIndex === 15) return '[dead scale link](missing-scale.md)';
+      if (lineIndex === 17)
         return '[external scale link](https://example.com/docs)';
-      if (lineIndex === 7) return '| Left | Center | Right |';
-      if (lineIndex === 8) return '| :--- | :---: | ---: |';
-      if (lineIndex === 9) return '| alpha | middle | 7 |';
-      if (lineIndex === 10) return '';
+      if (lineIndex === 19) return '| Left | Center | Right |';
+      if (lineIndex === 20) return '| :--- | :---: | ---: |';
+      if (lineIndex === 21) return '| alpha | middle | 7 |';
+      if (lineIndex === 22) return '';
       if (lineIndex === jumpSourceLine) return `## [${jumpMarker}](README.md)`;
       const scrollMarker = scrollMarkerBySourceLine.get(lineIndex);
       return scrollMarker
@@ -602,6 +626,57 @@ async function driveTerminalShrinkAtScale(
     const externalScaleLink = previewMarkerPosition(
       dockConcealedSnapshot,
       'external scale link',
+    );
+    const topHeading = previewMarkerPosition(
+      dockConcealedSnapshot,
+      `Scale fixture ${fixtureLineCount}`,
+    );
+    const adjacentHeading2 = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'Adjacent H2',
+    );
+    const spacedHeading3 = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'Spaced H3',
+    );
+    const adjacentHeading4 = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'Adjacent H4',
+    );
+    const spacedHeading5 = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'Spaced H5',
+    );
+    const adjacentHeading6 = previewMarkerPosition(
+      dockConcealedSnapshot,
+      'Adjacent H6',
+    );
+    HarnessSmoke.Class.requireCondition(
+      topHeading.row === previewBorder(dockConcealedSnapshot).row + 1 &&
+        dockConcealedSnapshot
+          .rowText(adjacentHeading2.row - 1)
+          .includes('Before adjacent H2') &&
+        dockConcealedSnapshot
+          .rowText(adjacentHeading4.row - 1)
+          .includes('Before adjacent H4') &&
+        dockConcealedSnapshot
+          .rowText(adjacentHeading6.row - 1)
+          .includes('Before adjacent H6') &&
+        previewBodyRowText(
+          dockConcealedSnapshot,
+          spacedHeading3.row - 1,
+        ).trim() === '' &&
+        dockConcealedSnapshot
+          .rowText(spacedHeading3.row - 2)
+          .includes('Before spaced H3') &&
+        previewBodyRowText(
+          dockConcealedSnapshot,
+          spacedHeading5.row - 1,
+        ).trim() === '' &&
+        dockConcealedSnapshot
+          .rowText(spacedHeading5.row - 2)
+          .includes('Before spaced H5'),
+      `${fixtureLineCount}-line preview keeps only authored heading gaps across H1 through H6`,
     );
     HarnessSmoke.Class.requireCondition(
       dockConcealedSnapshot.cell(currentScaleLink.row, currentScaleLink.column)

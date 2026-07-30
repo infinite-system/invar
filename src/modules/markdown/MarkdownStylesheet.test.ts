@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test';
 import { join } from 'node:path';
+import { MarkdownParser } from './MarkdownParser';
 import { MarkdownStylesheet } from './MarkdownStylesheet';
 
 // invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
@@ -19,6 +20,24 @@ test('margins collapse CSS-style between adjacent blocks', () => {
   );
   expect(stylesheet.spacingBetween('listItem', null)).toBe(0);
   expect(stylesheet.spacingBetween(null, null)).toBe(0);
+});
+
+test('heading starts preserve authored gaps without synthetic rows', () => {
+  const stylesheet = MarkdownStylesheet.Class;
+  const parser = new MarkdownParser.Class();
+  for (let level = 1; level <= 6; level++) {
+    const prefix = '#'.repeat(level);
+    const adjacentBlocks = parser.parse(`Before\n${prefix} Heading`).blocks;
+    const spacedBlocks = parser.parse(`Before\n\n${prefix} Heading`).blocks;
+    const topHeading = parser.parse(`${prefix} Heading`).blocks[0]!;
+    expect(
+      stylesheet.spacingBetweenBlocks(adjacentBlocks[0]!, adjacentBlocks[1]!),
+    ).toBe(0);
+    expect(
+      stylesheet.spacingBetweenBlocks(spacedBlocks[0]!, spacedBlocks[1]!),
+    ).toBe(1);
+    expect(stylesheet.spacingBetweenBlocks(null, topHeading)).toBe(0);
+  }
 });
 
 test('row selectors resolve every role and heading level', () => {

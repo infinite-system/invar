@@ -195,6 +195,25 @@ class $MarkdownStylesheet {
     );
   }
 
+  /** Blank rows between parsed blocks. Heading starts follow the source gap exactly instead of
+   *  inheriting a synthetic CSS margin; every other block pair keeps the stylesheet margins. */
+  static spacingBetweenBlocks(
+    previousBlock: BlockRecord | null,
+    nextBlock: BlockRecord | null,
+  ): number {
+    if (nextBlock?.kind === 'heading') {
+      if (previousBlock === null) return 0;
+      return Math.max(
+        0,
+        nextBlock.range.startLine - previousBlock.range.endLine,
+      );
+    }
+    return this.spacingBetween(
+      previousBlock === null ? null : this.blockSelector(previousBlock),
+      nextBlock === null ? null : this.blockSelector(nextBlock),
+    );
+  }
+
   static listIndentText(level: number | undefined): string {
     const depth = Math.max(0, (level ?? 1) - 1);
     return ' '.repeat(depth * this.$vocabulary.listIndentPerLevel);
