@@ -89,7 +89,10 @@ WAIT FOR USER: #241 #242; capsule HELD.
 
 WATCHERS (re-arm from ~/dev/invar, ONE each):
   Monitor(command: "cd /home/parallels/dev/invar && bash scripts/fleet/fleet-watch.sh", persistent: true)
-  CronCreate(cron: "7,37 * * * *", prompt: "/loop keep going till all tasks are done", recurring: true)
+  (cron: NONE by default. The user disarmed the "/loop keep going till all tasks
+  are done" cron on 2026-07-30 and directed that it must NOT re-arm on cold start.
+  fleet-watch events are the wake signal. Arm the conductor skill's :07/:37
+  doctrine pair ONLY if the user asks for autonomous pacing again.)
 fleet-watch now: CTX speedometer on every event batch, CHECKPOINT at 85% (ANCHOR
 PROTOCOL = family 0 project.conductor.md + top of conductor skill), content-keyed READY
 stamps (rewritten reports re-fire), steer.sh treats [Pasted Content] chips as composer
