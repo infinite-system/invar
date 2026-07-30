@@ -10,7 +10,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
 
-## USER-DIRECTED (17)
+## USER-DIRECTED (18)
+- #412 [monitoring-lsp-cpu-profile](.invar/tasks/active/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)

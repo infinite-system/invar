@@ -19,3 +19,13 @@ the #214/#359/#385 family. Fix the MACHINERY, not the smokes: measure
 pool-width vs starvation rate, consider deadline-aware scheduling or a
 lower default worker count, and make the retry tally a first-class gate
 output the conductor reads at every landing.
+
+## Evidence addendum (2026-07-30 ~18:5x, #393 bycatch)
+
+smoke-terminal-stage-harness failed its tool-result expansion wait twice
+in one gate and once standalone on the #393 branch, then passed
+unchanged on current main, standalone on the branch, and in the next
+full gate (all 66 jobs, no retry). Builder changed no timeout or code.
+Same retry-green shape as the rest of the family. Also: the
+behavioral-contract serial step needed its permitted retry in the
+green gate.
