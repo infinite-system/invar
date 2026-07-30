@@ -1,6 +1,6 @@
 # #344 — breadcrumb hover highlights the segment with one-cell side padding
 
-State: IN-PROGRESS
+State: COMPLETED — dc30d875 — breadcrumb hover highlight + one-cell pads; #369/#370 from bycatch
 Priority: user-directed
 Engine: claude
 Environment: linux
