@@ -6,15 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/in-progress/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)  [building]
   `tmux attach -t invar/343-tasks-activity-icon-and-live-loader`
-- #337 [plugin-manifest-structure-scrollbar-intermittent](.invar/tasks/in-progress/337-plugin-manifest-structure-scrollbar-intermittent/task-337-plugin-manifest-structure-scrollbar-intermittent.md)  [building]
-  `tmux attach -t invar/337-plugin-manifest-structure-scrollbar-intermittent`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (15)
+## USER-DIRECTED (17)
+- #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
 - #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)
 - #356 [agent-pane-is-a-decoupled-module](.invar/tasks/active/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)
 - #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/active/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)
@@ -30,8 +29,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
+- #90 [harness-diagnostic-provenance-guard](.invar/tasks/active/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)
 
 ## VERIFICATION-INTEGRITY (20)
+- #362 [markdown-harness-ordinal-drive-and-preview-clipping](.invar/tasks/active/362-markdown-harness-ordinal-drive-and-preview-clipping/task-362-markdown-harness-ordinal-drive-and-preview-clipping.md)
 - #332 [smoke-tabs-hardcoded-close-glyph](.invar/tasks/active/332-smoke-tabs-hardcoded-close-glyph/task-332-smoke-tabs-hardcoded-close-glyph.md)  [active]
 - #269 [smokes-assume-editor-geometry-sweep](.invar/tasks/active/269-smokes-assume-editor-geometry-sweep/task-269-smokes-assume-editor-geometry-sweep.md)
 - #261 [drive-harness-drops-shifted-control-chords](.invar/tasks/active/261-drive-harness-drops-shifted-control-chords/task-261-drive-harness-drops-shifted-control-chords.md)
@@ -50,10 +51,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #179 [gate-compares-numbers-to-itself](.invar/tasks/active/179-gate-compares-numbers-to-itself/task-179-gate-compares-numbers-to-itself.md)  [ACTIVE — partially addressed; the general form is open]
 - #177 [gate-retry-ratchet-and-floor](.invar/tasks/active/177-gate-retry-ratchet-and-floor/task-177-gate-retry-ratchet-and-floor.md)  [ACTIVE — needs 3–5 clean gates before the ratchet can tighten]
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
-- #90 [harness-diagnostic-provenance-guard](.invar/tasks/active/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (20)
+## FLAKE-EVIDENCE (21)
+- #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
 - #360 [agent-engine-switch-pool-load-flake](.invar/tasks/active/360-agent-engine-switch-pool-load-flake/task-360-agent-engine-switch-pool-load-flake.md)
 - #359 [panel-split-agent-terminal-order-intermittent](.invar/tasks/active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md)
 - #260 [first-click-of-a-session-lands-nowhere](.invar/tasks/active/260-first-click-of-a-session-lands-nowhere/task-260-first-click-of-a-session-lands-nowhere.md)
@@ -86,7 +87,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (18)
+## ARCHITECTURE-HYGIENE (19)
+- #363 [settings-row-walker-shared-generator](.invar/tasks/active/363-settings-row-walker-shared-generator/task-363-settings-row-walker-shared-generator.md)
 - #358 [media-status-scene-key-and-fake-ffmpeg-header](.invar/tasks/active/358-media-status-scene-key-and-fake-ffmpeg-header/task-358-media-status-scene-key-and-fake-ffmpeg-header.md)
 - #355 [quick-open-parallel-bounded-list-generator](.invar/tasks/active/355-quick-open-parallel-bounded-list-generator/task-355-quick-open-parallel-bounded-list-generator.md)
 - #353 [harness-contract-omits-folder-open-suppression](.invar/tasks/active/353-harness-contract-omits-folder-open-suppression/task-353-harness-contract-omits-folder-open-suppression.md)
@@ -110,12 +112,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 120 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 121 — full log: project.tasks-completed.md)
 - #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #350 [nicer-generated-sample-video](.invar/tasks/completed/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md) — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/completed/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md) — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
 - #340 [file-tree-reveals-open-file](.invar/tasks/completed/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md) — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
 - #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/completed/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md) — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate
+- #337 [plugin-manifest-structure-scrollbar-intermittent](.invar/tasks/completed/337-plugin-manifest-structure-scrollbar-intermittent/task-337-plugin-manifest-structure-scrollbar-intermittent.md) — 64ca4df5 — ordinal settings drive repaired to label walks; gate red root-caused to #340's contributed row
 - #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/completed/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md) — eaf04d09 — video -y fix; combined-tree red proven pre-existing (#334)
 - #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/completed/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md) — 359ca6da — both gate intermittents were instrument defects; smokes repaired, hook gate ALL-PASS
 - #334 [structure-pane-no-file-open-transient](.invar/tasks/completed/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md) — b4695e2f — gate-blocking Drive red fixed; re-gate red is #214's pre-existing class
@@ -125,4 +128,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #324 [terminal-3d-demo-and-video-playback](.invar/tasks/completed/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md) — f9394d58 — removable Animated Media plugin: cube/torus/video, flyweight+two-buffer+memory-flat proven, ffmpeg both polarities, removal build green
 - #323 [quit-confirmation-dialog-modern](.invar/tasks/completed/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md) — e8e57083 — Quit now asks: one modal confirmation behind Ctrl+Q/Cmd+Q/F10/Quit at the shared overlay seam; No default, Yes the only shutdown path, negative answers keep dirty state; harness teardown bypasses via INVAR_HARNESS_DIRECT_QUIT with two-way positive control.
 - #322 [status-editor-column-content-stale-in-preview](.invar/tasks/completed/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md) — 0f871cbc — status/editor columns read the shared projection seam; combined-tree gate green
-- #321 [terminal-flicker-child-tui-repaints](.invar/tasks/completed/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md) — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)

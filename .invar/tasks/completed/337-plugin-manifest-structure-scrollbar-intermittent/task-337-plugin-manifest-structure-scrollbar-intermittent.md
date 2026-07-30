@@ -1,6 +1,6 @@
 # #337 — plugin-manifest smoke: structure scrollbar settled-geometry intermittent
 
-State: IN-PROGRESS
+State: COMPLETED — 64ca4df5 — ordinal settings drive repaired to label walks; gate red root-caused to #340's contributed row
 Priority: verification-integrity
 Engine: claude
 Environment: linux
@@ -35,7 +35,7 @@ appended to `.perf-history/gate-retries.ndjson`.
 ## Evidence pointers
 
 - #335 report, Bycatch section
-  ([report](../../in-progress/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/report-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md)
+  ([report](../../completed/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/report-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md)
   — path valid pre-landing; after landing the folder moves to completed/).
 - `.perf-history/gate-retries.ndjson` in the #335 worktree/branch — the
   recorded retry.
