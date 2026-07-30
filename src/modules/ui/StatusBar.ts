@@ -324,14 +324,18 @@ class $StatusBar {
     );
   }
   protected renderStatus(focusedSurfaceTitle: string | null): string {
-    return this.deps.statusBarSegments
-      .segments({
+    return StatusBar.Class.composeStatusText(
+      this.deps.statusBarSegments.segments({
         workspaceSet: this.deps.workspaceSet,
         app: this.deps.app,
         primaryDockHost: this.deps.primaryDockHost,
         focusedSurfaceTitle,
-      })
-      .join('  ·  ');
+      }),
+    );
+  }
+  /** One left-margin authority for every ordered status contribution. */
+  static composeStatusText(segments: readonly string[]): string {
+    return segments.length > 0 ? ` ${segments.join('  ·  ')}` : '';
   }
   /** Re-sync the bar from the model each frame. `focusedSurfaceTitle` is the mounted editor
    *  surface's own answer, which RootView reads. */

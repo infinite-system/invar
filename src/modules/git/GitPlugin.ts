@@ -188,6 +188,7 @@ class $GitPlugin
     const segments: string[] = [];
     const blame = workspace.activeLineBlame;
     if (blame) {
+      const userIcon = this.application?.theme.glyph('statusUser') ?? '@';
       const when = blame.uncommitted
         ? 'uncommitted'
         : RelativeTime.Class.format(blame.authorTimeMs, Date.now());
@@ -197,8 +198,8 @@ class $GitPlugin
           : blame.summary;
       segments.push(
         summary
-          ? `${blame.author} · ${when} · ${summary}`
-          : `${blame.author} · ${when}`,
+          ? `${userIcon} ${blame.author} · ${when} · ${summary}`
+          : `${userIcon} ${blame.author} · ${when}`,
       );
     }
     if (

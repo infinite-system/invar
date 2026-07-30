@@ -9,7 +9,7 @@ class $CoreStatusBarSegments {
   static segments(context: StatusBarSegmentContext): readonly string[] {
     const workspace = context.workspaceSet.active;
     const editor = workspace.editor;
-    const segments: string[] = [` ${workspace.name.value || '—'}`];
+    const segments: string[] = [workspace.name.value || '—'];
     if (editor.hasDocument.value) {
       segments.push(editor.title);
       segments.push(

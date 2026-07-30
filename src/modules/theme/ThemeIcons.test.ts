@@ -88,6 +88,26 @@ test('right dock affordance has one cell at every glyph tier', () => {
   }
 });
 
+test('status author and agent affordances use tiered one-cell marks', () => {
+  expect(ThemeIcons.Class.glyphFor('nerd', 'statusUser')).toBe('\u{f007}');
+  expect(ThemeIcons.Class.glyphFor('unicode', 'statusUser')).toBe('♙');
+  expect(ThemeIcons.Class.glyphFor('ascii', 'statusUser')).toBe('@');
+  expect(ThemeIcons.Class.agentIconFor('nerd')).toBe('\u{f0d0}');
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    expect(
+      TextCoordinates.Class.lineWidth(
+        ThemeIcons.Class.glyphFor(level, 'statusUser'),
+      ),
+    ).toBe(1);
+    expect(
+      TextCoordinates.Class.lineWidth(ThemeIcons.Class.agentIconFor(level)),
+    ).toBe(1);
+  }
+  expect(ThemeIcons.Class.markOwnersFor('♙')).toEqual([
+    'the status-bar current-line author',
+  ]);
+});
+
 test('unicode icon set resolves known extension and falls back for unknown', () => {
   const unicodeSymbolMarks = ThemeIcons.Class.symbolMarksFor('unicode');
   expect(ThemeIcons.Class.iconFor('unicode', 'main.ts', false)).toBe('◆');

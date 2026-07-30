@@ -46,17 +46,20 @@ a FrameProbe check that rendered-row count stays bounded while wheel-scrolling a
 ### Status text is assembled from ordered contributions
 
 **Invariant:** If text appears in the status bar, then it comes from an ordered
-`StatusBarSegmentContribution`; the status host joins segments without naming their domains.
+`StatusBarSegmentContribution`; the status host joins segments without naming their domains and
+owns the row's one-cell left margin.
 
 **Scope:** `StatusBarSegments`, `CoreStatusBarSegments`, the source-control blame segment, and
 `StatusBar`.
 
 **Mechanism:** Core registers its ordinary workspace/editor segments and plugins register their
-segments during application activation. `StatusBar` supplies a generic context and joins the
-registry result.
+segments during application activation. `StatusBar` supplies a generic context, joins the registry
+result, and prefixes one space. Segments carry no private leading margin. The source-control blame
+segment starts with the tiered `statusUser` glyph, one space, then its author and date.
 
 **Generates:** Existing non-plugin status text and plugin-owned blame text through one projection
-surface.
+surface; project and author rows aligned by one margin authority; icon, space, and author cells
+that stay stable across glyph tiers.
 
 **Evidence:** `StatusBarSegments.ts`; `CoreStatusBarSegments.ts`; `StatusBar.ts`;
 `GitPlugin.ts` `segments`.
