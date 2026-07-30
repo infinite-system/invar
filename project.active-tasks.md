@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/in-progress/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md)  [building]
+  `tmux attach -t invar/380-idle-cpu-fifteen-to-twentyfive-percent`
 - #375 [tasks-live-attach-icon-invisible](.invar/tasks/in-progress/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md)  [building]
   `tmux attach -t invar/375-tasks-live-attach-icon-invisible`
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/in-progress/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)  [building]

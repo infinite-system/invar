@@ -1,6 +1,6 @@
 # #380 — an idle Invar instance burns 15-25 percent CPU
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux

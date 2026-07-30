@@ -1,0 +1,15 @@
+{
+  "task": 380,
+  "slug": "idle-cpu-fifteen-to-twentyfive-percent",
+  "branch": "fleet/380-idle-cpu-fifteen-to-twentyfive-percent",
+  "worktree": ".invar/worktrees/380-idle-cpu-fifteen-to-twentyfive-percent",
+  "tmuxSession": "invar/380-idle-cpu-fifteen-to-twentyfive-percent",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-380-idle-cpu-fifteen-to-twentyfive-percent.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "063d00bf07af8c1d5c9610cbc70d7998b305ebde",
+  "startedAt": "2026-07-30T11:07:00-04:00"
+}
