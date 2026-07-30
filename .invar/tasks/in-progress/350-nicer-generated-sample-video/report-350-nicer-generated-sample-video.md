@@ -129,7 +129,56 @@ Positive controls, both run:
 | `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` | 1217 annotations resolved, 0 problems |
 | `bun run typecheck` | exit 0, no errors |
 
-Gate verdict chain: recorded at the end of this report, from the commit hook.
+Gate verdict chain: recorded in the section below, read out of the commit
+hook's own output.
+
+## Gate verdict chain — RED, and the commit is BLOCKED
+
+`git commit -F /tmp/commit-350-message.txt`, no `SKIP_GATE`. The pre-commit
+hook ran the full merge-gate. Total 7m41s. Verbatim tail:
+
+```
+merge-gate: FAILURES — commit/merge BLOCKED
+merge-gate: this run's failure logs: /tmp/merge-gate-failures.114250
+GATE_EXIT=1
+pre-commit: merge-gate RED — commit BLOCKED. Fix the gate or SKIP_GATE=1 to override.
+COMMIT_EXIT=1
+```
+
+So `git status` is NOT clean: the work is staged and unommitted, because the
+hook refused the commit. No `SKIP_GATE` was used, and none will be.
+
+The media steps of the gate were green:
+`OK    smoke: animated-media harness` (0m14.713s).
+
+### The three reds, and whether they are mine
+
+None of the three is in the media module, and none is one of the two known
+classes the brief named (#214 (panel-chrome Terminal-2-list-close) and #337
+(structure-outline timeouts)). Each was re-run on this machine, and each was
+also re-run with my three changed files stashed, so the tree was the
+UNCHANGED base. Results:
+
+| red step | with my changes | on the base tree | reading |
+|---|---|---|---|
+| `smoke: panel-split harness` | 1 pass, 3 fail of 4 | 3 pass, 1 fail of 4 | Intermittent, and it fails on the base tree too. Same assertion both sides: `Timed out waiting for status condition: status.panelContentOrder.join(',') === 'agent,terminal' && status.panelCellIds.join(',') === 'agent,terminal'`. |
+| `behavioral-contracts (felt invariants)` — its `plugin manifest drive` step | fail | fail | Deterministic and PRE-EXISTING. `bash scripts/smoke-plugin-manifest.sh` fails the same way with and without my diff: `Timed out waiting for the first Git setting is selected`. |
+| `smoke: agent-engine-switch harness` | pass on its own | not needed | Load flake inside the 6-worker pool. Standalone it passes. In the pool it failed with `FAIL Codex-provider boot has no frozen Claude identity`. |
+
+The gate's own retry tally supports the load reading: `smoke: scrollbars
+harness` and `smoke: panel-chrome harness` PASSED ONLY ON RETRY in the same
+run, which is the #214 class flaking again.
+
+My diff cannot reach any of them. It changes one lavfi argument string, one
+unit assertion, and the fake ffmpeg inside the media smoke.
+`FfmpegVideoSource` is constructed only when a media video pane opens, which
+none of these three smokes does.
+
+This is a BLOCKER, reported rather than worked around. The commit needs
+either a green gate or a conductor decision. I did not touch the failing
+subsystems: panel-split, the plugin manifest settings drive, and the agent
+provider identity all belong to other tasks, and fixing them from here would
+be scope creep in three directions at once.
 
 ## Invariants answered
 
@@ -196,7 +245,23 @@ now carried only by a unit assertion and a comment.
    is `"video"`. The key names a 3D demo scene that is not running. Suspect a
    default that is published unconditionally rather than per mode. Not chased.
 
-4. **Comment drift — the fake ffmpeg header in the media smoke.** Its header
+4. **Runtime defect — `scripts/smoke-plugin-manifest.sh` is red on the base
+   tree.** Reproduced twice, once with my changes stashed:
+   `error: Timed out waiting for the first Git setting is selected at
+   /tmp/tui-plugin-manifest-home-*/status.json`. It is deterministic, not a
+   flake, and it blocks `behavioral-contracts` and therefore every commit on
+   this branch. It is not #214 (panel-chrome Terminal-2-list-close) and not
+   #337 (structure-outline timeouts), so it is a third pre-existing red the
+   fleet does not yet track.
+
+5. **Flake — `smoke-panel-split-harness` times out on its content-order
+   status.** 1 failure in 4 runs on the base tree, 3 in 4 with my unrelated
+   diff present, always the same wait:
+   `status.panelContentOrder.join(',') === 'agent,terminal'`. A wait that
+   fails on one run and passes on the next is the class convention 7 rules
+   out; the wait or the code under it is wrong.
+
+6. **Comment drift — the fake ffmpeg header in the media smoke.** Its header
    says it "emits deterministic raw RGBA frames"; it also implements the
    `-y` overwrite refusal from #336 (video playback ffmpeg overwrite flag),
    which the header never mentions. Small, and left alone because the file is
