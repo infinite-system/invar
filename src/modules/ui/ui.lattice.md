@@ -92,7 +92,7 @@ Renderables hold no model state
   │     └─► Indent guides mark leading whitespace without shifting columns
   ├─► The selected range renders with a background
   │     └─► A scrollable text surface is drag-selectable with edge auto-scroll
-  └─► Selection is item-anchored click-set keyboard-moved and stays
+  └─► Selection stays anchored to an item
 
 Status text is assembled from ordered contributions
   - - the status bar instance of "the host names no domain"
@@ -242,9 +242,9 @@ every body-painting record below stands on it:
 - [The selected range renders with a background][selection-background] keeps the model the only
   selection writer. [A scrollable text surface is drag-selectable with edge auto-scroll][drag-select]
   stands on it and on [one-writer]: the drag's own scroll is that frame's sole writer.
-- [Selection is item-anchored click-set keyboard-moved and stays][list-selection] is the same
-  discipline for lists. Selection, hover, and scroll are three separate states, and only click and
-  the keyboard write the first.
+- [Selection stays anchored to an item][list-selection] is the same discipline for lists.
+  Selection, hover, and scroll are three separate states. Click, keyboard movement, and the
+  file-tree active-document reveal target an item before they write selection.
 
 **The host names no domain.** [Status text is assembled from ordered
 contributions][status-segments] is the status-bar instance of the shape that [panel-projection],
@@ -508,7 +508,7 @@ questions from it.
 [scrollbar-track]: ui.invariants.md#a-scrollbar-track-is-derived-per-frame-from-its-region-rect
 [overview]: ui.invariants.md#the-editor-overview-derives-from-the-decoration-snapshot
 [solid-thumb]: ui.invariants.md#one-scrollbar-painter-gives-each-axis-equal-visual-weight
-[list-selection]: ui.invariants.md#selection-is-item-anchored-click-set-keyboard-moved-and-stays
+[list-selection]: ui.invariants.md#selection-stays-anchored-to-an-item
 [diagnostics]: ui.invariants.md#ts-diagnostics-render-as-an-underline-and-overview-mark
 [settings-reveal]: ui.invariants.md#settings-selection-stays-inside-its-viewport
 [settings-mouse]: ui.invariants.md#settings-are-editable-by-mouse-per-widget-kind

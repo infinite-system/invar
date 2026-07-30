@@ -3,13 +3,14 @@ import type { Settings } from '../settings/Settings';
 import type { Workspace } from '../workspace/Workspace';
 import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
 import { FileTree } from './FileTree';
-import type { Ref } from 'vue';
+import { ref, type Ref } from 'vue';
 
 // invariant: The file tree costs only what is expanded and visible (src/modules/filetree/filetree.invariants.md)
 class $FileTreeWorkspace implements WorkspaceContribution {
   constructor(
     readonly workspace: Workspace.Model,
     protected readonly showHiddenFiles?: Readonly<Ref<boolean>>,
+    protected readonly revealOpenFile: Readonly<Ref<boolean>> = ref(true),
   ) {
     this.tree = this.createTree();
   }
@@ -36,6 +37,21 @@ class $FileTreeWorkspace implements WorkspaceContribution {
   resumed(): void {}
 
   disposed(): void {}
+
+  // invariant: The tree reveal follows the active file (src/modules/filetree/filetree.invariants.md)
+  documentBecameActive(path: string): void {
+    if (this.revealOpenFile.value) this.revealFile(path);
+  }
+
+  revealActiveFile(): boolean {
+    const path = this.workspace.activeDocumentHandle?.path;
+    return path ? this.revealFile(path) : false;
+  }
+
+  protected revealFile(path: string): boolean {
+    this.haltVerticalScroll();
+    return this.tree.revealPath(path);
+  }
 
   protected get flingMomentum(): MomentumOptions {
     const settings = this.settingsSource;

@@ -1921,16 +1921,15 @@ scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-termina
 
 **Last refined:** 2026-07-29
 
-### Selection is item-anchored click-set keyboard-moved and stays
+### Selection stays anchored to an item
 
 **Invariant:** In every selectable list — the file tree, git changes/staging, the commit log, stashes,
-and any future list — the SELECTION is persistent state anchored to an ITEM, mutated ONLY by a click
-(sets it) and the keyboard (moves it while the list is focused). It is independent of the mouse HOVER (a
-separate transient highlight, never selection truth) and of the SCROLL position (scrolling the list never
-changes what is selected). The selected item stays HIGHLIGHTED even when its pane is not focused (dimmed
-when unfocused, full when focused), so the selection is always visible and the keyboard resumes from it
-when the pane regains focus. Opening a FILE additionally moves keyboard focus to the editor (the settled
-focus decision) — but that neither moves nor clears the list's selection.
+and any future list — the SELECTION is persistent state anchored to an ITEM. A click sets it, the
+keyboard moves it while the list is focused, and the file tree follows a newly active workspace file.
+It is independent of mouse HOVER, which is a separate transient highlight, and of the SCROLL position.
+The selected item stays HIGHLIGHTED when its pane is not focused. It dims while unfocused, returns to
+full intensity when focused, and gives the keyboard its next movement anchor. Opening a FILE moves
+keyboard focus to the editor, but that does not clear the list selection.
 
 **Scope:** file tree, git changes/staging, git commit log, git stashes, and any future selectable list.
 
@@ -1939,30 +1938,33 @@ focus decision) — but that neither moves nor clears the list's selection.
 `TreePaneRenderer.render` and `GitPaneRenderer.render` always project selection, using
 `palette.selection` while each region owns keyboard focus and `palette.cursorLine` otherwise;
 `GitPanel.setChangesSelection`/`setLogSelection` leave scroll untouched while keyboard movement
-minimally reveals through the pane's live viewport height.
+minimally reveals through the pane's live viewport height. `FileTree.revealPath` expands only the
+active file's ancestors, selects its row, and minimally reveals it.
 
 **Generates:** click → set selection (+ open/focus-editor for a file); ↑/↓ while focused → move
-selection + reveal; wheel/scrollbar → move viewport only; hover → transient highlight only; blur →
-selection stays, highlight dims.
+selection + reveal; active workspace file → select and reveal its tree row; wheel/scrollbar → move
+viewport only; hover → transient highlight only; blur → selection stays, highlight dims.
 
 **Evidence:** `src/modules/filetree/TreePaneRenderer.ts` and
 `src/modules/git/GitPaneRenderer.ts` (selection paint);
+`src/modules/filetree/FileTree.ts` (`revealPath`);
 `src/modules/filetree/FileTreePaneContent.ts` and `src/modules/git/GitPaneContent.ts` (click, hover,
 and scroll handlers); `src/modules/git/GitPanel.ts` selection setters and movers;
 `src/modules/git/GitPanel.test.ts`; `scripts/smoke-selection.sh`, hard-wired in
 `scripts/merge-gate.sh`, drives tree, changes, and commit-log click/hover/wheel/blur/refocus paths and
 asserts full/dim backgrounds through FrameProbe.
 
-**Impossible if true:** selection following the mouse hover or the scroll position; a clicked selection
-vanishing on scroll or on losing focus; a list where click selects but the keyboard cannot move from
-there; different list panes disagreeing on the selection model.
+**Impossible if true:** selection following mouse hover or scroll position; a clicked selection
+vanishing on scroll or focus loss; a list where click selects but the keyboard cannot move from there;
+an active visible workspace file whose tree selection stays on another item.
 
 **Verification:** `bun test src/modules/git/GitPanel.test.ts
-src/modules/filetree/FileTree.scroll.test.ts && bash scripts/smoke-selection.sh`
+src/modules/filetree/FileTree.scroll.test.ts src/modules/filetree/FileTree.test.ts && bash
+scripts/smoke-selection.sh && bun scripts/harness/smoke-tree-scroll-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### TS diagnostics render as an underline and overview mark
 

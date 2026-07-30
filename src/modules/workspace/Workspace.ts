@@ -217,7 +217,7 @@ class $Workspace {
         if (view) handle.attach(view.document);
         this.documentLifecycle.opened(handle);
       },
-      becameActive: (handle) => this.documentLifecycle.becameActive(handle),
+      becameActive: (handle) => this.documentBecameActive(handle),
       closed: (handle, buffer) => {
         this.documentLifecycle.closed(handle);
         const view = this.viewsByLiveBuffer.get(buffer);
@@ -230,6 +230,13 @@ class $Workspace {
     identifier: string,
   ): Provider | null {
     return this.providers.resolve<Provider>(identifier);
+  }
+
+  protected documentBecameActive(handle: DocumentHandle.Model): void {
+    this.documentLifecycle.becameActive(handle);
+    for (const contribution of this.contributions) {
+      contribution.documentBecameActive?.(handle.path);
+    }
   }
 
   protected get languageProvider(): LanguageProvider | null {

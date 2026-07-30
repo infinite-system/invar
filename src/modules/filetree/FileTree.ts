@@ -26,7 +26,7 @@ class $FileTree {
     return ref(0);
   }
   // The currently highlighted row index in the flattened view.
-  // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
+  // invariant: Selection stays anchored to an item (src/modules/ui/ui.invariants.md)
   get selectedIndex() {
     return ref(0);
   }
@@ -183,6 +183,43 @@ class $FileTree {
     if (index < this.scrollTop.value) this.scrollTop.value = index;
     else if (index >= this.scrollTop.value + height)
       this.scrollTop.value = index - height + 1;
+  }
+
+  // invariant: The tree reveal follows the active file (src/modules/filetree/filetree.invariants.md)
+  revealPath(path: string): boolean {
+    const confinedPath = Files.Class.confineToRoot(this.root, path);
+    if (!confinedPath || confinedPath === this.root) return false;
+    const relativePath = Files.Class.relative(this.root, confinedPath);
+    if (
+      !this.showHiddenFiles.value &&
+      relativePath
+        .split(/[\\/]/)
+        .some((pathSegment) => pathSegment.startsWith('.'))
+    ) {
+      return false;
+    }
+
+    const ancestorPaths: string[] = [];
+    let ancestorPath = Files.Class.dirname(confinedPath);
+    while (ancestorPath !== this.root) {
+      const confinedAncestor = Files.Class.confineToRoot(
+        this.root,
+        ancestorPath,
+      );
+      if (!confinedAncestor) return false;
+      ancestorPaths.unshift(confinedAncestor);
+      ancestorPath = Files.Class.dirname(confinedAncestor);
+    }
+    for (const pathToExpand of ancestorPaths) {
+      this.expanded.add(pathToExpand);
+    }
+    this.recompute();
+
+    const rowIndex = this.rows.findIndex((row) => row.path === confinedPath);
+    if (rowIndex < 0) return false;
+    this.selectedIndex.value = rowIndex;
+    this.revealSelection();
+    return true;
   }
 
   moveSelection(delta: number): void {

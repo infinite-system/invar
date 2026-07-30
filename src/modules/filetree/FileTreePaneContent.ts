@@ -1,6 +1,6 @@
-import type { KeyEvent, StyledText } from '@opentui/core';
+import { StyledText, fg, type KeyEvent } from '@opentui/core';
 import { Reactive } from 'ivue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type {
   PaneContent,
@@ -8,15 +8,26 @@ import type {
 } from '../ui/PaneContent.interface';
 import type { FileTreeWorkspace } from './FileTreeWorkspace';
 import { TreePaneRenderer } from './TreePaneRenderer';
+import {
+  FileTreeHeaderRow,
+  type FileTreeHeaderProjection,
+} from './FileTreeHeaderRow';
 
 // invariant: The file tree is a pane content citizen (src/modules/ui/ui.invariants.md)
 // invariant: The file tree costs only what is expanded and visible (src/modules/filetree/filetree.invariants.md)
-// invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
+// invariant: Selection stays anchored to an item (src/modules/ui/ui.invariants.md)
+// invariant: File tree controls share paint and hit geometry (src/modules/filetree/filetree.invariants.md)
 class $FileTreePaneContent implements PaneContent {
   constructor(
     protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => FileTreeWorkspace.Model,
   ) {}
+
+  protected headerProjection: FileTreeHeaderProjection | null = null;
+
+  get hoveredHeaderAction() {
+    return ref<string | null>(null);
+  }
 
   get id(): string {
     return 'files';
@@ -61,13 +72,26 @@ class $FileTreePaneContent implements PaneContent {
       tree.scrollLeft.value,
       tree.viewportHeight.value,
       tree.viewportWidth.value,
+      this.hoveredHeaderAction.value,
     ].join(':');
   }
 
   render(context: PaneRenderContext): StyledText {
     const tree = this.activeWorkspace().tree;
     const innerWidth = Math.max(1, context.width);
-    return TreePaneRenderer.Class.render({
+    this.headerProjection = FileTreeHeaderRow.Class.project({
+      width: innerWidth,
+      buttons: [
+        {
+          action: 'revealOpenFile',
+          glyph: this.application.theme.glyph('fileTreeReveal'),
+          tooltip: 'Reveal open file',
+        },
+      ],
+      hoveredAction: this.hoveredHeaderAction.value,
+      palette: context.palette,
+    });
+    const treeText = TreePaneRenderer.Class.render({
       tree,
       filesFocused:
         this.application.workspaceSet.active.focus.value === 'primaryPane' &&
@@ -75,11 +99,17 @@ class $FileTreePaneContent implements PaneContent {
       palette: context.palette,
       icon: (name, isDirectory, expanded) =>
         this.application.theme.icon(name, isDirectory, expanded),
-      height: Math.max(1, context.height),
+      height: Math.max(0, context.height - 1),
       innerWidth,
       viewportWidth: Math.max(1, innerWidth - this.scrollbarThicknessCells),
       windowTop: tree.windowTop(),
     });
+    if (context.height <= 1) return this.headerProjection.text;
+    return new StyledText([
+      ...this.headerProjection.text.chunks,
+      fg(context.palette.fg)('\n'),
+      ...treeText.chunks,
+    ]);
   }
 
   handleKey(_key: KeyEvent): boolean {
@@ -100,21 +130,54 @@ class $FileTreePaneContent implements PaneContent {
 
   onPointerMove(_column: number, row: number): boolean {
     const tree = this.activeWorkspace().tree;
-    const rowIndex = tree.windowTop() + row;
+    if (row === 0) {
+      this.hoveredHeaderAction.value =
+        (this.headerProjection
+          ? FileTreeHeaderRow.Class.buttonAtColumn(
+              this.headerProjection,
+              _column,
+            )?.action
+          : null) ?? null;
+      tree.hoveredIndex.value = -1;
+      return true;
+    }
+    this.hoveredHeaderAction.value = null;
+    const rowIndex = tree.windowTop() + row - 1;
     tree.hoveredIndex.value =
       rowIndex >= 0 && rowIndex < tree.rows.length ? rowIndex : -1;
     return true;
   }
 
   onPointerOut(): void {
+    this.hoveredHeaderAction.value = null;
     this.activeWorkspace().tree.hoveredIndex.value = -1;
   }
 
-  onPointerDown(_column: number, row: number): boolean {
+  tooltipAt(column: number, row: number): string | null {
+    if (row !== 0 || !this.headerProjection) return null;
+    return (
+      FileTreeHeaderRow.Class.buttonAtColumn(this.headerProjection, column)
+        ?.tooltip ?? null
+    );
+  }
+
+  onPointerDown(column: number, row: number): boolean {
     const workspace = this.activeWorkspace();
+    if (row === 0) {
+      const action = this.headerProjection
+        ? FileTreeHeaderRow.Class.buttonAtColumn(this.headerProjection, column)
+            ?.action
+        : null;
+      if (action !== 'revealOpenFile') return false;
+      // invariant: The tree reveal follows the active file (src/modules/filetree/filetree.invariants.md)
+      workspace.revealActiveFile();
+      workspace.workspace.focusEditor();
+      this.application.requestRender();
+      return true;
+    }
     this.onFocus();
     workspace.haltVerticalScroll();
-    const rowIndex = workspace.tree.windowTop() + row;
+    const rowIndex = workspace.tree.windowTop() + row - 1;
     if (rowIndex < 0 || rowIndex >= workspace.tree.rows.length) return false;
     workspace.tree.setSelection(rowIndex);
     workspace.activateSelected();
@@ -124,7 +187,7 @@ class $FileTreePaneContent implements PaneContent {
 
   onResize(columns: number, rows: number): void {
     const tree = this.activeWorkspace().tree;
-    const viewportHeight = Math.max(1, rows);
+    const viewportHeight = Math.max(1, rows - 1);
     const viewportWidth = Math.max(1, columns - this.scrollbarThicknessCells);
     if (tree.viewportHeight.value !== viewportHeight) {
       tree.viewportHeight.value = viewportHeight;
@@ -153,6 +216,10 @@ class $FileTreePaneContent implements PaneContent {
 
   get scrollViewportRows(): number {
     return this.activeWorkspace().tree.viewportHeight.value;
+  }
+
+  get scrollbarRowOffset(): number {
+    return 1;
   }
 
   haltScrollMomentum(): void {

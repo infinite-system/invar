@@ -5,19 +5,60 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
-import { mkdtempSync } from 'node:fs';
+// invariant: The tree reveal follows the active file (src/modules/filetree/filetree.invariants.md)
+// invariant: File tree controls share paint and hit geometry (src/modules/filetree/filetree.invariants.md)
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tree-scroll-harness-'));
 
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-tree-scroll-harness-home-'),
 );
-
 const statusPath = join(homeDirectory, 'status.json');
+const settingOffHomeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-tree-scroll-setting-off-home-'),
+);
+const settingOffStatusPath = join(settingOffHomeDirectory, 'status.json');
+mkdirSync(join(settingOffHomeDirectory, '.config', 'invar'), {
+  recursive: true,
+});
+await Bun.write(
+  join(settingOffHomeDirectory, '.config', 'invar', 'settings.json'),
+  JSON.stringify({
+    glyphMode: 'unicode',
+    fileTreeRevealOpenFile: false,
+  }),
+);
+const scaleBranchCount = Number.parseInt(
+  process.env.INVAR_FILE_TREE_SCALE_BRANCH_COUNT ?? '60',
+  10,
+);
+if (!Number.isFinite(scaleBranchCount) || scaleBranchCount < 1) {
+  throw new Error(
+    'INVAR_FILE_TREE_SCALE_BRANCH_COUNT must be a positive integer',
+  );
+}
+const scaleDirectory = join(fixtureRoot, 'scale');
+mkdirSync(scaleDirectory);
+for (let branchNumber = 1; branchNumber <= scaleBranchCount; branchNumber++) {
+  mkdirSync(
+    join(scaleDirectory, `branch-${String(branchNumber).padStart(4, '0')}`),
+  );
+}
+const revealTargetRelativePath = join(
+  'scale',
+  `branch-${String(scaleBranchCount).padStart(4, '0')}`,
+  'target.ts',
+);
+await Bun.write(
+  join(fixtureRoot, revealTargetRelativePath),
+  'export const revealedTarget = true;\n',
+);
 
 for (let fileNumber = 1; fileNumber <= 60; fileNumber++) {
   await Bun.write(
@@ -43,11 +84,16 @@ try {
     (status) =>
       status.ready === true &&
       status.renderQuiescent === true &&
-      status.treeRows === 60,
+      status.treeRows === 61,
   );
   HarnessSmoke.Class.requireCondition(
-    openingStatus.treeRows === 60,
-    'the settled model contains all 60 file-tree rows',
+    openingStatus.treeRows === 61,
+    'the settled model contains the scale directory and all 60 file rows',
+  );
+  HarnessSmoke.Class.requireCondition(
+    Array.isArray(openingStatus.settingsLabels) &&
+      openingStatus.settingsLabels.includes('Reveal open file'),
+    'the Settings panel publishes the Reveal open file row',
   );
   const openingSnapshot = await driver.awaitGridCondition(
     'the settled boot paints the populated file tree',
@@ -143,10 +189,155 @@ try {
     'the clicked file content is visible in the emulator grid',
   );
 
+  console.log(
+    '== harness tree-scroll: quick open reveals the active file through one path ==',
+  );
+  driver.sendKeys('Control+p');
+  await driver.awaitGridCondition(
+    'Quick Open is visible before the reveal target is typed',
+    (candidate) => candidate.findText('Go to File') !== null,
+  );
+  driver.sendText(revealTargetRelativePath);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Quick Open selects the exact nested reveal target',
+    (status) =>
+      status.quickOpenQuery === revealTargetRelativePath &&
+      status.quickOpenSelectedIdentifier === revealTargetRelativePath,
+  );
+  driver.sendKeys('Enter');
+  const revealedStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Quick Open activates and reveals the nested target',
+    (status) =>
+      typeof status.activeBuffer === 'string' &&
+      status.activeBuffer.endsWith(revealTargetRelativePath) &&
+      status.treeSelected === scaleBranchCount + 1 &&
+      Number(status.treeScrollTop) > 0,
+  );
+  const revealedSnapshot = await driver.awaitGridCondition(
+    'the selected reveal target is visible in the file-tree viewport',
+    (candidate) => candidate.findText('target.ts') !== null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    revealedSnapshot.findText('target.ts') !== null,
+    'Quick Open expands ancestors and paints target.ts in the tree',
+  );
+  HarnessSmoke.Class.requireCondition(
+    revealedStatus.focus === 'editor',
+    'automatic reveal leaves keyboard focus in the editor',
+  );
+  HarnessSmoke.Class.requireCondition(
+    revealedStatus.treeRows === scaleBranchCount + 62,
+    `reveal materializes only the ${scaleBranchCount} branch rows and the target`,
+  );
+
   driver.sendKeys('Control+q');
+
+  console.log(
+    '== harness tree-scroll: setting off suppresses reveal and the button reveals on demand ==',
+  );
+  const settingOffDriver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory: settingOffHomeDirectory,
+    environment: { TUI_STATUS_PATH: settingOffStatusPath },
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      settingOffDriver,
+      settingOffStatusPath,
+      'the setting-off session reaches its collapsed tree',
+      (status) =>
+        status.ready === true &&
+        status.renderQuiescent === true &&
+        status.treeRows === 61,
+    );
+    await settingOffDriver.awaitGridCondition(
+      'the setting-off session paints the reveal button',
+      (candidate) =>
+        candidate.findText(
+          ThemeIcons.Class.glyphFor('unicode', 'fileTreeReveal'),
+        ) !== null,
+    );
+    settingOffDriver.sendKeys('Control+p');
+    await settingOffDriver.awaitGridCondition(
+      'Quick Open is visible in the setting-off session',
+      (candidate) => candidate.findText('Go to File') !== null,
+    );
+    settingOffDriver.sendText(revealTargetRelativePath);
+    await HarnessSmoke.Class.awaitStatus(
+      settingOffDriver,
+      settingOffStatusPath,
+      'Quick Open selects the exact setting-off reveal target',
+      (status) =>
+        status.quickOpenQuery === revealTargetRelativePath &&
+        status.quickOpenSelectedIdentifier === revealTargetRelativePath,
+    );
+    settingOffDriver.sendKeys('Enter');
+    const suppressedStatus = await HarnessSmoke.Class.awaitStatus(
+      settingOffDriver,
+      settingOffStatusPath,
+      'the target activates while the setting keeps the tree collapsed',
+      (status) =>
+        typeof status.activeBuffer === 'string' &&
+        status.activeBuffer.endsWith(revealTargetRelativePath) &&
+        status.treeRows === 61,
+    );
+    HarnessSmoke.Class.requireCondition(
+      suppressedStatus.treeSelected === 0 &&
+        suppressedStatus.treeScrollTop === 0,
+      'fileTreeRevealOpenFile=false leaves tree selection and scroll unchanged',
+    );
+
+    const settingOffButtonSnapshot = await settingOffDriver.awaitGridCondition(
+      'the reveal button is visible after Quick Open closes',
+      (candidate) =>
+        candidate.findText(
+          ThemeIcons.Class.glyphFor('unicode', 'fileTreeReveal'),
+        ) !== null,
+    );
+    HarnessSmoke.Class.clickText(
+      settingOffDriver,
+      settingOffButtonSnapshot,
+      ThemeIcons.Class.glyphFor('unicode', 'fileTreeReveal'),
+    );
+    const buttonRevealStatus = await HarnessSmoke.Class.awaitStatus(
+      settingOffDriver,
+      settingOffStatusPath,
+      'the reveal button selects and scrolls to the active file',
+      (status) =>
+        status.treeSelected === scaleBranchCount + 1 &&
+        Number(status.treeScrollTop) > 0,
+    );
+    const buttonRevealSnapshot = await settingOffDriver.awaitGridCondition(
+      'the reveal button paints target.ts inside the file-tree columns',
+      (candidate) =>
+        candidate
+          .textRows()
+          .some((rowText) => rowText.slice(0, 32).includes('target.ts')),
+    );
+    HarnessSmoke.Class.requireCondition(
+      buttonRevealSnapshot
+        .textRows()
+        .some((rowText) => rowText.slice(0, 32).includes('target.ts')),
+      'the reveal button paints target.ts in the tree viewport',
+    );
+    HarnessSmoke.Class.requireCondition(
+      buttonRevealStatus.focus === 'editor',
+      'the reveal button returns keyboard focus to the editor',
+    );
+    settingOffDriver.sendKeys('Control+q');
+  } finally {
+    await settingOffDriver.dispose();
+  }
   console.log('smoke-tree-scroll-harness: ALL-PASS');
 } finally {
   await driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  await HarnessSmoke.Class.removeTemporaryDirectory(settingOffHomeDirectory);
 }
