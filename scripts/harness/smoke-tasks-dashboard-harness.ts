@@ -295,6 +295,31 @@ try {
   HarnessSmoke.Class.pass(
     'watch-parity motion runs while the pane is observed',
   );
+  driver.sendKeys('Control+Alt+b');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'closing the tasks pane stops its surviving motion timer',
+    (status) =>
+      status.rightDockVisible === false && status.tasksAnimationAtRest === true,
+  );
+  driver.sendKeys('Control+Shift+t');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the tasks pane can restart visible live motion after a close',
+    (status) =>
+      status.rightDockVisible === true &&
+      status.rightDockActiveContent === 'tasks' &&
+      status.tasksAnimationAtRest === false,
+  );
+  await driver.awaitGridCondition(
+    'the reopened tasks pane paints both live fixture rows',
+    (snapshot) =>
+      snapshot.findText('#901 planted-building') !== null &&
+      snapshot.findText('#902 planted-ready') !== null,
+  );
+  HarnessSmoke.Class.pass('a closed tasks pane owns no surviving motion timer');
 
   console.log(
     '== tasks dashboard: row actions state misses and open artifacts ==',
@@ -695,9 +720,17 @@ const largeRoot = mkdtempSync(join(tmpdir(), 'tui-tasks-dashboard-large-'));
 const largeTasksRoot = join(largeRoot, '.invar', 'tasks');
 for (let taskOffset = 0; taskOffset < 500; taskOffset += 1) {
   const taskNumber = 1_000 + taskOffset;
-  writeTask(largeTasksRoot, 'in-progress', `${taskNumber}-scale-row`, [
-    'State: IN-PROGRESS',
-  ]);
+  writeTask(
+    largeTasksRoot,
+    'in-progress',
+    `${taskNumber}-scale-row`,
+    ['State: IN-PROGRESS'],
+    taskNumber === 1_499
+      ? {}
+      : {
+          [`report-${taskNumber}-scale-row.md`]: 'READY',
+        },
+  );
 }
 const largeHome = mkdtempSync(
   join(tmpdir(), 'tui-tasks-dashboard-large-home-'),
@@ -731,6 +764,31 @@ try {
   );
   HarnessSmoke.Class.pass(
     'five hundred tasks keep the compact observed projection responsive',
+  );
+  for (let wheelEvent = 0; wheelEvent < 40; wheelEvent += 1) {
+    largeDriver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      column: 110,
+      row: 20,
+      direction: 'down',
+    });
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    largeDriver,
+    largeStatusPath,
+    'the motion timer stops after the only building row leaves the viewport',
+    (status) =>
+      status.tasksAnimationAtRest === true &&
+      Number(status.tasksAnimationPaint) >= 3,
+  );
+  await largeDriver.awaitGridCondition(
+    'the large fixture shows only held READY rows after scrolling',
+    (snapshot) =>
+      snapshot.findText('#1499 scale-row') === null &&
+      snapshot.findText('READY') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'an off-screen live row owns no dashboard motion timer',
   );
 } finally {
   await largeDriver.dispose();
