@@ -2,6 +2,18 @@
 
 ## RESUME ANCHOR 20 — 2026-07-30 14:06 (written at 77.6% gauge, pre-compaction)
 
+### ANCHOR 20 — delta 3 (2026-07-30 ~17:5x) — USER ORDER: PAUSE AFTER #393
+
+The user (verbatim): "keep cooking on this, have a break after this task,
+no more tasks for now, i need to do a review of everything, been resting"
+
+OPERATIVE: land #393 on its READY (the relaunched lane is executing the
+consolidated round-5 order: merge main + hidden-pane observed=painted +
+proportional visible tick). After that landing: NO new dispatches, NO
+queue draining, NO experiments — the user is reviewing. Answer questions,
+handle #393 rounds if it needs steering, keep fleet-watch armed, keep the
+checkout synced. The queue (delta 2 list) resumes only on the user's word.
+
 ### ANCHOR 20 — delta 2 (2026-07-30 ~16:0x, at 96% — FINAL before compaction)
 
 LANDED since delta 1: #409 (layout tiling, 91249982, narrow-rule
