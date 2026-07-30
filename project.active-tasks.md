@@ -6,13 +6,15 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #344 [breadcrumb-hover-highlight-padding](.invar/tasks/in-progress/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md)  [building]
+  `tmux attach -t invar/344-breadcrumb-hover-highlight-padding`
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/in-progress/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)  [building]
   `tmux attach -t invar/343-tasks-activity-icon-and-live-loader`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (16)
+## USER-DIRECTED (15)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
 - #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)
 - #356 [agent-pane-is-a-decoupled-module](.invar/tasks/active/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)
@@ -23,7 +25,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #347 [markdown-link-resolution-and-double-click](.invar/tasks/active/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md)
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/active/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)
 - #345 [horizontal-separator-centered-glyph](.invar/tasks/active/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md)
-- #344 [breadcrumb-hover-highlight-padding](.invar/tasks/active/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md)
 - #341 [file-tree-add-and-drag-drop](.invar/tasks/active/341-file-tree-add-and-drag-drop/task-341-file-tree-add-and-drag-drop.md)
 - #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)

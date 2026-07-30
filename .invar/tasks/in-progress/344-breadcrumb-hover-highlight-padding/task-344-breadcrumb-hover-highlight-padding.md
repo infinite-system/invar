@@ -1,6 +1,6 @@
 # #344 — breadcrumb hover highlights the segment with one-cell side padding
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux

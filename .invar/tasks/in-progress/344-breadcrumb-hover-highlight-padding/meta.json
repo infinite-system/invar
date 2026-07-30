@@ -1,0 +1,15 @@
+{
+  "task": 344,
+  "slug": "breadcrumb-hover-highlight-padding",
+  "branch": "fleet/344-breadcrumb-hover-highlight-padding",
+  "worktree": ".invar/worktrees/344-breadcrumb-hover-highlight-padding",
+  "tmuxSession": "invar/344-breadcrumb-hover-highlight-padding",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-344-breadcrumb-hover-highlight-padding.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "865bc2f37839c9703fe559ce765caaf3c0c127ea",
+  "startedAt": "2026-07-30T09:43:17-04:00"
+}
