@@ -328,3 +328,34 @@ the ack.
   #280/#289 lesson) — someone edited it in-place; self-test it before first
   use: bash scripts/fleet/extract-gate-verdict.sh --self-test.
 - Twin conductor 3541394: STILL no user decision. Keep asking.
+
+## OVERNIGHT ORDERS (2026-07-30 03:2x — user to bed; SUPERSEDES queue notes above)
+
+USER DIRECTIVES, verbatim intent: (1) "Go stage 2 326" — explicit GO given.
+(2) "keep going till everything is done" — drain the ENTIRE queue overnight,
+autonomous. (3) "keep max agents at 3" — hard cap 3 builders, confirmed.
+
+DISPATCH ORDER (next free lane takes the front): #326-stage-2 (its old tmux
+is GONE — fresh dispatch; plan file + in-app-restart guidance in its
+in-progress folder; brief = execute the revised stage-2 plan) → #350 → #343
+→ #344 → #345 → #346 (BIG — points 1-10 in task file) → #347 → #348 → #349
+→ #341 (after #340 lands). Lanes now: #340, #342, #351.
+
+LANDING LOOP per READY: extract-gate-verdict.sh <n> <slug> (self-test first
+use each session) → land.sh with GATE_LOG → bycatch conversion BEFORE merge
+→ summary + write-active periodically → dispatch next from order above.
+Known pre-existing red classes (narrow-rule with these citations only):
+#214 panel-chrome close; #337 structure-outline timeouts (2-night evidence).
+Merge-round rule stands: main moved with CODE since a builder's base →
+round-brief merge + re-gate before landing.
+
+WAKE DISCIPLINE: fleet-watch Monitor is the primary wake. A ScheduleWakeup
+fallback chain (~30m) is armed as drift-catcher — re-arm each firing while
+queue non-empty; STOP the chain when everything is done. Crons stay
+disarmed (this fallback is not the retired :07/:37 pair).
+
+WHEN ALL DONE: final write-active, summaries complete, trees clean, closing
+report for the user's morning: what landed (hashes), what remains (why),
+bycatch filed. Do NOT invent new experiments — the queue IS the goal.
+Twin conductor 3541394: if still alive and committing, note collisions,
+never fight it — user decides in the morning.
