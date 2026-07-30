@@ -58,3 +58,10 @@ low-rate intermittents scattered across a large sample, not a shared cause.**
 ## Sources
 
 None in this folder. Detail above recovered from the session transcript (`faf7e858-…jsonl`).
+
+## Recurrence 2026-07-30 (#329 first hook)
+
+First enforcing hook on #329 (tasks:watch animation tick) hit the same
+shortfall: actual start 74,998, travel 995 rows, 30.0 FPS, GATE_EXIT=1.
+The unchanged second full hook passed the contract, GATE_EXIT=0
+(commit cf2104e3). Same 995-of-1,000 shape as the founding instance.

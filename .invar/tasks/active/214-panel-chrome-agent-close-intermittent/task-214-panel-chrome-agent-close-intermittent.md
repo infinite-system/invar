@@ -78,3 +78,10 @@ before treating them as two defects.
   the SAME tree had git-watch retry-then-fail (1m11s, starvation-shaped) +
   markdown previewRowContaining miss — same-tree green/red pair is a clean
   pool-flake datapoint (32nd-33rd).
+- 2026-07-30 #329 hooks: first hook starvation-class retry-passes in
+  scrollbars, Git watch, and panel-split smokes; each passed without retry in
+  the unchanged second hook (34th-36th). Final hook input-byte canary p50
+  13.187 ms vs 6.406 ms report-only threshold (prior hook 5.167 ms) beside two
+  live test app instances — load-bound metric, report-only. ALSO one-shot:
+  #321 diagnostic probe classified a partly typed shell command as a partial
+  child frame once at 100x30, clean immediately after, not reproduced.
