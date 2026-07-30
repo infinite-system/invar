@@ -1,6 +1,6 @@
 # 301 — KeybindingRegistry arms only the first binding sharing a chord prefix
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
