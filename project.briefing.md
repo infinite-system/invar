@@ -468,3 +468,27 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
 - land.sh claude-lane note: busy-check accepts idle-unconfirmed for
   engine=claude in meta.json; transient 'busy' comes from background
   shells — wait and retry.
+
+### ANCHOR 17 DELTA 5 (06:5x) — #326 endgame state
+- #326 round 4 DONE: Alt+Delete regression FIXED on branch (was the
+  vendor diff, proven 0/3 vs 3/3; #374 reclassified accordingly). Round-5
+  authorization SENT: one SKIP_GATE commit of the staged merge+fix;
+  remaining red accepted as pre-existing #359 (discrimination: main 5/5
+  green standalone, 326 tree 3/4 with one intermittent red — NOT
+  deterministic). Land next with GATE_OVERRIDE citing #359/#214 evidence.
+  A commit-waiter (brvxrlq3j) fires when the builder commits; then:
+  extract nothing (claude-style manual verdict log), land.sh with
+  GATE_OVERRIDE, convert any new bycatch first.
+- #350 completed-report conflict markers on main RESOLVED (326 bycatch).
+- #326 meta.json repointed to live lane names (user attach failure);
+  #375 filed+extended: invisible attach icon AND stale meta.json tracking
+  (fix shape: resolve target at click time; degraded state for dead
+  sessions; smoke proves mid-session meta edit is honored). User-directed,
+  next free lane.
+- 4 lanes: 326 (endgame) · 346 panel tab bar (codex) · 347 markdown links
+  (opus) · 365 gate scratch namespacing (codex, user-directed for gate
+  parallelism). All verified running at their assigned efforts (medium).
+- CWD TRAP lesson: Bash cwd persists between calls — two "branch tree"
+  smoke runs actually ran in main; always cd explicitly at cell start and
+  never pipe smoke output through tail/grep -c without reading the full
+  verdict once.

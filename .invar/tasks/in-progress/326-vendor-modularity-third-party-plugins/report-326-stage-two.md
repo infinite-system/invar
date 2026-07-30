@@ -177,3 +177,70 @@ The hook did not create the merge commit.
 The final committed task hash remains `b3a285dea5047b30d519e1b3627358c79657b197`.
 The worktree holds the staged merge and is not clean because the brief requires a stop on a repeated
 filed red.
+
+## Round 4 Alt Delete regression
+
+The regression came from the new early `StatusChannel.flush()` in `Bootstrap.boot`.
+The word-delete harness places its status path inside its temporary workspace.
+The early flush created `status.json` before workspace discovery.
+The file tree then opened that generated file instead of `word-delete.txt`.
+A captured failed status named its own status path as `activeBuffer` and showed `{hello ` as the
+first editor line.
+Alt+Delete and its handler were working; the premature observer file changed the input document.
+
+The fix removes only that early disk flush.
+The kernel metadata remains in the in-memory status snapshot and is written with the first normal
+settled frame.
+This upholds
+[Rendering is one coarse frame effect](../../../../src/modules/app/app.invariants.md#rendering-is-one-coarse-frame-effect).
+
+The standalone word-delete harness passed three consecutive runs after the fix.
+The enforcing hook produced this chain:
+
+```text
+standalone word-delete before fix: EXIT=1
+standalone word-delete after fix, attempt 1: EXIT=0
+standalone word-delete after fix, attempt 2: EXIT=0
+standalone word-delete after fix, attempt 3: EXIT=0
+merge-gate word-delete smoke: PASS
+merge-gate: GATE_EXIT=1
+pre-commit: commit blocked
+```
+
+The full gate red was the filed
+[panel-split agent-terminal order task (#359)](../../active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md).
+Its status-order wait failed on both attempts.
+The filed
+[panel-chrome intermittent task (#214)](../../active/214-panel-chrome-agent-close-intermittent/task-214-panel-chrome-agent-close-intermittent.md)
+passed only on its quiet retry.
+All other parallel smokes and every serial check passed.
+
+The hook did not create the merge commit.
+The final committed task hash remains `b3a285dea5047b30d519e1b3627358c79657b197`.
+The staged merge includes the regression fix and remains pending for conductor action.
+
+Round 4 bycatch: the main branch already contains unresolved conflict-marker text in
+[task #350's completed report](../../completed/350-nicer-generated-sample-video/report-350-nicer-generated-sample-video.md).
+This was visible in both `main` and the staged merge.
+It was not changed.
+
+### Conductor authorization and final commit
+
+The conductor accepted the panel-split red as the filed pre-existing task #359 class.
+The conductor measured main standalone green in five of five runs and this tree green in three of
+four runs.
+The intermittent result differs from the deterministic Alt+Delete regression fixed above.
+
+The conductor authorized exactly one `SKIP_GATE=1` commit for the staged merge and repair on
+`fleet/326-stage-two`.
+The hook printed:
+
+```text
+pre-commit: SKIP_GATE=1 — skipping the full merge-gate (bypass acknowledged).
+```
+
+The final commit is `ef1da11dbfd6a94f857b245e60f5e9df65fb4394`
+(`Complete signed vendor plugins and repair Alt Delete discovery`).
+The task worktree is clean.
+The conductor will land with `GATE_OVERRIDE` citing the filed panel-split task #359 and
+panel-chrome task #214.
