@@ -1,6 +1,6 @@
 # #375 — tasks live view: attach icon invisible; attach target goes stale
 
-State: IN-PROGRESS
+State: COMPLETED — 660ed877 — visible attach icon + click-time target; #386 from bycatch
 Priority: user-directed
 Engine: codex
 Environment: linux

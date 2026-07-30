@@ -6,17 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #383 [structure-pane-width-proportional](.invar/tasks/in-progress/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md)  [building]
   `tmux attach -t invar/383-structure-pane-width-proportional`
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/in-progress/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md)  [building]
   `tmux attach -t invar/380-idle-cpu-fifteen-to-twentyfive-percent`
-- #375 [tasks-live-attach-icon-invisible](.invar/tasks/in-progress/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md)  [building]
-  `tmux attach -t invar/375-tasks-live-attach-icon-invisible`
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/in-progress/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)  [building]
   `tmux attach -t invar/346-panel-tab-bar-workspace-content-spaces`
 
-## USER-DIRECTED (17)
+## USER-DIRECTED (18)
+- #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/active/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md)
 - #384 [quit-dialog-buttons-and-padding](.invar/tasks/active/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
 - #381 [realized-typescript-lsp-still-missing](.invar/tasks/active/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)
@@ -127,7 +126,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 129 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 130 — full log: project.tasks-completed.md)
+- #375 [tasks-live-attach-icon-invisible](.invar/tasks/completed/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md) — 660ed877 — visible attach icon + click-time target; #386 from bycatch
 - #365 [gate-scratch-paths-are-machine-global](.invar/tasks/completed/365-gate-scratch-paths-are-machine-global/task-365-gate-scratch-paths-are-machine-global.md) — 33024fec — gate scratch paths per-worktree; safe overlapping gates
 - #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #350 [nicer-generated-sample-video](.invar/tasks/completed/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md) — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
@@ -142,4 +142,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #337 [plugin-manifest-structure-scrollbar-intermittent](.invar/tasks/completed/337-plugin-manifest-structure-scrollbar-intermittent/task-337-plugin-manifest-structure-scrollbar-intermittent.md) — 64ca4df5 — ordinal settings drive repaired to label walks; gate red root-caused to #340's contributed row
 - #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/completed/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md) — eaf04d09 — video -y fix; combined-tree red proven pre-existing (#334)
 - #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/completed/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md) — 359ca6da — both gate intermittents were instrument defects; smokes repaired, hook gate ALL-PASS
-- #334 [structure-pane-no-file-open-transient](.invar/tasks/completed/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md) — b4695e2f — gate-blocking Drive red fixed; re-gate red is #214's pre-existing class
