@@ -53,6 +53,6 @@ nonsense). Include a ## Bycatch section even if it reads: None observed.
 
 ## Definition of done
 
-READY report (report-350-nicer-generated-sample-video.md) in this folder:
+READY report named ``report-350-<slug>.md` (this task's slug)` in this folder:
 chosen source + why, frame captures per candidate, smoke status, gate
 verdict chain, invariants answered, bycatch section.
