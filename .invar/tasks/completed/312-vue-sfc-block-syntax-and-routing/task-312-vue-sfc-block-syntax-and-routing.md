@@ -1,6 +1,6 @@
 # 312 — dispatch: Vue SFC phases 1-2 (block syntax + language routing)
 
-State: active
+State: COMPLETED — b0f78747 — Vue SFC phases 1-2: block-aware highlighting on generic syntax + language routing
 Engine: codex
 Model: 5.6-sol
 Effort: high

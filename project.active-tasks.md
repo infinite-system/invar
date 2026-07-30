@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (5)
+## IN-PROGRESS (4)
 - #320 terminal-pane-fidelity-two-bundle  [building]
   `tmux attach -t invar/320-terminal-pane-fidelity-two-bundle`
 - #314 harness-and-tooling-integrity-bundle  [building]
   `tmux attach -t invar/314-harness-and-tooling-integrity-bundle`
-- #312 vue-sfc-block-syntax-and-routing  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/312-vue-sfc-block-syntax-and-routing`
 - #308 [markdown-view-only-mode-persistent](.invar/tasks/in-progress/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)  [building]
   `tmux attach -t invar/308-markdown-view-only-mode-persistent`
 - #300 eight-ui-nitpicks-bundled  [building]
@@ -103,10 +101,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #320 [320-terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/active/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md)
 - #321 [321-terminal-flicker-child-tui-repaints](.invar/tasks/active/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md)
 
-## RECENTLY COMPLETED (last 15 of 84 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 85 — full log: project.tasks-completed.md)
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
 - #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
 - #313 [terminal-mouse-passthrough-to-child-apps](.invar/tasks/completed/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md) — 133338ba — terminal mouse passthrough to child apps
+- #312 [vue-sfc-block-syntax-and-routing](.invar/tasks/completed/312-vue-sfc-block-syntax-and-routing/task-312-vue-sfc-block-syntax-and-routing.md) — b0f78747 — Vue SFC phases 1-2: block-aware highlighting on generic syntax + language routing
 - #311 [vue-sfc-integration-map](.invar/tasks/completed/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md) — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
 - #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
@@ -118,4 +117,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
 - #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/completed/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md) — f22d86e3 — Scrollbar corner: vertical owns full height + corner, horizontal ends at its edge, grey/white parity both axes; #284 oracle banked
 - #289 [preview-scroll-sync-setting](.invar/tasks/completed/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md) — 7c65b3e8 — Markdown preview: bidirectional input-leader scroll-sync (setting, default ON) + both-axis scrollbars; activity-bar harness locator fixed by-label at the generator
-- #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
