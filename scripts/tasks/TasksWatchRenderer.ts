@@ -2,6 +2,10 @@
 import { Static } from 'ivue/extras';
 
 class $TasksWatchRenderer {
+  protected static get $graphemeSegmenter(): Intl.Segmenter {
+    return new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  }
+
   protected static get TARGET_ANIMATION_FRAMES_PER_SECOND(): number {
     return 60;
   }
@@ -18,6 +22,8 @@ class $TasksWatchRenderer {
   protected animationFrameValue = 0;
   protected readonly writeOutput: (output: string) => void;
   protected readonly nowMilliseconds: () => number;
+  protected readonly terminalColumns: () => number;
+  protected readonly refreshTerminalColumnsOnResize: (() => void) | null;
   protected readonly scheduleTimer: TasksWatchScheduleTimer;
   protected readonly cancelTimer: TasksWatchCancelTimer;
 
@@ -28,6 +34,29 @@ class $TasksWatchRenderer {
         process.stdout.write(output);
       });
     this.nowMilliseconds = options.nowMilliseconds ?? (() => performance.now());
+    if (options.terminalColumns !== undefined) {
+      this.terminalColumns = options.terminalColumns;
+      this.refreshTerminalColumnsOnResize = null;
+    } else {
+      const tasksWatchRendererClass = this
+        .constructor as typeof $TasksWatchRenderer;
+      let detectedTerminalColumns =
+        tasksWatchRendererClass.detectTerminalColumns();
+      this.terminalColumns = () => {
+        const reportedTerminalColumns = process.stdout.columns;
+        return typeof reportedTerminalColumns === 'number' &&
+          reportedTerminalColumns > 0
+          ? reportedTerminalColumns
+          : detectedTerminalColumns;
+      };
+      this.refreshTerminalColumnsOnResize = () => {
+        detectedTerminalColumns =
+          tasksWatchRendererClass.detectTerminalColumns();
+      };
+      if (process.stdout.isTTY === true) {
+        process.on('SIGWINCH', this.refreshTerminalColumnsOnResize);
+      }
+    }
     this.scheduleTimer =
       options.scheduleTimer ??
       ((callback, delayMilliseconds) =>
@@ -105,6 +134,71 @@ class $TasksWatchRenderer {
     return animationFrame * this.animationFrameMilliseconds;
   }
 
+  protected static detectTerminalColumns(): number {
+    const reportedTerminalColumns = process.stdout.columns;
+    if (
+      typeof reportedTerminalColumns === 'number' &&
+      reportedTerminalColumns > 0
+    ) {
+      return reportedTerminalColumns;
+    }
+    if (process.stdout.isTTY === true) {
+      const terminalSizeResult = Bun.spawnSync(['stty', 'size'], {
+        stdin: 'inherit',
+        stderr: 'ignore',
+      });
+      const terminalColumns = Number.parseInt(
+        terminalSizeResult.stdout.toString().trim().split(/\s+/)[1] ?? '',
+        10,
+      );
+      if (terminalColumns > 0) return terminalColumns;
+    }
+    const environmentTerminalColumns = Number.parseInt(
+      process.env.COLUMNS ?? '',
+      10,
+    );
+    if (environmentTerminalColumns > 0) return environmentTerminalColumns;
+    return Number.POSITIVE_INFINITY;
+  }
+
+  // A logical row must stay one physical terminal row. If a long ANSI line
+  // autowraps, later row-addressed diffs cannot clear its untracked tail.
+  protected static lineWithinColumns(
+    terminalLine: string,
+    terminalColumnCount: number,
+  ): string {
+    if (!Number.isFinite(terminalColumnCount)) return terminalLine;
+    const terminalColumnLimit = Math.max(0, Math.floor(terminalColumnCount));
+    let clippedTerminalLine = '';
+    let visibleCellWidth = 0;
+    let sourceTextOffset = 0;
+    let lineWasClipped = false;
+    const appendText = (textFragment: string): void => {
+      for (const { segment } of this.$graphemeSegmenter.segment(textFragment)) {
+        const segmentWidth = Bun.stringWidth(segment);
+        if (visibleCellWidth + segmentWidth > terminalColumnLimit) {
+          lineWasClipped = true;
+          return;
+        }
+        visibleCellWidth += segmentWidth;
+        clippedTerminalLine += segment;
+      }
+    };
+    for (const escapeSequenceMatch of terminalLine.matchAll(
+      /\x1b\[[0-?]*[ -/]*[@-~]/g,
+    )) {
+      const escapeSequenceStart = escapeSequenceMatch.index;
+      appendText(terminalLine.slice(sourceTextOffset, escapeSequenceStart));
+      if (lineWasClipped) break;
+      clippedTerminalLine += escapeSequenceMatch[0];
+      sourceTextOffset = escapeSequenceStart + escapeSequenceMatch[0].length;
+    }
+    if (!lineWasClipped) appendText(terminalLine.slice(sourceTextOffset));
+    return lineWasClipped
+      ? `${clippedTerminalLine}\x1b[0m`
+      : clippedTerminalLine;
+  }
+
   protected static synchronizedRows(
     changedRows: readonly TasksWatchAnimationRow[],
     screenSetup: string,
@@ -129,14 +223,17 @@ class $TasksWatchRenderer {
     animationRowsForFrame: TasksWatchAnimationRowsForFrame | null,
     enterAlternateScreen: boolean,
   ): void {
+    const currentLinesWithinTerminal = currentLines.map((line) =>
+      TasksWatchRenderer.Class.lineWithinColumns(line, this.terminalColumns()),
+    );
     this.writeFrame(
       TasksWatchRenderer.Class.frame(
         this.previousLines,
-        currentLines,
+        currentLinesWithinTerminal,
         enterAlternateScreen,
       ),
     );
-    this.previousLines = [...currentLines];
+    this.previousLines = currentLinesWithinTerminal;
     this.animationRowsForFrame = animationRowsForFrame;
     if (animationRowsForFrame === null) {
       this.stopAnimationTimer();
@@ -148,6 +245,9 @@ class $TasksWatchRenderer {
   dispose(): void {
     this.animationRowsForFrame = null;
     this.stopAnimationTimer();
+    if (this.refreshTerminalColumnsOnResize !== null) {
+      process.off('SIGWINCH', this.refreshTerminalColumnsOnResize);
+    }
   }
 
   protected writeFrame(output: string): void {
@@ -195,7 +295,13 @@ class $TasksWatchRenderer {
         tasksWatchRendererClass.animationElapsedMillisecondsAtFrame(
           dueAnimationFrame,
         ),
-      );
+      ).map(({ rowIndex, line }) => ({
+        rowIndex,
+        line: TasksWatchRenderer.Class.lineWithinColumns(
+          line,
+          this.terminalColumns(),
+        ),
+      }));
       this.writeFrame(
         TasksWatchRenderer.Class.animationFrameOutput(
           this.previousLines,
@@ -223,6 +329,7 @@ export interface TasksWatchAnimationRow {
 export interface TasksWatchRendererOptions {
   readonly writeOutput?: (output: string) => void;
   readonly nowMilliseconds?: () => number;
+  readonly terminalColumns?: () => number;
   readonly scheduleTimer?: TasksWatchScheduleTimer;
   readonly cancelTimer?: TasksWatchCancelTimer;
 }

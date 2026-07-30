@@ -43,6 +43,30 @@ test('an unchanged dashboard produces no terminal write', () => {
   ).toBe('');
 });
 
+test('data rows are clipped to terminal columns before diffing', () => {
+  const outputs: string[] = [];
+  const renderer = new TasksWatchRenderer.Class({
+    writeOutput: (output) => outputs.push(output),
+    terminalColumns: () => 12,
+  });
+
+  renderer.renderDataFrame(
+    ['stable', '\x1b[31m123456789012PHANTOM-TAIL\x1b[0m'],
+    null,
+    true,
+  );
+  expect(outputs[0]).toContain('\x1b[2;1H\x1b[31m123456789012\x1b[0m\x1b[0K');
+  expect(outputs[0]).not.toContain('PHANTOM-TAIL');
+
+  outputs.length = 0;
+  renderer.renderDataFrame(
+    ['stable', '\x1b[31m123456789012DIFFERENT-HIDDEN-TAIL\x1b[0m'],
+    null,
+    false,
+  );
+  expect(outputs).toEqual([]);
+});
+
 test('a live animation advances from its own 60 FPS clock without a data tick', () => {
   let nowMilliseconds = 0;
   let scheduledCallback: (() => void) | null = null;
