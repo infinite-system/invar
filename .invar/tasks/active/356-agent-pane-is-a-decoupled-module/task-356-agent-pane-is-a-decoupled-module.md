@@ -61,3 +61,11 @@ register it in DefaultPlugins, and let the extensions section's existing
 knob mechanics govern it. The database plugin pair (provider/consumer) is
 the in-repo model to follow. This also makes the Database-pane parity the
 user named automatic: same registry, same knob.
+
+## Naming decision (user, 2026-07-30)
+
+The agent is named "Invar Agent". It can use claude or codex underneath,
+but it is OUR wrapper around them, not claude directly — named so we can
+layer custom behaviors on it. UI labels, plugin registry entry, and docs
+say "Invar Agent"; the backend provider (claude/codex) is a detail inside
+it. Apply the name as part of the plugin extraction.
