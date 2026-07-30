@@ -1,6 +1,6 @@
 # 320 — terminal: default background from OUR theme; ANSI palette brightness like VSCode
 
-State: active
+State: COMPLETED — c8c8723a — terminal defaults + ANSI palette theme-derived, VSCode model; child-explicit lanes stay exact (landed in #320 bundle merge f64f85ef)
 Engine: codex
 Model: 5.6-sol
 Effort: medium

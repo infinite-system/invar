@@ -67,3 +67,7 @@ before treating them as two defects.
   left 3 test app instances live ("starting with 3 test app instance(s)
   live") — failed-gate cleanup does not reap children; instrument defect,
   not census.
+- 2026-07-29 #320/#321 gates: concurrent hook runs timed out in panel-split,
+  panel-chrome, shortcut-help, scrollbar smokes; panel-chrome passed alone in
+  ~1s; failures moved between harnesses, clean-start hooks green (25th-28th
+  today; builder kept /tmp/merge-gate-failures.* examples).

@@ -1,6 +1,6 @@
 # 321 — terminal: child TUI repaints flicker (tasks:watch at 30fps); honor synchronized updates
 
-State: active
+State: COMPLETED — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)
 Engine: codex
 Model: 5.6-sol
 Effort: high
