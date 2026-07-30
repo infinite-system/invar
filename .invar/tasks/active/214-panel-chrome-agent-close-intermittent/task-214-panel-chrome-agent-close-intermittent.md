@@ -73,3 +73,8 @@ before treating them as two defects.
   today; builder kept /tmp/merge-gate-failures.* examples).
 - 2026-07-29 #319 gate: panel-split + panel-chrome + overlay-dialog first-attempt
   timeouts, all quiet-retry green (29th-31st today).
+- 2026-07-30 post-rename control gates: first full gate ALL-GREEN (validated the
+  tui-editor->invar rename, 5eb10e69); an aborted duplicate run minutes later on
+  the SAME tree had git-watch retry-then-fail (1m11s, starvation-shaped) +
+  markdown previewRowContaining miss — same-tree green/red pair is a clean
+  pool-flake datapoint (32nd-33rd).
