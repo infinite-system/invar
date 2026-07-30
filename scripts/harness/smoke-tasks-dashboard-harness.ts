@@ -944,10 +944,10 @@ try {
       Number(status.tasksAnimationPaint) >= 3,
   );
   await largeDriver.awaitGridCondition(
-    'the large fixture shows only held READY rows after scrolling',
+    'the large fixture shows only held task rows after scrolling',
     (snapshot) =>
       snapshot.findText('#1499 scale-row') === null &&
-      snapshot.findText('READY') !== null,
+      snapshot.findText('#1479 scale-row') !== null,
   );
   HarnessSmoke.Class.pass(
     'an off-screen live row owns no dashboard motion timer',

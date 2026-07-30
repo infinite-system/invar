@@ -5,6 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Workspace activation is view-only (src/modules/workspace/workspace.invariants.md)
+// invariant: Cost tracks the actively observed set (project.invariants.md)
 import { mkdirSync, mkdtempSync, readlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -642,6 +643,40 @@ try {
   pass(
     'workspace-local terminal and agent creation stays in the selected world',
   );
+  const idleSessionsStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the retained workspace sessions settle in the selected panel world',
+    (status) =>
+      status.workspaceCount === 2 &&
+      status.panelVisible === true &&
+      status.agentBusy === false,
+  );
+  requireCondition(
+    idleSessionsStatus.animationFrameCadenceTimerCount === 0,
+    'two idle workspaces own no animation cadence timer',
+  );
+  requireCondition(
+    idleSessionsStatus.agentBusy === false,
+    'the retained agent session is idle',
+  );
+  requireCondition(
+    idleSessionsStatus.tasksAnimationAtRest === true,
+    'the tasks dashboard owns no motion timer',
+  );
+  requireCondition(
+    idleSessionsStatus.panelScrollMomentumAtRest === true,
+    'the selected panel world owns no scroll motion',
+  );
+  requireCondition(
+    idleSessionsStatus.workspaceScrollMomentumAtRest === true,
+    'the active workspace owns no scroll motion',
+  );
+  requireCondition(
+    idleSessionsStatus.liveGitWatcherCount === 1,
+    'two open workspaces retain one live Git watcher',
+  );
+  pass('two idle workspaces own zero animation cadence timers');
 
   console.log(
     '== harness workspace tabs: language features follow each workspace root ==',
