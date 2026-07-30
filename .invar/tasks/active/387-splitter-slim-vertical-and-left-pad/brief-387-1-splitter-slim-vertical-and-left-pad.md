@@ -38,8 +38,8 @@ former extent). One verification pass at the end.
 - Commit BEFORE writing READY; the report header carries the real commit
   hash and GATE_EXIT read from the hook output. Report goes to the MAIN
   checkout task folder: the main checkout is at `/home/parallels/dev/invar`;
-  write the report into its in-progress task folder for this task, file name
-  `report-387-splitter-slim-vertical-and-left-pad.md`.
+  write the report into its in-progress task folder for this task, named
+  report dash 387 dash the task slug, with the md extension.
 
 ## Invariants in scope
 
