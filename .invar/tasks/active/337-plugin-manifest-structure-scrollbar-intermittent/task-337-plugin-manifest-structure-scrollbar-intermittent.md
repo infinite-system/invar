@@ -56,3 +56,12 @@ and #335's discover-once pattern as the starting hypotheses.
 behavioral-contracts timed out once, passed the immediate retry (report
 bycatch, #342). Same family. Also one single-retry scrollbars timeout there
 (post-#335-repair arm; distinct smoke, note only).
+
+## Escalation (2026-07-30, #350 gate)
+
+The plugin-manifest drive step is now DETERMINISTIC red on the base tree:
+bash scripts/smoke-plugin-manifest.sh fails identically with and without
+the #350 media diff — "Timed out waiting for the first Git setting is
+selected". Previously intermittent; a deterministic base-tree failure
+means either the defect hardened or a recent landing moved it. Raises
+priority: this class now blocks every gate deterministically.
