@@ -50,3 +50,7 @@ before treating them as two defects.
   retry-passes (mouse gate); scrollbar markdown-border derive miss once then
   clean full rerun + one panel-chrome starvation retry (color gate). Census
   11th-15th pool events today.
+- 2026-07-29 #312 gates: panel-split timed out INCLUDING built-in retries in
+  two hook runs overlapping several worktree gates; isolated run ALL-PASS;
+  later hooks green. Retried-and-still-failed under pool overlap = strongest
+  starvation datapoint yet (16th-17th today).
