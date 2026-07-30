@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/in-progress/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md)  [building]
+  `tmux attach -t invar/336-video-playback-ffmpeg-overwrite-flag`
 - #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/in-progress/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md)  [building]
   `tmux attach -t invar/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]

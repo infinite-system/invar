@@ -1,0 +1,15 @@
+{
+  "task": 336,
+  "slug": "video-playback-ffmpeg-overwrite-flag",
+  "branch": "fleet/336-video-playback-ffmpeg-overwrite-flag",
+  "worktree": ".invar/worktrees/336-video-playback-ffmpeg-overwrite-flag",
+  "tmuxSession": "invar/336-video-playback-ffmpeg-overwrite-flag",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-336-video-playback-ffmpeg-overwrite-flag.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "3713ff5ebc17fa43be9c295947c4c81d15b5a1b7",
+  "startedAt": "2026-07-30T02:21:19-04:00"
+}
