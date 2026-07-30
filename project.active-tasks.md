@@ -12,7 +12,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (3)
+## USER-DIRECTED (4)
+- #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
