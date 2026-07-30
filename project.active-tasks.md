@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/in-progress/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md)  [active]  [building]
   `tmux attach -t invar/320-terminal-pane-fidelity-two-bundle`
 - #319 [tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/in-progress/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)  [building]
   `tmux attach -t invar/319-tasks-pane-layout-tabs-and-play-button-polish`
-- #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/in-progress/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)  [building]
-  `tmux attach -t invar/317-bottom-panel-splitter-thinner-with-action-buttons`
 - #300 [eight-ui-nitpicks-bundled](.invar/tasks/in-progress/300-eight-ui-nitpicks-bundled/task-300-eight-ui-nitpicks-bundled.md)  [active]  [building]
   `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
@@ -105,7 +103,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #326 [326-vendor-modularity-third-party-plugins](.invar/tasks/active/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)
 - #327 [327-invarnet-p2p-streaming-underlay-research](.invar/tasks/active/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md)
 
-## RECENTLY COMPLETED (last 15 of 89 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 90 — full log: project.tasks-completed.md)
+- #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/completed/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md) — ec92a8b9 — bottom panel separator: thin lower-half-cell + editor action buttons + always-draggable geometry
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
 - #314 [harness-and-tooling-integrity-bundle](.invar/tasks/completed/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md) — 331a8d33 — harness/tooling integrity: Drive paint-condition waits, dispatch root-relative pointers, folder-open task isolation
 - #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
@@ -120,4 +119,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #296 [per-workspace-terminal-worlds](.invar/tasks/completed/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md) — 55772cef — per-workspace terminal worlds: panel content sets isolate + restore per workspace
 - #295 [vscode-task-variable-schema](.invar/tasks/completed/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md) — 371cbdb7 — VS Code task variables: env + predefined set, boundary refusals
 - #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/completed/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md) — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
-- #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract

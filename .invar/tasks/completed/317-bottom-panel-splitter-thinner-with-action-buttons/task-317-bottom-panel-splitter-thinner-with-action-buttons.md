@@ -1,6 +1,6 @@
 # 317 — bottom panel splitter: thinner bar + left-side editor action buttons + always-draggable
 
-State: IN-PROGRESS
+State: COMPLETED — ec92a8b9 — bottom panel separator: thin lower-half-cell + editor action buttons + always-draggable geometry
 Engine: codex
 Model: 5.6-sol
 Effort: high
