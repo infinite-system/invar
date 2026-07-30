@@ -7,8 +7,8 @@
   "transcript": "tmp/transcripts/transcript-codex-unknown-default-300-eight-ui-nitpicks-bundled.md",
   "engine": "codex",
   "environment": "linux",
-  "model": "unknown",
-  "effort": "default",
+  "model": "5.6-sol",
+  "effort": "high",
   "heldFromMain": false,
   "baseCommit": "297b8a841e5827dae6b3abad9c243daf8fe89b11",
   "startedAt": "2026-07-29T17:49:46-04:00"

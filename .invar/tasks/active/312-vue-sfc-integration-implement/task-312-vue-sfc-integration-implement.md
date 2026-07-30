@@ -2,6 +2,7 @@
 
 State: active — UNBLOCKED (user accepted all five 2026-07-29)
 Engine: codex
+Model: 5.6-sol
 Effort: high
 Provenance: USER-DIRECTED 2026-07-29 (same verbatim quote as #311)
 

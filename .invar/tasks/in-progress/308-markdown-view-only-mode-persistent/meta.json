@@ -7,7 +7,7 @@
   "transcript": "tmp/transcripts/transcript-codex-unknown-medium-308-markdown-view-only-mode-persistent.md",
   "engine": "codex",
   "environment": "linux",
-  "model": "unknown",
+  "model": "5.6-sol",
   "effort": "medium",
   "heldFromMain": false,
   "baseCommit": "72ab6effe4ae5169dde354b11540216fb3ca84ab",

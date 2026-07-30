@@ -120,10 +120,22 @@ function headerField(taskFileText: string, fieldName: string): string | null {
 // The compact agent identity for the lenses: `claude·opus-5·high`.
 export function agentIdentity(record: TaskRecord): string | null {
   if (record.assignedEngine === null) return null;
+  // Mirror dispatch.sh's per-engine defaults: a record with no Model/Effort
+  // line means the fleet default, never "unknown". Codex effort policy:
+  // medium is not allowed; dispatch normalizes it to high, so the view
+  // shows the normalized truth rather than the stale record field.
+  const codexEngine = record.assignedEngine === 'codex';
+  const defaultModel = codexEngine ? '5.6-sol' : 'fable-5';
+  const declaredEffort =
+    record.assignedEffort ?? (codexEngine ? 'high' : 'default');
+  const effort =
+    codexEngine && (declaredEffort === 'medium' || declaredEffort === 'default')
+      ? 'high'
+      : declaredEffort;
   return [
     record.assignedEngine,
-    record.assignedModel ?? 'unknown',
-    record.assignedEffort ?? 'default',
+    record.assignedModel ?? defaultModel,
+    effort,
   ].join('·');
 }
 
@@ -215,6 +227,21 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
           // A concurrent task move can remove one entry between readdir and stat. The next read wins.
         }
       }
+      // Bundle and renamed-slug dispatches have no task file in the dispatch
+      // folder; meta.json (written by dispatch.sh) is the dispatch-time truth
+      // for engine/model/effort, so the view falls back to it.
+      let dispatchMeta: {
+        engine?: string;
+        model?: string;
+        effort?: string;
+      } | null = null;
+      try {
+        dispatchMeta = JSON.parse(
+          readFileSync(join(folderPath, 'meta.json'), 'utf8'),
+        ) as { engine?: string; model?: string; effort?: string };
+      } catch {
+        dispatchMeta = null;
+      }
       records.push({
         taskNumber: Number.parseInt(folderName, 10),
         folderName,
@@ -245,9 +272,12 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
             .find((line) => line.startsWith('Priority:'))
             ?.slice('Priority:'.length)
             .trim() ?? null,
-        assignedEngine: headerField(taskFileText, 'Engine'),
-        assignedModel: headerField(taskFileText, 'Model'),
-        assignedEffort: headerField(taskFileText, 'Effort'),
+        assignedEngine:
+          headerField(taskFileText, 'Engine') ?? dispatchMeta?.engine ?? null,
+        assignedModel:
+          headerField(taskFileText, 'Model') ?? dispatchMeta?.model ?? null,
+        assignedEffort:
+          headerField(taskFileText, 'Effort') ?? dispatchMeta?.effort ?? null,
       });
     }
   }

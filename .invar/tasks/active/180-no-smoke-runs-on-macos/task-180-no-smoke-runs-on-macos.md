@@ -5,7 +5,7 @@ Created: 2026-07-28
 Engine: claude
 Environment: macos
 Model: opus-5
-Effort: medium
+Effort: high
 Priority: verification-integrity
 Assignment note: NOT RUNNABLE FROM THIS HOST — PtyTestDriver is FFI-blocked on darwin, so the gate has never run on the user's machine. Needs a claude on real macOS.
 

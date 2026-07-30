@@ -2,6 +2,7 @@
 
 State: active
 Engine: codex
+Model: 5.6-sol
 Effort: low
 Provenance: USER-DIRECTED 2026-07-29
 

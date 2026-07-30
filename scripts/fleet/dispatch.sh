@@ -200,7 +200,22 @@ if [ -n "$task_file" ]; then
 fi
 # The agent identity, for the transcript name: engine + model + effort. Three runs of one task by
 # three different agents produce three distinguishable transcripts instead of one overwritten file.
-agent_identity="${declared_engine:-$engine}-${declared_model:-unknown}-${declared_effort:-default}"
+# Resolve model/effort DEFAULTS per engine before anything records them: a
+# record with no Model: line means the fleet default for its engine, never
+# "unknown". Codex effort policy: medium is NOT allowed (user directive
+# 2026-07-29) — normalize medium->high loudly; empty/default -> high.
+resolved_engine="${declared_engine:-$engine}"
+if [ "$resolved_engine" = "codex" ]; then
+  declared_model="${declared_model:-5.6-sol}"
+  case "${declared_effort:-}" in
+    ""|default) declared_effort="high";;
+    medium) echo "dispatch: WARNING — codex effort 'medium' is not allowed; using 'high'" >&2; declared_effort="high";;
+  esac
+else
+  declared_model="${declared_model:-fable-5}"
+  declared_effort="${declared_effort:-default}"
+fi
+agent_identity="${resolved_engine}-${declared_model}-${declared_effort}"
 
 # Transcripts live with the other 171 in tmp/transcripts/ (gitignored; the user's decision on
 # 2026-07-27 was "no need to store in git history"). NOT beside the worktree dirs: .invar/worktrees/
