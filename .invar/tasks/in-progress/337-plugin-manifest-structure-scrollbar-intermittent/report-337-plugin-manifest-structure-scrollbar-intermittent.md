@@ -197,10 +197,13 @@ After the fix it runs, and it passed 7 times out of 7:
 
 | runs | conditions | result |
 |---|---|---|
-| 5 | sequential, defaults, idle machine | 58 PASS each, `EXIT=0` |
+| 4 | sequential, defaults, idle machine | 58 PASS each, `EXIT=0` |
+| 1 | sequential, with the planted third File Tree row | 58 PASS, `EXIT=0` |
 | 2 | two instances concurrent in one worktree | 58 PASS each, `EXIT=0` |
+| 5 | inside the five gate runs, under 6-worker pool load | `behavioral-contracts` `OK` each time |
 
-**It did not reproduce.** I did not repair it. Two structural weaknesses are measured and
+That is 7 direct drives plus 5 drives inside a full gate, and 12 passes. **It did not
+reproduce.** I did not repair it. Two structural weaknesses are measured and
 named instead.
 
 **Weakness A. A transient `laidH=1` pass exists.** The wait is
