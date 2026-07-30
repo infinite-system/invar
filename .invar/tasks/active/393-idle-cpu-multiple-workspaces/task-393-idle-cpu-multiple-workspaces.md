@@ -13,6 +13,12 @@ Effort: medium
 — reported together with the broken build, so the running binary PREDATES
 the #380 landing (5a1a52a7) and the hotfix (this commit's parent chain).
 
+## Baseline result (2026-07-30)
+
+The user rebuilt AFTER the #380 landing and the build hotfix: idle CPU is
+still not fully back to idle. "needs deeper investigation" — this is a live
+defect in current source, beyond the dashboard motion generator.
+
 ## Order of work
 
 1. FIRST establish the baseline on a current build: the user rebuilds after
