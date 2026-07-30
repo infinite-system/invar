@@ -1,6 +1,6 @@
 # #398 — panelSeparatorGeometry publishes columns one higher than the grid
 
-State: ACTIVE
+State: RETIRED — root already fixed on main by the #346 row rewrite; evidence: #387 round-4 grab probe (GRAB run starts at published left, negative controls both ends). Edge-close intermittent stays observable via #214.
 Priority: verification-integrity
 Engine: codex
 Environment: linux

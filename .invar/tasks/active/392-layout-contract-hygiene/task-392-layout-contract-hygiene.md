@@ -16,3 +16,10 @@ Effort: low
    + whole-viewport LayoutModel, incl. two width/height sibling records)
    with no layout.lattice.md. scroll.lattice.md in src/modules/ui is the
    model. Author it (derived, never legislative).
+
+## Folded in from #387 round 4 (2026-07-30)
+
+ui.invariants.md cites the DELETED PanelSeparatorRow in three places:
+Mechanism near line 372, Evidence near line 389, Verification near line
+400 (names a test file that cannot run). Repair citations to PanelTabBar
+equivalents.
