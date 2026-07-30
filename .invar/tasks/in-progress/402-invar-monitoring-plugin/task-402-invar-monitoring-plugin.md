@@ -1,6 +1,6 @@
 # #402 — Invar Monitoring plugin: the app observes itself
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux

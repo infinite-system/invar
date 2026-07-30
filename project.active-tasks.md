@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #402 [invar-monitoring-plugin](.invar/tasks/in-progress/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md)  [building]
+  `tmux attach -t invar/402-invar-monitoring-plugin`
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
 - #390 [left-sidebar-proportional-bound](.invar/tasks/in-progress/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md)  [building]
@@ -83,7 +85,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #124 [terminal-follow-escape-intermittent](.invar/tasks/active/124-terminal-follow-escape-intermittent/task-124-terminal-follow-escape-intermittent.md)  [ACTIVE — but see "State discrepancy" below; a fix was demonstrated and may have landed]
 - #109 [agent-permissions-quiet-tail-flake](.invar/tasks/active/109-agent-permissions-quiet-tail-flake/task-109-agent-permissions-quiet-tail-flake.md)  [ACTIVE — dispatch condition: no other builder live]
 
-## PERFORMANCE-BEHAVIOUR (10)
+## PERFORMANCE-BEHAVIOUR (11)
+- #403 [file-cache-bounds-audit](.invar/tasks/active/403-file-cache-bounds-audit/task-403-file-cache-bounds-audit.md)
 - #396 [ready-text-clipped-by-degraded-badge](.invar/tasks/active/396-ready-text-clipped-by-degraded-badge/task-396-ready-text-clipped-by-degraded-badge.md)
 - #185 [behavioral-contracts-shared-fixtures](.invar/tasks/active/185-behavioral-contracts-shared-fixtures/task-185-behavioral-contracts-shared-fixtures.md)
 - #175 [attribute-boot-time-irreducible-cost](.invar/tasks/active/175-attribute-boot-time-irreducible-cost/task-175-attribute-boot-time-irreducible-cost.md)  [ACTIVE — brief not yet written]
