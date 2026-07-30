@@ -1,6 +1,6 @@
 # #408 — workspace state never leaks across workspaces
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: claude
 Environment: linux
