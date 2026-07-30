@@ -15,6 +15,8 @@
 #      hides the panel and quit quits (the trap-avoidance warrant, driven).
 #
 # Usage: scripts/smoke-keyboard-invariant.sh
+#
+# invariant: Harness teardown bypasses product quit confirmation only when declared (scripts/harness/harness.invariants.md)
 set -uo pipefail
 DIRECTORY="$(cd "$(dirname "$0")" && pwd)"
 HARNESS="$DIRECTORY/tui-harness.sh"
@@ -77,6 +79,7 @@ printf 'const alpha = 1;\nconst beta = 2;\nconst gamma = 3;' >"$WORKSPACE/indent
 
 echo "== B) launch on a real file and give the EDITOR focus =="
 "$HARNESS" launch "$SESSION" 120x40 env TUI_FRAME_DUMP=1 INVAR_AGENT_BACKEND=echo \
+  INVAR_HARNESS_DIRECT_QUIT=1 \
   bun run src/main.ts "$WORKSPACE" >/dev/null
 if "$HARNESS" ready "$SESSION" 30 >/dev/null; then pass "boot: ready+quiescent"; else
   fail "boot never ready"; "$HARNESS" capture "$SESSION"; exit 1

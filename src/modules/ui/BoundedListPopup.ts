@@ -563,6 +563,7 @@ class $BoundedListPopup {
         left: geometry.boxLeft,
         top: geometry.boxTop,
         width: geometry.boxWidth,
+        glyph: this.dependencies.theme.glyph('panelClose'),
         backgroundColor: palette.panel,
         foregroundColor: palette.accent,
       });

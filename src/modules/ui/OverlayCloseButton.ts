@@ -28,7 +28,12 @@ class $OverlayCloseButton {
 
   show(geometry: OverlayCloseButtonGeometry): void {
     const width = Math.max(1, Math.min(3, geometry.width));
-    const label = width >= 3 ? ' ✕ ' : width === 2 ? '✕ ' : '✕';
+    const label =
+      width >= 3
+        ? ` ${geometry.glyph} `
+        : width === 2
+          ? `${geometry.glyph} `
+          : geometry.glyph;
     this.renderable.visible = true;
     this.renderable.left = geometry.left + geometry.width - width;
     this.renderable.top = geometry.top;
@@ -70,6 +75,7 @@ export interface OverlayCloseButtonGeometry {
   left: number;
   top: number;
   width: number;
+  glyph: string;
   backgroundColor: string;
   foregroundColor: string;
 }

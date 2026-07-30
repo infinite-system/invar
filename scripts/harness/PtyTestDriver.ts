@@ -809,6 +809,8 @@ class $PtyTestDriver {
     environment.COLORTERM = 'truecolor';
     environment.INVAR_TEST_SUPPRESS_BUILT_IN_TASK = '1';
     environment.INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS = '1';
+    // invariant: Harness teardown bypasses product quit confirmation only when declared (scripts/harness/harness.invariants.md)
+    environment.INVAR_HARNESS_DIRECT_QUIT = '1';
     if (options.homeDirectory) {
       const configHome = join(options.homeDirectory, '.config');
       const dataHome = join(options.homeDirectory, '.local', 'share');

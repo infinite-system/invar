@@ -113,6 +113,40 @@ bun run drive --size 100000 && scripts/behavioral-contracts.sh`
 
 **Last refined:** 2026-07-29
 
+### Harness teardown bypasses product quit confirmation only when declared
+
+**Invariant:** If a PTY launch uses the shared driver's default Ctrl+Q teardown, then it may bypass
+the product confirmation only through the declared harness environment flag. `Drive`, product
+launches, and the quit-confirmation contract always use the real confirmation path.
+
+**Scope:** Invar processes launched by `PtyTestDriver` and the keyboard-invariant tmux smoke. A
+normal Invar process without `INVAR_HARNESS_DIRECT_QUIT=1` is outside the bypass.
+
+**Mechanism:** `PtyTestDriver.childEnvironment` sets `INVAR_HARNESS_DIRECT_QUIT=1` before applying a
+smoke's explicit environment overrides. `Bootstrap.requestQuit` calls shutdown directly only for
+that exact value. `Drive` and `smoke-quit-confirmation-harness.ts` override it to `0`. The dedicated
+smoke therefore drives the product dialog. The keyboard-invariant tmux smoke declares the same
+bypass on its direct launch. Existing teardown-only smokes retain their established Ctrl+Q protocol.
+
+**Generates:** Stable teardown for the existing PTY fleet; a real interactive quit path in Drive;
+one explicit test boundary instead of per-smoke confirmation handling.
+
+**Evidence:** `scripts/harness/PtyTestDriver.ts`; `scripts/harness/Drive.ts`;
+`src/modules/app/Bootstrap.ts`; `scripts/harness/smoke-quit-confirmation-harness.ts`;
+`scripts/smoke-keyboard-invariant.sh`.
+
+**Impossible if true:** Drive exiting on its first Ctrl+Q; the quit contract passing while it
+inherits the bypass; an existing harness that uses Ctrl+Q only for teardown becoming trapped in a
+dialog.
+
+**Verification:** `bun run drive --key Control+q`; `bun
+scripts/harness/smoke-quit-confirmation-harness.ts`; temporarily set the quit smoke override to `1`
+and observe its first wait fail because no dialog opens.
+
+**Status:** established
+
+**Last refined:** 2026-07-30
+
 ### Harness input and output use the real PTY
 
 **Invariant:** If a harness smoke drives Invar, then it spawns the real `src/main.ts` entry on an
