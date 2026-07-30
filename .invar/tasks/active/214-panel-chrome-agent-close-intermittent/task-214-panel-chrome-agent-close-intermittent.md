@@ -57,3 +57,6 @@ before treating them as two defects.
 - 2026-07-29 #308 bycatch commit gate: editor smoke one starvation-class
   retry (18th today). ALSO: broken claude symlink (313 probe) failed agent
   smokes across several gate attempts before repair — env-caused, not census.
+- 2026-07-29 #317 gates: panel-chrome starvation retry-pass in TWO parallel
+  runs + panel-split retry-pass in the final gate + one tasks-dashboard
+  Extensions-reach miss that did not reproduce (19th-22nd today).
