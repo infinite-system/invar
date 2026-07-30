@@ -574,13 +574,18 @@ Missing plugin status keys are outside that plugin's condition.
   visible in either dock, `structureStatus="no-document"` also holds
   settlement until the observed outline starts its refresh. A hidden
   unsupported file can correctly stay `no-document`.
+- *Structure paint is current* — after visible structure status leaves
+  `no-document`, the emulator grid must also stop painting
+  `No file is open.` before settlement.
 - *The registry is explicit* — each pending state has a stable name in
   `$settledStatusRules`.
 
 **Mechanism:** `Drive.awaitSettledObservation` combines app readiness with
-the registry through `PtyTestDriver.awaitGridCondition`. The status file
-flushes after a settled render, so a matching status condition and the
-printed grid describe the same completed frame.
+the registry through `PtyTestDriver.awaitGridCondition`. Status-file writes
+and PTY frame bytes cross separate OS boundaries, so the condition
+re-evaluates both current status and the emulator grid. Structure status
+cannot release the drive while the grid still contains its earlier
+no-document headline.
 
 **Generates:** A settled Markdown preview instead of `Parsing Markdown…`; a
 current visible structure headline instead of `No file is open.`; a hidden
@@ -593,7 +598,8 @@ finished.
 
 **Evidence:** `scripts/harness/Drive.ts`;
 `scripts/harness/Drive.test.ts` drives the 3,352-line
-`project.conductor.archive.md` fixture through the real PTY.
+`project.conductor.archive.md` fixture through the real PTY and plants a
+ready-status snapshot with the stale headline.
 
 **Impossible if true:** A `settled boot` print with
 `markdownParsing=true`; a parsed preview whose `markdownRevision` differs
@@ -607,7 +613,7 @@ from `bufferRevision`; an active file beside a visible structure headline
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Async-published state is always awaited
 
