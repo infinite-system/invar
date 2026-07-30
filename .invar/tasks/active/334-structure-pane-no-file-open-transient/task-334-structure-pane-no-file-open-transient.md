@@ -1,6 +1,6 @@
 # Task #334 — Structure pane shows "No file is open." beside an open file (transient)
 
-Priority: flake-evidence
+Priority: verification-integrity
 Engine: codex
 Environment: linux
 Model: 5.6-sol
@@ -29,3 +29,13 @@ during load. Only diagnose after it reproduces.
 ## Invariants in scope
 
 ui.invariants.md — panel content records; confirm at reproduction time.
+
+## UPGRADE (2026-07-30 ~03:0x): now GATE-BLOCKING
+
+Priority raised to verification-integrity. Drive.test.ts "prints a large
+Markdown file only after preview and structure work settle" fails on main
+(f48d224a): the structure dock shows "No file is open." while
+structureStatus=ready and structureRows=110. Reproduced twice tonight: once
+in #336's combined-tree gate (d298d391, GATE_EXIT=1), once by the conductor
+directly on main (11 pass / 1 fail). Every future landing hits this red
+until fixed. Dispatch next.
