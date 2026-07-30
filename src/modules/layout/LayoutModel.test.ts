@@ -1,26 +1,27 @@
 import { describe, expect, test } from 'bun:test';
 import { LayoutModel, type LayoutModelOptions } from './LayoutModel';
 
+const baseOptions: LayoutModelOptions = {
+  totalColumns: 120,
+  totalRows: 39,
+  primaryDockVisible: true,
+  activityBarVisible: true,
+  activityBarColumns: 4,
+  sidebarColumns: 32,
+  sidebarPosition: 'left',
+  rightDockVisible: true,
+  rightDockColumns: 24,
+  bottomPanelVisible: true,
+  bottomPanelRows: 18,
+  panelAlignment: 'center',
+  leftDockVerticalSpan: 'full-height',
+  rightDockVerticalSpan: 'ends-at-panel',
+};
+
 function resolve(
   overrides: Partial<LayoutModelOptions> = {},
 ): ReturnType<typeof LayoutModel.Class.resolve> {
-  return LayoutModel.Class.resolve({
-    totalColumns: 120,
-    totalRows: 39,
-    primaryDockVisible: true,
-    activityBarVisible: true,
-    activityBarColumns: 4,
-    sidebarColumns: 32,
-    sidebarPosition: 'left',
-    rightDockVisible: true,
-    rightDockColumns: 24,
-    bottomPanelVisible: true,
-    bottomPanelRows: 18,
-    panelAlignment: 'center',
-    leftDockVerticalSpan: 'full-height',
-    rightDockVerticalSpan: 'ends-at-panel',
-    ...overrides,
-  });
+  return LayoutModel.Class.resolve({ ...baseOptions, ...overrides });
 }
 
 describe('LayoutModel', () => {
@@ -98,6 +99,85 @@ describe('LayoutModel', () => {
     expect(geometry.editorCenter.height).toBe(1);
     expect(geometry.bottomPanelSplitter.top).toBe(1);
     expect(geometry.bottomPanel.height).toBe(45);
+  });
+
+  test.each([64, 80, 100, 120, 160, 200, 400] as const)(
+    'a %d-column row keeps the editor wider than the right dock at the persisted default width',
+    (totalColumns) => {
+      const geometry = resolve({ totalColumns, rightDockColumns: 28 });
+
+      expect(geometry.rightDock.width).toBeLessThan(
+        geometry.editorCenter.width,
+      );
+      expect(geometry.rightDock.width).toBeLessThanOrEqual(
+        Math.floor(totalColumns * 0.3),
+      );
+      expect(geometry.rightDock.width).toBeGreaterThanOrEqual(1);
+    },
+  );
+
+  test.each([64, 80, 100, 120, 160, 200, 400] as const)(
+    'a %d-column row keeps the editor wider than the right dock however wide the request is',
+    (totalColumns) => {
+      const geometry = resolve({
+        totalColumns,
+        rightDockColumns: Number.MAX_SAFE_INTEGER,
+      });
+
+      expect(geometry.rightDock.width).toBeLessThan(
+        geometry.editorCenter.width,
+      );
+      expect(geometry.rightDock.width).toBeLessThanOrEqual(
+        Math.floor(totalColumns * 0.3),
+      );
+      expect(geometry.rightDock.width).toBe(
+        LayoutModel.Class.maximumRightDockColumns({
+          ...baseOptions,
+          totalColumns,
+          rightDockColumns: Number.MAX_SAFE_INTEGER,
+        }),
+      );
+    },
+  );
+
+  test('the right dock keeps a request that fits and gives it back after a resize', () => {
+    const draggedColumns = 33;
+
+    expect(
+      resolve({ totalColumns: 120, rightDockColumns: draggedColumns }).rightDock
+        .width,
+    ).toBe(draggedColumns);
+    expect(
+      resolve({ totalColumns: 80, rightDockColumns: draggedColumns }).rightDock
+        .width,
+    ).toBe(20);
+    expect(
+      resolve({ totalColumns: 120, rightDockColumns: draggedColumns }).rightDock
+        .width,
+    ).toBe(draggedColumns);
+  });
+
+  test('the right-dock bound answers over the row the editor and the dock really share', () => {
+    expect(
+      LayoutModel.Class.maximumRightDockColumns({
+        ...baseOptions,
+        totalColumns: 80,
+      }),
+    ).toBe(20);
+    expect(
+      LayoutModel.Class.maximumRightDockColumns({
+        ...baseOptions,
+        totalColumns: 80,
+        primaryDockVisible: false,
+        activityBarVisible: false,
+      }),
+    ).toBe(24);
+    expect(
+      LayoutModel.Class.maximumRightDockColumns({
+        ...baseOptions,
+        totalColumns: 1,
+      }),
+    ).toBe(1);
   });
 
   test('the user default keeps the sidebar full height and the panel under the editor', () => {
