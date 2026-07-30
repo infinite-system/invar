@@ -30,9 +30,35 @@ archive_one() {
   local session_file
   session_file="$(head -1 "$link_path")"
   if [ ! -f "$session_file" ]; then
-    echo "archive-session: FAIL — linked session file missing: ${session_file}" >&2
-    echo "  (link may read UNRESOLVED; resolve by timestamp against the engine store and update the link)" >&2
-    return 1
+    # LAZY RESOLUTION: dispatch's eager lookup races codex's rollout write
+    # (observed 15-56s after launch on 2026-07-30; #329, #323, #327 all wrote
+    # UNRESOLVED). At archive time the file certainly exists, so resolve here
+    # by the same identity dispatch uses: the rollout head NAMES the worktree.
+    # Uniqueness guard: refuse on more than one match rather than guess.
+    # Head-only match (session_meta cwd), NEVER full-file grep: conductor
+    # steers and briefs plant task slugs inside OTHER sessions' transcripts
+    # (the #280 mis-archive lesson). Only the head names the true cwd.
+    local codex_store="$HOME/.codex/sessions"
+    local matches=""
+    local candidate
+    while IFS= read -r candidate; do
+      if head -c 8000 "$candidate" | grep -q "worktrees/${task_folder_name}\""; then
+        matches="${matches}${candidate}
+"
+      fi
+    done < <(find "$codex_store" -type f -name 'rollout-*.jsonl' 2>/dev/null)
+    matches="$(printf '%s' "$matches")"
+    local match_count
+    match_count="$(printf '%s' "$matches" | grep -c . || true)"
+    if [ "$match_count" = "1" ]; then
+      session_file="$matches"
+      echo "$session_file" > "$link_path"
+      echo "archive-session: link was stale/UNRESOLVED — lazily resolved by worktree name: ${session_file}"
+    else
+      echo "archive-session: FAIL — linked session file missing: ${session_file}" >&2
+      echo "  (lazy resolution found ${match_count} candidates naming worktrees/${task_folder_name}; need exactly 1)" >&2
+      return 1
+    fi
   fi
   mkdir -p "$archive_directory"
   # Name the raw copy after its pane-transcript sibling: the same
