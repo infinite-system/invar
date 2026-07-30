@@ -382,3 +382,12 @@ never fight it — user decides in the morning.
 - dispatch.sh CANNOT relaunch an in-progress task (record-exists guard) —
   the #326 manual sequence above is the workaround; consider a
   --relaunch flag as future hardening, do not hack the guard.
+
+## OVERNIGHT DELTA 3 (2026-07-30 03:2x): fleet mix
+
+User: run 2x codex gpt-5.6-sol MEDIUM + 1x claude OPUS MEDIUM. Maintain the
+mix as lanes free: whenever no opus lane is live, the next dispatch goes
+opus-5 medium (Engine: claude in the task file — dispatch.sh transmits
+--model opus --effort medium). #350 is pre-marked opus. Claude builders:
+prime per doctrine (they auto-read CLAUDE.md; tell them to load /ivue +
+/invariants; IBR via the system-prompt flags is dispatch.sh's job).

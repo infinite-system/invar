@@ -377,6 +377,7 @@ class $Bootstrap {
     // is built lazily once the view attaches the slot.
     // invariant: The editor column's default occupant is a contribution (src/modules/ui/ui.invariants.md)
     const editorColumnDefault = new EditorColumnDefault.Class();
+    let restartApplication = (): void => {};
     let editorInteractionIsAvailable = (): boolean => false;
     let dismissEditorSuggestions = (): void => {};
     const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
@@ -412,6 +413,7 @@ class $Bootstrap {
         bindingHint: (action, context) =>
           keybindings.bindingHint(action, context),
         requestRender: () => renderer.requestRender(),
+        restartApplication: () => restartApplication(),
       },
     );
     applicationContributions.activateAll();
@@ -1412,7 +1414,13 @@ class $Bootstrap {
       completionPopup.dispose();
       agentSkillPopup.dispose();
       app.dispose();
-      options.onQuit?.();
+      if (restartRequested) options.onRestart?.();
+      else options.onQuit?.();
+    };
+    let restartRequested = false;
+    restartApplication = () => {
+      restartRequested = true;
+      void shutdown();
     };
     confirmQuit = () => {
       void shutdown();
@@ -2916,6 +2924,7 @@ export namespace Bootstrap {
 export interface BootOptions {
   root?: string;
   onQuit?: () => void;
+  onRestart?: () => void;
   plugins?: readonly ApplicationContributor[];
 }
 

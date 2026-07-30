@@ -20,6 +20,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     string,
     ActiveContribution
   >();
+  protected readonly failures = new Map<string, string>();
 
   constructor(
     protected readonly contributors: readonly ApplicationContributor[],
@@ -37,12 +38,21 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
       name: contributor.name,
       enabled: this.activeContributions.has(contributor.identifier),
       canDisable: contributor.canDisable !== false,
+      version: contributor.vendorMetadata?.version,
+      provenance: contributor.vendorMetadata?.provenance,
+      kernelOverrides: contributor.vendorMetadata?.kernelOverrides,
+      failure: this.failures.get(contributor.identifier),
     }));
   }
 
   activateAll(): void {
     for (const contributor of this.contributors) {
-      this.activate(contributor);
+      try {
+        this.activate(contributor);
+      } catch (error) {
+        this.failures.set(contributor.identifier, String(error));
+        this.revision.value += 1;
+      }
     }
   }
 
@@ -159,6 +169,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         registrationDisposers,
         disposeWorkspaceContribution,
       });
+      this.failures.delete(contributor.identifier);
       this.revision.value += 1;
     } catch (error) {
       contributor.disposeApplication?.();
@@ -219,6 +230,7 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerRightDockContent'
   | 'registerPaneRuntime'
   | 'registerEditorColumnDefault'
+  | 'restartApplication'
 > & {
   keybindings: KeybindingRegistry.Instance;
   settings: Settings.Instance;
