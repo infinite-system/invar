@@ -85,3 +85,8 @@ before treating them as two defects.
   live test app instances — load-bound metric, report-only. ALSO one-shot:
   #321 diagnostic probe classified a partly typed shell command as a partial
   child frame once at 100x30, clean immediately after, not reproduced.
+- 2026-07-30 #323 gates: one run overlapping #329's root gate had the
+  plugin-manifest contract unable to reach the Markdown extension row; did
+  not recur without the overlap (37th). Final hook: git-watch smoke +
+  behavioral contracts one timeout-class first attempt each, both passed the
+  gate's quiet retry, gate named both as flakes (38th-39th).
