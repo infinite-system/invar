@@ -357,42 +357,50 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 ### Panel controls share paint and hit geometry
 
-**Invariant:** If the bottom panel paints Add, Expand/Restore, or Close controls, then one
-`PanelHeadingProjection` determines both the displayed control segments and the screen columns that
-activate their actions, while each segment carries its tooltip label and hover projection.
+**Invariant:** If the bottom panel paints an editor action or Add, Expand/Restore, or Close, then one
+row projection determines the displayed segments and the screen columns that activate them. Editor
+actions yield first at narrow widths, while at least one draggable separator cell remains between
+them and the right controls.
 
 **Scope:** `PanelHeading`, the panel-level separator bar and generic headed panel cells in
 `RootView`, and the `PanelAddPopup` adapter. The contents-list row controls and status-bar buttons
 are outside this rule.
 
-**Mechanism:** `PanelHeading.project` clips its optional title around the requested right-aligned
+**Mechanism:** `PanelSeparatorRow.project` reserves the right controls and one drag cell before it
+admits whole three-cell editor actions contributed through `CommandRegistry.actionsForSurface`.
+It returns action paint, action hit segments, and the action/drag/control rectangles together.
+`PanelHeading.project` clips its optional title around the requested right-aligned
 control segments and returns their exact half-open column ranges, semantic glyph slots, tooltip
 labels, and `StyledText`; `controlSegmentAtColumn` resolves pointer input and hover only from those
-ranges. RootView retains one three-action projection on the shortened panel separator and one
-close-only projection for each painted cell, and points the shared `Tooltip` at each segment. Hover
+ranges. RootView retains both projections and points the shared `Tooltip` at each segment. Hover
 uses `palette.cursorLine`; Close uses `palette.fg`, not `palette.error`. Panel-level Add opens the
 shared bounded list, Expand toggles the host layout override, and Close hides the whole panel without
-disposing its contents. A pane Close removes only that cell's owned content.
+disposing its contents. Editor actions dispatch by command id. A pane Close removes only that cell's
+owned content.
 
-**Generates:** A shortened separator with stable panel actions; close-only pane headings that survive
-cell resizing; identical paint and pointer boundaries; tooltips and hover highlights for every
-control; one shared dropdown implementation; distinct whole-panel and individual-pane close actions.
+**Generates:** Editor buttons followed by an always-present drag segment and stable panel actions;
+close-only pane headings that survive cell resizing; identical paint and pointer boundaries;
+tooltips and hover highlights for every control; one shared dropdown implementation; distinct
+whole-panel and individual-pane close actions.
 
-**Evidence:** `src/modules/ui/PanelHeading.ts`; `src/modules/ui/PanelAddPopup.ts`;
+**Evidence:** `src/modules/ui/PanelSeparatorRow.ts`; `src/modules/ui/PanelSeparatorRow.test.ts`;
+`src/modules/ui/PanelHeading.ts`; `src/modules/ui/PanelAddPopup.ts`;
 `src/modules/ui/RootView.ts`; `src/modules/ui/PanelHeading.test.ts`;
 `src/modules/ui/PanelAddPopup.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
 
-**Impossible if true:** A painted control column invoking a neighboring action; a narrow heading
+**Impossible if true:** A zero-width drag segment; an editor action surviving while the drag segment
+disappears; a painted control column invoking a neighboring action; a narrow heading
 leaving an invisible clickable control; Add reimplementing popup placement or row-hit math; Close
 targeting whichever content happens to be active instead of the headed region; a hovered control
 changing an un-hovered sibling; Close painting in the theme error color.
 
-**Verification:** `bun test src/modules/ui/PanelHeading.test.ts
+**Verification:** `bun test src/modules/ui/PanelSeparatorRow.test.ts
+src/modules/ui/PanelHeading.test.ts
 src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-29
 
 ### Panel content order is one persisted sequence
 
@@ -584,7 +592,8 @@ src/modules/ui/BoundedListPopup.test.ts` and `bun scripts/harness/smoke-completi
 
 **Invariant:** If a pane boundary is resizable, then one `SplitterElement` owns its one-cell
 cross-axis geometry, pointer hit target, hover state, drag capture, and palette state; the cell that
-paints is the cell that receives the pointer.
+paints is the cell that receives the pointer. A horizontal boundary paints only the lower half of
+that hit cell, through the same appearance source as a horizontal scrollbar.
 
 **Scope:** Every pane splitter in `RootView`, `DiffView`, and `MarkdownSplitView`, including the
 sidebar, bottom panel, git regions, split panel cells, diff panes, markdown preview, and right dock.
@@ -593,11 +602,15 @@ sidebar, bottom panel, git regions, split panel cells, diff panes, markdown prev
 writes the renderable rectangle that OpenTUI both paints and stamps into the hit grid; its shared
 pointer lifecycle captures that same renderable, tracks hover plus drag, and resolves appearance
 through `palette.border` at rest and `palette.accent` while hovered or dragged.
+`SeparatorAppearance` supplies the one-cell cross-axis count and paints vertical full cells or
+horizontal lower-half cells for both splitters and scrollbars.
 
 **Generates:** One-cell splitter hit zones; rest-muted, hover-lit, drag-lit behavior; one future
 splitter wire-up instead of another geometry and pointer implementation.
 
-**Evidence:** `src/modules/ui/SplitterElement.ts`; `src/modules/ui/SplitterElement.test.ts`;
+**Evidence:** `src/modules/ui/SeparatorAppearance.ts`;
+`src/modules/ui/SeparatorAppearance.test.ts`; `src/modules/ui/SplitterElement.ts`;
+`src/modules/ui/SplitterElement.test.ts`;
 splitter consumers construct `SplitterElement` rather than binding pointer handlers themselves.
 
 **Impossible if true:** A painted divider whose pointer target occupies different cells; a pane
@@ -609,7 +622,7 @@ FrameProbe assertions registered in `scripts/merge-gate.sh`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-29
 
 ### Visible panel contents own separate headed regions
 
@@ -1798,12 +1811,13 @@ bottom-right cell and the horizontal painter stops in the preceding column.
 
 **Scope:** every scrollbar in the app: the pane bars built by `ScrollbarSync`, the optional
 `PaneContent` scroll bars (terminal scrollback), both `ScrollableTextViewport` bars (hover card,
-agent transcript, markdown preview), and the two `DiffView` bars.
+agent transcript, markdown preview), and the two `DiffView` bars. `SeparatorAppearance`, shared with
+`SplitterElement`, owns the axis-specific cell treatment.
 
 **Mechanism:** all scrollbar construction goes through ONE class, `SolidThumbScrollBar`
-(`src/modules/ui/SolidThumbScrollBar.ts`). It uses two background `fillRect` calls for a vertical
-track and thumb. It uses `▄` for a horizontal track and thumb, with the supplied track and thumb
-colours as foreground and transparent background. The lower half anchors the bar to the pane's
+(`src/modules/ui/SolidThumbScrollBar.ts`). It delegates track and thumb paint to
+`SeparatorAppearance`, which uses background fill for vertical rectangles and `▄` with transparent
+background for horizontal rectangles. The lower half anchors the bar to the pane's
 trailing edge; the upper half stays open. This reads at half the height without weakening the
 whole-cell hit target. The glyph has the same shape with the dark and light palette colour pairs.
 `ScrollbarSync` supplies one `panel` and `dim` pair to every bar it constructs, independent of axis.

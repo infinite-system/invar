@@ -182,14 +182,14 @@ function splitterPoint(region: SplitterRegion): {
   };
 }
 
-function backgroundAt(
+function splitterAppearanceAt(
   snapshot: HarnessSnapshot.Model,
   point: { column: number; row: number },
-): number {
+): string {
   const cell = snapshot.cell(point.row, point.column);
   if (!cell)
     throw new Error(`No emulator cell at ${point.column},${point.row}`);
-  return cell.background;
+  return `${cell.characters}:${cell.foreground}:${cell.background}`;
 }
 
 function clickCell(
@@ -554,7 +554,10 @@ async function assertSplitterStates(
   );
   const initialPoint = splitterPoint(initialRegion);
   await driver.awaitScreenChange();
-  const restingBackground = backgroundAt(driver.snapshot(), initialPoint);
+  const restingAppearance = splitterAppearanceAt(
+    driver.snapshot(),
+    initialPoint,
+  );
 
   driver.sendMouse({
     kind: 'move',
@@ -562,10 +565,11 @@ async function assertSplitterStates(
     row: initialPoint.row,
   });
   const hoveredSnapshot = await driver.awaitGridCondition(
-    `${splitterName} splitter paints its active hover background`,
-    (snapshot) => backgroundAt(snapshot, initialPoint) !== restingBackground,
+    `${splitterName} splitter paints its active hover appearance`,
+    (snapshot) =>
+      splitterAppearanceAt(snapshot, initialPoint) !== restingAppearance,
   );
-  const activeBackground = backgroundAt(hoveredSnapshot, initialPoint);
+  const activeAppearance = splitterAppearanceAt(hoveredSnapshot, initialPoint);
   HarnessSmoke.Class.pass(
     `${splitterName} splitter is muted at rest and lit on hover`,
   );
@@ -601,9 +605,12 @@ async function assertSplitterStates(
     row: initialPoint.row + dragRowDelta,
   };
   HarnessSmoke.Class.requireCondition(
-    backgroundAt(driver.snapshot(), draggedPoint) === activeBackground ||
-      backgroundAt(driver.snapshot(), initialPoint) === activeBackground ||
-      backgroundAt(driver.snapshot(), pointerTarget) === activeBackground,
+    splitterAppearanceAt(driver.snapshot(), draggedPoint) ===
+      activeAppearance ||
+      splitterAppearanceAt(driver.snapshot(), initialPoint) ===
+        activeAppearance ||
+      splitterAppearanceAt(driver.snapshot(), pointerTarget) ===
+        activeAppearance,
     `${splitterName} splitter stays lit while captured drag moves its geometry`,
   );
 
@@ -635,9 +642,10 @@ async function assertSplitterStates(
     splitterRegion(settledSplitterStatus, splitterName),
   );
   await driver.awaitGridCondition(
-    `${splitterName} splitter paints its muted rest background after release`,
+    `${splitterName} splitter paints its muted rest appearance after release`,
     (snapshot) =>
-      backgroundAt(snapshot, settledSplitterPoint) === restingBackground,
+      splitterAppearanceAt(snapshot, settledSplitterPoint) ===
+      restingAppearance,
   );
   HarnessSmoke.Class.pass(
     `${splitterName} splitter returns to its muted rest role`,

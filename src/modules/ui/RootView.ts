@@ -87,6 +87,10 @@ import {
   type PanelHeadingProjection,
 } from './PanelHeading';
 import {
+  PanelSeparatorRow,
+  type PanelSeparatorProjection,
+} from './PanelSeparatorRow';
+import {
   LayoutModel,
   type LayoutPreset,
   type LayoutSlotGeometry,
@@ -1033,19 +1037,68 @@ class $RootView {
       },
     });
     const panelDividerRenderable = panelSplitter.renderable;
-    const panelControlBarWidth = 10;
-    const panelControlBarRenderable = new TextRenderable(renderer, {
-      id: 'panel-control-bar',
+    const panelActionBarRenderable = new TextRenderable(renderer, {
+      id: 'panel-editor-action-bar',
       content: '',
       position: 'absolute',
-      width: panelControlBarWidth,
+      width: 0,
       height: 1,
       wrapMode: 'none',
       selectable: false,
       zIndex: 60,
     });
+    const panelControlBarRenderable = new TextRenderable(renderer, {
+      id: 'panel-control-bar',
+      content: '',
+      position: 'absolute',
+      width: 10,
+      height: 1,
+      wrapMode: 'none',
+      selectable: false,
+      zIndex: 60,
+    });
+    let panelSeparatorProjection: PanelSeparatorProjection | null = null;
     let panelControlBarProjection: PanelHeadingProjection | null = null;
+    let hoveredPanelEditorCommandIdentifier: string | null = null;
     let hoveredPanelControlBarAction: PanelHeadingAction | null = null;
+    panelActionBarRenderable.onMouseDown = (event) => {
+      const action = panelSeparatorProjection
+        ? PanelSeparatorRow.Class.actionSegmentAtColumn(
+            panelSeparatorProjection,
+            Number(event.x) - Number(panelActionBarRenderable.x),
+          )
+        : null;
+      if (!action) return;
+      commands.run(action.commandId);
+      renderer.requestRender();
+    };
+    panelActionBarRenderable.onMouseMove = (event) => {
+      const action = panelSeparatorProjection
+        ? PanelSeparatorRow.Class.actionSegmentAtColumn(
+            panelSeparatorProjection,
+            Number(event.x) - Number(panelActionBarRenderable.x),
+          )
+        : null;
+      const nextHoveredCommandIdentifier = action?.commandId ?? null;
+      if (
+        hoveredPanelEditorCommandIdentifier !== nextHoveredCommandIdentifier
+      ) {
+        hoveredPanelEditorCommandIdentifier = nextHoveredCommandIdentifier;
+        renderer.requestRender();
+      }
+      if (action) {
+        tooltip.point(action.title, Number(event.x), Number(event.y));
+      } else {
+        tooltip.clear();
+      }
+    };
+    panelActionBarRenderable.onMouseOut = () => {
+      if (hoveredPanelEditorCommandIdentifier !== null) {
+        hoveredPanelEditorCommandIdentifier = null;
+        renderer.requestRender();
+      }
+      tooltip.clear();
+    };
     panelControlBarRenderable.onMouseDown = (event) => {
       panelHost.focus();
       const action = panelControlBarProjection
@@ -1102,10 +1155,12 @@ class $RootView {
       const visible = panelHost.visible.value;
       if (visible === panelMounted) return;
       if (visible) {
+        layoutCanvas.add(panelActionBarRenderable);
         layoutCanvas.add(panelDividerRenderable);
         layoutCanvas.add(panelControlBarRenderable);
         layoutCanvas.add(panelBox);
       } else {
+        layoutCanvas.remove(panelActionBarRenderable);
         layoutCanvas.remove(panelDividerRenderable);
         layoutCanvas.remove(panelControlBarRenderable);
         layoutCanvas.remove(panelBox);
@@ -1264,27 +1319,53 @@ class $RootView {
       rightDockBox.width = layoutSlotGeometry.rightDock.width;
       rightDockBox.height = layoutSlotGeometry.rightDock.height;
       if (panelHost.visible.value) {
+        panelSeparatorProjection = PanelSeparatorRow.Class.project({
+          width: layoutSlotGeometry.bottomPanelSplitter.width,
+          editorActions: commands
+            .actionsForSurface('panelSeparator')
+            .flatMap((command) => {
+              const iconName = command.actionIcons?.panelSeparator;
+              return iconName
+                ? [
+                    {
+                      commandId: command.id,
+                      title: command.title,
+                      icon: theme.actionIcons[iconName],
+                      toggled: command.toggled?.() ?? false,
+                    },
+                  ]
+                : [];
+            }),
+          hoveredCommandId: hoveredPanelEditorCommandIdentifier,
+          hoveredPanelAction: hoveredPanelControlBarAction,
+          panelFocused: panelHost.focused.value,
+          panelExpanded: panelHost.expanded.value,
+          glyphVocabulary: theme.glyphVocabulary,
+          palette: readPalette(),
+        });
+        const separatorLeft = layoutSlotGeometry.bottomPanelSplitter.left;
+        const separatorTop = layoutSlotGeometry.bottomPanelSplitter.top;
+        panelActionBarRenderable.left = separatorLeft;
+        panelActionBarRenderable.top = separatorTop;
+        panelActionBarRenderable.width = panelSeparatorProjection.actionWidth;
+        panelActionBarRenderable.visible =
+          panelSeparatorProjection.actionWidth > 0;
+        panelActionBarRenderable.content = panelSeparatorProjection.actionText;
         panelSplitter.setGeometry({
-          left: layoutSlotGeometry.bottomPanelSplitter.left,
-          top: layoutSlotGeometry.bottomPanelSplitter.top,
-          length: Math.max(
-            0,
-            layoutSlotGeometry.bottomPanelSplitter.width - panelControlBarWidth,
-          ),
+          left: separatorLeft + panelSeparatorProjection.dragStartColumn,
+          top: separatorTop,
+          length: panelSeparatorProjection.dragWidth,
           visible: !panelHost.expanded.value,
         });
         panelControlBarRenderable.left =
-          layoutSlotGeometry.bottomPanelSplitter.left +
-          Math.max(
-            0,
-            layoutSlotGeometry.bottomPanelSplitter.width - panelControlBarWidth,
-          );
-        panelControlBarRenderable.top =
-          layoutSlotGeometry.bottomPanelSplitter.top;
-        panelControlBarRenderable.width = Math.min(
-          panelControlBarWidth,
-          layoutSlotGeometry.bottomPanelSplitter.width,
-        );
+          separatorLeft + panelSeparatorProjection.controlStartColumn;
+        panelControlBarRenderable.top = separatorTop;
+        panelControlBarRenderable.width = panelSeparatorProjection.controlWidth;
+        panelControlBarRenderable.visible =
+          panelSeparatorProjection.controlWidth > 0;
+        panelControlBarProjection = panelSeparatorProjection.controlProjection;
+        panelControlBarRenderable.content =
+          panelControlBarProjection?.text ?? '';
         panelBox.left = layoutSlotGeometry.bottomPanel.left;
         panelBox.top = layoutSlotGeometry.bottomPanel.top;
         panelBox.width = layoutSlotGeometry.bottomPanel.width;
@@ -1728,18 +1809,6 @@ class $RootView {
           }
           view.splitterElement?.updateAppearance(palette);
         });
-        panelControlBarProjection = PanelHeading.Class.project({
-          width: Number(panelControlBarRenderable.width),
-          title: '',
-          focused: panelFocused,
-          expanded: panelHost.expanded.value,
-          hoveredAction: hoveredPanelControlBarAction,
-          actions: ['add', 'expand', 'close'],
-          trailingPaddingWidth: 1,
-          glyphVocabulary: theme.glyphVocabulary,
-          palette,
-        });
-        panelControlBarRenderable.content = panelControlBarProjection.text;
         if (!agentVisible) {
           agentScrollViewport.hideBars();
           agentCellGeometry = null;
@@ -2128,6 +2197,56 @@ class $RootView {
       }
       return headings;
     };
+    const panelSeparatorGeometry = (): PanelSeparatorGeometry | null => {
+      if (!panelHost.visible.value || !panelSeparatorProjection) return null;
+      const screenLeft = Number(layoutCanvas.x);
+      const row =
+        Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanelSplitter.top;
+      return {
+        row,
+        editorActions: panelSeparatorProjection.actionSegments.map(
+          (action) => ({
+            commandId: action.commandId,
+            startColumn:
+              screenLeft +
+              Number(panelActionBarRenderable.left) +
+              1 +
+              action.startColumn,
+            endColumnExclusive:
+              screenLeft +
+              Number(panelActionBarRenderable.left) +
+              1 +
+              action.endColumn,
+          }),
+        ),
+        drag: {
+          left:
+            screenLeft +
+            layoutSlotGeometry.bottomPanelSplitter.left +
+            1 +
+            panelSeparatorProjection.dragStartColumn,
+          top: row,
+          width: panelSeparatorProjection.dragWidth,
+          height: 1,
+          visible: panelSplitter.renderable.visible,
+        },
+        controls: panelControlBarProjection
+          ? panelControlBarProjection.controls.map((control) => ({
+              action: control.action,
+              startColumn:
+                screenLeft +
+                Number(panelControlBarRenderable.left) +
+                1 +
+                control.startColumn,
+              endColumnExclusive:
+                screenLeft +
+                Number(panelControlBarRenderable.left) +
+                1 +
+                control.endColumn,
+            }))
+          : [],
+      };
+    };
     const focusedPanelCaretAnchor = (): {
       column: number;
       row: number;
@@ -2196,6 +2315,7 @@ class $RootView {
       panelContainsPoint,
       focusedPanelCaretAnchor,
       panelHeadingGeometry,
+      panelSeparatorGeometry,
       panelContentsListRegion: () => ({
         left:
           Number(panelBox.x) +
@@ -2336,6 +2456,7 @@ export interface RootView {
   panelContainsPoint(x: number, y: number): boolean;
   focusedPanelCaretAnchor(): { column: number; row: number } | null;
   panelHeadingGeometry(): readonly PanelHeadingGeometry[];
+  panelSeparatorGeometry(): PanelSeparatorGeometry | null;
   panelContentsListRegion(): {
     left: number;
     top: number;
@@ -2371,6 +2492,25 @@ export interface PanelHeadingGeometry {
 
 export interface PanelHeadingControlGeometry {
   readonly action: PanelHeadingAction;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+export interface PanelSeparatorGeometry {
+  readonly row: number;
+  readonly editorActions: readonly PanelSeparatorActionGeometry[];
+  readonly drag: {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+    readonly visible: boolean;
+  };
+  readonly controls: readonly PanelHeadingControlGeometry[];
+}
+
+export interface PanelSeparatorActionGeometry {
+  readonly commandId: string;
   readonly startColumn: number;
   readonly endColumnExclusive: number;
 }

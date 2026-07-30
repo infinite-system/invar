@@ -117,7 +117,9 @@ class $CommandDefaults {
         id: 'view.toggleWordWrap',
         title: 'View: Toggle Word Wrap',
         category: 'View',
+        actionIcons: { panelSeparator: 'wordWrap' },
         when: hasDocument,
+        toggled: () => getEditor().wordWrap.value,
         run: () => getEditor().toggleWordWrap(),
       },
       {
@@ -223,6 +225,7 @@ class $CommandDefaults {
         id: 'editor.goToLine',
         title: 'Editor: Go to Line',
         category: 'Editor',
+        actionIcons: { panelSeparator: 'goToLine' },
         when: hasDocument,
         run: context.openGoToLine,
       },

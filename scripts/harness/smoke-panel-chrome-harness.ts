@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
-// Driven proof for panel heading controls, multi-instance visibility, center-only expansion, and
-// the near-full-height unexpanded drag.
+// Driven proof for panel headings, separator-row editor actions, minimum drag geometry,
+// multi-instance visibility, center-only expansion, and the near-full-height unexpanded drag.
+// Run it with `bun scripts/harness/smoke-panel-chrome-harness.ts`.
+// ALL-PASS means paint and click geometry agree at both glyph tiers, the separator stays draggable
+// at normal and narrow widths, and its first two editor-command contributions act at both scales.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -42,6 +45,23 @@ interface HeadingGeometry {
     HeadingControlLocation,
     'contentId' | 'row'
   >[];
+}
+
+interface SeparatorActionLocation {
+  readonly commandId: string;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+interface SeparatorGeometry {
+  readonly row: number;
+  readonly editorActions: readonly SeparatorActionLocation[];
+  readonly drag: Rectangle;
+  readonly controls: readonly {
+    action: 'add' | 'expand' | 'close';
+    startColumn: number;
+    endColumnExclusive: number;
+  }[];
 }
 
 function clickCell(
@@ -243,6 +263,13 @@ function splitterRectangle(status: StatusSnapshot): Rectangle {
   const resolved = splitters?.bottomPanel;
   if (!resolved) throw new Error('Missing bottom-panel splitter geometry');
   return resolved;
+}
+
+function separatorGeometry(status: StatusSnapshot): SeparatorGeometry {
+  const geometry = status.panelSeparatorGeometry as
+    SeparatorGeometry | null | undefined;
+  if (!geometry) throw new Error('Missing panel separator geometry');
+  return geometry;
 }
 
 function contentsListRectangle(status: StatusSnapshot): Rectangle {
@@ -495,6 +522,216 @@ async function driveSecondSize(): Promise<void> {
     );
   } finally {
     driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
+async function drivePanelSeparatorAtScale(
+  columns: 47 | 55 | 100,
+  lineCount: 10 | 100_000,
+): Promise<void> {
+  const workspaceRoot = mkdtempSync(
+    join(tmpdir(), `invar-panel-separator-${columns}-${lineCount}-`),
+  );
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `invar-panel-separator-home-${columns}-${lineCount}-`),
+  );
+  const documentPath = join(workspaceRoot, `scale-${lineCount}.txt`);
+  const statusPath = join(homeDirectory, 'status.json');
+  await Bun.write(
+    documentPath,
+    Array.from(
+      { length: lineCount },
+      (_unusedValue, lineIndex) =>
+        `DRIVE-LINE-${String(lineIndex + 1).padStart(6, '0')} scale ${lineCount}`,
+    ).join('\n'),
+  );
+  await forceGlyphLevel(homeDirectory, 'unicode');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot,
+    columns,
+    rows: columns === 100 ? 30 : 24,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+  try {
+    await driver.awaitSnapshot(
+      (snapshot) => snapshot.findText(`scale-${lineCount}.txt`) !== null,
+      15_000,
+    );
+    driver.sendKeys('Enter');
+    let status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}x scale ${lineCount}: the document is open before separator checks`,
+      (candidate) => candidate.activeBuffer === documentPath,
+    );
+    if (status.terminalVisible !== true) {
+      driver.sendKeys('Control+j');
+    }
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}x scale ${lineCount}: the panel separator is published`,
+      (candidate) =>
+        candidate.terminalVisible === true &&
+        candidate.panelSeparatorGeometry !== null,
+    );
+    let separator = separatorGeometry(status);
+    const expectedActionIdentifiers =
+      columns === 47 ? [] : ['view.toggleWordWrap', 'editor.goToLine'];
+    HarnessSmoke.Class.requireCondition(
+      JSON.stringify(
+        separator.editorActions.map((action) => action.commandId),
+      ) === JSON.stringify(expectedActionIdentifiers) &&
+        separator.drag.width >= 1 &&
+        separator.controls.length === 3,
+      `${columns}x scale ${lineCount}: buttons truncate before the drag cell and all right controls remain`,
+    );
+    const firstControl = separator.controls[0];
+    const lastAction = separator.editorActions.at(-1);
+    HarnessSmoke.Class.requireCondition(
+      (lastAction
+        ? lastAction.endColumnExclusive === separator.drag.left
+        : true) &&
+        firstControl !== undefined &&
+        separator.drag.left + separator.drag.width === firstControl.startColumn,
+      `${columns}x scale ${lineCount}: row order is buttons then drag then controls with no gap or overlap`,
+    );
+    const splitter = splitterRectangle(status);
+    const separatorSnapshot = await driver.awaitGridCondition(
+      `${columns}x scale ${lineCount}: the published drag span paints lower-half cells`,
+      (snapshot) =>
+        snapshot
+          .rowText(splitter.top)
+          .slice(splitter.left, splitter.left + splitter.width) ===
+        '▄'.repeat(splitter.width),
+    );
+    HarnessSmoke.Class.requireCondition(
+      separatorSnapshot
+        .rowText(splitter.top)
+        .slice(splitter.left, splitter.left + splitter.width) ===
+        '▄'.repeat(splitter.width),
+      `${columns}x scale ${lineCount}: the splitter shares the thin horizontal-scrollbar paint`,
+    );
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}x scale ${lineCount}: the splitter hit rectangle has settled`,
+      (candidate) => {
+        const candidateSplitter = splitterRectangle(candidate);
+        const candidateSeparator = separatorGeometry(candidate);
+        return (
+          candidateSplitter.left > 0 &&
+          candidateSplitter.width === candidateSeparator.drag.width
+        );
+      },
+    );
+    separator = separatorGeometry(status);
+
+    if (separator.editorActions.length === 2) {
+      HarnessSmoke.Class.requireCondition(
+        status.wordWrap === false && status.goToLineOpen === false,
+        `${columns}x scale ${lineCount}: both editor-action effects start absent`,
+      );
+      const wordWrapAction = separator.editorActions[0]!;
+      clickCell(
+        driver,
+        wordWrapAction.startColumn +
+          Math.floor(
+            (wordWrapAction.endColumnExclusive - wordWrapAction.startColumn) /
+              2,
+          ),
+        separator.row,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}x scale ${lineCount}: the word-wrap button turns wrap on`,
+        (candidate) => candidate.wordWrap === true,
+      );
+      clickCell(
+        driver,
+        wordWrapAction.startColumn +
+          Math.floor(
+            (wordWrapAction.endColumnExclusive - wordWrapAction.startColumn) /
+              2,
+          ),
+        separator.row,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}x scale ${lineCount}: the word-wrap button turns wrap off`,
+        (candidate) => candidate.wordWrap === false,
+      );
+      const goToLineAction = separator.editorActions[1]!;
+      clickCell(
+        driver,
+        goToLineAction.startColumn +
+          Math.floor(
+            (goToLineAction.endColumnExclusive - goToLineAction.startColumn) /
+              2,
+          ),
+        separator.row,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}x scale ${lineCount}: the go-to-line button opens its prompt`,
+        (candidate) => candidate.goToLineOpen === true,
+      );
+      driver.sendKeys('Escape');
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}x scale ${lineCount}: Escape closes the button-opened prompt`,
+        (candidate) => candidate.goToLineOpen === false,
+      );
+      separator = separatorGeometry(status);
+    }
+
+    {
+      const panelBeforeDrag = rectangle(status, 'bottomPanel');
+      const liveSplitter = splitterRectangle(status);
+      const splitterColumn =
+        liveSplitter.left + Math.floor(liveSplitter.width / 2);
+      driver.sendMouse({
+        kind: 'press',
+        column: splitterColumn,
+        row: liveSplitter.top,
+        button: 'left',
+      });
+      driver.sendMouse({
+        kind: 'move',
+        column: splitterColumn,
+        row: Math.max(0, liveSplitter.top - 2),
+        button: 'left',
+      });
+      driver.sendMouse({
+        kind: 'release',
+        column: splitterColumn,
+        row: Math.max(0, liveSplitter.top - 2),
+        button: 'left',
+      });
+      const draggedStatus = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${columns}x scale ${lineCount}: the thin splitter drag grows the panel`,
+        (candidate) =>
+          rectangle(candidate, 'bottomPanel').top < panelBeforeDrag.top,
+      );
+      HarnessSmoke.Class.requireCondition(
+        separatorGeometry(draggedStatus).drag.width >= 1,
+        `${columns}x scale ${lineCount}: the drag segment remains nonzero after movement`,
+      );
+    }
+  } finally {
+    driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(workspaceRoot);
     await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   }
 }
@@ -1000,6 +1237,13 @@ try {
   driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }
+
+console.log(
+  '== harness panel-chrome: separator actions and thin drag survive width and scale ==',
+);
+await drivePanelSeparatorAtScale(55, 10);
+await drivePanelSeparatorAtScale(47, 10);
+await drivePanelSeparatorAtScale(100, 100_000);
 
 console.log(
   '== harness panel-chrome: repeat every heading interaction at the ascii tier ==',

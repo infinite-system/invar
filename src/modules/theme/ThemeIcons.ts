@@ -359,7 +359,8 @@ class $ThemeIcons {
   }
 
   // Action-button glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
-  // letter fallback (o/d/+/-) so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
+  // letter fallback (o/d/+/-/p/w/g) so a no-nerd-font terminal still reads. Each glyph is exactly one
+  // cell.
   protected static get ACTION_ICONS(): Record<GlyphLevel, ActionIconSet> {
     return {
       nerd: {
@@ -368,6 +369,8 @@ class $ThemeIcons {
         stage: '\u{f067}',
         unstage: '\u{f068}',
         preview: '\u{f06e}',
+        wordWrap: '\u{f550}',
+        goToLine: '\u{f0c9}',
       }, // fa external-link / undo / plus / minus / eye
       unicode: {
         open: '↗',
@@ -375,6 +378,8 @@ class $ThemeIcons {
         stage: '✚',
         unstage: '−',
         preview: '◫',
+        wordWrap: '↵',
+        goToLine: '↕',
       },
       ascii: {
         open: 'o',
@@ -382,6 +387,8 @@ class $ThemeIcons {
         stage: '+',
         unstage: '-',
         preview: 'p',
+        wordWrap: 'w',
+        goToLine: 'g',
       },
     };
   }
@@ -875,6 +882,8 @@ export interface ActionIconSet {
   stage: string;
   unstage: string;
   preview: string;
+  wordWrap: string;
+  goToLine: string;
 }
 
 export interface TaskActionIconSet {

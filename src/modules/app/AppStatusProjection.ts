@@ -250,6 +250,7 @@ class $AppStatusProjection {
       panelExpanded: ports.panelHost.expanded.value,
       panelListVisible: ports.panelHost.panelListVisible,
       panelHeadingGeometry: ports.view.panelHeadingGeometry(),
+      panelSeparatorGeometry: ports.view.panelSeparatorGeometry(),
       panelListGeometry: ports.view.panelContentsListRegion(),
       terminalColumns: ports.view.panelViewportColumns(),
       terminalRows: ports.view.panelViewportRows(),
@@ -479,6 +480,7 @@ export interface AppStatusProjectionPorts {
     | 'panelViewportColumns'
     | 'panelViewportRows'
     | 'panelHeadingGeometry'
+    | 'panelSeparatorGeometry'
     | 'panelContentsListRegion'
     | 'rightDockViewportColumns'
     | 'rightDockViewportRows'

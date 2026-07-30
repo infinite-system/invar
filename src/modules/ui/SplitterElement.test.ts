@@ -16,11 +16,14 @@ let mockMouse: MockMouse | null = null;
 
 let renderOnce: (() => Promise<void>) | null = null;
 
+let captureCharFrame: (() => string) | null = null;
+
 afterEach(() => {
   renderer?.destroy();
   renderer = null;
   mockMouse = null;
   renderOnce = null;
+  captureCharFrame = null;
 });
 
 async function createSplitter(
@@ -30,6 +33,7 @@ async function createSplitter(
   renderer = setup.renderer;
   mockMouse = setup.mockMouse;
   renderOnce = setup.renderOnce;
+  captureCharFrame = setup.captureCharFrame;
   const splitter = new SplitterElement.Class({
     renderer,
     identifier: 'splitter-under-test',
@@ -102,9 +106,19 @@ describe('SplitterElement', () => {
 
   test('projects horizontal pointer movement through the configured direction', async () => {
     const splitter = await createSplitter('horizontal');
-    splitter.setGeometry({ left: 5, top: 10, length: 20 });
+    splitter.setGeometry({ left: 5, top: 10, length: 1 });
     await renderOnce?.();
     await mockMouse?.drag(5, 10, 5, 6);
     expect(splitter.size).toBe(24);
+  });
+
+  test('horizontal splitters share the lower-half-cell separator treatment', async () => {
+    const splitter = await createSplitter('horizontal');
+    splitter.setGeometry({ left: 5, top: 10, length: 20 });
+    splitter.updateAppearance(darkPalette);
+    await renderOnce?.();
+
+    const row = captureCharFrame?.().split('\n')[10] ?? '';
+    expect(row.slice(5, 25)).toBe('▄'.repeat(20));
   });
 });
