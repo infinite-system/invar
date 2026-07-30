@@ -1,6 +1,6 @@
 # 311 — Vue SFC integration: MAP what's needed (pre-task, no implementation)
 
-Status: active
+State: active
 Engine: codex
 Effort: high
 Provenance: USER-DIRECTED 2026-07-29
