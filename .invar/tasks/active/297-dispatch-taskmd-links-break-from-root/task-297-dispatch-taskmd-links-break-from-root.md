@@ -52,3 +52,6 @@ dispatch TASK.md pointer defect this record owns.
 - 2026-07-29 #296: worktree task-record copy carried a task-folder-relative
   contract path resolving outside the repo + missing anchor; builder fixed
   the local copy. 4th instance.
+- 2026-07-29 #311: injected root TASK.md links the plugin invariant file
+  without a heading anchor; invariant checker flags it as its only
+  problem. 5th instance.

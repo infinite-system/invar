@@ -26,3 +26,12 @@ End state includes full Vue LSP support, delivered as a cleanly
 pluggable unit — the acceptance includes a "core untouched" polarity:
 removing the Vue plugin returns .vue files to plain-text behaviour with
 zero dangling references in core.
+
+## Pre-work from #311 bycatch (2026-07-29)
+
+- src/modules/syntax has NO syntax.invariants.md (registry/highlighter
+  exist, no domain record) — the record must be written as part of the
+  phase-1 syntax-source port work.
+- LanguageRegistry.ts comment claims a Tree-sitter registration point
+  that does not exist (static extension map only) — fix the drift when
+  the real registration port lands.
