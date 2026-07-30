@@ -1,28 +1,37 @@
 # Project vendor modularity plan
 
-Status: stage 1 design for #326 (vendor modularity and third-party plugins)
+Status: revised stage 1 design for #326 (vendor modularity and third-party plugins)
 
-This plan adds source-installed third-party modules without inventing a second plugin system.
-It keeps the current contributor, provider, settings, pane, and lifecycle seams.
+This plan adds network-installed third-party modules without inventing a second plugin system.
+It keeps the current contributor, provider, settings, pane, lifecycle, and kernel seams.
 
 ## Decision summary
 
 - Use `vendor/module` as the stable module identity.
-- Store installed source at `src/vendors/<vendor>/<module>/`.
+- Store immutable installed versions below the user's Invar data directory.
 - Use lowercase ASCII kebab-case for both identity segments.
 - Allow digits after the first letter.
 - Allow `-`. Do not allow `_`.
 - Reserve `invar` and names that can impersonate built-in provenance.
-- Make one declarative manifest the source of identity, version, compatibility, and provenance.
-- Generate static imports from validated manifests before a build.
+- Let users install from Extensions or with `iv plugin install vendor/module`.
+- Download an already-gated, immutable version. Do not gate, rebuild, or require a source checkout.
+- Load external TypeScript from the compiled executable during the next startup.
+- Make one declarative manifest the source of identity, version, compatibility, and declared
+  kernel overrides.
+- Put the quality gate at registry admission, once for each immutable module version.
+- Bind the registry attestation to the manifest, content digest, API result, contracts, and
+  provenance.
 - Treat phase 1 modules as trusted same-process code.
-- Keep kernel class composition outside the public third-party surface in phase 1.
+- Allow kernel class overrides through the kernel composition seam when the manifest declares every
+  target.
+- Show override authority as a loud warning in Extensions.
+- Give override-carrying publications and upgrades the strongest network-edge review.
 - Require one colocated module contract from every installed module.
 - Keep install, enable, activate, disable, and remove as different states and actions.
 - Make removal restore the same core composition that existed before installation.
 
-The first implementation phase is source-installed and restart-based. It does not load arbitrary
-TypeScript beside an already-built executable.
+The first implementation phase is network-installed and restart-based.
+Source installation remains an explicit developer path.
 
 ## Current system census
 
@@ -135,7 +144,7 @@ and
 
 This polarity becomes the law for every vendored module:
 
-> Remove the module and its source directory. Regenerate composition. No handwritten core file
+> Remove the installed artifact and composition record, then restart. No handwritten core file
 > retains its identity, import, setting, command, pane, status key, provider, process, or behavior.
 
 ### ivue class and manifest constraints
@@ -152,8 +161,28 @@ A reactive controller selects `Class = Reactive($Class)`.
 A plain class selects `Class = $Class`.
 
 The manifest file is declarative JSON, not executable behavior.
-The manifest loader, validator, catalog, and generated registry are public classes.
+The manifest loader, validator, catalog, and runtime discovery service are public classes.
 Their static members therefore use the ivue `Static()` anchor rule.
+
+### Current kernel seam is only the ordering guard
+
+[Kernel](../../../../src/modules/kernel/Kernel.ts)
+currently stores anonymous seal hooks.
+It runs them once and rejects registration after seal.
+[Bootstrap](../../../../src/modules/app/Bootstrap.ts)
+seals that list before it constructs `App`.
+
+The current kernel has no named class catalog, extension-factory stack, dependency graph,
+composition diagnostics, or plugin identity.
+No shipped contributor registers a kernel hook.
+The fuller mechanism described by
+[The app is built only after the kernel is sealed](../../../../project.invariants.md#the-app-is-built-only-after-the-kernel-is-sealed)
+exists in the sibling ivue reference example, not in this product implementation.
+
+Declared third-party overrides must therefore extend the kernel seam itself.
+They cannot be described as a manifest-only wire-up to an already-complete implementation.
+The shared generator remains the kernel class graph: named base classes, ordered extension
+factories, namespace `Class` publication, and one seal before construction.
 
 ## Identity and naming
 
@@ -167,11 +196,16 @@ The canonical identity is:
 
 Version is not part of identity. One installation can activate only one version of an identity.
 
-The canonical filesystem path is:
+The canonical installed-version path is:
 
 ```text
-src/vendors/<vendor>/<module>/
+<invar-data>/vendors/<vendor>/<module>/<version>/
 ```
+
+On Linux, `<invar-data>` follows `XDG_DATA_HOME` and defaults to
+`~/.local/share/invar`.
+The path provider must use the native user-data convention on macOS and Windows.
+One atomic installed-version record selects the active version for each identity.
 
 The same identity appears in Extensions, logs, status output, settings, lock records, diagnostics,
 and future network records.
@@ -250,26 +284,28 @@ different. For example, `acme/editor` does not collide with `invar/editor`.
 Extensions must show the full identity and a third-party marker, so that name cannot impersonate
 the built-in module.
 
-### Global uniqueness is phased
+### Global uniqueness starts at network admission
 
-A local checkout can enforce only local uniqueness.
-Without an external authority, no code can guarantee that two people did not both claim `acme`.
+A developer checkout can enforce only local uniqueness.
+It cannot prove that two people did not both claim `acme`.
+Developer-linked modules therefore carry unverified local provenance and never claim global
+ownership.
 
-Phase 1 therefore makes two honest guarantees:
+Every distributed phase 1 module enters through a registry.
+The registry binds one vendor handle to one account and public key before it admits a version.
+Optional domain verification strengthens that claim.
+The registry refuses handle reuse and version mutation.
+It signs an immutable module-version record that includes the canonical identity and content
+digest.
 
-1. A checkout refuses two installed modules with the same canonical identity.
-2. A manifest records its source repository and optional domain claim for human review.
-
-The vendor handle remains convention-based in phase 1. It is not globally proven.
-
-A later registry binds one vendor handle to one account and public key.
-Domain verification can strengthen that claim.
-The registry refuses handle reuse and signs module-version records.
-
-The identity does not include a server URL. That keeps it location-independent for the
+The identity does not include a server URL.
+That keeps it location-independent for the
 [Invarnet north star](../../../../project.briefing.md#north-star-addition-user-2026-07-29-215x-verbatim).
-A central registry can start the system. A later Invarnet claim ledger can replicate the same
-signed identities without changing installed module IDs.
+An Invar-operated registry can bootstrap admission.
+The signed vendor claims, version records, and content-addresses can then replicate through
+Invarnet.
+Any Invar instance can serve an admitted artifact.
+The client trusts the signed record and digest, not the server that supplied the bytes.
 
 ## Manifest and runtime model
 
@@ -291,7 +327,15 @@ Phase 1 fields are:
   "invarApi": 1,
   "entrypoint": "./PlaystationPlugin.ts",
   "license": "MIT",
-  "repository": "https://example.com/acme/playstation"
+  "repository": "https://example.com/acme/playstation",
+  "kernelOverrides": [
+    {
+      "target": "invar/editor/Editor",
+      "kind": "extend",
+      "export": "PlaystationEditorExtension",
+      "reason": "Adds PlayStation project editing behavior."
+    }
+  ]
 }
 ```
 
@@ -304,37 +348,82 @@ The manifest does not repeat commands, settings, panes, or providers.
 Those remain registrations through the live contributor seams.
 A declarative contribution list would become a second copy and drift.
 
+`kernelOverrides` is different.
+Kernel authority changes the construction graph before the contributor lifecycle exists.
+The manifest must declare each target, composition kind, exported factory, and plain-language
+reason.
+An empty list means the module has no kernel authority.
+
+`extend` is the phase 1 override form.
+The exported factory subclasses the selected kernel class and can override its methods.
+It stays inside the kernel's ordered `super` chain.
+Direct assignment to a namespace `Class` binding is not an admitted override because it bypasses
+the graph, declaration, and composition order.
+
+The registry owns admitted provenance and integrity.
+Those values do not come from self-claims in this manifest.
+Its signed version record carries the vendor key, source revision, content digest, gate identity,
+gate result, and admission time.
+
 ### Runtime definition
 
-Discovery produces one runtime definition:
+Runtime discovery produces one definition:
 
 ```text
-manifest + provenance + contributor factory
+manifest + signed admission + content digest + contributor factory + declared kernel factories
 ```
 
 The catalog owns metadata. The contributor owns behavior only.
 This removes the current duplicate metadata fields from contributor instances.
 
 Built-in definitions use provenance `built-in` and vendor `invar`.
-Vendored definitions use provenance `third-party` and include install source and integrity data.
+Distributed definitions use provenance `third-party · network-gated`.
+Developer-linked definitions use provenance `third-party · local developer code`.
 
-The generated registry imports each entrypoint statically.
-Each entrypoint exports one normal namespace-backed contributor class.
-The generator pairs that factory with the validated JSON manifest.
+The compiled host loads distributed entrypoints by absolute file URL before boot.
+Each entrypoint exports one namespace-backed contributor factory and any declared kernel extension
+factories.
+The loader supplies a versioned host API object.
+Distributed code does not import paths under `src/modules`.
+The public SDK provides TypeScript types for authoring, while the runtime object carries the live
+registration capabilities.
+
+The network artifact must be self-contained.
+Every relative import stays inside its version directory.
+The edge gate rejects unresolved bare imports or bundles them into the immutable artifact.
+This prevents the user's unrelated `node_modules` tree from changing an admitted version.
+Phase 1 artifacts contain portable TypeScript and JavaScript only.
+Native add-ons and platform-specific artifact variants wait until the admission identity can name
+them without weakening the once-per-version rule.
+
+The loader reads all manifests and admission records first.
+It rejects invalid or mutated artifacts before it runs module code.
+It imports accepted entrypoints in parallel, then registers their definitions in canonical identity
+order.
+It registers every declared kernel factory before
+[Bootstrap](../../../../src/modules/app/Bootstrap.ts) seals the kernel.
+It then passes the combined built-in and third-party contributor list through the existing
+application lifecycle.
 
 ### State vocabulary
 
 Use these words consistently:
 
-- `installed`: source and a valid manifest exist on disk.
-- `enabled`: composition policy selects the installed module for the next activation.
+- `installed`: an immutable artifact and valid manifest exist in the user's Invar data directory.
+- `admitted`: the network edge signed this exact identity, version, and content digest after its
+  quality gate.
+- `verified`: the local bytes match the signed admitted record.
+- `enabled`: composition policy selects the installed module for the next startup.
 - `active`: its application contribution completed activation.
 - `failed`: activation failed and the host retained the failure record.
 - `disabled`: installed, but not selected for activation.
-- `removed`: source and lock records no longer exist.
+- `removed`: artifact selection and install records no longer exist.
+- `developer-linked`: a local source path is selected outside the distribution network.
 
 Extensions uses “Enable” and “Disable” for runtime policy.
 The install command uses “Install” and “Remove” for disk changes.
+Phase 1 applies install, update, enable, disable, and remove on restart.
+This one rule also makes kernel composition honest: existing instances never change class.
 
 ## Identity propagation and collision control
 
@@ -364,6 +453,19 @@ The catalog validates all plugin identities before it activates any contributor.
 A duplicate identity is a boot composition error with both source paths in the message.
 It must never silently skip one contributor.
 
+Kernel targets use their own stable identity:
+
+```text
+invar/<module>/<Class>
+```
+
+The kernel owns this catalog.
+A distributed module cannot invent a target or reach a target that the kernel has not published for
+extension.
+The runtime registration API receives the caller's canonical module identity and rejects an
+undeclared target or export.
+The kernel records the ordered module identities beside each composed class for diagnostics.
+
 ## Extensions surface
 
 Extensions gains these fields for every row:
@@ -376,6 +478,8 @@ Extensions gains these fields for every row:
 - source repository when present.
 - failure detail.
 - whether the module can be disabled or removed.
+- network-gate signer and admission result.
+- the exact kernel targets that the module overrides.
 
 The compact row can read:
 
@@ -386,60 +490,169 @@ The compact row can read:
 The selected detail view can show compatibility, source, license, trust warning, and failure text.
 Built-in rows show `built-in · invar/<module>`.
 
+An additive third-party row carries a visible `NETWORK-GATED` mark.
+An override-carrying row carries a stronger `KERNEL OVERRIDE` warning even when it is disabled.
+The detail view lists every target, composition kind, reason, and the version in which that
+authority first appeared.
+Install or update requires confirmation when a version adds or expands kernel authority.
+The confirmation names the exact targets.
+It must not collapse them into a generic “elevated permissions” prompt.
+
+Developer-linked modules carry an `UNVERIFIED LOCAL CODE` warning.
+They never inherit the network-gated mark from another version with the same identity.
+
 Extensions remains a generic catalog projection.
 It must not import a vendored implementation or branch on a module identity.
 
 ## Install and removal story
 
-### Phase 1 directory install
+### Primary user path
 
-An install is a source-tree operation:
+The primary user is replacing `vi`, not developing Invar.
+The two equivalent entry points are:
 
-1. Copy an exported module tree into `src/vendors/<vendor>/<module>/`.
-2. Run `bun run vendors:sync`.
-3. Validate the path, manifest, API version, record, and duplicate identity set.
-4. Update `src/vendors/vendor-lock.json`.
-5. Generate `src/vendors/VendorModules.generated.ts`.
-6. Run the module checks and the repository gate.
-7. Rebuild and restart Invar.
+```text
+Extensions → search acme/playstation → Install
+iv plugin install acme/playstation
+```
 
-The installed directory contains no nested `.git`.
-The invariant checker treats a nested Git checkout as another checkout and skips it.
+The command can also select an exact version:
 
-The sync command never runs module code.
-It reads data, validates paths, and writes deterministic generated composition.
+```text
+iv plugin install acme/playstation@1.0.0
+```
 
-`vendor-lock.json` records identity, version, source, and content integrity.
-The generated TypeScript file contains imports and factories only.
-Neither file becomes a second metadata source.
+The installer:
 
-### Compiled executable boundary
+1. Resolves the vendor claim and immutable version record from the distribution network.
+2. Requires an admission signed by a trusted network-edge gate.
+3. Downloads the content-addressed artifact into an owned staging directory.
+4. Verifies the record signature, exact manifest bytes, artifact digest, API version, platform, and
+   declared kernel authority.
+5. Extracts with path confinement into
+   `<invar-data>/vendors/<vendor>/<module>/<version>/`.
+6. Atomically updates the installed-version record.
+7. Reports `Installed; restart iv to activate`.
 
-Phase 1 does not support copying TypeScript beside `dist/iv`.
-The compiled binary contains the generated static imports from its build.
+It does not run contracts, run the repository gate, invoke a compiler, rebuild `iv`, or require an
+Invar source checkout.
+Signature, digest, schema, and compatibility checks are install integrity checks.
+They are not a second quality gate.
 
-This matches the source-plus-law distribution in
-[project.vision.md](../../../../project.vision.md#8-the-emacs-inversion--shipping-the-ability-to-grow).
-The user's agent installs source, runs the local law, rebuilds, and restarts.
+Extensions calls the same installer service as the command.
+The two surfaces cannot acquire different extraction, verification, warning, or rollback behavior.
 
-An out-of-tree binary package format belongs to a later phase.
+### Compiled executable boundary, verified
+
+The current
+[AppLoader](../../../../src/modules/app/AppLoader.ts)
+always passes
+[DefaultPlugins](../../../../src/modules/plugins/DefaultPlugins.ts)
+straight to Bootstrap.
+Current `iv` therefore does not discover an external plugin directory.
+That missing loader is product work for stage 2.
+
+The Bun runtime inside a compiled executable can cross the required boundary.
+The committed
+[compiled-runtime plugin-loading probe](326-compiled-runtime-plugin-loading-probe.ts)
+used Bun 1.3.14 to build a host with `bun build --compile`.
+It created every plugin file only after the binary existed.
+The compiled process then dynamically imported:
+
+- external JavaScript in 3.531 to 3.698 milliseconds across two runs.
+- external TypeScript in 3.517 to 3.638 milliseconds across two runs.
+- a relative second external TypeScript module from that entrypoint.
+
+The TypeScript fixture contained an interface, type annotations, and an extensioned `.ts` import.
+A JavaScript parser cannot accept that source unchanged.
+Malformed TypeScript exited 1 as the positive control.
+The measurements prove runtime loading and transpilation on this machine.
+They are capability evidence, not a startup performance promise.
+
+[Bun's executable documentation](https://bun.sh/docs/bundler/executables)
+states that a compiled executable includes the Bun runtime.
+[Bun's runtime documentation](https://bun.sh/docs/runtime)
+states that imported files are transpiled before execution.
+[Bun's file-type documentation](https://bun.sh/docs/runtime/file-types)
+lists `.ts`, `.tsx`, `.mts`, and `.cts` as runtime loaders.
+The direct probe closes the remaining gap between those general claims and this exact compiled-host
+case.
+
+The stage 2 loader belongs before `Bootstrap.boot()`.
+It resolves installed versions, verifies their admission and content, imports their entrypoints,
+registers declared kernel factories, and then asks Bootstrap to seal and construct the app.
+No rebuild is involved.
+
+### Network-edge gate
+
+Quality gating runs once for each immutable `vendor/module@version` at entry to the distribution
+network.
+The result is bound to the content digest.
+The registry refuses a second artifact under the same version.
+Mirrors and Invarnet peers replicate the signed result; they do not rerun the gate.
+
+The admission pipeline verifies:
+
+- canonical identity, reserved names, manifest schema, and Semantic Versioning.
+- vendor-account and source-revision provenance.
+- a closed, reproducible artifact and its content digest.
+- the required module contract and contract references.
+- declared API compatibility against the supported public SDK.
+- runtime import closure and a compiled-host load probe.
+- contributor activation, failure containment, disposal, and clean removal.
+- small and 100,000-line acceptance where the contribution touches document or frame paths.
+- absence of undeclared kernel registration.
+
+An upgrade that carries a kernel override receives the strongest path.
+In addition to the common gate, it:
+
+- compares the new override set with the previous admitted version.
+- rejects an override target that the public kernel catalog does not expose.
+- checks that every runtime registration exactly matches a manifest declaration.
+- composes the factory through the real kernel graph before seal.
+- runs the target module's contracts and the plugin's own contract.
+- drives the behavior with and without the override at small and large scale.
+- proves that removal restores the unextended class graph.
+- records added, removed, and changed targets in the signed admission.
+
+Every gate instrument needs a planted-red control before its first accepted green result.
+The admission service stores the command, tool versions, result digest, and provenance so another
+Invarnet node can audit the result without trusting a prose verdict.
+
+This gate is a quality and provenance boundary.
+It is not a runtime sandbox.
+
+### Developer source path
+
+Module authors work from a normal source checkout outside the user's installed-version directory.
+An explicit command such as:
+
+```text
+iv plugin dev-link /absolute/path/to/playstation
+```
+
+selects that local tree for the next startup.
+Extensions labels it `UNVERIFIED LOCAL CODE`.
+The developer path may run module checks and the repository gate during authoring.
+Publication sends a clean source revision to the network-edge gate.
+Ordinary install never uses this path.
 
 ### Removal
 
-Removal performs the reverse operation:
+Removal performs an owned data change:
 
-1. Disable and deactivate the module.
-2. Remove only the owned module directory and its lock entry.
-3. Regenerate the static registry.
-4. Run the gate.
-5. Rebuild and restart.
+1. Mark the identity absent from the next startup composition.
+2. Atomically update the installed-version record.
+3. Restart so additive contributions withdraw and the kernel graph returns to its base composition.
+4. Remove only inactive, owned artifact versions after rollback retention expires or the user asks
+   for immediate cleanup.
 
 Clean removal means no handwritten core edit is needed.
-The generated registry and lock change because they are composition records.
+The data record changes because it is the user's composition.
+The binary and source tree do not change.
 
-Dependency removal stays outside phase 1 because phase 1 modules can use only the published Invar
-surface and dependencies already present in the root package.
-A later installer can manage isolated package dependencies and lock changes.
+Rollback only changes the active immutable version and restarts.
+It never reconstructs an old artifact from mutable registry state.
 
 ## Trust boundary
 
@@ -448,32 +661,35 @@ A later installer can manage isolated package dependencies and lock changes.
 The current system can enforce:
 
 - TypeScript interface compatibility at build time.
-- Manifest syntax, path confinement, identity grammar, and local uniqueness.
-- One selected API schema version.
 - Host registration disposal for settings, keybindings, panes, and providers.
 - Reverse-order application disposal.
 - Workspace-provider withdrawal.
 - The rule that plugin keybindings cannot reserve host chords.
 - Contract structure and annotation references.
-- The local merge gate before rebuild.
-- Visible built-in or third-party provenance in Extensions.
+- kernel sealing before application construction.
 
 ### Enforceable in phase 1 after small host changes
 
 Phase 1 can also enforce:
 
-- catalog validation before activation.
+- manifest syntax, extraction confinement, identity grammar, and local uniqueness.
+- signed network admission for the exact identity, version, and content digest.
+- one selected public API schema version.
+- catalog and artifact validation before activation.
 - no silent duplicate identity.
 - one scoped identity on every host-mediated registration.
 - activation failure recorded against the correct module.
 - a failed third-party module not aborting the host canvas.
 - removal tests that detect retained host registrations.
-- deterministic static registry generation.
-- no nested checkout in an installed tree.
+- deterministic runtime composition.
+- an entrypoint and static relative import closure that resolve inside the admitted artifact.
+- no kernel target or factory registration absent from the manifest.
+- declared kernel factories registered before seal.
+- visible built-in, network-gated, local-developer, and kernel-override provenance in Extensions.
 
 ### Honor-system in phase 1
 
-Vendored TypeScript runs in the Invar process with the user's permissions.
+Distributed TypeScript runs in the Invar process with the user's permissions.
 It can import Node or Bun APIs directly.
 
 The host cannot stop it from:
@@ -481,15 +697,24 @@ The host cannot stop it from:
 - reading or writing arbitrary files.
 - starting processes.
 - using the network.
-- importing internal Invar modules.
+- probing objects or modules that the Bun runtime makes reachable.
+- dynamically importing code outside the admitted artifact.
 - mutating objects reached through broad context references.
 - creating untracked timers, listeners, or processes.
 - retaining secrets.
-- bypassing scoped registration helpers through direct imports.
+- lying in behavior that the admission tests do not cover.
 
-The gate can detect known patterns. It is not a security boundary.
+The edge gate can detect known patterns and exercised failures.
+Its signature proves which bytes passed that review.
+Neither claim is a security boundary after those bytes execute.
 A manifest permission list would be descriptive only in phase 1, so phase 1 must not present one as
 enforcement.
+
+Kernel declarations are narrower.
+The host can enforce which published kernel targets the plugin registers through the plugin API.
+The declaration does not stop arbitrary same-process side effects.
+Extensions must therefore show both facts: the exact declared kernel authority and the
+same-process trust warning.
 
 ### Later isolation
 
@@ -501,137 +726,164 @@ Isolation is outside phase 1.
 The public additive interfaces should stay serializable where practical, so later isolation does
 not require a new identity or manifest.
 
-Kernel `Class` replacement remains trusted and boot-time only.
-Third-party phase 1 modules use additive contributor and provider interfaces.
-They do not receive the kernel composition seam.
+Kernel override factories remain same-process and boot-time only.
+They pass through the declared kernel composition seam before seal.
+Install, enable, disable, update, rollback, and removal take effect on restart so no live instance
+changes class.
 
 ## Contract layer
 
-Every installed module must ship:
+Every published artifact must ship:
 
 ```text
-src/vendors/<vendor>/<module>/<module>.invariants.md
+<module>.invariants.md
 ```
 
 The record uses the canonical invariant schema.
-It names the module's contributor, providers, external resources, removal polarity, and acceptance
-drive.
+It names the module's contributor, providers, external resources, declared kernel targets, removal
+polarity, and acceptance drive.
 
 The module can also ship a lattice record when several records produce a real composition.
 It must not create a lattice only to restate atomic records.
 
-The existing checker discovers every `*.invariants.md` under the repo root.
-It excludes `.git`, `.claude`, `.invar`, and nested checkouts.
-A normal `src/vendors` module therefore enters the checker automatically.
+At registry admission, the gate extracts the candidate into a clean module workspace and runs the
+invariant checker against the module record, public API records, and every declared kernel target
+record.
+The signed admission binds that result to the artifact digest.
 
-The sync command adds an earlier, clearer failure when the required module record is absent.
-The repository checker remains the authority for record shape and links.
+The user's installer does not run the checker.
+It verifies the admission signature and digest.
+This is the exact division between one network-edge quality gate and every-install integrity
+verification.
 
 Stage 2 phase 1 should add or refine these records:
 
 - [project.invariants.md](../../../../project.invariants.md): add installed vendor-module governance
-  and keep the plugin-free host guarantee.
+  and keep the plugin-free host and sealed-kernel guarantees.
 - [plugins.invariants.md](../../../../src/modules/plugins/plugins.invariants.md): add canonical
-  identity, provenance, catalog validation, failure containment, and clean removal.
-- [app.invariants.md](../../../../src/modules/app/app.invariants.md): record generated composition
-  before activation.
+  identity, signed provenance, runtime loading, catalog validation, failure containment, and clean
+  removal.
+- [app.invariants.md](../../../../src/modules/app/app.invariants.md): record external discovery and
+  kernel registration before boot composition.
 - [settings.invariants.md](../../../../src/modules/settings/settings.invariants.md): qualify vendor
   setting identities while preserving saved disabled settings.
 - [keybindings.invariants.md](../../../../src/modules/keybindings/keybindings.invariants.md): bind
   vendor layers to canonical identity.
 - [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md): keep Extensions generic and show
-  provenance.
-- Add a vendor-domain contract beside the future discovery code. It governs manifest validation,
-  static generation, and lock integrity.
+  provenance and declared kernel authority.
+- Add a vendor-domain contract beside the future install and discovery code. It governs manifest
+  validation, admission verification, atomic installation, runtime loading, lock integrity, and
+  rollback.
+- Add a network-admission contract beside the registry gate. It governs once-per-version admission,
+  immutable digests, provenance, API checks, contract checks, and the stronger kernel-override
+  path.
+- Refine the kernel record so the public override target catalog, declaration match, composition
+  order, seal, and removal polarity are executable claims.
 
 The accepted implementation must not weaken
 [The host canvas is complete without plugins](../../../../project.invariants.md#the-host-canvas-is-complete-without-plugins).
 
 ## Phases and acceptance
 
-### Phase 1 - trusted source-installed modules
+### Phase 1 - network-installed runtime modules
 
 Build:
 
 - manifest schema and validator.
 - canonical identity value and reserved-name checks.
-- built-in and third-party provenance.
-- deterministic `src/vendors` discovery and generated registry.
+- a minimal registry admission service with immutable signed version records.
+- the once-per-version network-edge gate.
+- content-addressed, self-contained runtime artifacts.
+- `iv plugin install`, update, rollback, remove, enable, disable, and developer-link commands.
+- the same install service behind the Extensions surface.
+- platform user-data paths, staged extraction, content verification, and an atomic installed-version
+  and enabled-state record.
+- pre-boot discovery and dynamic external TypeScript loading in the compiled executable.
+- a versioned runtime plugin API.
+- built-in, network-gated, local-developer, and kernel-override provenance.
+- deterministic runtime composition.
 - pre-activation collision validation.
 - combined built-in and vendored composition.
 - vendor-scoped setting, command, pane, status, provider-owner, and keybinding registrations.
-- Extensions provenance, version, compatibility, and failure state.
-- one reference vendored module that uses existing additive seams.
-- clean disable, re-enable, failure, and removal behavior.
+- a public kernel override target catalog and declaration-matched registration before seal.
+- Extensions install, restart, provenance, version, compatibility, failure, and loud kernel-authority
+  state.
+- one admitted reference module that exercises additive and declared kernel seams.
+- clean restart-based disable, re-enable, update, rollback, failure, and removal behavior.
 
 Keep outside phase 1:
 
-- marketplace search or download.
-- arbitrary post-build directory loading.
-- independent dependency installation.
+- rich marketplace browsing, ratings, and recommendations.
 - hot code reload.
-- kernel class replacement.
-- cryptographic signatures.
-- global namespace proof.
+- live class mutation.
+- undeclared or direct namespace replacement outside the kernel graph.
 - runtime sandboxing.
 - automatic updates.
-- Invarnet transport.
+- multi-registry federation and Invarnet artifact transport.
 
 Acceptance drives:
 
-1. Drive defaults with no vendored modules. The current 13-entry built-in composition stays usable.
-2. Drive a small fixture with the reference module installed. Extensions shows full provenance and
-   version.
-3. Drive the shared 100,000-line fixture with the same install. The plugin lifecycle fingerprint
-   matches the small drive.
-4. Disable and re-enable the reference module in Extensions. Every contributed projection and
-   provider leaves and returns without a workspace restart.
-5. Plant a retained registration in the reference module. The removal contract must fail, then pass
-   after restoration.
-6. Plant a duplicate `vendor/module` identity. Composition must fail before either duplicate
-   activates and must name both paths.
-7. Exercise allowed and rejected names, including hyphen, underscore, digit-first, uppercase,
-   reserved, Windows-device, and 64-character boundaries.
-8. Remove the reference module directory, sync composition, and drive again. Core behavior matches
-   the no-vendor baseline, with zero handwritten core reference to that identity.
-9. Plant a missing or malformed module record. Sync or the invariant checker must fail, then pass
-   after restoration.
-10. Make the reference module throw during activation. Extensions records the failure and the host
-    canvas remains usable.
-11. Run `bun run build`. Launch the compiled executable and observe the same vendored composition.
-12. Run one final full verification pass and the invariant checker.
+1. Drive defaults from a compiled `iv` with no vendored modules. The current 13-entry built-in
+   composition stays usable.
+2. Admit the reference version at the registry edge. Prove its common gate and kernel-override gate
+   go red on planted defects, restore them, and admit the immutable digest once.
+3. From a clean home directory with no source checkout, run
+   `iv plugin install example/playstation`. Assert that no compiler, contract checker, repository
+   gate, or `iv` rebuild runs.
+4. Repeat the install through Extensions. Both paths produce the same installed-version record and
+   exact kernel warning.
+5. Restart the unchanged compiled binary. Drive a small fixture and show full identity, version,
+   network admission, active state, and exact override targets in Extensions.
+6. Drive the shared 100,000-line fixture with the same artifact. The contributed behavior and
+   lifecycle fingerprint match the small drive.
+7. Plant an invalid admission signature and a post-admission byte change. The client must reject
+   both before import, then accept the restored artifact.
+8. Plant a runtime kernel registration absent from the manifest. The edge gate and host registration
+   API must each reject it.
+9. Publish a new version that adds an override target. The edge gate must run the stronger target
+   checks, and Extensions must require confirmation that names the new target.
+10. Disable and restart. Every additive registration leaves, the kernel graph returns to base, and
+    no instance changes class while live. Re-enable and restart to restore it.
+11. Make the reference contributor throw during activation. Extensions records the failure and the
+    plugin-free host canvas remains usable.
+12. Roll back to the prior immutable version without a download, gate, compile, or rebuild. Restart
+    and show its exact digest and override set.
+13. Remove the module and restart. Core behavior matches the no-vendor baseline, with no handwritten
+    core reference to that identity.
+14. Exercise allowed and rejected identities, including hyphen, underscore, digit-first, uppercase,
+    reserved, Windows-device, and 64-character boundaries.
+15. Run the committed compiled-runtime loading probe. JavaScript, TypeScript-only syntax, and a
+    relative TypeScript import must load; malformed TypeScript must fail.
+16. Run one final full verification pass and the invariant checker.
 
 The new checks need planted-red positive controls before their green results count as evidence.
 
-### Phase 2 - built-in namespace migration and an install command
+### Phase 2 - namespace migration and distribution depth
 
 Build:
 
 - migration of built-in local setting, command, pane, status, and keybinding names.
-- persistent enabled policy.
-- `iv vendor install`, `iv vendor remove`, `iv vendor enable`, and `iv vendor disable`.
-- local-directory and Git-source installation.
-- staged extraction and content-integrity verification.
-- package dependency policy and lock integration.
-- update and rollback records.
+- dependency and artifact optimization based on phase 1 measurements.
+- richer Extensions search, version history, changelogs, and admission evidence.
+- offline artifact export and import that preserves signed admission.
+- publisher tooling for submission, gate status, and failure reproduction.
 
-Acceptance adds install, restart, update, rollback, and removal from clean scratch clones.
-Every destructive action uses an explicit confirmation.
+Acceptance adds offline install, publisher failure reproduction, and migration from legacy built-in
+identities.
 
-### Phase 3 - global registry and discovery
+### Phase 3 - Invarnet distribution
 
 Build:
 
-- vendor handle reservation.
-- account and public-key ownership.
-- optional domain verification.
-- signed version records.
-- marketplace discovery.
-- immutable identity history.
-- transport-independent registry replication.
+- replicated vendor claims and immutable version records.
+- content-addressed artifact exchange between Invar instances.
+- admission-signer rotation and quorum policy.
+- registry discovery without putting a registry location into module identity.
+- conflict and revocation records that retain history.
 
-The first registry can be centralized.
-Its records must remain portable to a later Invarnet ledger.
+The phase 1 registry is one network citizen.
+Invarnet changes who carries records and bytes, not identity, manifest, artifact, or client
+verification.
 
 ### Phase 4 - isolated execution
 
@@ -640,11 +892,14 @@ Move filesystem, process, network, and secret access behind explicit grants.
 
 This phase must preserve the phase 1 identity and manifest.
 It can add an enforced permission section under a new manifest schema version.
+Kernel overrides remain in-process by definition.
+An isolated module that requests one must surface that explicit transition and pass the strongest
+admission path.
 
 ## Invariant analysis of this plan
 
-Scope comes from the proposed `src/vendors` tree, plugin catalog, provider registry, Extensions,
-settings, keybindings, UI, and boot composition.
+Scope comes from the user-data vendor tree, network admission, runtime plugin catalog, kernel,
+provider registry, Extensions, settings, keybindings, UI, and boot composition.
 
 The plan upholds:
 
@@ -654,33 +909,50 @@ The plan upholds:
 - independent plugin lifetimes.
 - plugin settings in contributed schema.
 - removable document syntax.
+- kernel composition before seal.
 - the ivue namespace and `Static()` anchor forms.
 - seams drawn at shared generators.
 
 The plan strengthens clean removal by making identity and provenance catalog-owned.
 It also strengthens collision handling by validating the full set before activation.
+It lets third-party code override published kernel classes without bypassing the kernel graph.
+The declaration, admission evidence, runtime registration, Extensions warning, and restart
+semantics all derive from that one authority change.
 
 The trust claim is deliberately narrow.
 The plan does not call same-process TypeScript safe or sandboxed.
+It does not confuse an edge gate with a runtime security boundary.
 
 ## Ranked open questions for the user
 
-1. **Approve source-installed phase 1?** Recommended: yes. Install into `src/vendors`, gate, rebuild,
-   and restart. Do not promise binary drop-ins yet.
-2. **Approve lowercase kebab-case identity?** Recommended: allow digits after the first letter,
-   allow `-`, reject `_`, uppercase, and Unicode.
-3. **Approve handle registration later?** Recommended: use human vendor handles with an immutable
-   registry and optional domain verification. Do not force reverse DNS into the directory name.
-4. **Approve additive authority only?** Recommended: third-party phase 1 modules use contributor and
-   provider seams. Keep kernel class replacement trusted and unsupported for distribution.
-5. **Approve the trust label?** Recommended Extensions wording: “Third-party, trusted same-process
-   code.” Do not show a permissions list until enforcement exists.
-6. **What should the reference module be?** Recommended: a small `example/playstation` module that
-   contributes one pane, one setting, one command, one status key, and one workspace provider.
-   Keep it as a test fixture unless the user wants it shipped.
-7. **Should built-ins adopt `invar/<module>` visibly in phase 1?** Recommended: yes in catalog and
+The verdict settles the primary user path, the network-edge gate, and the legality of declared
+kernel overrides.
+These are the remaining choices, in order:
+
+1. **How should new kernel authority be confirmed?** Recommended: require an exact-target
+   confirmation for first install and for any update that adds or expands an override. A repeated
+   update with the identical admitted target set can use normal update confirmation.
+2. **Who signs phase 1 admission?** Recommended: start with one Invar-operated admission key and an
+   append-only public log. Design the record for later Invarnet replication and signer quorum.
+3. **What artifact dependency rule should phase 1 use?** Recommended: admit one self-contained
+   runtime tree. Resolve or bundle every third-party dependency at the edge. Never resolve against
+   the user's unrelated `node_modules`.
+4. **Which kernel targets are public first?** Recommended: expose a short catalog backed by real
+   target contracts. A class is not overridable merely because it has a namespace `Class` binding.
+5. **What should the reference module be?** Recommended: a test-only `example/playstation` module
+   that contributes one pane, setting, command, status key, and workspace provider, and overrides
+   one harmless published editor target. It proves both authority paths without shipping a novelty
+   feature.
+6. **Should every phase 1 composition change require restart?** Recommended: yes. One restart rule
+   makes additive and kernel modules predictable. Consider hot additive activation only after the
+   installed lifecycle is stable.
+7. **Approve lowercase kebab-case identity?** Recommended: allow digits after the first letter,
+   allow `-`, and reject `_`, uppercase, and Unicode.
+8. **Should built-ins adopt `invar/<module>` visibly in phase 1?** Recommended: yes in catalog and
    Extensions. Preserve current local command and pane IDs until phase 2 qualifies every surface.
-8. **Should activation failures degrade all plugins or only third parties?** Recommended: record and
-   isolate every contributor failure. The plugin-free host record already requires a live canvas.
-9. **Should disabled policy persist in phase 1?** Recommended: no. Keep phase 1 focused on source
-   discovery and clean lifecycle. Add persisted enable policy with the install command in phase 2.
+9. **Approve the trust label?** Recommended Extensions wording:
+   “Network-gated third-party code; runs in your iv process.”
+   Add `KERNEL OVERRIDE: <targets>` when present.
+10. **Should activation failures degrade all plugins or only third parties?** Recommended: contain
+    and record every contributor failure. A kernel composition failure must stop before application
+    construction and offer restart with that module disabled.
