@@ -652,3 +652,5 @@ width (383), idle CPU (380 in flight).
   (holistic right-panel generator).
 - Lanes: 346 panel tabs (codex) · 375 attach icon (codex) · 380 idle CPU
   (codex, priority) · 383 right panel (opus).
+
+### ANCHOR 19 DELTA 2 (09:0x): #375 LANDED 660ed877 (13 landings); #386 dispatched (glyph vanish threshold hunt). #380 READY report just delivered — NEXT ACTION on resume: read its header/bycatch, verify commit+clean in .invar/worktrees/380-idle-cpu-fifteen-to-twentyfive-percent, convert bycatch, land via ritual. Lanes: 346, 383(opus), 386, 380(landing).
