@@ -403,6 +403,16 @@ class $KeybindingDefaults {
         context: 'editor',
       },
       // Ctrl+G and Ctrl+Shift+G belong to the Git contribution. Alt+G keeps the go-to mnemonic.
+      // Ctrl+K then Ctrl+G is the longer editor alias. It shares the folding prefix below so the
+      // resolver must retain every continuation that the prefix can start.
+      {
+        steps: [
+          { key: 'k', ctrl: true },
+          { key: 'g', ctrl: true },
+        ],
+        action: 'editor.goToLine',
+        context: 'editor',
+      },
       {
         chord: { key: 'g', alt: true },
         action: 'editor.goToLine',

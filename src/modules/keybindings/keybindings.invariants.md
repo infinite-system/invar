@@ -142,18 +142,26 @@ the residual DEFAULT actions of their contexts, themselves dispatched by the reg
 layered binding set and returns an action id (or a pending-chord state, or null); Bootstrap maps
 action ids to handlers. `KeybindingDefaults.textInputBindings` emits one complete chord table for
 every adopted text-input context, so a surface cannot omit one member of a movement/deletion pair.
-Multi-step chords (Ctrl+X..Ctrl+C) are step-list DATA with a timeout, not bespoke state code.
+Multi-step chords (Ctrl+X..Ctrl+C) are step-list DATA with a timeout, not bespoke state code. A
+prefix arms every registered candidate that begins with it. Each later step narrows that candidate
+set until one action completes. A step that matches no candidate cancels the pending state and
+resolves normally, so an unmatched printable step still reaches its context's default action.
 
 **Generates:** rebindability; the palette able to LIST every binding; plugins contributing bindings
-as data; the dissolution of Bootstrap's key if/else chains.
+as data; shared-prefix chord families; the dissolution of Bootstrap's key if/else chains.
 
 **Evidence:** `src/modules/keybindings/KeybindingDefaults.ts` (canonical data and shared text-input
 table); `src/modules/keybindings/KeybindingRegistry.ts` (lookup);
 `src/modules/keybindings/KeybindingDefaults.test.ts` (all four text-input contexts have the same
-18 chord/action signatures); `src/modules/app/Bootstrap.ts` (resolve then dispatch).
+18 chord/action signatures; Ctrl+K reaches both Ctrl+G and `[` continuations);
+`src/modules/keybindings/KeybindingRegistry.test.ts` (shared prefixes retain distinct continuations
+across layers while later exact bindings still shadow);
+`src/modules/app/Bootstrap.ts` (resolve then dispatch).
 
 **Impossible if true:** a key behavior implemented outside registry dispatch; an action reachable
-only through an unlisted binding; encoding logic anywhere but the decode layer.
+only through an unlisted binding; encoding logic anywhere but the decode layer; two registered
+bindings sharing a prefix where only one continuation can fire; an unmatched continuation swallowed
+instead of resolving normally.
 
 **Verification:** `bun test src/modules/keybindings/KeybindingDefaults.test.ts src/modules/keybindings/KeybindingRegistry.test.ts && bash scripts/conventions-gate.sh`
 
