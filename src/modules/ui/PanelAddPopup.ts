@@ -36,7 +36,7 @@ class $PanelAddPopup {
             }
           },
           {
-            title: 'Add panel',
+            title: this.dependencies.title ?? 'Add panel',
             searchVisible: false,
             minimumWidth: 20,
           },
@@ -62,4 +62,5 @@ export interface PanelAddPopupDependencies {
   /** Live: read at open time so a newly contributed or disabled kind appears or disappears. */
   addableKinds(): readonly PanelAddPopupKind[];
   addContent(kind: string): void;
+  title?: string;
 }

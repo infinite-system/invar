@@ -64,6 +64,8 @@ test('content sets isolate and restore complete panel worlds', () => {
   host.register(firstTerminal);
   host.split([firstTask.id, firstTerminal.id]);
   host.show();
+  host.togglePanelList();
+  host.panelListWidth.value = 13;
   host.focusCell(1);
   const firstContentSet = host.activeContentSet;
 
@@ -94,6 +96,8 @@ test('content sets isolate and restore complete panel worlds', () => {
   expect(host.visible.value).toBe(true);
   expect(host.focused.value).toBe(true);
   expect(host.focusedContent).toBe(firstTerminal);
+  expect(host.panelListExpanded.value).toBe(true);
+  expect(host.panelListWidth.value).toBe(13);
   expect(secondTask.disposed).toBe(false);
 
   host.disposeContentSet(secondContentSet);
@@ -463,7 +467,7 @@ test('moveDivider re-flows both adjacent cells and never collapses one below the
   expect(host.resolvedCells[0]!.ratio).toBeGreaterThan(0); // clamped to the minimum, never zero
 });
 
-test('selecting another instance replaces only the visible instance of the same kind', () => {
+test('new instances stay full width until an explicit split joins their groups', () => {
   const host = new PanelHost.Class();
   const terminal = fakeContent('terminal', 'terminal');
   const terminalTwo = fakeContent('terminal-2', 'terminal');
@@ -477,7 +481,17 @@ test('selecting another instance replaces only the visible instance of the same 
   host.showContent('terminal-2');
 
   expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal-2',
+  ]);
+  expect(host.panelGroups().map((group) => group.contentIds)).toEqual([
+    ['agent', 'terminal'],
+    ['terminal-2'],
+  ]);
+
+  expect(host.addContentToGroup('terminal-2', 'terminal')).toBe(true);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
     'agent',
+    'terminal',
     'terminal-2',
   ]);
   expect(host.focusedContent).toBe(terminalTwo);
@@ -485,6 +499,37 @@ test('selecting another instance replaces only the visible instance of the same 
     'terminal',
     'terminal-2',
     'agent',
+  ]);
+});
+
+test('groups and split members reorder, and a member detaches into a full-width group', () => {
+  const host = new PanelHost.Class();
+  host.register(fakeContent('terminal', 'terminal'));
+  host.register(fakeContent('agent', 'agent'));
+  host.register(fakeContent('terminal-2', 'terminal'));
+  host.split(['terminal', 'agent', 'terminal-2']);
+
+  expect(host.moveGroupMember('terminal-2', 0)).toBe(true);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal-2',
+    'terminal',
+    'agent',
+  ]);
+
+  expect(host.detachGroupMember('terminal', 0)).toBe(true);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal',
+  ]);
+  expect(host.panelGroups().map((group) => group.contentIds)).toEqual([
+    ['terminal'],
+    ['terminal-2', 'agent'],
+  ]);
+
+  const splitGroupIdentifier = host.panelGroups()[1]!.identifier;
+  expect(host.moveGroup(splitGroupIdentifier, 0)).toBe(true);
+  expect(host.panelGroups().map((group) => group.contentIds)).toEqual([
+    ['terminal-2', 'agent'],
+    ['terminal'],
   ]);
 });
 

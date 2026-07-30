@@ -381,6 +381,7 @@ class $ThemeIcons {
         preview: '\u{f06e}',
         wordWrap: '\u{f550}',
         goToLine: '\u{f0c9}',
+        goToBottom: '\u{f103}',
       }, // fa external-link / undo / plus / minus / eye
       unicode: {
         open: '↗',
@@ -390,6 +391,7 @@ class $ThemeIcons {
         preview: '◫',
         wordWrap: '↵',
         goToLine: '↕',
+        goToBottom: '⇊',
       },
       ascii: {
         open: 'o',
@@ -399,6 +401,7 @@ class $ThemeIcons {
         preview: 'p',
         wordWrap: 'w',
         goToLine: 'g',
+        goToBottom: 'b',
       },
     };
   }
@@ -894,6 +897,7 @@ export interface ActionIconSet {
   preview: string;
   wordWrap: string;
   goToLine: string;
+  goToBottom: string;
 }
 
 export interface TaskActionIconSet {

@@ -146,9 +146,15 @@ describe('LayoutModel', () => {
       expect(expanded.editorCenter.height).toBe(0);
       expect(expanded.bottomPanel).toEqual({
         left: regular.bottomPanel.left,
+        top: 1,
+        width: regular.bottomPanel.width,
+        height: totalRows - 1,
+      });
+      expect(expanded.bottomPanelTabs).toEqual({
+        left: regular.bottomPanel.left,
         top: 0,
         width: regular.bottomPanel.width,
-        height: totalRows,
+        height: 1,
       });
       expect(expanded.bottomPanelSplitter.height).toBe(0);
       expect(expanded.sidebar).toEqual(regular.sidebar);
@@ -165,7 +171,8 @@ describe('LayoutModel', () => {
 
     expect(geometry.editorCenter.height).toBe(1);
     expect(geometry.bottomPanelSplitter.top).toBe(1);
-    expect(geometry.bottomPanel.height).toBe(45);
+    expect(geometry.bottomPanelTabs.top).toBe(2);
+    expect(geometry.bottomPanel.height).toBe(44);
   });
 
   test.each([64, 80, 100, 120, 160, 200, 400] as const)(

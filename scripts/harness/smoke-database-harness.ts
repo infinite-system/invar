@@ -326,6 +326,7 @@ try {
   const tabBarGeometry = HarnessSmoke.Class.readStatus(statusPath)
     .panelSeparatorGeometry as {
     row: number;
+    tabRow: number;
     tabs: readonly {
       spaceIdentifier: string;
       startColumn: number;
@@ -342,7 +343,7 @@ try {
       Math.floor(
         (databaseTab.endColumnExclusive - databaseTab.startColumn) / 2,
       ),
-    row: tabBarGeometry.row,
+    row: tabBarGeometry.tabRow,
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(

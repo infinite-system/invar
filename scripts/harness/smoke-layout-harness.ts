@@ -990,8 +990,8 @@ try {
   let editorCenter = layoutSlot(status, 'editorCenter');
   let bottomPanel = layoutSlot(status, 'bottomPanel');
   HarnessSmoke.Class.requireCondition(
-    bottomPanel.height === 21,
-    '50-row viewport gives the bottom panel 45% of its 47 layout rows',
+    bottomPanel.height === 20,
+    '50-row viewport gives the panel body its 45% allocation after the tab row',
   );
   HarnessSmoke.Class.requireCondition(
     bottomPanel.left === editorCenter.left &&
@@ -1421,8 +1421,8 @@ try {
       (candidate) => candidate.terminalVisible === true,
     );
     HarnessSmoke.Class.requireCondition(
-      layoutSlot(compactStatus, 'bottomPanel').height === 9,
-      '24-row viewport gives the bottom panel 45% of its 21 layout rows',
+      layoutSlot(compactStatus, 'bottomPanel').height === 8,
+      '24-row viewport gives the panel body its 45% allocation after the tab row',
     );
     compactDriver.sendKeys('Control+Alt+b');
     const compactRightDockStatus = await HarnessSmoke.Class.awaitStatus(

@@ -139,6 +139,7 @@ test('action icons ladder: real glyphs on nerd/unicode, letters as the ascii fal
     preview: 'p',
     wordWrap: 'w',
     goToLine: 'g',
+    goToBottom: 'b',
   });
   // Nerd + unicode are real single-cell glyphs (distinct from the letters).
   const unicode = ThemeIcons.Class.actionIconsFor('unicode');

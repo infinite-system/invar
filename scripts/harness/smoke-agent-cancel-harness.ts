@@ -533,7 +533,13 @@ try {
     'held queued message exposes its click target',
     (candidate) => candidate.findText('[queued]') !== null,
   );
-  HarnessSmoke.Class.clickText(driver, snapshot, '[queued]');
+  const queuedMarker = snapshot.findText('[queued]');
+  if (!queuedMarker) throw new Error('Queued marker disappeared before click');
+  driver.sendMouseClick({
+    column: queuedMarker.column + 2,
+    row: queuedMarker.row,
+    button: 'left',
+  });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

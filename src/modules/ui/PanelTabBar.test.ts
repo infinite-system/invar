@@ -27,6 +27,7 @@ function project(paneCount: number, width = 80) {
       },
     ],
     activeSpaceId: 'terminal-space',
+    activeSpaceKind: 'terminal',
     paneCount,
     paneListExpanded: false,
     expanded: false,
@@ -45,6 +46,12 @@ function project(paneCount: number, width = 80) {
         icon: '↕',
         toggled: false,
       },
+      {
+        commandId: 'go.bottom',
+        title: 'Go: Bottom of File',
+        icon: '⇊',
+        toggled: false,
+      },
     ],
     hoveredCommandIdentifier: null,
     hoveredAction: null,
@@ -53,70 +60,71 @@ function project(paneCount: number, width = 80) {
   });
 }
 
-test('the tab bar paints and hit-tests workspace content spaces from one projection', () => {
+test('one projection places editor actions on the splitter row and containers on the tab row', () => {
   const projection = project(2);
+  expect(projection.editorActions.map((action) => action.commandId)).toEqual([
+    'view.toggleWordWrap',
+    'editor.goToLine',
+    'go.bottom',
+  ]);
   expect(projection.tabs.map((tab) => tab.identifier)).toEqual([
     'terminal-space',
     'database-space',
   ]);
-  expect(PanelTabBar.Class.tabAtColumn(projection, 1)?.identifier).toBe(
-    'terminal-space',
-  );
+  expect(projection.splitterLeadingWidth).toBe(9);
+  expect(projection.tabs[0]?.startColumn).toBe(0);
+  expect(projection.spaceAdd?.endColumn).toBe(80);
   expect(
-    projection.controls.some((control) => control.action === 'pane-list'),
-  ).toBe(false);
-  expect(projection.editorActions.map((action) => action.commandId)).toEqual([
-    'view.toggleWordWrap',
-    'editor.goToLine',
-  ]);
-  expect(
-    PanelTabBar.Class.editorActionAtColumn(
+    PanelTabBar.Class.spaceAddAtColumn(
       projection,
-      projection.editorActions[0]?.startColumn ?? -1,
-    )?.commandId,
-  ).toBe('view.toggleWordWrap');
-  expect(projection.tabs.at(-1)?.endColumn).toBe(
-    projection.editorActions[0]?.startColumn,
-  );
-  expect(projection.editorActions.at(-1)?.endColumn).toBe(
-    projection.leadingWidth,
-  );
-  expect(projection.leadingWidth + projection.dragWidth).toBe(
-    projection.controls[0]?.startColumn ?? -1,
-  );
+      projection.spaceAdd?.startColumn ?? -1,
+    ),
+  ).toBeDefined();
 });
 
-test('the pane count chip appears only above two panes', () => {
-  const projection = project(3);
-  const chip = projection.controls.find(
-    (control) => control.action === 'pane-list',
-  );
-  expect(chip).toBeDefined();
+test('each container tab paints one blank cell before its close glyph and shares that hit geometry', () => {
+  const projection = project(2);
+  const text = projection.tabText.chunks.map((chunk) => chunk.text).join('');
+  expect(text).toContain('Terminal ×');
+  expect(text).toContain('Database ×');
+  const close = projection.tabCloses[0]!;
+  expect(text[close.startColumn - 1]).toBe(' ');
+  expect(text[close.startColumn]).toBe('×');
   expect(
-    PanelTabBar.Class.controlAtColumn(projection, chip?.startColumn ?? -1)
-      ?.action,
-  ).toBe('pane-list');
+    PanelTabBar.Class.tabCloseAtColumn(projection, close.startColumn)
+      ?.identifier,
+  ).toBe('terminal-space');
 });
 
-test('editor actions truncate before tabs and the drag cell', () => {
+test('narrow container labels use ellipses without changing painted hit bounds', () => {
+  const projection = project(1, 14);
+  const text = projection.tabText.chunks.map((chunk) => chunk.text).join('');
+  expect(text).toBe(' T… × Da… ×');
+  expect(projection.tabs.at(-1)?.endColumn).toBe(text.length);
+  expect(projection.spaceAdd?.startColumn).toBe(text.length);
+});
+
+test('the list and pane add controls appear for a multi-window terminal container', () => {
+  const projection = project(2);
+  expect(projection.controls.map((control) => control.action)).toEqual([
+    'pane-list',
+    'pane-add',
+    'expand',
+    'close',
+  ]);
+});
+
+test('the drag span keeps its paint pad and exact total width on both rows', () => {
   const projection = project(2, 26);
-  expect(projection.tabs.length).toBe(2);
-  expect(projection.editorActions).toEqual([]);
-  expect(projection.dragWidth).toBe(1);
-});
-
-test('the drag span reserves one blank paint pad, and never its only cell', () => {
-  const wide = project(2);
-  expect(wide.dragWidth).toBeGreaterThan(1);
-  expect(wide.dragLeadingPaintPadCells).toBe(1);
-
-  // The pad is PAINT, so it comes out of the span's glyphs and never out of its width. The
-  // leading run and the controls still meet the span exactly where they did without a pad.
-  expect(wide.leadingWidth + wide.dragWidth + wide.controlWidth).toBe(80);
-
-  // At the narrowest row the span is one cell. A pad there would blank the whole mark, so it
-  // collapses to zero instead.
-  const narrow = project(2, 26);
-  expect(narrow.dragWidth).toBe(1);
-  expect(narrow.dragLeadingPaintPadCells).toBe(0);
+  expect(projection.dragWidth).toBeGreaterThan(1);
+  expect(projection.dragLeadingPaintPadCells).toBe(1);
+  expect(
+    projection.splitterLeadingWidth +
+      projection.dragWidth +
+      projection.splitterControlWidth,
+  ).toBe(26);
+  expect(
+    (projection.tabs.at(-1)?.endColumn ?? 0) +
+      (26 - (projection.tabs.at(-1)?.endColumn ?? 0)),
+  ).toBe(26);
 });

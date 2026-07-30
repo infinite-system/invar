@@ -333,7 +333,9 @@ workspace that loses that workspace's open file and cursor state.
 **Invariant:** If more than one workspace is open, then each workspace owns one independent
 bottom-panel content set. Selecting a workspace projects only that set. A hidden workspace keeps
 its terminal processes, agent sessions, task processes, scrollback, transcript, layout, visibility,
-and focus selection alive. Selecting it again restores that exact world.
+focus selection, container groups, pane-list pin, and pane-list width alive. Selecting it again
+restores that exact live world. Relaunch rebuilds its container and group sequences and restores the
+list state from the persistence record keyed by workspace root.
 
 **Scope:** `WorkspaceSet` activation, opening, closing, and disposal; the bottom `PanelHost`;
 runtime-created panes, declared task panes, and agent panes in `Bootstrap`. Dock hosts are outside
@@ -343,6 +345,8 @@ this rule.
 - *Isolation* — a pane identifier owned by workspace A is never registered or visible in workspace
   B's selected content set.
 - *Restoration* — A to B to A restores A's exact registered identifiers and panel projection state.
+- *Relaunch persistence* — container order, group order, group members, active group, list pin, and
+  list width restore only for the workspace root that recorded them.
 - *Local creation* — Add, terminal toggle, agent toggle, and task launch register only in the
   selected workspace's content set. Instance labels start locally at Terminal or Agent in each
   workspace, while their opaque identifiers remain application-unique.
@@ -356,17 +360,21 @@ this rule.
 lifecycle events. `Bootstrap` maps each `Workspace` to one `PanelContentSet`, selects that set before
 the new workspace calls its contributors, and disposes it after workspace close. `PanelHost` keeps
 one stable reactive projection while snapshotting and restoring each content set's registry, order,
-visibility, focus, expansion, active identifier, split layout, and focused cell. `PaneRuntimes`
-allocates instance numbers per workspace scope.
+visibility, focus, expansion, active identifier, split layout, groups, list state, and focused cell.
+`PaneRuntimes` allocates instance numbers per workspace scope. `Bootstrap` serializes structural
+pane descriptors to `Settings.panelWorkspaceStates`, rebuilds each workspace once after runtime
+activation, and never rebuilds a live content set on an ordinary workspace switch.
 
 **Generates:** Parallel terminal and agent worlds; task panes that do not double when another folder
 opens; A to B to A scrollback and transcript restoration; workspace-local Add behavior; bounded
 workspace-close cleanup without disturbing a surviving world.
 
 **Evidence:** `src/modules/workspace/WorkspaceSet.ts`; `src/modules/ui/PanelHost.ts`;
-`src/modules/ui/PaneRuntimes.ts`; `src/modules/app/Bootstrap.ts`;
+`src/modules/ui/PaneRuntimes.ts`; `src/modules/ui/PanelWorkspaceState.ts`;
+`src/modules/app/Bootstrap.ts`;
 `src/modules/workspace/WorkspaceSet.test.ts`; `src/modules/ui/PanelHost.test.ts`;
-`src/modules/ui/PaneRuntimes.test.ts`; `scripts/harness/smoke-workspace-tabs-harness.ts`.
+`src/modules/ui/PaneRuntimes.test.ts`; `src/modules/ui/PanelWorkspaceState.test.ts`;
+`scripts/harness/smoke-workspace-tabs-harness.ts`.
 
 **Impossible if true:** Opening B shows A's task or terminal identifiers; creating Terminal in B
 adds it to A; returning to A loses its terminal output or agent transcript; a workspace switch kills
@@ -375,12 +383,13 @@ alive in an inactive workspace world.
 
 **Verification:** `bun test src/modules/workspace/WorkspaceSet.test.ts
 src/modules/ui/PanelHost.test.ts src/modules/ui/PaneRuntimes.test.ts
+src/modules/ui/PanelWorkspaceState.test.ts
 src/modules/terminal/TerminalPlugin.test.ts && bun
 scripts/harness/smoke-workspace-tabs-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### N open workspaces do not cost N live GitWatchers
 

@@ -142,10 +142,11 @@ sequence][activity-order] adds the second axis: membership comes from every dock
 comes from one setting, and a disabled plugin keeps its slot. [A contributed dock side moves one
 live pane][dock-side] changes which host owns a registration without changing the activity identity;
 [One panel host owns keyboard focus][host-focus] makes the visible pane's focus follow that move.
-[Panel content order is one persisted
-sequence][panel-order] is the same generator for the bottom panel, and [The panel contents list
-mirrors open content][contents-list] is its visible projection — it stands on [panel-order] for the
-sequence and on [instance-session] for what a row means.
+[Panel content order is one persisted sequence][panel-order] gives the bottom panel two ordered
+levels: groups in a container and members in a split group. [The panel contents list mirrors open
+content][contents-list] is their visible projection — it stands on [panel-order] for both sequences
+and on [instance-session] for what a row means. A singleton group is full width; only an explicit
+split action creates a multi-member group.
 
 **One geometry for paint and hit.** [Bounded list popups share paint and hit
 geometry][popup-geometry] owns box bounds, search row, visible window, icon column, scrollbar, and

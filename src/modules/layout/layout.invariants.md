@@ -69,25 +69,26 @@ tests assert the exact ratio.
 
 ### Split arrangement follows panel content order
 
-**Invariant:** If `PanelHost` lays out more than one open bottom-panel content, then cell spans are
-ordered by `Settings.panelContentOrder`; the default sequence places agent left and terminal right.
+**Invariant:** If `PanelHost` lays out an explicit split group, then cell spans follow that group's
+persisted member sequence. Other groups remain full width and hidden until selected.
 
-**Scope:** The bottom-panel content axis in `PanelHost.split`, `toggleContent`, and
-`moveContentTo`. Cell ratios and the panel's root-slot alignment are outside this ordering rule.
+**Scope:** The bottom-panel content axis in `PanelHost.split`, `addContentToGroup`,
+`moveGroupMember`, and `detachGroupMember`. Cell ratios and the panel's root-slot alignment are
+outside this ordering rule.
 
-**Mechanism:** `PanelHost.split` filters requested identifiers through `order`, `toggleContent` builds
-new cells from `order`, and `moveContentTo` rebuilds the live `layout` after changing that same
-sequence. `Settings.defaults.panelContentOrder` is `['agent', 'terminal']`.
+**Mechanism:** `PanelGroup.contentIds` is the split order. `PanelHost.split` creates it explicitly,
+`addContentToGroup` appends a newly created pane, `moveGroupMember` reorders it, and
+`detachGroupMember` removes one member into a singleton group. `loadActiveSpace` derives the live
+layout from the selected group only.
 
-**Generates:** One ordering rule for automatic split creation, Ctrl+Shift+S split creation, drag reorder, and
-Alt+Up or Alt+Down reorder.
+**Generates:** One ordering rule for explicit split creation, split-member drag reorder, and
+drag-out detachment; no automatic split on Add.
 
 **Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/settings/Settings.ts`;
 `src/modules/app/Bootstrap.ts`; `src/modules/ui/PanelHost.test.ts`.
 
-**Impossible if true:** Opening agent and terminal with default settings placing terminal left; Ctrl+Shift+S
-and content-toggle creation producing different orders; a reordered contents list disagreeing with
-the cell spans.
+**Impossible if true:** Add changing a one-cell group into a split; a reordered split-member row
+disagreeing with the cell spans; a detached member remaining in the visible split.
 
 **Verification:** `bun test src/modules/ui/PanelHost.test.ts
 src/modules/ui/PanelContentsList.test.ts && bun scripts/harness/smoke-panel-split-harness.ts`
@@ -98,21 +99,22 @@ src/modules/ui/PanelContentsList.test.ts && bun scripts/harness/smoke-panel-spli
 
 ### Layout slots derive from one configuration
 
-**Invariant:** If RootView places a dock, editor center, or bottom panel edge, then that rectangle
-comes from one `LayoutModel.resolve` result over the live layout configuration and viewport; no slot
-re-derives an edge from a sibling renderable. After a named layout switch, the nonzero rectangles
-cover every available layout cell exactly once.
+**Invariant:** If RootView places a dock, editor center, bottom-panel splitter, container-tab row, or
+panel body edge, then that rectangle comes from one `LayoutModel.resolve` result over the live
+layout configuration and viewport; no slot re-derives an edge from a sibling renderable. After a
+named layout switch, the nonzero rectangles cover every available layout cell exactly once.
 
 **Scope:** The left primary dock, editor center, right dock, bottom panel, and their splitters in
 `RootView`, across dock visibility, sidebar position, panel alignment, and each dock vertical-span
 setting; plus the named configurations offered by the command-bar Layouts menu.
 
 **Mechanism:** `LayoutModel` consumes viewport cells, configured widths/heights, visibility, and the
-layout settings, then emits every slot rectangle in one coordinate space. Center and right panel
-alignment select the two surviving horizontal ranges. A visible full-height right dock owns its
-columns, so the panel right edge stops at the right-dock splitter. If a dock ends at the panel,
+layout settings, then emits every slot rectangle in one coordinate space. The panel allocation
+contains a one-row container-tab slot followed by a body that is one row shorter. Center and right
+panel alignment select the two surviving horizontal ranges. A visible full-height right dock owns
+its columns, so the panel right edge stops at the right-dock splitter. If a dock ends at the panel,
 `LayoutModel` emits a remainder slot for its released columns below the splitter; `RootView` paints
-that plain slot with the panel background without changing panel chrome geometry. A hidden dock
+that plain slot with the panel background without changing either panel chrome row. A hidden dock
 resolves to a zero-area slot. `presets()`
 publishes Default, Full-height docks, Centered panel, and Focus as named selections over those same
 axes instead of enumerating their Cartesian product. RootView applies the rectangles directly.
@@ -258,7 +260,7 @@ scripts/harness/smoke-layout-harness.ts`
 
 **Invariant:** If the bottom-panel splitter reaches its maximum, then the unexpanded layout retains
 exactly one editor-center row above the one-row splitter and assigns every remaining center row to
-the panel.
+the panel's one-row container chrome and body.
 
 **Scope:** The bottom-panel `SplitterModel` maximum supplied by `RootView` and
 `LayoutModel.maximumUnexpandedBottomPanelRows`. Expanded mode is governed separately.
@@ -267,8 +269,8 @@ the panel.
 `totalRows - minimumEditorRows - bottomPanelSplitterRows`. `SplitterModel` resolves that bound for
 construction and every drag clamp, so terminal resize changes cannot preserve a stale limit.
 
-**Generates:** Near-full-height drag at every terminal size; one visible editor sliver; a bounded
-panel size that remains valid across resize.
+**Generates:** Near-full-height drag at every terminal size; one visible editor sliver; one container
+chrome row; a bounded panel body that remains valid across resize.
 
 **Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/SplitterModel.ts`;
 `src/modules/ui/RootView.ts`; `src/modules/layout/LayoutModel.test.ts`;

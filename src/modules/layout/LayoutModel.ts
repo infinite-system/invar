@@ -10,6 +10,10 @@ class $LayoutModel {
     return 1;
   }
 
+  protected static get BOTTOM_PANEL_TAB_ROWS(): number {
+    return 1;
+  }
+
   protected static get RIGHT_DOCK_SPLITTER_COLUMNS(): number {
     return 1;
   }
@@ -40,6 +44,7 @@ class $LayoutModel {
   }
 
   static maximumUnexpandedBottomPanelRows(totalRows: number): number {
+    // invariant: An unexpanded bottom panel leaves one editor row (src/modules/layout/layout.invariants.md)
     return Math.max(
       1,
       Math.floor(totalRows) -
@@ -416,13 +421,27 @@ class $LayoutModel {
             ? this.BOTTOM_PANEL_SPLITTER_ROWS
             : 0,
       },
-      bottomPanel: {
+      bottomPanelTabs: {
         left: panelLeft,
         top: bottomPanelExpanded
           ? 0
           : panelSplitterTop + (options.bottomPanelVisible ? 1 : 0),
         width: panelRight - panelLeft,
-        height: panelBoxRows,
+        height: options.bottomPanelVisible ? this.BOTTOM_PANEL_TAB_ROWS : 0,
+      },
+      bottomPanel: {
+        left: panelLeft,
+        top:
+          (bottomPanelExpanded
+            ? 0
+            : panelSplitterTop + (options.bottomPanelVisible ? 1 : 0)) +
+          (options.bottomPanelVisible ? this.BOTTOM_PANEL_TAB_ROWS : 0),
+        width: panelRight - panelLeft,
+        height: Math.max(
+          0,
+          panelBoxRows -
+            (options.bottomPanelVisible ? this.BOTTOM_PANEL_TAB_ROWS : 0),
+        ),
       },
     };
   }
@@ -514,5 +533,6 @@ export interface LayoutSlotGeometry {
   primaryDockRemainder: LayoutRectangle;
   rightDockRemainder: LayoutRectangle;
   bottomPanelSplitter: LayoutRectangle;
+  bottomPanelTabs: LayoutRectangle;
   bottomPanel: LayoutRectangle;
 }
