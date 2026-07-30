@@ -16,6 +16,17 @@ Provenance: USER-DIRECTED 2026-07-29
 
 > Maybe agent shoud do
 
+Addition (verbatim, 2026-07-29, GOVERNS equally):
+
+> add to the p2p task, redistribution has to be such that no node feels
+> understrain yet hyper deployability becomes possible not only for
+> video but for any content, somehow every viewer helps the viewing,
+> while caping their sharing in ratio with their capability so that
+> they can continue performing other tasks, should be smartly
+> automatically calculated or allowed to hand controlled or pre-set to
+> a correct ratio cadence dependent on specific critical network
+> properties, Invar should make every node invariable.
+
 Naming context (same session): the user named the north star
 "Indranet Invarnet" — Indra's net; the prior verbatim north star is
 "imagine we create our own internet between Invar instances"
@@ -37,7 +48,24 @@ this task folder) covering, with citations for every ecosystem claim:
    net). Design space: strict reciprocity vs credit/allocation pools vs
    altruistic caps; incentive failure modes (leeching, sybil,
    free-riding); how a cap becomes an enforceable local invariant
-   rather than a promise.
+   rather than a promise. Per the user's addition, the cap contract is:
+   (a) NO NODE FEELS STRAIN — sharing is bounded in ratio to the node's
+   capability so it keeps performing its other tasks (measure: what
+   does the node sense — bandwidth, CPU, battery, foreground load —
+   and how do existing systems back off, cite); (b) every viewer helps
+   the viewing (consumption implies contribution, within the cap);
+   (c) the ratio/cadence is smartly AUTO-calculated by default, but
+   hand-controllable and pre-settable, keyed to the specific critical
+   network properties that matter (identify which properties are
+   actually critical — churn, upstream asymmetry, swarm size, piece
+   rarity — cite measurements); (d) generality: the underlay carries
+   ANY content, video is only the hardest case (latency-bounded);
+   "hyper deployability" = adding a node adds capacity, never load
+   beyond its cap. The user's closing invariant, verbatim: "Invar
+   should make every node invariable" — read as: a node's own
+   performance envelope is invariant under network participation; the
+   map should treat that as the acceptance criterion for every
+   candidate design.
 3. **Server independence**: what remains centralized in each prior-art
    system (trackers, signaling, TURN, certificate roots) and the
    decentralized alternatives (DHT, rendezvous over existing relays,
