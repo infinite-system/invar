@@ -76,6 +76,9 @@ export interface ApplicationContributionContext {
   ) => RegisteredDockContent;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
   readonly registerRightDockContent: (content: PaneContent) => void;
+  /** Register one application-owned content in every workspace's bottom-panel spaces. */
+  readonly registerPanelContent: (content: PaneContent) => void;
+  readonly bottomPanelHost: PanelHost.Instance;
   /** Register a RUNTIME: the owner of one bottom-panel pane kind and the processes behind it. The
    *  host answers only which of that kind is visible; everything else stays inside the runtime. */
   readonly registerPaneRuntime: (runtime: PaneRuntime) => PaneRuntimeHostPort;

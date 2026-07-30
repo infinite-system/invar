@@ -590,6 +590,8 @@ class $OverlayLayer {
       this.dependencies.settingsPanel.select(zone.index);
       if (zone.action === 'dec') this.dependencies.settingsPanel.adjust(-1);
       else if (zone.action === 'inc') this.dependencies.settingsPanel.adjust(1);
+      else if (zone.action === 'companion')
+        this.dependencies.settingsPanel.toggleCompanion(zone.index);
       this.dependencies.renderer.requestRender();
     };
     this.settingsText.onMouseDrag = (event: MouseEvent) =>
@@ -820,7 +822,10 @@ class $OverlayLayer {
       );
       if (row.kind === 'number') {
         appendChunk('[-]', palette.accent, 'dec');
-        appendChunk(` ${row.valueText} `, palette.accent);
+        appendChunk(
+          ` ${row.valueText}${row.companionValueText ? 's' : ''} `,
+          palette.accent,
+        );
         appendChunk('[+]', palette.accent, 'inc');
       } else if (row.kind === 'boolean') {
         appendChunk(`[ ${row.valueText} ]`, palette.accent, 'inc');
@@ -828,6 +833,13 @@ class $OverlayLayer {
         appendChunk('<', palette.accent, 'dec');
         appendChunk(` ${row.valueText} `, palette.accent);
         appendChunk('>', palette.accent, 'inc');
+      }
+      if (row.companionValueText) {
+        appendChunk(
+          ` [${row.companionValueText}]`,
+          palette.accent,
+          'companion',
+        );
       }
       lines.push({ chunks, zones, settingIndex: row.index });
     }
@@ -1744,7 +1756,7 @@ interface SettingsWidgetZone {
   startColumn: number;
   endColumn: number;
   index: number;
-  action: 'select' | 'dec' | 'inc';
+  action: 'select' | 'dec' | 'inc' | 'companion';
 }
 
 interface SettingsLineZone {

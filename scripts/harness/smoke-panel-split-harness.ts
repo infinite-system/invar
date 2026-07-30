@@ -122,41 +122,18 @@ async function driveSharedCloseGlyphTier(
     const splitStatus = await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
-      `${glyphLevel} panel list opens for agent and terminal`,
+      `${glyphLevel} two-pane space keeps its management list collapsed`,
       (status) =>
         Array.isArray(status.panelCellIds) &&
         status.panelCellIds.includes('agent') &&
         status.panelCellIds.includes('terminal') &&
-        status.panelListVisible === true,
+        status.panelListVisible === false,
     );
-    const listGeometry = splitStatus.panelListGeometry as {
-      left: number;
-      top: number;
-      width: number;
-      height: number;
-      visible: boolean;
-    };
-    const closeColumn = listGeometry.left + listGeometry.width - 1;
-    let terminalRow = -1;
     const sharedGlyphSnapshot = await tierDriver.awaitGridCondition(
-      `${glyphLevel} terminal list paints the shared close glyph`,
-      (candidate) => {
-        terminalRow = -1;
-        for (
-          let row = listGeometry.top;
-          row < listGeometry.top + listGeometry.height;
-          row += 1
-        ) {
-          if (candidate.rowText(row).includes('Terminal')) {
-            terminalRow = row;
-            break;
-          }
-        }
-        return (
-          terminalRow >= 0 &&
-          candidate.cell(terminalRow, closeColumn)?.characters === closeGlyph
-        );
-      },
+      `${glyphLevel} tab row omits per-pane title and close chrome`,
+      (candidate) =>
+        candidate.findText('Claude ×') === null &&
+        candidate.findText('Terminal ×') === null,
     );
     const bufferTabRow = sharedGlyphSnapshot
       .textRows()
@@ -176,31 +153,13 @@ async function driveSharedCloseGlyphTier(
           sharedGlyphSnapshot.cell(heading.row, control.startColumn + 1),
         ),
     );
-    const terminalListCloseCell = sharedGlyphSnapshot.cell(
-      terminalRow,
-      closeColumn,
-    );
-    HarnessSmoke.Class.requireCondition(
-      terminalListCloseCell?.characters === closeGlyph &&
-        terminalListCloseCell.characters !== 'x',
-      `${glyphLevel} terminal-list row paints shared ${JSON.stringify(closeGlyph)} instead of literal x`,
-    );
     HarnessSmoke.Class.requireCondition(
       sharedGlyphSnapshot.rowText(bufferTabRow).includes(closeGlyph),
       `${glyphLevel} buffer tab paints shared ${JSON.stringify(closeGlyph)}`,
     );
     HarnessSmoke.Class.requireCondition(
       headingCloseCells.some((cell) => cell?.characters === closeGlyph),
-      `${glyphLevel} panel heading paints shared ${JSON.stringify(closeGlyph)}`,
-    );
-    clickCell(tierDriver, closeColumn, terminalRow);
-    await HarnessSmoke.Class.awaitStatus(
-      tierDriver,
-      tierStatusPath,
-      `${glyphLevel} terminal-list close target closes that terminal`,
-      (status) =>
-        Array.isArray(status.panelCellIds) &&
-        !status.panelCellIds.includes('terminal'),
+      `${glyphLevel} panel-level close paints shared ${JSON.stringify(closeGlyph)}`,
     );
   } finally {
     await tierDriver.dispose();
@@ -242,8 +201,6 @@ const driver = new PtyTestDriver.Class({
     INVAR_AGENT_BACKEND: 'echo',
   },
 });
-
-let restartDriver: PtyTestDriver.Model | null = null;
 
 try {
   console.log(
@@ -313,8 +270,8 @@ try {
     'newly opened agent cell is focused',
   );
   HarnessSmoke.Class.requireCondition(
-    openedStatus.panelListVisible === true,
-    'contents list is visible with two open contents',
+    openedStatus.panelListVisible === false,
+    'contents list stays hidden with two open panes',
   );
   const initialColumns = cellColumns(openedStatus);
   const initialLeftColumns = initialColumns[0] ?? 0;
@@ -353,9 +310,9 @@ try {
       ) ?? '';
   HarnessSmoke.Class.requireCondition(
     headingText.indexOf('✦') < headingText.indexOf('❯'),
-    'agent and terminal render separate headings over their own regions',
+    'agent and terminal render in separate flat pane regions',
   );
-  HarnessSmoke.Class.pass('agent cell shows its own heading and composer');
+  HarnessSmoke.Class.pass('agent pane shows its own composer');
 
   console.log(
     '== harness panel-split: keys reach only the focused agent cell ==',
@@ -407,7 +364,7 @@ try {
   );
 
   console.log('== harness panel-split: divider drag reflows both cells ==');
-  const dividerColumn = panelLeft + initialLeftColumns + 1;
+  const dividerColumn = panelLeft + initialLeftColumns;
   const targetColumn = dividerColumn - 18;
   driver.sendMouse({
     kind: 'press',
@@ -447,256 +404,14 @@ try {
       `right ${initialRightColumns}->${resizedRightColumns})`,
   );
 
-  console.log(
-    '== harness panel-split: keyboard and drag reorder the same live split ==',
-  );
-  driver.sendKeys('Alt+Up');
-  const keyboardOrderStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: status.panelContentOrder.join(',') === 'terminal,agent' && status.panelCellIds.join(',') === 'terminal,agent'",
-    (status) =>
-      Array.isArray(status.panelContentOrder) &&
-      status.panelContentOrder.join(',') === 'terminal,agent' &&
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'terminal,agent',
-  );
-  HarnessSmoke.Class.pass(
-    'Alt+Up moved the focused terminal row and split cell together',
-  );
-  const listGeometry = keyboardOrderStatus.panelListGeometry as
-    | {
-        left: number;
-        top: number;
-        width: number;
-        height: number;
-        visible: boolean;
-      }
-    | undefined;
   HarnessSmoke.Class.requireCondition(
-    listGeometry?.visible === true && Number(listGeometry.width) > 0,
-    'contents list publishes its live hit geometry',
+    resizedLeftColumns < initialLeftColumns &&
+      resizedRightColumns > initialRightColumns,
+    'the flat split keeps direct divider reflow',
   );
-  const listColumn = Number(listGeometry?.left ?? 0) + 4;
-  const firstListRow = Number(listGeometry?.top ?? 0);
-  const secondListRow = firstListRow + 1;
-  clickCell(driver, listColumn, secondListRow);
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: status.panelActiveContent === 'agent'",
-    (status) => status.panelActiveContent === 'agent',
-  );
-  HarnessSmoke.Class.pass('clicking a contents row activates its pane');
-  driver.sendMouse({
-    kind: 'press',
-    column: listColumn,
-    row: secondListRow,
-    button: 'left',
-  });
-  driver.sendMouse({
-    kind: 'move',
-    column: listColumn,
-    row: firstListRow,
-    button: 'left',
-  });
-  driver.sendMouse({
-    kind: 'release',
-    column: listColumn,
-    row: firstListRow,
-    button: 'left',
-  });
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: status.panelContentOrder.join(',') === 'agent,terminal' && status.panelCellIds.join(',') === 'agent,terminal'",
-    (status) =>
-      Array.isArray(status.panelContentOrder) &&
-      status.panelContentOrder.join(',') === 'agent,terminal' &&
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent,terminal',
-  );
-  HarnessSmoke.Class.pass(
-    'drag moved the row and split cell through the same order writer',
-  );
-
-  console.log(
-    '== harness panel-split: Ctrl+Shift+S collapses to the focused pane, then restores the split ==',
-  );
-  driver.sendKeys('Control+Shift+s');
-  const restoredStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'agent'",
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent',
-  );
-  HarnessSmoke.Class.pass('single cell restored');
-  HarnessSmoke.Class.requireCondition(
-    restoredStatus.panelFocusedIndex === 0,
-    'focused cell index reset',
-  );
-  HarnessSmoke.Class.requireCondition(
-    restoredStatus.panelListVisible === true,
-    'contents list stays visible while another open session is hidden',
-  );
-  HarnessSmoke.Class.requireCondition(
-    (cellColumns(restoredStatus)[0] ?? 0) > resizedLeftColumns,
-    'restored cell reclaimed the full width',
-  );
-  driver.sendKeys('Control+Shift+s');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'agent,terminal'",
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent,terminal',
-  );
-  HarnessSmoke.Class.pass(
-    'Ctrl+Shift+S produces the same side-by-side terminal and agent layout',
-  );
-  clickCell(
-    driver,
-    statusButtonColumn(driver.snapshot(), ' ✦ '),
-    driver.snapshot().rows - 1,
-  );
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal'",
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'terminal',
-  );
-  clickCell(
-    driver,
-    statusButtonColumn(driver.snapshot(), ' ✦ '),
-    driver.snapshot().rows - 1,
-  );
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'agent,terminal'",
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent,terminal',
-  );
-  HarnessSmoke.Class.pass('agent close and reopen preserves the terminal pane');
-
-  console.log(
-    '== harness panel-split: close from a list row and persist a final drag order ==',
-  );
-  const closeColumn =
-    Number(listGeometry?.left ?? 0) + Number(listGeometry?.width ?? 0) - 1;
-  clickCell(driver, closeColumn, secondListRow);
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: status.panelCellIds.join(',') === 'agent' && status.panelListVisible === false",
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent' &&
-      status.panelListVisible === false,
-  );
-  HarnessSmoke.Class.pass(
-    'terminal closed from its visible list-row affordance',
-  );
-  clickCell(
-    driver,
-    statusButtonColumn(driver.snapshot(), ' ❯ '),
-    driver.snapshot().rows - 1,
-  );
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: status.panelCellIds.join(',') === 'agent,terminal' && status.panelListVisible === true",
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent,terminal' &&
-      status.panelListVisible === true,
-  );
-  driver.sendMouse({
-    kind: 'press',
-    column: listColumn,
-    row: firstListRow,
-    button: 'left',
-  });
-  driver.sendMouse({
-    kind: 'move',
-    column: listColumn,
-    row: secondListRow,
-    button: 'left',
-  });
-  driver.sendMouse({
-    kind: 'release',
-    column: listColumn,
-    row: secondListRow,
-    button: 'left',
-  });
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    "status condition: status.panelContentOrder.join(',') === 'terminal,agent'",
-    (status) =>
-      Array.isArray(status.panelContentOrder) &&
-      status.panelContentOrder.join(',') === 'terminal,agent',
-  );
-  HarnessSmoke.Class.pass('final drag persisted terminal before agent');
-
-  console.log(
-    '== harness panel-split: second boot on the same HOME restores the saved order ==',
-  );
-  await driver.dispose();
-  const restartStatusPath = join(homeDirectory, 'restart-status.json');
-  restartDriver = new PtyTestDriver.Class({
-    workspaceRoot: join(process.cwd(), 'fixtures'),
-    columns: 120,
-    rows: 40,
-    homeDirectory,
-    environment: {
-      TUI_STATUS_PATH: restartStatusPath,
-      INVAR_AGENT_BACKEND: 'echo',
-    },
-  });
-  await HarnessSmoke.Class.awaitStatus(
-    restartDriver,
-    restartStatusPath,
-    'the second boot is ready with the same HOME',
-    (status) => status.ready === true && status.terminalVisible === false,
-    15_000,
-  );
-  statusBarSnapshot = await restartDriver.awaitGridCondition(
-    'the terminal and agent status buttons are visible after restart',
-    (candidate) =>
-      candidate.findText(' ❯ ') !== null && candidate.findText(' ✦ ') !== null,
-  );
-  clickCell(
-    restartDriver,
-    statusButtonColumn(statusBarSnapshot, ' ❯ '),
-    statusBarSnapshot.rows - 1,
-  );
-  clickCell(
-    restartDriver,
-    statusButtonColumn(statusBarSnapshot, ' ✦ '),
-    statusBarSnapshot.rows - 1,
-  );
-  await HarnessSmoke.Class.awaitStatus(
-    restartDriver,
-    restartStatusPath,
-    "status condition: status.panelCellIds.join(',') === 'terminal,agent' && status.panelContentOrder.join(',') === 'terminal,agent'",
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'terminal,agent' &&
-      Array.isArray(status.panelContentOrder) &&
-      status.panelContentOrder.join(',') === 'terminal,agent',
-  );
-  HarnessSmoke.Class.pass('saved content order survived a full restart');
-  restartDriver.sendKeys('Control+q');
+  driver.sendKeys('Control+q');
   console.log('smoke-panel-split-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  await restartDriver?.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

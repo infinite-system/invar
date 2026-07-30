@@ -178,6 +178,17 @@ describe('SettingsPanel', () => {
     ); // number formatted
   });
 
+  test('panel cycling exposes its interval and play toggle on one settings row', () => {
+    const { settings } = makeSettings();
+    const panel = new SettingsPanel.Class(settings);
+    const rowIndex = indexOfKey(panel, 'panelTabCycleSeconds');
+    expect(panel.rows()[rowIndex]?.valueText).toBe('10');
+    expect(panel.rows()[rowIndex]?.companionValueText).toBe('play');
+    panel.toggleCompanion(rowIndex);
+    expect(settings.panelTabCycling.value).toBe(true);
+    expect(panel.rows()[rowIndex]?.companionValueText).toBe('pause');
+  });
+
   describe('dynamic-enum (voice picker)', () => {
     const savedXdg = process.env.XDG_DATA_HOME;
     let dataHome = '';

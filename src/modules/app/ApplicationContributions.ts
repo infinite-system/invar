@@ -130,6 +130,12 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
           this.options.rightDockHost.removeContent(content.id),
         );
       },
+      registerPanelContent: (content) => {
+        this.options.bottomPanelHost.registerShared(content);
+        registrationDisposers.push(() =>
+          this.options.bottomPanelHost.removeSharedContent(content.id),
+        );
+      },
       registerEditorColumnDefault: (provider) => {
         const port = this.options.editorColumnDefault.register(provider);
         // Withdrawal is the disposer's job; RELEASE is the contribution's own, so a contributor
@@ -217,6 +223,7 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerDockContent'
   | 'registerPrimaryDockContent'
   | 'registerRightDockContent'
+  | 'registerPanelContent'
   | 'registerPaneRuntime'
   | 'registerEditorColumnDefault'
 > & {

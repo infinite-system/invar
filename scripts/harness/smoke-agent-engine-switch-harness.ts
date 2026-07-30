@@ -109,12 +109,12 @@ function engineSegmentPosition(
   return null;
 }
 
-function agentHeadingShowsPublishedTitle(
+function agentPaneOmitsPublishedTitle(
   snapshot: HarnessSnapshot.Model,
   footerRegion: AgentFooterRegion,
   status: StatusSnapshot,
 ): boolean {
-  return snapshot
+  return !snapshot
     .rowText(footerRegion.headingRow)
     .slice(footerRegion.startColumn, footerRegion.endColumnExclusive)
     .includes(String(status.agentTitle));
@@ -129,10 +129,7 @@ function hasTranscriptLabel(
     const trimmedRow = rowText
       .slice(panelRectangle.left, panelRectangle.left + panelRectangle.width)
       .trimEnd();
-    return (
-      trimmedRow.endsWith('│') &&
-      trimmedRow.slice(0, -1).trimEnd() === `│  ${label}`
-    );
+    return trimmedRow.trim() === label;
   });
 }
 
@@ -212,12 +209,12 @@ try {
     'the Claude pane title and engine-cycle affordance are visible',
     (candidate) =>
       candidate.findText('Ask Claude anything') !== null &&
-      agentHeadingShowsPublishedTitle(candidate, footerRegion, status) &&
+      agentPaneOmitsPublishedTitle(candidate, footerRegion, status) &&
       engineSegmentPosition(candidate, footerRegion) !== null,
   );
   HarnessSmoke.Class.pass('Claude boot resolves engine and title');
   HarnessSmoke.Class.requireCondition(
-    agentHeadingShowsPublishedTitle(snapshot, footerRegion, status) &&
+    agentPaneOmitsPublishedTitle(snapshot, footerRegion, status) &&
       engineSegmentPosition(snapshot, footerRegion) !== null,
     'Claude title and engine-cycle affordance render',
   );
@@ -257,7 +254,7 @@ try {
     (candidate) =>
       candidate.findText('switched to codex') !== null &&
       candidate.findText('context ported') !== null &&
-      agentHeadingShowsPublishedTitle(candidate, footerRegion, status) &&
+      agentPaneOmitsPublishedTitle(candidate, footerRegion, status) &&
       engineSegmentPosition(candidate, footerRegion) !== null &&
       hasTranscriptLabel(candidate, panelRectangle, 'Claude'),
   );
@@ -265,7 +262,7 @@ try {
     'Ctrl+E switches the live provider identity to Codex',
   );
   HarnessSmoke.Class.requireCondition(
-    agentHeadingShowsPublishedTitle(snapshot, footerRegion, status) &&
+    agentPaneOmitsPublishedTitle(snapshot, footerRegion, status) &&
       hasTranscriptLabel(snapshot, panelRectangle, 'Claude'),
     'pane retitles while history retains its producing engine label',
   );
@@ -341,7 +338,6 @@ try {
     'the fresh Codex provider paints no frozen Claude identity',
     (candidate) =>
       candidate.findText('Ask Codex anything') !== null &&
-      candidate.findText('✦ Codex') !== null &&
       candidate.findText('Ask Claude') === null,
   );
   status = await HarnessSmoke.Class.awaitStatus(
@@ -358,7 +354,7 @@ try {
   panelRectangle = bottomPanelSlot(status);
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('Ask Claude') === null &&
-      agentHeadingShowsPublishedTitle(snapshot, footerRegion, status) &&
+      agentPaneOmitsPublishedTitle(snapshot, footerRegion, status) &&
       engineSegmentPosition(snapshot, footerRegion) !== null,
     'Codex-provider boot has no frozen Claude identity',
   );

@@ -188,14 +188,13 @@ await_field_change terminalFollowMode "$follow_mode_before" \
   'Ctrl+Shift+M arrived at the focused agent pane' \
   && pass "Ctrl+Shift+M arrived and cycled the follow mode ($follow_mode_before -> $(field terminalFollowMode))"
 
-echo "== Ctrl+Shift+S is symmetric: the same chord un-splits (the toggle-symmetry warrant) =="
-# Un-splitting keeps the FOCUSED cell, so move focus to the terminal cell first (Alt+PageDown is the
-# panel context's contentsNext) — that also leaves the terminal focused for the pass-through sweep.
-"$HARNESS" chord "$SESSION" Alt+PageDown >/dev/null
-await_field panelFocusedIndex '1' 'Alt+PageDown focused the terminal cell' || true
-"$HARNESS" chord "$SESSION" Control+Shift+s >/dev/null
-await_field panelCellIds 'terminal' 'Ctrl+Shift+S un-split the panel back to one cell' \
-  && pass "Ctrl+Shift+S un-split back to a single cell (the terminal)"
+echo "== Ctrl+Shift+A closes the focused agent pane and leaves the terminal =="
+# Alt+PageDown now cycles workspace content spaces. The agent's own toggle is the direct keyboard
+# path that closes its pane before the terminal pass-through sweep.
+"$HARNESS" chord "$SESSION" Control+Shift+a >/dev/null
+await_field panelCellIds 'terminal' 'Ctrl+Shift+A closed the agent pane' \
+  && pass "Ctrl+Shift+A left one terminal pane"
+await_field terminalFocused 'true' 'the remaining terminal pane took focus' || true
 echo "  note: Ctrl+] (was F12) arrival is driven by scripts/smoke-goto-definition.sh against a real LSP"
 
 # --- D) pass-through: sent vs received ------------------------------------------------------------

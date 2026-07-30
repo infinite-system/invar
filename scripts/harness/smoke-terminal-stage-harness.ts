@@ -187,32 +187,25 @@ async function driveAnimatedTerminalTools(
       (candidate) => snapshotHasPromptColor(candidate, 0x7aa2f7),
       15_000,
     );
-    snapshot = await driver.awaitGridCondition(
-      'the terminal header shows shell identity and a working-directory path',
-      (candidate) =>
-        candidate
-          .textRows()
-          .some((rowText) => /[^@\s]+@[^:\s]+:\S+/.test(rowText)),
-      15_000,
-    );
     HarnessSmoke.Class.requireCondition(
       snapshotHasPromptColor(snapshot, 0x7aa2f7),
       'minimal $ prompt foreground equals the terminalPrompt palette role',
     );
-    HarnessSmoke.Class.pass('header shows user@host:path from shell metadata');
+    HarnessSmoke.Class.requireCondition(
+      snapshot.findText('Terminal ×') === null,
+      'the terminal pane has no local heading or close control',
+    );
 
     driver.sendText('cd /tmp');
     driver.sendKeys('Enter');
+    driver.sendText('pwd');
+    driver.sendKeys('Enter');
     snapshot = await driver.awaitSnapshot((candidate) =>
-      candidate
-        .textRows()
-        .some((rowText) => /[^@\s]+@[^:\s]+:\/tmp/.test(rowText)),
+      candidate.textRows().join('\n').includes('/tmp'),
     );
     HarnessSmoke.Class.requireCondition(
-      snapshot
-        .textRows()
-        .some((rowText) => /[^@\s]+@[^:\s]+:\/tmp/.test(rowText)),
-      'header updates live after cd',
+      snapshot.textRows().join('\n').includes('/tmp'),
+      'the terminal preserves its live working directory after cd',
     );
 
     console.log(
