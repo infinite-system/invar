@@ -42,3 +42,10 @@ while comparing an older --smol build against current.
 Instances are selected by /proc/<pid>/cwd (main checkout + explicitly
 named paths), never by command-line text — worktree/temp cwds are the
 exclusion mechanism.
+
+## Conductor addition (2026-07-30)
+
+Use DELTA sampling (jiffies over a window, like top), never ps %cpu —
+ps reports the lifetime average, which decays slowly and reads as a
+phantom idle burn (measured: ps 8% vs real 0.6% on the user instance).
+Support --whoami TAG filtering via /proc/<pid>/environ IV_WHOAMI.
