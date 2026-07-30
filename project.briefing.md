@@ -53,45 +53,40 @@ WATCHERS: fleet-watch Monitor bva4qa3i4 persistent; cron 86218567 :07/:37 loop p
 
 CONTEXT DISCIPLINE: anchor at natural boundaries AND before 85%; this anchor written at 86%.
 
-## RESUME ANCHOR 10 — 2026-07-29 ~21:10 (37 landed; context 80% pre-compaction)
+## RESUME ANCHOR 11 — 2026-07-29 ~22:0x (39 landed; compaction imminent)
 
-Main GREEN at 08403def+. 37 landings today. Latest: #313+#315 child-I/O
-bundle (mouse passthrough — USER CONFIRMED WORKING; child colors exact).
-Watchers: fleet-watch Monitor + cron 38059f05 :07/:37 (re-arm both after
-any session restart; builders in tmux survive; VM suspend/resume clean).
+Main GREEN at 277c4aae+. 39 landed. Since anchor 10: #308 landed 284d53c1
+(view-only md mode); #312 phases 1-2 landed b0f78747 (vue block syntax +
+routing); BUILD FIX 35402196 (compiler-sfc esm-browser import — CJS broke
+bun build --compile; gate now has 'binary build' step per USER directive
+'bun run build must be run'); steer.sh hardened 039107df (composer-cleared
+is ONLY delivery proof — compaction spinner false-positived #314's steer
+14m; memory updated); dispatch.sh writes stub task records 4ba5d6be (land
+needs task-<name>.md; #313/#312 stalled on it); all meta.json newline-swept
+601e7385 (my json.dump broke 3 builder gates).
 
-FOUR LANES LIVE (user-approved 4th):
-- 300-eight-ui-nitpicks-bundled — TEN items (#300 #302 #303 #304 #306
-  #307 #309 #310 #316 #318), one commit per '(#NNN)', 3h20m in. Landing:
-  complete ALL constituent active records (move to completed + State
-  line) AND create dispatch-folder stub task file if missing (land.sh
-  requires task-<folder>.md — learned on #313).
-- 308-markdown-view-only-mode-persistent — temp-HOME isolation mandatory.
-- 312-vue-sfc-block-syntax-and-routing — phases 1-2 ONLY of accepted map
-  (completed/311-vue-sfc-integration-map/project-vue-integration-map.md).
-  User accepted ALL FIVE recommendations. Phases 3-5 later, spike gates 3.
-- 314-harness-and-tooling-integrity-bundle — #314+#292+#297, one commit
-  per number.
+LANES (4): 300-eight-ui-nitpicks-bundled (TEN items, 4h+ — at landing:
+complete ALL constituent records); 314-harness-and-tooling-integrity-bundle
+(#314+#292+#297 — was BLOCKED on my newlines, steered via hand-Enter to
+merge main + re-gate through hook; lands on GATE_EXIT=0 + hash);
+320-terminal-pane-fidelity-two-bundle (#320 theme bg/palette + #321 DEC-2026
+flicker — #320 corrects #315's fixed-xterm overshoot); 317-splitter row.
 
-NEXT DISPATCH: #320 (terminal default bg from OUR theme + VSCode-default
-ANSI palette; corrects #315's fixed-xterm overshoot; child-explicit lanes
-stay byte-exact) — ahead of #317 splitter → #319 tasks pane → #301
-chords → #283 vue rc2 (solo) → #272 → #269-#271 → #255-#258 → #260-#262
-→ 25x cluster. WAIT FOR USER: #241 #242; capsule HELD; orphans
-200-pool/205-flake disposition.
+QUEUE: #319 tasks pane → #301 chords → #323 quit dialog (needs bundle's
+#303/#316/#318) → #324 3D demo+video → #325 A/V sync research map →
+#326 vendor modularity STAGE-1 (SAME-AGENT two-stage: at plan-READY do
+NOT land/close the lane — plan to user, steer approval into same session)
+→ #322 status lie → backlog (#283 solo, #272, #269-271, #255-258,
+#260-262, 25x). WAIT USER: #241 #242, capsule, orphans 200/205.
 
-VERDICT LAW: forms (a) hook-chain quote + commit past hook; (b) builder
-gate GATE_EXIT=0 matched by COMMIT HASH; (c) red-classified-with-controls.
-SKIP_GATE commits REQUIRE one. Hand-filed records use 'State:' not
-'Status:'. Rollout identified by session-meta cwd ONLY (agent-tmux fix
-2026-07-29 — content grep matched other sessions' mentions, reported
-finished builder busy). Session links repaired by COMMIT hash grep.
-dispatch.sh: per-engine defaults codex->5.6-sol, medium effort REFUSED
-loudly -> high (USER: codex medium not allowed); tasks-status falls back
-to meta.json. .invar/tasks.json UNTRACKED+gitignored (broke every PTY
-drive — #314 owns the seam). Census #214: 15 pool events today. Steer
-only via steer.sh. context-usage.sh committed in ibr (3892f03).
+NORTH STAR added verbatim: 'our own internet between Invar instances'
+(presence → ledger sync → projected panes → fleet mesh; prefer
+location-independent seams). New records #322-#326 all verbatim.
 
-USER PENDING COMMS: none — vue five decisions ANSWERED ("all five as
-recommended"), #313 confirmed working by user. #320 is his freshest
-correction (filed verbatim in its record).
+LAWS (delta): binary-build gate step exists; steer only via steer.sh
+(composer-cleared proof); rollout by session-meta cwd; verdict forms
+a/b/c by COMMIT HASH; census #214 at 18 pool events; codex medium
+REFUSED->high; State: not Status:; meta.json needs trailing newline
+(use print(json.dumps)+newline or echo >>). Watchers: Monitor
+bfz27vcz0 + cron 38059f05 :07/:37 — REARM BOTH after session restart.
+User's claude symlink verified 2.1.220 after #313-probe damage.
