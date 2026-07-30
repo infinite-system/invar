@@ -32,9 +32,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (25)
+## VERIFICATION-INTEGRITY (24)
 - #399 [splitter-regions-stale-rectangle](.invar/tasks/active/399-splitter-regions-stale-rectangle/task-399-splitter-regions-stale-rectangle.md)
-- #398 [panel-geometry-one-based-offset](.invar/tasks/active/398-panel-geometry-one-based-offset/task-398-panel-geometry-one-based-offset.md)
 - #397 [frameprobe-char-buffer-native-handles](.invar/tasks/active/397-frameprobe-char-buffer-native-handles/task-397-frameprobe-char-buffer-native-handles.md)
 - #385 [tasks-dashboard-smoke-status-grid-race](.invar/tasks/active/385-tasks-dashboard-smoke-status-grid-race/task-385-tasks-dashboard-smoke-status-grid-race.md)
 - #370 [legacy-smoke-tabs-perma-red](.invar/tasks/active/370-legacy-smoke-tabs-perma-red/task-370-legacy-smoke-tabs-perma-red.md)
