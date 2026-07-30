@@ -1,6 +1,6 @@
 # #348 — tasks:watch gradients retuned for 60fps
 
-State: IN-PROGRESS
+State: COMPLETED — 46be8818 — time-based gradient phase, rate-independent; #385 from bycatch
 Priority: user-directed
 Engine: claude
 Environment: linux
