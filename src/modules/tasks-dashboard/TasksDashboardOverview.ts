@@ -25,7 +25,6 @@ import { ref, shallowRef } from 'vue';
 import {
   INVAR_FLEET_REPOSITORY_ROOT,
   PRIORITY_ORDER,
-  TASKS_MOTION_PAINTS_PER_STEP,
   agentIdentity,
   builderStanding,
   completedStateAttachment,
@@ -45,8 +44,7 @@ import {
 
 class $TasksDashboardOverview {
   protected static readonly DATA_HEARTBEAT_MILLISECONDS = 1000;
-  protected static readonly MOTION_HEARTBEAT_MILLISECONDS =
-    (1000 / 30) * TASKS_MOTION_PAINTS_PER_STEP;
+  protected static readonly MOTION_HEARTBEAT_MILLISECONDS = 1000 / 30;
   protected static readonly PROBE_EVERY_TICKS = 2;
   protected static readonly DURATION_REFRESH_EVERY_TICKS = 60;
   declare $watch: typeof import('vue').watch;
@@ -213,7 +211,7 @@ class $TasksDashboardOverview {
       this.syncMotionHeartbeatTimer();
       return;
     }
-    this.animationPaint.value += TASKS_MOTION_PAINTS_PER_STEP;
+    this.animationPaint.value += 1;
     this.dependencies.requestRender();
   }
 
