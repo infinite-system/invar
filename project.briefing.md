@@ -213,3 +213,97 @@ WATCHERS (re-arm on resume, this exact set, nothing more):
 
 LESSON THIS TURN: none new — anchor-13's resurrection protocol ran clean end to end
 (pgrep-first, verdict re-read from log, named moved-main delta, land, hygiene).
+
+## RESUME ANCHOR 15 (2026-07-30 02:50 — post-#336 landing; supersedes 14)
+
+**Conductor pid check first: anchor-15's writer is 3752392 (~/dev/invar launch).
+DANGER, UNRESOLVED: the OLD ibr incarnation pid 3541394 (cwd ~/dev/ibr) is ALIVE
+and COMMITTING to this repo — it filed a DUPLICATE #338
+(338-declared-graphics-tier-fails-silently, a1c9f878) one minute after ours
+(338-forced-graphics-tier-blank-pane-silent, 56731af9). The user was asked to stop
+it; NO ANSWER YET. On resume: check `ps -p 3541394`, re-ask if alive. Once stopped,
+retire the duplicate folder (git mv to retired/ + reason) — do NOT delete.**
+
+STATE AT WRITE (verify with git log; main was at the #344 filing commit):
+
+LANDED TONIGHT: #322 (0f871cbc), #335 (359ca6da), #336 (eaf04d09 — user's video
+-y fix, landed over a PRE-EXISTING red per the narrow rule), plus earlier #329
+#323 #327. User's live symptoms both fixed: video plays after rebuild; 3D demo
+was his graphicsTier=kitty setting in a non-kitty terminal (#338 filed).
+
+MAIN-TREE RED, GATE-BLOCKING: Drive.test.ts "prints a large Markdown file only
+after preview and structure work settle" — structure dock paints "No file is
+open." while structureStatus=ready, structureRows=110. Fails on main WITHOUT
+any branch content (conductor run: 11 pass / 1 fail). This is #334, upgraded to
+verification-integrity and DISPATCHED. Every landing until it fixes must either
+ride a gate that got lucky or use the pre-existing-red narrow rule citing #334.
+
+LANES LIVE (3, at cap): #334 (gate-blocking structure transient), #339
+(supersampled 3D demo for the user's Ghostty/cmux), #340 (file tree reveals open
+file + header-button row). All codex sol high.
+
+QUEUE next slot, in order: #342 (tasks.json panes fail to load — SAFETY RAIL in
+task file: real tasks spawn aws-vault+claude, fixture-only reproduction, audit
+the folderOpen guard); #343 (tasks activity icon → play glyph + LIVE spinner
+reusing TasksWatchRenderer's cycle); #344 (breadcrumb hover highlight, one-cell
+side padding, row shifts one right); #341 (tree add/drag-drop, BLOCKED on #340).
+#326 stage 2 STILL WAITS for the user's explicit go. #337 accumulating.
+
+VERDICT-EXTRACTION RITUAL (now 3x by hand — HARDENING DEBT, next incarnation
+scripts it): find codex rollout `grep -l '<slug>' ~/.codex/sessions/<date>/rollout-*.jsonl`,
+confirm chain GATE_EXIT=0 + 'merge-gate GREEN — commit allowed' + [branch commit]
+in ONE hook output block, write tmp/gate-verdict-<n>.log with those lines, land
+with GATE_LOG=. For a red: GATE_OVERRIDE with named pre-existing evidence.
+
+WATCHERS: Monitor(command: "bash scripts/fleet/fleet-watch.sh", persistent: true).
+CRON: NONE (user's permanent disarm stands).
+
+LESSONS THIS INCARNATION: (1) land.sh refuses on dirty tree — commit records
+BEFORE landing, always. (2) dispatch.sh refuses untracked task folders — git add
+before dispatch. (3) A builder merge-round can surface a main-tree red the
+builder did not cause: prove pre-existence by running the exact failing test on
+main, then narrow-rule land. (4) The other-incarnation hazard is real: check
+`pgrep -x claude` + /proc cwd BEFORE trusting main history; a duplicate task
+number filed by a twin looks exactly like your own work.
+
+## RESUME ANCHOR 16 (2026-07-30 03:01 — CHECKPOINT anchor; supersedes 15)
+
+**Pid check first (writer: 3752392, ~/dev/invar launch). TWIN HAZARD STILL OPEN:
+old ibr incarnation pid 3541394 alive, filed duplicate #338
+(338-declared-graphics-tier-fails-silently, a1c9f878). User asked twice, no
+answer. On resume: ps -p 3541394; if alive, ask again; once dead, git mv the
+duplicate folder to retired/ with reason "duplicate of 338-forced-... filed by
+twin incarnation".**
+
+MAIN-TREE RED (gate-blocking, unchanged): Drive.test.ts large-Markdown
+structure-dock case (#334, dispatched). Landings until fixed use the narrow
+rule citing #334 (pre-existing proof: fails on main without branch content).
+
+LANES LIVE (3, cap): #334 (the red), #339 (supersampled demo), #340 (tree
+reveal + button row). All codex sol high. Verdict at READY: use
+scripts/fleet/extract-gate-verdict.sh <n> <slug> (NEW, self-tested — the
+hand ritual is retired), then land.sh with GATE_LOG=. Remember merge-round
+discipline: if main moved with CODE, round-brief a merge before landing.
+
+DISPATCH QUEUE (user-directed, in order): #342 tasks.json panes (SAFETY RAIL
+in task file — never drive repo root with real tasks.json, fixture-only,
+audit folderOpen guard) → #343 tasks icon + LIVE spinner → #344 breadcrumb
+hover pad → #345 separator glyph U+2501 (record re-choice rides the diff) →
+#346 panel tab bar (BIG spec, 7 numbered points + addenda; depends on #342)
+→ #347 markdown links red + double-click open → #348 tasks:watch gradient
+60fps time-based phase. #341 blocked on #340. #326 stage 2 awaits user go.
+#337 accumulating.
+
+USER SYMPTOMS RESOLVED TONIGHT: video (-y, #336 landed eaf04d09 — user must
+rebuild); 3D demo blank (his graphicsTier=kitty in non-kitty terminal; #338
+filed; he sees it on auto now; #339 brings real res for his Ghostty/cmux).
+
+WATCHERS: Monitor(command: "bash scripts/fleet/fleet-watch.sh", persistent:
+true). CRON: NONE (permanent disarm stands).
+
+LESSON SWEEP delta since 15: (5) the READY-to-land ritual is now a script —
+extract-gate-verdict.sh; use it, extend it, never hand-grep again. (6) A
+user firing many small feature requests mid-session: file each as its own
+numbered task WITH verbatim intent + conductor seam-triage, commit
+immediately, keep the dispatch queue ordered in the anchor — the filing IS
+the ack.

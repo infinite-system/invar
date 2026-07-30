@@ -266,6 +266,7 @@ async function createFakeFfmpeg(executablePath: string): Promise<void> {
     `#!/usr/bin/python3
 # This temporary ffmpeg stand-in emits deterministic raw RGBA frames for the media PTY smoke.
 # The smoke runs it through FfmpegVideoSource; a blocked stdout write proves pipe backpressure.
+import os
 import re
 import sys
 
@@ -276,7 +277,14 @@ if match is None:
 width = int(match.group(1))
 height = int(match.group(2))
 frame_index = 0
-output = sys.stdout.buffer if sys.argv[-1] == "-" else open(sys.argv[-1], "wb", buffering=0)
+output_path = sys.argv[-1]
+if output_path != "-" and os.path.exists(output_path) and "-y" not in sys.argv:
+    print(
+        f"File '{output_path}' already exists. Overwrite? [y/N] Not overwriting - exiting.",
+        file=sys.stderr,
+    )
+    raise SystemExit(0)
+output = sys.stdout.buffer if output_path == "-" else open(output_path, "wb", buffering=0)
 try:
     while True:
         frame = bytearray(width * height * 4)

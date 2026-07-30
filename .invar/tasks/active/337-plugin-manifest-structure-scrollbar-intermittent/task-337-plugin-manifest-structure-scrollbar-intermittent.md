@@ -41,3 +41,11 @@ appended to `.perf-history/gate-retries.ndjson`.
   recorded retry.
 - Rollout with the full gate output:
   `~/.codex/sessions/2026/07/30/rollout-2026-07-30T01-59-40-019fb19b-*.jsonl`.
+
+## Third sighting (2026-07-30 ~02:5x, #339's hook gate)
+
+behavioral-contracts step: plugin-manifest structure-outline drive timed out
+TWICE (attempt 1 and the retry) in /tmp/merge-gate-failures.3937812/. Same
+settled-geometry wait family. Third sighting tonight; now recurring across
+gates. Dispatch when a lane frees, with #334's status-AND-grid wait repair
+and #335's discover-once pattern as the starting hypotheses.

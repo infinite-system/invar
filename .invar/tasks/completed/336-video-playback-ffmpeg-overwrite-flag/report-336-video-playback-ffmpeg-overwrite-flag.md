@@ -114,3 +114,51 @@ exits before one complete frame. The gap was the ffmpeg-present fixture, not the
   inspected.
 - The invariant checker printed pre-existing canonical-name and uncovered-record notes outside the
   media contract. It found 0 problems. I did not change those records.
+
+## Merge round
+
+I followed the
+[round 2 merge brief](brief-336-3-2-merge-round.md). The merge-base comparison found no shared
+paths between main and this branch. `git merge main` completed without conflicts.
+
+Merge commit: `d298d3912ff2a44bd4659d90bcc7a2f27a63f155`
+
+Parents:
+
+```text
+cb26d74cb970123bf9bca7ade754aefd48dd52cc
+0773a4b8cc0e5dff153cee38a3a6dd37f56147a1
+```
+
+Git created the merge commit without invoking the pre-commit hook. I ran
+`git commit --amend --no-edit` to force the required combined-tree gate. The hook blocked the
+amend, so the merge commit and its two parents remain unchanged.
+
+The required hook verdict was:
+
+```text
+GATE_EXIT=1
+```
+
+The hard failure came from
+[Drive.test.ts](../../../../scripts/harness/Drive.test.ts). Its large-Markdown settled-screen case
+found `No file is open.` in the structure dock. The same output reported
+`structureStatus="ready"` and `structureRows=110`.
+
+The unit result was 2,029 passes and 1 failure across 313 files. All 65 parallel smokes passed.
+The input-byte ordering gate also passed. The final gate summary was:
+
+```text
+merge-gate: FAILURES — commit/merge BLOCKED
+GATE_EXIT=1
+pre-commit: merge-gate RED — commit BLOCKED. Fix the gate or SKIP_GATE=1 to override.
+```
+
+The merge touched no media source, media smoke, or media contract file. The invariant verdicts are
+unchanged from round 1.
+
+### Merge-round bycatch
+
+- The large-Markdown `Drive.test.ts` case failed once. No changed media path reaches that test.
+- The panel-split smoke passed only after one starvation-class retry.
+- The behavioral-contracts job passed only after one starvation-class retry.

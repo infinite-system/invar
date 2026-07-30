@@ -1,9 +1,10 @@
-// probe-media-ffmpeg.ts — reproduce the app's exact video path with the real ffmpeg.
+// probe-336-app-path-video-frames.ts — reproduce the app's exact video path with the real ffmpeg.
 // Runs FfmpegVideoSource (fifo + spawn + nonblocking reads) at a realistic pane size
-// and reports whether complete frames arrive. Run: bun tmp/probe-media-ffmpeg.ts
+// and reports whether complete frames arrive. Run:
+// bun .invar/tasks/in-progress/336-video-playback-ffmpeg-overwrite-flag/probe-336-app-path-video-frames.ts
 // Reading: "frame N ok" lines mean the app path works; an early "FAILED" with the
 // subprocess exit code reproduces the user's "ffmpeg stopped" notice.
-import { FfmpegVideoSource } from '../src/modules/media/FfmpegVideoSource';
+import { FfmpegVideoSource } from '../../../../src/modules/media/FfmpegVideoSource';
 
 const ffmpegPath = Bun.which('ffmpeg');
 if (!ffmpegPath) {
