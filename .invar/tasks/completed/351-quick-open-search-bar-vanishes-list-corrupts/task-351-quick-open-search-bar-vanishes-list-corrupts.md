@@ -1,6 +1,6 @@
 # #351 — quick open: search bar vanishes and the list corrupts on scroll
 
-State: IN-PROGRESS
+State: COMPLETED — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 Priority: user-directed
 Engine: codex
 Environment: linux

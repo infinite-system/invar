@@ -6,15 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/in-progress/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md)  [building]
-  `tmux attach -t invar/351-quick-open-search-bar-vanishes-list-corrupts`
+## IN-PROGRESS (2)
 - #350 [nicer-generated-sample-video](.invar/tasks/in-progress/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)  [building]
   `tmux attach -t invar/350-nicer-generated-sample-video`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (13)
+## USER-DIRECTED (14)
+- #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/active/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)
 - #352 [markdown-code-preview-border-theme](.invar/tasks/active/352-markdown-code-preview-border-theme/task-352-markdown-code-preview-border-theme.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/active/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)
@@ -83,7 +82,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (16)
+## ARCHITECTURE-HYGIENE (17)
+- #355 [quick-open-parallel-bounded-list-generator](.invar/tasks/active/355-quick-open-parallel-bounded-list-generator/task-355-quick-open-parallel-bounded-list-generator.md)
 - #353 [harness-contract-omits-folder-open-suppression](.invar/tasks/active/353-harness-contract-omits-folder-open-suppression/task-353-harness-contract-omits-folder-open-suppression.md)
 - #333 [dispatch-round-count-heading-mismatch](.invar/tasks/active/333-dispatch-round-count-heading-mismatch/task-333-dispatch-round-count-heading-mismatch.md)  [active]
 - #331 [ui-lattice-record-count-drift](.invar/tasks/active/331-ui-lattice-record-count-drift/task-331-ui-lattice-record-count-drift.md)  [active]
@@ -105,7 +105,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 118 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 119 — full log: project.tasks-completed.md)
+- #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/completed/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md) — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
 - #340 [file-tree-reveals-open-file](.invar/tasks/completed/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md) — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
 - #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/completed/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md) — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate
@@ -120,4 +121,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #322 [status-editor-column-content-stale-in-preview](.invar/tasks/completed/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md) — 0f871cbc — status/editor columns read the shared projection seam; combined-tree gate green
 - #321 [terminal-flicker-child-tui-repaints](.invar/tasks/completed/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md) — f0a860bf — DEC 2026 child synchronized repaints + tasks:watch diff frames; flicker gone (landed in #320 bundle merge f64f85ef)
 - #320 [terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/completed/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md) — c8c8723a — terminal defaults + ANSI palette theme-derived, VSCode model; child-explicit lanes stay exact (landed in #320 bundle merge f64f85ef)
-- #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/completed/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md) — f64f85ef — terminal theme fidelity (VSCode palette + theme defaults) + DEC 2026 synchronized child repaints; tasks:watch flicker gone
