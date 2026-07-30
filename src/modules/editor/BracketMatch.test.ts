@@ -4,6 +4,8 @@
 import { test, expect } from 'bun:test';
 import { BracketMatch, type BracketMatchQuery } from './BracketMatch';
 import { TextDocument } from '../text/TextDocument';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
+import { DocumentSyntax } from '../syntax/DocumentSyntax';
 
 function query(
   lines: string[],
@@ -113,6 +115,18 @@ test('findInDocument skips a bracket inside a string via the real tokenizer', ()
     'typescript',
   );
   expect(result?.match).toEqual({ line: 0, column: 9 });
+});
+
+test('plain fallback brackets remain matchable through the syntax reader', () => {
+  const providers = new ProviderRegistry.Class();
+  const syntax = new DocumentSyntax.Class(providers);
+  const document = new TextDocument.Class();
+  document.loadFromText('(plain)', '/tmp/notes.txt');
+
+  expect(
+    BracketMatch.Class.findInDocument(document, 0, 0, syntax)?.match,
+  ).toEqual({ line: 0, column: 6 });
+  providers.dispose();
 });
 
 test('findInDocument reuses one revision/cursor/language snapshot across frames', () => {

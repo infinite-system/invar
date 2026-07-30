@@ -13,8 +13,8 @@ test('language registry maps web extensions and aliases', () => {
   expect(LanguageRegistry.Class.forPath('a.HTM')).toBe('html');
   expect(LanguageRegistry.Class.forPath('icon.svg')).toBe('html');
   expect(LanguageRegistry.Class.forPath('main.css')).toBe('css');
-  expect(LanguageRegistry.Class.forPath('theme.scss')).toBe('css');
-  expect(LanguageRegistry.Class.forPath('App.vue')).toBe('vue');
+  expect(LanguageRegistry.Class.forPath('theme.scss')).toBe('scss');
+  expect(LanguageRegistry.Class.forPath('App.vue')).toBe('plain');
 });
 
 test('language mappings remain an overridable late-bound seam', () => {

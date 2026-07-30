@@ -22,6 +22,7 @@ import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { EditorContributions } from './EditorContributions';
 import type { DocumentFoldState } from '../text/DocumentFoldState.interface';
 import type { SourceTextView } from '../workspace/SourceTextView.interface';
+import type { DocumentSyntaxReader } from '../syntax/DocumentSyntaxSource.interface';
 
 // The editor: owns a document, a cursor, and a viewport, and coordinates movement, selection,
 // editing, and scroll.
@@ -77,6 +78,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   // local ref only before a source is attached (bare unit tests).
   protected wordWrapSource: Ref<boolean> | null = null;
   protected codeFoldingSource: Ref<boolean> | null = null;
+  protected documentSyntaxSource: DocumentSyntaxReader | null = null;
   attachWordWrap(source: Ref<boolean>): void {
     this.wordWrapSource = source;
   }
@@ -88,6 +90,15 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   }
   attachCodeFolding(source: Ref<boolean>): void {
     this.codeFoldingSource = source;
+  }
+  attachDocumentSyntax(source: DocumentSyntaxReader): void {
+    this.documentSyntaxSource = source;
+  }
+  protected get syntaxSelection() {
+    const documentSyntax = this.documentSyntaxSource;
+    return documentSyntax?.usesSource(this.document)
+      ? documentSyntax
+      : LanguageRegistry.Class.forPath(this.document.path);
   }
   get codeFoldingEnabled(): boolean {
     return this.codeFoldingSource?.value ?? true;
@@ -111,10 +122,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
 
   foldRanges(): readonly FoldRange[] {
     if (!this.codeFoldingEnabled || !this.hasDocument.value) return [];
-    return CodeFolding.Class.ranges(
-      this.document,
-      LanguageRegistry.Class.forPath(this.document.path),
-    );
+    return CodeFolding.Class.ranges(this.document, this.syntaxSelection);
   }
 
   get collapsedFoldRanges(): readonly FoldRange[] {
@@ -165,7 +173,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     if (!this.codeFoldingEnabled || !this.hasDocument.value) return null;
     return CodeFolding.Class.rangeAtLine(
       this.document,
-      LanguageRegistry.Class.forPath(this.document.path),
+      this.syntaxSelection,
       lineIndex,
     );
   }
@@ -174,7 +182,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     if (!this.codeFoldingEnabled || !this.hasDocument.value) return false;
     return CodeFolding.Class.startsAtLine(
       this.document,
-      LanguageRegistry.Class.forPath(this.document.path),
+      this.syntaxSelection,
       lineIndex,
     );
   }

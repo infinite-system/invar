@@ -20,7 +20,12 @@ import { TextCoordinates } from '../text/TextCoordinates';
 import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
 import { SplitterElement } from '../ui/SplitterElement';
-import { Highlighter, type LangId, type Role } from '../syntax/Highlighter';
+import {
+  Highlighter,
+  type LangId,
+  type Role,
+  type Span,
+} from '../syntax/Highlighter';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Theme } from '../theme/Theme';
 import type { Palette } from '../theme/ThemePalettes';
@@ -46,6 +51,7 @@ import {
   type AlignedRowKind,
   type DiffAlignmentResult,
 } from './DiffAlignment';
+import type { DocumentSyntaxReader } from '../syntax/DocumentSyntaxSource.interface';
 
 // Standalone side-by-side diff projection. The reviewer supplies callbacks and may mount this under
 // any renderable; RootView and tab ownership deliberately remain outside this module.
@@ -878,6 +884,12 @@ class $DiffView {
           side,
           lineNumber - 1,
           visibleLineWindow.startGrapheme,
+          this.options.documentSyntax?.spansForLine(
+            side === 'previous'
+              ? this.previousTextBuffer.document
+              : this.currentTextBuffer.document,
+            lineNumber - 1,
+          ),
         );
         codeChunks.push(...lineChunks);
         const remainingColumns = Math.max(
@@ -913,9 +925,9 @@ class $DiffView {
     side?: 'previous' | 'current',
     lineIndex?: number,
     visibleStartGrapheme = 0,
+    logicalLineSpans?: readonly Span[],
   ): TextChunk[] {
-    // This is the same viewport-local LanguageRegistry + Highlighter seam used by the editor. A
-    // future Tree-sitter provider upgrades LanguageRegistry without a second diff rendering path.
+    // The optional spans come from the same document syntax source used by the editable view.
     const findEngine = side
       ? this.findBarSource?.engineFor(this.findTargetIdentifier(side))
       : null;
@@ -927,6 +939,13 @@ class $DiffView {
           ) ?? []);
     const visibleGraphemeCount =
       this.TextCoordinates.graphemeCount(visibleLine);
+    const visibleSpans = logicalLineSpans
+      ? this.Highlighter.sliceSpans(
+          logicalLineSpans,
+          visibleStartGrapheme,
+          visibleStartGrapheme + visibleGraphemeCount,
+        )
+      : this.Highlighter.highlightLine(visibleLine, language);
     const boundaries = new Set<number>([0, visibleGraphemeCount]);
     for (const match of lineMatches) {
       boundaries.add(
@@ -969,9 +988,10 @@ class $DiffView {
           match.startColumn < visibleStartGrapheme + segmentEnd &&
           match.endColumn > visibleStartGrapheme + segmentStart,
       );
-      for (const highlightedSpan of this.Highlighter.highlightLine(
-        segmentText,
-        language,
+      for (const highlightedSpan of this.Highlighter.sliceSpans(
+        visibleSpans,
+        segmentStart,
+        segmentEnd,
       )) {
         let syntaxChunk = fg(
           this.syntaxRoleColor(highlightedSpan.role, palette),
@@ -1719,6 +1739,7 @@ export interface DiffViewOptions extends DiffViewCallbacks {
   currentVersionText: string;
   previousVersionPath?: string;
   currentVersionPath?: string;
+  documentSyntax?: DocumentSyntaxReader;
   parentRenderable?: Renderable;
 }
 

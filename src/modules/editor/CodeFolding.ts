@@ -2,6 +2,11 @@ import { Static } from 'ivue/extras';
 import { Highlighter, type LangId } from '../syntax/Highlighter';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { DocumentFoldRange } from '../text/DocumentFoldState.interface';
+import type {
+  DocumentSyntaxReader,
+  SyntaxDocument,
+  SyntaxRevision,
+} from '../syntax/DocumentSyntaxSource.interface';
 
 // Fold discovery is proportional to what asks for it: gutter paint caches exact ranges only for
 // visible starts, while whole-document commands share the global snapshot.
@@ -29,23 +34,26 @@ class $CodeFolding {
 
   protected static snapshot(
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
   ): FoldRangeSnapshot {
     const revision = document.revision?.value ?? -1;
+    const syntaxRevision = this.syntaxRevision(document, syntax);
     const cached = this.$rangesByDocument.get(document);
     if (
       cached &&
-      cached.language === language &&
+      cached.syntax === syntax &&
+      cached.syntaxRevision === syntaxRevision &&
       cached.lineCount === document.lineCount &&
       (cached.revision === revision ||
-        this.canReuseFoldStructure(cached, document, language, revision))
+        this.canReuseFoldStructure(cached, document, syntax, revision))
     ) {
       cached.revision = revision;
       return cached;
     }
     const snapshot: FoldRangeSnapshot = {
       revision,
-      language,
+      syntax,
+      syntaxRevision,
       lineCount: document.lineCount,
       ranges: null,
       rangesByStartLine: new Map(),
@@ -56,11 +64,11 @@ class $CodeFolding {
 
   static ranges(
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
   ): readonly FoldRange[] {
-    const snapshot = this.snapshot(document, language);
+    const snapshot = this.snapshot(document, syntax);
     if (snapshot.ranges !== null) return snapshot.ranges;
-    snapshot.ranges = this.computeRanges(document, language).map((range) => {
+    snapshot.ranges = this.computeRanges(document, syntax).map((range) => {
       const locallyDiscoveredRange = snapshot.rangesByStartLine.get(
         range.startLine,
       );
@@ -79,16 +87,16 @@ class $CodeFolding {
 
   static rangeAtLine(
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
     lineIndex: number,
   ): FoldRange | null {
-    const snapshot = this.snapshot(document, language);
+    const snapshot = this.snapshot(document, syntax);
     if (snapshot.rangesByStartLine.has(lineIndex)) {
       return snapshot.rangesByStartLine.get(lineIndex) ?? null;
     }
     const range = this.discoverRangeAtLine(
       document,
-      language,
+      syntax,
       lineIndex,
       snapshot.rangesByStartLine,
     );
@@ -100,31 +108,32 @@ class $CodeFolding {
    *  discovered, then its exact range survives non-structural revisions. */
   static startsAtLine(
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
     lineIndex: number,
   ): boolean {
-    return this.rangeAtLine(document, language, lineIndex) !== null;
+    return this.rangeAtLine(document, syntax, lineIndex) !== null;
   }
 
   protected static canReuseFoldStructure(
     cached: FoldRangeSnapshot,
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
     revision: number,
   ): boolean {
     const lineChange = document.lastLineChange;
     return (
-      cached.language === language &&
+      cached.syntax === syntax &&
+      typeof syntax === 'string' &&
       cached.lineCount === document.lineCount &&
       lineChange?.revision === revision &&
       lineChange.deletedLineCount === lineChange.insertedLineCount &&
-      this.foldStructureUnchanged(lineChange, language)
+      this.foldStructureUnchanged(lineChange, syntax)
     );
   }
 
   protected static discoverRangeAtLine(
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
     lineIndex: number,
     rangesByStartLine: Map<number, FoldRange | null>,
   ): FoldRange | null {
@@ -133,10 +142,11 @@ class $CodeFolding {
     if (lineText.trim().length === 0) return null;
     const delimiterStack: Array<{ delimiter: string; lineIndex: number }> = [];
     this.collectDelimiterRangesFromLine(
+      document,
       delimiterStack,
       rangesByStartLine,
       lineText,
-      language,
+      syntax,
       lineIndex,
     );
     if (delimiterStack.length > 0) {
@@ -146,10 +156,11 @@ class $CodeFolding {
         candidateLineIndex++
       ) {
         this.collectDelimiterRangesFromLine(
+          document,
           delimiterStack,
           rangesByStartLine,
           document.line(candidateLineIndex),
-          language,
+          syntax,
           candidateLineIndex,
         );
         if (delimiterStack.length === 0)
@@ -188,13 +199,19 @@ class $CodeFolding {
   }
 
   protected static collectDelimiterRangesFromLine(
+    document: FoldableDocument,
     delimiterStack: Array<{ delimiter: string; lineIndex: number }>,
     rangesByStartLine: Map<number, FoldRange | null>,
     lineText: string,
-    language: LangId,
+    syntax: SyntaxSelection,
     lineIndex: number,
   ): void {
-    for (const span of Highlighter.Class.highlightLine(lineText, language)) {
+    for (const span of this.spansForLine(
+      document,
+      syntax,
+      lineIndex,
+      lineText,
+    )) {
       if (span.role !== 'operator') continue;
       for (const delimiter of span.text) {
         if (this.CLOSING_DELIMITER_FOR[delimiter]) {
@@ -221,10 +238,10 @@ class $CodeFolding {
 
   protected static computeRanges(
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
   ): readonly FoldRange[] {
     const rangesByStartLine = new Map<number, FoldRange>();
-    this.collectDelimiterRanges(document, language, rangesByStartLine);
+    this.collectDelimiterRanges(document, syntax, rangesByStartLine);
     this.collectIndentationRanges(document, rangesByStartLine);
     return [...rangesByStartLine.values()].sort(
       (firstRange, secondRange) =>
@@ -276,15 +293,12 @@ class $CodeFolding {
 
   protected static collectDelimiterRanges(
     document: FoldableDocument,
-    language: LangId,
+    syntax: SyntaxSelection,
     rangesByStartLine: Map<number, FoldRange>,
   ): void {
     const delimiterStack: Array<{ delimiter: string; line: number }> = [];
     for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
-      const spans = Highlighter.Class.highlightLine(
-        document.line(lineIndex),
-        language,
-      );
+      const spans = this.spansForLine(document, syntax, lineIndex);
       for (const span of spans) {
         if (span.role !== 'operator') continue;
         for (const delimiter of span.text) {
@@ -364,6 +378,26 @@ class $CodeFolding {
     }
   }
 
+  protected static spansForLine(
+    document: FoldableDocument,
+    syntax: SyntaxSelection,
+    lineIndex: number,
+    lineText = document.line(lineIndex),
+  ) {
+    return typeof syntax === 'string'
+      ? Highlighter.Class.highlightLine(lineText, syntax)
+      : syntax.spansForLine(document as SyntaxDocument, lineIndex);
+  }
+
+  protected static syntaxRevision(
+    document: FoldableDocument,
+    syntax: SyntaxSelection,
+  ): SyntaxRevision {
+    return typeof syntax === 'string'
+      ? 0
+      : syntax.revision(document as SyntaxDocument);
+  }
+
   protected static indentationColumns(lineText: string): number {
     const leadingWhitespace = lineText.match(/^[ \t]*/)?.[0] ?? '';
     return TextCoordinates.Class.lineWidth(leadingWhitespace);
@@ -389,6 +423,7 @@ export namespace CodeFolding {
 export type FoldRange = DocumentFoldRange;
 
 export interface FoldableDocument {
+  readonly path?: string;
   readonly lineCount: number;
   line(index: number): string;
   readonly revision?: { readonly value: number };
@@ -405,8 +440,11 @@ export interface FoldableLineChange {
 
 export interface FoldRangeSnapshot {
   revision: number;
-  readonly language: LangId;
+  readonly syntax: SyntaxSelection;
+  readonly syntaxRevision: SyntaxRevision;
   readonly lineCount: number;
   ranges: readonly FoldRange[] | null;
   readonly rangesByStartLine: Map<number, FoldRange | null>;
 }
+
+export type SyntaxSelection = LangId | DocumentSyntaxReader;
