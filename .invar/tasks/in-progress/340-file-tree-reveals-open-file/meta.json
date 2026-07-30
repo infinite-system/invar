@@ -1,0 +1,15 @@
+{
+  "task": 340,
+  "slug": "file-tree-reveals-open-file",
+  "branch": "fleet/340-file-tree-reveals-open-file",
+  "worktree": ".invar/worktrees/340-file-tree-reveals-open-file",
+  "tmuxSession": "invar/340-file-tree-reveals-open-file",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-340-file-tree-reveals-open-file.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "0773a4b8cc0e5dff153cee38a3a6dd37f56147a1",
+  "startedAt": "2026-07-30T02:43:11-04:00"
+}
