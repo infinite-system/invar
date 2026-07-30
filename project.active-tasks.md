@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #314 harness-and-tooling-integrity-bundle  [building]
+  `tmux attach -t invar/314-harness-and-tooling-integrity-bundle`
 - #312 vue-sfc-block-syntax-and-routing  [building]
   `tmux attach -t invar/312-vue-sfc-block-syntax-and-routing`
 - #308 [markdown-view-only-mode-persistent](.invar/tasks/in-progress/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)  [building]

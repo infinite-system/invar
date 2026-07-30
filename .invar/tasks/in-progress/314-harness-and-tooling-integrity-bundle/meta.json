@@ -1,0 +1,15 @@
+{
+  "task": 314,
+  "slug": "harness-and-tooling-integrity-bundle",
+  "branch": "fleet/314-harness-and-tooling-integrity-bundle",
+  "worktree": ".invar/worktrees/314-harness-and-tooling-integrity-bundle",
+  "tmuxSession": "invar/314-harness-and-tooling-integrity-bundle",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-314-harness-and-tooling-integrity-bundle.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e71f6b1b7eb0df44040e6bea7e5fad66970f12e8",
+  "startedAt": "2026-07-29T21:03:57-04:00"
+}
