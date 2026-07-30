@@ -537,3 +537,14 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
 - On resume: 346/347/365 READY reports follow the established ritual
   (convert bycatch -> verdict log -> land.sh; claude lanes get manual
   verdict logs from report + conductor verification of commit/clean).
+
+### ANCHOR 17 DELTA 7 (07:2x) — #365 LANDED, ten landings
+- #365 LANDED 33024fec: gate scratch paths per-worktree — overlapping
+  gates now safe (user-directed gate parallelism). Bycatch all known
+  classes; one #364 sighting appended.
+- TEN landings: 342 351 350 337 90 344 343 345 326 365.
+- Lanes (2 live): 346 panel tab bar (codex) · 347 markdown links (opus).
+  One codex slot FREE -> dispatch #375 (tasks live view: invisible attach
+  icon + stale meta.json target; user-hit twice) next, then queue: 348
+  349 352 341 356 361 376 + hygiene tail.
+- #376 filed (instances:watch cpu/mem tool, cwd-based filter).
