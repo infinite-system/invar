@@ -18,3 +18,11 @@ implement without the record. Distinguish cache retention from GC
 high-water in any measurement (heap-used, not RSS alone). Coordinate with
 #402 (monitoring plugin) — its file ledger wants the same enumeration;
 seam at the shared generator.
+
+## Scope update after #402 landed (2026-07-30)
+
+The #402 measurement ANSWERED the memory question: the cache is already
+bounded (MAXIMUM_RECENTLY_ACTIVE_HYDRATED_DOCUMENTS=2; 105kB across 20
+tabs; zero after close). The 206->263 is allocator high-water RSS. This
+task shrinks to: verify the bound holds at scale (huge single files),
+record it as an invariant in the buffer contract, and close.
