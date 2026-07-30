@@ -70,3 +70,9 @@ Effort: high
    likely on the pane's tab, or a corner glyph on the pane itself. This
    resolves the open question from the conductor notes ("where do close
    controls live once titles go") in favor of keeping them visible.
+
+   Point-8 placement guidance (conductor + user discussion): close control
+   lives ON THE TAB, not overlaid on terminal cells. An overlay would occupy
+   child cells (no z-layer in a grid) and steal SGR mouse events the child
+   contractually receives. Overlay-on-hover may be revisited later as an
+   addition, never as the only close affordance.
