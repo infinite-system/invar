@@ -218,8 +218,9 @@ class $StructurePaneContent implements PaneContent {
         this.application.contextMenu.openAt(
           Array.from({ length: 9 }, (_, depth) => ({
             id: `structure-depth:${depth}`,
-            label: `Depth ${depth}${depth === currentDepth ? ' (current)' : ''}`,
+            label: `Depth ${depth}`,
             enabled: true,
+            active: depth === currentDepth,
           })),
           context.screenColumn,
           context.screenRow,

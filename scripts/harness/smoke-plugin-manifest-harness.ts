@@ -1117,15 +1117,37 @@ try {
     'the in-pane depth gear opens the shared context menu',
     (status) => status.contextMenuOpen === true,
   );
-  await driver.awaitGridCondition(
-    'the depth selector paints its second-depth choice',
-    (snapshot) => snapshot.findText('Depth 2') !== null,
+  const initialDepthMenuSnapshot = await driver.awaitGridCondition(
+    'the depth selector marks and highlights the current depth',
+    (snapshot) => {
+      const currentDepth = snapshot.findText('▎ Depth 1');
+      const firstDepth = snapshot.findText('Depth 0');
+      return (
+        currentDepth !== null &&
+        firstDepth !== null &&
+        snapshot.cell(currentDepth.row, currentDepth.column)?.background !==
+          snapshot.cell(firstDepth.row, firstDepth.column)?.background &&
+        snapshot.findText('(current)') === null
+      );
+    },
   );
-  clickVisibleText('Depth 2');
+  const menuMarker = initialDepthMenuSnapshot.findText('▎ Depth 1');
+  const activityMarker = initialDepthMenuSnapshot.findText('▎ ▣');
+  HarnessSmoke.Class.requireCondition(
+    menuMarker !== null &&
+      activityMarker !== null &&
+      initialDepthMenuSnapshot.cell(menuMarker.row, menuMarker.column)
+        ?.foreground ===
+        initialDepthMenuSnapshot.cell(activityMarker.row, activityMarker.column)
+          ?.foreground,
+    'the depth marker uses the activity-bar active indicator color',
+  );
+  driver.sendKeys('Down');
+  driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the depth selector writes the contributed default-depth setting',
+    'Down moves from current depth one and Enter chooses depth two',
     (status) =>
       status.contextMenuOpen === false &&
       status.structureDefaultDepth === 2 &&

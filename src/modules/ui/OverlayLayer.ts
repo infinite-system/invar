@@ -1473,17 +1473,27 @@ class $OverlayLayer {
       );
       const rowWidth = contextMenuGeometry.interiorWidth;
       const menuChunks: TextChunk[] = [];
+      const activeMarker = this.dependencies.theme.glyph('activityAccentBar');
       visibleContextMenuItems.forEach((item, visibleIndex) => {
         const index = firstVisibleContextMenuIndex + visibleIndex;
-        const label = ` ${item.label}`.padEnd(rowWidth, ' ').slice(0, rowWidth);
+        const marker = item.active ? activeMarker : ' ';
+        const label = ` ${item.label}`
+          .padEnd(Math.max(0, rowWidth - 1), ' ')
+          .slice(0, Math.max(0, rowWidth - 1));
         const rowBackground =
           index === contextMenu.selectedIndex.value
             ? palette.selection
             : index === contextMenu.hoveredIndex.value
               ? palette.cursorLine
               : null;
-        const styled = fg(item.enabled ? palette.fg : palette.dim)(label);
-        menuChunks.push(rowBackground ? bg(rowBackground)(styled) : styled);
+        const markerChunk = fg(item.active ? palette.accent : palette.fg)(
+          marker,
+        );
+        const labelChunk = fg(item.enabled ? palette.fg : palette.dim)(label);
+        menuChunks.push(
+          rowBackground ? bg(rowBackground)(markerChunk) : markerChunk,
+          rowBackground ? bg(rowBackground)(labelChunk) : labelChunk,
+        );
         if (visibleIndex < visibleContextMenuItems.length - 1)
           menuChunks.push(fg(palette.fg)('\n'));
       });

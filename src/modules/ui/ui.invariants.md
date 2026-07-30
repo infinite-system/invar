@@ -1286,10 +1286,13 @@ menu or the backdrop — the panes beneath are unreachable by construction, not 
 guards. The backdrop's only behavior is `close()`. Keys: `Bootstrap.onKey` short-circuits to the
 registry's `menu` context, dispatches `menu.*` actions or a global input-overlay opener through
 `OverlayCoordinator`, and closes-and-consumes anything else. Reserved global chords run before this
-branch. `ContextMenu.runAt` closes first, then invokes the opener-supplied handler.
+branch. `ContextMenu.runAt` closes first, then invokes the opener-supplied handler. A value-picker
+item can declare itself active. That one fact paints the activity-bar edge marker and supplies the
+initial keyboard selection; without an active item the first enabled row remains the fallback.
 
 **Generates:** reusable menus that are safe over any pane; collective git actions without
-misclick hazards; keyboard parity for every menu.
+misclick hazards; keyboard parity for every menu; value pickers whose current marker, initial
+highlight, arrow movement, and Enter action cannot disagree.
 
 **Evidence:** unit tests (`ContextMenu.test.ts` state machine) + live tmux: right-click menu over
 the git panel; a click on the editor area closed the menu with buffer revision AND cursor

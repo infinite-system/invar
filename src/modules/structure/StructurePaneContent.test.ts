@@ -247,7 +247,7 @@ describe('StructurePaneContent', () => {
     expect(contextMenu.open.value).toBe(true);
     expect(contextMenu.items.value.map((item) => item.label)).toEqual([
       'Depth 0',
-      'Depth 1 (current)',
+      'Depth 1',
       'Depth 2',
       'Depth 3',
       'Depth 4',
@@ -256,6 +256,10 @@ describe('StructurePaneContent', () => {
       'Depth 7',
       'Depth 8',
     ]);
+    expect(contextMenu.items.value.map((item) => item.active ?? false)).toEqual(
+      [false, true, false, false, false, false, false, false, false],
+    );
+    expect(contextMenu.selectedIndex.value).toBe(1);
 
     contextMenu.runAt(4);
     expect(contextMenu.open.value).toBe(false);

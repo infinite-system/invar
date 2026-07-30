@@ -200,7 +200,9 @@ workspace session. They are not saved to settings or written into the document.
   read and write `structureDefaultDepth`. The gear opens the shared context menu with depths zero
   through eight. Its `structureDepth` semantic glyph is distinct from the global Settings gear, so
   glyph-based pointer discovery cannot address the wrong owner. It does not own another value or
-  bypass the contributed-setting save path.
+  bypass the contributed-setting save path. The current depth is the menu's active item, so the
+  activity-bar edge marker and initial keyboard highlight come from the same value. No duplicate
+  “current” label is painted.
 
 **Mechanism:** The outline retains the flattened source rows and computes paintable rows from the
 active path's depth and fold sets. A non-empty query switches the projection to fuzzy-score order
