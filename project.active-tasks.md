@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/in-progress/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md)  [building]
+  `tmux attach -t invar/386-theme-glyphs-vanish-at-narrow-geometry`
 - #383 [structure-pane-width-proportional](.invar/tasks/in-progress/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md)  [building]
   `tmux attach -t invar/383-structure-pane-width-proportional`
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/in-progress/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md)  [building]
@@ -14,8 +16,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/in-progress/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)  [building]
   `tmux attach -t invar/346-panel-tab-bar-workspace-content-spaces`
 
-## USER-DIRECTED (18)
-- #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/active/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md)
+## USER-DIRECTED (17)
 - #384 [quit-dialog-buttons-and-padding](.invar/tasks/active/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
 - #381 [realized-typescript-lsp-still-missing](.invar/tasks/active/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)

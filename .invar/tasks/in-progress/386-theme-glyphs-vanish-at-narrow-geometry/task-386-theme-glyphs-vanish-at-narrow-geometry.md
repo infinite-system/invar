@@ -1,6 +1,6 @@
 # #386 — every theme-owned glyph vanishes at 120x36
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
