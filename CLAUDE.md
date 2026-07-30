@@ -7,6 +7,15 @@ not even a "one-line fix" — before reading AGENTS.md. Nothing below is law; it
 
 ---
 
+## CONDUCTOR RESUME (one-line entry point)
+
+If the user says anything like "resume as conductor" / "continue the fleet":
+load `.claude/skills/conductor/SKILL.md`, then follow the NEWEST `RESUME ANCHOR`
+in `project.briefing.md` — it names the lanes, queue, watcher re-arm commands,
+and laws delta. That is the whole handoff; everything else is on disk.
+
+---
+
 
 Default to using Bun instead of Node.js.
 
