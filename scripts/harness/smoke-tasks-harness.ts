@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 // A real-PTY drive of workspace tasks: configuration precedence, folder-open
-// launch, terminal grouping, shell variable handoff, visible failures, the
-// built-in fallback, and the independent native agent pane.
+// launch, terminal grouping, nested interactive login shells, shell variable
+// handoff, visible failures, the built-in fallback, and the independent native
+// agent pane.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -160,7 +161,10 @@ const homeDirectories: string[] = [];
 
 let driver: PtyTestDriver.Model | null = null;
 
-async function nextDriver(environment: Record<string, string> = {}): Promise<{
+async function nextDriver(
+  environment: Record<string, string> = {},
+  prepareHomeDirectory?: (homeDirectory: string) => Promise<void>,
+): Promise<{
   driver: PtyTestDriver.Model;
   homeDirectory: string;
 }> {
@@ -169,6 +173,7 @@ async function nextDriver(environment: Record<string, string> = {}): Promise<{
     join(tmpdir(), 'invar-tasks-harness-home-'),
   );
   homeDirectories.push(homeDirectory);
+  await prepareHomeDirectory?.(homeDirectory);
   driver = await createDriver(workspaceRoot, homeDirectory, environment);
   return { driver, homeDirectory };
 }
@@ -253,6 +258,140 @@ try {
   );
   HarnessSmoke.Class.pass(
     'file adoption names the displaced Claude built-in without merging it',
+  );
+
+  console.log(
+    '== harness tasks: nested interactive zsh commands load in two panes ==',
+  );
+  const exactShapeFakeBinaryDirectory = join(
+    workspaceRoot,
+    'exact-shape-fake-bin',
+  );
+  mkdirSync(exactShapeFakeBinaryDirectory);
+  const exactShapeFakeAwsVaultPath = join(
+    exactShapeFakeBinaryDirectory,
+    'aws-vault',
+  );
+  await Bun.write(
+    exactShapeFakeAwsVaultPath,
+    [
+      '#!/bin/sh',
+      'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done',
+      'if [ "$#" -eq 0 ]; then exit 64; fi',
+      'shift',
+      'exec "$@"',
+      '',
+    ].join('\n'),
+  );
+  chmodSync(exactShapeFakeAwsVaultPath, 0o755);
+  await Bun.write(
+    join(invarDirectory, 'tasks.json'),
+    taskConfiguration([
+      {
+        label: 'Claude',
+        type: 'shell',
+        command: '/usr/bin/zsh',
+        args: [
+          '-lc',
+          `cd "\${workspaceFolder}" && source ~/.profile_env && ` +
+            `echo EXACT_CLAUDE_OUTER:$PWD && ` +
+            `aws-vault exec harmless --duration 12h -- zsh -ic ` +
+            `'echo EXACT_CLAUDE_INNER; while true; do sleep 60; done'`,
+        ],
+        presentation: {
+          group: 'terminal-split',
+          panel: 'dedicated',
+        },
+        runOptions: {
+          runOn: 'folderOpen',
+        },
+      },
+      {
+        label: 'Terminal',
+        type: 'shell',
+        command: '/usr/bin/zsh',
+        args: [
+          '-lc',
+          `cd "\${workspaceFolder}" && source ~/.profile_env && ` +
+            `aws-vault exec harmless --duration 12h -- zsh -ic ` +
+            `'echo EXACT_TERMINAL_INNER; while true; do sleep 60; done'`,
+        ],
+        presentation: {
+          group: 'terminal-split',
+          panel: 'dedicated',
+        },
+        runOptions: {
+          runOn: 'folderOpen',
+        },
+      },
+    ]),
+  );
+  driven = await nextDriver(
+    {
+      PATH: `${exactShapeFakeBinaryDirectory}:${process.env.PATH ?? ''}`,
+    },
+    async (homeDirectory) => {
+      await Bun.write(
+        join(homeDirectory, '.profile_env'),
+        `export PATH=${JSON.stringify(exactShapeFakeBinaryDirectory)}:$PATH\n`,
+      );
+      await Bun.write(
+        join(homeDirectory, '.zshrc'),
+        '# harmless task smoke shell\n',
+      );
+      const configurationDirectory = join(homeDirectory, '.config', 'invar');
+      mkdirSync(configurationDirectory, { recursive: true });
+      await Bun.write(
+        join(configurationDirectory, 'settings.json'),
+        `${JSON.stringify({
+          panelContentOrder: [
+            `task:${encodeURIComponent(workspaceRoot)}:2:error`,
+            'agent',
+            'terminal',
+          ],
+        })}\n`,
+      );
+    },
+  );
+  status = await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'both reported-shape tasks own separate visible split cells',
+    (candidate) =>
+      taskSource(candidate) === '.invar/tasks.json' &&
+      Array.isArray(candidate.taskLaunchedLabels) &&
+      candidate.taskLaunchedLabels.includes('Claude') &&
+      candidate.taskLaunchedLabels.includes('Terminal') &&
+      taskIdentifiers(candidate).length === 2 &&
+      Array.isArray(candidate.panelCellColumns) &&
+      candidate.panelCellColumns.length === 2,
+  );
+  await driven.driver.awaitGridCondition(
+    'both nested interactive shells print inside their own panes',
+    (snapshot) =>
+      snapshot.findText('EXACT_CLAUDE_INNER') !== null &&
+      snapshot.findText('EXACT_TERMINAL_INNER') !== null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    new Set(taskIdentifiers(status)).size === 2,
+    'the nested login-shell tasks own two unique terminal panes',
+  );
+  HarnessSmoke.Class.requireCondition(
+    Array.isArray(status.panelCellColumns) &&
+      status.panelCellColumns.length === 2 &&
+      status.panelCellColumns.every(
+        (columnCount) => typeof columnCount === 'number' && columnCount > 0,
+      ),
+    'both nested login-shell task panes receive a live split width',
+  );
+  HarnessSmoke.Class.requireCondition(
+    taskLabels(status).includes('Displaced: Claude') &&
+      taskLabels(status).includes('Claude') &&
+      taskLabels(status).includes('Terminal'),
+    'a persisted displacement row cannot hide either live task pane',
+  );
+  HarnessSmoke.Class.pass(
+    'command, args, login shell, credentials wrapper, and inner TTY all reached both panes',
   );
 
   console.log(
