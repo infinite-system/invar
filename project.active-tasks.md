@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #345 [horizontal-separator-centered-glyph](.invar/tasks/in-progress/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md)  [building]
   `tmux attach -t invar/345-horizontal-separator-centered-glyph`
-- #343 [tasks-activity-icon-and-live-loader](.invar/tasks/in-progress/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)  [building]
-  `tmux attach -t invar/343-tasks-activity-icon-and-live-loader`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
@@ -54,7 +52,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (21)
+## FLAKE-EVIDENCE (22)
+- #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
 - #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
 - #360 [agent-engine-switch-pool-load-flake](.invar/tasks/active/360-agent-engine-switch-pool-load-flake/task-360-agent-engine-switch-pool-load-flake.md)
 - #359 [panel-split-agent-terminal-order-intermittent](.invar/tasks/active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md)
@@ -117,10 +116,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 123 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 124 — full log: project.tasks-completed.md)
 - #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #350 [nicer-generated-sample-video](.invar/tasks/completed/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md) — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
 - #344 [breadcrumb-hover-highlight-padding](.invar/tasks/completed/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md) — dc30d875 — breadcrumb hover highlight + one-cell pads; #369/#370 from bycatch
+- #343 [tasks-activity-icon-and-live-loader](.invar/tasks/completed/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md) — 68a95c11 — play glyph + LIVE watch spinner; #371 from bycatch
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/completed/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md) — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
 - #340 [file-tree-reveals-open-file](.invar/tasks/completed/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md) — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
 - #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/completed/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md) — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate
@@ -132,4 +132,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/completed/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md) — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
 - #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
 - #324 [terminal-3d-demo-and-video-playback](.invar/tasks/completed/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md) — f9394d58 — removable Animated Media plugin: cube/torus/video, flyweight+two-buffer+memory-flat proven, ffmpeg both polarities, removal build green
-- #323 [quit-confirmation-dialog-modern](.invar/tasks/completed/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md) — e8e57083 — Quit now asks: one modal confirmation behind Ctrl+Q/Cmd+Q/F10/Quit at the shared overlay seam; No default, Yes the only shutdown path, negative answers keep dirty state; harness teardown bypasses via INVAR_HARNESS_DIRECT_QUIT with two-way positive control.

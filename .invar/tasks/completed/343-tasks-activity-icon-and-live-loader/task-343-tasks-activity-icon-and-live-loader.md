@@ -1,6 +1,6 @@
 # #343 — tasks activity-bar icon becomes a play glyph; LIVE row gets the watch spinner
 
-State: IN-PROGRESS
+State: COMPLETED — 68a95c11 — play glyph + LIVE watch spinner; #371 from bycatch
 Priority: user-directed
 Engine: codex
 Environment: linux
