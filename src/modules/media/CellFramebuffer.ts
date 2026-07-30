@@ -8,8 +8,8 @@ class $CellFramebuffer {
   protected depthStorage = new Float32Array(1 * 2);
   protected bufferGenerationValue = 1;
 
-  constructor(cellColumns = 1, cellRows = 1) {
-    this.resize(cellColumns, cellRows);
+  constructor(cellColumns = 1, cellRows = 1, supersamplingScale = 1) {
+    this.resize(cellColumns, cellRows, supersamplingScale);
   }
 
   get width(): number {
@@ -44,9 +44,19 @@ class $CellFramebuffer {
     return this.pixelStorage.byteLength + this.depthStorage.byteLength;
   }
 
-  resize(cellColumns: number, cellRows: number): boolean {
-    const nextPixelColumns = Math.max(1, Math.floor(cellColumns));
-    const nextPixelRows = Math.max(2, Math.floor(cellRows) * 2);
+  resize(
+    cellColumns: number,
+    cellRows: number,
+    supersamplingScale = 1,
+  ): boolean {
+    const normalizedSupersamplingScale = Math.max(
+      1,
+      Math.floor(supersamplingScale),
+    );
+    const nextPixelColumns =
+      Math.max(1, Math.floor(cellColumns)) * normalizedSupersamplingScale;
+    const nextPixelRows =
+      Math.max(1, Math.floor(cellRows)) * 2 * normalizedSupersamplingScale;
     if (
       nextPixelColumns === this.pixelColumns &&
       nextPixelRows === this.pixelRows

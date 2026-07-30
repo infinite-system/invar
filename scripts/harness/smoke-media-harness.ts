@@ -53,6 +53,30 @@ interface MediaMemoryMeasurement {
   readonly retainedFrames: readonly Uint8Array[];
 }
 
+interface MediaCellGeometry {
+  readonly columns: number;
+  readonly rows: number;
+}
+
+function mediaCellGeometry(
+  status: StatusSnapshot,
+  contentIdentifier: string,
+): MediaCellGeometry {
+  const contentIdentifiers = status.panelCellIds as
+    readonly string[] | undefined;
+  const cellColumns = status.panelCellColumns as readonly number[] | undefined;
+  const contentIndex = contentIdentifiers?.indexOf(contentIdentifier) ?? -1;
+  const columns = Number(cellColumns?.[contentIndex]);
+  const rows = Number(status.panelRows);
+  if (contentIndex < 0 || columns < 1 || rows < 1) {
+    throw new Error(
+      `media cell geometry is unavailable for ${contentIdentifier}: ` +
+        `index=${contentIndex}, columns=${columns}, rows=${rows}`,
+    );
+  }
+  return { columns, rows };
+}
+
 function assertContinuousAnimation(
   frames: readonly MediaFrameFingerprint[],
 ): void {
@@ -75,8 +99,9 @@ function assertContinuousAnimation(
 function measureMediaMemory(
   frameCount: number,
   retainFrameCopies: boolean,
+  supersamplingScale = 1,
 ): MediaMemoryMeasurement {
-  const framebuffer = new CellFramebuffer.Class(96, 36);
+  const framebuffer = new CellFramebuffer.Class(96, 36, supersamplingScale);
   const scene = new SoftwareScene.Class();
   const retainedFrames: Uint8Array[] = [];
   for (let warmupFrameIndex = 0; warmupFrameIndex < 20; warmupFrameIndex++) {
@@ -351,6 +376,14 @@ async function driveHalfBlockAnimation(): Promise<void> {
     );
     const initialWorkingSetBytes = Number(initialStatus.mediaWorkingSetBytes);
     const initialBufferGeneration = Number(initialStatus.mediaBufferGeneration);
+    const initialCellGeometry = mediaCellGeometry(initialStatus, 'media-demo');
+    const expectedHalfBlockWorkingSetBytes =
+      initialCellGeometry.columns * initialCellGeometry.rows * 2 * 8;
+    HarnessSmoke.Class.requireCondition(
+      initialWorkingSetBytes === expectedHalfBlockWorkingSetBytes,
+      `the half-block arm renders its ${initialCellGeometry.columns}x${initialCellGeometry.rows} ` +
+        `cell region at ${initialCellGeometry.columns}x${initialCellGeometry.rows * 2} pixels`,
+    );
     await driver.awaitGridCondition(
       'the small 3D demo paints varied truecolor half blocks',
       (snapshot) => {
@@ -451,16 +484,38 @@ async function driveHalfBlockAnimation(): Promise<void> {
       `${resizeFingerprints.length} completed resize and large-scale frames stayed painted`,
     );
 
-    const shortMemoryRun = measureMediaMemory(30, false);
-    const longMemoryRun = measureMediaMemory(300, plantRetentionLeak);
+    const graphicsSupersamplingScale = 8;
+    const shortMemoryRun = measureMediaMemory(
+      15,
+      false,
+      graphicsSupersamplingScale,
+    );
+    const longMemoryRun = measureMediaMemory(
+      150,
+      false,
+      graphicsSupersamplingScale,
+    );
     assertDurationIndependentMemory(
       shortMemoryRun,
       longMemoryRun,
       4 * 1024 * 1024,
     );
     HarnessSmoke.Class.pass(
-      `real 30/300-frame path stayed flat at ${shortMemoryRun.workingSetBytes} working bytes; managed growth ${shortMemoryRun.managedGrowthBytes}/${longMemoryRun.managedGrowthBytes}`,
+      `real 15/150-frame 8x path stayed flat at ${shortMemoryRun.workingSetBytes} working bytes; ` +
+        `managed growth ${shortMemoryRun.managedGrowthBytes}/${longMemoryRun.managedGrowthBytes}`,
     );
+    if (plantRetentionLeak) {
+      const plantedGraphicsLeak = measureMediaMemory(
+        30,
+        true,
+        graphicsSupersamplingScale,
+      );
+      assertDurationIndependentMemory(
+        shortMemoryRun,
+        plantedGraphicsLeak,
+        4 * 1024 * 1024,
+      );
+    }
     const shortLeak = measureMediaMemory(30, true);
     const longLeak = measureMediaMemory(300, true);
     let plantedLeakRejected = false;
@@ -585,22 +640,97 @@ async function driveKittyAndAsciiChrome(): Promise<void> {
       driver,
       statusPath,
       'the 3D demo opens at the kitty tier',
-      (status) => status.mediaMode === 'demo',
+      (status) =>
+        status.mediaMode === 'demo' &&
+        Array.isArray(status.panelCellIds) &&
+        status.panelCellIds.includes('media-demo') &&
+        Number(status.panelRows) > 0,
     );
+    const demoCellGeometry = mediaCellGeometry(demoStatus, 'media-demo');
+    const graphicsSupersamplingScale = 8;
+    const expectedPixelWidth =
+      demoCellGeometry.columns * graphicsSupersamplingScale;
+    const expectedPixelHeight =
+      demoCellGeometry.rows * 2 * graphicsSupersamplingScale;
+    const expectedKittyDimensions = `s=${expectedPixelWidth},v=${expectedPixelHeight},`;
     await driver.awaitOutputCondition(
-      'a synchronized kitty image transmit reaches the raw PTY stream',
+      'the kitty encoder receives the supersampled demo dimensions',
       () =>
         driver.outputSequenceCount('\x1b[?2026h\x1b_G') > 0 &&
-        driver.outputSequenceCount('\x1b_Ga=T') > 0,
+        driver.outputSequenceCount('\x1b_Ga=T') > 0 &&
+        driver.outputSequenceCount(expectedKittyDimensions) > 0,
     );
     HarnessSmoke.Class.requireCondition(
       driver.outputSequenceCount('\x1b[?2026h\x1b_G') > 0 &&
-        driver.outputSequenceCount('\x1b_Ga=T') > 0,
-      'the rich graphics tier emits a synchronized kitty image payload',
+        driver.outputSequenceCount('\x1b_Ga=T') > 0 &&
+        driver.outputSequenceCount(expectedKittyDimensions) > 0,
+      `the kitty encoder receives ${expectedPixelWidth}x${expectedPixelHeight} pixels for the ` +
+        `${demoCellGeometry.columns}x${demoCellGeometry.rows} cell region`,
+    );
+    const expectedSmallWorkingSetBytes =
+      expectedPixelWidth * expectedPixelHeight * 8;
+    const supersampledDemoStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the small kitty working set publishes the supersampled size',
+      (status) =>
+        Number(status.mediaWorkingSetBytes) === expectedSmallWorkingSetBytes,
+    );
+    const smallWorkingSetBytes = Number(
+      supersampledDemoStatus.mediaWorkingSetBytes,
+    );
+    HarnessSmoke.Class.requireCondition(
+      smallWorkingSetBytes === expectedSmallWorkingSetBytes,
+      `the small kitty arm keeps one ${expectedSmallWorkingSetBytes}-byte framebuffer working set`,
+    );
+
+    driver.resize(160, 50);
+    const largeDemoStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the kitty demo converges at large geometry',
+      (status) =>
+        status.width === 160 &&
+        status.height === 50 &&
+        status.mediaMode === 'demo' &&
+        Array.isArray(status.panelCellColumns) &&
+        status.panelCellColumns.some(
+          (columnCount) => Number(columnCount) > demoCellGeometry.columns,
+        ),
+    );
+    const largeDemoCellGeometry = mediaCellGeometry(
+      largeDemoStatus,
+      'media-demo',
+    );
+    const expectedLargePixelWidth =
+      largeDemoCellGeometry.columns * graphicsSupersamplingScale;
+    const expectedLargePixelHeight =
+      largeDemoCellGeometry.rows * 2 * graphicsSupersamplingScale;
+    const expectedLargeKittyDimensions = `s=${expectedLargePixelWidth},v=${expectedLargePixelHeight},`;
+    const expectedLargeWorkingSetBytes =
+      expectedLargePixelWidth * expectedLargePixelHeight * 8;
+    const supersampledLargeDemoStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the large kitty working set publishes the supersampled size',
+      (status) =>
+        Number(status.mediaWorkingSetBytes) === expectedLargeWorkingSetBytes,
+    );
+    await driver.awaitOutputCondition(
+      'the large kitty encoder input follows the resized cell region',
+      () => driver.outputSequenceCount(expectedLargeKittyDimensions) > 0,
+    );
+    HarnessSmoke.Class.requireCondition(
+      Number(supersampledLargeDemoStatus.mediaWorkingSetBytes) ===
+        expectedLargeWorkingSetBytes &&
+        driver.outputSequenceCount(expectedLargeKittyDimensions) > 0,
+      `the large kitty encoder receives ${expectedLargePixelWidth}x${expectedLargePixelHeight} ` +
+        `pixels for the ${largeDemoCellGeometry.columns}x${largeDemoCellGeometry.rows} cell region`,
     );
     const snapshot = driver.snapshot();
     HarnessSmoke.Class.requireCondition(
-      headingCloseGlyph(snapshot, demoStatus, 'media-demo') === 'x',
+      headingCloseGlyph(snapshot, supersampledLargeDemoStatus, 'media-demo') ===
+        'x',
       'the media pane uses ASCII host chrome at the ASCII glyph tier',
     );
     driver.sendKeys('Control+q');

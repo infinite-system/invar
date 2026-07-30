@@ -29,6 +29,7 @@ class $MediaPaneContent implements PaneContent {
   protected readonly framebuffer: CellFramebuffer.Model | null;
   protected readonly scene: SoftwareScene.Model | null;
   protected readonly demoImage: DecodedImage | null;
+  protected readonly graphicsSupersamplingScale = 8;
   protected videoStream: VideoFrameStream.Model | null = null;
   protected videoImage: DecodedImage | null = null;
   protected timer: ReturnType<typeof setTimeout> | null = null;
@@ -43,6 +44,7 @@ class $MediaPaneContent implements PaneContent {
   protected animationStartMilliseconds = performance.now();
   protected viewportColumns: number;
   protected viewportRows: number;
+  protected framebufferSupersamplingScale = 1;
 
   constructor(protected readonly options: MediaPaneOptions) {
     this.id = options.identifier;
@@ -141,6 +143,17 @@ class $MediaPaneContent implements PaneContent {
       ]);
     }
     this.scheduleNextFrame();
+    const graphicsTier = context.graphicsTier ?? 'halfblock';
+    const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
+    const screenColumn = context.screenColumn;
+    const screenRow = context.screenRow;
+    const projectsPixels =
+      pixelEncoder !== null &&
+      screenColumn !== undefined &&
+      screenRow !== undefined;
+    this.synchronizeDemoSupersampling(
+      projectsPixels ? this.graphicsSupersamplingScale : 1,
+    );
     const image = this.currentImage();
     if (!image) {
       this.pixelMount.clear();
@@ -148,12 +161,11 @@ class $MediaPaneContent implements PaneContent {
         fg(context.palette.dim)('\n  Loading sample video…\n'),
       ]);
     }
-    const graphicsTier = context.graphicsTier ?? 'halfblock';
-    const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
     if (
+      !projectsPixels ||
       !pixelEncoder ||
-      context.screenColumn === undefined ||
-      context.screenRow === undefined
+      screenColumn === undefined ||
+      screenRow === undefined
     ) {
       this.pixelMount.clear();
       if (this.framebuffer) return this.framebuffer.renderHalfBlocks();
@@ -173,8 +185,8 @@ class $MediaPaneContent implements PaneContent {
         image,
         path: `media:${this.id}:${this.frameIndexValue}`,
         region: {
-          x: context.screenColumn,
-          y: context.screenRow,
+          x: screenColumn,
+          y: screenRow,
           columns: context.width,
           rows: context.height,
         },
@@ -182,6 +194,32 @@ class $MediaPaneContent implements PaneContent {
       });
     }
     return new StyledText([]);
+  }
+
+  protected synchronizeDemoSupersampling(supersamplingScale: number): void {
+    if (
+      !this.framebuffer ||
+      !this.scene ||
+      supersamplingScale === this.framebufferSupersamplingScale
+    ) {
+      return;
+    }
+    this.framebufferSupersamplingScale = supersamplingScale;
+    this.framebuffer.resize(
+      this.viewportColumns,
+      this.viewportRows,
+      supersamplingScale,
+    );
+    if (this.demoImage) {
+      this.demoImage.width = this.framebuffer.width;
+      this.demoImage.height = this.framebuffer.height;
+      this.demoImage.rgba = this.framebuffer.rgba;
+    }
+    this.activeSceneValue = this.scene.render(
+      this.framebuffer,
+      Math.max(0, this.frameIndexValue) / this.options.framesPerSecond,
+      this.requestedScene,
+    );
   }
 
   protected currentImage(): DecodedImage | null {
@@ -324,7 +362,11 @@ class $MediaPaneContent implements PaneContent {
     this.viewportRows = nextRows;
     this.pixelMount.clear();
     if (this.framebuffer && this.scene) {
-      this.framebuffer.resize(nextColumns, nextRows);
+      this.framebuffer.resize(
+        nextColumns,
+        nextRows,
+        this.framebufferSupersamplingScale,
+      );
       if (this.demoImage) {
         this.demoImage.width = this.framebuffer.width;
         this.demoImage.height = this.framebuffer.height;

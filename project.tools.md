@@ -236,6 +236,14 @@ with different fixes, and only this distinguishes them.
 CAUTION: capabilities belong to the LIVE terminal. Running it in a different shell than the one with
 the problem answers a different question.
 
+### `bun .invar/tasks/in-progress/339-demo-supersampled-graphics-tier-resolution/339-software-scene-resolution-measurement.ts`
+Per-frame `SoftwareScene.render` cost for cube and torus at the current 1×2-pixel cell grid and at
+2×, 4×, and 8× supersampling. It measures a 100×24-cell pane, prints 20 samples after five warmup
+frames, and reports mean, median, p95, maximum, and fit against the current 15 FPS budget.
+USE IT WHEN: changing the software renderer, its framebuffer resolution, or the demo frame rate.
+KNOWN RESULT (2026-07-30): 8× renders 800×384 pixels. Cube p95 was 25.002 ms. Torus p95 was
+27.770 ms. Both fit the 66.667 ms frame budget.
+
 ### `bun scripts/check-reactive-observation.ts`
 AST census of live `Ref` reads, `shallowRef` payload reads, `Reactive()` classes and version-signalled
 plain fields, plus three report-only categories for construction-captured or module-scope reactive
