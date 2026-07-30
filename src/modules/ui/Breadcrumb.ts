@@ -2,6 +2,17 @@ import { Static } from 'ivue/extras';
 import { Files } from '../system/Files';
 
 class $Breadcrumb {
+  // Cells painted on EACH side of a crumb label. They belong to the crumb, not to the row: the
+  // hover background covers the label plus these cells, the click target is that same span, and
+  // the crumb picker anchors on its start. One geometry, three readers.
+  static readonly HOVER_PAD_COLUMNS = 1;
+
+  /** The crumb label as it occupies the row — the label plus its own pad cell on each side. */
+  static paddedLabel(label: string): string {
+    const padding = ' '.repeat(this.HOVER_PAD_COLUMNS);
+    return `${padding}${label}${padding}`;
+  }
+
   static breadcrumbSegments(
     absolutePath: string,
     projectRoot: string,

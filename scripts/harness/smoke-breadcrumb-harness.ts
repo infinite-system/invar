@@ -2,7 +2,9 @@
 // Drive the breadcrumb at 10 and 100,000 lines. Run with:
 // `COLORTERM=truecolor bun scripts/harness/smoke-breadcrumb-harness.ts`.
 // PASS means the breadcrumb has no history controls, its separator uses the active theme's readable
-// secondary-text token instead of the border token, and a live theme switch repaints that cell.
+// secondary-text token instead of the border token, a live theme switch repaints that cell, and
+// hovering a segment paints the theme hover background over the segment text plus exactly one cell
+// on each side while nothing on the row moves.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -17,6 +19,12 @@ import {
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
+
+// The promise this smoke gates, written here as a LITERAL on purpose: hovering a breadcrumb
+// segment paints one cell beyond the text on each side, and the row always carries the first
+// segment's left pad so hover never reflows the text. Reading the renderer's own constant instead
+// would only prove the code agrees with itself.
+const HOVER_PAD_COLUMNS = 1;
 
 function packedColor(color: string): number {
   return Number.parseInt(color.slice(1), 16);
@@ -60,6 +68,14 @@ function requireBreadcrumb(
     prefix.trim() === '',
     `${description} starts with the path and has no breadcrumb history controls`,
   );
+  // The one-column shift: the row keeps its single margin cell AND the first segment carries its
+  // own left hover pad, so the first glyph sits two columns inside the editor column. The pad is
+  // there whether or not the mouse is on the row, so hover never reflows the text.
+  HarnessSmoke.Class.requireCondition(
+    prefix.length === 1 + HOVER_PAD_COLUMNS,
+    `${description} keeps one margin cell plus the first segment's hover pad ` +
+      `(prefix ${prefix.length} columns)`,
+  );
   const separatorColumn = markerPosition.column + workspaceLabel.length + 1;
   const separatorCell = snapshot.cell(markerPosition.row, separatorColumn);
   HarnessSmoke.Class.requireCondition(
@@ -74,6 +90,159 @@ function requireBreadcrumb(
       colorDistance(palette.dim, palette.bg) >
         colorDistance(palette.border, palette.bg),
     `${description} separator differs from the row background and has more contrast than the old border token`,
+  );
+}
+
+function isHighlighted(
+  snapshot: HarnessSnapshot.Model,
+  row: number,
+  column: number,
+  palette: Palette,
+): boolean {
+  const cell = snapshot.cell(row, column);
+  return (
+    cell !== null &&
+    cell.isBackgroundRgb &&
+    cell.background === packedColor(palette.cursorLine)
+  );
+}
+
+async function awaitNoBreadcrumbHighlight(
+  driver: PtyTestDriver.Model,
+  breadcrumbRow: number,
+  palette: Palette,
+  description: string,
+): Promise<void> {
+  driver.sendMouse({
+    kind: 'move',
+    column: 1,
+    row: breadcrumbRow + 6,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    `${description} drops the hover highlight when the mouse leaves the row`,
+    (candidate) =>
+      !candidate
+        .rowCells(breadcrumbRow)
+        .some((cell) =>
+          isHighlighted(candidate, breadcrumbRow, cell.column, palette),
+        ),
+  );
+}
+
+// Hover every breadcrumb segment and require the highlight to cover the segment text plus one cell
+// on each side, with nothing on the row moving. Each segment is hovered TWICE: once on the middle
+// of its text and once on its left pad cell. The pad hover proves the hit test reads the same span
+// the paint used — the renderer publishes one segment geometry and both sides read it.
+async function driveBreadcrumbHover(
+  driver: PtyTestDriver.Model,
+  restingSnapshot: HarnessSnapshot.Model,
+  workspaceLabel: string,
+  fileLabel: string,
+  palette: Palette,
+  description: string,
+): Promise<void> {
+  const markerPosition = restingSnapshot.findText(
+    `${workspaceLabel} › ${fileLabel}`,
+  );
+  if (!markerPosition) throw new Error(`${description} breadcrumb vanished`);
+  const breadcrumbRow = markerPosition.row;
+  const restingRowText = restingSnapshot.rowText(breadcrumbRow);
+  const separatorColumn = markerPosition.column + workspaceLabel.length + 1;
+  const labelSpans = [
+    { label: workspaceLabel, textStart: markerPosition.column },
+    { label: fileLabel, textStart: separatorColumn + 2 },
+  ];
+  for (const { label, textStart } of labelSpans) {
+    const textEnd = textStart + label.length;
+    const highlightStart = textStart - HOVER_PAD_COLUMNS;
+    const highlightEnd = textEnd + HOVER_PAD_COLUMNS;
+    const hoverColumns = [
+      textStart + Math.floor(label.length / 2),
+      highlightStart,
+    ];
+    for (const hoverColumn of hoverColumns) {
+      const reachedFrom =
+        hoverColumn === highlightStart ? 'its left pad cell' : 'its text';
+      driver.sendMouse({
+        kind: 'move',
+        column: hoverColumn,
+        row: breadcrumbRow,
+        button: 'none',
+      });
+      const hovered = await driver.awaitGridCondition(
+        `${description} highlights "${label}" when the mouse rests on ${reachedFrom}`,
+        (candidate) =>
+          isHighlighted(candidate, breadcrumbRow, highlightStart, palette) &&
+          isHighlighted(candidate, breadcrumbRow, highlightEnd - 1, palette),
+      );
+      const paintedColumns: number[] = [];
+      for (let column = highlightStart; column < highlightEnd; column += 1) {
+        if (isHighlighted(hovered, breadcrumbRow, column, palette)) {
+          paintedColumns.push(column);
+        }
+      }
+      HarnessSmoke.Class.requireCondition(
+        paintedColumns.length === highlightEnd - highlightStart,
+        `${description} paints every cell of "${label}" plus one cell each side ` +
+          `(columns ${highlightStart}..${highlightEnd - 1}, painted ${paintedColumns.length})`,
+      );
+      HarnessSmoke.Class.requireCondition(
+        !isHighlighted(hovered, breadcrumbRow, highlightStart - 1, palette) &&
+          !isHighlighted(hovered, breadcrumbRow, highlightEnd, palette),
+        `${description} stops the "${label}" highlight exactly one cell past the text`,
+      );
+      HarnessSmoke.Class.requireCondition(
+        hovered.rowText(breadcrumbRow) === restingRowText,
+        `${description} moves nothing on the row while "${label}" is hovered`,
+      );
+      const separatorCell = hovered.cell(breadcrumbRow, separatorColumn);
+      HarnessSmoke.Class.requireCondition(
+        separatorCell?.characters === '›' &&
+          !isHighlighted(hovered, breadcrumbRow, separatorColumn, palette),
+        `${description} leaves the separator unhighlighted while "${label}" is hovered`,
+      );
+      // Clear the highlight before the next hover, so the next wait starts from a screen where
+      // its condition is FALSE. A predicate already true would launder a no-op into a pass.
+      await awaitNoBreadcrumbHighlight(
+        driver,
+        breadcrumbRow,
+        palette,
+        `${description} after "${label}" reached by ${reachedFrom}`,
+      );
+    }
+  }
+  // Click behaviour is unchanged, and the pad cell is part of the segment: pressing the first
+  // segment's LEFT PAD opens the same folder picker the text opens.
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).boundedListPopupOpen !== true,
+    `${description} shows no folder picker before the click`,
+  );
+  const padColumn = markerPosition.column - HOVER_PAD_COLUMNS;
+  driver.sendMouse({
+    kind: 'press',
+    column: padColumn,
+    row: breadcrumbRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: padColumn,
+    row: breadcrumbRow,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${description} opens the folder picker from the first segment's pad cell`,
+    (status) => status.boundedListPopupOpen === true,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${description} closes the folder picker`,
+    (status) => status.boundedListPopupOpen === false,
   );
 }
 
@@ -127,6 +296,14 @@ async function driveBreadcrumbAtScale(lineCount: number): Promise<void> {
       60_000,
     );
     requireBreadcrumb(
+      darkSnapshot,
+      workspaceLabel,
+      'huge.ts',
+      ThemePalettes.Class.DARK,
+      `${lineCount}-line dark theme`,
+    );
+    await driveBreadcrumbHover(
+      driver,
       darkSnapshot,
       workspaceLabel,
       'huge.ts',
@@ -191,6 +368,14 @@ async function driveBreadcrumbAtScale(lineCount: number): Promise<void> {
       },
     );
     requireBreadcrumb(
+      lightSnapshot,
+      workspaceLabel,
+      'huge.ts',
+      ThemePalettes.Class.LIGHT,
+      `${lineCount}-line live light theme`,
+    );
+    await driveBreadcrumbHover(
+      driver,
       lightSnapshot,
       workspaceLabel,
       'huge.ts',
