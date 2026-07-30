@@ -1,7 +1,7 @@
 # #365 — two gate scratch paths are machine-global across concurrent gates
 
 State: ACTIVE
-Priority: verification-integrity
+Priority: user-directed
 Engine: codex
 Environment: linux
 Model: 5.6-sol
