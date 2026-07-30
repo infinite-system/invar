@@ -336,19 +336,73 @@ of terminal behavior that needs a real shell; a second byte path around the back
 
 **Last refined:** 2026-07-23
 
+### Pane chrome and child cells keep separate authority
+
+**Invariant:** Pane chrome and padding use Invar's active theme and input behavior. Child terminal
+cells use the terminal profile's default foreground and background and preserve every ANSI, 256-color,
+or truecolor request parsed by the emulator. A host theme change cannot recolor those child cells. If
+a pointer event lands on a child cell while the child has enabled mouse tracking, the child owns the
+event and receives the requested mouse-protocol bytes in its own one-based cell coordinates. With
+mouse tracking off, Invar keeps its terminal selection behavior and writes no pointer bytes to the
+child.
+
+**Scope:** `TerminalEmulator` mouse mode state, `TerminalMouse`, `TerminalPaneContent`, the optional
+pointer methods on `PaneContent`, the panel-cell route in `RootView`, and `TerminalPaneRenderer`.
+Selection is host-owned and may paint the host selection token over child cells. Wheel ownership
+composes through the next record.
+
+**Mechanism:** OpenTUI parses the outer terminal's mouse input and gives `RootView` screen
+coordinates. `RootView` translates them once into pane-local coordinates. `TerminalPaneContent`
+subtracts its child-cell padding, clamps to the emulator grid, and delegates encoding to
+`TerminalMouse`. DECSET 1000 sends presses and releases, 1002 adds pressed motion, 1003 adds all
+motion, and 1006 selects SGR encoding. DECRST returns the same cells to Invar selection. The
+[xterm mouse protocol](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#Mouse%20Tracking)
+defines these modes and the one-based top-left coordinate. `TerminalPaneRenderer` maps the emulator's
+default color flags to the fixed xterm profile and maps palette or RGB flags to their exact requested
+colors. It reads the host palette only for selection, padding, and line framing. VS Code documents
+[separate terminal color roles](https://code.visualstudio.com/api/references/theme-color#integrated-terminal-colors)
+for terminal foreground, background, and ANSI slots instead of treating panel colors as terminal
+colors. Invar has no separate user terminal palette yet, so its fixed xterm profile owns these roles.
+
+**Generates:** Child TUI buttons that receive exact clicks; drag and any-motion support only when the
+child requests those modes; pane headings, controls, borders, and padding that remain Invar-owned;
+terminal selection when tracking is off; child output whose colors remain stable while surrounding
+chrome switches theme.
+
+**Evidence:** [`TerminalMouse.test.ts`](TerminalMouse.test.ts);
+[`TerminalPaneContent.test.ts`](TerminalPaneContent.test.ts);
+[`smoke-terminal-harness.ts`](../../../scripts/harness/smoke-terminal-harness.ts) drives one atomic
+real click to a nested SGR child and receives exact press and release bytes at both polarity
+boundaries. The same child emits default, all 16 ANSI foreground and background slots, indexed
+256-color, and truecolor cells. FrameProbe observes their exact RGBA lanes before and after a live
+dark-to-light switch while the status chrome changes.
+
+**Impossible if true:** A mouse-aware child button that never receives its click; child coordinates
+that include the panel position or terminal padding; a child receiving mouse bytes after DECRST; a
+click on the pane heading or padding reaching the child; a host theme repaint changing a child
+default, ANSI, indexed, or truecolor cell; child background leaking the pane background.
+
+**Verification:** `bun test src/modules/terminal/TerminalMouse.test.ts
+src/modules/terminal/TerminalPaneContent.test.ts && bun
+scripts/harness/smoke-terminal-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Child terminal modes own wheel input
 
 **Invariant:** A wheel over a terminal scrolls host scrollback only while the primary screen is
 active and child mouse tracking is disabled. If either the alternate screen is active or any child
-mouse-tracking mode is enabled, the same gesture is encoded as an SGR mouse wheel event and written
-to the child; it never changes host scrollback.
+mouse-tracking mode is enabled, the same gesture is encoded for the child's selected mouse protocol
+and written to the child; it never changes host scrollback.
 
 **Scope:** `TerminalEmulator` mode state, `TerminalInstance`, `TerminalPaneContent`, the optional
 scroll projection on `PaneContent`, and the panel cell wheel route in `RootView`.
 
 **Mechanism:** `TerminalInstance.forwardsWheelToChild` reads the emulator's active buffer and mouse
 tracking mode. `TerminalPaneContent.onWheel` chooses exactly one regime: child ownership writes one
-SGR event with pane-local coordinates and modifiers; host ownership feeds the settings-normalized
+mouse event with pane-local coordinates and modifiers; host ownership feeds the settings-normalized
 row impulse into `Momentum`, whose progressive gain, deterministic contrary-direction restart,
 one-row floor, decay, and stop threshold are shared with every scrolling surface. The emulator owns
 `viewportY`; the generic pane scroll projection paints a `SolidThumbScrollBar` from that same
@@ -367,8 +421,8 @@ bottom on fresh output, then launches an alternate-screen mouse-tracking child t
 exact SGR wheel bytes while host position and extent remain unchanged.
 
 **Impossible if true:** A full-screen child and host scrollback both moving for one wheel gesture; a
-mouse-tracking child receiving no wheel bytes; a terminal wheel jumping without shared momentum; new
-shell output remaining off-screen; an overflowing terminal with no thumb.
+mouse-tracking child receiving no wheel bytes or the wrong encoding; a terminal wheel jumping without
+shared momentum; new shell output remaining off-screen; an overflowing terminal with no thumb.
 
 **Verification:** `bun test src/modules/terminal/TerminalPaneContent.test.ts
 src/modules/terminal/TerminalInstance.test.ts && bun

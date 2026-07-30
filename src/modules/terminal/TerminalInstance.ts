@@ -231,6 +231,14 @@ class $TerminalInstance {
     );
   }
 
+  get mouseTrackingMode(): 'none' | 'x10' | 'vt200' | 'drag' | 'any' {
+    return this.emulator.mouseTrackingMode;
+  }
+
+  get isSgrMouseEncodingEnabled(): boolean {
+    return this.emulator.isSgrMouseEncodingEnabled;
+  }
+
   scrollToLine(line: number): void {
     this.emulator.scrollToLine(line);
     this.renderRevision.value++;

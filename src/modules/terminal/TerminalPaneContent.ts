@@ -7,6 +7,7 @@
 //
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
 // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/ui/ui.invariants.md)
+// invariant: Pane chrome and child cells keep separate authority (src/modules/terminal/terminal.invariants.md)
 // invariant: Child terminal modes own wheel input (src/modules/terminal/terminal.invariants.md)
 // invariant: Terminal follow obeys the live user mode (src/modules/agent/agent.invariants.md)
 import { Static } from 'ivue/extras';
@@ -16,6 +17,7 @@ import type { Ref } from 'vue';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import type {
   PaneContent,
+  PanePointerContext,
   PaneRenderContext,
   PaneScrollPort,
   PaneWheelContext,
@@ -29,6 +31,7 @@ import { Clipboard } from '../system/Clipboard';
 import { TerminalCommandNote } from './TerminalCommandNote';
 import { TerminalPaneRenderer } from './TerminalPaneRenderer';
 import { TerminalKeys } from './TerminalKeys';
+import { TerminalMouse } from './TerminalMouse';
 import type { TerminalInstance } from './TerminalInstance';
 import type {
   TerminalScrollbackRequest,
@@ -64,6 +67,7 @@ class $TerminalPaneContent implements PaneContent {
   protected scrollPort: PaneScrollPort | null = null;
   protected observedOutputRevision = 0;
   protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
+  protected forwardedPointerButton: number | null = null;
   protected readonly heading: string | null;
 
   constructor(
@@ -148,7 +152,29 @@ class $TerminalPaneContent implements PaneContent {
 
   onWheel(rowDelta: number, context?: PaneWheelContext): boolean {
     if (this.instance.forwardsWheelToChild) {
-      this.instance.sendInput(this.sgrWheelSequence(rowDelta, context));
+      const coordinates = this.childCoordinates(
+        context?.column ?? this.terminalPadColumns,
+        context?.row ?? this.terminalPadRows,
+      );
+      this.instance.sendInput(
+        TerminalMouse.Class.encode({
+          kind: 'wheel',
+          wheelDirection: rowDelta < 0 ? 'up' : 'down',
+          ...coordinates,
+          modifiers: context?.modifiers ?? {
+            alt: false,
+            shift: false,
+            ctrl: false,
+          },
+          trackingMode:
+            this.instance.mouseTrackingMode === 'none'
+              ? 'vt200'
+              : this.instance.mouseTrackingMode,
+          sgrEncoding:
+            this.instance.isSgrMouseEncodingEnabled ||
+            this.instance.mouseTrackingMode === 'none',
+        }),
+      );
       return true;
     }
     Momentum.Class.queueImpulse(this.verticalMomentum, rowDelta);
@@ -285,20 +311,87 @@ class $TerminalPaneContent implements PaneContent {
     };
   }
 
-  onPointerDown(column: number, row: number): boolean {
+  onPointerMove(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean {
+    if (
+      this.instance.mouseTrackingMode !== 'any' ||
+      !this.isChildCell(column, row)
+    ) {
+      return false;
+    }
+    this.sendPointerEvent('motion', column, row, context, null);
+    return true;
+  }
+
+  onPointerDown(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean {
+    if (
+      this.instance.mouseTrackingMode !== 'none' &&
+      this.isChildCell(column, row)
+    ) {
+      this.forwardedPointerButton = context?.button ?? 0;
+      this.sendPointerEvent(
+        'press',
+        column,
+        row,
+        context,
+        this.forwardedPointerButton,
+      );
+      return true;
+    }
     this.selection.begin(this.selectionPoint(column, row));
     this.instance.renderRevision.value += 1;
     return true;
   }
 
-  onPointerDrag(column: number, row: number): boolean {
+  onPointerDrag(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean {
+    if (
+      this.forwardedPointerButton !== null &&
+      this.instance.mouseTrackingMode !== 'none'
+    ) {
+      this.sendPointerEvent(
+        'motion',
+        column,
+        row,
+        context,
+        this.forwardedPointerButton,
+      );
+      return true;
+    }
     const point = this.selectionPoint(column, row);
     this.selection.extend({ line: point.line, column: point.column + 1 });
     this.instance.renderRevision.value += 1;
     return true;
   }
 
-  onPointerUp(): boolean {
+  onPointerUp(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean {
+    if (this.forwardedPointerButton !== null) {
+      if (this.instance.mouseTrackingMode !== 'none') {
+        this.sendPointerEvent(
+          'release',
+          column,
+          row,
+          context,
+          this.forwardedPointerButton,
+        );
+      }
+      this.forwardedPointerButton = null;
+      return true;
+    }
     this.selection.finish();
     this.instance.renderRevision.value += 1;
     return true;
@@ -333,32 +426,52 @@ class $TerminalPaneContent implements PaneContent {
     };
   }
 
-  protected sgrWheelSequence(
-    rowDelta: number,
-    context?: PaneWheelContext,
-  ): string {
-    const modifiers =
-      (context?.modifiers.shift ? 4 : 0) +
-      (context?.modifiers.alt ? 8 : 0) +
-      (context?.modifiers.ctrl ? 16 : 0);
-    const button = (rowDelta < 0 ? 64 : 65) + modifiers;
-    const column = Math.max(
-      1,
-      Math.min(
-        this.instance.columns,
-        (context?.column ?? this.terminalPadColumns) -
-          this.terminalPadColumns +
-          1,
-      ),
+  protected isChildCell(column: number, row: number): boolean {
+    return (
+      column >= this.terminalPadColumns &&
+      column < this.terminalPadColumns + this.instance.columns &&
+      row >= this.terminalPadRows &&
+      row < this.terminalPadRows + this.instance.rows
     );
-    const row = Math.max(
-      1,
-      Math.min(
-        this.instance.rows,
-        (context?.row ?? this.terminalPadRows) - this.terminalPadRows + 1,
+  }
+
+  protected childCoordinates(
+    column: number,
+    row: number,
+  ): { column: number; row: number } {
+    return {
+      column: Math.max(
+        1,
+        Math.min(this.instance.columns, column - this.terminalPadColumns + 1),
       ),
+      row: Math.max(
+        1,
+        Math.min(this.instance.rows, row - this.terminalPadRows + 1),
+      ),
+    };
+  }
+
+  protected sendPointerEvent(
+    kind: 'press' | 'release' | 'motion',
+    column: number,
+    row: number,
+    context: PanePointerContext | undefined,
+    button: number | null,
+  ): void {
+    this.instance.sendInput(
+      TerminalMouse.Class.encode({
+        kind,
+        button: button ?? undefined,
+        ...this.childCoordinates(column, row),
+        modifiers: context?.modifiers ?? {
+          alt: false,
+          shift: false,
+          ctrl: false,
+        },
+        trackingMode: this.instance.mouseTrackingMode,
+        sgrEncoding: this.instance.isSgrMouseEncodingEnabled,
+      }),
     );
-    return `\x1b[<${button};${column};${row}M`;
   }
 
   caret(): { column: number; row: number } | null {

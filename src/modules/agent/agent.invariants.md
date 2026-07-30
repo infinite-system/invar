@@ -20,7 +20,8 @@ tool-use requests, tool results, lifecycle), the host can project them into ANY 
 them with its own capabilities. Composition requires the event stream; pixels are a dead end.
 
 **Scope:** the whole `agent/` module. Does not apply to the PTY guest path, which is knowingly the
-pixels path and stays a plain terminal citizen.
+pixels path and stays a plain terminal citizen governed by
+[*Pane chrome and child cells keep separate authority*](../terminal/terminal.invariants.md#pane-chrome-and-child-cells-keep-separate-authority).
 
 **Mechanism:** `AgentBackend` yields typed `AgentEvent`s (`AgentEvents.interface.ts`): text-delta, tool-use,
 tool-result, error, session lifecycle. `AgentSession` folds those into model state. No ANSI parsing
@@ -43,7 +44,7 @@ must not import from `src/modules/terminal/`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-29
 
 ### The transcript is the single source of agent session truth
 
