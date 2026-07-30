@@ -1,6 +1,6 @@
 # 325 — RESEARCH: sound synced with video in Invar — approaches + tradeoffs (map, no implementation)
 
-State: IN-PROGRESS
+State: COMPLETED — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
 Engine: codex
 Model: 5.6-sol
 Effort: high
