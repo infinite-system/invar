@@ -1,0 +1,15 @@
+{
+  "task": 90,
+  "slug": "harness-diagnostic-provenance-guard",
+  "branch": "fleet/90-harness-diagnostic-provenance-guard",
+  "worktree": ".invar/worktrees/90-harness-diagnostic-provenance-guard",
+  "tmuxSession": "invar/90-harness-diagnostic-provenance-guard",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-90-harness-diagnostic-provenance-guard.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "c5761ccc19d3a7d77cbc243c83c51f9ee515e95b",
+  "startedAt": "2026-07-30T09:21:14-04:00"
+}

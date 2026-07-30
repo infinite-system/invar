@@ -1,6 +1,6 @@
 # 90 — shared artifacts/tui.log lets runs read each other; stale lines satisfy assertions
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: claude
 Environment: linux

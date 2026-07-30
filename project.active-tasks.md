@@ -6,13 +6,15 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/in-progress/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)  [building]
   `tmux attach -t invar/343-tasks-activity-icon-and-live-loader`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
+- #90 [harness-diagnostic-provenance-guard](.invar/tasks/in-progress/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)  [building]
+  `tmux attach -t invar/90-harness-diagnostic-provenance-guard`
 
-## USER-DIRECTED (17)
+## USER-DIRECTED (16)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
 - #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)
 - #356 [agent-pane-is-a-decoupled-module](.invar/tasks/active/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)
@@ -29,7 +31,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
-- #90 [harness-diagnostic-provenance-guard](.invar/tasks/active/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)
 
 ## VERIFICATION-INTEGRITY (20)
 - #362 [markdown-harness-ordinal-drive-and-preview-clipping](.invar/tasks/active/362-markdown-harness-ordinal-drive-and-preview-clipping/task-362-markdown-harness-ordinal-drive-and-preview-clipping.md)
