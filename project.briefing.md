@@ -214,7 +214,7 @@ WATCHERS (re-arm on resume, this exact set, nothing more):
 LESSON THIS TURN: none new — anchor-13's resurrection protocol ran clean end to end
 (pgrep-first, verdict re-read from log, named moved-main delta, land, hygiene).
 
-## RESUME ANCHOR 15 (2026-07-30 03:1x — post-#336 landing; supersedes 14)
+## RESUME ANCHOR 15 (2026-07-30 02:50 — post-#336 landing; supersedes 14)
 
 **Conductor pid check first: anchor-15's writer is 3752392 (~/dev/invar launch).
 DANGER, UNRESOLVED: the OLD ibr incarnation pid 3541394 (cwd ~/dev/ibr) is ALIVE
