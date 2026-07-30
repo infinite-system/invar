@@ -359,3 +359,26 @@ report for the user's morning: what landed (hashes), what remains (why),
 bycatch filed. Do NOT invent new experiments — the queue IS the goal.
 Twin conductor 3541394: if still alive and committing, note collisions,
 never fight it — user decides in the morning.
+
+## OVERNIGHT DELTA 2 (2026-07-30 03:23)
+
+- TOKEN POLICY (user): codex = sol MEDIUM for all new lanes (dispatch.sh
+  default changed, queued task Effort fields changed, e16dce5c). Quota 66%
+  weekly, expires Aug 5 — be economical, land on first green, no
+  speculative rounds.
+- LANES (3, cap): invar/326-stage-two (MANUAL launch — branch
+  fleet/326-stage-two cut from e16dce5c, worktree .invar/worktrees/326-stage-two,
+  brief brief-326-2-stage-two-execute.md, transcript
+  tmp/transcripts/transcript-codex-5.6-sol-medium-326-stage-two.md; its
+  report lands in the 326 in-progress folder as report-326-stage-two.md;
+  fleet-watch may not auto-key on this nonstandard lane — check it on every
+  wake); invar/342 (tasks.json); invar/351 (quick open).
+- LANDED: #340 (78de90d2, tree reveal). #339 (0d24d168, 8x demo).
+- agent-tmux GOTCHA relearned: verbs take the BARE name with
+  AGENT_TMUX_PREFIX="invar/" env — never the prefixed name.
+- NEW: #352 filed (markdown code-preview side borders still black —
+  incomplete theme conversion). Queue after #351's landing:
+  #350 → #343 → #344 → #345 → #346 → #347 → #348 → #349 → #352 → #341.
+- dispatch.sh CANNOT relaunch an in-progress task (record-exists guard) —
+  the #326 manual sequence above is the workaround; consider a
+  --relaunch flag as future hardening, do not hack the guard.
