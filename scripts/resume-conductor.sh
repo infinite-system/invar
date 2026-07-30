@@ -16,6 +16,7 @@
 
 set -euo pipefail
 
+script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 repository_root="$(git rev-parse --show-toplevel)"
 
 closure_files=(
@@ -72,7 +73,7 @@ if [ "${1:-}" = "--self-test" ]; then
   sandbox="$(mktemp -d /tmp/resume-conductor-selftest-XXXXXX)"
   git -C "$repository_root" worktree add --detach "$sandbox/tree" HEAD >/dev/null 2>&1
   rm "$sandbox/tree/project.conventions.md"
-  if (cd "$sandbox/tree" && bash scripts/resume-conductor.sh >/dev/null 2>&1); then
+  if (cd "$sandbox/tree" && bash "$script_path" >/dev/null 2>&1); then
     echo "FAIL absent arm — missing conventions file did not fail"; failures=1
   fi
   git -C "$repository_root" worktree remove --force "$sandbox/tree" >/dev/null 2>&1 || true

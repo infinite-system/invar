@@ -16,12 +16,17 @@
 
 set -euo pipefail
 
+script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 repository_root="$(git rev-parse --show-toplevel)"
 
+# Skills only — the operative distillations. project.conductor.md (dated
+# lesson evidence) stays on disk, one resume-conductor.sh away (user call
+# 2026-07-30: skills are what must always be in force).
 fundamentals_files=(
   ".claude/skills/ibr/IBR.md"
+  ".claude/skills/invariants/SKILL.md"
+  ".claude/skills/ivue/SKILL.md"
   ".claude/skills/conductor/SKILL.md"
-  "project.conductor.md"
 )
 
 print_file() {
@@ -51,9 +56,9 @@ if [ "${1:-}" = "--self-test" ]; then
     || { echo "FAIL present arm — state-is-on-disk law missing"; failures=1; }
   sandbox="$(mktemp -d /tmp/conductor-prompt-selftest-XXXXXX)"
   git -C "$repository_root" worktree add --detach "$sandbox/tree" HEAD >/dev/null 2>&1
-  rm "$sandbox/tree/project.conductor.md"
-  if (cd "$sandbox/tree" && bash scripts/conductor-system-prompt.sh >/dev/null 2>&1); then
-    echo "FAIL absent arm — missing doctrine file did not fail"; failures=1
+  rm "$sandbox/tree/.claude/skills/invariants/SKILL.md"
+  if (cd "$sandbox/tree" && bash "$script_path" >/dev/null 2>&1); then
+    echo "FAIL absent arm — missing skill file did not fail"; failures=1
   fi
   git -C "$repository_root" worktree remove --force "$sandbox/tree" >/dev/null 2>&1 || true
   rm -rf "$sandbox"
