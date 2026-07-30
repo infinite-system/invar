@@ -1,6 +1,6 @@
 # #384 — quit dialog: bracketless buttons and breathing room
 
-State: IN-PROGRESS
+State: COMPLETED — e6ed1b0f — quit dialog: bracketless padded buttons with theme affordances
 Priority: user-directed
 Engine: codex
 Environment: linux

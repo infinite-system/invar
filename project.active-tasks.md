@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
-- #384 [quit-dialog-buttons-and-padding](.invar/tasks/in-progress/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)  [building]
-  `tmux attach -t invar/384-quit-dialog-buttons-and-padding`
 
 ## USER-DIRECTED (18)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
@@ -133,10 +131,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 136 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 137 — full log: project.tasks-completed.md)
 - #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)
 - #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/completed/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md) — 69ca67ed — slim splitters on both axes everywhere; pad cell before the bottom drag span
 - #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/completed/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md) — 157dda25 — theme glyphs survive capability negotiation (OSC 66 payloads decoded by the emulator)
+- #384 [quit-dialog-buttons-and-padding](.invar/tasks/completed/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md) — e6ed1b0f — quit dialog: bracketless padded buttons with theme affordances
 - #383 [structure-pane-width-proportional](.invar/tasks/completed/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md) — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/completed/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md) — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)
 - #375 [tasks-live-attach-icon-invisible](.invar/tasks/completed/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md) — 660ed877 — visible attach icon + click-time target; #386 from bycatch
@@ -148,4 +147,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/completed/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md) — 068a7375 — workspace panel tab bar: generic content spaces, no pane chrome, actions kept on the row
 - #345 [horizontal-separator-centered-glyph](.invar/tasks/completed/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md) — 085bfca0 — centered heavy-line separator; #372/#373 from bycatch
 - #344 [breadcrumb-hover-highlight-padding](.invar/tasks/completed/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md) — dc30d875 — breadcrumb hover highlight + one-cell pads; #369/#370 from bycatch
-- #343 [tasks-activity-icon-and-live-loader](.invar/tasks/completed/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md) — 68a95c11 — play glyph + LIVE watch spinner; #371 from bycatch
