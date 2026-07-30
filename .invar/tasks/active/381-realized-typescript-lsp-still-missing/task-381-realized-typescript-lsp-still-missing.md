@@ -28,3 +28,18 @@ experiment with the user's exact conditions, not a repeat of the clean
 drive. May need the user's terminal for final verification — say so in
 the report if in-harness reproduction fails again (do not fabricate a
 fix for an unreproduced bug).
+
+## Clarification (user, 2026-07-30 ~08:3x)
+
+- NOT just realized: blackline and blackline-app also have no working
+  TypeScript LSP. Three external projects, same symptom — this points
+  AWAY from per-project tsconfig shape and toward the shared path:
+  tsserver discovery/spawn for ANY non-Invar workspace on the user's
+  machine (or the workspace-open path all three share).
+- The user's reproduction check: hover over ts items in the editor — NO
+  TOOLTIP appears. Add hover-tooltip to the reproduction: the driven
+  check is "open external project, open a ts file, hover a symbol,
+  expect the hover tooltip". (Also check a second LSP surface —
+  diagnostics or go-to-def — to separate "LSP dead" from "tooltip UI
+  dead": if diagnostics work but hover does not, the defect is the
+  hover path, not LSP discovery.)
