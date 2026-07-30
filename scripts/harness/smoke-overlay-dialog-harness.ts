@@ -1559,16 +1559,37 @@ try {
     (candidate) => candidate.quickOpenOpen === false,
   );
   driver.sendKeys('Control+p');
-  await awaitStatusPublication(
+  status = await awaitStatusPublication(
     statusPath,
     'Quick Open reopens for an interior file click',
-    (candidate) => candidate.quickOpenOpen === true,
+    (candidate) =>
+      candidate.quickOpenOpen === true &&
+      dialogBounds(candidate, 'quickOpen') !== null,
+  );
+  const quickOpenBounds = dialogBounds(status, 'quickOpen');
+  requireCondition(
+    quickOpenBounds !== null,
+    'Quick Open publishes bounds for its interior file click',
   );
   snapshot = await driver.awaitGridCondition(
-    'the single-token other.txt anchor identifies a Quick Open result',
-    (candidate) => candidate.findText('other.txt') !== null,
+    'the bounded other.txt anchor identifies a Quick Open result',
+    (candidate) =>
+      quickOpenBounds !== null &&
+      markerPositionWithinBoundsOrNull(
+        candidate,
+        quickOpenBounds,
+        'other.txt',
+      ) !== null,
   );
-  const otherFilePosition = markerPosition(snapshot, 'other.txt');
+  const otherFilePosition = markerPositionWithinBoundsOrNull(
+    snapshot,
+    quickOpenBounds,
+    'other.txt',
+  );
+  requireCondition(
+    otherFilePosition !== null,
+    'other.txt is inside the published Quick Open bounds',
+  );
   clickCell(driver, otherFilePosition.column, otherFilePosition.row);
   await awaitStatusPublication(
     statusPath,
