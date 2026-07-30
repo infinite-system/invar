@@ -12,7 +12,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (4)
+## USER-DIRECTED (5)
+- #338 [declared-graphics-tier-fails-silently](.invar/tasks/active/338-declared-graphics-tier-fails-silently/task-338-declared-graphics-tier-fails-silently.md)
 - #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
