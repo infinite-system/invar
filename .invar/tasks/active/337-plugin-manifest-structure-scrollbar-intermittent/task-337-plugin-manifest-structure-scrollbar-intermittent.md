@@ -1,10 +1,10 @@
 # #337 — plugin-manifest smoke: structure scrollbar settled-geometry intermittent
 
 State: ACTIVE
-Priority: flake-evidence
-Engine: codex
+Priority: verification-integrity
+Engine: claude
 Environment: linux
-Model: 5.6-sol
+Model: opus-5
 Effort: medium
 
 ## What happened (bycatch from #335, 2026-07-30)
