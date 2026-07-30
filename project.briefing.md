@@ -13,6 +13,17 @@ is deliberately PORTABLE — it is the product; the editor is the cockpit.
 architecture refinement — do not start it unprompted.)
 
 
+## NORTH STAR ADDITION (user, 2026-07-29 ~21:5x, verbatim)
+
+> imagine we create our own internet between Invar instances
+
+Conductor reduction (for seam decisions, not yet tasks): presence
+(discovery) -> shared state (ledger/records sync across instances) ->
+live surfaces (panes projected between instances; panel content-set
+machinery is the seam) -> fleet mesh (cross-machine dispatch).
+Standing implication: prefer seams that keep panel content sets,
+task records, and plugins location-independent.
+
 ## SUPERSEDED ANCHORS 1-7 PRUNED 2026-07-29 20:3x (user-approved cleanup; git history holds them)
 
 ## RESUME ANCHOR 8 — 2026-07-29 ~17:5x (context 86% — compaction imminent)
