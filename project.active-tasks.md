@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [building]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
 - #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/in-progress/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md)  [building]
   `tmux attach -t invar/387-splitter-slim-vertical-and-left-pad`
-- #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/in-progress/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md)  [building]
-  `tmux attach -t invar/386-theme-glyphs-vanish-at-narrow-geometry`
 
 ## USER-DIRECTED (20)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
@@ -36,7 +34,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (22)
+## VERIFICATION-INTEGRITY (23)
+- #397 [frameprobe-char-buffer-native-handles](.invar/tasks/active/397-frameprobe-char-buffer-native-handles/task-397-frameprobe-char-buffer-native-handles.md)
 - #385 [tasks-dashboard-smoke-status-grid-race](.invar/tasks/active/385-tasks-dashboard-smoke-status-grid-race/task-385-tasks-dashboard-smoke-status-grid-race.md)
 - #370 [legacy-smoke-tabs-perma-red](.invar/tasks/active/370-legacy-smoke-tabs-perma-red/task-370-legacy-smoke-tabs-perma-red.md)
 - #362 [markdown-harness-ordinal-drive-and-preview-clipping](.invar/tasks/active/362-markdown-harness-ordinal-drive-and-preview-clipping/task-362-markdown-harness-ordinal-drive-and-preview-clipping.md)
@@ -133,7 +132,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 133 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 134 — full log: project.tasks-completed.md)
+- #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/completed/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md) — 157dda25 — theme glyphs survive capability negotiation (OSC 66 payloads decoded by the emulator)
 - #383 [structure-pane-width-proportional](.invar/tasks/completed/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md) — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/completed/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md) — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)
 - #375 [tasks-live-attach-icon-invisible](.invar/tasks/completed/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md) — 660ed877 — visible attach icon + click-time target; #386 from bycatch
@@ -148,4 +148,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/completed/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md) — 68a95c11 — play glyph + LIVE watch spinner; #371 from bycatch
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/completed/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md) — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
 - #340 [file-tree-reveals-open-file](.invar/tasks/completed/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md) — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
-- #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/completed/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md) — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate

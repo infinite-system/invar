@@ -1,6 +1,6 @@
 # #386 — every theme-owned glyph vanishes at 120x36
 
-State: IN-PROGRESS
+State: COMPLETED — 157dda25 — theme glyphs survive capability negotiation (OSC 66 payloads decoded by the emulator)
 Priority: user-directed
 Engine: codex
 Environment: linux
