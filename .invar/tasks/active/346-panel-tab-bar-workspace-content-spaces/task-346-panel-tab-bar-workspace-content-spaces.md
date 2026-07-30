@@ -76,3 +76,14 @@ Effort: high
    child cells (no z-layer in a grid) and steal SGR mouse events the child
    contractually receives. Overlay-on-hover may be revisited later as an
    addition, never as the only close affordance.
+
+9. REVISION of point 8 (user, same session): a tab (space) can house MORE
+   than one terminal — a space is a multi-pane container (the existing
+   side-by-side split lives INSIDE a space). That also answers the earlier
+   split question in the conductor notes. The right-side expandable pane
+   list (point 5's chip) is the MANAGEMENT surface: reorder and close live
+   there. With that in place, close buttons on tabs/panes are REMOVED —
+   point 8's keep-the-close-button stands only until the expandable list
+   ships in the same task; the list is the close affordance. Net end state:
+   no titles, no per-pane close, tabs for spaces, chip-expanded list for
+   reorder/close.
