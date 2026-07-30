@@ -8,6 +8,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import type { FrameDump } from '../../src/modules/system/FrameProbe';
 import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -134,6 +135,141 @@ async function awaitFileBytes(filePath: string): Promise<Uint8Array> {
   throw new Error(`Timed out waiting for child input capture at ${filePath}`);
 }
 
+async function awaitFrameDump(
+  framePath: string,
+  predicate: (frameDump: FrameDump) => boolean,
+  description: string,
+): Promise<FrameDump> {
+  const deadline = performance.now() + 5_000;
+  while (performance.now() < deadline) {
+    const frameFile = Bun.file(framePath);
+    if (await frameFile.exists()) {
+      const frameDump = (await frameFile.json()) as FrameDump;
+      if (predicate(frameDump)) return frameDump;
+    }
+    await Bun.sleep(10);
+  }
+  throw new Error(`Timed out waiting for FrameProbe: ${description}`);
+}
+
+function codePointSequenceStart(
+  codePoints: readonly string[],
+  markerCodePoints: readonly string[],
+): number {
+  for (
+    let startIndex = 0;
+    startIndex <= codePoints.length - markerCodePoints.length;
+    startIndex += 1
+  ) {
+    if (
+      markerCodePoints.every(
+        (codePoint, markerIndex) =>
+          codePoints[startIndex + markerIndex] === codePoint,
+      )
+    ) {
+      return startIndex;
+    }
+  }
+  return -1;
+}
+
+function frameLaneAt(
+  frameDump: FrameDump,
+  marker: string,
+  markerCellOffset: number,
+  lane: 'fg' | 'bg',
+): string {
+  for (const row of frameDump.rows) {
+    const markerStart = codePointSequenceStart(
+      Array.from(row.text),
+      Array.from(marker),
+    );
+    if (markerStart >= 0) {
+      return row[lane][markerStart + markerCellOffset] ?? 'missing';
+    }
+  }
+  return 'marker-missing';
+}
+
+function requireChildColorMatrix(
+  frameDump: FrameDump,
+  observationName: string,
+): void {
+  const ansiColors = [
+    '0,0,0,255',
+    '128,0,0,255',
+    '0,128,0,255',
+    '128,128,0,255',
+    '0,0,128,255',
+    '128,0,128,255',
+    '0,128,128,255',
+    '192,192,192,255',
+    '128,128,128,255',
+    '255,0,0,255',
+    '0,255,0,255',
+    '255,255,0,255',
+    '0,0,255,255',
+    '255,0,255,255',
+    '0,255,255,255',
+    '255,255,255,255',
+  ];
+  for (let colorIndex = 0; colorIndex < ansiColors.length; colorIndex += 1) {
+    HarnessSmoke.Class.requireCondition(
+      frameLaneAt(frameDump, 'FG16-0123456789ABCDEF', 5 + colorIndex, 'fg') ===
+        ansiColors[colorIndex],
+      `${observationName} keeps ANSI foreground ${colorIndex} exact`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      frameLaneAt(frameDump, 'BG16-0123456789ABCDEF', 5 + colorIndex, 'bg') ===
+        ansiColors[colorIndex],
+      `${observationName} keeps ANSI background ${colorIndex} exact`,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'DEFAULT-D', 8, 'fg') === '192,192,192,255' &&
+      frameLaneAt(frameDump, 'DEFAULT-D', 8, 'bg') === '0,0,0,255',
+    `${observationName} keeps terminal-profile default foreground and background exact`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'INDEX-I', 6, 'fg') === '255,0,0,255' &&
+      frameLaneAt(frameDump, 'INDEX-I', 6, 'bg') === '0,0,255,255',
+    `${observationName} keeps 256-color foreground and background exact`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    frameLaneAt(frameDump, 'TRUE-T', 5, 'fg') === '18,52,86,255' &&
+      frameLaneAt(frameDump, 'TRUE-T', 5, 'bg') === '101,67,33,255',
+    `${observationName} keeps truecolor foreground and background exact`,
+  );
+}
+
+async function selectSettingByVisibleLabel(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  settingLabel: string,
+): Promise<void> {
+  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the selected settings label is published before navigation',
+    (status) => typeof status.settingsSelectedLabel === 'string',
+  );
+  for (let navigationStep = 0; navigationStep < 40; navigationStep += 1) {
+    if (selectionStatus.settingsSelectedLabel === settingLabel) break;
+    const previousSelectedLabel = selectionStatus.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `settings navigation advances toward ${settingLabel}`,
+      (status) => status.settingsSelectedLabel !== previousSelectedLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    selectionStatus.settingsSelectedLabel === settingLabel,
+    `${settingLabel} is discovered by its live settings label`,
+  );
+}
+
 async function observeTerminalScrollStateRemainsUnchangedFor(
   statusPath: string,
   expectedScrollTop: number,
@@ -165,6 +301,8 @@ const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-harness-home-'));
 
 const statusPath = join(homeDirectory, 'status.json');
 
+const framePath = join(homeDirectory, 'frame.json');
+
 const childClickInputPath = join(homeDirectory, 'click-input.bin');
 
 const childWheelInputPath = join(homeDirectory, 'wheel-input.bin');
@@ -172,6 +310,16 @@ const childWheelInputPath = join(homeDirectory, 'wheel-input.bin');
 const childMouseOffInputPath = join(homeDirectory, 'mouse-off-input.bin');
 
 const childScriptPath = join(homeDirectory, 'child-io-fixture.py');
+
+const foregroundColorFixture = Array.from({ length: 16 }, (_, colorIndex) => {
+  const ansiCode = colorIndex < 8 ? 30 + colorIndex : 90 + (colorIndex - 8);
+  return `\x1b[${ansiCode}m${colorIndex.toString(16).toUpperCase()}`;
+}).join('');
+
+const backgroundColorFixture = Array.from({ length: 16 }, (_, colorIndex) => {
+  const ansiCode = colorIndex < 8 ? 40 + colorIndex : 100 + (colorIndex - 8);
+  return `\x1b[${ansiCode}m${colorIndex.toString(16).toUpperCase()}`;
+}).join('');
 
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
 
@@ -193,7 +341,13 @@ await Bun.write(
     'tty.setraw(sys.stdin.fileno())',
     'try:',
     "    if sys.argv[1] == 'mouse-on':",
-    "        os.write(sys.stdout.fileno(), b'\\x1b[?1000h\\x1b[?1006h\\x1b[?1049h\\x1b[HMOUSE-TARGET\\r\\nCHILD-MODE-READY')",
+    "        os.write(sys.stdout.fileno(), b'\\x1b[?1000h\\x1b[?1006h\\x1b[?1049h\\x1b[HMOUSE-TARGET\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'DEFAULT-D\\r\\n')",
+    `        os.write(sys.stdout.fileno(), ${JSON.stringify(`FG16-${foregroundColorFixture}\x1b[0m\r\n`)}.encode('latin1'))`,
+    `        os.write(sys.stdout.fileno(), ${JSON.stringify(`BG16-${backgroundColorFixture}\x1b[0m\r\n`)}.encode('latin1'))`,
+    "        os.write(sys.stdout.fileno(), b'INDEX-\\x1b[38;5;196;48;5;21mI\\x1b[0m\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'TRUE-\\x1b[38;2;18;52;86;48;2;101;67;33mT\\x1b[0m\\r\\n')",
+    "        os.write(sys.stdout.fileno(), b'CHILD-MODE-READY')",
     "        click = b''",
     "        while not click.endswith(b'm'):",
     '            click += os.read(sys.stdin.fileno(), 64)',
@@ -236,6 +390,8 @@ const driver = new PtyTestDriver.Class({
   homeDirectory,
   environment: {
     TUI_STATUS_PATH: statusPath,
+    TUI_FRAME_PATH: framePath,
+    TUI_FRAME_DUMP: '1',
   },
 });
 
@@ -547,6 +703,64 @@ try {
   );
   const mouseTarget = mouseTargetSnapshot.findText('MOUSE-TARGET');
   if (!mouseTarget) throw new Error('The child mouse target disappeared');
+  const darkFrameDump = await awaitFrameDump(
+    framePath,
+    (candidate) => candidate.rows.some((row) => row.text.includes('TRUE-T')),
+    'the child color matrix under the dark theme',
+  );
+  requireChildColorMatrix(darkFrameDump, 'dark theme');
+  const darkStatusBackground =
+    darkFrameDump.rows[darkFrameDump.height - 1]?.bg[10] ?? 'missing';
+  const settingsButtonColumn = driver
+    .snapshot()
+    .rowText(statusBarRow)
+    .lastIndexOf('⚙');
+  HarnessSmoke.Class.requireCondition(
+    settingsButtonColumn >= 0,
+    'the status bar exposes its themed settings affordance',
+  );
+  driver.sendMouseClick({
+    column: settingsButtonColumn,
+    row: statusBarRow,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'settings opens above the running child terminal',
+    (status) => status.settingsOpen === true,
+  );
+  await selectSettingByVisibleLabel(driver, statusPath, 'Theme');
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the live theme setting changes from dark to light',
+    (status) => status.settingsSelectedValue === 'light',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'settings closes over the same running child terminal',
+    (status) => status.settingsOpen === false,
+  );
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('CHILD-MODE-READY') !== null,
+  );
+  const lightFrameDump = await awaitFrameDump(
+    framePath,
+    (candidate) =>
+      candidate.rows.some((row) => row.text.includes('TRUE-T')) &&
+      candidate.rows[candidate.height - 1]?.bg[10] !== darkStatusBackground,
+    'the unchanged child color matrix and changed chrome under the light theme',
+  );
+  requireChildColorMatrix(lightFrameDump, 'live light theme');
+  HarnessSmoke.Class.requireCondition(
+    lightFrameDump.rows[lightFrameDump.height - 1]?.bg[10] !==
+      darkStatusBackground,
+    'live theme switch repaints host status chrome around unchanged child cells',
+  );
   const childModeStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

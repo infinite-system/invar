@@ -6,6 +6,7 @@
 //
 // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/ui/ui.invariants.md)
 // invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
+// invariant: Pane chrome and child cells keep separate authority (src/modules/terminal/terminal.invariants.md)
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { Palette } from '../theme/ThemePalettes';
@@ -14,6 +15,14 @@ import type { TerminalInstance } from './TerminalInstance';
 import type { TerminalCell } from './TerminalEmulator';
 
 class $TerminalPaneRenderer {
+  protected static get DEFAULT_FOREGROUND(): string {
+    return '#c0c0c0';
+  }
+
+  protected static get DEFAULT_BACKGROUND(): string {
+    return '#000000';
+  }
+
   // The 16 standard ANSI palette colors (0–15) as hex. 256-color indices 16–255 are computed from the
   // 6×6×6 cube and the grayscale ramp — the standard xterm mapping — so real terminal colors render.
   protected static get $ansiPalette(): readonly string[] {
@@ -61,20 +70,17 @@ class $TerminalPaneRenderer {
   }
 
   /** The cell's foreground color as a hex string, honoring RGB / palette / default. */
-  protected static foregroundHex(cell: TerminalCell, palette: Palette): string {
+  protected static foregroundHex(cell: TerminalCell): string {
     if (cell.isForegroundRgb) return this.rgbToHex(cell.foreground);
     if (cell.isForegroundPalette) return this.paletteToHex(cell.foreground);
-    return palette.fg;
+    return this.DEFAULT_FOREGROUND;
   }
 
-  /** The cell's background color as a hex string, or null when it is the default panel background. */
-  protected static backgroundHex(
-    cell: TerminalCell,
-    panelBackground: string,
-  ): string | null {
+  /** The cell's background color as a hex string, honoring RGB / palette / default. */
+  protected static backgroundHex(cell: TerminalCell): string {
     if (cell.isBackgroundRgb) return this.rgbToHex(cell.background);
     if (cell.isBackgroundPalette) return this.paletteToHex(cell.background);
-    return panelBackground;
+    return this.DEFAULT_BACKGROUND;
   }
 
   protected static styleKey(cell: TerminalCell, selected: boolean): string {
@@ -87,18 +93,17 @@ class $TerminalPaneRenderer {
     palette: Palette,
     selected: boolean,
   ): TextChunk {
-    let foreground = this.foregroundHex(cell, palette);
-    let background = this.backgroundHex(cell, palette.panel);
+    let foreground = this.foregroundHex(cell);
+    let background = this.backgroundHex(cell);
     if (cell.isInverse) {
-      const swap = background ?? palette.panel;
+      const swap = background;
       background = foreground;
       foreground = swap;
     }
     if (selected) background = palette.selection;
     let chunk = fg(foreground)(text);
     if (cell.isBold) chunk = bold(chunk);
-    if (background && background !== palette.panel)
-      chunk = bg(background)(chunk);
+    chunk = bg(background)(chunk);
     return chunk;
   }
 

@@ -6,6 +6,8 @@
 // The clickBytes line is "none" when Invar swallowed the click. Otherwise it prints the exact SGR
 // bytes. Each color line prints FrameProbe's four RGBA lanes for one child cell. Matching default
 // and theme-derived lanes show that Invar re-themed the child. ANSI and truecolor provide controls.
+// After the fix, default foreground is 192,192,192,255 and default background is 0,0,0,255 at
+// every geometry, matching the terminal profile rather than either Invar theme.
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

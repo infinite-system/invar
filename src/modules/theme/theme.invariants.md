@@ -110,15 +110,17 @@ scripts/harness/smoke-pixel-preview-harness.ts`
 
 ### Appearance comes only from theme data
 
-**Invariant:** If a rendered cell carries a color or glyph, then that value was read from the
-active theme (a `Palette` field or a semantic `GlyphSlot` / `SymbolClass` / `ActionIconSet` /
+**Invariant:** If a host-owned rendered cell carries a color or glyph, then that value was read from
+the active theme (a `Palette` field or a semantic `GlyphSlot` / `SymbolClass` / `ActionIconSet` /
 `CheckboxIconSet` entry resolved through `Theme.Class`), never written as a literal hex or glyph at
-the drawing site — the `theme` module is the single source of appearance.
+the drawing site — the `theme` module is the single source of host appearance.
 
 **Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations, including
 activity-bar, panel-heading, and editor-fold control glyphs and the file-type marks the file tree and
-the breadcrumb popup share. The sole home for color and glyph literals is `src/modules/theme`;
-consumers pull tokens or name semantic slots, they do not mint appearance.
+the breadcrumb popup share. Child terminal cells are outside this authority and follow
+[*Pane chrome and child cells keep separate authority*](../terminal/terminal.invariants.md#pane-chrome-and-child-cells-keep-separate-authority).
+The sole home for host color and glyph literals is `src/modules/theme`; host consumers pull tokens or
+name semantic slots, they do not mint appearance.
 
 **Mechanism:** `Theme` exposes `palette`, `symbolMarks`, `actionIcons`, `checkboxIcons`,
 `symbolMark()`, and `icon()` as plain getters that re-derive from `PALETTES` and the mark table on
@@ -139,16 +141,18 @@ restating a table; `ThemeIcons.test.ts` verifies the semantic slot ladder. The o
 `src/modules/ui/TabBarRenderer.ts`, which writes the dirty/active tab marker `●` as a literal instead
 of naming a slot.
 
-**Impossible if true:** A rendering component outside `src/modules/theme` naming a `#rrggbb`
+**Impossible if true:** A host rendering component outside `src/modules/theme` naming a `#rrggbb`
 color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a
-vocabulary swap requiring edits to activity switching or heading-control actions.
+vocabulary swap requiring edits to activity switching or heading-control actions; a host theme
+change recoloring a child terminal cell.
 
-**Verification:** `grep -rnE "#[0-9a-fA-F]{6}" src --include=*.ts | grep -v modules/theme` returns
-no drawing-site literal; `bun test src/modules/theme src/modules/ui/PanelHeading.test.ts`.
+**Verification:** Audit hard-coded colors outside `src/modules/theme` and the terminal profile
+exception in `TerminalPaneRenderer`; `bun test src/modules/theme
+src/modules/ui/PanelHeading.test.ts`; `bun scripts/harness/smoke-terminal-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### One table resolves every symbol mark
 
