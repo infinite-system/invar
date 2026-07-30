@@ -7,10 +7,10 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
+- #313 child-owns-its-io-bundle  [building]
+  `tmux attach -t invar/313-child-owns-its-io-bundle`
 - #311 [vue-sfc-integration-map](.invar/tasks/in-progress/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md)  [building]
   `tmux attach -t invar/311-vue-sfc-integration-map`
-- #305 [unknown-task-variables-pass-through](.invar/tasks/in-progress/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md)  [building]
-  `tmux attach -t invar/305-unknown-task-variables-pass-through`
 - #300 eight-ui-nitpicks-bundled  [building]
   `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
@@ -85,15 +85,23 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (6) — stamp Priority: into these task files
+## NO PRIORITY GROUP (13) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #308 [308-markdown-view-only-mode-persistent](.invar/tasks/active/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
 - #310 [310-markdown-title-blue-like-subtitles](.invar/tasks/active/310-markdown-title-blue-like-subtitles/task-310-markdown-title-blue-like-subtitles.md)
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
+- #313 [313-terminal-mouse-passthrough-to-child-apps](.invar/tasks/active/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md)
+- #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
+- #315 [315-terminal-child-colors-must-not-be-themed](.invar/tasks/active/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md)
+- #316 [316-terminal-list-close-icon-matches-tabs](.invar/tasks/active/316-terminal-list-close-icon-matches-tabs/task-316-terminal-list-close-icon-matches-tabs.md)
+- #317 [317-bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/active/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)
+- #318 [318-markdown-code-fence-uniform-background](.invar/tasks/active/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md)
+- #319 [319-tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/active/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)
 
-## RECENTLY COMPLETED (last 15 of 79 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 80 — full log: project.tasks-completed.md)
+- #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
 - #296 [per-workspace-terminal-worlds](.invar/tasks/completed/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md) — 55772cef — per-workspace terminal worlds: panel content sets isolate + restore per workspace
@@ -108,4 +116,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
 - #285 [preview-last-body-row-hit-test](.invar/tasks/completed/285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) — 5d9f0a1a — Preview last-row hit test: #289's seam change confirmed as generator fix by red control; workaround removed; boundary gated; deep-hover stall filed #293
 - #284 [scrollbar-theme-captured-at-construction](.invar/tasks/completed/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md) — 29d815ea — Scrollbar colours follow the live theme: derive-per-frame at the shared painter, census clean, two-scale switch contract
-- #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
