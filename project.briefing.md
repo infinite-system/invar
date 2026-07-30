@@ -359,3 +359,51 @@ report for the user's morning: what landed (hashes), what remains (why),
 bycatch filed. Do NOT invent new experiments — the queue IS the goal.
 Twin conductor 3541394: if still alive and committing, note collisions,
 never fight it — user decides in the morning.
+
+## RESUME ANCHOR 17 (2026-07-30 03:5x, pre-compact CHECKPOINT)
+
+Overnight autonomous run. Stop hooks active: drain the queue, cap 3 agents,
+no user questions. Morning report with hashes when drained.
+
+### Lanes (3 live tmux sessions, AGENT_TMUX_PREFIX="invar/")
+- 326-stage-two — codex sol MEDIUM, manual lane (branch fleet/326-stage-two,
+  worktree .invar/worktrees/326-stage-two). Stage-2 execute per
+  brief-326-2-stage-two-execute.md. fleet-watch may not auto-key this
+  nonstandard lane; check its tmux + worktree on every wake.
+- 342-tasks-json-panes-fail-to-load — READY DELIVERED. Report = NEGATIVE
+  diagnosis (all 4 rivals rejected; smoke ratchet added, no product code).
+  Commit 60810aa9 on fleet/342-…. NEXT ACTION: extract-gate-verdict.sh 342
+  tasks-json-panes-fail-to-load → land via land.sh (bycatch: none stated —
+  re-read the report ## Bycatch before landing). After landing: lane FREES.
+- 351-quick-open-search-bar-vanishes-list-corrupts — codex sol HIGH, still
+  building (recent writes).
+
+### Fleet mix (user, final directive)
+2x codex gpt-5.6-sol MEDIUM + 1x claude OPUS MEDIUM. #350 pre-marked
+Engine: claude / Model: opus-5 / Effort: medium — it is the NEXT dispatch
+when a lane frees (becomes the opus lane). dispatch.sh transmits flags.
+
+### Queue (front first)
+350 (opus lane) → 343 → 344 → 345 → 346 (needs 342) → 347 → 348 → 349 →
+352 → 341 (unblocked, #340 landed) → 337 (promoted, gate-taxing red).
+
+### Landing ritual
+bash scripts/fleet/extract-gate-verdict.sh <n> <slug>  (self-test on first
+use each session) → GATE_LOG=tmp/gate-verdict-<n>.log BYCATCH_TRIAGED=1
+bash scripts/fleet/land.sh <n> <slug> tmp/merge-msg-<n>.md "<summary>".
+Pre-existing red classes for GATE_OVERRIDE: #214 panel-chrome, #337
+structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
+
+### Watchers to re-arm on resume (crons stay DISARMED, user order 740c5d81)
+1. Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+2. ScheduleWakeup ~1800s overnight-loop fallback (re-arm while queue
+   non-empty; stop when drained).
+
+### Hazards
+- NEVER drive the app with this repo as opened workspace while real
+  .invar/tasks.json present (spawns real aws-vault/claude). #342 work was
+  fixture-only by design.
+- Twin conductor pid 3541394 (old ibr session) may still commit; never
+  kill without user word; duplicate #338 folder retires after its death.
+- Builders misread "do not run merge-gate.sh" as SKIP_GATE license; briefs
+  must say: let the commit hook run the gate.
