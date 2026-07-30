@@ -62,12 +62,29 @@ class $Drive {
           (status.structureStatus === 'no-document' ||
             status.structureStatus === 'loading') &&
           (status.structureStatus === 'loading' ||
-            (status.primaryDockVisible === true &&
-              status.sidebarView === 'structure') ||
-            (status.rightDockVisible === true &&
-              status.rightDockActiveContent === 'structure')),
+            this.structureProjectionIsVisible(status)),
+      },
+      {
+        pendingName: 'structure pane has not painted the active file',
+        isPending: (status, snapshot) =>
+          Boolean(status.activeBuffer) &&
+          this.structureProjectionIsVisible(status) &&
+          status.structureStatus !== 'no-document' &&
+          snapshot !== undefined &&
+          snapshot.findText('No file is open.') !== null,
       },
     ]);
+  }
+
+  protected static structureProjectionIsVisible(
+    status: Readonly<Record<string, unknown>>,
+  ): boolean {
+    return (
+      (status.primaryDockVisible === true &&
+        status.sidebarView === 'structure') ||
+      (status.rightDockVisible === true &&
+        status.rightDockActiveContent === 'structure')
+    );
   }
 
   static async main(argumentsList: readonly string[]): Promise<void> {
@@ -490,14 +507,14 @@ class $Drive {
   ): Promise<void> {
     await driver.awaitGridCondition(
       'the application and the drive quiescence registry to settle',
-      () => {
+      (snapshot) => {
         try {
           const status = HarnessSmoke.Class.readStatus(statusPath);
           return (
             status.ready === true &&
             status.renderQuiescent === true &&
             Boolean(status.activeWorkspace) &&
-            this.pendingSettledStatusNames(status).length === 0
+            this.pendingSettledStatusNames(status, snapshot).length === 0
           );
         } catch {
           return false;
@@ -509,9 +526,10 @@ class $Drive {
 
   protected static pendingSettledStatusNames(
     status: Readonly<Record<string, unknown>>,
+    snapshot?: HarnessSnapshot.Model,
   ): readonly string[] {
     return this.$settledStatusRules
-      .filter((rule) => rule.isPending(status))
+      .filter((rule) => rule.isPending(status, snapshot))
       .map((rule) => rule.pendingName);
   }
 
@@ -918,7 +936,10 @@ interface DriveOptions {
 
 interface DriveSettledStatusRule {
   readonly pendingName: string;
-  readonly isPending: (status: Readonly<Record<string, unknown>>) => boolean;
+  readonly isPending: (
+    status: Readonly<Record<string, unknown>>,
+    snapshot?: HarnessSnapshot.Model,
+  ) => boolean;
 }
 
 type DriveAction =

@@ -51,8 +51,9 @@ class TestDrive extends Drive.$Class {
 
   static pendingStatusNames(
     status: Readonly<Record<string, unknown>>,
+    snapshot?: HarnessSnapshot.Model,
   ): readonly string[] {
-    return this.pendingSettledStatusNames(status);
+    return this.pendingSettledStatusNames(status, snapshot);
   }
 
   static async performParsedAction(
@@ -299,6 +300,27 @@ describe('Drive settled observations', () => {
         structureStatus: 'loading',
       }),
     ).toEqual(['structureStatus has not refreshed the active file']);
+  });
+
+  test('holds ready structure status until the active file paints', async () => {
+    const staleSnapshot = await snapshotForRows(['No file is open.']);
+    const paintedSnapshot = await snapshotForRows([
+      '⌄ ▤ Orchestration Lessons',
+    ]);
+    const readyStatus = {
+      activeBuffer: '/tmp/project.conductor.archive.md',
+      rightDockActiveContent: 'structure',
+      rightDockVisible: true,
+      structureRows: 110,
+      structureStatus: 'ready',
+    };
+
+    expect(TestDrive.pendingStatusNames(readyStatus, staleSnapshot)).toEqual([
+      'structure pane has not painted the active file',
+    ]);
+    expect(TestDrive.pendingStatusNames(readyStatus, paintedSnapshot)).toEqual(
+      [],
+    );
   });
 
   test('prints a large Markdown file only after preview and structure work settle', async () => {
