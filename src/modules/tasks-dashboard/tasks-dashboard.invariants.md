@@ -55,27 +55,33 @@ from anything but the current folder read.
 **Invariant:** If no live task motion and no running gate is visible, then a motion tick causes
 no paint; if the pane itself is hidden, then it has no task-tree read, data timer, or motion
 timer. While visible,
-building, exploring, and gate motion use the exact exported CLI watch ramps and glyph frames.
+building, exploring, and gate motion use the exact exported CLI watch ramps and glyph frames,
+and they step on the exported wall-clock cadence, so the pane and the CLI watch show the same
+motion step at the same moment however often either repaints.
 
 **Scope:** `TasksDashboardOverview` clocks and `TasksDashboardPaneRenderer` motion paint.
 
 **Mechanism:** The pane starts and stops both ivue-owned intervals from the dock's observed ref.
 The motion tick advances only when a visible row or gate needs it. The renderer indexes the
-tables exported by `scripts/tasks/tasks-status.ts`.
+tables exported by `scripts/tasks/tasks-status.ts` at the step
+`tasksMotionStepAtElapsed(elapsedMilliseconds)` returns. The step is a pure function of elapsed
+time, never of a paint ordinal: a paint count made motion SPEED a hostage of the frame rate,
+which ran the CLI watch ten times too fast at 60 fps (#348).
 
-**Evidence:** `src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`startObservation`);
-`src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts`; and
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`startObservation`,
+`animationElapsedMilliseconds`); `src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts`;
+`scripts/tasks/tasks-status.ts` (`tasksMotionStepAtElapsed`); and
 `src/modules/tasks-dashboard/TasksDashboardOverview.test.ts`.
 
 **Impossible if true:** A hidden dashboard timer; a held READY row that repaints; a pane-local
-copy of a watch ramp or glyph sequence.
+copy of a watch ramp or glyph sequence; a motion step derived from a frame or paint ordinal.
 
 **Verification:** `bun test src/modules/tasks-dashboard` and the motion arm of
 `bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Fleet extras name their repository scope
 
@@ -137,10 +143,11 @@ focus; turning the setting off hiding a dock the reader opened.
 **Invariant:** If the dashboard needs a task fact, then it obtains it by importing the exported
 readers of `scripts/tasks/tasks-status.ts` — `readTaskRecords`, `builderStanding`,
 `startedAtMilliseconds`, `landingStamp`, `completedStateAttachment`, `agentIdentity`,
-`formatDuration`, `PRIORITY_ORDER`, `tasksTreeStamp`, the fleet-fact readers, and the exported
-motion tables — and it re-implements no reader or watch vocabulary: no second folder parser, no
-second readiness rule, no second duration formula, and no copied colour or glyph ramp. The pane
-adds only what a terminal cannot: ivue reactivity, selection, and opening files.
+`formatDuration`, `PRIORITY_ORDER`, `tasksTreeStamp`, the fleet-fact readers, the exported
+motion tables, and the exported motion cadence (`tasksMotionStepAtElapsed`) — and it
+re-implements no reader or watch vocabulary: no second folder parser, no second readiness rule,
+no second duration formula, no copied colour or glyph ramp, and no second motion cadence. The
+pane adds only what a terminal cannot: ivue reactivity, selection, and opening files.
 
 **Scope:** All of `src/modules/tasks-dashboard/`. The readers themselves live with the CLI in
 `scripts/tasks/tasks-status.ts`, whose entry point is guarded by `import.meta.main` so importing
@@ -177,7 +184,7 @@ comparison, or a duration formatter defined inside `src/modules/tasks-dashboard/
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### The tasks dashboard is a pane content citizen
 

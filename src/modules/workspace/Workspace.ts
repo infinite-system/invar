@@ -724,7 +724,13 @@ class $Workspace {
    *  confinement: strip a fragment or query, reject any `scheme:` URL and any malformed escape, then
    *  try the reference against the workspace root and against the active document's directory,
    *  keeping only a target that exists, is not a directory, and stays inside the root. Nothing here
-   *  knows what produced the reference; rendered documents are simply its first caller. */
+   *  knows what produced the reference; rendered documents are simply its first caller.
+   *
+   *  The WORKSPACE ROOT is the only confinement boundary. A reference beside the document resolves
+   *  from the document's own directory and may walk UP out of it — `../../../../project.invariants.md`
+   *  from a task folder is the ordinary authored form in this repository. Confining the
+   *  document-relative candidate to the document's own directory instead would make every upward
+   *  link unresolvable, which is what painted whole task reports red. */
   resolveFileReference(reference: string): string | null {
     const withoutFragment =
       reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';
@@ -742,7 +748,7 @@ class $Workspace {
     const candidatePaths = [
       Files.Class.confineToRoot(this.root, decodedReference),
       activeDocument
-        ? Files.Class.confineToRoot(
+        ? Files.Class.resolveFrom(
             Files.Class.dirname(activeDocument.path),
             decodedReference,
           )

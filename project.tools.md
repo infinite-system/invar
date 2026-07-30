@@ -16,6 +16,21 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ## The instruments
 
+### [Merge-gate scratch paths](scripts/merge-gate.sh)
+
+`bash scripts/merge-gate.sh --print-scratch-paths` prints the current
+worktree root, its stable failure-log symlink, this
+process's failure directory, and this process's binary build path. The stable
+symlink uses a hash of the absolute worktree path. Concurrent gates in other
+worktrees cannot replace it. Run `bash scripts/merge-gate.sh
+--scratch-path-namespace-self-test` to drive two concurrent worktree
+identities with distinct binary and failure markers. The self-test also
+plants foreign failure and binary markers. These controls prove both
+isolation checks can fail.
+
+USE IT WHEN: a gate is red and you need this worktree's full logs, or when
+changing merge-gate scratch paths.
+
 ### `bun .invar/tasks/in-progress/313-child-owns-its-io-bundle/313-child-io-diagnostic-probe.ts [columns] [rows]`
 Real nested-child mouse and color fingerprint through `PtyTestDriver` and FrameProbe. The child
 enables SGR mouse mode, paints default, ANSI, and truecolor controls, and records one real click.

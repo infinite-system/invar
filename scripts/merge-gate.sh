@@ -13,11 +13,39 @@
 #
 # Usage: bash scripts/merge-gate.sh                 (run everything)
 #        bash scripts/merge-gate.sh --dependency-preflight
+#        bash scripts/merge-gate.sh --print-scratch-paths
 #        FAST=1 bash scripts/merge-gate.sh          (skip the multi-launch smokes; conventions + contracts + meta only)
 set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
+
+set_gate_scratch_paths() {
+  local scratch_base_directory="$1"
+  local worktree_root="$2"
+  local worktree_path_hash
+  worktree_path_hash="$(
+    printf '%s' "$worktree_root" |
+      git hash-object --stdin |
+      cut -c1-16
+  )"
+  failure_log_stable_path="$scratch_base_directory/merge-gate-failures.$worktree_path_hash"
+  failure_log_directory="${failure_log_stable_path}.$$"
+  binary_build_directory="$scratch_base_directory/merge-gate-binary-build.$worktree_path_hash.$$"
+  binary_build_path="$binary_build_directory/iv"
+}
+
+set_gate_scratch_paths "/tmp" "$ROOT"
+
+case "${1:-}" in
+  --print-scratch-paths)
+    echo "merge-gate: worktree root: $ROOT"
+    echo "merge-gate: stable failure logs: $failure_log_stable_path"
+    echo "merge-gate: this run's failure directory: $failure_log_directory"
+    echo "merge-gate: this run's binary build: $binary_build_path"
+    exit 0
+    ;;
+esac
 
 dependency_preflight_exit_code=3
 required_provider_binary_names=(
@@ -81,8 +109,6 @@ esac
 export PATH="$HOME/.bun/bin:$PATH"
 export INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1
 gate_started_seconds="$(date +%s)"
-failure_log_stable_path="/tmp/merge-gate-failures"
-failure_log_directory="${failure_log_stable_path}.$$"
 
 initialize_failure_log_directory() {
   local displaced_failure_log_path
@@ -266,6 +292,258 @@ run_failure_log_provenance_self_test() {
   rm -rf -- "$provenance_test_directory"
 }
 
+run_scratch_path_namespace_probe() {
+  local probe_binary_content
+  local probe_failure_content
+  local probe_source_log
+  local probe_worktree_root
+  local scratch_probe_base_directory
+
+  probe_worktree_root="$(
+    printf '%s' \
+      "${INVAR_MERGE_GATE_SCRATCH_PROBE_WORKTREE_ROOT:-}"
+  )"
+  scratch_probe_base_directory="$(
+    printf '%s' \
+      "${INVAR_MERGE_GATE_SCRATCH_PROBE_BASE_DIRECTORY:-}"
+  )"
+  probe_binary_content="$(
+    printf '%s' \
+      "${INVAR_MERGE_GATE_SCRATCH_PROBE_BINARY_CONTENT:-}"
+  )"
+  probe_failure_content="$(
+    printf '%s' \
+      "${INVAR_MERGE_GATE_SCRATCH_PROBE_FAILURE_CONTENT:-}"
+  )"
+  if [ -z "$probe_worktree_root" ] ||
+    [ -z "$scratch_probe_base_directory" ] ||
+    [ -z "$probe_binary_content" ] ||
+    [ -z "$probe_failure_content" ]
+  then
+    echo "merge-gate: scratch-path probe inputs are incomplete." >&2
+    echo "Set its worktree, base directory, binary marker, and failure marker." >&2
+    return 2
+  fi
+
+  set_gate_scratch_paths \
+    "$scratch_probe_base_directory" \
+    "$probe_worktree_root"
+  probe_source_log="$scratch_probe_base_directory/probe-source.$$"
+  if ! initialize_failure_log_directory; then return 2; fi
+  if ! mkdir "$binary_build_directory"; then
+    echo "merge-gate: scratch-path probe cannot create its binary directory:" >&2
+    echo "  $binary_build_directory" >&2
+    return 2
+  fi
+  printf '%s\n' "$probe_binary_content" >"$binary_build_path"
+  printf '%s\n' "$probe_failure_content" >"$probe_source_log"
+  if ! preserve_failure_log \
+    "scratch-path-probe-failure.log" \
+    "$probe_source_log"
+  then
+    rm -f "$probe_source_log"
+    return 2
+  fi
+  rm -f "$probe_source_log"
+
+  echo "WORKTREE_ROOT=$probe_worktree_root"
+  echo "FAILURE_LOG_STABLE_PATH=$failure_log_stable_path"
+  echo "FAILURE_LOG_DIRECTORY=$failure_log_directory"
+  echo "BINARY_BUILD_PATH=$binary_build_path"
+}
+
+scratch_path_probe_value() {
+  local field_name="$1"
+  local probe_output_path="$2"
+  sed -n "s/^${field_name}=//p" "$probe_output_path"
+}
+
+run_scratch_path_namespace_self_test() {
+  local concurrent_first_binary_path
+  local concurrent_first_failure_directory
+  local concurrent_first_probe_exit_code
+  local concurrent_first_probe_output
+  local concurrent_first_probe_process_id
+  local concurrent_first_stable_path
+  local concurrent_second_binary_path
+  local concurrent_second_failure_directory
+  local concurrent_second_probe_exit_code
+  local concurrent_second_probe_output
+  local concurrent_second_probe_process_id
+  local concurrent_second_stable_path
+  local first_failure_marker="first-worktree-planted-failure"
+  local namespace_test_directory
+  local second_failure_marker="second-worktree-clean-run"
+  local single_binary_path
+  local single_failure_directory
+  local single_probe_output
+  local single_stable_path
+
+  namespace_test_directory="$(
+    mktemp -d /tmp/merge-gate-scratch-namespace.XXXXXX
+  )"
+  concurrent_first_probe_output="$namespace_test_directory/first-probe.out"
+  concurrent_second_probe_output="$namespace_test_directory/second-probe.out"
+  single_probe_output="$namespace_test_directory/single-probe.out"
+  mkdir -p \
+    "$namespace_test_directory/worktrees/first" \
+    "$namespace_test_directory/worktrees/second" \
+    "$namespace_test_directory/worktrees/single"
+
+  INVAR_MERGE_GATE_SCRATCH_PROBE_WORKTREE_ROOT="$namespace_test_directory/worktrees/first" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_BASE_DIRECTORY="$namespace_test_directory" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_BINARY_CONTENT="first-worktree-binary" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_FAILURE_CONTENT="$first_failure_marker" \
+    bash "$ROOT/scripts/merge-gate.sh" --scratch-path-namespace-probe \
+    >"$concurrent_first_probe_output" 2>&1 &
+  concurrent_first_probe_process_id=$!
+  INVAR_MERGE_GATE_SCRATCH_PROBE_WORKTREE_ROOT="$namespace_test_directory/worktrees/second" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_BASE_DIRECTORY="$namespace_test_directory" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_BINARY_CONTENT="second-worktree-binary" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_FAILURE_CONTENT="$second_failure_marker" \
+    bash "$ROOT/scripts/merge-gate.sh" --scratch-path-namespace-probe \
+    >"$concurrent_second_probe_output" 2>&1 &
+  concurrent_second_probe_process_id=$!
+
+  wait "$concurrent_first_probe_process_id"
+  concurrent_first_probe_exit_code=$?
+  wait "$concurrent_second_probe_process_id"
+  concurrent_second_probe_exit_code=$?
+  concurrent_first_stable_path="$(
+    scratch_path_probe_value \
+      "FAILURE_LOG_STABLE_PATH" \
+      "$concurrent_first_probe_output"
+  )"
+  concurrent_first_failure_directory="$(
+    scratch_path_probe_value \
+      "FAILURE_LOG_DIRECTORY" \
+      "$concurrent_first_probe_output"
+  )"
+  concurrent_first_binary_path="$(
+    scratch_path_probe_value \
+      "BINARY_BUILD_PATH" \
+      "$concurrent_first_probe_output"
+  )"
+  concurrent_second_stable_path="$(
+    scratch_path_probe_value \
+      "FAILURE_LOG_STABLE_PATH" \
+      "$concurrent_second_probe_output"
+  )"
+  concurrent_second_failure_directory="$(
+    scratch_path_probe_value \
+      "FAILURE_LOG_DIRECTORY" \
+      "$concurrent_second_probe_output"
+  )"
+  concurrent_second_binary_path="$(
+    scratch_path_probe_value \
+      "BINARY_BUILD_PATH" \
+      "$concurrent_second_probe_output"
+  )"
+
+  if [ "$concurrent_first_probe_exit_code" -ne 0 ] ||
+    [ "$concurrent_second_probe_exit_code" -ne 0 ] ||
+    [ -z "$concurrent_first_stable_path" ] ||
+    [ -z "$concurrent_second_stable_path" ] ||
+    [ "$concurrent_first_stable_path" = "$concurrent_second_stable_path" ] ||
+    [ "$concurrent_first_failure_directory" = "$concurrent_second_failure_directory" ] ||
+    [ "$concurrent_first_binary_path" = "$concurrent_second_binary_path" ] ||
+    [ "$(
+      readlink -f "$concurrent_first_stable_path" 2>/dev/null || true
+    )" != "$concurrent_first_failure_directory" ] ||
+    [ "$(
+      readlink -f "$concurrent_second_stable_path" 2>/dev/null || true
+    )" != "$concurrent_second_failure_directory" ] ||
+    [ "$(
+      cat "$concurrent_first_stable_path/scratch-path-probe-failure.log" \
+        2>/dev/null || true
+    )" != "$first_failure_marker" ] ||
+    [ "$(
+      cat "$concurrent_second_stable_path/scratch-path-probe-failure.log" \
+        2>/dev/null || true
+    )" != "$second_failure_marker" ] ||
+    [ "$(
+      cat "$concurrent_first_binary_path" 2>/dev/null || true
+    )" != "first-worktree-binary" ] ||
+    [ "$(
+      cat "$concurrent_second_binary_path" 2>/dev/null || true
+    )" != "second-worktree-binary" ] ||
+    grep -RFq "$first_failure_marker" "$concurrent_second_failure_directory"
+  then
+    echo "scratch-path namespace self-test: FAIL concurrent worktree isolation" >&2
+    echo "  artifacts: $namespace_test_directory" >&2
+    echo "  first probe exit: $concurrent_first_probe_exit_code" >&2
+    echo "  second probe exit: $concurrent_second_probe_exit_code" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$first_failure_marker" \
+    >"$concurrent_second_failure_directory/foreign-failure-positive-control.log"
+  if ! grep -RFq \
+    "$first_failure_marker" \
+    "$concurrent_second_failure_directory"
+  then
+    echo "scratch-path namespace self-test: FAIL foreign-failure positive control" >&2
+    echo "  artifacts: $namespace_test_directory" >&2
+    return 1
+  fi
+  rm -f \
+    "$concurrent_second_failure_directory/foreign-failure-positive-control.log"
+  printf '%s\n' "first-worktree-binary" \
+    >"$concurrent_second_binary_path"
+  if [ "$(
+    cat "$concurrent_second_binary_path" 2>/dev/null || true
+  )" = "second-worktree-binary" ]
+  then
+    echo "scratch-path namespace self-test: FAIL foreign-binary positive control" >&2
+    echo "  artifacts: $namespace_test_directory" >&2
+    return 1
+  fi
+  printf '%s\n' "second-worktree-binary" \
+    >"$concurrent_second_binary_path"
+
+  INVAR_MERGE_GATE_SCRATCH_PROBE_WORKTREE_ROOT="$namespace_test_directory/worktrees/single" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_BASE_DIRECTORY="$namespace_test_directory" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_BINARY_CONTENT="single-worktree-binary" \
+    INVAR_MERGE_GATE_SCRATCH_PROBE_FAILURE_CONTENT="single-worktree-failure" \
+    bash "$ROOT/scripts/merge-gate.sh" --scratch-path-namespace-probe \
+    >"$single_probe_output" 2>&1
+  single_stable_path="$(
+    scratch_path_probe_value \
+      "FAILURE_LOG_STABLE_PATH" \
+      "$single_probe_output"
+  )"
+  single_failure_directory="$(
+    scratch_path_probe_value \
+      "FAILURE_LOG_DIRECTORY" \
+      "$single_probe_output"
+  )"
+  single_binary_path="$(
+    scratch_path_probe_value \
+      "BINARY_BUILD_PATH" \
+      "$single_probe_output"
+  )"
+  if [ "$(
+    readlink -f "$single_stable_path" 2>/dev/null || true
+  )" != "$single_failure_directory" ] ||
+    [ "$(
+      cat "$single_stable_path/scratch-path-probe-failure.log" \
+        2>/dev/null || true
+    )" != "single-worktree-failure" ] ||
+    [ "$(
+      cat "$single_binary_path" 2>/dev/null || true
+    )" != "single-worktree-binary" ]
+  then
+    echo "scratch-path namespace self-test: FAIL single-worktree discovery" >&2
+    echo "  artifacts: $namespace_test_directory" >&2
+    return 1
+  fi
+
+  echo "scratch-path namespace self-test: concurrent worktrees kept distinct failure logs and binaries"
+  echo "scratch-path namespace self-test: foreign failure and binary detectors passed both polarities"
+  echo "scratch-path namespace self-test: one worktree resolved its stable failure path"
+  rm -rf -- "$namespace_test_directory"
+}
+
 case "${1:-}" in
   --failure-log-provenance-probe)
     run_failure_log_provenance_probe
@@ -277,6 +555,16 @@ case "${1:-}" in
     provenance_self_test_exit_code=$?
     exit "$provenance_self_test_exit_code"
     ;;
+  --scratch-path-namespace-probe)
+    run_scratch_path_namespace_probe
+    scratch_path_namespace_probe_exit_code=$?
+    exit "$scratch_path_namespace_probe_exit_code"
+    ;;
+  --scratch-path-namespace-self-test)
+    run_scratch_path_namespace_self_test
+    scratch_path_namespace_self_test_exit_code=$?
+    exit "$scratch_path_namespace_self_test_exit_code"
+    ;;
 esac
 
 # THE GATE PUBLISHES ITS OWN PID, so stopping it never requires a process SEARCH. This exists because a
@@ -287,7 +575,7 @@ esac
 # refuse anything it cannot positively identify.
 gate_pid_file="/tmp/merge-gate.$(echo "$ROOT" | tr -c 'a-zA-Z0-9' '-').pid"
 echo "$$" > "$gate_pid_file"
-trap 'rm -f "$gate_pid_file"' EXIT
+trap 'rm -f "$gate_pid_file"; rm -rf -- "$binary_build_directory"' EXIT
 # Hermetic git for the WHOLE gate. When invoked from the pre-commit hook, git exports
 # GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE / … into the environment; any `git` a test, smoke, or
 # fixture spawns would then operate on the PARENT repo instead of its own temp fixture — a
@@ -342,8 +630,8 @@ fail=0
 # on 2026-07-25 (the evidence a red exists to provide). Wiped per gate run, never mid-run.
 # PER-RUN failure directory: two concurrent gates sharing one path would wipe each other's evidence
 # at start, which is the one thing this directory exists to prevent. The stable
-# symlink /tmp/merge-gate-failures always points at the most recent run, so the habit of reading that
-# path still works for a single-gate workflow.
+# per-worktree symlink printed by `--print-scratch-paths` points at this
+# worktree's most recent run.
 if ! initialize_failure_log_directory; then exit 2; fi
 step() {
   local name="$1"; shift
@@ -716,6 +1004,13 @@ validate_smoke_classification() {
 step \
   "failure-log provenance self-test" \
   bash scripts/merge-gate.sh --failure-log-provenance-self-test
+# Two concurrent path probes use distinct worktree roots and plant distinct
+# binary and failure markers. A third probe proves the stable single-worktree
+# discovery path.
+# invariant: Completion is proven not declared (project.invariants.md)
+step \
+  "scratch-path namespace self-test" \
+  bash scripts/merge-gate.sh --scratch-path-namespace-self-test
 # 0b) BOOT CAPABILITY. Assert the runtime property, not the ivue version:
 #     flexible ranges and linked builds are valid, but Static() must cache
 #     get-only $ accessors. Clear the product escape hatch so CI checks its
@@ -759,8 +1054,13 @@ step "unit tests (bun test)" bun test
 # import broke `bun build --compile` while every gate stayed green — tests and
 # tsc do not trace what the binary bundler traces. The shipped artifact must
 # compile on every gate. Output goes to a scratch path so the gate never
-# clobbers a developer's dist/iv.
-step "binary build (bun run build compiles)" bun build --compile --minify --external web-tree-sitter src/main.ts --outfile /tmp/merge-gate-binary-build/iv
+# clobbers a developer's dist/iv or another worktree's concurrent build.
+if ! mkdir "$binary_build_directory"; then
+  echo "merge-gate: cannot create this run's binary build directory:" >&2
+  echo "  $binary_build_directory" >&2
+  exit 2
+fi
+step "binary build (bun run build compiles)" bun build --compile --minify --external web-tree-sitter src/main.ts --outfile "$binary_build_path"
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
 # They remain serial within one gate because they launch a long sequence of
 # applications; their blocking verdicts use state, ordering, and counts.

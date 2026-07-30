@@ -40,6 +40,20 @@ class $TasksWatchRenderer {
     return this.animationFrameValue;
   }
 
+  /**
+   * How long the animation has run, in milliseconds, at the frame now on screen.
+   * This — not the frame ordinal — is what the animated rows are drawn from, so
+   * a change of paint rate changes the SMOOTHNESS of the motion and never its
+   * SPEED (#348).
+   */
+  get animationElapsedMilliseconds(): number {
+    const tasksWatchRendererClass = this
+      .constructor as typeof $TasksWatchRenderer;
+    return tasksWatchRendererClass.animationElapsedMillisecondsAtFrame(
+      this.animationFrameValue,
+    );
+  }
+
   static frame(
     previousLines: readonly string[],
     currentLines: readonly string[],
@@ -80,6 +94,15 @@ class $TasksWatchRenderer {
           this.animationFrameMilliseconds,
       ),
     );
+  }
+
+  /**
+   * The animation time a frame ordinal stands for. Frames are the SAMPLING of
+   * the animation; this converts a sample back to the wall-clock moment it
+   * paints, which is the only quantity the row content may depend on.
+   */
+  static animationElapsedMillisecondsAtFrame(animationFrame: number): number {
+    return animationFrame * this.animationFrameMilliseconds;
   }
 
   protected static synchronizedRows(
@@ -168,7 +191,11 @@ class $TasksWatchRenderer {
     );
     if (dueAnimationFrame > this.animationFrameValue) {
       this.animationFrameValue = dueAnimationFrame;
-      const animationRows = this.animationRowsForFrame(dueAnimationFrame);
+      const animationRows = this.animationRowsForFrame(
+        tasksWatchRendererClass.animationElapsedMillisecondsAtFrame(
+          dueAnimationFrame,
+        ),
+      );
       this.writeFrame(
         TasksWatchRenderer.Class.animationFrameOutput(
           this.previousLines,
@@ -201,7 +228,7 @@ export interface TasksWatchRendererOptions {
 }
 
 export type TasksWatchAnimationRowsForFrame = (
-  animationFrame: number,
+  animationElapsedMilliseconds: number,
 ) => readonly TasksWatchAnimationRow[];
 
 export type TasksWatchScheduleTimer = (

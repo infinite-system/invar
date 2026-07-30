@@ -360,6 +360,37 @@ bycatch filed. Do NOT invent new experiments — the queue IS the goal.
 Twin conductor 3541394: if still alive and committing, note collisions,
 never fight it — user decides in the morning.
 
+## OVERNIGHT DELTA 2 (2026-07-30 03:23)
+
+- TOKEN POLICY (user): codex = sol MEDIUM for all new lanes (dispatch.sh
+  default changed, queued task Effort fields changed, e16dce5c). Quota 66%
+  weekly, expires Aug 5 — be economical, land on first green, no
+  speculative rounds.
+- LANES (3, cap): invar/326-stage-two (MANUAL launch — branch
+  fleet/326-stage-two cut from e16dce5c, worktree .invar/worktrees/326-stage-two,
+  brief brief-326-2-stage-two-execute.md, transcript
+  tmp/transcripts/transcript-codex-5.6-sol-medium-326-stage-two.md; its
+  report lands in the 326 in-progress folder as report-326-stage-two.md;
+  fleet-watch may not auto-key on this nonstandard lane — check it on every
+  wake); invar/342 (tasks.json); invar/351 (quick open).
+- LANDED: #340 (78de90d2, tree reveal). #339 (0d24d168, 8x demo).
+- agent-tmux GOTCHA relearned: verbs take the BARE name with
+  AGENT_TMUX_PREFIX="invar/" env — never the prefixed name.
+- NEW: #352 filed (markdown code-preview side borders still black —
+  incomplete theme conversion). Queue after #351's landing:
+  #350 → #343 → #344 → #345 → #346 → #347 → #348 → #349 → #352 → #341.
+- dispatch.sh CANNOT relaunch an in-progress task (record-exists guard) —
+  the #326 manual sequence above is the workaround; consider a
+  --relaunch flag as future hardening, do not hack the guard.
+
+## OVERNIGHT DELTA 3 (2026-07-30 03:2x): fleet mix
+
+User: run 2x codex gpt-5.6-sol MEDIUM + 1x claude OPUS MEDIUM. Maintain the
+mix as lanes free: whenever no opus lane is live, the next dispatch goes
+opus-5 medium (Engine: claude in the task file — dispatch.sh transmits
+--model opus --effort medium). #350 is pre-marked opus. Claude builders:
+prime per doctrine (they auto-read CLAUDE.md; tell them to load /ivue +
+/invariants; IBR via the system-prompt flags is dispatch.sh's job).
 ## RESUME ANCHOR 17 (2026-07-30 03:5x, pre-compact CHECKPOINT)
 
 Overnight autonomous run. Stop hooks active: drain the queue, cap 3 agents,
@@ -441,3 +472,198 @@ structure-outline timeouts. Doc-only commits: SKIP_GATE=1.
   needs builder idle — wait, retry.
 - Queue: 344 345 346 347 348 349 352 341 356 361 362 353 357 358 363 364
   359 360 (+#326 stage-2 in flight).
+
+### ANCHOR 17 DELTA 3 (05:4x)
+- More landings: #90 21bf9c71 (isolation census + provenance guard;
+  bycatch #365-368), #344 dc30d875 (breadcrumb hover; bycatch #369/#370),
+  #343 68a95c11 (play glyph + LIVE spinner; #371 git-watch flake filed;
+  post-landing spot smokes green). 7 landings this shift.
+- Lanes: 326-stage-two (codex med) · 345 separator glyph (opus med) ·
+  346 panel tab bar ten-point spec (codex med, just dispatched).
+- Queue: 347 348 349 352 341 356 361 362 353 357 358 363-371 tail.
+- Codex-lane report lesson: #343 wrote its report only in the WORKTREE
+  task folder; land.sh refused until the conductor copied it to the main
+  checkout folder. #346 brief now orders absolute-path report delivery.
+
+### ANCHOR 17 DELTA 4 (06:0x)
+- #345 LANDED 085bfca0 (heavy-line centered separator; bycatch #372
+  glyph-tier gap, #373 user-visible border hole with repro). 8 landings.
+- #326 stage-2 READY delivered (signed runtime plugin install + in-place
+  execve relaunch, catalog identity/provenance, atomic selection record).
+  Its one gate run was red on the since-fixed plugin-manifest class +
+  word-delete double timeout (filed #374). Round-3 brief filed + steered:
+  merge main, re-check, re-gate through hook, append chain. Land next.
+- #347 dispatched opus (markdown link resolution rivals + double-click).
+- Lanes: 326 (codex, round-3 merge) · 346 panel tab bar (codex) ·
+  347 (opus). Queue: 348 349 352 341 356 361 + hygiene tail 353-374.
+- land.sh claude-lane note: busy-check accepts idle-unconfirmed for
+  engine=claude in meta.json; transient 'busy' comes from background
+  shells — wait and retry.
+
+### ANCHOR 17 DELTA 5 (06:5x) — #326 endgame state
+- #326 round 4 DONE: Alt+Delete regression FIXED on branch (was the
+  vendor diff, proven 0/3 vs 3/3; #374 reclassified accordingly). Round-5
+  authorization SENT: one SKIP_GATE commit of the staged merge+fix;
+  remaining red accepted as pre-existing #359 (discrimination: main 5/5
+  green standalone, 326 tree 3/4 with one intermittent red — NOT
+  deterministic). Land next with GATE_OVERRIDE citing #359/#214 evidence.
+  A commit-waiter (brvxrlq3j) fires when the builder commits; then:
+  extract nothing (claude-style manual verdict log), land.sh with
+  GATE_OVERRIDE, convert any new bycatch first.
+- #350 completed-report conflict markers on main RESOLVED (326 bycatch).
+- #326 meta.json repointed to live lane names (user attach failure);
+  #375 filed+extended: invisible attach icon AND stale meta.json tracking
+  (fix shape: resolve target at click time; degraded state for dead
+  sessions; smoke proves mid-session meta edit is honored). User-directed,
+  next free lane.
+- 4 lanes: 326 (endgame) · 346 panel tab bar (codex) · 347 markdown links
+  (opus) · 365 gate scratch namespacing (codex, user-directed for gate
+  parallelism). All verified running at their assigned efforts (medium).
+- CWD TRAP lesson: Bash cwd persists between calls — two "branch tree"
+  smoke runs actually ran in main; always cd explicitly at cell start and
+  never pipe smoke output through tail/grep -c without reading the full
+  verdict once.
+
+### ANCHOR 17 DELTA 6 (07:0x) — #326 LANDED
+- #326 stage 2 LANDED 98c9a7bb (manual merge — land.sh cannot land the
+  nonstandard stage-two lane name; followed its steps by hand: no-ff
+  merge with the override reason in the message, finished/326-stage-two
+  tag, record to completed/, write-active, worktree+session removed).
+  Signed runtime vendor plugins + execve in-place restart are ON MAIN.
+  NINE landings this shift: 342 351 350 337 90 344 343 345 326.
+- Lanes (3, mix 2+1 correct): 346 panel tab bar (codex) · 347 markdown
+  links (opus) · 348 next after a lane frees. 365 gate namespacing
+  (codex) also live. Queue: 348 349 352 341 356 361 375 + hygiene tail.
+- On resume: 346/347/365 READY reports follow the established ritual
+  (convert bycatch -> verdict log -> land.sh; claude lanes get manual
+  verdict logs from report + conductor verification of commit/clean).
+
+### ANCHOR 17 DELTA 7 (07:2x) — #365 LANDED, ten landings
+- #365 LANDED 33024fec: gate scratch paths per-worktree — overlapping
+  gates now safe (user-directed gate parallelism). Bycatch all known
+  classes; one #364 sighting appended.
+- TEN landings: 342 351 350 337 90 344 343 345 326 365.
+- Lanes (2 live): 346 panel tab bar (codex) · 347 markdown links (opus).
+  One codex slot FREE -> dispatch #375 (tasks live view: invisible attach
+  icon + stale meta.json target; user-hit twice) next, then queue: 348
+  349 352 341 356 361 376 + hygiene tail.
+- #376 filed (instances:watch cpu/mem tool, cwd-based filter).
+
+## RESUME ANCHOR 18 (2026-07-30 07:3x, pre-compact — supersedes anchor 17 + deltas)
+
+Overnight/morning run, user AWAKE and directing. Goal hook: "keep going on
+the tasks". TEN landings this shift: #342 e93995e7 · #351 7f57b019 ·
+#350 4017f53c · #337 64ca4df5 · #90 21bf9c71 · #344 dc30d875 ·
+#343 68a95c11 · #345 085bfca0 · #326 98c9a7bb · #365 33024fec.
+
+### Lanes (3 live, mix 2 codex sol-medium + 1 opus-medium)
+- 346 panel tab bar (codex) — the user's ten-point panel spec. Long build.
+- 347 markdown links + double-click (opus).
+- 375 tasks live view: invisible attach icon + click-time target
+  resolution (codex, just dispatched).
+
+### Landing ritual (unchanged)
+Convert bycatch FIRST -> verdict log (codex: extract-gate-verdict.sh;
+claude lanes: manual log from report header + conductor verification of
+commit-on-branch and clean tree) -> land.sh with GATE_LOG (or
+GATE_OVERRIDE with named narrow-rule evidence). land.sh busy-check:
+claude lanes report idle-unconfirmed (accepted via meta.json engine);
+transient busy = background shells, wait and retry. Codex lanes may write
+reports only in their worktree — copy to main folder + commit, then land.
+
+### Queue (front first)
+348 gradients 60fps · 349 extensions pane · 352 markdown borders ·
+341 tree add/drag-drop · 356 Invar Agent plugin (analysis in task file) ·
+361 tasks-icon crash (verbatim log) · 376 instances:watch (cwd filter) ·
+hygiene tail: 353 354 355 357 358 362 363 364 366 367 368 369 370 371
+372 373 374(reclassified) · #214/#359/#360 flake family.
+
+### Standing rules re-learned this shift (operative)
+- Both-arms discrimination BEFORE accepting any "pre-existing" claim:
+  run the failing smoke standalone on main AND on the branch tree, full
+  output (never tail/grep -c), explicit cd every cell (cwd persists).
+  This caught the #326 Alt+Delete regression that was nearly landed as a
+  filed flake (#374 holds the record).
+- Manual lanes MUST update meta.json (tmuxSession/branch/worktree) —
+  the tasks live view trusts the record (user attach failure).
+- dispatch.sh codex effort floor = MEDIUM (user token policy; verified
+  live processes carry medium). Fleet mix: 2 sol-medium + 1 opus-medium.
+- Every new claude-lane brief orders: commit BEFORE READY, real hash +
+  GATE_EXIT in header, report to main-checkout folder absolute path.
+
+### Watchers
+Monitor b08ipqblm = fleet-watch (persistent; the ONE watcher — a twin
+survived compaction once, TaskStop the duplicate if two fire). Goal Stop
+hook active. Crons DISARMED permanently (user 740c5d81).
+
+### Hazards (standing)
+- NEVER drive the app with this repo as workspace + real tasks.json
+  (spawns real agents); fixtures only.
+- Twin conductor pid 3541394 asleep; ibr repo has its uncommitted
+  leftovers (user aware). Duplicate #338 already consolidated+retired.
+- User runs an older --smol build; #376 will give instances:watch.
+
+## RESUME ANCHOR 19 (2026-07-30 08:2x, pre-compact — supersedes 18)
+
+### ANCHOR 19 — delta 3 (2026-07-30 ~11:4x)
+
+- LANDED #380 at 5a1a52a7 (idle CPU: motion only while painted, 33%->2%); summary written.
+- FILED user-directed: #387 slim vertical splitter + 1-cell left pad on bottom splitter
+  (scope WIDENED by user: on positive verdict, apply the slim splitter EVERYWHERE in the app);
+  #388 go-to-line + wrap-line keyboard shortcuts; #389 tasks:watch overpaints phantom rows
+  (regression from the 60fps fix — user report verbatim in the task file).
+- Lanes live: 346 (codex), 383 (opus, right panel proportional), 386 (codex, glyph vanish).
+  At cap 2 codex + 1 opus. Next dispatch when a lane frees, user-directed first:
+  387 -> 389 -> 388 -> 384 -> 381 -> 382 -> 361 -> 356.
+- extract-gate-verdict.sh writes its OWN log and prints the path — never redirect its
+  stdout onto the same path (clobbers the sentinel; hit once, harmless, re-ran).
+
+User AWAKE, directing. Goal hook: "keep going on the tasks". ELEVEN
+landings: 342 351 350 337 90 344 343 345 326 365 347 (last: 27a42bfe,
+document-relative markdown links + double-click open).
+
+### Lanes (4 — user prioritization raised the cap)
+- 346 panel tab bar (codex) — LONG build, ten-point user spec.
+- 375 tasks live view attach icon + click-time target (codex).
+- 348 tasks:watch gradients time-based 60fps (opus).
+- 380 idle CPU 15-25% (codex, USER PRIORITY). Steered evidence: CPU does
+  NOT drop with tasks pane closed -> surviving timer or unconditional
+  render loop; toggle matrix in brief.
+
+### Landing ritual: unchanged (anchor 18). Claude lanes: manual verdict
+log from report header + verify commit-on-branch + clean tree; codex:
+extract-gate-verdict.sh. Bycatch converts BEFORE landing, always.
+
+### Queue (user-directed first)
+383 right panel proportional (editor prominent, holistic generator) ·
+381 realized LSP reopen (field refutes #294's clean verdict; delta-hunt
+brief in task) · 382 claude resume dialog cut off (resize propagation
+proof first) · 361 tasks-icon crash · 356 Invar Agent plugin · 349
+extensions pane · 352 markdown borders · 341 tree add/drag · 376
+instances:watch (cwd filter) · 379 quick-open ranking · hygiene tail
+353-374 377 378.
+
+### SPRAWL note (08:2x): +329 /tmp entries = two CONCURRENT GATES'
+namespaced builds + harness homes (the #365 design working); 28G free;
+NOT a leak. No deletion done.
+
+### Watchers: Monitor b08ipqblm fleet-watch (the ONE); goal hook active;
+crons disarmed. On resume re-arm per anchor-18 list if missing.
+
+### User feedback this hour: flicker/3d/video confirmed GOOD in field.
+Field bugs live: LSP realized (381), resume dialog (382), right panel
+width (383), idle CPU (380 in flight).
+
+### ANCHOR 19 DELTA 1 (08:4x)
+- #348 LANDED 46be8818 (wall-clock gradient phase, rate-independent;
+  bycatch #385 status-vs-grid race in dashboard smoke). TWELVE landings.
+- #383 right-panel proportion DISPATCHED opus (freed lane).
+- New user tasks filed this hour: #384 quit dialog (bracketless buttons +
+  padding, style at the shared dialog painter; user design direction
+  quote recorded), #381 clarified (blackline/blackline-app too — shared
+  tsserver path, hover+second-surface reproduction), #383 widened
+  (holistic right-panel generator).
+- Lanes: 346 panel tabs (codex) · 375 attach icon (codex) · 380 idle CPU
+  (codex, priority) · 383 right panel (opus).
+
+### ANCHOR 19 DELTA 2 (09:0x): #375 LANDED 660ed877 (13 landings); #386 dispatched (glyph vanish threshold hunt). #380 READY report just delivered — NEXT ACTION on resume: read its header/bycatch, verify commit+clean in .invar/worktrees/380-idle-cpu-fifteen-to-twentyfive-percent, convert bycatch, land via ritual. Lanes: 346, 383(opus), 386, 380(landing).

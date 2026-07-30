@@ -198,6 +198,54 @@ scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### The right dock stays a bounded minority of the row
+
+**Invariant:** If the right dock is visible, then its width is at most 30 percent of the terminal
+row and strictly less than the editor center width, at every terminal width and after every resize.
+The editor is the prominent actor, so no right-dock occupant can outgrow it.
+
+**Scope:** `LayoutModel.resolve` and `LayoutModel.maximumRightDockColumns`, the right-dock
+`SplitterModel` maximum supplied by `RootView`, and every content the right dock hosts. The stored
+`Settings.rightDockWidth` is a REQUEST and is outside the bound: the layout clamps what it paints and
+never rewrites the setting.
+
+**Components:**
+- *One bound at the panel, not per pane* — the rule lives in the right-dock layout slot, so
+  structure, tasks, and any later occupant inherit it with no pane-specific width code.
+- *The smaller of two bounds wins* — a fixed share of the whole row, and one column less than an
+  even split of the columns the editor center and the dock share. The second bound accounts for the
+  left dock group, the right-dock splitter, and the right activity bar.
+- *The request survives* — a drag persists the user width; a narrow terminal paints the clamped
+  width; a wider terminal gives the dragged width back with no second gesture.
+
+**Mechanism:** `resolve` clamps the requested `rightDockColumns` through `maximumRightDockColumns`
+before it places any slot, so every frame and every resize re-applies the bound. `RootView` builds
+one `LayoutModelOptions` object per question and passes it to both `resolve` and the splitter's live
+`maximumSize`, so the divider stops where the painted dock stops.
+
+**Generates:** A usable editor on an 80-column terminal with the dock open; one width law for every
+right-dock citizen; a divider whose travel matches the paint at each terminal width.
+
+**Rejected alternatives:** A larger fixed default width, which inverts again at the next smaller
+terminal. A per-pane width, which each new right-dock occupant would have to re-derive. Rewriting
+`Settings.rightDockWidth` on a narrow terminal, which would destroy the user's dragged width.
+
+**Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/ui/RootView.ts`;
+`src/modules/layout/LayoutModel.test.ts` (the per-width editor-wider cases and the
+request-survives-a-resize case); `scripts/harness/smoke-layout-harness.ts` (the bounded-minority arm
+and the 80-column boot arm).
+
+**Impossible if true:** A right dock painted at least as wide as the editor center at any terminal
+width; a right dock claiming more than 30 percent of the row; a terminal resize leaving a dock
+wider than the new bound; a resize rewriting the persisted width setting.
+
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts && bun
+scripts/harness/smoke-layout-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-30
+
 ### An unexpanded bottom panel leaves one editor row
 
 **Invariant:** If the bottom-panel splitter reaches its maximum, then the unexpanded layout retains

@@ -17,6 +17,7 @@ import type { FindInBufferMatch } from '../search/FindInBuffer';
 import type { Settings } from '../settings/Settings';
 import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { Theme } from '../theme/Theme';
+import { DoubleClickGesture } from '../ui/DoubleClickGesture';
 import { ScrollableTextViewport } from '../ui/ScrollableTextViewport';
 import { SplitterElement } from '../ui/SplitterElement';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -51,6 +52,9 @@ class $MarkdownSplitView {
   protected lastSynchronizedPreviewWidth = -1;
   protected referenceVerdictRevision = -1;
   protected referenceDeadByTarget = new Map<string, boolean>();
+  /** The preview's share of the one double-click clock. A second press on the SAME reference span
+   *  activates it, so the mouse alone navigates. */
+  protected readonly previewDoubleClick = new DoubleClickGesture.Class();
 
   get focusedPane() {
     return ref<MarkdownSplitPane>(this.options.viewOnly ? 'preview' : 'source');
@@ -598,14 +602,28 @@ class $MarkdownSplitView {
     const previewBody = this.previewRenderable.bodyRenderable;
     previewBody.onMouseDown = (event) => {
       this.focusPreview();
+      // ONE hit test per press, shared by every meaning a press can carry, so the modified click,
+      // the double click, and the drag can never disagree about what sits under the pointer.
       const reference = this.referenceAt(event.x, event.y);
+      const pressIsSecondOnTheSameSpan =
+        event.button === 0 &&
+        this.previewDoubleClick.recordPressAndDetectDoubleClick(
+          // A press away from any reference still resets the gesture: its identity is the CELL,
+          // so two presses on ordinary prose never masquerade as a link activation.
+          reference?.hit.key ?? `cell:${event.x},${event.y}`,
+        ) &&
+        reference !== null;
       // OpenTUI exposes terminal Meta/Super mouse modifiers through the SGR alt bit. Supporting
       // ctrl OR alt therefore covers Ctrl-click and terminal Cmd/Meta-click without a second path.
-      if (
+      const pressIsModifiedActivation =
         event.button === 0 &&
         (event.modifiers.ctrl || event.modifiers.alt) &&
-        reference
+        reference !== null;
+      if (
+        reference &&
+        (pressIsModifiedActivation || pressIsSecondOnTheSameSpan)
       ) {
+        // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
         if (reference.path !== null) {
           this.linkNotice.value = null;
           this.options.openReference(reference.path);

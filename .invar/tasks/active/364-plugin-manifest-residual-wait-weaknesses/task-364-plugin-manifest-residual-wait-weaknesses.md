@@ -35,3 +35,5 @@ interleaving: both concurrent instances publish laidH=1 first and the
 settled value ~4ms later. #90's provenance fix removes the foreign-
 transient hang path; the single-instance quiescence hypothesis survives
 untested. The height>1 last-line wait remains the repair target here.
+
+## Sighting (#365 gate, 2026-07-30): the settled-geometry timeout fired once in a hook's behavioral-contract retry and passed directly in the final hook — first recurrence since the #337 fix.

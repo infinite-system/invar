@@ -1,0 +1,18 @@
+{
+  "task": 375,
+  "slug": "tasks-live-attach-icon-invisible",
+  "branch": "fleet/375-tasks-live-attach-icon-invisible",
+  "worktree": ".invar/worktrees/375-tasks-live-attach-icon-invisible",
+  "tmuxSession": "invar/375-tasks-live-attach-icon-invisible",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-375-tasks-live-attach-icon-invisible.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "ddd9c37e39e65c8826bd0a75bf651a14252560d0",
+  "startedAt": "2026-07-30T10:58:50-04:00",
+  "landedAt": "2026-07-30T11:30:55-04:00",
+  "durationMinutes": 32,
+  "mergeCommit": "660ed877"
+}

@@ -7,22 +7,28 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
+- #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/in-progress/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md)  [building]
+  `tmux attach -t invar/387-splitter-slim-vertical-and-left-pad`
+- #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/in-progress/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md)  [building]
+  `tmux attach -t invar/386-theme-glyphs-vanish-at-narrow-geometry`
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/in-progress/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md)  [building]
   `tmux attach -t invar/346-panel-tab-bar-workspace-content-spaces`
-- #345 [horizontal-separator-centered-glyph](.invar/tasks/in-progress/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md)  [building]
-  `tmux attach -t invar/345-horizontal-separator-centered-glyph`
-- #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (13)
+## USER-DIRECTED (19)
+- #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/active/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md)
+- #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
+- #384 [quit-dialog-buttons-and-padding](.invar/tasks/active/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md)
+- #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
+- #381 [realized-typescript-lsp-still-missing](.invar/tasks/active/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md)
+- #379 [quick-open-exact-basename-loses](.invar/tasks/active/379-quick-open-exact-basename-loses/task-379-quick-open-exact-basename-loses.md)
+- #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
+- #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
 - #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)
 - #356 [agent-pane-is-a-decoupled-module](.invar/tasks/active/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)
 - #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/active/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)
 - #352 [markdown-code-preview-border-theme](.invar/tasks/active/352-markdown-code-preview-border-theme/task-352-markdown-code-preview-border-theme.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
-- #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/active/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md)
-- #347 [markdown-link-resolution-and-double-click](.invar/tasks/active/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md)
 - #341 [file-tree-add-and-drag-drop](.invar/tasks/active/341-file-tree-add-and-drag-drop/task-341-file-tree-add-and-drag-drop.md)
 - #338 [forced-graphics-tier-blank-pane-silent](.invar/tasks/active/338-forced-graphics-tier-blank-pane-silent/task-338-forced-graphics-tier-blank-pane-silent.md)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -30,8 +36,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (22)
+- #385 [tasks-dashboard-smoke-status-grid-race](.invar/tasks/active/385-tasks-dashboard-smoke-status-grid-race/task-385-tasks-dashboard-smoke-status-grid-race.md)
 - #370 [legacy-smoke-tabs-perma-red](.invar/tasks/active/370-legacy-smoke-tabs-perma-red/task-370-legacy-smoke-tabs-perma-red.md)
-- #365 [gate-scratch-paths-are-machine-global](.invar/tasks/active/365-gate-scratch-paths-are-machine-global/task-365-gate-scratch-paths-are-machine-global.md)
 - #362 [markdown-harness-ordinal-drive-and-preview-clipping](.invar/tasks/active/362-markdown-harness-ordinal-drive-and-preview-clipping/task-362-markdown-harness-ordinal-drive-and-preview-clipping.md)
 - #332 [smoke-tabs-hardcoded-close-glyph](.invar/tasks/active/332-smoke-tabs-hardcoded-close-glyph/task-332-smoke-tabs-hardcoded-close-glyph.md)  [active]
 - #269 [smokes-assume-editor-geometry-sweep](.invar/tasks/active/269-smokes-assume-editor-geometry-sweep/task-269-smokes-assume-editor-geometry-sweep.md)
@@ -53,7 +59,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (22)
+## FLAKE-EVIDENCE (23)
+- #374 [word-delete-harness-alt-delete-timeout](.invar/tasks/active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md)
 - #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
 - #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
 - #360 [agent-engine-switch-pool-load-flake](.invar/tasks/active/360-agent-engine-switch-pool-load-flake/task-360-agent-engine-switch-pool-load-flake.md)
@@ -77,7 +84,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #124 [terminal-follow-escape-intermittent](.invar/tasks/active/124-terminal-follow-escape-intermittent/task-124-terminal-follow-escape-intermittent.md)  [ACTIVE — but see "State discrepancy" below; a fix was demonstrated and may have landed]
 - #109 [agent-permissions-quiet-tail-flake](.invar/tasks/active/109-agent-permissions-quiet-tail-flake/task-109-agent-permissions-quiet-tail-flake.md)  [ACTIVE — dispatch condition: no other builder live]
 
-## PERFORMANCE-BEHAVIOUR (9)
+## PERFORMANCE-BEHAVIOUR (10)
+- #390 [left-sidebar-proportional-bound](.invar/tasks/active/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md)
 - #185 [behavioral-contracts-shared-fixtures](.invar/tasks/active/185-behavioral-contracts-shared-fixtures/task-185-behavioral-contracts-shared-fixtures.md)
 - #175 [attribute-boot-time-irreducible-cost](.invar/tasks/active/175-attribute-boot-time-irreducible-cost/task-175-attribute-boot-time-irreducible-cost.md)  [ACTIVE — brief not yet written]
 - #160 [context-menu-wheel-double-dispatch](.invar/tasks/active/160-context-menu-wheel-double-dispatch/task-160-context-menu-wheel-double-dispatch.md)
@@ -88,7 +96,12 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (23)
+## ARCHITECTURE-HYGIENE (28)
+- #392 [layout-contract-hygiene](.invar/tasks/active/392-layout-contract-hygiene/task-392-layout-contract-hygiene.md)
+- #391 [splitter-bounds-coherence](.invar/tasks/active/391-splitter-bounds-coherence/task-391-splitter-bounds-coherence.md)
+- #378 [worktree-path-citations-die-at-landing](.invar/tasks/active/378-worktree-path-citations-die-at-landing/task-378-worktree-path-citations-die-at-landing.md)
+- #377 [path-confinement-needs-a-record](.invar/tasks/active/377-path-confinement-needs-a-record/task-377-path-confinement-needs-a-record.md)
+- #372 [separator-painter-ignores-glyph-tier](.invar/tasks/active/372-separator-painter-ignores-glyph-tier/task-372-separator-painter-ignores-glyph-tier.md)
 - #369 [tab-bar-third-walk-record-and-hover-tone-seam](.invar/tasks/active/369-tab-bar-third-walk-record-and-hover-tone-seam/task-369-tab-bar-third-walk-record-and-hover-tone-seam.md)
 - #368 [uncovered-records-annotation-sweep](.invar/tasks/active/368-uncovered-records-annotation-sweep/task-368-uncovered-records-annotation-sweep.md)
 - #367 [legacy-harness-shared-home-fallback](.invar/tasks/active/367-legacy-harness-shared-home-fallback/task-367-legacy-harness-shared-home-fallback.md)
@@ -117,19 +130,19 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 124 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 132 — full log: project.tasks-completed.md)
+- #383 [structure-pane-width-proportional](.invar/tasks/completed/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md) — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
+- #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/completed/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md) — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)
+- #375 [tasks-live-attach-icon-invisible](.invar/tasks/completed/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md) — 660ed877 — visible attach icon + click-time target; #386 from bycatch
+- #365 [gate-scratch-paths-are-machine-global](.invar/tasks/completed/365-gate-scratch-paths-are-machine-global/task-365-gate-scratch-paths-are-machine-global.md) — 33024fec — gate scratch paths per-worktree; safe overlapping gates
 - #351 [quick-open-search-bar-vanishes-list-corrupts](.invar/tasks/completed/351-quick-open-search-bar-vanishes-list-corrupts/task-351-quick-open-search-bar-vanishes-list-corrupts.md) — 7f57b019 — wrap-projection fix + compact-terminal scroll smoke; #354/#355 from bycatch
 - #350 [nicer-generated-sample-video](.invar/tasks/completed/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md) — 4017f53c — morphing mandelbrot sample video; landed over proven pre-existing reds (#359/#360/#337)
+- #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/completed/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md) — 46be8818 — time-based gradient phase, rate-independent; #385 from bycatch
+- #347 [markdown-link-resolution-and-double-click](.invar/tasks/completed/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md) — 27a42bfe — document-relative link resolution + double-click open; #377-379 from bycatch
+- #345 [horizontal-separator-centered-glyph](.invar/tasks/completed/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md) — 085bfca0 — centered heavy-line separator; #372/#373 from bycatch
 - #344 [breadcrumb-hover-highlight-padding](.invar/tasks/completed/344-breadcrumb-hover-highlight-padding/task-344-breadcrumb-hover-highlight-padding.md) — dc30d875 — breadcrumb hover highlight + one-cell pads; #369/#370 from bycatch
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/completed/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md) — 68a95c11 — play glyph + LIVE watch spinner; #371 from bycatch
 - #342 [tasks-json-panes-fail-to-load](.invar/tasks/completed/342-tasks-json-panes-fail-to-load/task-342-tasks-json-panes-fail-to-load.md) — e93995e7 — negative diagnosis + nested-shell smoke ratchet; #353 filed from bycatch
 - #340 [file-tree-reveals-open-file](.invar/tasks/completed/340-file-tree-reveals-open-file/task-340-file-tree-reveals-open-file.md) — 78de90d2 — tree reveal + button row; red is #337's class, now promoted
 - #339 [demo-supersampled-graphics-tier-resolution](.invar/tasks/completed/339-demo-supersampled-graphics-tier-resolution/task-339-demo-supersampled-graphics-tier-resolution.md) — 0d24d168 — 8x demo on graphics tiers; scale from encoder seam; gate green at re-gate
 - #337 [plugin-manifest-structure-scrollbar-intermittent](.invar/tasks/completed/337-plugin-manifest-structure-scrollbar-intermittent/task-337-plugin-manifest-structure-scrollbar-intermittent.md) — 64ca4df5 — ordinal settings drive repaired to label walks; gate red root-caused to #340's contributed row
-- #336 [video-playback-ffmpeg-overwrite-flag](.invar/tasks/completed/336-video-playback-ffmpeg-overwrite-flag/task-336-video-playback-ffmpeg-overwrite-flag.md) — eaf04d09 — video -y fix; combined-tree red proven pre-existing (#334)
-- #335 [gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion](.invar/tasks/completed/335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion/task-335-gate-smoke-intermittents-scrollbars-thumb-tasks-watch-motion.md) — 359ca6da — both gate intermittents were instrument defects; smokes repaired, hook gate ALL-PASS
-- #334 [structure-pane-no-file-open-transient](.invar/tasks/completed/334-structure-pane-no-file-open-transient/task-334-structure-pane-no-file-open-transient.md) — b4695e2f — gate-blocking Drive red fixed; re-gate red is #214's pre-existing class
-- #329 [tasks-watch-animation-tick-restored](.invar/tasks/completed/329-tasks-watch-animation-tick-restored/task-329-tasks-watch-animation-tick-restored.md) — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
-- #327 [invarnet-p2p-streaming-underlay-research](.invar/tasks/completed/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md) — e332ebd9 — Invarnet p2p research map landed: the four-invariant reduction breaks — fifth invariant needed (authenticated stream membership); one impossibility refuted; 8 ranked questions await the user.
-- #325 [audio-video-sync-research](.invar/tasks/completed/325-audio-video-sync-research/task-325-audio-video-sync-research.md) — 90b64204 — A/V sync map: audio-device-clock master + sidecar seam composing with #324 invariants; measured PipeWire facts; 9 user questions
-- #324 [terminal-3d-demo-and-video-playback](.invar/tasks/completed/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md) — f9394d58 — removable Animated Media plugin: cube/torus/video, flyweight+two-buffer+memory-flat proven, ffmpeg both polarities, removal build green

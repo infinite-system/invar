@@ -110,8 +110,10 @@ which is not on disk, so the durable record is here plus each builder's own `TAS
 | 79 | overlay wheel scroll: one generator owns the wheel-to-frame obligation | `fix-overlay-wheel-scroll` | `/tmp/conductor-altdelete` | `/tmp/overlay-wheel-codex.log` | `/tmp/overlay-wheel-READY.md` |
 
 Each builder's exact instructions are the `TASK.md` in its worktree. Its code so far is
-`git -C <worktree> diff origin/main`. Gate logs are `/tmp/wt-*-gate*.log`, and
-`/tmp/merge-gate-failures` is a symlink to the most recent failing run's FULL step logs.
+`git -C <worktree> diff origin/main`. Gate logs are `/tmp/wt-*-gate*.log`.
+Run `bash scripts/merge-gate.sh --print-scratch-paths` from
+[the merge gate](scripts/merge-gate.sh) inside a worktree. It prints that
+worktree's stable symlink to its most recent full failure logs.
 
 **#78 — workspace activation (user report: switching tabs stalls on big projects).** Diagnosis was
 done by the conductor before dispatch, so the builder verifies rather than re-derives.

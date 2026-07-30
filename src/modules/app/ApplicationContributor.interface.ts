@@ -34,6 +34,7 @@ export interface ApplicationContributor {
   readonly identifier: string;
   readonly name: string;
   readonly canDisable?: boolean;
+  readonly vendorMetadata?: VendorContributionMetadata;
   readonly primaryDockContentIdentifiers?: readonly string[];
   readonly primaryDockFallbackContentIdentifier?: string;
   readonly workspaceContributor?: WorkspaceContributor;
@@ -92,6 +93,7 @@ export interface ApplicationContributionContext {
   readonly dismissEditorSuggestions: () => void;
   readonly bindingHint: (action: string, context: string) => string;
   readonly requestRender: () => void;
+  readonly restartApplication: () => void;
 }
 
 export interface ApplicationContributionCatalog {
@@ -105,6 +107,19 @@ export interface ApplicationContributionEntry {
   name: string;
   enabled: boolean;
   canDisable: boolean;
+  version?: string;
+  provenance?: VendorProvenance;
+  kernelOverrides?: readonly string[];
+  failure?: string;
+}
+
+export type VendorProvenance =
+  'built-in' | 'network-gated' | 'developer-linked';
+
+export interface VendorContributionMetadata {
+  readonly version: string;
+  readonly provenance: VendorProvenance;
+  readonly kernelOverrides: readonly string[];
 }
 
 export type DockSide = 'left' | 'right';

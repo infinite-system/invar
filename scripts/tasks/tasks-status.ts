@@ -30,9 +30,9 @@
 // THIS FILE IS ALSO THE SEAM. The in-app tasks dashboard pane
 // (src/modules/tasks-dashboard/) imports the exported readers below —
 // readTaskRecords, builderStanding, startedAtMilliseconds, landingStamp,
-// tasksTreeStamp — so the terminal lenses and the pane read the SAME
-// generator. The CLI entry point runs only under `import.meta.main`, so an
-// import executes nothing.
+// taskSessionName, readTmuxSessionNames, tasksTreeStamp — so the terminal
+// lenses and the pane read the SAME generator. The CLI entry point runs only
+// under `import.meta.main`, so an import executes nothing.
 //
 // POSITIVE CONTROL. `--self-test` builds a throwaway task tree in a temp directory
 // containing one planted instance of each signal, runs the same analysis over it, and
@@ -93,6 +93,8 @@ export interface TaskRecord {
   assignedEngine: string | null;
   assignedModel: string | null;
   assignedEffort: string | null;
+  /** The dispatch-time builder session from meta.json, or the standard folder-derived fallback. */
+  tmuxSession: string | null;
 }
 
 export interface TaskMotionColour {
@@ -108,7 +110,6 @@ export interface TaskFleetFacts {
   readonly lineDelta: { added: number; removed: number } | null;
   readonly phase: 'exploring' | 'building';
   readonly worktreePath: string | null;
-  readonly sessionName: string;
 }
 
 // A header field like `Engine: codex` from a task file's front block.
@@ -240,11 +241,17 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
         engine?: string;
         model?: string;
         effort?: string;
+        tmuxSession?: string;
       } | null = null;
       try {
         dispatchMeta = JSON.parse(
           readFileSync(join(folderPath, 'meta.json'), 'utf8'),
-        ) as { engine?: string; model?: string; effort?: string };
+        ) as {
+          engine?: string;
+          model?: string;
+          effort?: string;
+          tmuxSession?: string;
+        };
       } catch {
         dispatchMeta = null;
       }
@@ -284,6 +291,13 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
           headerField(taskFileText, 'Model') ?? dispatchMeta?.model ?? null,
         assignedEffort:
           headerField(taskFileText, 'Effort') ?? dispatchMeta?.effort ?? null,
+        tmuxSession:
+          typeof dispatchMeta?.tmuxSession === 'string' &&
+          dispatchMeta.tmuxSession.trim().length > 0
+            ? dispatchMeta.tmuxSession.trim()
+            : directoryState === 'in-progress'
+              ? `invar/${folderName}`
+              : null,
       });
     }
   }
@@ -426,9 +440,8 @@ function renderActiveView(records: TaskRecord[]): string {
           ? 'READY delivered — builder idle, awaiting landing'
           : 'building';
       outputLines.push(`${taskLine(record)}  [${builderStatus}]`);
-      // The attach command rides the entry, so joining the session is one
-      // copy-paste. Session naming is dispatch.sh's convention: invar/<folder-name>.
-      outputLines.push(`  \`tmux attach -t invar/${record.folderName}\``);
+      // The attach command rides the entry, so joining the current session is one copy-paste.
+      outputLines.push(`  \`tmux attach -t ${record.tmuxSession}\``);
     }
     outputLines.push('');
   }
@@ -857,9 +870,9 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // details stay readable.
 // A calm breath in cool light: the dot swells through three sizes and settles while its colour
 // glides teal -> cyan -> blue and back — the Claude Code gradient feel.
-// Twelve frames advancing every fifth paint at 30 fps; one breath ~2 s —
-// small to medium to full and back, each size holding through two or three
-// colour steps so nothing jumps.
+// Twelve frames at six steps a second; one breath ~2 s — small to medium to
+// full and back, each size holding through two or three colour steps so
+// nothing jumps.
 export const TASKS_BUILDING_BREATH_FRAMES: readonly TaskMotionFrame[] = [
   { glyph: '·', ansi: '38;5;30', color: '#008787' },
   { glyph: '·', ansi: '38;5;37', color: '#00afaf' },
@@ -874,7 +887,30 @@ export const TASKS_BUILDING_BREATH_FRAMES: readonly TaskMotionFrame[] = [
   { glyph: '•', ansi: '38;5;37', color: '#00afaf' },
   { glyph: '·', ansi: '38;5;30', color: '#008787' },
 ];
-export const TASKS_MOTION_PAINTS_PER_STEP = 5;
+// MOTION SPEED IS A DURATION, NEVER A PAINT COUNT. Every table above advances
+// one step every TASKS_MOTION_STEP_MILLISECONDS of wall-clock time, so the
+// gradients look the same at 30 fps, at 60 fps, and at any rate a future paint
+// loop chooses. A paint-count step made the speed a hostage of the frame rate:
+// the watch painted at 60 fps and stepped once per paint, which ran the twelve
+// frame breath in 0.40 s instead of ~2 s (#348, measured 16.7 ms a step).
+// Six steps a second is the speed the tables were drawn for.
+export const TASKS_MOTION_STEPS_PER_SECOND = 6;
+export const TASKS_MOTION_STEP_MILLISECONDS =
+  1_000 / TASKS_MOTION_STEPS_PER_SECOND;
+
+/**
+ * The motion step to paint after `elapsedMilliseconds` of animation — the one
+ * phase generator behind every ramp, breath, and glyph sequence in this file.
+ * It is a pure function of time, so the CLI watch and the in-app dashboard pane
+ * show the identical step at the identical moment however often either repaints.
+ */
+export function tasksMotionStepAtElapsed(elapsedMilliseconds: number): number {
+  if (!Number.isFinite(elapsedMilliseconds) || elapsedMilliseconds <= 0) {
+    return 0;
+  }
+  return Math.floor(elapsedMilliseconds / TASKS_MOTION_STEP_MILLISECONDS);
+}
+
 export const TASKS_BUILDING_MONOCHROME_GLYPHS = ['·', '•', '●', '•'] as const;
 
 // Lines of code, live, as the agents write: each in-progress task's worktree
@@ -1037,7 +1073,7 @@ export function readFleetGateGlance(): GateGlance | null {
   return gateGlanceCache;
 }
 
-function gateBadge(spinnerFrame?: number): string {
+function gateBadge(motionElapsedMilliseconds?: number): string {
   if (gateGlanceCache === null) return '';
   const glance = gateGlanceCache;
   // A FINISHED gate's verdict is a fact about the LAST run, not a claim that
@@ -1056,12 +1092,13 @@ function gateBadge(spinnerFrame?: number): string {
   const elapsed = formatDuration(Date.now() - glance.startedAtMilliseconds);
   // A running gate flows its OWN gold current — motion says running, and the
   // color says judge, not builder. The ⛩ glyph rides the flow's leading color.
-  if (spinnerFrame === undefined) {
+  if (motionElapsedMilliseconds === undefined) {
     return `  ${paint('38;5;220', '⛩')} ${paint('38;5;220', `gate: ${glance.phase}`)} ${cyan(elapsed)}`;
   }
+  const motionStep = tasksMotionStepAtElapsed(motionElapsedMilliseconds);
   const leadingColor =
-    TASKS_GATE_RAMP[spinnerFrame % TASKS_GATE_RAMP.length]?.ansi ?? '38;5;220';
-  return `  ${paint(leadingColor, '⛩')} ${gradientWord(`gate: ${glance.phase}`, spinnerFrame, TASKS_GATE_RAMP)} ${cyan(elapsed)}`;
+    TASKS_GATE_RAMP[motionStep % TASKS_GATE_RAMP.length]?.ansi ?? '38;5;220';
+  return `  ${paint(leadingColor, '⛩')} ${gradientWord(`gate: ${glance.phase}`, motionStep, TASKS_GATE_RAMP)} ${cyan(elapsed)}`;
 }
 
 function fleetDeltaTotals(): {
@@ -1101,30 +1138,46 @@ const numberTweens = new Map<string, number>();
 
 // Change pops: when a tracked value JUMPS, the jump itself appears beside the
 // number ("+37") and fades over ~2 s — bold, then normal, then dim, then
-// gone. A paint-frame clock drives the decay; the static lens never pops.
-let currentPaintFrame = -1;
+// gone. A WALL-CLOCK age drives the decay, for the same reason the ramps do:
+// counted in paint frames the same "~2 s" lasted 120 s on the old 2 s data
+// tick and 1 s at 60 fps (#348). The static lens never pops.
+let currentMotionElapsedMilliseconds = -1;
 const targetsSeen = new Map<string, number>();
-const recentPops = new Map<string, { delta: number; atFrame: number }>();
-const POP_LIFETIME_FRAMES = 60;
+const recentPops = new Map<
+  string,
+  { delta: number; atMotionElapsedMilliseconds: number }
+>();
+const POP_LIFETIME_MILLISECONDS = 2_000;
 
 function notePop(key: string, target: number): void {
   const seen = targetsSeen.get(key);
   targetsSeen.set(key, target);
-  if (seen === undefined || seen === target || currentPaintFrame < 0) return;
-  recentPops.set(key, { delta: target - seen, atFrame: currentPaintFrame });
+  if (
+    seen === undefined ||
+    seen === target ||
+    currentMotionElapsedMilliseconds < 0
+  ) {
+    return;
+  }
+  recentPops.set(key, {
+    delta: target - seen,
+    atMotionElapsedMilliseconds: currentMotionElapsedMilliseconds,
+  });
 }
 
 function popSuffix(key: string): string {
   const pop = recentPops.get(key);
-  if (pop === undefined || currentPaintFrame < 0) return '';
-  const age = currentPaintFrame - pop.atFrame;
-  if (age > POP_LIFETIME_FRAMES) {
+  if (pop === undefined || currentMotionElapsedMilliseconds < 0) return '';
+  const ageMilliseconds =
+    currentMotionElapsedMilliseconds - pop.atMotionElapsedMilliseconds;
+  if (ageMilliseconds > POP_LIFETIME_MILLISECONDS) {
     recentPops.delete(key);
     return '';
   }
   const signed = pop.delta > 0 ? `+${pop.delta}` : String(pop.delta);
-  if (age < POP_LIFETIME_FRAMES / 3) return ` ${paint('1;38;5;51', signed)}`;
-  if (age < (POP_LIFETIME_FRAMES * 2) / 3)
+  if (ageMilliseconds < POP_LIFETIME_MILLISECONDS / 3)
+    return ` ${paint('1;38;5;51', signed)}`;
+  if (ageMilliseconds < (POP_LIFETIME_MILLISECONDS * 2) / 3)
     return ` ${paint('38;5;44', signed)}`;
   return ` ${dim(signed)}`;
 }
@@ -1247,8 +1300,44 @@ export function readTaskFleetFacts(
     lineDelta,
     phase: firstEditSeen.has(record.folderName) ? 'building' : 'exploring',
     worktreePath: existsSync(worktreePath) ? worktreePath : null,
-    sessionName: `invar/${record.folderName}`,
   };
+}
+
+/** Re-read one in-progress task's current attach target directly from meta.json. */
+export function taskSessionName(
+  tasksRoot: string,
+  folderName: string,
+): string | null {
+  const fallbackSessionName = `invar/${folderName}`;
+  const folderPath = join(tasksRoot, 'in-progress', folderName);
+  if (!existsSync(folderPath)) return null;
+  try {
+    const meta = JSON.parse(
+      readFileSync(join(folderPath, 'meta.json'), 'utf8'),
+    ) as { tmuxSession?: unknown };
+    return typeof meta.tmuxSession === 'string' &&
+      meta.tmuxSession.trim().length > 0
+      ? meta.tmuxSession.trim()
+      : fallbackSessionName;
+  } catch {
+    return fallbackSessionName;
+  }
+}
+
+/** Read the tmux server once, so any number of task rows share one liveness sample. */
+export function readTmuxSessionNames(): ReadonlySet<string> {
+  const result = Bun.spawnSync(
+    ['tmux', 'list-sessions', '-F', '#{session_name}'],
+    { stdout: 'pipe', stderr: 'ignore' },
+  );
+  if (result.exitCode !== 0) return new Set();
+  return new Set(
+    result.stdout
+      .toString()
+      .split('\n')
+      .map((sessionName) => sessionName.trim())
+      .filter((sessionName) => sessionName.length > 0),
+  );
 }
 
 // The round stamp from a task's meta.json, written by round-brief.sh at the
@@ -1327,11 +1416,11 @@ export function landingStamp(
 
 function live(
   tasksRoot: string,
-  spinnerFrame?: number,
+  motionElapsedMilliseconds?: number,
   preloadedRecords?: TaskRecord[],
   outputLine: (line: string) => void = (line) => console.log(line),
   outputAnimatedLine?: (
-    lineForAnimationFrame: (animationFrame: number) => string,
+    lineForMotionElapsed: (animationElapsedMilliseconds: number) => string,
   ) => void,
 ): number {
   const allRecords = preloadedRecords ?? readTaskRecords(tasksRoot);
@@ -1368,24 +1457,30 @@ function live(
     const identity = agentIdentity(record);
     const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
     const lineDeltaSuffix = lineDeltaBadge(record.folderName);
-    const lineForAnimationFrame = (currentAnimationFrame?: number): string => {
-      const animationFrame = currentAnimationFrame ?? 0;
+    // The motion step comes from ELAPSED TIME, never from the paint ordinal:
+    // the watch repaints at 60 fps and the pane at 30 fps, and both must show
+    // the same step at the same moment (#348).
+    const lineForMotionElapsed = (
+      currentMotionElapsedMilliseconds?: number,
+    ): string => {
+      const motionStep = tasksMotionStepAtElapsed(
+        currentMotionElapsedMilliseconds ?? 0,
+      );
       const breath =
-        currentAnimationFrame === undefined
+        currentMotionElapsedMilliseconds === undefined
           ? null
           : (TASKS_BUILDING_BREATH_FRAMES[
-              animationFrame % TASKS_BUILDING_BREATH_FRAMES.length
+              motionStep % TASKS_BUILDING_BREATH_FRAMES.length
             ] ?? null);
       const phaseGlyph =
         breath === null
           ? paint(exploring ? '38;5;153' : '38;5;45', exploring ? '➤' : '●')
           : exploring
             ? paint(
-                TASKS_EXPLORING_RAMP[
-                  animationFrame % TASKS_EXPLORING_RAMP.length
-                ]?.ansi ?? '38;5;153',
+                TASKS_EXPLORING_RAMP[motionStep % TASKS_EXPLORING_RAMP.length]
+                  ?.ansi ?? '38;5;153',
                 TASKS_EXPLORING_GLYPHS[
-                  animationFrame % TASKS_EXPLORING_GLYPHS.length
+                  motionStep % TASKS_EXPLORING_GLYPHS.length
                 ] ?? '➤',
               )
             : paint(
@@ -1393,15 +1488,15 @@ function live(
                 colourEnabled
                   ? breath.glyph
                   : (TASKS_BUILDING_MONOCHROME_GLYPHS[
-                      animationFrame % TASKS_BUILDING_MONOCHROME_GLYPHS.length
+                      motionStep % TASKS_BUILDING_MONOCHROME_GLYPHS.length
                     ] ?? breath.glyph),
               );
       const statusBadge = ready
-        ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(currentAnimationFrame) : green(' — awaiting landing')}`
+        ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(currentMotionElapsedMilliseconds) : green(' — awaiting landing')}`
         : `${phaseGlyph} ${
-            currentAnimationFrame === undefined
+            currentMotionElapsedMilliseconds === undefined
               ? paint(exploring ? '38;5;153' : '38;5;44', phaseWord)
-              : gradientWord(phaseWord, animationFrame, phaseRamp)
+              : gradientWord(phaseWord, motionStep, phaseRamp)
           }${roundSuffix}`;
       const runningFor =
         startedAt === null
@@ -1417,14 +1512,14 @@ function live(
       `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}`,
     );
     if (rowAnimates && outputAnimatedLine !== undefined) {
-      outputAnimatedLine((animationFrame) =>
-        lineForAnimationFrame(animationFrame),
+      outputAnimatedLine((animationElapsedMilliseconds) =>
+        lineForMotionElapsed(animationElapsedMilliseconds),
       );
     } else {
-      outputLine(lineForAnimationFrame(spinnerFrame));
+      outputLine(lineForMotionElapsed(motionElapsedMilliseconds));
     }
     outputLine(
-      paint('38;5;240', `       tmux attach -t invar/${record.folderName}`),
+      paint('38;5;240', `       tmux attach -t ${record.tmuxSession}`),
     );
   }
   return 0;
@@ -1598,9 +1693,13 @@ export function tasksTreeStamp(tasksRoot: string): string {
   }
   try {
     for (const folder of readdirSync(join(tasksRoot, 'in-progress'))) {
-      parts.push(
-        String(statSync(join(tasksRoot, 'in-progress', folder)).mtimeMs),
-      );
+      const folderPath = join(tasksRoot, 'in-progress', folder);
+      parts.push(String(statSync(folderPath).mtimeMs));
+      try {
+        parts.push(String(statSync(join(folderPath, 'meta.json')).mtimeMs));
+      } catch {
+        parts.push('0');
+      }
     }
   } catch {
     // no in-progress directory yet
@@ -1650,21 +1749,26 @@ async function watchLenses(tasksRoot: string): Promise<number> {
         sampledLines = sourceLineCount(); // only when a landing moved main
       }
     }
-    currentPaintFrame = tasksWatchRenderer.animationFrame;
+    currentMotionElapsedMilliseconds =
+      tasksWatchRenderer.animationElapsedMilliseconds;
     const frameLines: string[] = [];
     const animationRows: TasksWatchAnimationRow[] = [];
-    const animatedLineRenderers: Array<(animationFrame: number) => string> = [];
+    const animatedLineRenderers: Array<
+      (animationElapsedMilliseconds: number) => string
+    > = [];
     const outputLine = (line: string): void => {
       frameLines.push(line);
     };
     const outputAnimatedLine = (
-      lineForAnimationFrame: (animationFrame: number) => string,
+      lineForMotionElapsed: (animationElapsedMilliseconds: number) => string,
     ): void => {
       animationRows.push({
         rowIndex: frameLines.length,
-        line: lineForAnimationFrame(tasksWatchRenderer.animationFrame),
+        line: lineForMotionElapsed(
+          tasksWatchRenderer.animationElapsedMilliseconds,
+        ),
       });
-      animatedLineRenderers.push(lineForAnimationFrame);
+      animatedLineRenderers.push(lineForMotionElapsed);
       frameLines.push(animationRows.at(-1)?.line ?? '');
     };
     const clock = new Date().toLocaleTimeString('en-GB', {
@@ -1674,7 +1778,7 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     });
     const fleet = fleetDeltaTotals();
     outputLine(
-      `${bold('INVAR TASKS')} ${dim(`· ${clock} · 60fps motion · ledger ticks · Ctrl+C to exit`)}`,
+      `${bold('INVAR TASKS')} ${dim(`· ${clock} · 60fps paint · ledger ticks · Ctrl+C to exit`)}`,
     );
     outputLine(
       `  ${bold('tonight')} ${rollingBadge('fleet-added', fleet.added, '+', green)} ${rollingBadge('fleet-removed', fleet.removed, '-', red)} ${dim(`lines in flight · ${fleet.builders} builder(s)`)}`,
@@ -1682,7 +1786,7 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     outputLine('');
     live(
       tasksRoot,
-      tasksWatchRenderer.animationFrame,
+      tasksWatchRenderer.animationElapsedMilliseconds,
       cachedRecords,
       outputLine,
       outputAnimatedLine,
@@ -1710,7 +1814,9 @@ async function watchLenses(tasksRoot: string): Promise<number> {
     const animationRowsForFrame =
       animationRows.length === 0
         ? null
-        : (animationFrame: number): readonly TasksWatchAnimationRow[] => {
+        : (
+            animationElapsedMilliseconds: number,
+          ): readonly TasksWatchAnimationRow[] => {
             for (
               let animationRowIndex = 0;
               animationRowIndex < animationRows.length;
@@ -1725,7 +1831,9 @@ async function watchLenses(tasksRoot: string): Promise<number> {
               ) {
                 continue;
               }
-              animationRow.line = animatedLineRenderer(animationFrame);
+              animationRow.line = animatedLineRenderer(
+                animationElapsedMilliseconds,
+              );
             }
             return animationRows;
           };

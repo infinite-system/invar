@@ -14,6 +14,11 @@ import { Bootstrap, type BootedApp } from './Bootstrap';
 import { Logging } from '../system/Logging';
 import { DefaultPlugins } from '../plugins/DefaultPlugins';
 import { IvueStaticGetterCapability } from './IvueStaticGetterCapability';
+import { KernelTargets } from '../kernel/KernelTargets';
+import { VendorPluginRuntime } from '../vendors/VendorPluginRuntime';
+import { VendorPluginInstaller } from '../vendors/VendorPluginInstaller';
+import { NetworkAdmission } from '../vendors/NetworkAdmission';
+import { Files } from '../system/Files';
 
 class $AppLoader {
   /** Boot the app from process state: argv → options, wire the signal handlers, and route any boot
@@ -21,6 +26,7 @@ class $AppLoader {
   static async main(): Promise<void> {
     try {
       IvueStaticGetterCapability.Class.assertAvailable();
+      if (await AppLoader.Class.handlePluginCommand()) return;
       const booted = await AppLoader.Class.bootApp();
       AppLoader.Class.wireSignals(booted);
     } catch (error) {
@@ -30,18 +36,98 @@ class $AppLoader {
 
   /** Assemble BootOptions from process state and boot — the overridable construction seam (a test
    *  swaps this to inject a scripted boot or a failure). */
-  static bootApp(): Promise<BootedApp> {
+  static async bootApp(): Promise<BootedApp> {
+    // invariant: External plugin discovery precedes application boot (src/modules/app/app.invariants.md)
+    KernelTargets.Class.register();
+    const vendorPlugins = await VendorPluginRuntime.Class.load();
     return Bootstrap.Class.boot({
       root: AppLoader.Class.rootArgument(),
-      plugins: DefaultPlugins.Class.create(),
+      plugins: [...DefaultPlugins.Class.create(), ...vendorPlugins],
       // Give the renderer a tick to restore the terminal, then exit.
       onQuit: () => setTimeout(() => AppLoader.Class.exitProcess(0), 20),
+      onRestart: () => AppLoader.Class.relaunch(),
     });
+  }
+
+  static async handlePluginCommand(): Promise<boolean> {
+    if (process.argv[2] !== 'plugin') return false;
+    const action = process.argv[3];
+    const identity = process.argv[4];
+    if (action === 'admit') {
+      const privateKeyPath = process.argv[5];
+      const sourceRevision = process.argv[6];
+      const catalogPath = process.argv[7];
+      if (!identity || !privateKeyPath || !sourceRevision || !catalogPath) {
+        throw new Error(
+          'usage: iv plugin admit artifact private-key source-revision catalog',
+        );
+      }
+      const admission = await NetworkAdmission.Class.admit(
+        Files.Class.absolute(identity),
+        Files.Class.read(privateKeyPath),
+        sourceRevision,
+      );
+      NetworkAdmission.Class.appendImmutable(catalogPath, admission);
+      process.stdout.write(
+        `${admission.manifest.vendor}/${admission.manifest.module}@${admission.manifest.version} admitted\n`,
+      );
+      return true;
+    }
+    if (action === 'dev-link' && identity) {
+      const installed = VendorPluginInstaller.Class.developerLink(identity);
+      process.stdout.write(
+        `${installed.identity}@${installed.version} linked as UNVERIFIED LOCAL CODE; restart to apply\n`,
+      );
+      return true;
+    }
+    if (!action || !identity) {
+      throw new Error(
+        'usage: iv plugin <install|update|rollback|remove|enable|disable|dev-link> target',
+      );
+    }
+    if (action === 'install' || action === 'update') {
+      const installed = VendorPluginInstaller.Class.install(
+        identity,
+        action === 'install' ? process.argv[5] : undefined,
+      );
+      process.stdout.write(
+        `${installed.identity}@${installed.version} installed; restart to apply\n`,
+      );
+      return true;
+    }
+    if (action === 'remove') {
+      VendorPluginInstaller.Class.remove(identity);
+      process.stdout.write(`${identity} removed; restart to apply\n`);
+      return true;
+    }
+    if (action === 'enable' || action === 'disable') {
+      VendorPluginInstaller.Class.setEnabled(identity, action === 'enable');
+      process.stdout.write(`${identity} ${action}d; restart to apply\n`);
+      return true;
+    }
+    if (action === 'rollback') {
+      const version = process.argv[5];
+      if (!version) throw new Error('plugin rollback requires a version');
+      const installed = VendorPluginInstaller.Class.rollback(identity, version);
+      process.stdout.write(
+        `${installed.identity}@${installed.version} selected; restart to apply\n`,
+      );
+      return true;
+    }
+    throw new Error(`unknown plugin action: ${action}`);
+  }
+
+  static relaunch(): void {
+    const environment: Record<string, string> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value !== undefined) environment[key] = value;
+    }
+    process.execve!(process.execPath, process.argv, environment);
   }
 
   /** The workspace root from argv (`invar <root>`), or undefined for the cwd default. */
   static rootArgument(): string | undefined {
-    return process.argv[2];
+    return process.argv[2] === 'plugin' ? undefined : process.argv[2];
   }
 
   /** Keep the process alive; the renderer owns the event loop via stdin. Signals route to the app's

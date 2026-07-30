@@ -33,6 +33,10 @@ interface ControlSegment {
 interface TabBarGeometry {
   readonly row: number;
   readonly editorActions: readonly TabSegment[];
+  readonly drag: {
+    readonly left: number;
+    readonly width: number;
+  };
   readonly controls: readonly ControlSegment[];
 }
 
@@ -124,6 +128,57 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         !['╭', '┌'].includes(topLeft.characters) &&
         !(topLeft.characters === '+' && bottomLeft.characters === '+'),
       `${columns}-column panel content starts without a rounded frame`,
+    );
+    const initialTabBar = tabBar(status);
+    const lastTab = initialTabBar.editorActions.at(-1);
+    const firstControl = initialTabBar.controls[0];
+    HarnessSmoke.Class.requireCondition(
+      initialTabBar.editorActions.length === 2 &&
+        initialTabBar.editorActions[0]?.commandId.startsWith(
+          'terminal-space-',
+        ) === true &&
+        initialTabBar.editorActions[1]?.commandId.startsWith(
+          'database-space-',
+        ) === true,
+      `${columns}-column published editor actions are the two workspace tabs`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      initialTabBar.drag.width >= 1,
+      `${columns}-column tabs leave a live drag span`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      JSON.stringify(
+        initialTabBar.controls.map((control) => control.action),
+      ) === JSON.stringify(['add', 'expand', 'close']),
+      `${columns}-column tab row retains all three right controls`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      (lastTab
+        ? lastTab.endColumnExclusive === initialTabBar.drag.left
+        : true) &&
+        firstControl !== undefined &&
+        initialTabBar.drag.left + initialTabBar.drag.width ===
+          firstControl.startColumn,
+      `${columns}-column row order is tabs then drag then controls with no gap or overlap`,
+    );
+    const tabRowSnapshot = await driver.awaitGridCondition(
+      `${columns}-column published drag span paints centered heavy-line cells`,
+      (snapshot) =>
+        snapshot
+          .rowText(initialTabBar.row)
+          .slice(
+            initialTabBar.drag.left,
+            initialTabBar.drag.left + initialTabBar.drag.width,
+          ) === '━'.repeat(initialTabBar.drag.width),
+    );
+    HarnessSmoke.Class.requireCondition(
+      tabRowSnapshot
+        .rowText(initialTabBar.row)
+        .slice(
+          initialTabBar.drag.left,
+          initialTabBar.drag.left + initialTabBar.drag.width,
+        ) === '━'.repeat(initialTabBar.drag.width),
+      `${columns}-column splitter paints centered marks between tabs and controls`,
     );
 
     driver.sendKeys('Alt+PageDown');

@@ -37,9 +37,9 @@ function makeFixture() {
       lineDelta: { added: 1, removed: 0 },
       phase: 'building',
       worktreePath: join(root, '.invar', 'worktrees', record.folderName),
-      sessionName: `invar/${record.folderName}`,
     }),
     readFleetGateGlance: () => null,
+    readTmuxSessionNames: () => new Set(['invar/901-planted-building']),
   });
   const application = {
     theme: {
@@ -47,6 +47,7 @@ function makeFixture() {
       glyphVocabulary: { activityTasks: '▶' },
       palette: ThemePalettes.Class.DARK,
       taskActionIcons: {
+        session: 'S',
         workspace: 'W',
         taskRecord: 'T',
         latestBrief: 'B',

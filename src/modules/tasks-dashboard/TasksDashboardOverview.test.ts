@@ -75,6 +75,7 @@ function makeFixture(options?: { withTree?: boolean }): Fixture {
           startedAt: new Date(pastFilingMs).toISOString(),
           round: 2,
           roundBriefedAtMs: pastFilingMs,
+          tmuxSession: 'planted-ready-session',
         }),
       },
     );
@@ -105,9 +106,14 @@ function makeFixture(options?: { withTree?: boolean }): Fixture {
       lineDelta: { added: record.taskNumber, removed: 1 },
       phase: record.taskNumber === 901 ? 'exploring' : 'building',
       worktreePath: join(root, '.invar', 'worktrees', record.folderName),
-      sessionName: `invar/${record.folderName}`,
     }),
     readFleetGateGlance: () => null,
+    readTmuxSessionNames: () =>
+      new Set([
+        'invar/901-planted-building',
+        'planted-ready-session',
+        'planted-new-session',
+      ]),
   });
   overview.startObservation();
   return {
@@ -190,6 +196,38 @@ test('selection resolves the task record file path for opening', () => {
   fixture.dispose();
 });
 
+test('session state follows meta and activation re-reads the current target', () => {
+  const fixture = makeFixture();
+  const { overview } = fixture;
+  expect(overview.rows.value[0]?.sessionName).toBe('planted-ready-session');
+  expect(overview.rows.value[0]?.sessionAvailable).toBe(true);
+  const metaPath = join(
+    fixture.root,
+    '.invar',
+    'tasks',
+    'in-progress',
+    '902-planted-ready',
+    'meta.json',
+  );
+  writeFileSync(
+    metaPath,
+    JSON.stringify({ tmuxSession: 'planted-missing-session' }),
+  );
+  overview.refresh();
+  expect(overview.rows.value[0]?.sessionName).toBe('planted-missing-session');
+  expect(overview.rows.value[0]?.sessionAvailable).toBe(false);
+  writeFileSync(
+    metaPath,
+    JSON.stringify({ tmuxSession: 'planted-new-session' }),
+  );
+  expect(overview.rows.value[0]?.sessionName).toBe('planted-missing-session');
+  expect(overview.currentSessionTarget(0)).toEqual({
+    sessionName: 'planted-new-session',
+    available: true,
+  });
+  fixture.dispose();
+});
+
 test('an absent task tree is stated as unavailable, never a blank row list', () => {
   const fixture = makeFixture({ withTree: false });
   const { overview } = fixture;
@@ -254,19 +292,15 @@ test('a version bump accompanies every data change so one counter drives repaint
   fixture.dispose();
 });
 
-test('the motion clock exists only while the pane is observed', async () => {
+test('the motion clock exists only while the pane is observed', () => {
   const fixture = makeFixture();
   const { overview, observed } = fixture;
-  await Bun.sleep(80);
-  expect(overview.animationPaint.value).toBeGreaterThan(0);
+  overview.setViewportSize(80, 10);
+  expect(overview.motionHeartbeatAtRest()).toBe(false);
   observed.value = false;
-  await Bun.sleep(20);
-  const hiddenPaint = overview.animationPaint.value;
-  await Bun.sleep(80);
-  expect(overview.animationPaint.value).toBe(hiddenPaint);
+  expect(overview.motionHeartbeatAtRest()).toBe(true);
   observed.value = true;
-  await Bun.sleep(80);
-  expect(overview.animationPaint.value).toBeGreaterThan(hiddenPaint);
+  expect(overview.motionHeartbeatAtRest()).toBe(false);
   fixture.dispose();
 });
 
@@ -275,6 +309,26 @@ test('the motion clock stays absent when no live row or gate needs it', () => {
   expect(fixture.overview.rows.value).toEqual([]);
   expect(fixture.overview.animationPaint.value).toBe(0);
   expect(fixture.overview.motionHeartbeatAtRest()).toBe(true);
+  fixture.dispose();
+});
+
+test('the motion clock follows the visible row window', () => {
+  const fixture = makeFixture();
+  const { overview } = fixture;
+  overview.setViewportSize(80, 2);
+  expect(
+    overview.rows.value.slice(0, 2).every((row) => row.standing === 'ready'),
+  ).toBe(true);
+  expect(overview.motionHeartbeatAtRest()).toBe(true);
+  overview.scrollBy(2);
+  expect(
+    overview.rows.value
+      .slice(overview.windowTop(), overview.windowTop() + 2)
+      .some((row) => row.kind === 'detail' && row.phase === 'exploring'),
+  ).toBe(true);
+  expect(overview.motionHeartbeatAtRest()).toBe(false);
+  overview.scrollBy(-2);
+  expect(overview.motionHeartbeatAtRest()).toBe(true);
   fixture.dispose();
 });
 

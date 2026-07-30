@@ -1,0 +1,18 @@
+{
+  "task": 347,
+  "slug": "markdown-link-resolution-and-double-click",
+  "branch": "fleet/347-markdown-link-resolution-and-double-click",
+  "worktree": ".invar/worktrees/347-markdown-link-resolution-and-double-click",
+  "tmuxSession": "invar/347-markdown-link-resolution-and-double-click",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-347-markdown-link-resolution-and-double-click.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "25237a43b8e1bd4d549e03325ac47720a74775ce",
+  "startedAt": "2026-07-30T10:27:21-04:00",
+  "landedAt": "2026-07-30T11:01:22-04:00",
+  "durationMinutes": 34,
+  "mergeCommit": "27a42bfe"
+}

@@ -104,7 +104,7 @@ class $TasksDashboardPaneContent implements PaneContent {
       height: Math.max(1, context.height),
       innerWidth,
       viewportWidth: Math.max(1, innerWidth - this.scrollbarThicknessCells),
-      animationPaint: this.overview.animationPaint.value,
+      animationElapsedMilliseconds: this.overview.animationElapsedMilliseconds,
       gateGlance: this.overview.gateGlance.value,
       actionNotice: this.overview.actionNotice.value,
       taskActionIcons: this.application.theme.taskActionIcons,
@@ -178,7 +178,8 @@ class $TasksDashboardPaneContent implements PaneContent {
         innerWidth:
           this.overview.viewportWidth.value + this.scrollbarThicknessCells,
         viewportWidth: this.overview.viewportWidth.value,
-        animationPaint: this.overview.animationPaint.value,
+        animationElapsedMilliseconds:
+          this.overview.animationElapsedMilliseconds,
         gateGlance: this.overview.gateGlance.value,
         actionNotice: this.overview.actionNotice.value,
         taskActionIcons: this.application.theme.taskActionIcons,
@@ -190,7 +191,7 @@ class $TasksDashboardPaneContent implements PaneContent {
     );
     return action === null
       ? null
-      : TasksDashboardPaneRenderer.Class.tooltipForAction(action);
+      : TasksDashboardPaneRenderer.Class.tooltipForAction(action, taskRow);
   }
 
   onPointerDown(column: number, row: number): boolean {
@@ -221,7 +222,8 @@ class $TasksDashboardPaneContent implements PaneContent {
         innerWidth:
           this.overview.viewportWidth.value + this.scrollbarThicknessCells,
         viewportWidth: this.overview.viewportWidth.value,
-        animationPaint: this.overview.animationPaint.value,
+        animationElapsedMilliseconds:
+          this.overview.animationElapsedMilliseconds,
         gateGlance: this.overview.gateGlance.value,
         actionNotice: this.overview.actionNotice.value,
         taskActionIcons: this.application.theme.taskActionIcons,
@@ -251,14 +253,10 @@ class $TasksDashboardPaneContent implements PaneContent {
 
   onResize(columns: number, rows: number): void {
     // The tab line owns one row; lens rows get the rest.
-    const viewportHeight = Math.max(1, rows - 1);
-    const viewportWidth = Math.max(1, columns - this.scrollbarThicknessCells);
-    if (this.overview.viewportHeight.value !== viewportHeight) {
-      this.overview.viewportHeight.value = viewportHeight;
-    }
-    if (this.overview.viewportWidth.value !== viewportWidth) {
-      this.overview.viewportWidth.value = viewportWidth;
-    }
+    this.overview.setViewportSize(
+      columns - this.scrollbarThicknessCells,
+      rows - 1,
+    );
   }
 
   onFocus(): void {}

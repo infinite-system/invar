@@ -14,7 +14,7 @@ import {
   TASKS_EXPLORING_GLYPHS,
   TASKS_EXPLORING_RAMP,
   TASKS_GATE_RAMP,
-  TASKS_MOTION_PAINTS_PER_STEP,
+  tasksMotionStepAtElapsed,
   type GateGlance,
 } from '../../../scripts/tasks/tasks-status';
 import { TextCoordinates } from '../text/TextCoordinates';
@@ -75,14 +75,17 @@ class $TasksDashboardPaneRenderer {
       if (column >= segment.startColumn && column <= segment.endColumn)
         return segment.action;
     }
-    if (row.sessionName !== null && column < this.actionStartColumn(context))
-      return 'session';
     return null;
   }
 
-  static tooltipForAction(action: TasksDashboardAction): string {
+  static tooltipForAction(
+    action: TasksDashboardAction,
+    row: TasksDashboardRow,
+  ): string {
     return action === 'session'
-      ? 'Attach to the builder tmux session'
+      ? row.sessionAvailable === false
+        ? `Builder tmux session is missing: ${row.sessionName}`
+        : `Attach to builder tmux session: ${row.sessionName}`
       : action === 'workspace'
         ? 'Open the task worktree as a workspace'
         : action === 'task'
@@ -296,7 +299,7 @@ class $TasksDashboardPaneRenderer {
       chunks,
       pieces,
       decorate,
-      this.actionStartColumn(context),
+      this.actionStartColumn(context, row),
     );
     this.renderActions(context, chunks, row, decorate);
   }
@@ -311,7 +314,7 @@ class $TasksDashboardPaneRenderer {
       context.actionNotice?.taskNumber === row.taskNumber
         ? context.actionNotice.message
         : null;
-    const prefixWidth = Math.max(0, this.actionStartColumn(context));
+    const prefixWidth = Math.max(0, this.actionStartColumn(context, row));
     const pieces =
       notice === null
         ? this.statusPieces(context, row)
@@ -329,9 +332,14 @@ class $TasksDashboardPaneRenderer {
     decorate: (chunk: TextChunk) => TextChunk,
   ): void {
     const actions = this.actionSegments(context, row);
-    for (const segment of actions)
-      chunks.push(decorate(fg(context.palette.accent)(` ${segment.glyph} `)));
-    const consumed = this.actionStartColumn(context) + actions.length * 3;
+    for (const segment of actions) {
+      const colour =
+        segment.action === 'session' && row.sessionAvailable === false
+          ? context.palette.warning
+          : context.palette.accent;
+      chunks.push(decorate(fg(colour)(` ${segment.glyph} `)));
+    }
+    const consumed = this.actionStartColumn(context, row) + actions.length * 3;
     if (consumed < context.innerWidth)
       chunks.push(
         decorate(
@@ -349,10 +357,12 @@ class $TasksDashboardPaneRenderer {
     context: TasksDashboardRenderContext,
     row: TasksDashboardRow,
   ): Array<[string, string]> {
-    const motionStep = Math.floor(
-      context.animationPaint / TASKS_MOTION_PAINTS_PER_STEP,
+    const motionStep = tasksMotionStepAtElapsed(
+      context.animationElapsedMilliseconds,
     );
     const pieces: Array<[string, string]> = [[' ', context.palette.dim]];
+    if (row.sessionAvailable === false)
+      pieces.push(['! DEGRADED  ', context.palette.warning]);
     if (row.standing === 'ready')
       pieces.push(['◉ READY', context.palette.added]);
     else if (row.phase !== null) {
@@ -405,9 +415,7 @@ class $TasksDashboardPaneRenderer {
     decorate: (chunk: TextChunk) => TextChunk,
   ): void {
     const gate = context.gateGlance;
-    const step = Math.floor(
-      context.animationPaint / TASKS_MOTION_PAINTS_PER_STEP,
-    );
+    const step = tasksMotionStepAtElapsed(context.animationElapsedMilliseconds);
     const colour =
       gate?.exitCode === 0
         ? context.palette.added
@@ -468,27 +476,31 @@ class $TasksDashboardPaneRenderer {
 
   protected static actionStartColumn(
     context: TasksDashboardRenderContext,
+    row: TasksDashboardRow,
   ): number {
-    return Math.max(0, context.innerWidth - 12);
+    const actionCount = row.sessionName === null ? 4 : 5;
+    return Math.max(0, context.innerWidth - actionCount * 3);
   }
 
   protected static actionSegments(
     context: TasksDashboardRenderContext,
-    _row: TasksDashboardRow,
+    row: TasksDashboardRow,
   ): TaskActionSegment[] {
     const icons = context.taskActionIcons;
-    return (
-      [
-        ['workspace', icons.workspace],
-        ['task', icons.taskRecord],
-        ['brief', icons.latestBrief],
-        ['report', icons.latestReport],
-      ] as const
-    ).map(([action, glyph], index) => ({
+    const actions: ReadonlyArray<readonly [TasksDashboardAction, string]> = [
+      ...(row.sessionName === null
+        ? []
+        : ([['session', icons.session]] as const)),
+      ['workspace', icons.workspace],
+      ['task', icons.taskRecord],
+      ['brief', icons.latestBrief],
+      ['report', icons.latestReport],
+    ];
+    return actions.map(([action, glyph], index) => ({
       action,
       glyph,
-      startColumn: this.actionStartColumn(context) + index * 3,
-      endColumn: this.actionStartColumn(context) + index * 3 + 2,
+      startColumn: this.actionStartColumn(context, row) + index * 3,
+      endColumn: this.actionStartColumn(context, row) + index * 3 + 2,
     }));
   }
 
@@ -521,7 +533,7 @@ export type TasksDashboardTabLineTarget =
   { kind: 'lens'; lens: TasksDashboardLens } | { kind: 'cycle' };
 
 interface TaskActionSegment {
-  action: Exclude<TasksDashboardAction, 'session'>;
+  action: TasksDashboardAction;
   glyph: string;
   startColumn: number;
   endColumn: number;
@@ -543,7 +555,7 @@ export interface TasksDashboardRenderContext {
   height: number;
   innerWidth: number;
   viewportWidth: number;
-  animationPaint: number;
+  animationElapsedMilliseconds: number;
   gateGlance: GateGlance | null;
   actionNotice: TasksDashboardActionNotice | null;
   taskActionIcons: TaskActionIconSet;

@@ -64,7 +64,9 @@ class $Files {
     return resolve(path);
   }
 
-  /** Resolve a path from an explicit base. Absolute paths stay absolute. */
+  /** Resolve a path from an explicit base. Absolute paths stay absolute. The base is a STARTING
+   *  POINT, not a boundary: the result may sit above it, so a caller that needs confinement pairs
+   *  this with `confineToRoot` against the real boundary. */
   static resolveFrom(basePath: string, path: string): string {
     return resolve(basePath, path);
   }

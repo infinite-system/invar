@@ -53,6 +53,38 @@ exit 1 with the remedy versus exit 0; set
 
 **Last refined:** 2026-07-27
 
+### External plugin discovery precedes application boot
+
+**Invariant:** If installed vendor code contributes to an application generation, then AppLoader
+finishes its verified discovery and kernel registration before it asks Bootstrap to construct that
+generation.
+
+**Scope:** Process entry, vendor discovery, default contribution assembly, and Bootstrap.
+
+**Mechanism:** `AppLoader.bootApp` registers public kernel targets, awaits
+`VendorPluginRuntime.load`, appends the resulting contributors in canonical identity order, and
+then calls Bootstrap. A restart uses `execve` with the same arguments and environment, so the
+workspace and PTY survive while all application instances are reconstructed.
+
+**Generates:** An unchanged compiled executable that loads external TypeScript; one pre-seal
+composition boundary; in-app restart to apply.
+
+**Rejected alternatives:** Discovery inside Bootstrap after seal; rebuilding the executable;
+manual process restart.
+
+**Evidence:** `src/modules/app/AppLoader.ts`; `src/modules/vendors/VendorPluginRuntime.ts`;
+`.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/326-runtime-install-relaunch-harness.ts`.
+
+**Impossible if true:** An installed kernel extension first becoming visible after `new App.Class`;
+an install that requires the user to leave Invar and start it again manually.
+
+**Verification:** `bun
+.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/326-runtime-install-relaunch-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-30
+
 ### Rendering is one coarse frame effect
 
 **Invariant:** If model state changes — by input OR by an async producer (syntax, LSP, git) —

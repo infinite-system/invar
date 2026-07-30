@@ -112,13 +112,13 @@ describe('SplitterElement', () => {
     expect(splitter.size).toBe(24);
   });
 
-  test('horizontal splitters share the lower-half-cell separator treatment', async () => {
+  test('horizontal splitters paint the vertically centered separator mark', async () => {
     const splitter = await createSplitter('horizontal');
     splitter.setGeometry({ left: 5, top: 10, length: 20 });
     splitter.updateAppearance(darkPalette);
     await renderOnce?.();
 
     const row = captureCharFrame?.().split('\n')[10] ?? '';
-    expect(row.slice(5, 25)).toBe('▄'.repeat(20));
+    expect(row.slice(5, 25)).toBe('━'.repeat(20));
   });
 });

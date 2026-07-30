@@ -599,8 +599,11 @@ src/modules/ui/BoundedListPopup.test.ts` and `bun scripts/harness/smoke-completi
 
 **Invariant:** If a pane boundary is resizable, then one `SplitterElement` owns its one-cell
 cross-axis geometry, pointer hit target, hover state, drag capture, and palette state; the cell that
-paints is the cell that receives the pointer. A horizontal boundary paints only the lower half of
-that hit cell, through the same appearance source as a horizontal scrollbar.
+paints is the cell that receives the pointer. A horizontal boundary paints the vertically centered
+heavy line `━` in that hit cell, through the same appearance source as a horizontal scrollbar. The
+boundary mark sits in the middle of its row because a splitter divides two regions; the scrollbar
+mark hugs the trailing edge because a scrollbar reports a position along one edge. The painter is
+shared, the mark is the caller's choice, and the hit cell is the whole cell either way.
 
 **Scope:** Every pane splitter in `RootView`, `DiffView`, and `MarkdownSplitView`, including the
 sidebar, bottom panel, git regions, split panel cells, diff panes, markdown preview, and right dock.
@@ -609,8 +612,10 @@ sidebar, bottom panel, git regions, split panel cells, diff panes, markdown prev
 writes the renderable rectangle that OpenTUI both paints and stamps into the hit grid; its shared
 pointer lifecycle captures that same renderable, tracks hover plus drag, and resolves appearance
 through `palette.border` at rest and `palette.accent` while hovered or dragged.
-`SeparatorAppearance` supplies the one-cell cross-axis count and paints vertical full cells or
-horizontal lower-half cells for both splitters and scrollbars.
+`SeparatorAppearance` supplies the one-cell cross-axis count and paints vertical full cells for both
+splitters and scrollbars. Its horizontal path takes a `HorizontalSeparatorMark` from the caller:
+`SplitterElement` asks for `centeredLine` and `SolidThumbScrollBar` asks for
+`bottomAnchoredHalfBlock`. Neither caller writes a glyph of its own.
 
 **Generates:** One-cell splitter hit zones; rest-muted, hover-lit, drag-lit behavior; one future
 splitter wire-up instead of another geometry and pointer implementation.
@@ -618,18 +623,21 @@ splitter wire-up instead of another geometry and pointer implementation.
 **Evidence:** `src/modules/ui/SeparatorAppearance.ts`;
 `src/modules/ui/SeparatorAppearance.test.ts`; `src/modules/ui/SplitterElement.ts`;
 `src/modules/ui/SplitterElement.test.ts`;
-splitter consumers construct `SplitterElement` rather than binding pointer handlers themselves.
+splitter consumers construct `SplitterElement` rather than binding pointer handlers themselves;
+`scripts/harness/smoke-panel-chrome-harness.ts` asserts the published drag span paints `━` across
+its whole width at both scales.
 
 **Impossible if true:** A painted divider whose pointer target occupies different cells; a pane
 splitter with a private hover or drag state machine; a divider that stays accent-colored at rest or
-loses its highlight while a captured drag continues.
+loses its highlight while a captured drag continues; a horizontal splitter cell holding the
+scrollbar's `▄`.
 
 **Verification:** `bun test src/modules/ui/SplitterElement.test.ts` plus the splitter-state
 FrameProbe assertions registered in `scripts/merge-gate.sh`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Visible panel contents own separate headed regions
 
@@ -1867,13 +1875,17 @@ bottom-right cell and the horizontal painter stops in the preceding column.
 
 **Scope:** every scrollbar in the app: the pane bars built by `ScrollbarSync`, the optional
 `PaneContent` scroll bars (terminal scrollback), both `ScrollableTextViewport` bars (hover card,
-agent transcript, markdown preview), and the two `DiffView` bars. `SeparatorAppearance`, shared with
-`SplitterElement`, owns the axis-specific cell treatment.
+agent transcript, markdown preview), and the two `DiffView` bars. `SeparatorAppearance` owns the
+axis-specific cell treatment. It is shared with `SplitterElement`, which asks the same painter for a
+DIFFERENT horizontal mark — the vertically centered `━` — because a splitter divides two regions
+while a scrollbar reports a position along one edge. That difference is the caller's named choice,
+not a second painter.
 
 **Mechanism:** all scrollbar construction goes through ONE class, `SolidThumbScrollBar`
 (`src/modules/ui/SolidThumbScrollBar.ts`). It delegates track and thumb paint to
-`SeparatorAppearance`, which uses background fill for vertical rectangles and `▄` with transparent
-background for horizontal rectangles. The lower half anchors the bar to the pane's
+`SeparatorAppearance`, which uses background fill for vertical rectangles and, for horizontal
+rectangles, the `bottomAnchoredHalfBlock` mark `▄` with a transparent
+background. The lower half anchors the bar to the pane's
 trailing edge; the upper half stays open. This reads at half the height without weakening the
 whole-cell hit target. The glyph has the same shape with the dark and light palette colour pairs.
 `ScrollbarSync` supplies one `panel` and `dim` pair to every bar it constructs, independent of axis.
@@ -1919,7 +1931,7 @@ scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-termina
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Selection stays anchored to an item
 

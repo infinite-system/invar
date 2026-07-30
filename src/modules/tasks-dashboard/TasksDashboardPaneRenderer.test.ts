@@ -4,6 +4,7 @@ import { ThemePalettes } from '../theme/ThemePalettes';
 import {
   TASKS_BUILDING_BREATH_FRAMES,
   TASKS_EXPLORING_GLYPHS,
+  TASKS_MOTION_STEP_MILLISECONDS,
 } from '../../../scripts/tasks/tasks-status';
 import {
   TasksDashboardPaneRenderer,
@@ -21,6 +22,7 @@ function taskRow(overrides: Partial<TasksDashboardRow>): TasksDashboardRow {
   return {
     kind: 'task',
     label: 'planted-task',
+    folderName: '901-planted-task',
     taskNumber: 901,
     standing: null,
     phase: null,
@@ -31,6 +33,7 @@ function taskRow(overrides: Partial<TasksDashboardRow>): TasksDashboardRow {
     addedLines: null,
     removedLines: null,
     sessionName: null,
+    sessionAvailable: null,
     worktreePath: null,
     taskFilePath: null,
     latestBriefFilePath: null,
@@ -55,10 +58,11 @@ function makeContext(
     height: 10,
     innerWidth: 60,
     viewportWidth: 59,
-    animationPaint: 0,
+    animationElapsedMilliseconds: 0,
     gateGlance: null,
     actionNotice: null,
     taskActionIcons: {
+      session: 'S',
       workspace: 'W',
       taskRecord: 'T',
       latestBrief: 'B',
@@ -222,12 +226,18 @@ test('live motion advances through the CLI-exported phase frames', () => {
   });
   const first = renderedText(
     TasksDashboardPaneRenderer.Class.render(
-      makeContext({ rows: [titleRow, detailRow], animationPaint: 0 }),
+      makeContext({
+        rows: [titleRow, detailRow],
+        animationElapsedMilliseconds: 0,
+      }),
     ),
   );
   const second = renderedText(
     TasksDashboardPaneRenderer.Class.render(
-      makeContext({ rows: [titleRow, detailRow], animationPaint: 10 }),
+      makeContext({
+        rows: [titleRow, detailRow],
+        animationElapsedMilliseconds: 2 * TASKS_MOTION_STEP_MILLISECONDS,
+      }),
     ),
   );
   expect(first).toContain(`${TASKS_BUILDING_BREATH_FRAMES[0]!.glyph} building`);
@@ -250,7 +260,7 @@ test('live motion advances through the CLI-exported phase frames', () => {
     TasksDashboardPaneRenderer.Class.render(
       makeContext({
         rows: [exploringTitleRow, exploringDetailRow],
-        animationPaint: 0,
+        animationElapsedMilliseconds: 0,
       }),
     ),
   );
@@ -258,7 +268,7 @@ test('live motion advances through the CLI-exported phase frames', () => {
     TasksDashboardPaneRenderer.Class.render(
       makeContext({
         rows: [exploringTitleRow, exploringDetailRow],
-        animationPaint: 10,
+        animationElapsedMilliseconds: 2 * TASKS_MOTION_STEP_MILLISECONDS,
       }),
     ),
   );
@@ -272,16 +282,45 @@ test('the pinned row actions share one hit and tooltip geometry', () => {
   const row = taskRow({
     kind: 'detail',
     sessionName: 'invar/901-planted-task',
+    sessionAvailable: true,
   });
-  expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 5)).toBe(
+  expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 45)).toBe(
     'session',
   );
   expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 57)).toBe(
     'report',
   );
-  expect(TasksDashboardPaneRenderer.Class.tooltipForAction('report')).toBe(
+  expect(TasksDashboardPaneRenderer.Class.tooltipForAction('report', row)).toBe(
     'Open the latest report',
   );
+  expect(
+    TasksDashboardPaneRenderer.Class.tooltipForAction('session', row),
+  ).toBe('Attach to builder tmux session: invar/901-planted-task');
+  expect(
+    renderedText(
+      TasksDashboardPaneRenderer.Class.render(
+        makeContext({ rows: [row], innerWidth: 60, viewportWidth: 59 }),
+      ),
+    ),
+  ).toContain(' S  W  T  B  R ');
+});
+
+test('a missing builder session paints a loud degraded row and tooltip', () => {
+  const row = taskRow({
+    kind: 'detail',
+    sessionName: 'planted-missing-session',
+    sessionAvailable: false,
+    standing: 'ready',
+  });
+  const rendered = renderedText(
+    TasksDashboardPaneRenderer.Class.render(
+      makeContext({ rows: [row], innerWidth: 60, viewportWidth: 59 }),
+    ),
+  );
+  expect(rendered).toContain('! DEGRADED');
+  expect(
+    TasksDashboardPaneRenderer.Class.tooltipForAction('session', row),
+  ).toBe('Builder tmux session is missing: planted-missing-session');
 });
 
 test('active and done tasks stay on one row and truncate through the shared ellipsis', () => {
