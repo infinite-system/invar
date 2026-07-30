@@ -19,12 +19,19 @@
 import { chmodSync, mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CellFramebuffer } from '../../src/modules/media/CellFramebuffer';
-import { SoftwareScene } from '../../src/modules/media/SoftwareScene';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
+
+// The smoke subject loads only when this smoke runs. A static import would make the removable-media
+// build depend on its absent plugin through test tooling.
+// invariant: Animated media is a removable runtime plugin (src/modules/media/media.invariants.md)
+const mediaModuleRoot = '../../src/modules/media/';
+const { CellFramebuffer } = await import(
+  `${mediaModuleRoot}CellFramebuffer.ts`
+);
+const { SoftwareScene } = await import(`${mediaModuleRoot}SoftwareScene.ts`);
 
 interface HeadingControl {
   readonly action: 'add' | 'expand' | 'close';
