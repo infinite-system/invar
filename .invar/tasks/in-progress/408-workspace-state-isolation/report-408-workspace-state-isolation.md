@@ -1,209 +1,145 @@
-# READY — #408 Workspace state isolation: dock and panel geometry becomes workspace owned
+# READY — #408 Workspace state isolation (round 2: merged forward, now covering the v2 panel)
 
 - Branch: `fleet/408-workspace-state-isolation`
-- Commit: `c539d523` — `#408 workspace state isolation: dock and panel geometry becomes workspace owned`
-- Bycatch commit: `9f152742` — `fix(ui): correct stale member names in the activity-bar comment`
-- Base: `87087627`
-- Gate: `GATE_EXIT=0`, read from the pre-commit hook's own log for **both** commits
-  (`/tmp/408-commit.log:221` and `/tmp/408-bycatch.log:221`). No `FAIL` lines; 66 of 66 smokes OK,
-  including the new `smoke: workspace layout isolation harness`.
-- Worktree: clean. Nothing pushed, merged, tagged, or deleted.
-
-The user's words: *"opening different panels in different workspace should remain open in that
-workspace only not leak to other workspaces, positioning of things should remain to that workspace
-only."* Six pieces of state leaked. All six are closed. The panel-model files #404 is rebuilding
-were not touched, and nothing in that area leaked.
+- **Merge commit: `692d2541`** — `merge main into #408: workspace isolation now covers the v2 panel model`
+- Earlier commits on the branch: `c539d523` (the isolation fix), `9f152742` (bycatch)
+- Merged in: `main` at `df0b092b`, carrying **#404** (panel chrome v2 — containers, window groups,
+  the pinned contents list) and **#381** (LSP discovery)
+- Gate: `GATE_EXIT=0` on the combined tree, read from the pre-commit hook's own log
+  (`/tmp/408-merge-commit2.log:223`). `merge-gate: ALL-PASS`, 82 smokes OK, no `FAIL` lines.
+  **Two steps passed only on retry** — see *Gate honesty* below.
+- Worktree: clean. Nothing pushed, merged into main, tagged, or deleted.
 
 ---
 
-## 1. Census — every piece of UI state, classified
+## 1. The merge
 
-Built by enumeration, not memory: every field the application publishes through
-`AppStatusProjection`, walked one at a time and traced to the object that owns it. The
-non-leaking rows are here on purpose — the negative space is the finding.
+Six files overlapped. Five auto-merged; one conflicted.
 
-### Workspace-scoped, and was already correct
-
-| State | Owner | Why it was already isolated |
-|---|---|---|
-| Primary dock content (`sidebarView`: files/git/structure/…) | `Workspace.primaryPaneContentIdentifier` | Lives on the workspace object itself |
-| Primary dock focus | `Workspace.focusPrimaryPane` / workspace focus model | Same |
-| Bottom panel visibility, expanded, active content, cell set | `PanelHost` content sets (`createContentSet` / `selectContentSet`) | The panel already switches a whole content set per workspace |
-| Terminal + agent pane sessions | `PaneRuntimes` | Keyed by workspace |
-| Editor tabs, active buffer, cursor line, scroll top, folds | `OpenBufferSet` / `DocumentHandle` | Per workspace by construction |
-| File tree expansion + selection | `FileTreeWorkspace` (a `WorkspaceContribution`) | Attached per workspace |
-| Source control state | `GitWorkspace` (a `WorkspaceContribution`) | Attached per workspace |
-| Language / diagnostics state | `LspWorkspaceProvider` | Attached per workspace |
-
-### Application preferences — global on purpose, must NOT be scoped
-
-| State | Owner |
+| File | Outcome |
 |---|---|
-| `showActivityBar`, `showRightActivityBar` | `Settings` |
-| `sidebarPosition` (left/right) | `Settings` |
-| `panelAlignment` | `Settings` |
-| `leftDockVerticalSpan`, `rightDockVerticalSpan` | `Settings` |
-| `workspaceTabPosition` | `Settings` |
-| `wordWrap`, theme, keybindings, font | `Settings` |
+| `src/modules/app/AppStatusProjection.ts` + its test | auto-merged |
+| `src/modules/app/Bootstrap.ts` | auto-merged |
+| [src/modules/layout/layout.invariants.md](../../../../src/modules/layout/layout.invariants.md) | auto-merged |
+| `src/modules/ui/RootView.ts` | auto-merged |
+| [src/modules/workspace/workspace.invariants.md](../../../../src/modules/workspace/workspace.invariants.md) | **conflict — resolved by hand** |
 
-These are answers to "how do I like my editor", not "what was I doing in this project". A user who
-moves the sidebar to the right means it for the editor, not for one folder. Scoping them would have
-been a regression dressed as a fix.
+The conflict was narrow and both sides were additive: the record's **Evidence** line. #404 had added
+`PanelWorkspaceState.test.ts`; round 1 had added the isolation smoke. The resolution keeps both, so
+both intents hold:
 
-### Leaked — the six this task fixes
+```
+`src/modules/ui/PaneRuntimes.test.ts`; `src/modules/ui/PanelWorkspaceState.test.ts`;
+`scripts/harness/smoke-workspace-tabs-harness.ts`;
+`scripts/harness/smoke-workspace-layout-isolation-harness.ts` (the geometry rows of the table).
+```
 
-| State | Published as | Owner before | Owner now |
-|---|---|---|---|
-| Primary dock visibility | `primaryDockVisible` | `primaryDockHost` (one app-wide instance) | `LayoutSlots` + `WorkspaceLayout` |
-| Primary dock width | `sidebarWidth` | `settings.sidebarWidth` (a preference, read live) | `LayoutSlots.primaryDockColumns` |
-| Right dock visibility | `rightDockVisible` | `rightDockHost` | `LayoutSlots` + `WorkspaceLayout` |
-| Right dock content | `rightDockActiveContent` | `rightDockHost.activeId` | `LayoutSlots` + `WorkspaceLayout` |
-| Right dock width | `rightDockWidth` / `rightDockColumns` | `settings.rightDockWidth`, read live | `LayoutSlots.rightDockColumns` |
-| Bottom panel height | `panelRows` | a `let panelHeightRows` closure variable in `RootView` | `LayoutSlots.bottomPanelRows` |
-
-The last row is the shape of the whole defect in miniature: the height of the bottom panel was a
-local variable in a function that runs once, for the application, for all time.
+A clean textual merge is not a clean semantic one, so the auto-merged files were checked rather than
+trusted. The one that mattered was `RootView.ts`: round 1 moved the bottom-panel height out of a
+local `let` and into `LayoutSlots.bottomPanelRows`, and #404 rebuilt the panel chrome around it.
+All six of round 1's slot reads and writes survived intact, and the layout resolve still consumes
+`layoutSlots.rightDockColumns` rather than the settings field — the exact line that broke the layout
+smoke in round 1. `tsc --noEmit` is clean, the invariants checker resolves 1284 annotations and 231
+lattice links with 0 problems, and the isolation smoke passes on the combined tree.
 
 ---
 
-## 2. Reproduced by driving
+## 2. Does the NEW panel model leak?
 
-The probe is committed at
-[`census-408-workspace-state-leak-probe.ts`](census-408-workspace-state-leak-probe.ts). It drives
-the real application in a pseudo terminal against two throwaway fixture workspaces, shapes workspace
-A across every drivable state class (hide the primary dock, drag it to 36, open the right dock on
-`tasks` and drag it to 34, open a terminal in the bottom panel and drag it to 21 rows), opens a
-brand new workspace B, and prints every field where B carries A's value instead of the boot default.
-Then it returns to A and prints what A lost.
+**No.** Driven, not reasoned about.
+
+A second census probe — [`census-408-panel-v2-leak-probe.ts`](census-408-panel-v2-leak-probe.ts) —
+shapes workspace A across the state classes that did not exist when round 1 ran, opens a brand new
+workspace B, and reports every field B inherited:
 
 ```
-bun .invar/tasks/in-progress/408-workspace-state-isolation/census-408-workspace-state-leak-probe.ts
+bun .invar/tasks/in-progress/408-workspace-state-isolation/census-408-panel-v2-leak-probe.ts
 ```
 
-**Before (`87087627`, base sources restored in place and re-run for this report):**
+A gets a second container (agent beside terminal), a window group inside the selected container, and
+a contents list pinned open and dragged from 20 to 27 columns. Then B opens **and opens its own
+panel** — a closed panel answers every v2 question with a blank, so comparing against it would score
+B's emptiness as isolation.
 
 ```
-== LEAKED INTO B (B carries A-shaped value instead of the boot default) ==
-  primaryDockVisible: true -> false
-  sidebarWidth: 32 -> 36
-  rightDockVisible: false -> true
-  rightDockActiveContent: "structure" -> "tasks"
-  rightDockWidth: 28 -> 34
-  rightDockColumns: 0 -> 32
+== A-SHAPED (v2 panel state established in workspace A) ==
+  panelActiveSpacePaneIds: ["terminal"] -> ["terminal","agent"]
+  panelActiveGroup: "terminal-space-1-group-2" -> "terminal-space-1-group-4"
+  panelGroups: [["terminal"]] -> [["agent","terminal"]]
+  panelCellIds: ["terminal"] -> ["agent","terminal"]
+  panelListExpanded: false -> true
+  panelListWidth: 0 -> 27
 
-== BOTTOM PANEL HEIGHT ==
-  workspace A default rows: 16
-  workspace A dragged rows: 21
-  workspace B own-open rows: 21
-  VERDICT: LEAK — B inherited the height A dragged
-```
-
-**After (`c539d523`):**
-
-```
 == LEAKED INTO B (B carries A-shaped value instead of the boot default) ==
   (none)
-
-== CHANGED IN B BUT MATCHING NEITHER (inspect by hand) ==
-  (none)
-
-== BOTTOM PANEL HEIGHT ==
-  workspace A default rows: 16
-  workspace A dragged rows: 21
-  workspace B own-open rows: 16
-  VERDICT: isolated — B opened at its own height
 
 == NOT RESTORED IN A (A -> B -> A lost the value A had) ==
   (none)
+
+== PINNED CONTENTS LIST WIDTH ==
+  workspace A dragged width: 27
+  workspace B own width: 0
+  VERDICT: isolated — B did not inherit A dragged width
 ```
 
-One honest note on the `NOT RESTORED IN A` list: it read `(none)` **before** the fix too, and that
-was not a pass. Before the fix nothing was scoped, so returning to A trivially "restored" A's values
-because B had never stopped showing them. That heading only becomes evidence once `LEAKED INTO B` is
-empty — which is why the probe prints both and the smoke asserts both.
+The `CHANGED IN B BUT MATCHING NEITHER` list is not empty, and that is the correct answer rather
+than a finding: B shows `["terminal@2"]` and `terminal-space-1-group-5` — its own pane instance and
+its own group identity. Different from A, different from A's boot value, because they are B's.
+
+**No production change was needed.** `PanelHost` already snapshots and restores containers, the
+selected container, groups, the list pin and the list width per `PanelContentSet`
+(`PanelHost.ts:260-261` and `:275-276`), and a new content set starts at `panelListExpanded: false`
+and `panelListWidth: 20`. #404 built it scoped. What was missing was not behaviour — it was the
+contract saying so, and an arm that would notice if it stopped being true.
+
+**The probe was proved capable of finding a leak before its silence was believed.** With the
+per-content-set restore of the list state removed from `PanelHost`, the same probe reported:
+
+```
+== LEAKED INTO B (B carries A-shaped value instead of the boot default) ==
+  panelListExpanded: false -> true
+```
+
+and the extended smoke went red on exactly that arm (`CONTROL_SMOKE_EXIT=1`,
+`FAIL a new workspace opens with its contents list unpinned (expanded=true, ...)`). `PanelHost.ts`
+was restored from a backup and `git diff` on it is empty.
 
 ---
 
-## 3. The fix, and why it is shaped this way
+## 3. Contract
 
-The task addendum: *"yes modular architecture should be preserved and better strengthened by this
-change."* So the fix does not add a workspace-switch handler that reaches across modules and
-restores a bag of flags. It goes through the seam the codebase already has.
+**Smoke extended** — [`smoke-workspace-layout-isolation-harness.ts`](../../../../scripts/harness/smoke-workspace-layout-isolation-harness.ts)
+now shapes the v2 panel in workspace A and carries four more arms:
 
-`WorkspaceContributor` / `WorkspaceContribution` (`attachWorkspace` → `opened` / `suspended` /
-`resumed` / `disposed`) **is** the workspace cold-state seam. `GitWorkspace`, `FileTreeWorkspace`,
-`LspPlugin` and Tasks already ride it. The layout module now does too, and it is the layout module's
-own contribution — no other module learned anything about workspaces.
-
-Four new files, all in `src/modules/layout/`:
-
-| File | Role |
+| Arm | What it caught in the run |
 |---|---|
-| [`WorkspaceLayoutSlotPorts.interface.ts`](../../../../src/modules/layout/WorkspaceLayoutSlotPorts.interface.ts) | The port pair: `readSlots()` / `applySlots()`, plus the `WorkspaceLayoutSlotValues` record of what one workspace owns |
-| [`LayoutSlots.ts`](../../../../src/modules/layout/LayoutSlots.ts) | The owner the three sizes never had — dock columns and panel rows as reactive refs |
-| [`WorkspaceLayout.ts`](../../../../src/modules/layout/WorkspaceLayout.ts) | The per-workspace contribution: `opened` seeds from the new-workspace defaults, `suspended` captures, `resumed` re-applies |
-| [`WorkspaceLayoutContributor.ts`](../../../../src/modules/layout/WorkspaceLayoutContributor.ts) | Attaches one contribution per workspace; captures the application defaults **once**, at the first attachment |
+| pinned contents list state does not leak | B `expanded=false, painted width 0`; A holds 27 |
+| window grouping does not leak | B has ONE pane; A holds `["agent","terminal"]` |
+| container pane identifiers do not leak | B shows `["terminal@2"]`, not A's identifiers |
+| A→B→A restores the container, its group, and the pinned list | list painted 27 of 27, cells and container both A's |
 
-`Bootstrap` supplies the adapter — the only place that knows both the layout slots and the dock
-hosts — and registers the contributor. That is the whole wiring.
+The list width arm reads the **painted** region (`panelListGeometry`), not the model cell the drag
+writes — the same rule round 1 arrived at the hard way, when a smoke that asserted only published
+numbers passed while the layout resolve was stale.
 
-Three decisions worth naming:
-
-**A drag writes two things with two meanings.** Dragging the sidebar splitter writes
-`LayoutSlots.primaryDockColumns` (this workspace's live geometry) *and* `settings.sidebarWidth` (the
-width the next new workspace, and the next session, starts at). Before, there was one number doing
-both jobs, which is exactly why it leaked.
-
-**Defaults are captured once.** `WorkspaceLayoutContributor` reads the ports for the new-workspace
-defaults at the first attachment and caches. Reading them live would mean a new workspace inherits
-whatever the *current* workspace happens to look like — the same leak, one level up. A positive
-control confirmed this: made the getter read live, the test went red with `expected 32, received
-64`.
-
-**Restoring geometry never moves the keyboard.** `applySlots` writes `visible.value` directly and
-calls `blur()` on hide, rather than `show()`/`hide()`, because those also claim and release keyboard
-focus. Focus belongs to the workspace focus model, not the geometry restore. This was found by
-driving: `rightDockFocused` failed to restore after A→B→A on the first attempt.
-
-Rejected: a central `workspaceState` flag bag in `Bootstrap` or `WorkspaceSet` — it would have been
-fewer lines and would have made every future scoped state a change to a shared file owned by nobody.
-Also rejected: scoping the `Settings` fields themselves, which would have turned preferences into
-per-project state.
+**Workspace record refined** — [`workspace.invariants.md`](../../../../src/modules/workspace/workspace.invariants.md):
+the scoped-set table's panel row now names *containers, selected container, window groups, pane-list
+pin, pane-list width* explicitly; Impossible-if-true gains *"a brand new workspace opening with A's
+contents list already pinned, at A's dragged width, or with A's window group already assembled"*;
+Verification runs the isolation smoke.
 
 ---
 
-## 4. Contract
+## 4. Round 1 still holds
 
-**New invariant record** — *"Layout slot sizes are workspace scoped"* in
-[`layout.invariants.md`](../../../../src/modules/layout/layout.invariants.md), with five components:
-one owner per size; scoping is a contribution, not a special case; defaults are captured once; a
-drag writes two things with two meanings; restoring geometry never moves the keyboard. Status
-provisional.
+Unchanged by the merge, restated for one place to read:
 
-**Workspace records refined** — [`workspace.invariants.md`](../../../../src/modules/workspace/workspace.invariants.md)
-now carries **"The complete workspace-scoped set"**: an eight-row table naming every scoped state
-class and its owning module, plus an explicit paragraph on what is *not* workspace state
-(application preferences) and a note on transient overlays. "Each workspace owns one panel world"
-now points its dock-geometry clause at the new layout record instead of describing it inline.
-
-**New gated smoke** —
-[`smoke-workspace-layout-isolation-harness.ts`](../../../../scripts/harness/smoke-workspace-layout-isolation-harness.ts),
-registered in [`merge-gate.sh`](../../../../scripts/merge-gate.sh). One arm per state class: dock
-visibility, dock widths, right-dock content, panel height, and A→B→A restoration.
-
-The smoke asserts painted geometry, not just published numbers. My first version asserted only the
-status fields — which are written from the same cells the code writes, so they would have agreed
-with each other while the screen showed something else. It passed while the layout resolve was
-stale. `paintedSlotWidth()` now reads the *resolved* `layoutSlots` geometry the renderer actually
-used.
-
-Positive controls, each made red on purpose and then green:
-
-| Control | Result |
-|---|---|
-| Contributor reads defaults live instead of capturing once | test red — `expected 32, received 64` |
-| `resumed()` body removed | 2 tests red |
-| Contributor registration removed from `Bootstrap` | smoke `PLANTED_EXIT=1`, `RESTORED_EXIT=0` |
+Six leaks were found by driving and closed — primary dock visibility and width, right dock
+visibility, content and width, and bottom panel height. They now flow through the layout module's
+own `WorkspaceContribution` (`WorkspaceLayoutContributor` → `WorkspaceLayout` → `LayoutSlots`),
+not a central flag bag. A drag writes two things with two meanings: the live slot this workspace
+owns, and the settings field a *new* workspace starts from. New-workspace defaults are captured once
+at first attachment; reading them live would reinstate the leak one level up.
 
 ---
 
@@ -211,36 +147,48 @@ Positive controls, each made red on purpose and then green:
 
 | Check | Result |
 |---|---|
-| `bunx tsc --noEmit` | 0 errors |
-| `bun test` | 2172 pass, 0 fail |
-| conventions gate | PASS |
-| invariants `--all --refs` | 1280 annotations, 231 lattice links, **0 problems** |
-| full merge gate (pre-commit hook, both commits) | `GATE_EXIT=0`, 66/66 smokes OK |
-| layout module tests | 58 pass (9 new) |
+| `bunx tsc --noEmit` (combined tree) | 0 errors |
+| conventions gate | PASS (770 files, 295 live harness files) |
+| invariants `--all --refs` | 1284 annotations, 231 lattice links, **0 problems** |
+| full merge gate (pre-commit hook) | `GATE_EXIT=0`, `ALL-PASS`, 82 smokes OK, 6m44s |
+| isolation smoke standalone | ALL PASS, including all four new v2 arms |
+| v2 census probe | no leaks, nothing lost on return |
+| positive control (list restore removed) | probe reports the leak; smoke arm fails |
 
----
+### Gate honesty
 
-## 6. Left for #404
+The gate went green, but its own retry tally says two steps **passed only on retry** —
+`smoke: panel-chrome harness` and `behavioral-contracts (felt invariants)`. The gate is explicit
+that a retried pass is a flake, not a green, so this is reported rather than skimmed.
 
-None. This is a real result, not an omission: the panel-model files #404 is rebuilding
-(`PanelHost`, `PanelTabBar`, panel persistence) were not edited, and the probe found **no leak** in
-anything they own. Bottom-panel visibility, expanded state, active content and cell set were all
-already isolated by `PanelHost`'s content sets and appear in the `ISOLATED` list in both probe runs.
-The one panel-adjacent leak — the panel's *height* — was never panel-model state at all; it was a
-`let` in `RootView`, and it now lives in `LayoutSlots` alongside the dock widths.
+What I established about them:
 
-What #404 should know: `LayoutSlots.bottomPanelRows` is now the single owner of the unexpanded
-panel height, and the layout contribution carries it across switches. A rebuilt panel model should
-read and write that ref rather than reintroducing a local.
+- `smoke: panel-chrome harness` passes **3 of 3** standalone runs on this tree.
+- An earlier attempt at this same commit failed on `smoke: markdown harness` (a code-fence
+  background colour assertion). That smoke also passes standalone on this tree, and the failing
+  assertion is a truecolor-dependent colour check in a file this branch does not touch.
+- `.perf-history/gate-retries.ndjson` records the same flake class at the **base** commit
+  `87087627`, before any of this work: `smoke: layout harness` and `smoke: git-watch harness`,
+  both correlated with load average above 5.
+
+So this is a pre-existing, load-correlated flake population in the gate, not something the merge
+introduced. It is not fixed here, and it should not be treated as fixed.
 
 ---
 
 ## Bycatch
 
-**FIXED — `9f152742`.** `src/modules/ui/RootView.ts:373` described the activity bar as switching
-`Workspace.sidebarView` through `Workspace.showSidebarView`. Neither member exists; the real ones
-are `Workspace.primaryPaneContentIdentifier` and `Workspace.focusPrimaryPane`. Found while tracing
-the primary dock's content state for the census — a stale comment is exactly the thing that makes an
-enumeration census misclassify a row. Comment only, no behaviour change, its own commit as required.
+**Observed, not fixed — gate flake population.** Recorded above under *Gate honesty*: at least five
+distinct smokes (`panel-chrome`, `markdown`, `layout`, `git-watch`, `behavioral-contracts`) have
+passed only on retry across six gate runs today, including at the base commit before this branch
+changed anything. The common factor is gate load, not any one smoke. This is a real defect in the
+verification machinery — a retried green is exactly the thing the repo has been burned by — but it
+belongs to whoever owns the flake work, and I did not want to widen this task into it without a
+decision. Flagging it with the evidence: `.perf-history/gate-retries.ndjson`, six runs recorded.
+
+**Fixed in round 1 — `9f152742`.** `src/modules/ui/RootView.ts` described the activity bar as
+switching `Workspace.sidebarView` through `Workspace.showSidebarView`. Neither member exists; the
+real ones are `Workspace.primaryPaneContentIdentifier` and `Workspace.focusPrimaryPane`. Comment
+only, its own commit.
 
 Nothing else observed.
