@@ -215,7 +215,7 @@ class $MediaPaneContent implements PaneContent {
       this.demoImage.height = this.framebuffer.height;
       this.demoImage.rgba = this.framebuffer.rgba;
     }
-    this.activeSceneValue = this.scene.render(
+    this.scene.render(
       this.framebuffer,
       Math.max(0, this.frameIndexValue) / this.options.framesPerSecond,
       this.requestedScene,
