@@ -24,7 +24,7 @@ is narrower than 150 cols).
 4. Assert glyph cells non-blank at BOTH geometries in the dashboard
    smoke (extend, no new smoke). Positive control: re-plant the gate,
    see red.
-5. Check theme.invariants.md's glyph-ladder record — refine it if it
+5. Check the theme contract's glyph-ladder record (src/modules/theme) — refine it if it
    never states geometry-independence.
 
 ## Rules
@@ -36,7 +36,7 @@ to the main-checkout task folder (absolute path). Known flaky classes:
 
 ## Invariants in scope
 
-theme.invariants.md glyph-ladder record + any dashboard/activity-bar
+The theme contract's glyph-ladder record (src/modules/theme) + any dashboard/activity-bar
 records naming glyphs. Answer record by record; list missed records.
 
 ## Bycatch expected
