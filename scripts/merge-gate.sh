@@ -755,6 +755,12 @@ step "coverage ratchet (no undeclared assertion loss)" bun scripts/check-coverag
 step "dropped reactive observations (report-only findings, gated instrument)" bun scripts/check-reactive-observation.ts
 # 2) Unit tests.
 step "unit tests (bun test)" bun test
+# USER DIRECTIVE 2026-07-29 ("bun run build must be run"): #312's compiler-sfc
+# import broke `bun build --compile` while every gate stayed green — tests and
+# tsc do not trace what the binary bundler traces. The shipped artifact must
+# compile on every gate. Output goes to a scratch path so the gate never
+# clobbers a developer's dist/iv.
+step "binary build (bun run build compiles)" bun build --compile --minify --external web-tree-sitter src/main.ts --outfile /tmp/merge-gate-binary-build/iv
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
 # They remain serial within one gate because they launch a long sequence of
 # applications; their blocking verdicts use state, ordering, and counts.

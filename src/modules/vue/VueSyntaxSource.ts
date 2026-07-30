@@ -1,4 +1,11 @@
-import { parse, type SFCBlock, type SFCDescriptor } from 'vue/compiler-sfc';
+// The esm-browser build, NOT 'vue/compiler-sfc': the CJS bundle lazily
+// requires dozens of optional template engines (teacup, coffee-script, ...)
+// which `bun build --compile` cannot resolve — importing it broke the binary
+// build on main (2026-07-29) while every gate stayed green. Types still come
+// from the package's declarations.
+// eslint-disable-next-line -- deep import is deliberate, see above
+import { parse } from '@vue/compiler-sfc/dist/compiler-sfc.esm-browser.js';
+import type { SFCBlock, SFCDescriptor } from 'vue/compiler-sfc';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type {
   DocumentSyntaxSource,
