@@ -32,3 +32,16 @@ defect in current source, beyond the dashboard motion generator.
    (watchers, LSP, terminal pollers, dashboard per-workspace instances).
 3. Same discipline: /proc stat sampling arms, timeless count-based
    contract, positive control.
+
+## Evidence addendum (2026-07-30 ~18:1x — RE-ATTRIBUTION, user-observed)
+
+Delta measurement of the user's live instance (5 workspaces, jiffies
+over 10s): iv 42.6%, tsgo LSP 0.0%. LSP is INNOCENT. User then closed a
+tmux-attach terminal pane (streaming the busy #393 builder) and idle
+fell to 3-7%. So: the tmux STREAMING pane dominated the 42% (legitimate
+render work), and the true hidden-pane idle floor is 3-7% at 5
+workspaces — not the ~30% earlier attributed. Earlier 30% reports may
+also have carried a streaming pane. The fix target stands (hidden panes
+must cost ~0), but the expected win is from ~3-7%, not ~30%. The round-8
+monitoring readings must separate per-plugin load so streaming vs
+heartbeat cannot be conflated again.
