@@ -1,6 +1,6 @@
 # 329 — tasks:watch animation tick restored (60fps diff frames; #321 regression)
 
-State: IN-PROGRESS
+State: COMPLETED — b8cfdc62 — Restored the 60fps diff-frame motion clock in tasks:watch: two clocks (2s data + 60fps motion), one timer, DEC 2026 bracketed diff writes, idle cancels the timer; NO_COLOR glyph cycle; work scales with animated rows not dashboard length.
 Engine: codex
 Model: 5.6-sol
 Effort: high
