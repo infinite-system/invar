@@ -37,3 +37,8 @@ while comparing an older --smol build against current.
 - Identification by cwd/argv (structure), never by grepping command lines
   for vocabulary that briefs could contain (the never-search-to-kill
   class applies to WATCHING too).
+
+## Addendum (user follow-up): the default filter is CWD-based
+Instances are selected by /proc/<pid>/cwd (main checkout + explicitly
+named paths), never by command-line text — worktree/temp cwds are the
+exclusion mechanism.
