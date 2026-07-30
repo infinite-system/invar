@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/in-progress/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md)  [active]  [building]
   `tmux attach -t invar/320-terminal-pane-fidelity-two-bundle`
 - #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/in-progress/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)  [building]
   `tmux attach -t invar/317-bottom-panel-splitter-thinner-with-action-buttons`
-- #314 [harness-and-tooling-integrity-bundle](.invar/tasks/in-progress/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md)  [active]  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/314-harness-and-tooling-integrity-bundle`
 - #300 [eight-ui-nitpicks-bundled](.invar/tasks/in-progress/300-eight-ui-nitpicks-bundled/task-300-eight-ui-nitpicks-bundled.md)  [active]  [building]
   `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
@@ -87,7 +85,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (12) — stamp Priority: into these task files
+## NO PRIORITY GROUP (16) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
@@ -100,9 +98,14 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #320 [320-terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/active/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md)
 - #321 [321-terminal-flicker-child-tui-repaints](.invar/tasks/active/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md)
 - #322 [322-status-editor-column-content-stale-in-preview](.invar/tasks/active/322-status-editor-column-content-stale-in-preview/task-322-status-editor-column-content-stale-in-preview.md)
+- #323 [323-quit-confirmation-dialog-modern](.invar/tasks/active/323-quit-confirmation-dialog-modern/task-323-quit-confirmation-dialog-modern.md)
+- #324 [324-terminal-3d-demo-and-video-playback](.invar/tasks/active/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md)
+- #325 [325-audio-video-sync-research](.invar/tasks/active/325-audio-video-sync-research/task-325-audio-video-sync-research.md)
+- #326 [326-vendor-modularity-third-party-plugins](.invar/tasks/active/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)
 
-## RECENTLY COMPLETED (last 15 of 86 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 87 — full log: project.tasks-completed.md)
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
+- #314 [harness-and-tooling-integrity-bundle](.invar/tasks/completed/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md) — 331a8d33 — harness/tooling integrity: Drive paint-condition waits, dispatch root-relative pointers, folder-open task isolation
 - #313 [child-owns-its-io-bundle](.invar/tasks/completed/313-child-owns-its-io-bundle/task-313-child-owns-its-io-bundle.md) — 08403def — child I/O ownership: mouse passthrough + untouched child colors
 - #313 [terminal-mouse-passthrough-to-child-apps](.invar/tasks/completed/313-terminal-mouse-passthrough-to-child-apps/task-313-terminal-mouse-passthrough-to-child-apps.md) — 133338ba — terminal mouse passthrough to child apps
 - #312 [vue-sfc-block-syntax-and-routing](.invar/tasks/completed/312-vue-sfc-block-syntax-and-routing/task-312-vue-sfc-block-syntax-and-routing.md) — b0f78747 — Vue SFC phases 1-2: block-aware highlighting on generic syntax + language routing
@@ -116,4 +119,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/completed/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md) — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
 - #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
-- #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/completed/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md) — f22d86e3 — Scrollbar corner: vertical owns full height + corner, horizontal ends at its edge, grey/white parity both axes; #284 oracle banked

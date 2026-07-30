@@ -1,9 +1,7 @@
-# BLOCKED — harness and tooling integrity bundle
+# READY — harness and tooling integrity bundle
 
-The implementation is complete, but this branch is not READY. The enforced
-commit gate ended with `GATE_EXIT=1`. Its only failure was a pre-existing
-Prettier error in three task metadata files owned by other builders. The hook
-blocked the final #314 commit.
+All three tasks are complete in separate commits. The final #314 commit passed
+the enforcing hook with `GATE_EXIT=0`. The worktree is clean.
 
 ## #292 — Drive action status waits for paint
 
@@ -71,7 +69,7 @@ Positive control:
 
 Task: [#314 (harness drives isolate workspace task configuration)](../../active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md).
 
-Commit: blocked before creation. The complete change remains staged.
+Commit: `d371e80578e26f2a6e7edec01648344b58d5f301`
 
 The structural audit used
 [`ast-query.ts`](../../../../scripts/ast-query.ts) against
@@ -130,13 +128,16 @@ The planted repository task file was gitignored. I removed it after the gate.
 
 ## Final gate
 
+I merged the repaired `main` as
+`34ceddd903bb97b551acda7dd795af18e8c0929c`. The merge had no conflicts. The
+three metadata files that blocked the first attempt now end with a newline.
+
 The normal `git commit -m 'isolate harness folder-open tasks for #314'`
-started the enforcing hook. No skip flag was used. The planted repository task
-was still present.
+started the enforcing hook. No skip flag was used.
 
 The following checks passed:
 
-- conventions and TypeScript
+- conventions, TypeScript, and the full Prettier check
 
 - invariant structure and references
 
@@ -144,32 +145,28 @@ The following checks passed:
 
 - all unit tests
 
-- all 62 parallel registered PTY smokes, including both repository-root smokes
-  and the three task opt-ins
+- all 63 parallel registered PTY smokes
 
 - all three serial checks, including behavioral contracts
 
 - the five-session input-byte ordering check
 
-The gate reported no retry-assisted pass. It failed only at the full Prettier
-check:
+The planted task positive control ran across all registered smokes during the
+first full hook attempt. All 62 smokes in that revision passed. Only the
+unrelated metadata format check blocked that attempt. The repaired final hook
+then passed the updated 63-smoke registry from `main`.
+
+The final gate reported no retry-assisted pass:
 
 ```text
-[warn] .invar/tasks/in-progress/300-eight-ui-nitpicks-bundled/meta.json
-[warn] .invar/tasks/in-progress/308-markdown-view-only-mode-persistent/meta.json
-[warn] .invar/tasks/in-progress/312-vue-sfc-block-syntax-and-routing/meta.json
-Code style issues found in 3 files.
-GATE_EXIT=1
+merge-gate: ALL-PASS
+GATE_EXIT=0
+pre-commit: merge-gate GREEN — commit allowed.
 ```
 
-Each file matches this branch's `HEAD`. Each difference is only a missing final
-newline. Commit `e7fc088e` introduced those three missing newlines while it
-backfilled agent identity. They belong to other builders. I did not change
-them, hide them from Prettier, or bypass the gate.
-
-Required unblock: the conductor must repair or land those three metadata
-newlines, then ask this builder to run the enforcing commit again. A green
-`GATE_EXIT=0`, the final #314 commit hash, and a clean tree remain owed.
+The hook created commit
+`d371e80578e26f2a6e7edec01648344b58d5f301`. `git status --short` produced no
+output after the commit.
 
 ## Bycatch
 
@@ -184,6 +181,11 @@ newlines, then ask this builder to run the enforcing commit again. A green
   [dispatch.sh](../../../../scripts/fleet/dispatch.sh) now uses
   `.invar/tasks/in-progress/` and writes a root-relative pointer.
 
-- Gate blocker: commit `e7fc088e` removed the final newline from the three
-  metadata files listed in the gate section. This made the full Prettier gate
-  red before this task changed any code.
+- FIXED OUTSIDE THIS BRANCH: commit `e7fc088e` removed the final newline from
+  three metadata files. The conductor repaired and swept the metadata on
+  `main`. Merge `34ceddd903bb97b551acda7dd795af18e8c0929c` brought that repair into
+  this branch.
+
+- The final input-byte check measured p50 `7.078 ms` against its report-only
+  warning line of `6.406 ms`. All five ordering sessions passed. The gate
+  classified the timing result as non-blocking.
