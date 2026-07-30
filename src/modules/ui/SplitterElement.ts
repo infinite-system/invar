@@ -3,9 +3,11 @@ import {
   BoxRenderable,
   type CliRenderer,
   type MouseEvent,
+  type OptimizedBuffer,
 } from '@opentui/core';
 import { SplitterModel } from '../layout/SplitterModel';
 import type { Palette } from '../theme/ThemePalettes';
+import { SeparatorAppearance } from './SeparatorAppearance';
 
 // invariant: Splitter paint and hit testing share one geometry (src/modules/ui/ui.invariants.md)
 class $SplitterElement {
@@ -33,8 +35,8 @@ class $SplitterElement {
   }
 
   protected createRenderable(): BoxRenderable {
-    const crossAxisCellCount = $SplitterElement.CROSS_AXIS_CELL_COUNT;
-    return new BoxRenderable(this.options.renderer, {
+    const crossAxisCellCount = SeparatorAppearance.Class.CROSS_AXIS_CELL_COUNT;
+    const renderable = new BoxRenderable(this.options.renderer, {
       id: this.options.identifier,
       width:
         this.options.orientation === 'vertical' ? crossAxisCellCount : '100%',
@@ -42,10 +44,21 @@ class $SplitterElement {
         this.options.orientation === 'horizontal' ? crossAxisCellCount : '100%',
       flexShrink: 0,
     });
-  }
-
-  protected static get CROSS_AXIS_CELL_COUNT(): number {
-    return 1;
+    const paintSurface = renderable as unknown as SplitterPaintSurface;
+    paintSurface.renderSelf = (buffer: OptimizedBuffer): void => {
+      SeparatorAppearance.Class.paint(
+        buffer,
+        this.options.orientation,
+        {
+          x: Number(renderable.x),
+          y: Number(renderable.y),
+          width: Number(renderable.width),
+          height: Number(renderable.height),
+        },
+        renderable.backgroundColor,
+      );
+    };
+    return renderable;
   }
 
   get active(): boolean {
@@ -70,11 +83,11 @@ class $SplitterElement {
     this.renderable.top = geometry.top;
     this.renderable.visible = geometry.visible ?? true;
     if (this.options.orientation === 'vertical') {
-      this.renderable.width = $SplitterElement.CROSS_AXIS_CELL_COUNT;
+      this.renderable.width = SeparatorAppearance.Class.CROSS_AXIS_CELL_COUNT;
       this.renderable.height = Math.max(0, geometry.length);
     } else {
       this.renderable.width = Math.max(0, geometry.length);
-      this.renderable.height = $SplitterElement.CROSS_AXIS_CELL_COUNT;
+      this.renderable.height = SeparatorAppearance.Class.CROSS_AXIS_CELL_COUNT;
     }
   }
 
@@ -170,4 +183,8 @@ export interface SplitterElementGeometry {
   top: number;
   length: number;
   visible?: boolean;
+}
+
+interface SplitterPaintSurface {
+  renderSelf(buffer: OptimizedBuffer): void;
 }

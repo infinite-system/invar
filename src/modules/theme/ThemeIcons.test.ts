@@ -109,14 +109,16 @@ test('checkbox icons ladder: real glyphs on nerd/unicode, single-cell, ascii deg
   }
 });
 
-test('git action icons ladder: real glyphs on nerd/unicode, letters as the ascii fallback', () => {
-  // Ascii is the graceful degrade: o / d / + / - so a no-nerd-font terminal still reads.
+test('action icons ladder: real glyphs on nerd/unicode, letters as the ascii fallback', () => {
+  // Ascii is the graceful degrade: each action remains a single readable cell.
   expect(ThemeIcons.Class.actionIconsFor('ascii')).toEqual({
     open: 'o',
     discard: 'd',
     stage: '+',
     unstage: '-',
     preview: 'p',
+    wordWrap: 'w',
+    goToLine: 'g',
   });
   // Nerd + unicode are real single-cell glyphs (distinct from the letters).
   const unicode = ThemeIcons.Class.actionIconsFor('unicode');

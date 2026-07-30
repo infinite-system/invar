@@ -63,23 +63,25 @@ describe('MarkdownPlugin', () => {
   // markdown-shaped port. The tab bar renders whatever declares an icon.
   it('offers its toggle as an icon-bearing command whose guard follows the active tab', () => {
     const { commands } = activate();
-    const actions = commands.editorTitleActions();
+    const actions = commands.actionsForSurface('editorTitle');
     expect(actions.map((command) => command.id)).toEqual([
       'markdown.togglePreview',
     ]);
-    expect(actions[0]?.editorTitleIcon).toBe('preview');
+    expect(actions[0]?.actionIcons?.editorTitle).toBe('preview');
     expect(actions[0]?.toggled?.()).toBe(false);
   });
 
   it('reports the toggle as ON once view-only preview is selected', () => {
     const { plugin, workspace, commands } = activate();
     plugin.controllerFor(workspace).togglePreview();
-    expect(commands.editorTitleActions()[0]?.toggled?.()).toBe(true);
+    expect(commands.actionsForSurface('editorTitle')[0]?.toggled?.()).toBe(
+      true,
+    );
   });
 
   it('withdraws the toggle affordance for a non-Markdown tab', () => {
     const { commands } = activate('/project/main.ts');
-    expect(commands.editorTitleActions()).toEqual([]);
+    expect(commands.actionsForSurface('editorTitle')).toEqual([]);
   });
 
   it('runs the toggle through the one registry, by command id', () => {

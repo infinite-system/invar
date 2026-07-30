@@ -172,7 +172,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
         category: 'Markdown',
         // The tab strip's action cluster renders exactly this: an icon-bearing command whose guard
         // holds. No host file names markdown to draw it.
-        editorTitleIcon: 'preview',
+        actionIcons: { editorTitle: 'preview' },
         when: () => this.activeWorkspace().previewToggleAvailable,
         toggled: () => this.activeWorkspace().showingPreview,
         run: () => this.activeWorkspace().togglePreview(),

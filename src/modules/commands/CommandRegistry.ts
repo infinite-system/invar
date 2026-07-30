@@ -69,13 +69,13 @@ class $CommandRegistry {
     return this.commands.get(id);
   }
 
-  /** Commands that ask to appear in the editor title row, in registration order, filtered by the
-   *  same guard `all()` uses — a guarded-off command is not offered as an affordance either. */
-  editorTitleActions(): Command[] {
+  /** Commands contributed to one action surface, in registration order, filtered by the same guard
+   *  `all()` uses. A guarded-off command is not offered as an affordance either. */
+  actionsForSurface(surface: CommandActionSurface): Command[] {
     // invariant: A command runs only when its guard holds (src/modules/commands/commands.invariants.md)
     return [...this.commands.values()].filter(
       (command) =>
-        command.editorTitleIcon !== undefined &&
+        command.actionIcons?.[surface] !== undefined &&
         (command.when ? command.when() : true),
     );
   }
@@ -192,12 +192,13 @@ export interface Command {
   category?: string;
   run: () => void | Promise<void>;
   when?: () => boolean;
-  /** Surface this command as a clickable affordance in the editor title row. The value names a key
-   *  in the theme's action-icon set, so the glyph follows the glyph-level ladder rather than being a
-   *  literal. A command that can be clicked is still just a command — this is a field on the one
-   *  action contract, not a second way to declare an action.
+  /** Surface this command as a clickable affordance on named action surfaces. Each value names a key
+   *  in the theme's action-icon set, so its glyph follows the glyph-level ladder. A clickable action
+   *  stays a command: this field is a contribution to the one registry, not a second action path.
    *  invariant: No action requires a memorized motion (project.invariants.md) */
-  editorTitleIcon?: keyof ActionIconSet;
-  /** For an editor-title affordance that is a TOGGLE: whether it currently reads as on. */
+  actionIcons?: Partial<Record<CommandActionSurface, keyof ActionIconSet>>;
+  /** For a contributed affordance that is a toggle: whether it currently reads as on. */
   toggled?: () => boolean;
 }
+
+export type CommandActionSurface = 'editorTitle' | 'panelSeparator';

@@ -72,3 +72,32 @@ test('selection wraps around the filtered list', () => {
   registry.moveSelection(1);
   expect(registry.selectedIndex.value).toBe(0);
 });
+
+test('named action surfaces share command guards without leaking into each other', () => {
+  const registry = new CommandRegistry.Class();
+  let guarded = false;
+  registry.registerAll([
+    {
+      id: 'editor-title',
+      title: 'Editor title',
+      actionIcons: { editorTitle: 'preview' },
+      run: () => {},
+    },
+    {
+      id: 'panel-separator',
+      title: 'Panel separator',
+      actionIcons: { panelSeparator: 'wordWrap' },
+      when: () => guarded,
+      run: () => {},
+    },
+  ]);
+
+  expect(
+    registry.actionsForSurface('editorTitle').map((command) => command.id),
+  ).toEqual(['editor-title']);
+  expect(registry.actionsForSurface('panelSeparator')).toEqual([]);
+  guarded = true;
+  expect(
+    registry.actionsForSurface('panelSeparator').map((command) => command.id),
+  ).toEqual(['panel-separator']);
+});
