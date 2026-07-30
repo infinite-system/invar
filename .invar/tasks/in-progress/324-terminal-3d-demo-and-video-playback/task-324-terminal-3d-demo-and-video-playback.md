@@ -16,6 +16,31 @@ first, kitty-protocol/sixel pixel tier where available, DEC-2026 sync
 for flicker-free animation, riding the existing pixel/image-preview
 capability machinery.)
 
+Addition (verbatim, 2026-07-29, GOVERNS equally):
+
+> For 3D task + video also invariants need to restated, flyweight,
+> lightest way of streaming possible, least memory accumulation
+> strategy when displaying
+
+Conductor reading — these are RENDERING INVARIANTS the implementation
+states in its contract records and PROVES, not aspirations:
+
+1. FLYWEIGHT — per-frame allocations bounded and constant: frame,
+   scanline/cell, and decode buffers allocated ONCE and reused;
+   steady-state animation performs zero per-frame heap growth. Prove
+   with a measured assert (heap flat across N frames), not inspection.
+2. LIGHTEST STREAMING — frames stream through; queue never deeper than
+   decoding + showing (double-buffer ceiling). Video decode is
+   pull-paced by the render loop (backpressure on the ffmpeg pipe),
+   never accumulated ahead. Dropped frames are dropped, not buffered.
+3. LEAST MEMORY ACCUMULATION WHEN DISPLAYING — display duration does
+   not correlate with memory: 10x longer playback holds the same
+   working set. Both polarities: a planted leak (retaining frames in a
+   list) fails the contract red; the real path holds green.
+
+These join the acceptance: the memory-flatness assert is part of the
+driven evidence, at minimum on the longest animation drive.
+
 ## Design
 
 1. **Renderer foundation**: a cell framebuffer surface — half-block
