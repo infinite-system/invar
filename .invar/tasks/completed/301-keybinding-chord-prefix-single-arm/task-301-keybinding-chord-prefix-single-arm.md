@@ -1,6 +1,6 @@
 # 301 — KeybindingRegistry arms only the first binding sharing a chord prefix
 
-State: IN-PROGRESS
+State: COMPLETED — 2eab05ae — chord resolver arms every shared-prefix continuation; #267 experiment is the permanent regression
 Created: 2026-07-29
 Engine: codex
 Environment: linux

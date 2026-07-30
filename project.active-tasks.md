@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #320 [terminal-pane-fidelity-two-bundle](.invar/tasks/in-progress/320-terminal-pane-fidelity-two-bundle/task-320-terminal-pane-fidelity-two-bundle.md)  [active]  [building]
   `tmux attach -t invar/320-terminal-pane-fidelity-two-bundle`
 - #319 [tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/in-progress/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)  [building]
   `tmux attach -t invar/319-tasks-pane-layout-tabs-and-play-button-polish`
-- #301 [keybinding-chord-prefix-single-arm](.invar/tasks/in-progress/301-keybinding-chord-prefix-single-arm/task-301-keybinding-chord-prefix-single-arm.md)  [building]
-  `tmux attach -t invar/301-keybinding-chord-prefix-single-arm`
 - #300 [eight-ui-nitpicks-bundled](.invar/tasks/in-progress/300-eight-ui-nitpicks-bundled/task-300-eight-ui-nitpicks-bundled.md)  [active]  [building]
   `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
@@ -87,7 +85,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (16) — stamp Priority: into these task files
+## NO PRIORITY GROUP (15) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
@@ -103,9 +101,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #324 [324-terminal-3d-demo-and-video-playback](.invar/tasks/active/324-terminal-3d-demo-and-video-playback/task-324-terminal-3d-demo-and-video-playback.md)
 - #325 [325-audio-video-sync-research](.invar/tasks/active/325-audio-video-sync-research/task-325-audio-video-sync-research.md)
 - #326 [326-vendor-modularity-third-party-plugins](.invar/tasks/active/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)
-- #327 [327-invarnet-p2p-streaming-underlay-research](.invar/tasks/active/327-invarnet-p2p-streaming-underlay-research/task-327-invarnet-p2p-streaming-underlay-research.md)
 
-## RECENTLY COMPLETED (last 15 of 90 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 91 — full log: project.tasks-completed.md)
 - #317 [bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/completed/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md) — ec92a8b9 — bottom panel separator: thin lower-half-cell + editor action buttons + always-draggable geometry
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
 - #314 [harness-and-tooling-integrity-bundle](.invar/tasks/completed/314-harness-and-tooling-integrity-bundle/task-314-harness-and-tooling-integrity-bundle.md) — 331a8d33 — harness/tooling integrity: Drive paint-condition waits, dispatch root-relative pointers, folder-open task isolation
@@ -115,9 +112,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #311 [vue-sfc-integration-map](.invar/tasks/completed/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md) — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
 - #308 [markdown-view-only-mode-persistent](.invar/tasks/completed/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md) — 284d53c1 — markdown view-only mode, persistent across files and restarts
 - #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
+- #301 [keybinding-chord-prefix-single-arm](.invar/tasks/completed/301-keybinding-chord-prefix-single-arm/task-301-keybinding-chord-prefix-single-arm.md) — 2eab05ae — chord resolver arms every shared-prefix continuation; #267 experiment is the permanent regression
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
 - #297 [dispatch-taskmd-links-break-from-root](.invar/tasks/completed/297-dispatch-taskmd-links-break-from-root/task-297-dispatch-taskmd-links-break-from-root.md) — aca2f613 — dispatch worktree task pointers root-relative + link-linted (landed in #314 bundle merge 331a8d33)
 - #296 [per-workspace-terminal-worlds](.invar/tasks/completed/296-per-workspace-terminal-worlds/task-296-per-workspace-terminal-worlds.md) — 55772cef — per-workspace terminal worlds: panel content sets isolate + restore per workspace
 - #295 [vscode-task-variable-schema](.invar/tasks/completed/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md) — 371cbdb7 — VS Code task variables: env + predefined set, boundary refusals
-- #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/completed/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md) — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
