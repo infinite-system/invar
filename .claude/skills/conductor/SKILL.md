@@ -28,9 +28,37 @@ outranks brevity: keep exact paths, counts, and hashes. Lint briefs before dispa
 this directly on 2026-07-28: "can we have a system where you talk simply always".
 
 **Where things live.** This file is DOCTRINE: what to do and how. `project.conductor.md`
-holds the LESSONS, grouped into 14 families with dated evidence. `project.conductor.archive.md`
+holds the LESSONS, grouped into families with dated evidence (family 0 is the ANCHOR PROTOCOL). `project.conductor.archive.md`
 is the full log. Cite a family when you need the account. A rule here is operative. A rule
 only there is not yet.
+
+---
+
+## ⚑ THE ANCHOR PROTOCOL — read first, run on CHECKPOINT
+
+The conductor loses its context to compaction. Survival is mechanical, never
+remembered. fleet-watch fires `CHECKPOINT:` at 85% of the compaction gauge and
+rides a `CTX:` speedometer line on every event batch (gauge:
+`~/dev/ibr/scripts/context-usage.sh`).
+
+On CHECKPOINT, or on any sight of COMPACT_PCT >= 85: stop starting new work and
+run five steps, each ending in a commit. Full text: `project.conductor.md`
+family 0.
+
+1. ANCHOR — write the RESUME ANCHOR in `project.briefing.md`: lanes with
+   verdict state, queue, laws delta, watcher re-arm lines verbatim.
+2. LESSON SWEEP — instance lessons go to task records and the census.
+   Fundamental lessons (true even if every task were deleted) go to
+   `project.conductor.md` as a family, and to this skill when operative,
+   and to other skills they belong to (ste-expression, agent-tmux, ...).
+3. MECHANICS HARDENING — a ritual done by hand twice becomes a script with
+   a self-test, before the compact.
+4. WATCHERS — the anchor names the exact Monitor command and cron spec.
+5. CLEAN TREES — `git status` clean in both repos; uncommitted work is the
+   one thing no protocol can resurrect.
+
+One line: disk for the session, doctrine for the project, self-tested scripts
+for what must run without being remembered.
 
 ---
 
