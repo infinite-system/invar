@@ -73,6 +73,7 @@ import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { QuickOpen } from '../search/QuickOpen';
 import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
+import type { QuitConfirmation } from './QuitConfirmation';
 import { PaneSplitters } from './PaneSplitters';
 import { SplitterElement } from './SplitterElement';
 import { Logging } from '../system/Logging';
@@ -119,6 +120,7 @@ class $RootView {
     findBar: FindBar.Instance,
     quickOpen: QuickOpen.Instance,
     goToLinePrompt: GoToLinePrompt.Instance,
+    quitConfirmation: QuitConfirmation.Model,
     shortcutHelp: ShortcutHelp.Instance,
     overlayCoordinator: OverlayCoordinator.Instance,
     panelHost: PanelHost.Instance,
@@ -2139,6 +2141,7 @@ class $RootView {
       findBar,
       quickOpen,
       goToLinePrompt,
+      quitConfirmation,
       contextMenu,
       boundedListPopup,
       settingsPanel,

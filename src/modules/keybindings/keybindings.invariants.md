@@ -290,21 +290,24 @@ this record governs how a reserved chord RESOLVES, that one governs what may be 
 and the input router runs it FIRST — ahead of every modal input branch that would otherwise swallow
 the key. Printable + navigation keys still reach the focused input; only the reserved set bypasses it.
 
-**Generates:** the always-available quit escape hatch; the product's "no dead ends" guarantee that a
-user can leave any mode; one reserved-set rule instead of per-modal quit handling.
+**Generates:** the always-available quit-confirmation escape hatch; the product's "no dead ends"
+guarantee that a user can request exit from any mode; one reserved-set rule instead of per-modal
+quit handling.
 
 **Evidence:** `src/modules/keybindings/KeybindingRegistry.ts` (`resolveReservedGlobal`, the
 `reserved` field); `src/modules/keybindings/KeybindingDefaults.ts` (Ctrl+Q / F10 marked
 `reserved: true`); `src/modules/app/Bootstrap.ts` (reserved check at the top of `keyTick`); the
-`focus-recovery` and quit drive-verification (Ctrl+Q / F10 quit from normal / find / quick-open).
+`focus-recovery` and quit drive-verification (Ctrl+Q / F10 open confirmation from normal / find /
+quick-open).
 
 **Impossible if true:** a focused search/modal input swallowing a reserved quit chord so the user is
 trapped with no way to quit; a reserved multi-step chord (which would need chord state and break the
 stateless pass-through).
 
 **Verification:** a driven test — open find / quick-open, type, press Ctrl+Q (and F10); assert the
-app quits (the pane returns to the shell); typing without a reserved chord keeps the app alive.
+quit confirmation opens above the previous mode; activate Yes and assert the app exits; typing
+without a reserved chord keeps the app alive.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-30

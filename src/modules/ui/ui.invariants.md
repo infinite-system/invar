@@ -822,8 +822,8 @@ left open; Find and Replace remain two modes of the same `FindBar`, and reserved
 run before the active overlay consumes input.
 
 **Scope:** `FindBar` in find or replace mode, `QuickOpen`, the command palette in
-`CommandRegistry`, `SettingsPanel`, `ContextMenu`, and the `ShortcutHelp` cheat-sheet. The
-destructive confirmation overlays and display-only `Tooltip` are outside this slot.
+`CommandRegistry`, `SettingsPanel`, `ContextMenu`, the `ShortcutHelp` cheat-sheet, and the quit
+confirmation. The close-tab confirmation and display-only `Tooltip` are outside this slot.
 
 **Mechanism:** `OverlayCoordinator.openExclusiveOverlay` closes every registered overlay except the
 requested one before it runs the requested opener. Every live open path in `Bootstrap.ts` and
@@ -846,7 +846,7 @@ src/modules/keybindings/KeybindingRegistry.test.ts && bash scripts/smoke-mode-co
 
 **Status:** established
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-30
 
 ### Modal focus withdraws host terminal projections
 
@@ -892,9 +892,9 @@ scrollbar, and close control all fit inside the terminal's current rows and colu
 a live resize. Settings and Keyboard Shortcuts reserve their declared canvas margins and derive
 their width from content while those preferences fit.
 
-**Scope:** The command palette, Find and Replace, Quick Open, destructive confirmation, Settings,
-Keyboard Shortcuts, and context menu dialogs in `OverlayLayer`. `BoundedListPopup` has its own
-stricter anchored geometry record; completion is non-modal.
+**Scope:** The command palette, Find and Replace, Quick Open, close-tab and quit confirmations,
+Settings, Keyboard Shortcuts, and context menu dialogs in `OverlayLayer`. `BoundedListPopup` has its
+own stricter anchored geometry record; completion is non-modal.
 
 **Mechanism:** `OverlayDialogGeometry.layout` clamps one numeric rectangle to the live
 `renderer.width` and `renderer.height`. Optional horizontal and vertical margins reduce the
@@ -923,7 +923,7 @@ scripts/harness/smoke-overlay-dialog-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Hierarchical pane rows share one compact indent
 
@@ -971,29 +971,31 @@ reliability floor when terminal keyboard delivery is missing or delayed.
 in `OverlayLayer`, plus the modal popup adapters it coordinates.
 
 **Components:**
-- *Close parity* — each dialog paints a top-edge `✕` that calls the same close or cancel model method
-  as Escape.
+- *Close parity* — each dialog paints the active theme's `panelClose` glyph and calls the same close
+  or cancel model method as Escape.
 - *Scroll parity* — every overflowing dialog uses `ScrollableTextViewport`, so arrow or page movement,
   wheel input, and `SolidThumbScrollBar` thumb drag share one offset.
 - *Action parity* — settings widgets, Find buttons, palette rows, Quick Open rows, and context-menu rows
   call the same adjust, navigate, run, or select methods as their keyboard actions.
 
-**Mechanism:** `OverlayCloseButton` owns the glyph, top-edge placement, pointer handler, and teardown
-for every close control. `OverlayLayer.updateOverlayDialog` and `BoundedListPopup.update` lay that
-shared control out from the same numeric rectangle as the dialog and route it to the existing model
-close method. Each overflowing dialog composes `ScrollableTextViewport` instead of implementing
-dialog-specific scroll math.
+**Mechanism:** `OverlayCloseButton` owns top-edge placement, pointer handling, and teardown for every
+close control. `OverlayLayer.updateOverlayDialog` and `BoundedListPopup.update` pass the active
+theme's `panelClose` token, lay the shared control out from the same numeric rectangle as the dialog,
+and route it to the existing model close method. Each overflowing dialog composes
+`ScrollableTextViewport` instead of implementing dialog-specific scroll math.
 
 **Generates:** Mouse-only overlay operation; one visible close idiom; pointer and keyboard actions
 that cannot diverge into separate state.
 
 **Evidence:** `src/modules/ui/OverlayCloseButton.ts`; `src/modules/ui/OverlayLayer.ts`;
 `src/modules/ui/BoundedListPopup.ts`;
-`scripts/harness/smoke-overlay-dialog-harness.ts`; `scripts/smoke-find.sh`;
+`scripts/harness/smoke-overlay-dialog-harness.ts`;
+`scripts/harness/smoke-quit-confirmation-harness.ts`; `scripts/smoke-find.sh`;
 `scripts/smoke-search-mouse.sh`; `scripts/smoke-voice-picker.sh`.
 
-**Impossible if true:** An overlay action works only by keyboard; a visible `✕` fails to close; wheel
-and keyboard reveal different row windows; a pointer edit bypasses the keyboard model method.
+**Impossible if true:** An overlay action works only by keyboard; a visible shared close glyph fails
+to close or differs from the active `panelClose` token; wheel and keyboard reveal different row
+windows; a pointer edit bypasses the keyboard model method.
 
 **Verification:** `bun scripts/harness/smoke-overlay-dialog-harness.ts && bash
 scripts/smoke-find.sh && bash scripts/smoke-search-mouse.sh && bash
@@ -1001,7 +1003,7 @@ scripts/smoke-voice-picker.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-30
 
 ### Modal outside presses dismiss and consume
 
@@ -1026,7 +1028,8 @@ without cursor, focus, pane, or button changes beneath it; scrollbar drags that 
 without closing it.
 
 **Evidence:** `src/modules/ui/ModalOverlayDismissal.ts`; `src/modules/ui/OverlayLayer.ts`;
-`src/modules/ui/BoundedListPopup.ts`; `scripts/harness/smoke-overlay-dialog-harness.ts`.
+`src/modules/ui/BoundedListPopup.ts`; `scripts/harness/smoke-overlay-dialog-harness.ts`;
+`scripts/harness/smoke-quit-confirmation-harness.ts`.
 
 **Impossible if true:** One press both dismissing a modal and moving the editor cursor or pane focus;
 an outside press leaving a listed modal open; an inside scrollbar drag closing the modal after the
@@ -1037,7 +1040,7 @@ src/modules/ui/BoundedListPopup.test.ts && bun scripts/harness/smoke-overlay-dia
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-30
 
 ### The shortcut sheet lists the effective bindings
 
