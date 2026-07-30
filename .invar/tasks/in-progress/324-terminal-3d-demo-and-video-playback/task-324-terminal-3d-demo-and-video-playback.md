@@ -1,6 +1,6 @@
 # 324 — terminal 3D demo (cube or crazier) + sample video playback
 
-State: active
+State: IN-PROGRESS
 Engine: codex
 Model: 5.6-sol
 Effort: high

@@ -1,0 +1,15 @@
+{
+  "task": 324,
+  "slug": "terminal-3d-demo-and-video-playback",
+  "branch": "fleet/324-terminal-3d-demo-and-video-playback",
+  "worktree": ".invar/worktrees/324-terminal-3d-demo-and-video-playback",
+  "tmuxSession": "invar/324-terminal-3d-demo-and-video-playback",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-324-terminal-3d-demo-and-video-playback.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "c3c6b09e84a5d6670275029823a183f74b24fb74",
+  "startedAt": "2026-07-29T22:36:50-04:00"
+}
