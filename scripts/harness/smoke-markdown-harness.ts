@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
-// Byte-level Markdown split-preview contract: task metadata line breaks, heading styles in both
-// themes, dead-link painting, the auto-opened LEFT preview, bidirectional user-led scroll sync and
-// its contributed switch, per-document hand-close memory, the contributed side setting, rendered
-// links, persisted splitter, edge-selection autoscroll/copy/paste, and independent source/preview
-// find all cross the real PTY.
+// Byte-level Markdown split-preview contract: task metadata line breaks, authored heading spacing
+// at both scales, heading and per-row code-fence styles in both themes, dead-link painting,
+// the auto-opened LEFT preview,
+// bidirectional user-led scroll sync and its contributed switch, per-document hand-close memory,
+// the contributed side setting, rendered links, persisted splitter, edge-selection
+// autoscroll/copy/paste, and independent source/preview find all cross the real PTY.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -145,6 +146,18 @@ function previewHasMarker(
   });
 }
 
+function previewBodyRowText(
+  snapshot: HarnessSnapshot.Model,
+  row: number,
+): string {
+  return snapshot
+    .rowText(row)
+    .slice(
+      previewBorder(snapshot).column + 1,
+      previewPaneRightColumn(snapshot),
+    );
+}
+
 function previewRowContaining(
   snapshot: HarnessSnapshot.Model,
   marker: string,
@@ -204,15 +217,32 @@ function displayColumnOfText(
 function findPreviewButton(
   snapshot: HarnessSnapshot.Model,
 ): { row: number; column: number } | null {
+  const previewGlyph = ThemeIcons.Class.actionIconsFor('unicode').preview;
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
-    const countMatch = rowText.match(/\d+\/\d+/);
-    const countColumn = countMatch?.index ?? -1;
-    if (countColumn >= 3 && rowText.includes('README.md')) {
-      return { row, column: countColumn - 3 };
-    }
+    if (!/\d+\/\d+/.test(rowText)) continue;
+    const breadcrumbRow = row + 1;
+    const previewColumn = snapshot.rowText(breadcrumbRow).indexOf(previewGlyph);
+    if (previewColumn >= 0)
+      return { row: breadcrumbRow, column: previewColumn };
   }
   return null;
+}
+
+function requirePreviewButtonPlacement(
+  snapshot: HarnessSnapshot.Model,
+  editorLeftColumn: number,
+  editorWidth: number,
+  label: string,
+): void {
+  const button = previewButton(snapshot);
+  const bufferTabRow = button.row - 1;
+  const previewGlyph = ThemeIcons.Class.actionIconsFor('unicode').preview;
+  HarnessSmoke.Class.requireCondition(
+    button.column === editorLeftColumn + editorWidth - 2 &&
+      !snapshot.rowText(bufferTabRow).includes(previewGlyph),
+    `${label} keeps the preview action at the breadcrumb right edge and absent from the buffer tab row`,
+  );
 }
 
 function previewButton(snapshot: HarnessSnapshot.Model): {
@@ -235,6 +265,157 @@ function clickCell(
 
 function packedThemeColor(color: string): number {
   return Number.parseInt(color.slice(1), 16);
+}
+
+function requireUniformHeadingColor(
+  snapshot: HarnessSnapshot.Model,
+  markers: readonly string[],
+  accentColor: string,
+  formerTitleColor: string,
+  label: string,
+): void {
+  const headingCells = markers.map((marker) => {
+    const position = previewMarkerPosition(snapshot, marker);
+    return snapshot.cell(position.row, position.column);
+  });
+  const packedAccent = packedThemeColor(accentColor);
+  HarnessSmoke.Class.requireCondition(
+    headingCells.every((cell) => cell?.foreground === packedAccent) &&
+      headingCells[0]?.foreground !== packedThemeColor(formerTitleColor),
+    `${label} paints H1 through H6 with one theme accent and removes the former H1 color`,
+  );
+}
+
+function hasAuthoredHeadingSpacing(
+  snapshot: HarnessSnapshot.Model,
+  fixtureLineCount: number,
+): boolean {
+  try {
+    const topHeading = previewMarkerPosition(
+      snapshot,
+      `Scale fixture ${fixtureLineCount}`,
+    );
+    const adjacentHeading2 = previewMarkerPosition(snapshot, 'Adjacent H2');
+    const spacedHeading3 = previewMarkerPosition(snapshot, 'Spaced H3');
+    const adjacentHeading4 = previewMarkerPosition(snapshot, 'Adjacent H4');
+    const spacedHeading5 = previewMarkerPosition(snapshot, 'Spaced H5');
+    const adjacentHeading6 = previewMarkerPosition(snapshot, 'Adjacent H6');
+    return (
+      topHeading.row === previewBorder(snapshot).row + 1 &&
+      snapshot
+        .rowText(adjacentHeading2.row - 1)
+        .includes('Before adjacent H2') &&
+      snapshot
+        .rowText(adjacentHeading4.row - 1)
+        .includes('Before adjacent H4') &&
+      snapshot
+        .rowText(adjacentHeading6.row - 1)
+        .includes('Before adjacent H6') &&
+      previewBodyRowText(snapshot, spacedHeading3.row - 1).trim() === '' &&
+      snapshot.rowText(spacedHeading3.row - 2).includes('Before spaced H3') &&
+      previewBodyRowText(snapshot, spacedHeading5.row - 1).trim() === '' &&
+      snapshot.rowText(spacedHeading5.row - 2).includes('Before spaced H5')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function requireCodeFenceAppearance(
+  snapshot: HarnessSnapshot.Model,
+  palette: { selectionMuted: string; fg: string },
+  label: string,
+): void {
+  const language = previewMarkerPosition(snapshot, 'bash');
+  const body = previewMarkerPosition(snapshot, 'open docs/index.html');
+  const previewLeft = previewBorder(snapshot).column;
+  const previewRight = previewPaneRightColumn(snapshot);
+  const headerText = snapshot.rowText(language.row);
+  const bodyText = snapshot.rowText(body.row);
+  const footerRow = body.row + 1;
+  const footerText = snapshot.rowText(footerRow);
+  const frameLeft = headerText.indexOf('╭', previewLeft);
+  const frameRight = headerText.lastIndexOf('╮', previewRight);
+  const expectedBackground = packedThemeColor(palette.selectionMuted);
+  const fenceRows = [language.row, body.row, footerRow];
+  const everyFenceCellHasBackground = fenceRows.every((row) =>
+    snapshot
+      .rowCells(row)
+      .slice(frameLeft, frameRight + 1)
+      .every(
+        (cell) =>
+          cell.isBackgroundRgb && cell.background === expectedBackground,
+      ),
+  );
+  const prose = previewMarkerPosition(snapshot, 'Before adjacent H6');
+
+  HarnessSmoke.Class.requireCondition(
+    frameLeft >= previewLeft &&
+      frameRight > frameLeft &&
+      bodyText[frameLeft] === '│' &&
+      bodyText[frameRight] === '│' &&
+      footerText[frameLeft] === '╰' &&
+      footerText[frameRight] === '╯' &&
+      everyFenceCellHasBackground &&
+      snapshot.cell(language.row, language.column)?.foreground ===
+        packedThemeColor(palette.fg) &&
+      snapshot.cell(language.row, language.column)?.foreground !==
+        expectedBackground &&
+      snapshot.cell(prose.row, prose.column)?.background !== expectedBackground,
+    `${label} paints rounded header, body, and footer cells with one code background and a readable label`,
+  );
+}
+
+async function switchLiveTheme(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  scaleLabel: string,
+  direction: 'Left' | 'Right',
+  expectedTheme: 'dark' | 'light',
+): Promise<void> {
+  driver.sendKeys('Control+,');
+  let settingsStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${scaleLabel} opens Settings for a live theme switch`,
+    (status) =>
+      status.settingsOpen === true &&
+      typeof status.settingsSelectedLabel === 'string',
+  );
+  for (
+    let navigationStep = 0;
+    navigationStep < 40 && settingsStatus.settingsSelectedLabel !== 'Theme';
+    navigationStep += 1
+  ) {
+    const previousLabel = settingsStatus.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    settingsStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${scaleLabel} Settings advances toward Theme`,
+      (status) => status.settingsSelectedLabel !== previousLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    settingsStatus.settingsSelectedLabel === 'Theme',
+    `${scaleLabel} finds the live Theme setting`,
+  );
+  driver.sendKeys(direction);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${scaleLabel} switches the live theme to ${expectedTheme}`,
+    (status) =>
+      status.settingsSelectedLabel === 'Theme' &&
+      status.settingsSelectedValue === expectedTheme,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${scaleLabel} closes Settings after the live theme switch`,
+    (status) => status.settingsOpen === false,
+  );
 }
 
 async function driveTaskPresentationInTheme(
@@ -270,6 +451,8 @@ async function driveTaskPresentationInTheme(
       '[dead link](missing-link-target.md)',
       '',
       '[external link](https://example.com/docs)',
+      '',
+      '### Lower section',
       '',
       '## Existing section',
       '',
@@ -314,6 +497,7 @@ async function driveTaskPresentationInTheme(
         previewHasMarker(candidate, 'current link') &&
         previewHasMarker(candidate, 'dead link') &&
         previewHasMarker(candidate, 'external link') &&
+        previewHasMarker(candidate, 'Lower section') &&
         previewHasMarker(candidate, 'Existing section'),
     );
     const state = previewMarkerPosition(snapshot, 'State: IN-PROGRESS');
@@ -326,25 +510,29 @@ async function driveTaskPresentationInTheme(
 
     const heading1 = previewMarkerPosition(snapshot, 'Task presentation');
     const heading2 = previewMarkerPosition(snapshot, 'Existing section');
+    const heading3 = previewMarkerPosition(snapshot, 'Lower section');
     const prose = previewMarkerPosition(
       snapshot,
       'Prose joins across source lines.',
     );
     const heading1Cell = snapshot.cell(heading1.row, heading1.column);
     const heading2Cell = snapshot.cell(heading2.row, heading2.column);
+    const heading3Cell = snapshot.cell(heading3.row, heading3.column);
     const proseCell = snapshot.cell(prose.row, prose.column);
     HarnessSmoke.Class.requireCondition(
       heading1Cell?.isUnderline === false &&
         heading1Cell.isBold === true &&
+        heading1Cell.foreground === heading2Cell?.foreground &&
+        heading1Cell.foreground === heading3Cell?.foreground &&
         heading1Cell.foreground !== proseCell?.foreground,
-      `${theme} H1 uses bold distinct color without an underline`,
+      `${theme} H1 shares the subtitle foreground without changing its bold treatment`,
     );
     HarnessSmoke.Class.requireCondition(
       heading2Cell?.isUnderline === false &&
         heading2Cell.isBold === true &&
-        heading2Cell.foreground !== heading1Cell?.foreground &&
+        heading2Cell.foreground === heading1Cell?.foreground &&
         heading2Cell.foreground !== proseCell?.foreground,
-      `${theme} H2 keeps its bold accent treatment`,
+      `${theme} H2 keeps its bold accent treatment shared with H1`,
     );
     const palette =
       theme === 'dark' ? ThemePalettes.Class.DARK : ThemePalettes.Class.LIGHT;
@@ -399,15 +587,31 @@ async function driveTerminalShrinkAtScale(
     { length: fixtureLineCount },
     (_unusedValue, lineIndex) => {
       if (lineIndex === 0) return `# Scale fixture ${fixtureLineCount}`;
-      if (lineIndex === 1) return '[current scale link](README.md)';
-      if (lineIndex === 2 || lineIndex === 4 || lineIndex === 6) return '';
-      if (lineIndex === 3) return '[dead scale link](missing-scale.md)';
-      if (lineIndex === 5)
+      if (lineIndex === 1) return 'Before adjacent H2';
+      if (lineIndex === 2) return '## Adjacent H2';
+      if (lineIndex === 3) return 'Before spaced H3';
+      if (lineIndex === 4) return '';
+      if (lineIndex === 5) return '### Spaced H3';
+      if (lineIndex === 6) return 'Before adjacent H4';
+      if (lineIndex === 7) return '#### Adjacent H4';
+      if (lineIndex === 8) return 'Before spaced H5';
+      if (lineIndex === 9) return '';
+      if (lineIndex === 10) return '##### Spaced H5';
+      if (lineIndex === 11) return 'Before adjacent H6';
+      if (lineIndex === 12) return '###### Adjacent H6';
+      if (lineIndex === 13) return '| Left | Center | Right |';
+      if (lineIndex === 14) return '| :--- | :---: | ---: |';
+      if (lineIndex === 15) return '| alpha | middle | 7 |';
+      if (lineIndex === 16) return '';
+      if (lineIndex === 17) return '```bash';
+      if (lineIndex === 18) return 'open docs/index.html';
+      if (lineIndex === 19) return '```';
+      if (lineIndex === 20 || lineIndex === 22 || lineIndex === 24) return '';
+      if (lineIndex === 21) return '[current scale link](README.md)';
+      if (lineIndex === 23) return '[dead scale link](missing-scale.md)';
+      if (lineIndex === 25)
         return '[external scale link](https://example.com/docs)';
-      if (lineIndex === 7) return '| Left | Center | Right |';
-      if (lineIndex === 8) return '| :--- | :---: | ---: |';
-      if (lineIndex === 9) return '| alpha | middle | 7 |';
-      if (lineIndex === 10) return '';
+      if (lineIndex === 26) return '';
       if (lineIndex === jumpSourceLine) return `## [${jumpMarker}](README.md)`;
       const scrollMarker = scrollMarkerBySourceLine.get(lineIndex);
       return scrollMarker
@@ -487,6 +691,78 @@ async function driveTerminalShrinkAtScale(
     const dockVisiblePreviewColumns = Number(
       dockVisibleStatus.markdownPreviewViewportColumns,
     );
+    const dockVisibleLayout = dockVisibleStatus.layoutSlots as {
+      editorCenter?: { left?: number; width?: number };
+    };
+    const wideEditorLeft = Number(dockVisibleLayout.editorCenter?.left);
+    const wideEditorWidth = Number(dockVisibleLayout.editorCenter?.width);
+    const wideActionSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line breadcrumb action settles at the editor right edge`,
+      (candidate) => findPreviewButton(candidate) !== null,
+    );
+    requirePreviewButtonPlacement(
+      wideActionSnapshot,
+      wideEditorLeft,
+      wideEditorWidth,
+      `${fixtureLineCount}-line wide view`,
+    );
+
+    scaleDriver.resize(80, 30);
+    const narrowActionStatus = await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line narrow view publishes 80 by 30`,
+      (status) =>
+        status.width === 80 &&
+        status.height === 30 &&
+        status.markdownPreviewOpen === true,
+    );
+    const narrowLayout = narrowActionStatus.layoutSlots as {
+      editorCenter?: { left?: number; width?: number };
+    };
+    const narrowEditorLeft = Number(narrowLayout.editorCenter?.left);
+    const narrowEditorWidth = Number(narrowLayout.editorCenter?.width);
+    const narrowActionSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line narrow breadcrumb preserves the preview action columns`,
+      (candidate) => {
+        const button = findPreviewButton(candidate);
+        return (
+          button !== null &&
+          button.column === narrowEditorLeft + narrowEditorWidth - 2
+        );
+      },
+    );
+    requirePreviewButtonPlacement(
+      narrowActionSnapshot,
+      narrowEditorLeft,
+      narrowEditorWidth,
+      `${fixtureLineCount}-line narrow view`,
+    );
+    const narrowButton = previewButton(narrowActionSnapshot);
+    clickCell(scaleDriver, narrowButton.column, narrowButton.row);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line breadcrumb action closes the preview by pointer`,
+      (status) => status.markdownPreviewOpen === false,
+    );
+    scaleDriver.sendKeys('Control+Shift+v');
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line unchanged preview shortcut reopens the preview`,
+      (status) => status.markdownPreviewOpen === true,
+    );
+    scaleDriver.resize(120, 40);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line action drive restores 120 by 40`,
+      (status) =>
+        status.width === 120 &&
+        status.height === 40 &&
+        status.markdownPreviewOpen === true,
+    );
     await HarnessSmoke.Class.concealAutoRevealedRightDock(
       scaleDriver,
       scaleStatusPath,
@@ -498,38 +774,168 @@ async function driveTerminalShrinkAtScale(
       (status) =>
         status.rightDockVisible === false && status.markdownParsing === false,
     );
+    scaleDriver.resize(180, 50);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line code appearance drive widens to 180 columns`,
+      (status) =>
+        status.width === 180 &&
+        status.height === 50 &&
+        status.rightDockVisible === false,
+    );
     const dockConcealedSnapshot = await scaleDriver.awaitGridCondition(
-      `${fixtureLineCount}-line table reflows after parent growth without a preview remount`,
+      `${fixtureLineCount}-line code fence reflows after parent growth without a preview remount`,
       (candidate) =>
-        previewHasMarker(candidate, 'Left') &&
-        previewHasMarker(candidate, 'alpha'),
+        previewHasMarker(candidate, 'bash') &&
+        previewHasMarker(candidate, 'open docs/index.html') &&
+        hasAuthoredHeadingSpacing(candidate, fixtureLineCount),
     );
     const dockConcealedPreviewColumns =
       previewPaneRightColumn(dockConcealedSnapshot) -
       previewBorder(dockConcealedSnapshot).column -
       1;
-    const currentScaleLink = previewMarkerPosition(
+    const scaleHeadingMarkers = [
+      `Scale fixture ${fixtureLineCount}`,
+      'Adjacent H2',
+      'Spaced H3',
+      'Adjacent H4',
+      'Spaced H5',
+      'Adjacent H6',
+    ];
+    HarnessSmoke.Class.requireCondition(
+      hasAuthoredHeadingSpacing(dockConcealedSnapshot, fixtureLineCount),
+      `${fixtureLineCount}-line preview keeps only authored heading gaps across H1 through H6`,
+    );
+    requireUniformHeadingColor(
       dockConcealedSnapshot,
+      scaleHeadingMarkers,
+      ThemePalettes.Class.DARK.accent,
+      ThemePalettes.Class.DARK.keyword,
+      `${fixtureLineCount}-line dark preview`,
+    );
+    requireCodeFenceAppearance(
+      dockConcealedSnapshot,
+      ThemePalettes.Class.DARK,
+      `${fixtureLineCount}-line dark preview`,
+    );
+    await switchLiveTheme(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line preview`,
+      'Right',
+      'light',
+    );
+    const lightHeadingSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line headings repaint with the live light theme`,
+      (candidate) => {
+        if (
+          !scaleHeadingMarkers.every((marker) =>
+            previewHasMarker(candidate, marker),
+          )
+        )
+          return false;
+        const title = previewMarkerPosition(
+          candidate,
+          `Scale fixture ${fixtureLineCount}`,
+        );
+        return (
+          candidate.cell(title.row, title.column)?.foreground ===
+          packedThemeColor(ThemePalettes.Class.LIGHT.accent)
+        );
+      },
+    );
+    requireUniformHeadingColor(
+      lightHeadingSnapshot,
+      scaleHeadingMarkers,
+      ThemePalettes.Class.LIGHT.accent,
+      ThemePalettes.Class.LIGHT.keyword,
+      `${fixtureLineCount}-line live light preview`,
+    );
+    requireCodeFenceAppearance(
+      lightHeadingSnapshot,
+      ThemePalettes.Class.LIGHT,
+      `${fixtureLineCount}-line live light preview`,
+    );
+    await switchLiveTheme(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line preview`,
+      'Left',
+      'dark',
+    );
+    const restoredDarkHeadingSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line headings repaint after restoring the dark theme`,
+      (candidate) => {
+        if (
+          !scaleHeadingMarkers.every((marker) =>
+            previewHasMarker(candidate, marker),
+          )
+        )
+          return false;
+        const title = previewMarkerPosition(
+          candidate,
+          `Scale fixture ${fixtureLineCount}`,
+        );
+        return (
+          candidate.cell(title.row, title.column)?.foreground ===
+          packedThemeColor(ThemePalettes.Class.DARK.accent)
+        );
+      },
+    );
+    requireUniformHeadingColor(
+      restoredDarkHeadingSnapshot,
+      scaleHeadingMarkers,
+      ThemePalettes.Class.DARK.accent,
+      ThemePalettes.Class.DARK.keyword,
+      `${fixtureLineCount}-line restored dark preview`,
+    );
+    requireCodeFenceAppearance(
+      restoredDarkHeadingSnapshot,
+      ThemePalettes.Class.DARK,
+      `${fixtureLineCount}-line restored dark preview`,
+    );
+    const linksAndTableSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line links and table share the expanded preview`,
+      (candidate) =>
+        previewHasMarker(candidate, 'current scale link') &&
+        previewHasMarker(candidate, 'dead scale link') &&
+        previewHasMarker(candidate, 'external scale link') &&
+        previewHasMarker(candidate, 'Left') &&
+        previewHasMarker(candidate, 'alpha'),
+    );
+    const currentScaleLink = previewMarkerPosition(
+      linksAndTableSnapshot,
       'current scale link',
     );
     const deadScaleLink = previewMarkerPosition(
-      dockConcealedSnapshot,
+      linksAndTableSnapshot,
       'dead scale link',
     );
     const externalScaleLink = previewMarkerPosition(
-      dockConcealedSnapshot,
+      linksAndTableSnapshot,
       'external scale link',
     );
     HarnessSmoke.Class.requireCondition(
-      dockConcealedSnapshot.cell(currentScaleLink.row, currentScaleLink.column)
+      linksAndTableSnapshot.cell(currentScaleLink.row, currentScaleLink.column)
         ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
-        dockConcealedSnapshot.cell(deadScaleLink.row, deadScaleLink.column)
+        linksAndTableSnapshot.cell(deadScaleLink.row, deadScaleLink.column)
           ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error) &&
-        dockConcealedSnapshot.cell(
+        linksAndTableSnapshot.cell(
           externalScaleLink.row,
           externalScaleLink.column,
         )?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent),
       `${fixtureLineCount}-line preview paints dead links red without changing current or external links`,
+    );
+    scaleDriver.resize(120, 40);
+    await HarnessSmoke.Class.awaitStatus(
+      scaleDriver,
+      scaleStatusPath,
+      `${fixtureLineCount}-line code appearance drive restores 120 columns`,
+      (status) =>
+        status.width === 120 &&
+        status.height === 40 &&
+        status.rightDockVisible === false,
     );
     HarnessSmoke.Class.requireCondition(
       dockConcealedPreviewColumns > dockVisiblePreviewColumns,
@@ -1028,7 +1434,7 @@ try {
         Number(openedMarkdownStatus.bufferRevision),
   );
   snapshot = await driver.awaitGridCondition(
-    'the auto-opened preview paints rendered content and the tab-bar toggle',
+    'the auto-opened preview paints rendered content and the breadcrumb toggle',
     (candidate) =>
       candidate.findText('╭─Preview') !== null &&
       findPreviewButton(candidate) !== null &&
@@ -1242,7 +1648,9 @@ try {
     'status condition: status.markdownPreviewOpen === false',
     (status) => status.markdownPreviewOpen === false,
   );
-  HarnessSmoke.Class.pass('the tab button closes the auto-opened preview');
+  HarnessSmoke.Class.pass(
+    'the breadcrumb button closes the auto-opened preview',
+  );
   snapshot = await driver.awaitGridCondition(
     'the preview pane is absent after the hand-close',
     (candidate) =>
@@ -1310,7 +1718,7 @@ try {
     (candidate) => {
       // Returning to README also auto-hides the structure dock (its reader closed it for this
       // document), and the toggle button rides the editor column's right edge as it widens.
-      // Clicking a pre-relayout position lands on empty tab row, so wait for the button at its
+      // Clicking a pre-relayout position lands on empty breadcrumb row, so wait for the button at its
       // settled dock-free position before measuring the click target.
       const candidateButton = findPreviewButton(candidate);
       return (

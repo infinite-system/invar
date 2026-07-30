@@ -13,7 +13,7 @@ import { MarkdownWorkspace } from './MarkdownWorkspace';
 import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 
 // Markdown as a default-composed plugin. It owns the per-tab preview mode, the split that occupies
-// the editor column, its two commands, its chord-reachable affordance in the editor title row, and
+// the editor column, its two commands, its chord-reachable affordance in the breadcrumb row, and
 // its own status projection. The host keeps only `resolveFileReference` — which is generic path
 // confinement inside the workspace root, with no markdown in it.
 //
@@ -170,8 +170,8 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
         id: 'markdown.togglePreview',
         title: 'Markdown: Toggle Preview',
         category: 'Markdown',
-        // The tab strip's action cluster renders exactly this: an icon-bearing command whose guard
-        // holds. No host file names markdown to draw it.
+        // The breadcrumb row's action cluster renders exactly this: an icon-bearing command whose
+        // guard holds. No host file names markdown to draw it.
         actionIcons: { editorTitle: 'preview' },
         when: () => this.activeWorkspace().previewToggleAvailable,
         toggled: () => this.activeWorkspace().showingPreview,

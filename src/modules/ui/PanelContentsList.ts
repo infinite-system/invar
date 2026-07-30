@@ -1,6 +1,7 @@
 import { Static } from 'ivue/extras';
 import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Reactive } from 'ivue';
+import type { InterfaceGlyphVocabulary } from '../theme/ThemeIcons';
 import type { Palette } from '../theme/ThemePalettes';
 import { ContentOrderDrag } from './ContentOrderDrag';
 import type { PanelHost } from './PanelHost';
@@ -43,7 +44,7 @@ class $PanelContentsList {
       (length, row) =>
         Math.max(
           length,
-          WrapText.Class.displayWidth(`│ ${row.icon} ${row.title} x`),
+          WrapText.Class.displayWidth(`│ ${row.icon} ${row.title}  `) + 1,
         ),
       0,
     );
@@ -53,7 +54,10 @@ class $PanelContentsList {
     );
   }
 
-  render(palette: Palette): StyledText {
+  render(
+    palette: Palette,
+    glyphVocabulary: InterfaceGlyphVocabulary,
+  ): StyledText {
     const chunks: TextChunk[] = [];
     const rows = this.rows;
     rows.forEach((row, rowIndex) => {
@@ -70,7 +74,7 @@ class $PanelContentsList {
       const padding = ' '.repeat(
         Math.max(0, titleColumns - WrapText.Class.displayWidth(clippedTitle)),
       );
-      const rowText = `${prefix}${clippedTitle}${padding} x`;
+      const rowText = `${prefix}${clippedTitle}${padding} ${glyphVocabulary.panelClose}`;
       const color = row.active
         ? palette.accent
         : row.visible

@@ -297,7 +297,8 @@ the rule that a mark may be shared only by owners meaning the SAME thing.
 
 **Generates:** Legible output on a no-nerd-font terminal; stable click
 hit-zones because button, checkbox, and fold-control columns never shift width
-between capability levels; file-tree, breadcrumb, and completion mark columns
+between capability levels; status author and agent affordances that keep one
+cell at every tier; file-tree, breadcrumb, and completion mark columns
 of exactly one cell at every tier; a closed width class without per-glyph
 exceptions.
 

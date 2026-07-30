@@ -499,6 +499,18 @@ function underlyingInteractionState(
   };
 }
 
+function underlyingVisibilityState(status: HarnessStatus): {
+  terminalVisible: unknown;
+  primaryDockVisible: unknown;
+  rightDockVisible: unknown;
+} {
+  return {
+    terminalVisible: status.terminalVisible,
+    primaryDockVisible: status.primaryDockVisible,
+    rightDockVisible: status.rightDockVisible,
+  };
+}
+
 function cellIsInside(
   bounds: DialogBounds,
   column: number,
@@ -517,8 +529,12 @@ function discoveredOutsideActionPosition(
   bounds: DialogBounds,
   label: string,
 ): { column: number; row: number } {
+  const statusRow = snapshot.rows - 1;
+  const statusText = snapshot.rowText(statusRow);
   for (const marker of [' ❯ ', ' ✦ ']) {
-    const position = snapshot.findText(marker);
+    const markerColumn = statusText.indexOf(marker);
+    const position =
+      markerColumn >= 0 ? { column: markerColumn, row: statusRow } : null;
     if (position && !cellIsInside(bounds, position.column, position.row)) {
       return position;
     }
@@ -598,6 +614,29 @@ function requireBoundsInside(
   requireCondition(
     bounds.top + bounds.height <= rows,
     `${label} bottom edge stays inside ${rows} rows`,
+  );
+}
+
+function requireDialogCanvasMargins(
+  bounds: DialogBounds | null,
+  columns: number,
+  rows: number,
+  label: string,
+): asserts bounds is DialogBounds {
+  requireBoundsInside(bounds, columns, rows, label);
+  requireCondition(bounds.left >= 2, `${label} keeps two columns at its left`);
+  requireCondition(
+    columns - bounds.left - bounds.width >= 2,
+    `${label} keeps two columns at its right`,
+  );
+  requireCondition(bounds.top >= 3, `${label} keeps three rows above it`);
+  requireCondition(
+    rows - bounds.top - bounds.height >= 3,
+    `${label} keeps three rows below it`,
+  );
+  requireCondition(
+    bounds.width <= 84,
+    `${label} stays within its content-derived width ceiling`,
   );
 }
 
@@ -951,11 +990,84 @@ try {
     'Settings is open before resize',
     (status) => status.settingsOpen === true,
   );
+  requireDialogCanvasMargins(
+    dialogBounds(status, 'settingsPanel'),
+    120,
+    40,
+    'Settings at 120x40',
+  );
+  status = await requireWheelScrollsOverlay(
+    driver,
+    statusPath,
+    'Settings',
+    'settingsPanel',
+    1,
+  );
   await requireEverySettingsNavigationStepRevealed(
     driver,
     statusPath,
     '120x40',
   );
+  status = await awaitStatusPublication(
+    statusPath,
+    'Settings returns to its first descriptor before the theme proof',
+    (candidate) =>
+      candidate.settingsSelected === 0 &&
+      Array.isArray(candidate.settingsLabels),
+  );
+  const themeSettingIndex = (status.settingsLabels as string[]).indexOf(
+    'Theme',
+  );
+  requireCondition(
+    themeSettingIndex >= 0,
+    'Settings publishes the Theme descriptor',
+  );
+  for (
+    let navigationStep = 0;
+    navigationStep < themeSettingIndex;
+    navigationStep += 1
+  ) {
+    driver.sendKeys('Down');
+    await awaitStatusPublication(
+      statusPath,
+      `Settings advances to the Theme descriptor step ${navigationStep + 1}`,
+      (candidate) => candidate.settingsSelected === navigationStep + 1,
+    );
+  }
+  driver.sendKeys('Right');
+  status = await awaitStatusPublication(
+    statusPath,
+    'Settings switches to the light theme without changing its geometry',
+    (candidate) =>
+      candidate.settingsSelectedLabel === 'Theme' &&
+      candidate.settingsSelectedValue === 'light',
+  );
+  requireDialogCanvasMargins(
+    dialogBounds(status, 'settingsPanel'),
+    120,
+    40,
+    'Light-theme Settings at 120x40',
+  );
+  driver.sendKeys('Left');
+  await awaitStatusPublication(
+    statusPath,
+    'Settings restores the dark theme after the geometry proof',
+    (candidate) =>
+      candidate.settingsSelectedLabel === 'Theme' &&
+      candidate.settingsSelectedValue === 'dark',
+  );
+  for (
+    let navigationStep = themeSettingIndex;
+    navigationStep > 0;
+    navigationStep -= 1
+  ) {
+    driver.sendKeys('Up');
+    await awaitStatusPublication(
+      statusPath,
+      `Settings returns from the Theme descriptor step ${navigationStep - 1}`,
+      (candidate) => candidate.settingsSelected === navigationStep - 1,
+    );
+  }
   driver.resize(54, 12);
   status = await awaitStatusPublication(
     statusPath,
@@ -970,7 +1082,7 @@ try {
     },
   );
   let settingsBounds = dialogBounds(status, 'settingsPanel');
-  requireBoundsInside(settingsBounds, 54, 12, 'Settings');
+  requireDialogCanvasMargins(settingsBounds, 54, 12, 'Settings at 54x12');
   await requireEverySettingsNavigationStepRevealed(driver, statusPath, '54x12');
   snapshot = await driver.awaitGridCondition(
     'Settings title and close control remain visible after resize',
@@ -1047,48 +1159,35 @@ try {
   clickCell(driver, settingsClosePosition.column, settingsClosePosition.row);
   await awaitStatusPublication(
     statusPath,
-    'Settings closes before its top-position wheel proof',
-    (candidate) => candidate.settingsOpen === false,
-  );
-  driver.sendKeys('Control+,');
-  status = await awaitStatusPublication(
-    statusPath,
-    'Settings reopens at the top for wheel input',
-    (candidate) =>
-      candidate.settingsOpen === true &&
-      dialogBounds(candidate, 'settingsPanel') !== null &&
-      scrollPosition(candidate, 'settingsPanel') === 0,
-  );
-  settingsBounds = dialogBounds(status, 'settingsPanel');
-  requireBoundsInside(settingsBounds, 54, 12, 'Settings');
-  status = await requireWheelScrollsOverlay(
-    driver,
-    statusPath,
-    'Settings',
-    'settingsPanel',
-    1,
-  );
-  snapshot = await driver.awaitGridCondition(
-    'Settings close control remains visible after its settled wheel',
-    (candidate) =>
-      candidate.findText('Settings') !== null &&
-      candidate.findText('✕') !== null,
-  );
-  const wheelSettingsClosePosition = discoveredClosePosition(
-    snapshot,
-    'Settings',
-  );
-  clickCell(
-    driver,
-    wheelSettingsClosePosition.column,
-    wheelSettingsClosePosition.row,
-  );
-  await awaitStatusPublication(
-    statusPath,
     'the discovered Settings close control closes the dialog',
     (candidate) => candidate.settingsOpen === false,
   );
   pass('Settings top-edge close control closes through the model close path');
+
+  driver.resize(120, 40);
+  await clickStatusMarker(driver, '?');
+  status = await awaitStatusPublication(
+    statusPath,
+    'shortcut help opens in the larger terminal',
+    (candidate) => candidate.shortcutHelpOpen === true,
+  );
+  requireDialogCanvasMargins(
+    dialogBounds(status, 'shortcutHelp'),
+    120,
+    40,
+    'Keyboard Shortcuts at 120x40',
+  );
+  driver.sendKeys('Escape');
+  await awaitStatusPublication(
+    statusPath,
+    'shortcut help closes before the smaller geometry proof',
+    (candidate) => candidate.shortcutHelpOpen === false,
+  );
+  await driver.awaitGridCondition(
+    'the closed shortcut frame settles before reopening',
+    (candidate) => candidate.findText('Keyboard Shortcuts') === null,
+  );
+  driver.resize(54, 12);
 
   console.log(
     '== harness overlays: shortcut dialog clamps, scrolls, and closes by mouse ==',
@@ -1100,7 +1199,12 @@ try {
     (candidate) => candidate.shortcutHelpOpen === true,
   );
   const shortcutBounds = dialogBounds(status, 'shortcutHelp');
-  requireBoundsInside(shortcutBounds, 54, 12, 'Keyboard Shortcuts');
+  requireDialogCanvasMargins(
+    shortcutBounds,
+    54,
+    12,
+    'Keyboard Shortcuts at 54x12',
+  );
   status = await requireWheelScrollsOverlay(
     driver,
     statusPath,
@@ -1202,7 +1306,7 @@ try {
     dialogBounds(status, 'settingsPanel'),
     (candidate) => candidate.settingsOpen === false,
   );
-  const underlyingStateBeforeNextPress = underlyingInteractionState(status);
+  const underlyingVisibilityBeforeNextPress = underlyingVisibilityState(status);
   clickCell(
     driver,
     settingsOutsidePosition.column,
@@ -1212,20 +1316,31 @@ try {
     statusPath,
     'the first post-dismissal press reaches the underlying status action',
     (candidate) =>
-      JSON.stringify(underlyingInteractionState(candidate)) !==
-      JSON.stringify(underlyingStateBeforeNextPress),
+      JSON.stringify(underlyingVisibilityState(candidate)) !==
+      JSON.stringify(underlyingVisibilityBeforeNextPress),
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the changed status action settles before its restoring press',
+    (candidate) =>
+      candidate.rowText(candidate.rows - 1).includes(' ❯ ') ||
+      candidate.rowText(candidate.rows - 1).includes(' ✦ '),
+  );
+  const restoringStatusActionPosition = discoveredOutsideActionPosition(
+    snapshot,
+    dialogBounds(status, 'settingsPanel')!,
+    'the changed status row',
   );
   clickCell(
     driver,
-    settingsOutsidePosition.column,
-    settingsOutsidePosition.row,
+    restoringStatusActionPosition.column,
+    restoringStatusActionPosition.row,
   );
   await awaitStatusPublication(
     statusPath,
     'the underlying status action returns to its pre-probe visibility',
     (candidate) =>
-      JSON.stringify(underlyingInteractionState(candidate)) ===
-      JSON.stringify(underlyingStateBeforeNextPress),
+      JSON.stringify(underlyingVisibilityState(candidate)) ===
+      JSON.stringify(underlyingVisibilityBeforeNextPress),
   );
   pass('the press after outside dismissal behaves normally');
 

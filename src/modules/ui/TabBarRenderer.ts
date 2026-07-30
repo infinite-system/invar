@@ -93,7 +93,7 @@ class $TabBarRenderer {
         const label = workspaceTab.label
           .slice(0, labelWidth)
           .padEnd(labelWidth, ' ');
-        const closeGlyph = workspaceTabs.length > 1 ? '✕' : ' ';
+        const closeGlyph = workspaceTabs.length > 1 ? context.closeGlyph : ' ';
         const rowText = ` ${workspaceTab.active ? '●' : ' '} ${label}${closeGlyph} `;
         const styledRow = fg(
           closeHovered
@@ -146,9 +146,9 @@ class $TabBarRenderer {
       });
       return { text: new StyledText(chunks), segments, revealedIndex };
     }
-    // Horizontal (top) strip: each project tab is TWO rows — row 0 is ` ● name ✕ ` and row 1 is the
+    // Horizontal (top) strip: each project tab is TWO rows — row 0 has name + close and row 1 is the
     // worktree/branch detail indented under the name. Segments stay COLUMN spans (both rows of a tab
-    // share the same x-span), and the close ✕ lives on row 0 only (TabBar checks the cross axis).
+    // share the same x-span), and close lives on row 0 only (TabBar checks the cross axis).
     const barWidth = Math.max(
       1,
       context.barWidthValue || context.rendererWidth,
@@ -222,7 +222,7 @@ class $TabBarRenderer {
       chunks.push(rowBackground ? bg(rowBackground)(styledTab) : styledTab);
       const closePrimaryCoordinate =
         columnIndex + TextCoordinates.Class.lineWidth(tabText);
-      const closeGlyph = workspaceTabs.length > 1 ? '✕' : ' ';
+      const closeGlyph = workspaceTabs.length > 1 ? context.closeGlyph : ' ';
       chunks.push(
         rowBackground
           ? bg(rowBackground)(
@@ -320,7 +320,7 @@ class $TabBarRenderer {
         revealedIndex,
       };
     const barWidth = Math.max(1, context.barWidth);
-    // Each tab lays out as ` filename <dirty> ✕ ` — the ✕ has a space BEFORE and AFTER so it is never
+    // Each tab lays out as filename + dirty + close; close has a space BEFORE and AFTER so it is never
     // flush against the tab edge, and the padding is identical regardless of label length. The tab shows
     // just the FILENAME; the active file's full path renders in the breadcrumb bar BELOW the strip
     // (renderBreadcrumbBar), VS Code-style — so tabs stay compact (many fit) while the path is always
@@ -329,7 +329,7 @@ class $TabBarRenderer {
       const name =
         tab.identifier.split('/').filter(Boolean).pop() ?? tab.identifier;
       const labelWidth = 1 + TextCoordinates.Class.lineWidth(name) + 1 + 1 + 1; // ' ' + name + ' ' + dirtyGlyph + ' '
-      return { tab, name, labelWidth, width: labelWidth + 2 }; // + '✕' + trailing ' '
+      return { tab, name, labelWidth, width: labelWidth + 2 }; // + close + trailing pad
     });
     const totalWidth = measured.reduce((sum, entry) => sum + entry.width, 0);
     // Right controls, pinned to the edge: a clickable ` active/total ` COUNT BADGE (always), and when
@@ -339,13 +339,9 @@ class $TabBarRenderer {
     const badgeText = ` ${activeIndex + 1}/${total} `;
     const badgeWidth = TextCoordinates.Class.lineWidth(badgeText);
     const arrowCellWidth = 3; // ' « ' / ' » ' — padded so the hit target is easy to click
-    const actionCellWidth = 3; // ' icon ' — same padded hit target as the pan arrows
-    const actionsWidth = context.editorTitleActions.length * actionCellWidth;
-    const overflow = totalWidth + badgeWidth + actionsWidth > barWidth;
+    const overflow = totalWidth + badgeWidth > barWidth;
     const rightControlsWidth =
-      badgeWidth +
-      actionsWidth +
-      (overflow ? 1 /* ellipsis */ + arrowCellWidth * 2 : 0);
+      badgeWidth + (overflow ? 1 /* ellipsis */ + arrowCellWidth * 2 : 0);
     const tabsAreaWidth = Math.max(1, barWidth - rightControlsWidth);
     // How many whole tabs fit when rendering forward from a given start index.
     const windowEndFrom = (start: number): number => {
@@ -390,7 +386,7 @@ class $TabBarRenderer {
     for (let index = startIndex; index < measured.length; index += 1) {
       const entry = measured[index];
       // A 1-cell gap sets every tab apart — the first off the splitter, the rest off the prior tab's
-      // trailing ✕. NO powerline separator between tabs (the ✕ + gap is the divider; an arrow between
+      // trailing close. NO powerline separator between tabs (close + gap is the divider; an arrow between
       // tabs read as clutter). The gap is in the fit check so a tab never half-renders past the edge.
       const leadWidth = 1;
       if (!entry || column + leadWidth + entry.width > tabsAreaWidth) break;
@@ -424,8 +420,8 @@ class $TabBarRenderer {
       chunks.push(paint(' ', labelColor));
       column += entry.labelWidth;
       const closeColumn = column;
-      // The ✕ is an INDEPENDENTLY-stated target on EVERY tab (including active): idle → hover (bright
-      // error ✕ that pops even over the active tab's selection bg) → pressed (inverted: bg over error).
+      // The close glyph is an INDEPENDENTLY-stated target on EVERY tab (including active): idle →
+      // hover (bright error color over the active tab's selection bg) → pressed (inverted).
       const isClosePressed = context.closePressed === index;
       const closeColor = isClosePressed
         ? palette.bg
@@ -435,11 +431,11 @@ class $TabBarRenderer {
       const closeBackground = isClosePressed ? palette.error : rowBackground;
       chunks.push(
         closeBackground
-          ? bg(closeBackground)(fg(closeColor)('✕'))
-          : fg(closeColor)('✕'),
+          ? bg(closeBackground)(fg(closeColor)(context.closeGlyph))
+          : fg(closeColor)(context.closeGlyph),
       );
       column += 1;
-      chunks.push(paint(' ', labelColor)); // trailing pad — ✕ never touches the edge
+      chunks.push(paint(' ', labelColor)); // trailing pad — close never touches the edge
       column += 1;
       segments.push({ kind: 'tab', index, start, end: column, closeColumn });
       endIndex = index + 1;
@@ -459,40 +455,6 @@ class $TabBarRenderer {
         fg(moreRight ? palette.accent : palette.border)(moreRight ? '…' : ' '),
       );
       column += 1;
-    }
-    // The right-side action cluster: one padded cell per CONTRIBUTED editor-title command, in
-    // registration order, sitting before the strip-pan arrows. This renderer knows nothing about
-    // which plugin asked — only that a command declared an icon and its guard holds.
-    // invariant: No action requires a memorized motion (project.invariants.md)
-    for (const [actionIndex, action] of context.editorTitleActions.entries()) {
-      const start = column;
-      const active = action.toggled;
-      const hovered =
-        hover?.kind === 'titleAction' && hover.index === actionIndex;
-      const pressed = context.pressedTitleActionIndex === actionIndex;
-      const background = pressed
-        ? palette.accent
-        : active
-          ? palette.selection
-          : hovered
-            ? palette.cursorLine
-            : null;
-      const color = pressed
-        ? palette.bg
-        : active || hovered
-          ? palette.accent
-          : palette.fg;
-      const label = ` ${action.icon} `;
-      chunks.push(
-        background ? bg(background)(fg(color)(label)) : fg(color)(label),
-      );
-      column += actionCellWidth;
-      segments.push({
-        kind: 'titleAction',
-        index: actionIndex,
-        start,
-        end: column,
-      });
     }
     if (overflow) {
       // Bigger, easy-to-hit arrows: a bolder glyph in a padded 3-cell hit target. BRIGHT (fg/accent)
@@ -549,9 +511,12 @@ class $TabBarRenderer {
         segments: [],
       };
     const barWidth = Math.max(1, context.barWidth);
+    const actionCellWidth = 3;
+    const actionsWidth = context.editorTitleActions.length * actionCellWidth;
+    const pathAreaWidth = Math.max(1, barWidth - actionsWidth);
     const crumbs = Breadcrumb.Class.fitPathSegments(
       Breadcrumb.Class.pathSegments(activeTab.identifier, projectRoot),
-      Math.max(1, barWidth - 2), // reserve one leading and one trailing pad
+      Math.max(1, pathAreaWidth - 2), // reserve one leading and one trailing pad
       3,
     );
     const chunks: TextChunk[] = [fg(palette.fg)(' ')];
@@ -568,6 +533,7 @@ class $TabBarRenderer {
           : styledCrumb,
       );
       segments.push({
+        kind: 'crumb',
         ...crumb,
         start: column,
         end: column + TextCoordinates.Class.lineWidth(crumb.label),
@@ -576,6 +542,43 @@ class $TabBarRenderer {
       if (!isFilename) chunks.push(fg(palette.dim)(' › '));
       if (!isFilename) column += 3;
     });
+    this.appendHorizontalGap(
+      chunks,
+      palette.fg,
+      Math.max(0, pathAreaWidth - column),
+    );
+    column = pathAreaWidth;
+    for (const [actionIndex, action] of context.editorTitleActions.entries()) {
+      const start = column;
+      const active = action.toggled;
+      const hovered =
+        context.hover?.kind === 'titleAction' &&
+        context.hover.index === actionIndex;
+      const pressed = context.pressedTitleActionIndex === actionIndex;
+      const background = pressed
+        ? palette.accent
+        : active
+          ? palette.selection
+          : hovered
+            ? palette.cursorLine
+            : null;
+      const color = pressed
+        ? palette.bg
+        : active || hovered
+          ? palette.accent
+          : palette.fg;
+      const label = ` ${action.icon} `;
+      chunks.push(
+        background ? bg(background)(fg(color)(label)) : fg(color)(label),
+      );
+      column += actionCellWidth;
+      segments.push({
+        kind: 'titleAction',
+        index: actionIndex,
+        start,
+        end: column,
+      });
+    }
     return { text: new StyledText(chunks), segments };
   }
 }
@@ -608,19 +611,13 @@ export type TabBarSegment =
       closeColumn: number;
     }
   | {
-      kind: 'titleAction';
-      index: number;
-      start: number;
-      end: number;
-    }
-  | {
       kind: 'arrowLeft' | 'arrowRight' | 'badge';
       start: number;
       end: number;
     };
 
 export type TabBarHover = {
-  kind: 'tab' | 'close' | 'titleAction' | 'arrowLeft' | 'arrowRight' | 'badge';
+  kind: 'tab' | 'close' | 'arrowLeft' | 'arrowRight' | 'badge';
   index: number;
 } | null;
 
@@ -635,6 +632,8 @@ export interface WorkspaceTabBarRenderContext {
   barHeightValue: number;
   rendererWidth: number;
   rendererHeight: number;
+  /** The tier-aware close token shared with panel headings and the panel contents list. */
+  closeGlyph: string;
 }
 
 export interface BufferTabBarRenderContext {
@@ -645,17 +644,15 @@ export interface BufferTabBarRenderContext {
   projectRoot: string;
   /** Tier-aware powerline separator glyph drawn between crumbs/tabs (nerd  → unicode ❯ → ascii >). */
   separatorGlyph: string;
+  /** The tier-aware close token shared with panel headings and the panel contents list. */
+  closeGlyph: string;
   hover: TabBarHover;
   closePressed: number | null;
-  /** Index of the editor-title action currently held down, or null. */
-  pressedTitleActionIndex: number | null;
   arrowPressed: 'arrowLeft' | 'arrowRight' | null;
   lastRevealedIndex: number;
-  /** Contributed editor-title affordances, already filtered by their command guards. */
-  editorTitleActions: readonly EditorTitleAction[];
 }
 
-/** One clickable affordance in the editor title row, projected from a command that declared an
+/** One clickable affordance in the breadcrumb row, projected from a command that declared an
  *  icon. The renderer never learns which plugin contributed it. */
 export interface EditorTitleAction {
   readonly commandId: string;
@@ -683,12 +680,29 @@ export interface BreadcrumbBarRenderContext {
   /** Active workspace root — the breadcrumb is the active file's path relative to it. */
   projectRoot: string;
   hoveredSourceIndex: number | null;
+  hover: BreadcrumbBarHover;
+  pressedTitleActionIndex: number | null;
+  /** Contributed editor-title affordances, already filtered by their command guards. */
+  editorTitleActions: readonly EditorTitleAction[];
 }
 
-export interface BreadcrumbBarSegment extends BreadcrumbPathSegment {
-  start: number;
-  end: number;
-}
+export type BreadcrumbBarSegment =
+  | (BreadcrumbPathSegment & {
+      kind: 'crumb';
+      start: number;
+      end: number;
+    })
+  | {
+      kind: 'titleAction';
+      index: number;
+      start: number;
+      end: number;
+    };
+
+export type BreadcrumbBarHover =
+  | { kind: 'crumb'; sourceIndex: number }
+  | { kind: 'titleAction'; index: number }
+  | null;
 
 export interface BreadcrumbBarRender {
   text: StyledText;

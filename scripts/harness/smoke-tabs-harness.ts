@@ -6,6 +6,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import {
   awaitStatusPublication,
   pass,
@@ -47,6 +48,15 @@ const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tabs-harness-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-tabs-harness-home-'));
 
 const statusPath = join(fixtureRoot, 'status.json');
+const sharedCloseGlyph =
+  ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode').panelClose;
+
+function bufferTabRowHasSharedClose(rowText: string): boolean {
+  return (
+    /[A-Za-z0-9_-]+\.[A-Za-z]+/.test(rowText) &&
+    rowText.includes(` ${sharedCloseGlyph}`)
+  );
+}
 
 for (let fileNumber = 1; fileNumber <= 9; fileNumber++) {
   await Bun.write(join(fixtureRoot, `file-${fileNumber}.txt`), 'x\n');
@@ -57,7 +67,7 @@ const driver = new PtyTestDriver.Class({
   columns: 120,
   rows: 40,
   homeDirectory,
-  environment: { TUI_STATUS_PATH: statusPath },
+  environment: { TUI_STATUS_PATH: statusPath, NERD_FONT: '0' },
 });
 
 try {
@@ -106,24 +116,30 @@ try {
   let snapshot = await driver.awaitGridCondition(
     'the overflowed tab strip paints filenames, close marks, and the active breadcrumb',
     (candidate) =>
-      candidate
-        .textRows()
-        .some((rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText)) &&
+      candidate.textRows().some(bufferTabRowHasSharedClose) &&
       candidate.findText('›') !== null &&
-      !candidate.textRows().some((rowText) => /✕ *❯/.test(rowText)),
+      !candidate
+        .textRows()
+        .some(
+          (rowText) =>
+            rowText.includes(sharedCloseGlyph) && rowText.includes('❯'),
+        ),
   );
   requireCondition(
-    snapshot
-      .textRows()
-      .some((rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText)),
-    'a buffer tab paints a filename and close mark',
+    snapshot.textRows().some(bufferTabRowHasSharedClose),
+    'a buffer tab paints a filename and the shared close mark',
   );
   requireCondition(
     snapshot.findText('›') !== null,
     'breadcrumb row paints the active path',
   );
   requireCondition(
-    !snapshot.textRows().some((rowText) => /✕ *❯/.test(rowText)),
+    !snapshot
+      .textRows()
+      .some(
+        (rowText) =>
+          rowText.includes(sharedCloseGlyph) && rowText.includes('❯'),
+      ),
     'no arrow divides adjacent tabs',
   );
 

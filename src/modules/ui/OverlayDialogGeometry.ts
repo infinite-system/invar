@@ -9,15 +9,40 @@ class $OverlayDialogGeometry {
     const screenHeight = Math.max(1, Math.floor(input.screenHeight));
     const desiredWidth = Math.max(1, Math.floor(input.desiredWidth));
     const desiredHeight = Math.max(1, Math.floor(input.desiredHeight));
-    const width = Math.min(screenWidth, desiredWidth);
-    const height = Math.min(screenHeight, desiredHeight);
-    const maximumLeft = Math.max(0, screenWidth - width);
-    const maximumTop = Math.max(0, screenHeight - height);
+    const horizontalMargin = Math.min(
+      Math.max(0, Math.floor(input.horizontalMargin ?? 0)),
+      Math.floor((screenWidth - 1) / 2),
+    );
+    const verticalMargin = Math.min(
+      Math.max(0, Math.floor(input.verticalMargin ?? 0)),
+      Math.floor((screenHeight - 1) / 2),
+    );
+    const availableWidth = Math.max(1, screenWidth - horizontalMargin * 2);
+    const availableHeight = Math.max(1, screenHeight - verticalMargin * 2);
+    const width = Math.min(availableWidth, desiredWidth);
+    const height = Math.min(availableHeight, desiredHeight);
+    const minimumLeft = horizontalMargin;
+    const minimumTop = verticalMargin;
+    const maximumLeft = Math.max(
+      minimumLeft,
+      screenWidth - horizontalMargin - width,
+    );
+    const maximumTop = Math.max(
+      minimumTop,
+      screenHeight - verticalMargin - height,
+    );
     const desiredLeft =
-      input.desiredLeft ?? Math.floor((screenWidth - width) / 2);
-    const desiredTop = input.desiredTop ?? 0;
-    const left = Math.max(0, Math.min(Math.floor(desiredLeft), maximumLeft));
-    const top = Math.max(0, Math.min(Math.floor(desiredTop), maximumTop));
+      input.desiredLeft ??
+      minimumLeft + Math.floor((availableWidth - width) / 2);
+    const desiredTop = input.desiredTop ?? minimumTop;
+    const left = Math.max(
+      minimumLeft,
+      Math.min(Math.floor(desiredLeft), maximumLeft),
+    );
+    const top = Math.max(
+      minimumTop,
+      Math.min(Math.floor(desiredTop), maximumTop),
+    );
     const closeButtonWidth = Math.min(3, width);
 
     return {
@@ -46,6 +71,9 @@ export interface OverlayDialogGeometryInput {
   desiredHeight: number;
   desiredLeft?: number;
   desiredTop?: number;
+  /** Preferred canvas gaps. They shrink only when the terminal cannot retain one dialog cell. */
+  horizontalMargin?: number;
+  verticalMargin?: number;
 }
 
 export interface OverlayDialogGeometryResult {

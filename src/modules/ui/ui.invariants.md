@@ -46,17 +46,20 @@ a FrameProbe check that rendered-row count stays bounded while wheel-scrolling a
 ### Status text is assembled from ordered contributions
 
 **Invariant:** If text appears in the status bar, then it comes from an ordered
-`StatusBarSegmentContribution`; the status host joins segments without naming their domains.
+`StatusBarSegmentContribution`; the status host joins segments without naming their domains and
+owns the row's one-cell left margin.
 
 **Scope:** `StatusBarSegments`, `CoreStatusBarSegments`, the source-control blame segment, and
 `StatusBar`.
 
 **Mechanism:** Core registers its ordinary workspace/editor segments and plugins register their
-segments during application activation. `StatusBar` supplies a generic context and joins the
-registry result.
+segments during application activation. `StatusBar` supplies a generic context, joins the registry
+result, and prefixes one space. Segments carry no private leading margin. The source-control blame
+segment starts with the tiered `statusUser` glyph, one space, then its author and date.
 
 **Generates:** Existing non-plugin status text and plugin-owned blame text through one projection
-surface.
+surface; project and author rows aligned by one margin authority; icon, space, and author cells
+that stay stable across glyph tiers.
 
 **Evidence:** `StatusBarSegments.ts`; `CoreStatusBarSegments.ts`; `StatusBar.ts`;
 `GitPlugin.ts` `segments`.
@@ -524,12 +527,15 @@ reorder, and close actions; if one session remains, the list is absent.
 `isContentVisible`. `PanelContentsList.pointerDown` and `pointerDrag` delegate selection, close, and
 reorder to `PanelHost`; selecting a hidden instance replaces the visible instance of the same kind
 while preserving another kind's split cell, and close unregisters and disposes the selected session.
+The row close, panel-heading close, and tab close all read the `panelClose` slot from the active
+`InterfaceGlyphVocabulary`; no consumer restates a close character.
 Panel-context keybindings delegate to the same host methods. `RootView` requests both the immediate
 frame and a next-turn `RenderRequest`, so a queued frame cannot coalesce away the projection that
 publishes the closed session list.
 
 **Generates:** VS Code-style docked session rows; visible and hidden instances in one list; per-row
-close affordances; mouse and keyboard parity without a second content registry.
+close affordances that match tabs and panel headings in every glyph tier; mouse and keyboard parity
+without a second content registry.
 
 **Rejected alternatives:** Use `BoundedListPopup` — a modal popup does not remain docked beside panel
 content and cannot continuously mirror the open split.
@@ -541,7 +547,8 @@ content and cannot continuously mirror the open split.
 **Impossible if true:** The list showing with one registered session; two registered sessions
 producing one or three rows; hiding an instance removing its row; a close row retaining its backend;
 a drag updating only presentation; a close mutating the host while the published session list remains
-stale because its render request was coalesced into an in-flight frame.
+stale because its render request was coalesced into an in-flight frame; a list row, tab, or panel
+heading drawing a different close glyph for the same active tier.
 
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts
 src/modules/ui/RenderRequest.test.ts && bun
@@ -699,6 +706,8 @@ are outside the gap-chunk rule but still return their hit segments from the pain
 **Components:**
 - *One geometry walk* — every returned segment uses the same column cursor that places its glyphs.
 - *One gap chunk* — unused width advances the cursor by its full width but allocates one styled chunk.
+- *One close token* — workspace and buffer tabs read the same active `panelClose` glyph as panel
+  headings and panel-list rows.
 
 **Mechanism:** `TabBarRenderer.appendHorizontalGap` emits one repeated-space chunk, then
 `TabBarRenderer.renderWorkspace` and `TabBarRenderer.renderBuffer` advance their existing column
@@ -880,28 +889,33 @@ scripts/harness/smoke-pixel-preview-harness.ts`
 
 **Invariant:** If an overlay dialog is visible, then its left, top, width, height, content viewport,
 scrollbar, and close control all fit inside the terminal's current rows and columns, including after
-a live resize.
+a live resize. Settings and Keyboard Shortcuts reserve their declared canvas margins and derive
+their width from content while those preferences fit.
 
 **Scope:** The command palette, Find and Replace, Quick Open, destructive confirmation, Settings,
 Keyboard Shortcuts, and context menu dialogs in `OverlayLayer`. `BoundedListPopup` has its own
 stricter anchored geometry record; completion is non-modal.
 
 **Mechanism:** `OverlayDialogGeometry.layout` clamps one numeric rectangle to the live
-`renderer.width` and `renderer.height`. `OverlayLayer.updateOverlayDialog` applies that rectangle to
-the box and its top-edge close control every frame. Content that exceeds the rectangle is windowed
-through `ScrollableTextViewport`, which derives its `SolidThumbScrollBar` from the same interior
-rectangle.
+`renderer.width` and `renderer.height`. Optional horizontal and vertical margins reduce the
+available canvas before centering and clamping. They shrink only when retaining them would remove
+the final dialog cell. `OverlayLayer.updateOverlayDialog` applies that rectangle to the box and its
+top-edge close control every frame. Settings and Keyboard Shortcuts measure their longest rendered
+content row and apply one width ceiling. Content that exceeds the rectangle is windowed through
+`ScrollableTextViewport`, which derives its `SolidThumbScrollBar` from the same interior rectangle.
 
-**Generates:** Resize-safe dialogs; bounded paint; shared wheel momentum, keyboard reveal, and thumb
-drag; a close target that never leaves the canvas.
+**Generates:** Resize-safe dialogs; bounded paint; canvas separation for Settings and Keyboard
+Shortcuts at both large and compact geometries; content-derived widths; shared wheel momentum,
+keyboard reveal, and thumb drag; a close target that never leaves the canvas.
 
 **Evidence:** `src/modules/ui/OverlayDialogGeometry.ts`;
 `src/modules/ui/OverlayDialogGeometry.test.ts`; `src/modules/ui/OverlayLayer.ts`;
 `scripts/harness/smoke-overlay-dialog-harness.ts`.
 
 **Impossible if true:** Resizing while Settings or Keyboard Shortcuts is open leaves any dialog edge,
-scrollbar, or close control outside the terminal; overflowing rows paint through the bottom instead of
-scrolling.
+scrollbar, or close control outside the terminal; either dialog expands to a canvas fraction after its
+content width is known; preferred margins clip the last dialog cell; overflowing rows paint through
+the bottom instead of scrolling.
 
 **Verification:** `bun test src/modules/ui/OverlayDialogGeometry.test.ts
 src/modules/ui/ScrollableTextViewport.test.ts && bun
@@ -909,7 +923,43 @@ scripts/harness/smoke-overlay-dialog-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-29
+
+### Hierarchical pane rows share one compact indent
+
+**Invariant:** If a file-tree or structure row is nested at depth N, then its row mark starts
+exactly N cells farther right than the same row at depth zero. Adjacent levels remain distinct, and
+render width and pointer hit geometry use the same indentation.
+
+**Scope:** File-tree rows, structure rows, structure fold-control hit targets, and file-tree content
+width. Editor text indentation and popup hierarchy are outside this rule.
+
+**Mechanism:** `HierarchicalRowIndent` is the one generator for indentation text and width.
+`TreePaneRenderer`, `FileTree`, `StructurePaneRenderer`, and `StructurePaneContent` consume it
+instead of multiplying depth locally.
+
+**Generates:** One compact cell per nesting level in both panes; matching horizontal extents;
+fold-control clicks that stay aligned with their painted control.
+
+**Evidence:** `src/modules/ui/HierarchicalRowIndent.ts`;
+`src/modules/ui/HierarchicalRowIndent.test.ts`;
+`src/modules/filetree/TreePaneRenderer.ts`;
+`src/modules/filetree/FileTree.ts`;
+`src/modules/structure/StructurePaneRenderer.ts`;
+`src/modules/structure/StructurePaneContent.ts`.
+
+**Impossible if true:** A depth-three file-tree row and structure row starting at different
+indentation; either pane advancing two cells per level; compact paint leaving the structure fold
+hit target at its old column.
+
+**Verification:** `bun test src/modules/ui/HierarchicalRowIndent.test.ts
+src/modules/filetree/TreePaneRenderer.test.ts src/modules/filetree/FileTree.test.ts
+src/modules/structure/StructurePaneRenderer.test.ts
+src/modules/structure/StructurePaneContent.test.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
 
 ### Overlay keyboard actions have visible mouse paths
 
@@ -1299,10 +1349,13 @@ menu or the backdrop — the panes beneath are unreachable by construction, not 
 guards. The backdrop's only behavior is `close()`. Keys: `Bootstrap.onKey` short-circuits to the
 registry's `menu` context, dispatches `menu.*` actions or a global input-overlay opener through
 `OverlayCoordinator`, and closes-and-consumes anything else. Reserved global chords run before this
-branch. `ContextMenu.runAt` closes first, then invokes the opener-supplied handler.
+branch. `ContextMenu.runAt` closes first, then invokes the opener-supplied handler. A value-picker
+item can declare itself active. That one fact paints the activity-bar edge marker and supplies the
+initial keyboard selection; without an active item the first enabled row remains the fallback.
 
 **Generates:** reusable menus that are safe over any pane; collective git actions without
-misclick hazards; keyboard parity for every menu.
+misclick hazards; keyboard parity for every menu; value pickers whose current marker, initial
+highlight, arrow movement, and Enter action cannot disagree.
 
 **Evidence:** unit tests (`ContextMenu.test.ts` state machine) + live tmux: right-click menu over
 the git panel; a click on the editor area closed the menu with buffer revision AND cursor

@@ -3,15 +3,25 @@
 // Static() seam; every model read happens through the passed-in outline so reactivity flows from
 // the host's reactive render call.
 //
-// The mark column resolves through the passed-in symbol-mark row — the theme's ONE table — so a
-// class here is marked exactly like the same class in a completion list or the file tree.
+// The one row mark resolves through the passed-in symbol-mark row — the theme's ONE table — so a
+// class here is marked exactly like the same class in a completion list or the file tree. Source
+// semantics change that same cell's color and emphasis instead of adding more glyph columns.
 //
 // invariant: Only the visible window is rendered (src/modules/ui/ui.invariants.md)
 // invariant: One table resolves every symbol mark (src/modules/theme/theme.invariants.md)
 // invariant: A structure source answers or declines, never blanks (src/modules/structure/structure.invariants.md)
 // invariant: Outline labels expose source semantics (src/modules/structure/structure.invariants.md)
 // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
-import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
+import {
+  StyledText,
+  fg,
+  bg,
+  bold,
+  dim,
+  italic,
+  underline,
+  type TextChunk,
+} from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { TextInputModel } from '../text/TextInputModel';
@@ -19,6 +29,7 @@ import type { Palette } from '../theme/ThemePalettes';
 import type { SymbolMarkSet } from '../theme/ThemeIcons';
 import type { InterfaceGlyphVocabulary } from '../theme/ThemeIcons';
 import { TextFieldPainter } from '../ui/TextFieldPainter';
+import { HierarchicalRowIndent } from '../ui/HierarchicalRowIndent';
 import type { StructureOutline } from './StructureOutline';
 
 class $StructurePaneRenderer {
@@ -53,13 +64,6 @@ class $StructurePaneRenderer {
     const hoveredIndex = outline.hoveredIndex.value;
     const top = outline.windowTop();
     const visible = rows.slice(top, top + context.height);
-    const semanticSlotsVisible = rows.some(
-      (row) =>
-        row.visibility !== undefined ||
-        row.accessor !== undefined ||
-        row.cached !== undefined ||
-        row.override !== undefined,
-    );
     const chunks: TextChunk[] = [
       ...filterField.chunks,
       fg(palette.accent)(depthControl),
@@ -69,34 +73,27 @@ class $StructurePaneRenderer {
       const rowIndex = top + visibleIndex;
       const selected = rowIndex === selectedIndex;
       const hovered = rowIndex === hoveredIndex;
-      const indent = '  '.repeat(row.depth);
+      const indent = HierarchicalRowIndent.Class.text(row.depth);
       const foldMark = row.hasChildren
         ? row.childrenVisible
           ? (context.foldOpenGlyph ?? 'v')
           : (context.foldClosedGlyph ?? '>')
         : ' ';
       const mark = context.symbolMarks[row.symbolClass];
-      const visibilityMark =
-        row.visibility === 'public'
-          ? context.structureMarks.structurePublic
-          : row.visibility === 'protected'
-            ? context.structureMarks.structureProtected
-            : row.visibility === 'private'
-              ? context.structureMarks.structurePrivate
-              : ' ';
-      const accessorMark =
-        row.accessor === 'getter'
-          ? context.structureMarks.structureGetter
-          : row.accessor === 'setter'
-            ? context.structureMarks.structureSetter
-            : ' ';
-      const cachedMark = row.cached
-        ? context.structureMarks.structureCached
-        : ' ';
-      const overrideMark = row.override
-        ? context.structureMarks.structureOverride
-        : ' ';
-      const lineLabel = `:${row.line + 1}`;
+      const markColor =
+        row.accessor !== undefined
+          ? palette.info
+          : row.cached
+            ? palette.type
+            : row.override
+              ? palette.modified
+              : row.visibility === 'public'
+                ? palette.added
+                : row.visibility === 'protected'
+                  ? palette.modified
+                  : row.visibility === 'private'
+                    ? palette.warning
+                    : palette.fg;
       const rowBackground = selected
         ? context.structureFocused
           ? palette.selection
@@ -106,38 +103,36 @@ class $StructurePaneRenderer {
           : null;
       const selectedForeground =
         selected && context.structureFocused ? palette.accent : null;
-      const semanticChunks: StructureSemanticChunk[] = semanticSlotsVisible
-        ? [
-            {
-              text: visibilityMark,
-              color:
-                row.visibility === 'public'
-                  ? palette.added
-                  : row.visibility === 'protected'
-                    ? palette.modified
-                    : row.visibility === 'private'
-                      ? palette.warning
-                      : palette.fg,
-            },
-            { text: accessorMark, color: palette.info },
-            { text: cachedMark, color: palette.type },
-            { text: overrideMark, color: palette.modified },
-          ]
-        : [];
       const rowChunks = this.fitRowChunks(
         [
-          { text: ` ${indent}${foldMark} ${mark} `, color: palette.fg },
-          ...semanticChunks,
+          { text: ` ${indent}${foldMark} `, color: palette.fg },
           {
-            text: `${semanticSlotsVisible ? ' ' : ''}${row.name} ${lineLabel}`,
-            color: row.accessor ? palette.info : palette.fg,
+            text: mark,
+            color: markColor,
+            bold: row.cached,
+            underline: row.accessor === 'getter',
+            italic: row.accessor === 'setter' || row.override,
           },
+          { text: ` ${row.name}`, color: palette.fg },
+          ...(context.showLineNumbers
+            ? [
+                {
+                  text: ` ${row.line + 1}`,
+                  color: palette.dim,
+                  dim: true,
+                },
+              ]
+            : []),
         ],
         Math.max(1, context.viewportWidth),
         innerWidth,
       );
       for (const rowChunk of rowChunks) {
-        const styled = fg(selectedForeground ?? rowChunk.color)(rowChunk.text);
+        let styled = fg(selectedForeground ?? rowChunk.color)(rowChunk.text);
+        if (rowChunk.bold) styled = bold(styled);
+        if (rowChunk.underline) styled = underline(styled);
+        if (rowChunk.italic) styled = italic(styled);
+        if (rowChunk.dim) styled = dim(styled);
         chunks.push(rowBackground ? bg(rowBackground)(styled) : styled);
       }
       if (visibleIndex < visible.length - 1) chunks.push(fg(palette.fg)('\n'));
@@ -160,7 +155,7 @@ class $StructurePaneRenderer {
         remainingWidth,
       );
       if (text.length > 0) {
-        fittedChunks.push({ text, color: sourceChunk.color });
+        fittedChunks.push({ ...sourceChunk, text });
         remainingWidth -= TextCoordinates.Class.lineWidth(text);
       }
     }
@@ -242,22 +237,13 @@ export interface StructurePaneRenderContext {
   palette: Palette;
   /** The theme's symbol-mark row for the active glyph tier — the one resolver, read once. */
   symbolMarks: SymbolMarkSet;
-  structureMarks: Pick<
-    InterfaceGlyphVocabulary,
-    | 'structurePublic'
-    | 'structureProtected'
-    | 'structurePrivate'
-    | 'structureCached'
-    | 'structureOverride'
-    | 'structureGetter'
-    | 'structureSetter'
-    | 'structureDepth'
-  >;
+  structureMarks: Pick<InterfaceGlyphVocabulary, 'structureDepth'>;
   filterInput?: TextInputModel.Model;
   searchGlyph?: string;
   defaultDepth: number;
   foldOpenGlyph?: string;
   foldClosedGlyph?: string;
+  showLineNumbers?: boolean;
   setFilterCaretColumn?(column: number): void;
   /** Visible row count (pane body height). */
   height: number;
@@ -270,4 +256,8 @@ export interface StructurePaneRenderContext {
 interface StructureSemanticChunk {
   readonly text: string;
   readonly color: string;
+  readonly bold?: boolean;
+  readonly underline?: boolean;
+  readonly italic?: boolean;
+  readonly dim?: boolean;
 }

@@ -111,6 +111,13 @@ describe('StructurePaneContent', () => {
     expect(activations.count).toBe(0);
     expect(pane.onPointerDown(0, 2)).toBe(true);
     expect(outline.selectedIndex.value).toBe(1);
+    expect(
+      (
+        pane as unknown as {
+          foldControlColumn(rowIndex: number): number;
+        }
+      ).foldControlColumn(1),
+    ).toBe(2);
     // Focus stays host-owned in the right dock: the click activates without touching the
     // workspace's primary-pane focus model.
     expect(workspaceFocus.value).toBe('editor');
@@ -151,8 +158,10 @@ describe('StructurePaneContent', () => {
     expect(rendered).toContain(
       ThemeIcons.Class.glyphFor('unicode', 'structureDepth'),
     );
-    expect(rendered).toContain(`${marks.type} Widget :1`);
-    expect(rendered).toContain(`  ${marks.callable} render :2`);
+    expect(rendered).toContain(`${marks.type} Widget`);
+    expect(rendered).not.toContain('Widget :1');
+    expect(rendered).toContain(`  ${marks.callable} render`);
+    expect(rendered).not.toContain('render :2');
     outline.dispose();
   });
 
@@ -247,7 +256,7 @@ describe('StructurePaneContent', () => {
     expect(contextMenu.open.value).toBe(true);
     expect(contextMenu.items.value.map((item) => item.label)).toEqual([
       'Depth 0',
-      'Depth 1 (current)',
+      'Depth 1',
       'Depth 2',
       'Depth 3',
       'Depth 4',
@@ -256,6 +265,10 @@ describe('StructurePaneContent', () => {
       'Depth 7',
       'Depth 8',
     ]);
+    expect(contextMenu.items.value.map((item) => item.active ?? false)).toEqual(
+      [false, true, false, false, false, false, false, false, false],
+    );
+    expect(contextMenu.selectedIndex.value).toBe(1);
 
     contextMenu.runAt(4);
     expect(contextMenu.open.value).toBe(false);

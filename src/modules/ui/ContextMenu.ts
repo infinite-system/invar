@@ -86,7 +86,9 @@ class $ContextMenu {
       Math.min(pointerY, screen.height - this.height),
     );
     this.hoveredIndex.value = -1;
-    this.selectedIndex.value = items.findIndex((item) => item.enabled);
+    const activeIndex = items.findIndex((item) => item.active && item.enabled);
+    this.selectedIndex.value =
+      activeIndex >= 0 ? activeIndex : items.findIndex((item) => item.enabled);
     this.open.value = true;
   }
   close(): void {
@@ -141,4 +143,6 @@ export interface ContextMenuItem {
   id: string;
   label: string;
   enabled: boolean;
+  /** The current value in a value-picker menu. It supplies both the edge mark and initial selection. */
+  active?: boolean;
 }

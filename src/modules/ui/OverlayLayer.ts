@@ -658,6 +658,8 @@ class $OverlayLayer {
       desiredTop: input.desiredTop,
       desiredWidth: input.desiredWidth,
       desiredHeight: input.desiredHeight,
+      horizontalMargin: input.horizontalMargin,
+      verticalMargin: input.verticalMargin,
     });
     this.dialogBoundsByName.set(input.dialogName, geometry);
     box.visible = true;
@@ -910,6 +912,17 @@ class $OverlayLayer {
   protected shortcutHelpBoxHeight(): number {
     return Math.max(6, this.dependencies.renderer.height - 3);
   }
+  protected contentDerivedDialogWidth(
+    lines: readonly string[],
+    maximumWidth = 84,
+  ): number {
+    const contentWidth = lines.reduce(
+      (widestWidth, line) =>
+        Math.max(widestWidth, TextCoordinates.Class.lineWidth(line)),
+      1,
+    );
+    return Math.min(maximumWidth, contentWidth + 2);
+  }
   /** Visible binding rows in the cheat-sheet (interior minus its fixed instruction line). */
   shortcutHelpViewportRows(): number {
     const geometry = OverlayDialogGeometry.Class.layout({
@@ -921,6 +934,8 @@ class $OverlayLayer {
       ),
       desiredHeight: this.shortcutHelpBoxHeight(),
       desiredTop: 1,
+      horizontalMargin: 2,
+      verticalMargin: 3,
     });
     return Math.max(1, geometry.interiorHeight - 1);
   }
@@ -1303,8 +1318,14 @@ class $OverlayLayer {
           dialogName: 'settingsPanel',
           title: 'Settings',
           desiredTop: 2,
-          desiredWidth: Math.max(1, Math.floor(renderer.width * 0.9)),
+          desiredWidth: this.contentDerivedDialogWidth(
+            settingsLines.map((line) =>
+              line.chunks.map((chunk) => chunk.text).join(''),
+            ),
+          ),
           desiredHeight: this.settingsContentRows + 2,
+          horizontalMargin: 2,
+          verticalMargin: 3,
         },
       );
       this.settingsViewportRows = Math.max(
@@ -1367,6 +1388,19 @@ class $OverlayLayer {
     if (shortcutHelp.open.value) {
       const sheetRows = shortcutHelp.rows();
       this.shortcutHelpContentRows = sheetRows.length;
+      const chordColumnWidth = sheetRows.reduce(
+        (widestWidth, sheetRow) =>
+          Math.max(widestWidth, sheetRow.chordLabel.length),
+        0,
+      );
+      const shortcutContentLines = [
+        '  ↑/↓, wheel, or thumb scroll · Esc close',
+        ...sheetRows.map((sheetRow) =>
+          sheetRow.kind === 'category'
+            ? ` ${sheetRow.label}`
+            : `   ${sheetRow.chordLabel.padEnd(chordColumnWidth, ' ')}  ${sheetRow.label}`,
+        ),
+      ];
       const shortcutHelpGeometry = this.updateOverlayDialog(
         this.shortcutHelpBox,
         this.shortcutHelpDismissal,
@@ -1375,8 +1409,10 @@ class $OverlayLayer {
           dialogName: 'shortcutHelp',
           title: 'Keyboard Shortcuts',
           desiredTop: 1,
-          desiredWidth: Math.max(1, Math.floor(renderer.width * 0.7)),
+          desiredWidth: this.contentDerivedDialogWidth(shortcutContentLines),
           desiredHeight: this.shortcutHelpBoxHeight(),
+          horizontalMargin: 2,
+          verticalMargin: 3,
         },
       );
       this.shortcutHelpVisibleRows = Math.max(
@@ -1390,11 +1426,6 @@ class $OverlayLayer {
       const sheetVisibleRows = sheetRows.slice(
         sheetScrollTop,
         sheetScrollTop + this.shortcutHelpVisibleRows,
-      );
-      const chordColumnWidth = sheetRows.reduce(
-        (widestWidth, sheetRow) =>
-          Math.max(widestWidth, sheetRow.chordLabel.length),
-        0,
       );
       const sheetScrollHint =
         sheetRows.length > this.shortcutHelpVisibleRows
@@ -1473,17 +1504,27 @@ class $OverlayLayer {
       );
       const rowWidth = contextMenuGeometry.interiorWidth;
       const menuChunks: TextChunk[] = [];
+      const activeMarker = this.dependencies.theme.glyph('activityAccentBar');
       visibleContextMenuItems.forEach((item, visibleIndex) => {
         const index = firstVisibleContextMenuIndex + visibleIndex;
-        const label = ` ${item.label}`.padEnd(rowWidth, ' ').slice(0, rowWidth);
+        const marker = item.active ? activeMarker : ' ';
+        const label = ` ${item.label}`
+          .padEnd(Math.max(0, rowWidth - 1), ' ')
+          .slice(0, Math.max(0, rowWidth - 1));
         const rowBackground =
           index === contextMenu.selectedIndex.value
             ? palette.selection
             : index === contextMenu.hoveredIndex.value
               ? palette.cursorLine
               : null;
-        const styled = fg(item.enabled ? palette.fg : palette.dim)(label);
-        menuChunks.push(rowBackground ? bg(rowBackground)(styled) : styled);
+        const markerChunk = fg(item.active ? palette.accent : palette.fg)(
+          marker,
+        );
+        const labelChunk = fg(item.enabled ? palette.fg : palette.dim)(label);
+        menuChunks.push(
+          rowBackground ? bg(rowBackground)(markerChunk) : markerChunk,
+          rowBackground ? bg(rowBackground)(labelChunk) : labelChunk,
+        );
         if (visibleIndex < visibleContextMenuItems.length - 1)
           menuChunks.push(fg(palette.fg)('\n'));
       });
@@ -1568,6 +1609,8 @@ interface OverlayDialogLayoutInput {
   desiredHeight: number;
   desiredLeft?: number;
   desiredTop?: number;
+  horizontalMargin?: number;
+  verticalMargin?: number;
   borderColor?: string;
   titleColor?: string;
 }

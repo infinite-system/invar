@@ -22,6 +22,16 @@ describe('ContextMenu', () => {
     expect(menu.anchorY.value).toBe(5);
   });
 
+  test('an active item supplies the initial keyboard selection', () => {
+    const menu = new ContextMenu.Class();
+    const items = threeItems();
+    items[2] = { ...items[2]!, active: true };
+    menu.openAt(items, 10, 5, SCREEN, () => {});
+
+    expect(menu.selectedIndex.value).toBe(2);
+    expect(menu.items.value.filter((item) => item.active)).toEqual([items[2]]);
+  });
+
   test('openAt with no items does not open', () => {
     const menu = new ContextMenu.Class();
     menu.openAt([], 10, 5, SCREEN, () => {});

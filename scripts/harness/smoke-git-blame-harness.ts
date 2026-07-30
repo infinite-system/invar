@@ -108,13 +108,16 @@ try {
   );
   HarnessSmoke.Class.pass("cursor-line blame author is 'Blame Tester' (probe)");
   const blameSnapshot = await driver.awaitGridCondition(
-    'the status bar renders the current line blame author',
+    'the status bar renders the tiered user icon and current line blame author',
     (candidate) =>
-      candidate.rowText(candidate.rows - 1).includes('Blame Tester'),
+      candidate.rowText(candidate.rows - 1).includes('♙ Blame Tester'),
   );
   HarnessSmoke.Class.requireCondition(
-    blameSnapshot.rowText(blameSnapshot.rows - 1).includes('Blame Tester'),
-    'status bar renders the blame author',
+    blameSnapshot.rowText(blameSnapshot.rows - 1).includes('♙ Blame Tester') &&
+      !blameSnapshot
+        .rowText(blameSnapshot.rows - 1)
+        .includes('♙  Blame Tester'),
+    'status bar renders icon cell, one space, then the blame author',
   );
 
   console.log('== harness git-blame: an untracked document shows no blame ==');

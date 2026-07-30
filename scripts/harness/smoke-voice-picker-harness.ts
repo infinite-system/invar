@@ -213,6 +213,24 @@ try {
   );
   HarnessSmoke.Class.pass('voice arrow advances from aaa to bbb');
 
+  const visibleVoicePosition = driver.snapshot().findText('Narration voice');
+  if (!visibleVoicePosition)
+    throw new Error(
+      'Narration voice is not visible before scrolling to Narration speed',
+    );
+  HarnessSmoke.Class.pass(
+    'Narration voice remains visible before scrolling to Narration speed',
+  );
+  driver.sendMouse({
+    kind: 'wheel',
+    column: visibleVoicePosition.column,
+    row: visibleVoicePosition.row,
+    direction: 'down',
+  });
+  await driver.awaitGridCondition(
+    'Settings scroll reveals Narration speed before its mouse edit',
+    (snapshot) => snapshot.findText('Narration speed') !== null,
+  );
   clickWidget(driver, 'Narration speed', '+');
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
@@ -225,6 +243,24 @@ try {
   );
 
   const narrationEnabledBefore = speedStatus.narrationEnabled;
+  const visibleSpeedPosition = driver.snapshot().findText('Narration speed');
+  if (!visibleSpeedPosition)
+    throw new Error(
+      'Narration speed is not visible before scrolling to Speak agent replies',
+    );
+  HarnessSmoke.Class.pass(
+    'Narration speed remains visible before scrolling to Speak agent replies',
+  );
+  driver.sendMouse({
+    kind: 'wheel',
+    column: visibleSpeedPosition.column,
+    row: visibleSpeedPosition.row,
+    direction: 'down',
+  });
+  await driver.awaitGridCondition(
+    'Settings scroll reveals Speak agent replies before its mouse edit',
+    (snapshot) => snapshot.findText('Speak agent replies') !== null,
+  );
   clickWidget(driver, 'Speak agent replies', ']');
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,

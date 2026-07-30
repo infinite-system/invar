@@ -238,6 +238,10 @@ class $ThemeIcons {
         owner: 'the status-bar agent affordance',
       },
       {
+        mark: unicodeVocabulary.statusUser,
+        owner: 'the status-bar current-line author',
+      },
+      {
         mark: this.RIGHT_DOCK_ICONS.unicode,
         owner: 'the status-bar right-dock affordance',
       },
@@ -460,14 +464,8 @@ class $ThemeIcons {
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
-        structurePublic: '+',
-        structureProtected: '◇',
-        structurePrivate: '−',
-        structureCached: '$',
-        structureOverride: '↑',
-        structureGetter: '↤',
-        structureSetter: '↦',
         structureDepth: '⛭',
+        statusUser: '\u{f007}',
       },
       unicode: {
         // ≡ (U+2261) not ☰ (U+2630): OpenTUI measures U+2630 as TWO cells while the terminal
@@ -498,14 +496,8 @@ class $ThemeIcons {
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
-        structurePublic: '+',
-        structureProtected: '◇',
-        structurePrivate: '−',
-        structureCached: '$',
-        structureOverride: '↑',
-        structureGetter: '↤',
-        structureSetter: '↦',
         structureDepth: '⛭',
+        statusUser: '♙',
       },
       ascii: {
         activityFiles: 'F',
@@ -523,14 +515,8 @@ class $ThemeIcons {
         overviewMark: '.',
         foldOpen: 'v',
         foldClosed: ']',
-        structurePublic: '+',
-        structureProtected: '~',
-        structurePrivate: '-',
-        structureCached: '$',
-        structureOverride: '^',
-        structureGetter: 'g',
-        structureSetter: 's',
         structureDepth: '#',
+        statusUser: '@',
       },
     };
   }
@@ -608,7 +594,7 @@ class $ThemeIcons {
 
   protected static get AGENT_ICONS(): Record<GlyphLevel, string> {
     return {
-      nerd: '\u{f544}', // fa robot (the native agent pane)
+      nerd: '\u{f0d0}', // fa magic (the native agent assistant)
       unicode: '✦', // matches AgentPaneContent's switcher glyph
       ascii: 'A',
     };
@@ -929,14 +915,8 @@ export interface InterfaceGlyphVocabulary {
   overviewMark: string;
   foldOpen: string;
   foldClosed: string;
-  structurePublic: string;
-  structureProtected: string;
-  structurePrivate: string;
-  structureCached: string;
-  structureOverride: string;
-  structureGetter: string;
-  structureSetter: string;
   structureDepth: string;
+  statusUser: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;

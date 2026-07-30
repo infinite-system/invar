@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test';
 import { join } from 'node:path';
+import { MarkdownParser } from './MarkdownParser';
 import { MarkdownStylesheet } from './MarkdownStylesheet';
 
 // invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
@@ -19,6 +20,24 @@ test('margins collapse CSS-style between adjacent blocks', () => {
   );
   expect(stylesheet.spacingBetween('listItem', null)).toBe(0);
   expect(stylesheet.spacingBetween(null, null)).toBe(0);
+});
+
+test('heading starts preserve authored gaps without synthetic rows', () => {
+  const stylesheet = MarkdownStylesheet.Class;
+  const parser = new MarkdownParser.Class();
+  for (let level = 1; level <= 6; level++) {
+    const prefix = '#'.repeat(level);
+    const adjacentBlocks = parser.parse(`Before\n${prefix} Heading`).blocks;
+    const spacedBlocks = parser.parse(`Before\n\n${prefix} Heading`).blocks;
+    const topHeading = parser.parse(`${prefix} Heading`).blocks[0]!;
+    expect(
+      stylesheet.spacingBetweenBlocks(adjacentBlocks[0]!, adjacentBlocks[1]!),
+    ).toBe(0);
+    expect(
+      stylesheet.spacingBetweenBlocks(spacedBlocks[0]!, spacedBlocks[1]!),
+    ).toBe(1);
+    expect(stylesheet.spacingBetweenBlocks(null, topHeading)).toBe(0);
+  }
 });
 
 test('row selectors resolve every role and heading level', () => {
@@ -47,11 +66,11 @@ test('row selectors resolve every role and heading level', () => {
   );
 });
 
-test('heading levels carry a distinct intensity ramp', () => {
+test('heading levels share the accent color without changing their attributes', () => {
   const stylesheet = MarkdownStylesheet.Class;
   const heading1 = stylesheet.textStyle('heading1');
   const heading2 = stylesheet.textStyle('heading2');
-  expect(heading1.colorSlot).toBe('keyword');
+  expect(heading1.colorSlot).toBe('accent');
   expect(heading1.bold).toBe(true);
   expect(heading1.underline).toBe(false);
   expect(heading2).toMatchObject({
@@ -60,14 +79,26 @@ test('heading levels carry a distinct intensity ramp', () => {
     italic: false,
     underline: false,
   });
-  const rampKeys = [1, 2, 3, 4, 5, 6].map((level) => {
-    const style = stylesheet.textStyle(stylesheet.headingSelector(level));
-    return `${style.colorSlot}:${style.bold}:${style.italic}:${style.underline}`;
-  });
-  // each level must be visually distinguishable from its neighbour
-  for (let level = 1; level < rampKeys.length; level++) {
-    expect(rampKeys[level]).not.toBe(rampKeys[level - 1]);
-  }
+  const headingStyles = [1, 2, 3, 4, 5, 6].map((level) =>
+    stylesheet.textStyle(stylesheet.headingSelector(level)),
+  );
+  expect(headingStyles.map((style) => style.colorSlot)).toEqual(
+    Array.from({ length: 6 }, () => 'accent'),
+  );
+  expect(
+    headingStyles.map(({ bold, italic, underline }) => ({
+      bold,
+      italic,
+      underline,
+    })),
+  ).toEqual([
+    { bold: true, italic: false, underline: false },
+    { bold: true, italic: false, underline: false },
+    { bold: false, italic: false, underline: false },
+    { bold: true, italic: false, underline: false },
+    { bold: true, italic: false, underline: false },
+    { bold: true, italic: true, underline: false },
+  ]);
 });
 
 test('inline styles overlay the element style through the stylesheet', () => {
@@ -80,6 +111,26 @@ test('inline styles overlay the element style through the stylesheet', () => {
   expect(stylesheet.deadReferenceStyle).toMatchObject({
     colorSlot: 'error',
     underline: true,
+  });
+});
+
+test('code fence rows share one background and rounded frame vocabulary', () => {
+  const stylesheet = MarkdownStylesheet.Class;
+  expect(stylesheet.textStyle('codeBlock').backgroundSlot).toBe(
+    'selectionMuted',
+  );
+  expect(stylesheet.textStyle('codeBorder')).toMatchObject({
+    colorSlot: 'fg',
+    backgroundSlot: 'selectionMuted',
+  });
+  expect(stylesheet.prefixStyle('codeContent').backgroundSlot).toBe(
+    'selectionMuted',
+  );
+  expect(stylesheet.vocabulary.codeFrame).toMatchObject({
+    topLeft: '╭',
+    topRight: '╮',
+    bottomLeft: '╰',
+    bottomRight: '╯',
   });
 });
 

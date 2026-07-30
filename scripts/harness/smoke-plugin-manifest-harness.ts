@@ -1045,13 +1045,15 @@ try {
       status.rightDockVisible === true &&
       status.rightDockActiveContent === 'structure' &&
       status.structureStatus === 'ready' &&
+      status.structureShowLineNumbers === false &&
       Number(status.structureRows) > 0,
   );
   await driver.awaitGridCondition(
     'the structure pane paints the outline rows',
     (snapshot) =>
       snapshot.findText('Structure') !== null &&
-      snapshot.findText('languageProbe :') !== null,
+      snapshot.findText('languageProbe') !== null &&
+      snapshot.findText('languageProbe :') === null,
   );
   HarnessSmoke.Class.pass(
     'the structure pane shows itself at the right and lists the real documentSymbol outline',
@@ -1125,15 +1127,37 @@ try {
     'the in-pane depth gear opens the shared context menu',
     (status) => status.contextMenuOpen === true,
   );
-  await driver.awaitGridCondition(
-    'the depth selector paints its second-depth choice',
-    (snapshot) => snapshot.findText('Depth 2') !== null,
+  const initialDepthMenuSnapshot = await driver.awaitGridCondition(
+    'the depth selector marks and highlights the current depth',
+    (snapshot) => {
+      const currentDepth = snapshot.findText('▎ Depth 1');
+      const firstDepth = snapshot.findText('Depth 0');
+      return (
+        currentDepth !== null &&
+        firstDepth !== null &&
+        snapshot.cell(currentDepth.row, currentDepth.column)?.background !==
+          snapshot.cell(firstDepth.row, firstDepth.column)?.background &&
+        snapshot.findText('(current)') === null
+      );
+    },
   );
-  clickVisibleText('Depth 2');
+  const menuMarker = initialDepthMenuSnapshot.findText('▎ Depth 1');
+  const activityMarker = initialDepthMenuSnapshot.findText('▎ ▣');
+  HarnessSmoke.Class.requireCondition(
+    menuMarker !== null &&
+      activityMarker !== null &&
+      initialDepthMenuSnapshot.cell(menuMarker.row, menuMarker.column)
+        ?.foreground ===
+        initialDepthMenuSnapshot.cell(activityMarker.row, activityMarker.column)
+          ?.foreground,
+    'the depth marker uses the activity-bar active indicator color',
+  );
+  driver.sendKeys('Down');
+  driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the depth selector writes the contributed default-depth setting',
+    'Down moves from current depth one and Enter chooses depth two',
     (status) =>
       status.contextMenuOpen === false &&
       status.structureDefaultDepth === 2 &&
@@ -1288,13 +1312,111 @@ try {
       status.structureFilter === '' &&
       Number(status.structureRows) === initialStructureRows,
   );
-  await requireSemanticLabel('publicVisibleArm', '+    publicVisible');
-  await requireSemanticLabel('privateVisibleArm', '−    privateVisib');
-  await requireSemanticLabel('#hashPrivateArm', '−    #hashPriv');
-  await requireSemanticLabel('$cachedGetterArm', '+↤$  $cachedGet');
-  await requireSemanticLabel('overriddenArm', '+  ↑ overriddenArm');
+  await requireSemanticLabel('publicVisibleArm', 'ƒ publicVisible');
+  await requireSemanticLabel('privateVisibleArm', 'ƒ privateVisib');
+  await requireSemanticLabel('#hashPrivateArm', '▪ #hashPriv');
+  await requireSemanticLabel('$cachedGetterArm', '▪ $cachedGet');
+  await requireSemanticLabel('overriddenArm', 'ƒ overriddenArm');
   HarnessSmoke.Class.pass(
-    'the analyzer removes declaration noise and paints visibility, cache, getter, and override semantics',
+    'the analyzer removes declaration noise and paints every semantic on one kind glyph',
+  );
+
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings opens for the structure line-number polarity',
+    (status) => status.settingsOpen === true,
+  );
+  await selectSetting(driver, statusPath, 'Show line numbers');
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).settingsSelectedValue === 'off',
+    'structure line numbers default off in Settings',
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings enables structure line numbers',
+    (status) =>
+      status.settingsSelectedValue === 'on' &&
+      status.structureShowLineNumbers === true,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes onto the line-number-enabled structure pane',
+    (status) => status.settingsOpen === false,
+  );
+  driver.sendText('overriddenArm');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the enabled line-number setting narrows to its proof row',
+    (status) =>
+      status.structureFilter === 'overriddenArm' &&
+      Number(status.structureRows) === 1,
+  );
+  await driver.awaitGridCondition(
+    'the enabled line number is dimly space-separated without a colon',
+    (snapshot) =>
+      snapshot.findText('overriddenArm 49') !== null &&
+      snapshot.findText(':49') === null,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the line-number proof filter clears',
+    (status) => status.structureFilter === '',
+  );
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings reopens to restore the default line-number polarity',
+    (status) => status.settingsOpen === true,
+  );
+  await selectSetting(driver, statusPath, 'Show line numbers');
+  driver.sendKeys('Left');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings disables structure line numbers',
+    (status) =>
+      status.settingsSelectedValue === 'off' &&
+      status.structureShowLineNumbers === false,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes onto the default line-number-free structure pane',
+    (status) => status.settingsOpen === false,
+  );
+  driver.sendText('overriddenArm');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the default line-number polarity narrows to its proof row',
+    (status) =>
+      status.structureFilter === 'overriddenArm' &&
+      Number(status.structureRows) === 1,
+  );
+  await driver.awaitGridCondition(
+    'the default structure row omits both line number and colon',
+    (snapshot) =>
+      snapshot.findText('ƒ overriddenArm') !== null &&
+      snapshot.findText('overriddenArm 49') === null &&
+      snapshot.findText(':49') === null,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the default line-number proof filter clears',
+    (status) => status.structureFilter === '',
   );
 
   driver.sendText('dsm');
@@ -1373,9 +1495,46 @@ try {
       status.structureDepthIsOverridden === true &&
       Number(status.structureRows) > rowsBeforeFold,
   );
-  await driver.awaitGridCondition(
-    'depth two paints the nested method without a filter',
-    (snapshot) => snapshot.findText('deepSymbolMethod') !== null,
+  const nestedStructureSnapshot = await driver.awaitGridCondition(
+    'depth two paints three compact hierarchy levels without a filter',
+    (snapshot) =>
+      snapshot.findText('OuterSpace') !== null &&
+      snapshot.findText('InnerClass') !== null &&
+      snapshot.findText('deepSymbolMethod') !== null,
+  );
+  const rightDockBounds = (
+    HarnessSmoke.Class.readStatus(statusPath).layoutSlots as
+      Record<string, { left: number; width: number }> | undefined
+  )?.rightDock;
+  HarnessSmoke.Class.requireCondition(
+    rightDockBounds !== undefined,
+    'the compact structure proof publishes right-dock bounds',
+  );
+  const positionInsideRightDock = (
+    marker: string,
+  ): { row: number; column: number } | null => {
+    for (let row = 0; row < nestedStructureSnapshot.rows; row += 1) {
+      const column = nestedStructureSnapshot
+        .rowText(row)
+        .indexOf(marker, rightDockBounds!.left);
+      if (
+        column >= rightDockBounds!.left &&
+        column + marker.length <= rightDockBounds!.left + rightDockBounds!.width
+      ) {
+        return { row, column };
+      }
+    }
+    return null;
+  };
+  const outerSpacePosition = positionInsideRightDock('OuterSpace');
+  const innerClassPosition = positionInsideRightDock('InnerClass');
+  const deepMethodPosition = positionInsideRightDock('deepSymbolMethod');
+  HarnessSmoke.Class.requireCondition(
+    outerSpacePosition !== null &&
+      innerClassPosition?.column === outerSpacePosition.column + 1 &&
+      deepMethodPosition?.column === outerSpacePosition.column + 2,
+    `structure hierarchy advances one cell at each of three nesting levels ` +
+      `(${outerSpacePosition?.column},${innerClassPosition?.column},${deepMethodPosition?.column})`,
   );
   HarnessSmoke.Class.pass(
     'row folds and the file depth override shape the same outline projection',
@@ -1466,8 +1625,10 @@ try {
   await driver.awaitGridCondition(
     'the TOC paints headings document-ordered and nested',
     (snapshot) =>
-      snapshot.findText('Doc Title :1') !== null &&
-      snapshot.findText('Section One :5') !== null,
+      snapshot.findText('Doc Title') !== null &&
+      snapshot.findText('Section One') !== null &&
+      snapshot.findText('Doc Title :') === null &&
+      snapshot.findText('Section One :') === null,
   );
   HarnessSmoke.Class.pass(
     'markdown headings become the outline through the provider seam',

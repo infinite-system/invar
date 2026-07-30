@@ -20,6 +20,7 @@ import type {
 import type { TextInputAction } from '../text/TextInputModel';
 import { TextInputKey } from '../text/TextInputKey';
 import { ThemeIcons } from '../theme/ThemeIcons';
+import { HierarchicalRowIndent } from '../ui/HierarchicalRowIndent';
 import type { StructureWorkspace } from './StructureWorkspace';
 import { StructurePaneRenderer } from './StructurePaneRenderer';
 
@@ -29,6 +30,7 @@ class $StructurePaneContent implements PaneContent {
     protected readonly activeWorkspace: () => StructureWorkspace.Model,
     protected readonly defaultDepth: () => number = () => 1,
     protected readonly setDefaultDepth: (depth: number) => void = () => {},
+    protected readonly showLineNumbers: () => boolean = () => false,
   ) {}
 
   protected filterCaretColumn = 0;
@@ -87,6 +89,7 @@ class $StructurePaneContent implements PaneContent {
       outline.filterInput.selectionAnchor.value,
       outline.depth,
       outline.depthIsOverridden,
+      this.showLineNumbers(),
     ].join(':');
   }
 
@@ -111,6 +114,7 @@ class $StructurePaneContent implements PaneContent {
         context.glyphLevel,
         'foldClosed',
       ),
+      showLineNumbers: this.showLineNumbers(),
       setFilterCaretColumn: (column) => {
         this.filterCaretColumn = column;
       },
@@ -157,7 +161,7 @@ class $StructurePaneContent implements PaneContent {
 
   protected foldControlColumn(rowIndex: number): number {
     const row = this.activeWorkspace().outline.rows.value[rowIndex];
-    return row ? 1 + row.depth * 2 : -1;
+    return row ? 1 + HierarchicalRowIndent.Class.width(row.depth) : -1;
   }
 
   onPointerMove(_column: number, row: number): boolean {
@@ -218,8 +222,9 @@ class $StructurePaneContent implements PaneContent {
         this.application.contextMenu.openAt(
           Array.from({ length: 9 }, (_, depth) => ({
             id: `structure-depth:${depth}`,
-            label: `Depth ${depth}${depth === currentDepth ? ' (current)' : ''}`,
+            label: `Depth ${depth}`,
             enabled: true,
+            active: depth === currentDepth,
           })),
           context.screenColumn,
           context.screenRow,

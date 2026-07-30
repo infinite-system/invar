@@ -19,10 +19,7 @@ import {
 } from '../text/WrapBreakOpportunity';
 import { StatusChannel } from '../system/StatusChannel';
 import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
-import {
-  MarkdownStylesheet,
-  type MarkdownElementSelector,
-} from './MarkdownStylesheet';
+import { MarkdownStylesheet } from './MarkdownStylesheet';
 import { TextViewport } from '../text/TextViewport';
 
 // invariant: Parsing starts only after opening (src/modules/markdown/markdown.invariants.md)
@@ -213,15 +210,14 @@ class $MarkdownPreview {
     const renderedRows: number[] = [];
     const blockIndices: number[] = [];
     let rowIndex = 0;
-    let previousSelector: MarkdownElementSelector | null = null;
+    let previousBlock: BlockRecord | null = null;
     let finalSourceLine = 0;
 
     for (let blockIndex = 0; blockIndex < this.blocks.length; blockIndex++) {
       const block = this.blocks[blockIndex]!;
       if (block.kind === 'list') continue;
-      const selector = stylesheet.blockSelector(block);
-      rowIndex += stylesheet.spacingBetween(previousSelector, selector);
-      previousSelector = selector;
+      rowIndex += stylesheet.spacingBetweenBlocks(previousBlock, block);
+      previousBlock = block;
       if (
         sourceLines.length === 0 ||
         block.range.startLine > sourceLines[sourceLines.length - 1]!
@@ -233,8 +229,8 @@ class $MarkdownPreview {
       rowIndex += this.rowCountForBlock(block, normalizedWidth);
       finalSourceLine = Math.max(finalSourceLine, block.range.endLine);
     }
-    if (previousSelector !== null) {
-      rowIndex += stylesheet.spacingBetween(previousSelector, null);
+    if (previousBlock !== null) {
+      rowIndex += stylesheet.spacingBetweenBlocks(previousBlock, null);
     }
     if (
       sourceLines.length > 0 &&
@@ -441,7 +437,7 @@ class $MarkdownPreview {
     const rows: PreviewRow[] = [];
     let rowIndex = 0;
     const endVisible = firstVisible + visibleCount;
-    let previousSelector: MarkdownElementSelector | null = null;
+    let previousBlock: BlockRecord | null = null;
     let firstBlockIndex = 0;
     let initialBlockSpacingIsCounted = false;
     const positionMap = this.sourcePositionMap(width);
@@ -476,12 +472,11 @@ class $MarkdownPreview {
     ) {
       const block = blocks[blockIndex]!;
       if (block.kind === 'list') continue;
-      const selector = stylesheet.blockSelector(block);
       if (!initialBlockSpacingIsCounted) {
-        pushSpacers(stylesheet.spacingBetween(previousSelector, selector));
+        pushSpacers(stylesheet.spacingBetweenBlocks(previousBlock, block));
       }
       initialBlockSpacingIsCounted = false;
-      previousSelector = selector;
+      previousBlock = block;
       if (rowIndex >= endVisible) break;
       const blockRowCount = this.rowCountForBlock(block, width);
       const blockEndRow = rowIndex + blockRowCount;
@@ -544,8 +539,8 @@ class $MarkdownPreview {
       rowIndex = blockEndRow;
       if (rowIndex >= endVisible) break;
     }
-    if (previousSelector !== null && rowIndex < endVisible) {
-      pushSpacers(stylesheet.spacingBetween(previousSelector, null));
+    if (previousBlock !== null && rowIndex < endVisible) {
+      pushSpacers(stylesheet.spacingBetweenBlocks(previousBlock, null));
     }
     return rows;
   }

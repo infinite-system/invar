@@ -35,21 +35,22 @@ class $MarkdownStylesheet {
     Record<MarkdownElementSelector, MarkdownElementRule>
   > {
     const inherit = null;
+    const headingColorSlot = 'accent';
     const rules: Record<MarkdownElementSelector, MarkdownElementRule> = {
-      heading1: this.buildRule(2, 1, 'keyword', inherit, { bold: true }),
-      heading2: this.buildRule(2, 1, 'accent', inherit, { bold: true }),
-      heading3: this.buildRule(1, 1, 'accent', inherit, {}),
-      heading4: this.buildRule(1, 1, 'fg', inherit, { bold: true }),
-      heading5: this.buildRule(1, 1, 'dim', inherit, { bold: true }),
-      heading6: this.buildRule(1, 1, 'dim', inherit, {
+      heading1: this.buildRule(2, 1, headingColorSlot, inherit, { bold: true }),
+      heading2: this.buildRule(2, 1, headingColorSlot, inherit, { bold: true }),
+      heading3: this.buildRule(1, 1, headingColorSlot, inherit, {}),
+      heading4: this.buildRule(1, 1, headingColorSlot, inherit, { bold: true }),
+      heading5: this.buildRule(1, 1, headingColorSlot, inherit, { bold: true }),
+      heading6: this.buildRule(1, 1, headingColorSlot, inherit, {
         bold: true,
         italic: true,
       }),
       paragraph: this.buildRule(1, 1, 'fg', inherit, {}),
       blockquote: this.buildRule(1, 1, 'dim', inherit, { italic: true }),
       listItem: this.buildRule(0, 0, 'fg', inherit, {}),
-      codeBlock: this.buildRule(1, 1, 'string', 'panel', {}),
-      codeBorder: this.buildRule(1, 1, 'border', inherit, {}),
+      codeBlock: this.buildRule(1, 1, 'string', 'selectionMuted', {}),
+      codeBorder: this.buildRule(1, 1, 'fg', 'selectionMuted', {}),
       table: this.buildRule(1, 1, 'fg', inherit, {}),
       tableHeader: this.buildRule(0, 0, 'fg', inherit, { bold: true }),
       tableBody: this.buildRule(0, 0, 'fg', inherit, {}),
@@ -81,7 +82,7 @@ class $MarkdownStylesheet {
   > {
     const rules: Partial<Record<PreviewRowRole, MarkdownTextStyle>> = {
       quote: this.buildTextStyle('accent', null, { bold: true }),
-      codeContent: this.buildTextStyle('border', 'panel', {}),
+      codeContent: this.buildTextStyle('border', 'selectionMuted', {}),
     };
     return Object.freeze(rules);
   }
@@ -110,10 +111,10 @@ class $MarkdownStylesheet {
       listIndentPerLevel: 2,
       ruleGlyph: '─',
       codeFrame: Object.freeze({
-        topLeft: '┌',
-        topRight: '┐',
-        bottomLeft: '└',
-        bottomRight: '┘',
+        topLeft: '╭',
+        topRight: '╮',
+        bottomLeft: '╰',
+        bottomRight: '╯',
         horizontal: '─',
         vertical: '│',
       }),
@@ -192,6 +193,25 @@ class $MarkdownStylesheet {
     return Math.max(
       this.$elementRules[previousSelector].marginBottom,
       this.$elementRules[nextSelector].marginTop,
+    );
+  }
+
+  /** Blank rows between parsed blocks. Heading starts follow the source gap exactly instead of
+   *  inheriting a synthetic CSS margin; every other block pair keeps the stylesheet margins. */
+  static spacingBetweenBlocks(
+    previousBlock: BlockRecord | null,
+    nextBlock: BlockRecord | null,
+  ): number {
+    if (nextBlock?.kind === 'heading') {
+      if (previousBlock === null) return 0;
+      return Math.max(
+        0,
+        nextBlock.range.startLine - previousBlock.range.endLine,
+      );
+    }
+    return this.spacingBetween(
+      previousBlock === null ? null : this.blockSelector(previousBlock),
+      nextBlock === null ? null : this.blockSelector(nextBlock),
     );
   }
 

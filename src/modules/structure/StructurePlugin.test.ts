@@ -23,6 +23,7 @@ interface RecordingContext {
   settingDisposals: number;
   showByDefault: ReturnType<typeof ref<boolean>>;
   defaultDepth: ReturnType<typeof ref<number>>;
+  showLineNumbers: ReturnType<typeof ref<boolean>>;
   contextMenu: ContextMenu.Model;
   settingWrites: { identifier: string; value: unknown }[];
   settingSaves: string[];
@@ -38,6 +39,7 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
   const rightDockHost = new PanelHost.Class();
   const showByDefault = ref(true);
   const defaultDepth = ref(1);
+  const showLineNumbers = ref(false);
   const contextMenu = new ContextMenu.Class();
   const settingWrites: { identifier: string; value: unknown }[] = [];
   const settingSaves: string[] = [];
@@ -54,6 +56,7 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
     settingDisposals: 0,
     showByDefault,
     defaultDepth,
+    showLineNumbers,
     contextMenu,
     settingWrites,
     settingSaves,
@@ -124,7 +127,9 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
           value:
             contribution.identifier === 'structureDefaultDepth'
               ? defaultDepth
-              : showByDefault,
+              : contribution.identifier === 'structureShowLineNumbers'
+                ? showLineNumbers
+                : showByDefault,
           save: () => {
             settingSaves.push(contribution.identifier);
           },
@@ -176,6 +181,7 @@ test('activation registers the dock pane, commands, keybindings, setting, and st
     'structure.dockSide',
     'structureShowByDefault',
     'structureDefaultDepth',
+    'structureShowLineNumbers',
   ]);
   expect(recording.commandIds).toEqual([
     'view.showStructure',
@@ -197,6 +203,7 @@ test('activation registers the dock pane, commands, keybindings, setting, and st
     structureRequests: 0,
     structureDepth: 1,
     structureDepthIsOverridden: false,
+    structureShowLineNumbers: false,
     structureFilter: '',
   });
   plugin.disposeApplication();

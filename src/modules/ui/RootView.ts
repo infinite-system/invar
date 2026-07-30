@@ -1673,7 +1673,10 @@ class $RootView {
         panelContentsListRenderable.width = panelContentsList.visible
           ? panelContentsList.width
           : 0;
-        panelContentsListRenderable.content = panelContentsList.render(palette);
+        panelContentsListRenderable.content = panelContentsList.render(
+          palette,
+          theme.glyphVocabulary,
+        );
         const cellRows = panelViewportRows();
         const panelContentTop = (panelBox.y as number) + 1; // inside the rounded border
         const panelContentLeft = (panelBox.x as number) + 1;
