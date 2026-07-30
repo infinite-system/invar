@@ -1,6 +1,6 @@
 # 311 — Vue SFC integration: MAP what's needed (pre-task, no implementation)
 
-State: active
+State: COMPLETED — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
 Engine: codex
 Effort: high
 Provenance: USER-DIRECTED 2026-07-29

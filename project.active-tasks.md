@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #313 child-owns-its-io-bundle  [building]
   `tmux attach -t invar/313-child-owns-its-io-bundle`
-- #311 [vue-sfc-integration-map](.invar/tasks/in-progress/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md)  [building]
-  `tmux attach -t invar/311-vue-sfc-integration-map`
 - #300 eight-ui-nitpicks-bundled  [building]
   `tmux attach -t invar/300-eight-ui-nitpicks-bundled`
 
@@ -100,7 +98,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #318 [318-markdown-code-fence-uniform-background](.invar/tasks/active/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md)
 - #319 [319-tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/active/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)
 
-## RECENTLY COMPLETED (last 15 of 80 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 81 — full log: project.tasks-completed.md)
+- #311 [vue-sfc-integration-map](.invar/tasks/completed/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md) — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
 - #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
@@ -115,4 +114,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
 - #285 [preview-last-body-row-hit-test](.invar/tasks/completed/285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) — 5d9f0a1a — Preview last-row hit test: #289's seam change confirmed as generator fix by red control; workaround removed; boundary gated; deep-hover stall filed #293
-- #284 [scrollbar-theme-captured-at-construction](.invar/tasks/completed/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md) — 29d815ea — Scrollbar colours follow the live theme: derive-per-frame at the shared painter, census clean, two-scale switch contract

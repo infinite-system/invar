@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #311 [vue-sfc-integration-map](.invar/tasks/completed/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md) — cae53480 — Vue SFC integration map: architecture, phases, open questions for user review
 - #305 [unknown-task-variables-pass-through](.invar/tasks/completed/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md) — 27c4d993 — task variables: unknown expressions pass through to the shell (VSCode parity)
 - #299 [structure-filter-uses-shared-input-generator](.invar/tasks/completed/299-structure-filter-uses-shared-input-generator/task-299-structure-filter-uses-shared-input-generator.md) — b80c77e7 — one input primitive everywhere: shared selection/copy across all text inputs
 - #298 [breadcrumbs-drop-nav-arrows-lighten-separators](.invar/tasks/completed/298-breadcrumbs-drop-nav-arrows-lighten-separators/task-298-breadcrumbs-drop-nav-arrows-lighten-separators.md) — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
