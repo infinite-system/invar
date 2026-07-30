@@ -12,6 +12,7 @@ import { VendorPluginInstaller } from './VendorPluginInstaller';
 
 class $VendorPluginRuntime {
   static async load(): Promise<ApplicationContributor[]> {
+    // invariant: Vendor plugins load before kernel seal (src/modules/vendors/vendors.invariants.md)
     const contributors: ApplicationContributor[] = [];
     for (const selection of VendorPluginInstaller.Class.installed()
       .filter((candidate) => candidate.enabled)
@@ -22,19 +23,31 @@ class $VendorPluginRuntime {
           `invalid installed plugin identity: ${selection.identity}`,
         );
       }
-      const root = join(
-        VendorPaths.Class.vendorsRoot,
-        vendor,
-        module,
-        selection.version,
+      const root =
+        selection.developerPath ??
+        join(VendorPaths.Class.vendorsRoot, vendor, module, selection.version);
+      const admission = selection.developerPath
+        ? null
+        : (JSON.parse(
+            readFileSync(join(root, 'invar.admission.json'), 'utf8'),
+          ) as PluginAdmissionRecord);
+      if (admission) PluginAdmission.Class.verify(admission);
+      const manifest = PluginManifest.Class.parse(
+        admission?.manifest ??
+          JSON.parse(readFileSync(join(root, 'invar.plugin.json'), 'utf8')),
       );
-      const admission = JSON.parse(
-        readFileSync(join(root, 'invar.admission.json'), 'utf8'),
-      ) as PluginAdmissionRecord;
-      PluginAdmission.Class.verify(admission);
-      const manifest = PluginManifest.Class.parse(admission.manifest);
-      const actualDigest = PluginArtifact.Class.digestWithoutAdmission(root);
-      if (actualDigest !== admission.artifactDigest) {
+      if (
+        PluginManifest.Class.identity(manifest) !== selection.identity ||
+        manifest.version !== selection.version
+      ) {
+        throw new Error(
+          `REFUSED ${selection.identity}: installed selection does not match admission`,
+        );
+      }
+      const actualDigest = admission
+        ? PluginArtifact.Class.digestWithoutAdmission(root)
+        : PluginArtifact.Class.digest(root);
+      if (admission && actualDigest !== admission.artifactDigest) {
         throw new Error(
           `REFUSED ${selection.identity}: artifact digest mismatch`,
         );
@@ -79,7 +92,9 @@ class $VendorPluginRuntime {
       Object.defineProperty(contributor, 'vendorMetadata', {
         value: {
           version: manifest.version,
-          provenance: 'network-gated',
+          provenance: selection.developerPath
+            ? 'developer-linked'
+            : 'network-gated',
           kernelOverrides: manifest.kernelOverrides.map(
             (declaration) => declaration.target,
           ),

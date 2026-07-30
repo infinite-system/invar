@@ -112,15 +112,20 @@ export namespace Kernel {
 }
 
 export type SealHook = () => void;
-export type KernelClass = abstract new (...arguments_: never[]) => unknown;
+
+export type KernelClass = abstract new (...arguments_: never[]) => object;
+
 export type KernelExtensionFactory = (baseClass: KernelClass) => KernelClass;
+
 export interface KernelExtensionRegistration {
   readonly pluginIdentity: string;
   readonly targetIdentifier: string;
 }
+
 interface KernelExtension extends KernelExtensionRegistration {
   readonly factory: KernelExtensionFactory;
 }
+
 interface KernelTarget {
   readonly identifier: string;
   readonly baseClass: KernelClass;

@@ -83,12 +83,22 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
       },
       registerKeybindingGuard: (name, predicate) => {
         registrationDisposers.push(
-          this.options.keybindings.registerGuard(name, predicate),
+          this.options.keybindings.registerGuard(
+            this.vendorIdentifier(contributor, name, '.'),
+            predicate,
+          ),
         );
       },
       registerSetting: (contribution) => {
-        const registeredSetting =
-          this.options.settings.registerSetting(contribution);
+        // invariant: Plugin settings live in contributed schema (src/modules/settings/settings.invariants.md)
+        const registeredSetting = this.options.settings.registerSetting({
+          ...contribution,
+          identifier: this.vendorIdentifier(
+            contributor,
+            contribution.identifier,
+            '.',
+          ),
+        });
         registrationDisposers.push(() => registeredSetting.dispose());
         return registeredSetting;
       },
@@ -96,7 +106,11 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
       registerDockContent: (contribution) => {
         let activeHost: PanelHost.Instance;
         const registeredSetting = this.options.settings.registerSetting({
-          identifier: contribution.settingIdentifier,
+          identifier: this.vendorIdentifier(
+            contributor,
+            contribution.settingIdentifier,
+            '.',
+          ),
           label: contribution.settingLabel,
           section: contribution.section,
           defaultValue: contribution.suggestedSide,
@@ -190,6 +204,18 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
       : this.options.rightDockHost;
   }
 
+  protected vendorIdentifier(
+    contributor: ApplicationContributor,
+    localIdentifier: string,
+    separator: string,
+  ): string {
+    if (!contributor.vendorMetadata) return localIdentifier;
+    if (localIdentifier.startsWith(`${contributor.identifier}${separator}`)) {
+      return localIdentifier;
+    }
+    return `${contributor.identifier}${separator}${localIdentifier}`;
+  }
+
   protected deactivate(contributor: ApplicationContributor): void {
     const active = this.activeContributions.get(contributor.identifier);
     if (!active) return;
@@ -230,7 +256,6 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerRightDockContent'
   | 'registerPaneRuntime'
   | 'registerEditorColumnDefault'
-  | 'restartApplication'
 > & {
   keybindings: KeybindingRegistry.Instance;
   settings: Settings.Instance;

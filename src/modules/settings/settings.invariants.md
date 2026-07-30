@@ -47,6 +47,8 @@ registration is active.
 descriptor projection.
 
 **Mechanism:** contributors register typed `SettingContribution` records.
+For vendor contributors, `ApplicationContributions` qualifies each local setting identifier with
+the catalog-owned `vendor/module.` prefix before it reaches Settings.
 `Settings` owns their reactive values and retains raw user/project records so
 late registration receives the same defaults-user-project precedence as host
 fields. `SettingsPanel` appends active contributed descriptors generically.
@@ -64,8 +66,9 @@ contribution removes its schema but preserves saved data" and "setContributed
 notifies a plugin only when its value changes"); `SettingsPanel.test.ts`
 ("contributed rows use their heading and disappear on dispose").
 
-**Impossible if true:** a plugin setting getter or key in `SettingsValues`; a disabled plugin leaving
-a row in Settings; a plugin heading special-cased in the overlay.
+**Impossible if true:** a plugin setting getter or key in `SettingsValues`; a vendor setting stored
+without its canonical identity prefix; a disabled plugin leaving a row in Settings; a plugin
+heading special-cased in the overlay.
 
 **Verification:** `bun test src/modules/settings && bash scripts/conventions-gate.sh`.
 
@@ -103,7 +106,7 @@ scripts/harness/smoke-plugin-manifest-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-30
 
 ### Every setting is a reactive cell read through its value ref
 

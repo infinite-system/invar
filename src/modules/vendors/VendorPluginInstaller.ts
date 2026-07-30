@@ -7,7 +7,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
 import { PluginAdmission, type RegistryPluginVersion } from './PluginAdmission';
 import { PluginArtifact } from './PluginArtifact';
@@ -25,13 +25,30 @@ class $VendorPluginInstaller {
     return value as RegistryPluginVersion[];
   }
 
-  static install(identity: string): InstalledPluginSelection {
-    const record = this.registryVersions().find(
-      (candidate) =>
-        PluginManifest.Class.identity(
-          PluginManifest.Class.parse(candidate.manifest),
-        ) === identity,
-    );
+  static install(
+    identity: string,
+    requestedVersion?: string,
+  ): InstalledPluginSelection {
+    // invariant: Installed vendor versions change atomically (src/modules/vendors/vendors.invariants.md)
+    const records = this.registryVersions()
+      .filter(
+        (candidate) =>
+          PluginManifest.Class.identity(
+            PluginManifest.Class.parse(candidate.manifest),
+          ) === identity &&
+          (requestedVersion === undefined ||
+            candidate.manifest.version === requestedVersion),
+      )
+      .sort((first, second) =>
+        first.manifest.version.localeCompare(
+          second.manifest.version,
+          undefined,
+          {
+            numeric: true,
+          },
+        ),
+      );
+    const record = records.at(-1);
     if (!record) throw new Error(`plugin registry has no ${identity}`);
     PluginAdmission.Class.verify(record);
     const actualDigest = PluginArtifact.Class.digest(record.artifactPath);
@@ -94,6 +111,46 @@ class $VendorPluginInstaller {
     );
   }
 
+  static rollback(identity: string, version: string): InstalledPluginSelection {
+    const [vendor, module] = identity.split('/');
+    if (!vendor || !module)
+      throw new Error(`invalid plugin identity: ${identity}`);
+    const root = join(VendorPaths.Class.vendorsRoot, vendor, module, version);
+    if (!existsSync(join(root, 'invar.admission.json'))) {
+      throw new Error(
+        `plugin rollback version is not installed: ${identity}@${version}`,
+      );
+    }
+    const selection = { identity, version, enabled: true };
+    this.writeInstalled([
+      ...this.installed().filter(
+        (candidate) => candidate.identity !== identity,
+      ),
+      selection,
+    ]);
+    return selection;
+  }
+
+  static developerLink(path: string): InstalledPluginSelection {
+    const absolutePath = resolve(path);
+    const manifest = PluginManifest.Class.parse(
+      JSON.parse(readFileSync(join(absolutePath, 'invar.plugin.json'), 'utf8')),
+    );
+    const selection = {
+      identity: PluginManifest.Class.identity(manifest),
+      version: manifest.version,
+      enabled: true,
+      developerPath: absolutePath,
+    };
+    this.writeInstalled([
+      ...this.installed().filter(
+        (candidate) => candidate.identity !== selection.identity,
+      ),
+      selection,
+    ]);
+    return selection;
+  }
+
   protected static writeInstalled(
     selections: readonly InstalledPluginSelection[],
   ): void {
@@ -114,4 +171,5 @@ export interface InstalledPluginSelection {
   readonly identity: string;
   readonly version: string;
   readonly enabled: boolean;
+  readonly developerPath?: string;
 }

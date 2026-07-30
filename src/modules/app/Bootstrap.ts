@@ -159,6 +159,11 @@ class $Bootstrap {
     Kernel.Class.instance.assertSealed();
 
     const app = new App.Class();
+    StatusChannel.Class.update({
+      kernelExtensions: Kernel.Class.instance.registeredExtensions(),
+      appClassExtended: App.Class !== App.$Class,
+    });
+    StatusChannel.Class.flush();
     app.onDispose(() => this.reapSdkBinaryExtractions());
     app.attach(renderer);
     // OpenTUI owns stdout and may flush frames from a native render thread. Its OSC 52 writer shares
@@ -426,6 +431,15 @@ class $Bootstrap {
       primaryDockHost.has(primaryDockFallbackContentIdentifier)
     ) {
       primaryDockHost.showContent(primaryDockFallbackContentIdentifier);
+    }
+    const restartPrimaryDockIdentifier = process.env.INVAR_RESTART_PRIMARY_DOCK;
+    if (
+      restartPrimaryDockIdentifier &&
+      primaryDockHost.has(restartPrimaryDockIdentifier)
+    ) {
+      primaryDockHost.showContent(restartPrimaryDockIdentifier);
+      workspaceSet.active.focusPrimaryPane(restartPrimaryDockIdentifier);
+      delete process.env.INVAR_RESTART_PRIMARY_DOCK;
     }
     statusBarSegments.register(CoreStatusBarSegments.Class);
     let panelAddPopup: PanelAddPopup.Instance | null = null;

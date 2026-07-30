@@ -23,6 +23,7 @@ class $ExtensionsPlugin implements ApplicationContributor {
         () => context.theme.glyph('activityExtensions'),
         context.applicationContributions,
         context.requestRender,
+        context.restartApplication,
       ),
     );
     this.disposeCommands = context.commands.register({

@@ -39,6 +39,40 @@ provider reinstall that requires a workspace restart.
 
 ## Chosen invariants
 
+### Extensions states vendor authority before activation
+
+**Invariant:** If Extensions presents a network vendor module, then it shows canonical identity,
+version, admitted provenance, and every declared kernel target before install confirmation. A
+composition change offers and performs an in-app restart.
+
+**Scope:** The Extensions catalog, vendor candidate rows, installed contributor rows, and restart
+action.
+
+**Mechanism:** Catalog entries carry catalog-owned vendor metadata. Registry candidates derive the
+same fields from the signed manifest. An override candidate requires a separate exact-target
+confirmation state before staging. The next action invokes Bootstrap's restart route.
+
+**Generates:** Distinct install and enable states; `NETWORK-GATED`, `UNVERIFIED LOCAL CODE`, and
+`KERNEL OVERRIDE` labels; restart-to-apply.
+
+**Rejected alternatives:** Calling a session activation toggle install; hiding kernel authority in
+a detail screen; requiring a manual reboot.
+
+**Evidence:** `src/modules/app/ApplicationContributor.interface.ts`;
+`src/modules/app/ApplicationContributions.ts`;
+`src/modules/plugins/ExtensionsPaneContent.ts`;
+`.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/326-runtime-install-relaunch-harness.ts`.
+
+**Impossible if true:** A network plugin row with no vendor identity; an override installed without
+the exact target appearing in the confirmation row.
+
+**Verification:** `bun test src/modules/plugins/ExtensionsPaneContent.test.ts`; `bun
+.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/326-runtime-install-relaunch-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-30
+
 ### Provider rendezvous is host carried
 
 **Invariant:** If one workspace plugin provides a capability to another, then the workspace's
