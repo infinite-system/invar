@@ -196,6 +196,7 @@ under that authorization and under no other. The gate chain it overrides is
 the `GATE_EXIT=1` recorded verbatim above, from a hook run that used no
 `SKIP_GATE`.
 
+<<<<<<< HEAD
 The commit is `3e55ba28` on `fleet/350-nicer-generated-sample-video`
 (`3e55ba288a827927e9adfda3af24d34f85a28d89`), 24 files, 814 insertions, 3
 deletions. Its hook printed `pre-commit: SKIP_GATE=1 — skipping the full
@@ -203,6 +204,10 @@ merge-gate (bypass acknowledged)`. `git status` is clean after it.
 
 This paragraph appears only in the conductor's copy of the report. The copy
 committed on the branch says the hash is in `git log` instead, because a
+=======
+The commit hash is in `git log` on `fleet/350-nicer-generated-sample-video`
+and in the conductor's copy of this report. It is not written here, because a
+>>>>>>> fleet/350-nicer-generated-sample-video
 commit cannot contain its own hash.
 
 ## Invariants answered

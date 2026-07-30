@@ -270,7 +270,10 @@ import os
 import re
 import sys
 
-source = next((argument for argument in sys.argv if argument.startswith("testsrc2=")), "")
+# Read the lavfi source the same way ffmpeg does: the argument after "-i".
+# This stays true when the sample source changes, and it still exits 2 when
+# the source carries no frame size.
+source = sys.argv[sys.argv.index("-i") + 1] if "-i" in sys.argv else ""
 match = re.search(r"size=(\\d+)x(\\d+)", source)
 if match is None:
     raise SystemExit(2)

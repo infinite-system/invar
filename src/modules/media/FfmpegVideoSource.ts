@@ -94,7 +94,12 @@ class $FfmpegVideoSource implements VideoFrameSource {
       '-f',
       'lavfi',
       '-i',
-      `testsrc2=size=${pixelWidth}x${pixelHeight}:rate=${frameRate}`,
+      // A morphing Mandelbrot set, not a zooming one. Every zooming variant
+      // ends in a flat or speckled frame once the detail is finer than one
+      // pane pixel. Holding the scale and morphing keeps large shapes and
+      // strong colour at the pane sizes this player uses.
+      `mandelbrot=size=${pixelWidth}x${pixelHeight}:rate=${frameRate}` +
+        ':maxiter=150:start_scale=1.4:end_scale=1.4:morphamp=0.3',
       '-an',
       '-threads',
       '1',

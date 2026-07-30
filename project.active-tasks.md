@@ -7,14 +7,15 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #350 [nicer-generated-sample-video](.invar/tasks/in-progress/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)  [building]
+- #350 [nicer-generated-sample-video](.invar/tasks/in-progress/350-nicer-generated-sample-video/task-350-nicer-generated-sample-video.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/350-nicer-generated-sample-video`
 - #343 [tasks-activity-icon-and-live-loader](.invar/tasks/in-progress/343-tasks-activity-icon-and-live-loader/task-343-tasks-activity-icon-and-live-loader.md)  [building]
   `tmux attach -t invar/343-tasks-activity-icon-and-live-loader`
 - #326 [vendor-modularity-third-party-plugins](.invar/tasks/in-progress/326-vendor-modularity-third-party-plugins/task-326-vendor-modularity-third-party-plugins.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/326-vendor-modularity-third-party-plugins`
 
-## USER-DIRECTED (14)
+## USER-DIRECTED (15)
+- #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)
 - #356 [agent-pane-is-a-decoupled-module](.invar/tasks/active/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)
 - #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/active/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)
 - #352 [markdown-code-preview-border-theme](.invar/tasks/active/352-markdown-code-preview-border-theme/task-352-markdown-code-preview-border-theme.md)
@@ -52,7 +53,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 [harness-diagnostic-provenance-guard](.invar/tasks/active/90-harness-diagnostic-provenance-guard/task-90-harness-diagnostic-provenance-guard.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (19)
+## FLAKE-EVIDENCE (21)
+- #360 [agent-engine-switch-pool-load-flake](.invar/tasks/active/360-agent-engine-switch-pool-load-flake/task-360-agent-engine-switch-pool-load-flake.md)
+- #359 [panel-split-agent-terminal-order-intermittent](.invar/tasks/active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md)
 - #337 [plugin-manifest-structure-scrollbar-intermittent](.invar/tasks/active/337-plugin-manifest-structure-scrollbar-intermittent/task-337-plugin-manifest-structure-scrollbar-intermittent.md)
 - #260 [first-click-of-a-session-lands-nowhere](.invar/tasks/active/260-first-click-of-a-session-lands-nowhere/task-260-first-click-of-a-session-lands-nowhere.md)
 - #257 [last-row-right-border-blank-cell](.invar/tasks/active/257-last-row-right-border-blank-cell/task-257-last-row-right-border-blank-cell.md)
@@ -84,7 +87,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (17)
+## ARCHITECTURE-HYGIENE (18)
+- #358 [media-status-scene-key-and-fake-ffmpeg-header](.invar/tasks/active/358-media-status-scene-key-and-fake-ffmpeg-header/task-358-media-status-scene-key-and-fake-ffmpeg-header.md)
 - #355 [quick-open-parallel-bounded-list-generator](.invar/tasks/active/355-quick-open-parallel-bounded-list-generator/task-355-quick-open-parallel-bounded-list-generator.md)
 - #353 [harness-contract-omits-folder-open-suppression](.invar/tasks/active/353-harness-contract-omits-folder-open-suppression/task-353-harness-contract-omits-folder-open-suppression.md)
 - #333 [dispatch-round-count-heading-mismatch](.invar/tasks/active/333-dispatch-round-count-heading-mismatch/task-333-dispatch-round-count-heading-mismatch.md)  [active]
