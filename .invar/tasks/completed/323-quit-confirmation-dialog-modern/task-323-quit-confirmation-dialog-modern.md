@@ -1,6 +1,6 @@
 # 323 — quit confirmation: modern dialog on Ctrl+Q/Cmd+Q (Yes/No, keyboard + mouse, close button)
 
-State: IN-PROGRESS
+State: COMPLETED — e8e57083 — Quit now asks: one modal confirmation behind Ctrl+Q/Cmd+Q/F10/Quit at the shared overlay seam; No default, Yes the only shutdown path, negative answers keep dirty state; harness teardown bypasses via INVAR_HARNESS_DIRECT_QUIT with two-way positive control.
 Engine: codex
 Model: 5.6-sol
 Effort: high
