@@ -6,10 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (5)
+- #320 terminal-pane-fidelity-two-bundle  [building]
+  `tmux attach -t invar/320-terminal-pane-fidelity-two-bundle`
 - #314 harness-and-tooling-integrity-bundle  [building]
   `tmux attach -t invar/314-harness-and-tooling-integrity-bundle`
-- #312 vue-sfc-block-syntax-and-routing  [building]
+- #312 vue-sfc-block-syntax-and-routing  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/312-vue-sfc-block-syntax-and-routing`
 - #308 [markdown-view-only-mode-persistent](.invar/tasks/in-progress/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)  [building]
   `tmux attach -t invar/308-markdown-view-only-mode-persistent`
@@ -87,7 +89,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (10) — stamp Priority: into these task files
+## NO PRIORITY GROUP (12) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
@@ -98,6 +100,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #317 [317-bottom-panel-splitter-thinner-with-action-buttons](.invar/tasks/active/317-bottom-panel-splitter-thinner-with-action-buttons/task-317-bottom-panel-splitter-thinner-with-action-buttons.md)
 - #318 [318-markdown-code-fence-uniform-background](.invar/tasks/active/318-markdown-code-fence-uniform-background/task-318-markdown-code-fence-uniform-background.md)
 - #319 [319-tasks-pane-layout-tabs-and-play-button-polish](.invar/tasks/active/319-tasks-pane-layout-tabs-and-play-button-polish/task-319-tasks-pane-layout-tabs-and-play-button-polish.md)
+- #320 [320-terminal-default-bg-theme-and-vscode-ansi-palette](.invar/tasks/active/320-terminal-default-bg-theme-and-vscode-ansi-palette/task-320-terminal-default-bg-theme-and-vscode-ansi-palette.md)
+- #321 [321-terminal-flicker-child-tui-repaints](.invar/tasks/active/321-terminal-flicker-child-tui-repaints/task-321-terminal-flicker-child-tui-repaints.md)
 
 ## RECENTLY COMPLETED (last 15 of 84 — full log: project.tasks-completed.md)
 - #315 [terminal-child-colors-must-not-be-themed](.invar/tasks/completed/315-terminal-child-colors-must-not-be-themed/task-315-terminal-child-colors-must-not-be-themed.md) — f130ee0f — child terminal colors never re-themed
