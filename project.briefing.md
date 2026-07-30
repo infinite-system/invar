@@ -118,3 +118,98 @@ USER CONTEXT: he watches tasks:watch (animation broken until #329 lands); his iv
 closed for the rename — colors/flicker fixes confirmed by him live. North star: Indranet
 Invarnet (#327). He may be GRADING a fresh incarnation against the old one — reconstruct
 fully, say what you know, then continue the queue.
+
+## RESUME ANCHOR 13 (2026-07-30 ~01:5x — RESURRECT-2; supersedes 12)
+
+**You are the conductor, resurrected fresh via claude-conductor.sh from ~/dev/invar.
+The user restarts incarnations deliberately; the ORIGINAL (pid 3252926, fable HIGH,
+old ~/dev/ibr launch) may still exist but is NOT working — the user confirmed it is
+not monitoring or looping. Its script WIP (orientation dedup in resume-conductor.sh
++ claude-conductor.sh + conductor-system-prompt.sh) was ADOPTED by anchor-13's
+incarnation after both self-tests passed.**
+
+STATE AT WRITE (main = 740c5d81; verify with git log first — a background commit was
+IN FLIGHT when this anchor was written):
+
+1. PENDING COMMIT (background, gate running): "tasks: #322 bycatch conversion — file
+   #334, #214 census 40th-43rd; conductor scripts: orientation dedup (adopted)".
+   If git log shows it landed: proceed. If NOT: the staged/dirty files are exactly
+   those task records + 3 scripts — recommit them (self-tests already green).
+   CAUTION: an earlier commit attempt was killed by a 2m shell timeout MID-GATE
+   (lesson: gate takes ~3-4m; always background + 10m). That killed run showed 2
+   smoke FAILs (scrollbars diff-thumb, terminal tasks:watch motion row) under
+   dual-writer load — census-known classes. If they fail AGAIN on a quiet rerun,
+   treat as live main-tree red and investigate BEFORE landing anything.
+
+2. #322 READY TO LAND (do this first once the commit above is resolved):
+   merge commit 813bc7f38a80b5fce5b17faf9cf7def40f36a903 on
+   fleet/322-status-editor-column-content-stale-in-preview, combined with main
+   e57752cd; verdict READ per the hook-chain precedent: cwd-resolved rollout
+   ~/.codex/sessions/2026/07/30/rollout-2026-07-30T00-55-01-*.jsonl line 591/608
+   shows [fleet/322... 813bc7f3] + GATE_EXIT=0 + 'merge-gate GREEN — commit
+   allowed'. Extraction log: tmp/gate-verdict-322.log (first line GATE_EXIT=0).
+   Bycatch ALREADY CONVERTED (#334 + #214 census in the pending commit). Land:
+   GATE_LOG=tmp/gate-verdict-322.log BYCATCH_TRIAGED=1 bash scripts/fleet/land.sh \
+     322 status-editor-column-content-stale-in-preview tmp/merge-msg-322.md \
+     "status/editor columns read the shared projection seam; combined-tree gate green"
+   Builder tmux invar/322-... is idle; codex sol low. Main moved ONE doc-only commit
+   (740c5d81, project.briefing.md) past the merged e57752cd — acceptable delta,
+   named here per the moved-main rule.
+
+3. LANDED EARLIER TONIGHT: #329 (b8cfdc62), #323 (e8e57083), #327 (e332ebd9).
+   tasks:watch animation is FIXED on main — the user watches it.
+
+QUEUE after #322: #326 STAGE 2 — WAIT for the user's explicit go on the revised plan
+(runtime install via signed registry artifacts, network-edge gating, declared kernel
+overrides; plan file in .invar/tasks/in-progress/326-*/). Then #322's family sibling
+check, then backlog: #283, #272, #269-271, 25x cluster. WAIT FOR USER: #241 #242;
+capsule HELD.
+
+WATCHERS (re-arm, this exact set, nothing more):
+  Monitor(command: "bash scripts/fleet/fleet-watch.sh", persistent: true)
+  CRON: NONE. The user permanently disarmed autonomous pacing (2026-07-30). Do not
+  re-arm the :07/:37 pair unless he asks again.
+
+DRIFT KNOWN (hold until convenient): STALE-ACTIVE-VIEW (run write-active, fold into
+next landing commit); STATE-MISMATCH #114 #122 #223 headers; THIN task files x5.
+tmux session invar/329-... is a stale leftover (task landed) — reap when convenient.
+
+LESSON THIS INCARNATION: resurrection works — anchor 12 + disk reconstructed
+everything; the one gap was NOT CHECKING for a live prior incarnation before
+writing (mtimes on scripts caught it). On resume: pgrep claude + /proc cwd BEFORE
+any commit. Also: log -12 was too short to see #329/#323 landings 18 commits back —
+use merge-base/ancestry checks, not short logs, before declaring a fork.
+
+## RESUME ANCHOR 14 (2026-07-30 01:52 — post-#322 landing; supersedes 13)
+
+**You are the conductor (pid check first: this anchor's writer was 3752392, launched
+via claude-conductor.sh from ~/dev/invar). The old ibr-launched incarnation (3541394,
+cwd ~/dev/ibr) may still exist — the user says it is NOT working. Leave it alone.**
+
+STATE AT WRITE (main = 58a2565d + this hygiene commit):
+
+1. #322 LANDED: 0f871cbc (56m dispatch-to-landing), task COMPLETED at 58a2565d,
+   tag finished/322-..., worktree and tmux reaped, summary written. Verdict was
+   READ from tmp/gate-verdict-322.log (GATE_EXIT=0, combined tree 813bc7f3).
+2. LANDED EARLIER TONIGHT: #329 (b8cfdc62), #323 (e8e57083), #327 (e332ebd9).
+   tasks:watch animation is FIXED on main.
+3. DRIFT CLEARED THIS TURN: STALE-ACTIVE-VIEW (write-active ran), STATE-MISMATCH
+   #114/#122/#223 headers fixed. REMAINING: THIN task files x5 (#300 #312 #313
+   #314 #320 — filed without reasoning; backfill when touched, not urgent).
+   REPORT-IN-OPEN #326 is EXPECTED (stage-1 plan report; stage 2 waits).
+
+QUEUE (all blocked or awaiting user):
+- #326 STAGE 2 — WAIT for the user's explicit go on the revised plan (runtime
+  install via signed registry artifacts, network-edge gating, declared kernel
+  overrides; plan in .invar/tasks/in-progress/326-*/).
+- #322 family-sibling check (do other status consumers read the projection seam
+  or snapshots?) — not yet filed; pose or fold into #326-adjacent work.
+- Backlog: #283, #272, #269-271, 25x cluster. WAIT FOR USER: #241 #242; capsule HELD.
+
+WATCHERS (re-arm on resume, this exact set, nothing more):
+  Monitor(command: "bash scripts/fleet/fleet-watch.sh", persistent: true)
+  CRON: NONE — user permanently disarmed autonomous pacing (2026-07-30). Do not
+  re-arm the :07/:37 pair unless he asks again.
+
+LESSON THIS TURN: none new — anchor-13's resurrection protocol ran clean end to end
+(pgrep-first, verdict re-read from log, named moved-main delta, land, hygiene).
