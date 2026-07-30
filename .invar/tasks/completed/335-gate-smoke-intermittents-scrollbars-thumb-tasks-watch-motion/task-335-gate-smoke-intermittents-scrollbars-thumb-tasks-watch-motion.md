@@ -1,6 +1,6 @@
 # #335 — gate smoke intermittents: scrollbars wrap-off thumb + tasks:watch motion row
 
-State: IN-PROGRESS
+State: COMPLETED — 359ca6da — both gate intermittents were instrument defects; smokes repaired, hook gate ALL-PASS
 Priority: flake-evidence
 Engine: codex
 Environment: linux
