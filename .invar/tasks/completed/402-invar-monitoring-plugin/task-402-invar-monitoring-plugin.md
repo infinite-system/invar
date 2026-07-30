@@ -1,6 +1,6 @@
 # #402 — Invar Monitoring plugin: the app observes itself
 
-State: IN-PROGRESS
+State: COMPLETED — dae7fba9 — Invar Monitoring plugin: delta CPU, heap vs RSS, file ledger, per-plugin render load
 Priority: user-directed
 Engine: claude
 Environment: linux

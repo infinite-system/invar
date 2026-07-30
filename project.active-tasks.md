@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/in-progress/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md)  [building]
   `tmux attach -t invar/404-panel-two-row-chrome-and-pane-level-add`
-- #402 [invar-monitoring-plugin](.invar/tasks/in-progress/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md)  [building]
-  `tmux attach -t invar/402-invar-monitoring-plugin`
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/in-progress/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/393-idle-cpu-multiple-workspaces`
 
@@ -34,7 +32,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (24)
+## VERIFICATION-INTEGRITY (25)
+- #407 [keybinding-conflict-detection](.invar/tasks/active/407-keybinding-conflict-detection/task-407-keybinding-conflict-detection.md)
 - #399 [splitter-regions-stale-rectangle](.invar/tasks/active/399-splitter-regions-stale-rectangle/task-399-splitter-regions-stale-rectangle.md)
 - #397 [frameprobe-char-buffer-native-handles](.invar/tasks/active/397-frameprobe-char-buffer-native-handles/task-397-frameprobe-char-buffer-native-handles.md)
 - #385 [tasks-dashboard-smoke-status-grid-race](.invar/tasks/active/385-tasks-dashboard-smoke-status-grid-race/task-385-tasks-dashboard-smoke-status-grid-race.md)
@@ -98,7 +97,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (31)
+## ARCHITECTURE-HYGIENE (33)
+- #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
+- #405 [panelhost-hardcoded-kind-tables](.invar/tasks/active/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)
 - #401 [idle-cost-convention-needs-scheduler-count](.invar/tasks/active/401-idle-cost-convention-needs-scheduler-count/task-401-idle-cost-convention-needs-scheduler-count.md)
 - #400 [script-to-src-seam-governance](.invar/tasks/active/400-script-to-src-seam-governance/task-400-script-to-src-seam-governance.md)
 - #394 [panel-contract-refinements-apply](.invar/tasks/active/394-panel-contract-refinements-apply/task-394-panel-contract-refinements-apply.md)
@@ -135,7 +136,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 138 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 139 — full log: project.tasks-completed.md)
+- #402 [invar-monitoring-plugin](.invar/tasks/completed/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md) — dae7fba9 — Invar Monitoring plugin: delta CPU, heap vs RSS, file ledger, per-plugin render load
 - #390 [left-sidebar-proportional-bound](.invar/tasks/completed/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md) — 181936b7 — both docks bounded: editor is the widest actor at every geometry
 - #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)
 - #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/completed/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md) — 69ca67ed — slim splitters on both axes everywhere; pad cell before the bottom drag span
@@ -150,4 +152,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #348 [tasks-watch-gradients-retuned-60fps](.invar/tasks/completed/348-tasks-watch-gradients-retuned-60fps/task-348-tasks-watch-gradients-retuned-60fps.md) — 46be8818 — time-based gradient phase, rate-independent; #385 from bycatch
 - #347 [markdown-link-resolution-and-double-click](.invar/tasks/completed/347-markdown-link-resolution-and-double-click/task-347-markdown-link-resolution-and-double-click.md) — 27a42bfe — document-relative link resolution + double-click open; #377-379 from bycatch
 - #346 [panel-tab-bar-workspace-content-spaces](.invar/tasks/completed/346-panel-tab-bar-workspace-content-spaces/task-346-panel-tab-bar-workspace-content-spaces.md) — 068a7375 — workspace panel tab bar: generic content spaces, no pane chrome, actions kept on the row
-- #345 [horizontal-separator-centered-glyph](.invar/tasks/completed/345-horizontal-separator-centered-glyph/task-345-horizontal-separator-centered-glyph.md) — 085bfca0 — centered heavy-line separator; #372/#373 from bycatch
