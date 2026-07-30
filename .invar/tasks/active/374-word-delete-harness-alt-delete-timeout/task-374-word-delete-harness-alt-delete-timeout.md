@@ -20,3 +20,12 @@ A wait must be a condition: reproduce under contention, find what the
 Alt+Delete wait actually observes, bind it to the real publisher. Check
 whether Alt+Delete key routing itself can drop under load (vs the wait
 missing a published state).
+
+## RECLASSIFIED (conductor measurement, 2026-07-30 06:2x)
+
+NOT a load flake. Off-diff discrimination: current main standalone GREEN
+3/3; the #326 merged tree standalone RED 3/3 (deterministic — "Timed out
+waiting for Alt+Delete keeps the active buffer open with the cursor after
+hello"). The vendor-plugin diff breaks the Alt+Delete path (it was red in
+BOTH of #326's gates, pre- and post-merge). The fix belongs to #326's
+branch; this task stays as the record of the false-flake classification.

@@ -149,3 +149,31 @@ It is not a same-process sandbox.
   active buffer open with the cursor after `hello`.
   Its Option+Backspace arm passed.
   No vendor, plugin, kernel, or restart path touches word deletion.
+
+## Round 3 merge and gate
+
+The merge from `main` preserved both independent additions to
+[project.briefing.md](../../../../project.briefing.md).
+The focused unit set passed with 20 tests.
+The runtime install and relaunch harness passed, including both refusal controls and both scale
+fixtures.
+
+The enforcing commit hook produced this final chain:
+
+```text
+focused unit set: EXIT=0
+runtime install and relaunch harness: EXIT=0
+merge-gate: GATE_EXIT=1
+pre-commit: commit blocked
+```
+
+The only red was the Alt+Delete timeout, including its quiet retry.
+This is the filed
+[word-delete harness Alt+Delete timeout task (#374)](../../active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md).
+The plugin-manifest smoke and the other 64 parallel smokes passed.
+The behavioral contracts, agent permissions, overlay dialogs, and input byte checks also passed.
+
+The hook did not create the merge commit.
+The final committed task hash remains `b3a285dea5047b30d519e1b3627358c79657b197`.
+The worktree holds the staged merge and is not clean because the brief requires a stop on a repeated
+filed red.
