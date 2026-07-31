@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #413 [invariant-field-web-app](.invar/tasks/in-progress/413-invariant-field-web-app/task-413-invariant-field-web-app.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/413-invariant-field-web-app`
-
 ## USER-DIRECTED (18)
 - #412 [monitoring-lsp-cpu-profile](.invar/tasks/active/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
@@ -137,7 +133,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 144 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 145 — full log: project.tasks-completed.md)
+- #413 [invariant-field-web-app](.invar/tasks/completed/413-invariant-field-web-app/task-413-invariant-field-web-app.md) — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/completed/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md) — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
 - #408 [workspace-state-isolation](.invar/tasks/completed/408-workspace-state-isolation/task-408-workspace-state-isolation.md) — 68fcad24 — workspace state isolation: six leaks closed, geometry workspace-owned, v2 panel covered
 - #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/completed/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md) — 17b89a64 — panel chrome v2: two rows, container tabs, full-width window groups with explicit split
@@ -152,4 +149,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #381 [realized-typescript-lsp-still-missing](.invar/tasks/completed/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md) — d8526062 — TS LSP discovery includes the app root: every workspace gets tooltips
 - #380 [idle-cpu-fifteen-to-twentyfive-percent](.invar/tasks/completed/380-idle-cpu-fifteen-to-twentyfive-percent/task-380-idle-cpu-fifteen-to-twentyfive-percent.md) — 5a1a52a7 — tasks dashboard idle CPU: motion only while painted (33%->2% off-screen)
 - #375 [tasks-live-attach-icon-invisible](.invar/tasks/completed/375-tasks-live-attach-icon-invisible/task-375-tasks-live-attach-icon-invisible.md) — 660ed877 — visible attach icon + click-time target; #386 from bycatch
-- #365 [gate-scratch-paths-are-machine-global](.invar/tasks/completed/365-gate-scratch-paths-are-machine-global/task-365-gate-scratch-paths-are-machine-global.md) — 33024fec — gate scratch paths per-worktree; safe overlapping gates

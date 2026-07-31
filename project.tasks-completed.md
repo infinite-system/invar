@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #413 [invariant-field-web-app](.invar/tasks/completed/413-invariant-field-web-app/task-413-invariant-field-web-app.md) — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/completed/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md) — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
 - #408 [workspace-state-isolation](.invar/tasks/completed/408-workspace-state-isolation/task-408-workspace-state-isolation.md) — 68fcad24 — workspace state isolation: six leaks closed, geometry workspace-owned, v2 panel covered
 - #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/completed/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md) — 17b89a64 — panel chrome v2: two rows, container tabs, full-width window groups with explicit split

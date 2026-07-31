@@ -1,7 +1,7 @@
 # Task 413 — Invariant Field: live web app ranking repo invariants over time
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
 Engine: codex
 Environment: linux
 Model: 5.6-sol
