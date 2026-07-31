@@ -1,0 +1,15 @@
+{
+  "task": 426,
+  "slug": "tabbar-hardcoded-glyph-breach",
+  "branch": "fleet/426-tabbar-hardcoded-glyph-breach",
+  "worktree": ".invar/worktrees/426-tabbar-hardcoded-glyph-breach",
+  "tmuxSession": "invar/426-tabbar-hardcoded-glyph-breach",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-426-tabbar-hardcoded-glyph-breach.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "52f37d18a235aac3c6115920563fbea8a34f5bd5",
+  "startedAt": "2026-07-31T10:31:00-04:00"
+}

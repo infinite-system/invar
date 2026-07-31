@@ -1,7 +1,7 @@
 # Task 426 — TabBarRenderer hard-codes the dirty glyph, breaching theme-only appearance
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
