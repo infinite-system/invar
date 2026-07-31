@@ -36,6 +36,7 @@ mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
 // so a small file and a hundredfold larger file cannot report the same retained cost.
 const smallFileName = 'small-file.txt';
 const largeFileName = 'large-file.txt';
+const typescriptFileName = 'language-server-profile.ts';
 const smallLineCount = 40;
 const largeLineCount = 40_000;
 writeFileSync(
@@ -50,6 +51,14 @@ writeFileSync(
   Array.from(
     { length: largeLineCount },
     (_, index) => `large line ${index}`,
+  ).join('\n'),
+);
+writeFileSync(
+  join(fixtureRoot, typescriptFileName),
+  Array.from(
+    { length: 200 },
+    (_unused, lineIndex) =>
+      `export const profileValue${lineIndex} = ${lineIndex};`,
   ).join('\n'),
 );
 
@@ -407,6 +416,66 @@ try {
   );
   HarnessSmoke.Class.pass(
     'the stray-plugin lens names which contribution asked for frames',
+  );
+
+  console.log(
+    '== monitoring: an owned LSP process gets a live resource row ==',
+  );
+  await openFixture(typescriptFileName);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the TypeScript server starts through its owned manager path',
+    (status) => status.lspStatus === 'ready',
+  );
+  await showMonitoringAndSample('the LSP process baseline');
+  const baselineSampleCount = numberField('monitoringSampleCount');
+  const lspStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a second LSP process sample establishes the delta window',
+    (status) => {
+      const rows = status.monitoringLanguageServers;
+      return (
+        Number(status.monitoringSampleCount) > baselineSampleCount &&
+        Array.isArray(rows) &&
+        rows.length === 1 &&
+        rows[0]?.processorPercent !== null
+      );
+    },
+  );
+  const [languageServerRow] = lspStatus.monitoringLanguageServers as Array<{
+    serverName: string;
+    processId: number;
+    state: string;
+    processorPercent: number;
+    residentSetBytes: number;
+  }>;
+  if (!languageServerRow) {
+    throw new Error(
+      'The registered LSP process row disappeared after the sample',
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    languageServerRow.serverName.length > 0 &&
+      languageServerRow.state === 'running' &&
+      languageServerRow.processorPercent >= 0 &&
+      languageServerRow.residentSetBytes > 0 &&
+      (lspStatus.subprocessPids as number[]).includes(
+        languageServerRow.processId,
+      ),
+    `${languageServerRow.serverName} pid ${languageServerRow.processId} has a delta CPU and RSS row`,
+  );
+  await driver.awaitGridCondition(
+    'the pane paints the LSP section from the registered process',
+    (snapshot) =>
+      snapshot.findText('lsp 1 server') !== null &&
+      snapshot.findText(`${languageServerRow.serverName} pid`) !== null &&
+      snapshot.findText('cpu ') !== null &&
+      snapshot.findText('rss ') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'the real LSP manager registration reaches the Monitoring pane',
   );
 } finally {
   await driver.dispose();

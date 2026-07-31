@@ -71,6 +71,7 @@ class $MonitoringPaneContent implements PaneContent {
       documentRows: this.stats.documentRows.value,
       retainedDocumentBytes: this.stats.retainedDocumentBytes,
       renderLoadRows: this.stats.renderLoadRows.value,
+      languageServerRows: this.stats.languageServerRows.value,
       renderRequestsSinceOpen: this.stats.renderRequestsSinceOpen,
       sampleIntervalSeconds: this.sampleIntervalSeconds(),
       sampleCount: this.stats.sampleCount.value,

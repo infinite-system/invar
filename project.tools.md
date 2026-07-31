@@ -270,6 +270,16 @@ KNOWN RESULT (2026-07-30, 20 files): resident set 230.6 → 234.1 → 253.8 → 
 heap after collection moved only 21.9 → 27.9 MB and retained document bytes returned to zero. The
 resident set is allocator high-water, not retention — read the census column, never the RSS column.
 
+### `bun .invar/tasks/in-progress/412-monitoring-lsp-cpu-profile/412-lsp-cpu-profile-drive.ts [line-count]`
+Drives a real TypeScript file, opens Monitoring, waits for an idle LSP delta, then edits the file.
+It prints the ordered server row for three later samples and the peak processor use.
+Run it with `10` and `10000` for source-size parity.
+Its positive control completes 30,000,000 counted operations in a child between two `/proc` samples.
+The probe stops if this known work does not produce a positive processor delta.
+USE IT WHEN: changing the LSP spawn registry, process sampler, or Monitoring LSP rows.
+KNOWN RESULT (2026-07-31): tsgo read `0%` while idle at both sizes. The same edit raised the measured
+peak to `0.87%` at 10 lines and `0.28%` at 10,000 lines. Both runs kept one ordered live row.
+
 ### `bun scripts/check-reactive-observation.ts`
 AST census of live `Ref` reads, `shallowRef` payload reads, `Reactive()` classes and version-signalled
 plain fields, plus three report-only categories for construction-captured or module-scope reactive

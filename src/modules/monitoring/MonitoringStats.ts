@@ -28,6 +28,11 @@ import {
 import { RuntimeSample } from './RuntimeSample';
 import type { RuntimeHeapCensus, RuntimeProcessSample } from './RuntimeSample';
 import type { RetainedDocumentRow } from '../workspace/OpenBufferSet';
+import type { LanguageServerProcessRegistration } from '../lsp/LanguageServerProcessRegistry';
+import type {
+  ProcessResourceSample,
+  ProcessSampler,
+} from './ProcessSampler.interface';
 
 class $MonitoringStats {
   /** Two bytes per UTF-16 unit is what a JavaScript string costs for text in the Latin range. */
@@ -54,6 +59,10 @@ class $MonitoringStats {
   protected observationStarted = false;
   protected quietBaselineMarked = false;
   protected previousSample: RuntimeProcessSample | null = null;
+  protected previousLanguageServerSamples = new Map<
+    number,
+    ProcessResourceSample
+  >();
   protected logEntries: string[] = [];
 
   /** The most recent reading, or null before the first sample. */
@@ -77,6 +86,9 @@ class $MonitoringStats {
   }
   get renderLoadRows() {
     return shallowRef<readonly RenderLoadEntry[]>([]);
+  }
+  get languageServerRows() {
+    return shallowRef<readonly MonitoredLanguageServerRow[]>([]);
   }
   /** Milliseconds the last cadence sample itself consumed. The monitor's own price. */
   get sampleCostMilliseconds() {
@@ -119,6 +131,7 @@ class $MonitoringStats {
       // A hidden monitor keeps its last reading on screen for the next open, but it stops
       // measuring. The next sample re-anchors the delta window rather than spanning the gap.
       this.previousSample = null;
+      this.previousLanguageServerSamples.clear();
       return;
     }
     // The baseline is marked ONCE, at the first open. Re-marking on every re-show would erase the
@@ -166,6 +179,7 @@ class $MonitoringStats {
     this.previousSample = current;
     this.sample.value = current;
     this.documentRows.value = this.readDocumentRows();
+    this.languageServerRows.value = this.readLanguageServerRows();
     this.renderLoadRows.value = RenderLoadLedger.Class.counts();
     this.residentSetHistory.value = [
       ...this.residentSetHistory.value,
@@ -190,6 +204,41 @@ class $MonitoringStats {
         });
       }
     }
+    return rows;
+  }
+
+  /** Read every PID registered by the LSP owner. Absence is GONE, never fabricated idle use. */
+  protected readLanguageServerRows(): readonly MonitoredLanguageServerRow[] {
+    const currentSamples = new Map<number, ProcessResourceSample>();
+    const rows = this.dependencies
+      .languageServerProcesses()
+      .map((registration): MonitoredLanguageServerRow => {
+        const current = this.dependencies.processSampler.sample(
+          registration.processId,
+        );
+        if (current === null) {
+          return {
+            ...registration,
+            state: 'gone',
+            processorPercent: null,
+            residentSetBytes: null,
+          };
+        }
+        currentSamples.set(registration.processId, current);
+        const previous = this.previousLanguageServerSamples.get(
+          registration.processId,
+        );
+        return {
+          ...registration,
+          state: 'running',
+          processorPercent:
+            previous === undefined
+              ? null
+              : RuntimeSample.Class.processorPercentBetween(previous, current),
+          residentSetBytes: current.residentSetBytes,
+        };
+      });
+    this.previousLanguageServerSamples = currentSamples;
     return rows;
   }
 
@@ -288,6 +337,7 @@ class $MonitoringStats {
       hydratedDocumentCount: this.hydratedDocumentCount,
       openDocumentCount: this.documentRows.value.length,
       renderRequestsSinceOpen: this.renderRequestsSinceOpen,
+      languageServerRows: this.languageServerRows.value,
     });
     this.logEntries = [...this.logEntries, line].slice(
       -$MonitoringStats.MAXIMUM_LOG_ENTRIES,
@@ -310,6 +360,7 @@ class $MonitoringStats {
   dispose(): void {
     this.stopSampleTimer();
     this.previousSample = null;
+    this.previousLanguageServerSamples.clear();
     this.logEntries = [];
     this.quietBaselineMarked = false;
     if (this.observationStarted) this.$stopEffects();
@@ -347,4 +398,15 @@ export interface MonitoringStatsDependencies {
   logFilePath: () => string | null;
   /** The monitor's own contributor identifier, so it can exclude itself from its suspect list. */
   ownIdentifier: () => string;
+  /** Registered server PIDs from the LSP manager's one spawn path, in manager order. */
+  languageServerProcesses: () => readonly LanguageServerProcessRegistration[];
+  /** Platform process sampler. Linux reads `/proc`; another platform can supply another adapter. */
+  processSampler: ProcessSampler;
+}
+
+export interface MonitoredLanguageServerRow extends LanguageServerProcessRegistration {
+  readonly state: 'running' | 'gone';
+  /** Null until a second sample establishes a delta window, or when the process is gone. */
+  readonly processorPercent: number | null;
+  readonly residentSetBytes: number | null;
 }

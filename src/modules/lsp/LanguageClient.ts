@@ -33,6 +33,7 @@ import type {
 import { TypeScriptProvider } from './TypeScriptProvider';
 import { LspProcess, type LspProcessLike } from './LspProcess';
 import { LspTransport } from './LspTransport';
+import { LanguageServerProcessRegistry } from './LanguageServerProcessRegistry';
 
 class $LanguageClient {
   protected static get $noCapabilities(): LanguageCapabilities {
@@ -132,6 +133,10 @@ class $LanguageClient {
 
   protected get StatusChannel() {
     return StatusChannel.Class;
+  }
+
+  protected get LanguageServerProcessRegistry() {
+    return LanguageServerProcessRegistry.Class;
   }
 
   get status() {
@@ -488,6 +493,7 @@ class $LanguageClient {
     this.status.value = 'disposed';
     this.error.value = null;
     this.activeProviderId.value = null;
+    this.LanguageServerProcessRegistry.unregister(this);
     this.publishStatus();
 
     const transport = this.transport;
@@ -597,6 +603,7 @@ class $LanguageClient {
       this.process = process;
       this.transport = transport;
       this.provider = selection.provider;
+      this.registerLanguageServerProcess(selection.command.command, process);
 
       const initializeResult = await transport.request<unknown>('initialize', {
         processId: process.pid,
@@ -642,6 +649,7 @@ class $LanguageClient {
         },
       });
       if (!this.isCurrent(generation) || this.transport !== transport) {
+        this.LanguageServerProcessRegistry.unregister(this);
         transport.dispose();
         process.dispose();
         return false;
@@ -1250,6 +1258,19 @@ class $LanguageClient {
     this.activeProviderId.value = null;
     this.Logging.error(`LSP failed: ${reason.message}`);
     this.publishStatus();
+  }
+
+  /** Register the PID from the owned spawn path. A crashed server stays registered and paints GONE. */
+  protected registerLanguageServerProcess(
+    command: string,
+    process: LspProcessLike,
+  ): void {
+    const processId = process.pid;
+    if (processId === null) return;
+    this.LanguageServerProcessRegistry.register(this, {
+      serverName: this.Files.basename(command) || command,
+      processId,
+    });
   }
 
   protected containFailure(reason: unknown): void {

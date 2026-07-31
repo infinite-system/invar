@@ -26,6 +26,9 @@ import type { StatusSnapshot } from '../system/StatusChannel';
 import { MonitoringPaneContent } from './MonitoringPaneContent';
 import { MonitoringStats } from './MonitoringStats';
 import type { MonitoredWorkspaceLedger } from './MonitoringStats';
+import { LinuxProcessSampler } from './LinuxProcessSampler';
+import type { ProcessSampler } from './ProcessSampler.interface';
+import { LanguageServerProcessRegistry } from '../lsp/LanguageServerProcessRegistry';
 
 class $MonitoringPlugin implements ApplicationContributor {
   readonly identifier = 'monitoring';
@@ -120,7 +123,14 @@ class $MonitoringPlugin implements ApplicationContributor {
       workspaceLedgers: () => this.workspaceLedgers(),
       logFilePath: () => this.logFilePath(),
       ownIdentifier: () => this.identifier,
+      languageServerProcesses: () =>
+        LanguageServerProcessRegistry.Class.entries(),
+      processSampler: this.createProcessSampler(),
     });
+  }
+
+  protected createProcessSampler(): ProcessSampler {
+    return new LinuxProcessSampler.Class();
   }
 
   protected createPaneContent(
@@ -252,6 +262,7 @@ class $MonitoringPlugin implements ApplicationContributor {
       monitoringRenderRequestsSinceOpen: stats.renderRequestsSinceOpen,
       monitoringOwnRenderRequestsSinceOpen: stats.ownRenderRequestsSinceOpen,
       monitoringRenderRequestsByPlugin: stats.renderRequestsByOwnerSinceOpen,
+      monitoringLanguageServers: stats.languageServerRows.value,
       monitoringStrayCandidate: stats.strayCandidate()?.ownerIdentifier ?? null,
       monitoringLogging: stats.logging.value,
       monitoringLogLineCount: stats.logLineCount.value,

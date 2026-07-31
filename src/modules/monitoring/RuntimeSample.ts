@@ -5,9 +5,8 @@
 // editor as busy forever because of one heavy boot. Every reading here is a pair of samples with the
 // interval between them, so the answer describes the window the reader asked about.
 //
-// This class is the shared generator for two consumers: the Invar Monitoring pane inside the app,
-// and the `instances:watch` command-line lens for other Invar processes. Only the process
-// identifier differs, so both call the same two members: `sample` and `processorPercentBetween`.
+// This class owns the shared delta calculation for the app process and sampled child processes.
+// The child read goes through `ProcessSampler`, so the rate math does not depend on `/proc`.
 //
 // COST. `sample` costs under a tenth of a millisecond, so a one-second cadence is free. `census`
 // costs about 30 milliseconds on a 200 MB heap because it stops the world, sweeps, and then walks
@@ -17,8 +16,12 @@
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 // invariant: A runtime reading is a delta over a named window (src/modules/monitoring/monitoring.invariants.md)
 // invariant: The monitor names its own cost and pays it only when observed (src/modules/monitoring/monitoring.invariants.md)
-import { readFileSync } from 'node:fs';
 import { Static } from 'ivue/extras';
+import { LinuxProcessSampler } from './LinuxProcessSampler';
+import type {
+  ProcessResourceSample,
+  ProcessSampler,
+} from './ProcessSampler.interface';
 
 class $RuntimeSample {
   /** Microseconds of processor time in one second. The unit `process.cpuUsage()` reports. */
@@ -26,30 +29,11 @@ class $RuntimeSample {
     return 1_000_000;
   }
 
-  /** Linux publishes process times in clock ticks. `getconf CLK_TCK` is 100 on every supported host. */
-  protected static get LINUX_CLOCK_TICKS_PER_SECOND(): number {
-    return 100;
+  protected static get $processSampler(): ProcessSampler {
+    return new LinuxProcessSampler.Class();
   }
 
-  /** Field index of `utime` in `/proc/<pid>/stat`, counting from the field after the command name. */
-  protected static get LINUX_STAT_USER_TIME_INDEX(): number {
-    return 11;
-  }
-
-  protected static get LINUX_STAT_SYSTEM_TIME_INDEX(): number {
-    return 12;
-  }
-
-  /** Field index of `rss`, in pages. */
-  protected static get LINUX_STAT_RESIDENT_PAGES_INDEX(): number {
-    return 21;
-  }
-
-  protected static get LINUX_PAGE_BYTES(): number {
-    return 4096;
-  }
-
-  /** Sample this process. Two syscall-free reads plus one `/proc` read for nothing. Under 0.1 ms. */
+  /** Sample this process through runtime counters. No `/proc` read is needed. */
   static sample(): RuntimeProcessSample {
     const processorTime = process.cpuUsage();
     const memory = process.memoryUsage();
@@ -68,58 +52,16 @@ class $RuntimeSample {
     };
   }
 
-  /**
-   * Sample ANOTHER process by identifier, through `/proc/<pid>/stat`. Returns null when the process
-   * is gone or the platform has no `/proc`. This is the member the `instances:watch` lens uses; it
-   * pairs with the same `processorPercentBetween` as the in-process sample.
-   */
+  /** Sample another process through the platform adapter. Null means the process is absent. */
   static sampleProcess(processId: number): RuntimeProcessSample | null {
-    const statistics = this.readProcessStatistics(processId);
-    if (statistics === null) return null;
+    const sample = this.$processSampler.sample(processId);
+    if (sample === null) return null;
     return {
-      processId,
-      atMilliseconds: performance.now(),
-      processorMicroseconds: statistics.processorMicroseconds,
-      residentSetBytes: statistics.residentSetBytes,
-      // Another process's heap is not readable from here. Its resident set is.
+      ...sample,
       heapUsedBytes: 0,
       heapTotalBytes: 0,
       externalBytes: 0,
       arrayBufferBytes: 0,
-    };
-  }
-
-  protected static readProcessStatistics(
-    processId: number,
-  ): { processorMicroseconds: number; residentSetBytes: number } | null {
-    let statLine: string;
-    try {
-      statLine = readFileSync(`/proc/${processId}/stat`, 'utf8');
-    } catch {
-      return null;
-    }
-    // The command name is parenthesised and may itself contain spaces, so split AFTER it.
-    const commandEnd = statLine.lastIndexOf(')');
-    if (commandEnd < 0) return null;
-    const fields = statLine
-      .slice(commandEnd + 2)
-      .trim()
-      .split(/\s+/);
-    const userTicks = Number(fields[this.LINUX_STAT_USER_TIME_INDEX]);
-    const systemTicks = Number(fields[this.LINUX_STAT_SYSTEM_TIME_INDEX]);
-    const residentPages = Number(fields[this.LINUX_STAT_RESIDENT_PAGES_INDEX]);
-    if (
-      !Number.isFinite(userTicks) ||
-      !Number.isFinite(systemTicks) ||
-      !Number.isFinite(residentPages)
-    ) {
-      return null;
-    }
-    return {
-      processorMicroseconds:
-        ((userTicks + systemTicks) / this.LINUX_CLOCK_TICKS_PER_SECOND) *
-        this.PROCESSOR_MICROSECONDS_PER_SECOND,
-      residentSetBytes: residentPages * this.LINUX_PAGE_BYTES,
     };
   }
 
@@ -129,8 +71,8 @@ class $RuntimeSample {
    * rather than an infinity.
    */
   static processorPercentBetween(
-    previous: RuntimeProcessSample,
-    current: RuntimeProcessSample,
+    previous: ProcessResourceSample,
+    current: ProcessResourceSample,
   ): number {
     const windowMilliseconds = current.atMilliseconds - previous.atMilliseconds;
     if (windowMilliseconds <= 0) return 0;
@@ -175,13 +117,7 @@ export namespace RuntimeSample {
 }
 
 /** One process reading. Two of these plus their interval make a rate. */
-export interface RuntimeProcessSample {
-  readonly processId: number;
-  /** A monotonic clock reading, so a wall-clock jump cannot make a rate negative. */
-  readonly atMilliseconds: number;
-  /** User plus system processor time consumed since the process started. */
-  readonly processorMicroseconds: number;
-  readonly residentSetBytes: number;
+export interface RuntimeProcessSample extends ProcessResourceSample {
   /** Live JavaScript heap as of the last collection. Zero for a process sampled through `/proc`. */
   readonly heapUsedBytes: number;
   readonly heapTotalBytes: number;

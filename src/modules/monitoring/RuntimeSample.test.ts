@@ -73,7 +73,6 @@ describe('RuntimeSample', () => {
   });
 
   test('sampling a process that does not exist reports absence, never a fabricated zero row', () => {
-    // Process identifier 0 is never a readable /proc entry.
     expect(RuntimeSample.Class.sampleProcess(0)).toBeNull();
   });
 

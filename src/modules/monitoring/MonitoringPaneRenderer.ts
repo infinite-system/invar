@@ -15,7 +15,10 @@ import { StyledText as OpenTuiStyledText, fg } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { Palette } from '../theme/ThemePalettes';
 import type { RenderLoadEntry } from '../system/RenderLoadLedger';
-import type { MonitoredDocumentRow } from './MonitoringStats';
+import type {
+  MonitoredDocumentRow,
+  MonitoredLanguageServerRow,
+} from './MonitoringStats';
 
 class $MonitoringPaneRenderer {
   protected static get BYTES_PER_MEGABYTE(): number {
@@ -58,6 +61,7 @@ class $MonitoringPaneRenderer {
     this.push(chunks, state, state.palette.fg, 'Invar Monitoring');
     this.push(chunks, state, state.palette.dim, '');
     this.renderProcessRows(chunks, state);
+    this.renderLanguageServerRows(chunks, state);
     this.renderMemoryRows(chunks, state);
     this.renderDocumentRows(chunks, state);
     this.renderRenderLoadRows(chunks, state);
@@ -169,6 +173,47 @@ class $MonitoringPaneRenderer {
     this.push(chunks, state, state.palette.dim, '');
   }
 
+  protected static renderLanguageServerRows(
+    chunks: TextChunk[],
+    state: MonitoringRenderState,
+  ): void {
+    const serverCount = state.languageServerRows.length;
+    this.push(
+      chunks,
+      state,
+      state.palette.fg,
+      `lsp ${serverCount} ${serverCount === 1 ? 'server' : 'servers'}`,
+    );
+    if (serverCount === 0) {
+      this.push(chunks, state, state.palette.dim, 'No LSP server.');
+      this.push(chunks, state, state.palette.dim, '');
+      return;
+    }
+    for (const row of state.languageServerRows) {
+      this.push(
+        chunks,
+        state,
+        row.state === 'gone' ? state.palette.dim : state.palette.fg,
+        `${row.serverName} pid ${row.processId}`,
+      );
+      if (row.state === 'gone') {
+        this.push(chunks, state, state.palette.dim, '  GONE');
+        continue;
+      }
+      const processorPercent =
+        row.processorPercent === null
+          ? 'warming'
+          : `${row.processorPercent.toFixed(1)}%`;
+      this.push(
+        chunks,
+        state,
+        state.palette.dim,
+        `  cpu ${processorPercent} rss ${this.megabytes(row.residentSetBytes ?? 0)} MB`,
+      );
+    }
+    this.push(chunks, state, state.palette.dim, '');
+  }
+
   protected static renderDocumentRows(
     chunks: TextChunk[],
     state: MonitoringRenderState,
@@ -276,6 +321,7 @@ export interface MonitoringRenderState {
   readonly documentRows: readonly MonitoredDocumentRow[];
   readonly retainedDocumentBytes: number;
   readonly renderLoadRows: readonly RenderLoadEntry[];
+  readonly languageServerRows: readonly MonitoredLanguageServerRow[];
   readonly renderRequestsSinceOpen: number;
   readonly sampleIntervalSeconds: number;
   readonly sampleCount: number;

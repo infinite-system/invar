@@ -3,6 +3,12 @@ import { RenderLoadLedger } from '../system/RenderLoadLedger';
 import { MonitoringStats } from './MonitoringStats';
 import type { MonitoredWorkspaceLedger } from './MonitoringStats';
 import type { RetainedDocumentRow } from '../workspace/OpenBufferSet';
+import type {
+  ProcessResourceSample,
+  ProcessSampler,
+} from './ProcessSampler.interface';
+import type { LanguageServerProcessRegistration } from '../lsp/LanguageServerProcessRegistry';
+import type { MonitoredLanguageServerRow } from './MonitoringStats';
 
 function documentRow(
   path: string,
@@ -28,10 +34,61 @@ class $RecordingMonitoringStats extends MonitoringStats.$Class {
   }
 }
 
+class $FixtureProcessSampler implements ProcessSampler {
+  protected readonly nextSampleIndex = new Map<number, number>();
+
+  constructor(
+    protected readonly samples: ReadonlyMap<
+      number,
+      readonly (ProcessResourceSample | null)[]
+    >,
+  ) {}
+
+  sample(processId: number): ProcessResourceSample | null {
+    const sampleIndex = this.nextSampleIndex.get(processId) ?? 0;
+    this.nextSampleIndex.set(processId, sampleIndex + 1);
+    return this.samples.get(processId)?.[sampleIndex] ?? null;
+  }
+}
+
+function processSample(
+  processId: number,
+  atMilliseconds: number,
+  processorMicroseconds: number,
+  residentSetBytes: number,
+): ProcessResourceSample {
+  return {
+    processId,
+    atMilliseconds,
+    processorMicroseconds,
+    residentSetBytes,
+  };
+}
+
+function busyIdleContract(
+  rows: readonly MonitoredLanguageServerRow[],
+): boolean {
+  return (
+    rows.length === 3 &&
+    rows[0]?.serverName === 'busy-lsp' &&
+    rows[0]?.processorPercent === 50 &&
+    rows[0]?.residentSetBytes === 64_000_000 &&
+    rows[1]?.serverName === 'idle-lsp' &&
+    rows[1]?.processorPercent === 0 &&
+    rows[1]?.residentSetBytes === 32_000_000 &&
+    rows[2]?.serverName === 'dead-lsp' &&
+    rows[2]?.state === 'gone' &&
+    rows[2]?.processorPercent === null &&
+    rows[2]?.residentSetBytes === null
+  );
+}
+
 describe('MonitoringStats', () => {
   let observed = false;
   let renderRequests = 0;
   let ledgers: MonitoredWorkspaceLedger[] = [];
+  let languageServerProcesses: LanguageServerProcessRegistration[] = [];
+  let processSampler: ProcessSampler = { sample: () => null };
   let stats: InstanceType<ReturnType<typeof buildClass>>;
 
   function buildClass() {
@@ -49,6 +106,8 @@ describe('MonitoringStats', () => {
       workspaceLedgers: () => ledgers,
       ownIdentifier: () => 'monitoring',
       logFilePath: () => '/dev/null',
+      languageServerProcesses: () => languageServerProcesses,
+      processSampler,
     });
   }
 
@@ -56,6 +115,8 @@ describe('MonitoringStats', () => {
     observed = false;
     renderRequests = 0;
     ledgers = [];
+    languageServerProcesses = [];
+    processSampler = { sample: () => null };
     RenderLoadLedger.Class.reset();
     stats = createStats() as unknown as typeof stats;
   });
@@ -77,6 +138,47 @@ describe('MonitoringStats', () => {
     // The first sample has no previous reading, so it reports no rate rather than a wrong one.
     expect(stats.processorPercent.value).toBe(0);
     expect(stats.sampleCostMilliseconds.value).toBeGreaterThanOrEqual(0);
+  });
+
+  test('registered servers keep manager order while busy, idle, and gone remain distinct', () => {
+    languageServerProcesses = [
+      { serverName: 'busy-lsp', processId: 101 },
+      { serverName: 'idle-lsp', processId: 102 },
+      { serverName: 'dead-lsp', processId: 103 },
+    ];
+    processSampler = new $FixtureProcessSampler(
+      new Map([
+        [
+          101,
+          [
+            processSample(101, 1_000, 900_000_000, 63_000_000),
+            processSample(101, 2_000, 900_500_000, 64_000_000),
+          ],
+        ],
+        [
+          102,
+          [
+            processSample(102, 1_000, 700_000_000, 32_000_000),
+            processSample(102, 2_000, 700_000_000, 32_000_000),
+          ],
+        ],
+        [103, [null, null]],
+      ]),
+    );
+    stats = createStats() as unknown as typeof stats;
+
+    stats.takeSample();
+    expect(
+      stats.languageServerRows.value.map((row) => row.processorPercent),
+    ).toEqual([null, null, null]);
+    stats.takeSample();
+
+    const rows = stats.languageServerRows.value;
+    const plantedControl = rows.map((row, rowIndex) =>
+      rowIndex === 0 ? { ...row, processorPercent: 0 } : row,
+    );
+    expect(busyIdleContract(plantedControl)).toBe(false);
+    expect(busyIdleContract(rows)).toBe(true);
   });
 
   test('the document ledger sums only what each buffer set says it retains', () => {
