@@ -4,7 +4,24 @@
 
 ### OPERATIVE STATE
 
-RESUME ANCHOR 23 (2026-07-31 ~17:2x EDT — CHECKPOINT update; supersedes 22 below)
+RESUME ANCHOR 24 (2026-07-31 ~18:0x EDT — PAUSED BY USER; supersedes 23)
+
+STATE: PAUSED. User (verbatim): "ok, disarm crons, and pause all
+tasks for now, gonna go rest, there are refinements coming when i
+come back." Both crons DELETED (were :07 orchestration + :37 sweep).
+Do NOT re-arm them on resume until the user asks or work restarts.
+fleet-watch Monitor left armed (harmless, event-driven, still the
+sprawl sentinel). NO builders live; no in-progress lanes; checkout
+clean; #430 landed 483725e4 (bottom panel absorbs remainders — the
+user's layout thread is closed pending their refinements).
+
+ON RESUME: expect user refinements first — their direction IS the
+backlog. Fresh queue: #431 (dead panelAlignment + zombie remainders).
+12 held user-directed items in project.active-tasks.md. Everything
+else in anchor 23 below still true (family 13, probe gotcha, steer
+rules).
+
+RESUME ANCHOR 23 (2026-07-31 ~17:2x EDT — superseded by 24)
 
 LANES: ONE live builder — #430-bottom-panel-absorbs-dock-remainders
 (codex sol high, dispatched 14:59, tmux invar/430-bottom-panel-absorbs-dock-remainders).
