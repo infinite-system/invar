@@ -13,9 +13,12 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import type { GlyphLevel } from '../../src/modules/theme/TerminalCapabilities';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
+import { commandBarLayoutSwitcherPosition } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
 interface Rectangle {
@@ -269,6 +272,101 @@ function clickCell(
 ): void {
   driver.sendMouse({ kind: 'press', column, row, button: 'left' });
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
+}
+
+async function driveLayoutSwitcherGlyphTier(
+  fixtureRoot: string,
+  glyphLevel: GlyphLevel,
+): Promise<void> {
+  const tierHomeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-layout-switcher-${glyphLevel}-`),
+  );
+  const tierStatusPath = join(tierHomeDirectory, 'status.json');
+  mkdirSync(join(tierHomeDirectory, '.config', 'invar'), { recursive: true });
+  await Bun.write(
+    join(tierHomeDirectory, '.config', 'invar', 'settings.json'),
+    `${JSON.stringify({ glyphMode: glyphLevel })}\n`,
+  );
+  const tierDriver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory: tierHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: tierStatusPath,
+      COLORTERM: 'truecolor',
+    },
+  });
+
+  try {
+    const expectedGlyph = ThemeIcons.Class.glyphFor(
+      glyphLevel,
+      'layoutSwitcher',
+    );
+    const snapshot = await tierDriver.awaitGridCondition(
+      `${glyphLevel} layout switcher paints its theme glyph at the right edge`,
+      (candidate) => {
+        const position = commandBarLayoutSwitcherPosition(candidate);
+        return (
+          position !== null &&
+          candidate.cell(position.row, position.column)?.characters ===
+            expectedGlyph
+        );
+      },
+      15_000,
+    );
+    const position = commandBarLayoutSwitcherPosition(snapshot);
+    if (!position) {
+      throw new Error(
+        `${glyphLevel} layout switcher has no painted pointer target`,
+      );
+    }
+    HarnessSmoke.Class.pass(
+      `${glyphLevel} layout switcher has a painted pointer target`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      snapshot.cell(position.row, position.column)?.width === 1 &&
+        snapshot.cell(position.row, position.column - 1)?.characters === ' ' &&
+        snapshot.cell(position.row, position.column + 1)?.characters === ' ',
+      `${glyphLevel} layout switcher occupies one cell with one padding cell on each side`,
+    );
+
+    tierDriver.sendMouse({
+      kind: 'move',
+      column: position.column,
+      row: position.row,
+      button: 'none',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} layout switcher hover publishes the tooltip`,
+      (status) => status.tooltipVisible === true,
+    );
+    await tierDriver.awaitGridCondition(
+      `${glyphLevel} layout switcher tooltip names Layouts`,
+      (candidate) => candidate.findText('Layouts') !== null,
+    );
+
+    clickCell(tierDriver, position.column + 1, position.row);
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} layout switcher trailing padding opens the preset popup`,
+      (status) =>
+        status.boundedListPopupOpen === true &&
+        status.boundedListPopupTitle === 'Layouts' &&
+        Array.isArray(status.boundedListPopupItemIdentifiers) &&
+        status.boundedListPopupItemIdentifiers.join(',') ===
+          'default,full-height-docks,centered-panel,focus',
+    );
+    HarnessSmoke.Class.pass(
+      `${glyphLevel} layout switcher shares its padded paint and hit geometry`,
+    );
+  } finally {
+    await tierDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(tierHomeDirectory);
+  }
 }
 
 function layoutSettingLabel(settingName: LayoutSettingName): string {
@@ -542,14 +640,14 @@ async function selectLayoutPreset(
   const layoutsPosition = await driver
     .awaitGridCondition(
       'the layouts command-bar control is visible before preset selection',
-      (snapshot) => snapshot.findText(' layouts ') !== null,
+      (snapshot) => commandBarLayoutSwitcherPosition(snapshot) !== null,
     )
-    .then((snapshot) => snapshot.findText(' layouts '));
+    .then((snapshot) => commandBarLayoutSwitcherPosition(snapshot));
   HarnessSmoke.Class.requireCondition(
     layoutsPosition !== null,
     'the layouts command-bar control remains clickable',
   );
-  clickCell(driver, layoutsPosition!.column + 2, layoutsPosition!.row);
+  clickCell(driver, layoutsPosition!.column, layoutsPosition!.row);
   await driver.awaitGridCondition(
     'the bounded layouts popup lists only named presets',
     (snapshot) =>
@@ -786,6 +884,13 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
+  console.log(
+    '== harness layout: switcher icon, tooltip, and hit geometry across glyph tiers ==',
+  );
+  for (const glyphLevel of ['nerd', 'unicode', 'ascii'] as const) {
+    await driveLayoutSwitcherGlyphTier(fixtureRoot, glyphLevel);
+  }
+
   console.log('== harness layout: exact defaults and center panel geometry ==');
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -821,16 +926,16 @@ try {
   const commandBarSnapshot = await driver.awaitGridCondition(
     'command bar renders the folder and right-edge layouts control',
     (snapshot) => {
-      const layoutsPosition = snapshot.findText(' layouts ');
+      const layoutsPosition = commandBarLayoutSwitcherPosition(snapshot);
       if (!layoutsPosition) return false;
       const folderName = fixtureRoot.split('/').at(-1) ?? '';
       return (
         snapshot.rowText(layoutsPosition.row).includes(folderName) &&
-        layoutsPosition.column + ' layouts '.length === snapshot.columns
+        layoutsPosition.column === snapshot.columns - 2
       );
     },
   );
-  const layoutsPosition = commandBarSnapshot.findText(' layouts ');
+  const layoutsPosition = commandBarLayoutSwitcherPosition(commandBarSnapshot);
   HarnessSmoke.Class.requireCondition(
     layoutsPosition !== null,
     'layouts control is painted at the command-bar right edge',
@@ -897,7 +1002,7 @@ try {
   await driver.awaitScreenChange();
   await driver.awaitGridCondition(
     'layouts control remains at the right edge after a tree open',
-    (snapshot) => snapshot.findText(' layouts ') !== null,
+    (snapshot) => commandBarLayoutSwitcherPosition(snapshot) !== null,
   );
   status = await selectLayoutPreset(
     driver,
@@ -1552,13 +1657,14 @@ try {
         layoutSlot(candidate, 'rightDock').width > 12,
     );
     await compactDriver.awaitGridCondition(
-      'the restored 80-column frame paints the layouts control at its new edge',
+      'the restored 80-column frame paints the layout switcher at its new edge',
       (snapshot) => {
-        const layoutsPosition = snapshot.findText(' layouts ');
+        const switcherPosition = commandBarLayoutSwitcherPosition(snapshot);
         return (
           snapshot.columns === 80 &&
-          layoutsPosition !== null &&
-          layoutsPosition.column + ' layouts '.length === snapshot.columns
+          switcherPosition !== null &&
+          // one glyph cell plus one padding cell reaches the right edge
+          switcherPosition.column + 2 === snapshot.columns
         );
       },
     );

@@ -17,6 +17,7 @@ import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import {
   awaitStatusPublication,
+  commandBarLayoutSwitcherPosition,
   markerPosition,
   pass,
   requireCondition,
@@ -1738,10 +1739,10 @@ try {
   pass('Open Buffers retains its interior item action');
 
   snapshot = await driver.awaitGridCondition(
-    'the single-token layouts anchor identifies the command-bar adapter',
-    (candidate) => candidate.findText('layouts') !== null,
+    'the theme layout glyph identifies the command-bar adapter',
+    (candidate) => commandBarLayoutSwitcherPosition(candidate) !== null,
   );
-  const layoutsPosition = markerPosition(snapshot, 'layouts');
+  const layoutsPosition = commandBarLayoutSwitcherPosition(snapshot)!;
   clickCell(driver, layoutsPosition.column, layoutsPosition.row);
   status = await awaitStatusPublication(
     statusPath,
@@ -1759,10 +1760,10 @@ try {
     (candidate) => candidate.boundedListPopupOpen === false,
   );
   snapshot = await driver.awaitGridCondition(
-    'the single-token layouts anchor remains available for an interior action',
-    (candidate) => candidate.findText('layouts') !== null,
+    'the theme layout glyph remains available for an interior action',
+    (candidate) => commandBarLayoutSwitcherPosition(candidate) !== null,
   );
-  const reopenedLayoutsPosition = markerPosition(snapshot, 'layouts');
+  const reopenedLayoutsPosition = commandBarLayoutSwitcherPosition(snapshot)!;
   clickCell(
     driver,
     reopenedLayoutsPosition.column,
@@ -1798,10 +1799,10 @@ try {
   pass('Layouts retains its interior preset action');
 
   snapshot = await driver.awaitGridCondition(
-    'the single-token layouts anchor remains visible in Focus layout',
-    (candidate) => candidate.findText('layouts') !== null,
+    'the theme layout glyph remains visible in Focus layout',
+    (candidate) => commandBarLayoutSwitcherPosition(candidate) !== null,
   );
-  const focusLayoutsPosition = markerPosition(snapshot, 'layouts');
+  const focusLayoutsPosition = commandBarLayoutSwitcherPosition(snapshot)!;
   clickCell(driver, focusLayoutsPosition.column, focusLayoutsPosition.row);
   status = await awaitStatusPublication(
     statusPath,

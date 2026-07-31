@@ -3,7 +3,7 @@ import { CommandBar } from './CommandBar';
 
 describe('CommandBar', () => {
   test('centers navigation and folder controls while pinning layouts to the right edge', () => {
-    const geometry = CommandBar.Class.layoutGeometry(80, 'wt-layout2');
+    const geometry = CommandBar.Class.layoutGeometry(80, 'wt-layout2', 'L');
     const back = geometry.segments.find(
       (segment) => segment.control === 'back',
     );
@@ -19,6 +19,8 @@ describe('CommandBar', () => {
 
     expect(back?.endColumn).toBe(forward?.startColumn);
     expect(forward?.endColumn).toBe(folder?.startColumn);
+    expect(layouts?.label).toBe(' L ');
+    expect(layouts?.startColumn).toBe(77);
     expect(layouts?.endColumn).toBe(80);
     expect((back?.startColumn ?? 0) + (folder?.endColumn ?? 0)).toBeCloseTo(
       80,
@@ -30,6 +32,7 @@ describe('CommandBar', () => {
     const geometry = CommandBar.Class.layoutGeometry(
       18,
       'a-very-long-folder-name',
+      'L',
     );
 
     expect(geometry.segments[0]?.startColumn).toBeGreaterThanOrEqual(0);
