@@ -69,29 +69,28 @@ class $RecordList {
   get resultCount() {
     return `${this.filteredRecords.length} of ${this.snapshot.records.length} records`;
   }
-  get recordCards() {
+  get recordRows() {
     return this.filteredRecords.map((record) => ({
       identifier: record.stableIdentifier,
       elementIdentifier: `record-${record.stableIdentifier}`,
+      className:
+        record.stableIdentifier === this.props.selectedRecordIdentifier
+          ? 'record-row record-row-selected'
+          : 'record-row',
+      selectedLabel:
+        record.stableIdentifier === this.props.selectedRecordIdentifier
+          ? 'Selected'
+          : '',
       rank: record.rank.toFixed(3),
       name: record.name,
       essence: record.fields.Invariant ?? 'No invariant statement.',
       kindLabel: this.kindLabel(record),
       kindClass: `kind kind-${record.kind}`,
       contractPath: record.contractPath,
-      fields: this.fieldOrder
-        .filter((fieldName) => record.fields[fieldName])
-        .map((fieldName) => ({
-          fieldName,
-          value: record.fields[fieldName]!,
-        })),
-      compositions: this.compositionsFor(record),
-      rankEvidence:
-        `${record.annotationCount} annotations · ` +
-        `${record.incomingConnections + record.outgoingConnections} connections · ` +
-        `${record.evidenceResolution.resolved}/${record.evidenceResolution.referenced} ` +
-        `evidence citations resolved · ${record.verificationMode}`,
     }));
+  }
+  get recordCards() {
+    return this.recordRows;
   }
 
   // --- methods ---
@@ -119,38 +118,8 @@ class $RecordList {
     return 'Chosen';
   }
 
-  compositionsFor(record: RankedRecord) {
-    return this.snapshot.compositions
-      .filter((composition) =>
-        composition.memberIdentifiers.includes(record.stableIdentifier),
-      )
-      .map((composition) => ({
-        identifier: composition.identifier,
-        name: composition.name,
-        guarantee: composition.guarantee || 'No guarantee text parsed.',
-      }));
-  }
-
   selectRecord(recordIdentifier: string) {
     this.emit('select-record', recordIdentifier);
-  }
-
-  protected get fieldOrder() {
-    return [
-      'Scope',
-      'Mechanism',
-      'Generates',
-      'Impossible if true',
-      'Evidence',
-      'Verification',
-      'Rejected alternatives',
-      'Components',
-      'Renegotiable at',
-      'Open question',
-      'Enforcement',
-      'Status',
-      'Last refined',
-    ];
   }
 }
 
@@ -162,6 +131,7 @@ export namespace RecordList {
 
 export interface RecordListProps {
   snapshot: InvariantSnapshot;
+  selectedRecordIdentifier: string | null;
   selectedCompositionIdentifier: string;
 }
 

@@ -5,6 +5,7 @@ import {
   collectContractLinks,
   parseContract,
   parseLatticeCompositions,
+  parseLatticeDependencies,
   recordKey,
   recordSemanticFingerprint,
 } from './ContractParser';
@@ -12,6 +13,8 @@ import { RANK_FORMULA_SUMMARY, RANK_WEIGHTS, calculateRank } from './Rank';
 import type {
   AnnotationReference,
   CitationResolution,
+  CodeReference,
+  CodeReferenceSource,
   ContractParseIssue,
   InvariantFieldStore,
   InvariantRecord,
@@ -53,6 +56,7 @@ interface SnapshotSource {
 
 interface AnnotationScan {
   annotations: AnnotationReference[];
+  annotationsByRecord: Map<string, AnnotationReference[]>;
   countsByRecord: Map<string, number>;
   orphanCountsByContract: Map<string, number>;
 }
@@ -60,6 +64,8 @@ interface AnnotationScan {
 interface ConnectionScan {
   incomingByRecord: Map<string, number>;
   outgoingByRecord: Map<string, number>;
+  incomingIdentifiersByRecord: Map<string, string[]>;
+  outgoingIdentifiersByRecord: Map<string, string[]>;
   membershipsByRecord: Map<string, string[]>;
   compositions: LatticeComposition[];
 }
@@ -406,6 +412,7 @@ function scanAnnotations(
     }
   }
   const countsByRecord = new Map<string, number>();
+  const annotationsByRecord = new Map<string, AnnotationReference[]>();
   const orphanCountsByContract = new Map<string, number>();
   for (const annotation of annotations) {
     if (annotation.resolved) {
@@ -416,6 +423,10 @@ function scanAnnotations(
         record.stableIdentifier,
         (countsByRecord.get(record.stableIdentifier) ?? 0) + 1,
       );
+      const recordAnnotations =
+        annotationsByRecord.get(record.stableIdentifier) ?? [];
+      recordAnnotations.push(annotation);
+      annotationsByRecord.set(record.stableIdentifier, recordAnnotations);
     } else {
       orphanCountsByContract.set(
         annotation.contractPath,
@@ -425,6 +436,7 @@ function scanAnnotations(
   }
   return {
     annotations,
+    annotationsByRecord,
     countsByRecord,
     orphanCountsByContract,
   };
@@ -445,8 +457,38 @@ export function scanConnections(
   );
   const incomingByRecord = new Map<string, number>();
   const outgoingByRecord = new Map<string, number>();
+  const incomingIdentifiersByRecord = new Map<string, string[]>();
+  const outgoingIdentifiersByRecord = new Map<string, string[]>();
   const membershipsByRecord = new Map<string, string[]>();
   const compositions: LatticeComposition[] = [];
+  const connectRecords = (
+    sourceRecordIdentifier: string,
+    targetRecordIdentifier: string,
+  ) => {
+    const outgoingIdentifiers =
+      outgoingIdentifiersByRecord.get(sourceRecordIdentifier) ?? [];
+    if (outgoingIdentifiers.includes(targetRecordIdentifier)) return;
+    outgoingIdentifiers.push(targetRecordIdentifier);
+    outgoingIdentifiersByRecord.set(
+      sourceRecordIdentifier,
+      outgoingIdentifiers,
+    );
+    const incomingIdentifiers =
+      incomingIdentifiersByRecord.get(targetRecordIdentifier) ?? [];
+    incomingIdentifiers.push(sourceRecordIdentifier);
+    incomingIdentifiersByRecord.set(
+      targetRecordIdentifier,
+      incomingIdentifiers,
+    );
+    outgoingByRecord.set(
+      sourceRecordIdentifier,
+      (outgoingByRecord.get(sourceRecordIdentifier) ?? 0) + 1,
+    );
+    incomingByRecord.set(
+      targetRecordIdentifier,
+      (incomingByRecord.get(targetRecordIdentifier) ?? 0) + 1,
+    );
+  };
 
   for (const record of records) {
     const links = collectContractLinks(
@@ -454,14 +496,10 @@ export function scanConnections(
       Object.values(record.fields).join('\n'),
       availableRecords,
     );
-    outgoingByRecord.set(record.stableIdentifier, links.length);
     for (const link of links) {
       const targetRecord = availableRecords.get(link.targetKey);
       if (!targetRecord) continue;
-      incomingByRecord.set(
-        targetRecord.stableIdentifier,
-        (incomingByRecord.get(targetRecord.stableIdentifier) ?? 0) + 1,
-      );
+      connectRecords(record.stableIdentifier, targetRecord.stableIdentifier);
     }
   }
 
@@ -472,6 +510,14 @@ export function scanConnections(
       source,
       availableRecords,
     );
+    const parsedDependencies = parseLatticeDependencies(
+      path,
+      source,
+      availableRecords,
+    );
+    for (const dependency of parsedDependencies) {
+      connectRecords(dependency.sourceIdentifier, dependency.targetIdentifier);
+    }
     compositions.push(...parsedCompositions);
     for (const composition of parsedCompositions) {
       for (const memberIdentifier of composition.memberIdentifiers) {
@@ -491,9 +537,90 @@ export function scanConnections(
   return {
     incomingByRecord,
     outgoingByRecord,
+    incomingIdentifiersByRecord,
+    outgoingIdentifiersByRecord,
     membershipsByRecord,
     compositions,
   };
+}
+
+export function codeReferenceTargets(
+  source: CodeReferenceSource,
+  value: string,
+): Array<Omit<CodeReference, 'identifier' | 'resolved'>> {
+  const references: Array<Omit<CodeReference, 'identifier' | 'resolved'>> = [];
+  const seenLocations = new Set<string>();
+  const codePathPattern =
+    /(?:^|[\s`("'[])((?:\.{0,2}\/)?(?:[\p{L}\p{N}_$.-]+\/)*[\p{L}\p{N}_$.-]+\.(?:ts|tsx|js|mjs|cjs|md|sh|py|go|rs|json|vue))(?::(\d+)(?:-\d+)?)?/gu;
+  for (const match of value.matchAll(codePathPattern)) {
+    const path = match[1]!;
+    if (path.endsWith('.invariants.md') || path.endsWith('.lattice.md')) {
+      continue;
+    }
+    const line = Number(match[2] ?? '1');
+    const locationKey = `${path}:${line}`;
+    if (seenLocations.has(locationKey)) continue;
+    seenLocations.add(locationKey);
+    references.push({
+      source,
+      label: match[0]!.trim().replace(/^[`("'[]+/, ''),
+      path,
+      line,
+    });
+  }
+  return references;
+}
+
+function resolveCodeReference(
+  record: InvariantRecord,
+  reference: Omit<CodeReference, 'identifier' | 'resolved'>,
+  tree: ReadonlyMap<string, string>,
+  pathsByBasename: ReadonlyMap<string, string[]>,
+): CodeReference {
+  const contractRelativePath = posix.normalize(
+    posix.join(dirname(record.contractPath), reference.path),
+  );
+  const basenameMatches =
+    pathsByBasename.get(posix.basename(reference.path)) ?? [];
+  const mayResolveByBasename = !reference.path.includes('/');
+  const resolvedPath = tree.has(reference.path)
+    ? reference.path
+    : tree.has(contractRelativePath)
+      ? contractRelativePath
+      : mayResolveByBasename && basenameMatches.length === 1
+        ? basenameMatches[0]!
+        : reference.path;
+  return {
+    ...reference,
+    identifier: `${reference.source}:${resolvedPath}:${reference.line}`,
+    path: resolvedPath,
+    resolved: tree.has(resolvedPath),
+  };
+}
+
+function recordCodeReferences(
+  record: InvariantRecord,
+  tree: ReadonlyMap<string, string>,
+  annotations: AnnotationScan,
+  pathsByBasename: ReadonlyMap<string, string[]>,
+): CodeReference[] {
+  const citationReferences = [
+    ...codeReferenceTargets('evidence', record.fields.Evidence ?? ''),
+    ...codeReferenceTargets('mechanism', record.fields.Mechanism ?? ''),
+  ].map((reference) =>
+    resolveCodeReference(record, reference, tree, pathsByBasename),
+  );
+  const annotationReferences = (
+    annotations.annotationsByRecord.get(record.stableIdentifier) ?? []
+  ).map((annotation) => ({
+    identifier: `annotation:${annotation.sourcePath}:${annotation.line}`,
+    source: 'annotation' as const,
+    label: `invariant: ${record.name}`,
+    path: annotation.sourcePath,
+    line: annotation.line,
+    resolved: tree.has(annotation.sourcePath),
+  }));
+  return [...citationReferences, ...annotationReferences];
 }
 
 function citationTargets(value: string): string[] {
@@ -601,6 +728,13 @@ function buildSnapshot(
 ): InvariantSnapshot {
   const parsed = parseSnapshotContracts(source.files, previousRecords);
   const tree = gitTree(repositoryRoot, source.commit.commit);
+  const pathsByBasename = new Map<string, string[]>();
+  for (const path of tree.keys()) {
+    const basename = posix.basename(path);
+    const matchingPaths = pathsByBasename.get(basename) ?? [];
+    matchingPaths.push(path);
+    pathsByBasename.set(basename, matchingPaths);
+  }
   const annotations = scanAnnotations(
     repositoryRoot,
     source.commit.commit,
@@ -648,6 +782,25 @@ function buildSnapshot(
       maximumConnectionCount,
       latticeMemberships:
         connections.membershipsByRecord.get(record.stableIdentifier) ?? [],
+      incomingRecordIdentifiers:
+        connections.incomingIdentifiersByRecord.get(record.stableIdentifier) ??
+        [],
+      outgoingRecordIdentifiers:
+        connections.outgoingIdentifiersByRecord.get(record.stableIdentifier) ??
+        [],
+      siblingRecordIdentifiers: parsed.records
+        .filter(
+          (candidateRecord) =>
+            candidateRecord.contractPath === record.contractPath &&
+            candidateRecord.stableIdentifier !== record.stableIdentifier,
+        )
+        .map((candidateRecord) => candidateRecord.stableIdentifier),
+      codeReferences: recordCodeReferences(
+        record,
+        tree,
+        annotations,
+        pathsByBasename,
+      ),
       verificationMode: verificationMode(
         record,
         repositoryRoot,
@@ -713,7 +866,7 @@ export function buildInvariantFieldStore(
     }));
   });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     checkerVersion: checkerVersion ?? 'unknown',
     generatedAt: new Date().toISOString(),
     repositoryRoot,
@@ -760,7 +913,11 @@ export function isGeneratedStoreCurrent(
       readFileSync(storePath, 'utf8'),
     ) as InvariantFieldStore;
     return (
-      store.snapshots.at(-1)?.commit === currentCommit(repositoryRoot).commit
+      store.snapshots.at(-1)?.commit === currentCommit(repositoryRoot).commit &&
+      (store.snapshots
+        .at(-1)
+        ?.records.every((record) => Array.isArray(record.codeReferences)) ??
+        false)
     );
   } catch {
     return false;

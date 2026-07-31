@@ -121,6 +121,10 @@ class $InvariantFieldApp {
     this.selectedRecordIdentifier.value = recordIdentifier;
   }
 
+  clearSelection() {
+    this.selectedRecordIdentifier.value = null;
+  }
+
   selectComposition(compositionIdentifier: string) {
     this.selectedCompositionIdentifier.value = compositionIdentifier;
   }

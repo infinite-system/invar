@@ -13,6 +13,7 @@ import {
   isGeneratedStoreCurrent,
   repositoryRootFromCurrentDirectory,
 } from './RepositoryHistory';
+import { CodeLens } from './CodeLens';
 import { DesignTokens } from './DesignTokens';
 import { VueSingleFileComponentPlugin } from './VueSingleFileComponentPlugin';
 import type { InvariantFieldStore } from './types';
@@ -42,6 +43,13 @@ async function loadStore(): Promise<InvariantFieldStore> {
 }
 
 const store = await loadStore();
+const allowedCodeLensCommits = new Set(
+  store.snapshots.map((snapshot) => snapshot.commit),
+);
+const currentCommit = store.snapshots.at(-1)?.commit;
+if (!currentCommit) {
+  throw new Error('The Invariant Field store contains no snapshots.');
+}
 const frontendBuild = await Bun.build({
   entrypoints: [join(toolRoot, 'app.ts')],
   target: 'browser',
@@ -140,6 +148,13 @@ const server = Bun.serve({
   },
   fetch(request) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/code') {
+      return CodeLens.Class.response(request, {
+        repositoryRoot,
+        currentCommit,
+        allowedCommits: allowedCodeLensCommits,
+      });
+    }
     const snapshotMatch = /^\/api\/snapshots\/(\d+)$/.exec(url.pathname);
     if (snapshotMatch) return snapshotResponse(Number(snapshotMatch[1]));
     return new Response('File not found.', { status: 404 });

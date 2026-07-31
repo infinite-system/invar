@@ -44,7 +44,7 @@ if ! "$bunx" vue-tsc --noEmit -p tools/invariant-field-v2/tsconfig.json \
 fi
 rm -f /tmp/conventions-gate-field-v2-tsc.$$.log
 
-# 0.2) FIELD-V2 SOURCE SHAPE: the migrated frontend is exactly five TypeScript SFCs and carries
+# 0.2) FIELD-V2 SOURCE SHAPE: the migrated frontend is exactly six TypeScript SFCs and carries
 #      no JavaScript source. Check both sides of each matcher before trusting the real tree.
 if ! printf '%s\n' '<script setup lang="ts">' | grep -qF '<script setup lang="ts">' ||
   printf '%s\n' '<script setup>' | grep -qF '<script setup lang="ts">'; then
@@ -57,12 +57,13 @@ field_v2_single_file_components=(
   tools/invariant-field-v2/ui/FieldView.vue
   tools/invariant-field-v2/ui/RecordList.vue
   tools/invariant-field-v2/ui/RankDisplay.vue
+  tools/invariant-field-v2/ui/RecordLens.vue
 )
 field_v2_single_file_component_count=$(
   find tools/invariant-field-v2/ui -maxdepth 1 -name '*.vue' -type f | wc -l
 )
 if [ "$field_v2_single_file_component_count" -ne "${#field_v2_single_file_components[@]}" ]; then
-  echo "CONVENTIONS FAIL: field-v2 must contain exactly five UI SFCs, found ${field_v2_single_file_component_count}"
+  echo "CONVENTIONS FAIL: field-v2 must contain exactly six UI SFCs, found ${field_v2_single_file_component_count}"
   fail=1
 fi
 for field_v2_single_file_component in "${field_v2_single_file_components[@]}"; do
