@@ -96,7 +96,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
 ## ARCHITECTURE-HYGIENE (36)
-- #422 [verification-field-panelheading-rot](.invar/tasks/active/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md)
+- #423 [panelheading-rot-remainder-sweep](.invar/tasks/active/423-panelheading-rot-remainder-sweep/task-423-panelheading-rot-remainder-sweep.md)
 - #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/active/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
@@ -137,7 +137,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 152 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 153 — full log: project.tasks-completed.md)
+- #422 [verification-field-panelheading-rot](.invar/tasks/completed/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md) — ea808dcb — Repointed the three PanelHeading-rotted records to PanelTabBar-era artifacts; UI geometry record re-derived. Contract-only; checker green. Bycatch converted to #423 (class-closing sweep) before landing.
 - #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 - #419 [field-v2-opus-synthesis](.invar/tasks/completed/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md) — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate
 - #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
@@ -152,4 +153,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #402 [invar-monitoring-plugin](.invar/tasks/completed/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md) — dae7fba9 — Invar Monitoring plugin: delta CPU, heap vs RSS, file ledger, per-plugin render load
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/completed/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md) — 79b325ea — tasks dashboard idle cost painted-priced: hidden panes at rest on every hide path; visible tick scales with painted rows (2.40->0.07 pts)
 - #390 [left-sidebar-proportional-bound](.invar/tasks/completed/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md) — 181936b7 — both docks bounded: editor is the widest actor at every geometry
-- #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)

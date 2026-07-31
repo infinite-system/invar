@@ -365,47 +365,44 @@ or Close, then one two-row projection determines the displayed segments and the 
 activate them. The upper splitter row contains editor actions, a padded draggable span, and panel
 controls. The lower row contains closable container tabs and container Add.
 
-**Scope:** `PanelHeading`, the panel-level separator bar and generic headed panel cells in
-`RootView`, and the `PanelAddPopup` adapter. The contents-list row controls and status-bar buttons
-are outside this rule.
+**Scope:** `PanelTabBar`, the bottom-panel splitter and content-container tab rows in `RootView`,
+and the `PanelAddPopup` adapter. The contents-list row controls and status-bar buttons are outside
+this rule.
 
 **Mechanism:** `PanelTabBar.project` reserves the upper row's right controls and one drag cell before
 it admits whole three-cell editor actions contributed through `CommandRegistry.actionsForSurface`.
 It separately projects lower-row container tabs and container Add. It returns both rows' paint and
-hit segments with the action, tab-close, drag, and control rectangles.
-`PanelHeading.project` clips its optional title around the requested right-aligned
-control segments and returns their exact half-open column ranges, semantic glyph slots, tooltip
-labels, and `StyledText`; `controlSegmentAtColumn` resolves pointer input and hover only from those
-ranges. RootView retains both projections and points the shared `Tooltip` at each segment. Hover
-uses `palette.cursorLine`; Close uses `palette.fg`, not `palette.error`. Container Add opens the
-shared bounded list for outer containers. Pane Add opens the same popup host for Terminal, AI Agent
-(Claude), and Invar Agent windows in the active terminal container. Expand toggles the host layout
-override, and Close hides the whole panel without disposing its contents. Editor actions dispatch
-by command id. A pane Close removes only that owned content.
+hit segments with the action, tab-close, drag, and control rectangles. It clips each container label
+before it appends the close glyph, so narrow paint and hit bounds stay identical. Its `*AtColumn`
+methods resolve pointer input only from the returned half-open ranges. `RootView` retains the one
+projection, paints its four text segments, and points the shared `Tooltip` at each hovered action or
+control. Hover uses `palette.cursorLine`; Close uses `palette.fg`, not `palette.error`. Container Add
+opens the shared bounded list for outer containers. Pane Add opens the same popup host for Terminal,
+AI Agent (Claude), and Invar Agent windows in the active terminal container. Expand toggles the host
+layout override, and Close hides the whole panel without disposing its contents. Editor actions
+dispatch by command id. A container-tab Close removes the projected space by identifier.
 
 **Generates:** Editor buttons followed by an always-present drag segment and stable panel actions;
-close-only pane headings that survive cell resizing; identical paint and pointer boundaries;
+closable content-container tabs that survive cell resizing; identical paint and pointer boundaries;
 tooltips and hover highlights for every control; one shared dropdown implementation; distinct
-whole-panel and individual-pane close actions.
+whole-panel and content-container close actions.
 
 **Evidence:** `src/modules/ui/PanelTabBar.ts`; `src/modules/ui/PanelTabBar.test.ts`;
-`src/modules/ui/PanelHeading.ts`; `src/modules/ui/PanelAddPopup.ts`;
-`src/modules/ui/RootView.ts`; `src/modules/ui/PanelHeading.test.ts`;
+`src/modules/ui/PanelAddPopup.ts`; `src/modules/ui/RootView.ts`;
 `src/modules/ui/PanelAddPopup.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
 
 **Impossible if true:** A zero-width drag segment; an editor action surviving while the drag segment
-disappears; a painted control column invoking a neighboring action; a narrow heading
+disappears; a painted control column invoking a neighboring action; a narrow tab row
 leaving an invisible clickable control; Add reimplementing popup placement or row-hit math; Close
-targeting whichever content happens to be active instead of the headed region; a hovered control
-changing an un-hovered sibling; Close painting in the theme error color.
+targeting whichever content happens to be active instead of the projected tab identifier; a hovered
+control changing an un-hovered sibling; Close painting in the theme error color.
 
 **Verification:** `bun test src/modules/ui/PanelTabBar.test.ts
-src/modules/ui/PanelHeading.test.ts
 src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-07-31
 
 ### Panel content order is one persisted sequence
 
