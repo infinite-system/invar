@@ -6,7 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (18)
+## USER-DIRECTED (23)
+- #419 [field-v2-opus-synthesis](.invar/tasks/active/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md)
+- #418 [field-v2-code-lens-explorer](.invar/tasks/active/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md)
+- #417 [field-v2-3d-field-timeline-playout](.invar/tasks/active/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md)
+- #416 [field-v2-design-language-research](.invar/tasks/active/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md)
+- #415 [field-v2-foundation-vue-sfc](.invar/tasks/active/415-field-v2-foundation-vue-sfc/task-415-field-v2-foundation-vue-sfc.md)
 - #412 [monitoring-lsp-cpu-profile](.invar/tasks/active/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
