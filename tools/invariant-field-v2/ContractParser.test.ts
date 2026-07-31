@@ -298,6 +298,67 @@ describe('canonical contract parser', () => {
     ]);
   });
 
+  // invariant: One commit supplies each snapshot (tools/invariant-field-v2/invariant-field.invariants.md)
+  test('keeps working-tree contract text out of the HEAD snapshot', () => {
+    const scratchRepository = mkdtempSync(
+      join(tmpdir(), 'invariant-field-snapshot-source-'),
+    );
+    const runGitFixture = (...argumentsList: string[]) =>
+      Bun.spawnSync({
+        cmd: ['git', ...argumentsList],
+        cwd: scratchRepository,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+    try {
+      writeFileSync(
+        join(scratchRepository, 'fixture.invariants.md'),
+        canonicalContract(),
+      );
+      writeFileSync(
+        join(scratchRepository, 'fixture.ts'),
+        `// ${'invariant'}: Reality record (fixture.invariants.md)\n`,
+      );
+      expect(runGitFixture('init').exitCode).toBe(0);
+      expect(runGitFixture('add', '.').exitCode).toBe(0);
+      expect(
+        runGitFixture(
+          '-c',
+          'user.name=Field fixture',
+          '-c',
+          'user.email=field-fixture@example.test',
+          'commit',
+          '-m',
+          'add fixture',
+        ).exitCode,
+      ).toBe(0);
+      writeFileSync(
+        join(scratchRepository, 'fixture.invariants.md'),
+        canonicalContract().replace(
+          '### Reality record',
+          '### Working tree record',
+        ),
+      );
+
+      const snapshot =
+        buildInvariantFieldStore(scratchRepository).snapshots.at(-1)!;
+
+      expect(
+        readFileSync(join(scratchRepository, 'fixture.invariants.md'), 'utf8'),
+      ).toContain('### Working tree record');
+      expect(snapshot.records.map((record) => record.name)).toContain(
+        'Reality record',
+      );
+      expect(snapshot.records.map((record) => record.name)).not.toContain(
+        'Working tree record',
+      );
+      expect(snapshot.annotationCount).toBe(1);
+      expect(snapshot.orphanCount).toBe(0);
+    } finally {
+      rmSync(scratchRepository, { recursive: true });
+    }
+  });
+
   test('keeps an exact dead citation unresolved', () => {
     const scratchRepository = mkdtempSync(
       join(tmpdir(), 'invariant-field-dead-citation-'),
@@ -361,26 +422,13 @@ describe('canonical contract parser', () => {
     }
   });
 
-  test('executes only bounded read-only verification on the current tree', () => {
+  test('keeps snapshot verification citation-only', () => {
     const record = parseContract('fixture.invariants.md', canonicalContract())
       .records[0]!;
     record.fields.Verification =
       '`grep -q "Invariance Field" tools/invariant-field-v2/README.md`';
-    expect(verificationMode(record, repositoryRoot, true)).toBe(
-      'executed-pass',
-    );
-    record.fields.Verification =
-      '`grep -q "not present in the guide" tools/invariant-field-v2/README.md`';
-    expect(verificationMode(record, repositoryRoot, true)).toBe(
-      'executed-fail',
-    );
-    record.fields.Verification =
-      '`bun test tools/invariant-field-v2/ContractParser.test.ts`';
-    expect(verificationMode(record, repositoryRoot, true)).toBe(
-      'citation-only',
-    );
-    expect(verificationMode(record, repositoryRoot, false)).toBe(
-      'citation-only',
-    );
+    expect(verificationMode(record)).toBe('citation-only');
+    record.fields.Verification = '';
+    expect(verificationMode(record)).toBe('missing');
   });
 });

@@ -8,8 +8,12 @@ the finding is against this file.
 
 ```
 A scanner that writes contracts measures itself
-  ├─► A bounded read is the only verification the instrument runs
+  ├─► Snapshot verification never crosses its commit
   └─► An idle instrument does no work
+
+One commit supplies each snapshot
+  ├─► Snapshot verification never crosses its commit
+  └─► Rank depends only on the contract set and its history
 
 Rank depends only on the contract set and its history
   ├─► The rank weights are normalized and sum to one
@@ -29,11 +33,16 @@ Design tokens are the only source of colour and timing
 
 Import-style references:
 
-- [A bounded read is the only verification the instrument runs][bounded-read]
+- [Snapshot verification never crosses its commit][snapshot-verification]
   and [An idle instrument does no work][idle] are the two shapes the
   read-only reality takes: one bounds what the instrument may execute, the
   other bounds what it may do while nobody asks. Both stand on
   [A scanner that writes contracts measures itself][no-write].
+- [One commit supplies each snapshot][one-commit] keeps contract text,
+  annotations, evidence, verification, and code lens source in one repository
+  world. [Rank depends only on the contract set and its history][pure] and
+  [Snapshot verification never crosses its commit][snapshot-verification]
+  both stand on that source boundary.
 - [The rank weights are normalized and sum to one][weights] and
   [A renamed record keeps its identity][identity] are what make
   [Rank depends only on the contract set and its history][pure] usable rather
@@ -75,24 +84,26 @@ instrument met it three times:
 ### An honest measurement
 
 **Members:** [A scanner that writes contracts measures itself][no-write] ·
-[A bounded read is the only verification the instrument runs][bounded-read] ·
+[One commit supplies each snapshot][one-commit] ·
+[Snapshot verification never crosses its commit][snapshot-verification] ·
 [Rank depends only on the contract set and its history][pure].
 
 **Guarantee:** What the field shows is a property of the repository, not a
 property of the instrument or of the machine it runs on.
 
-**Mechanism of conjunction:** The scanner never writes the text it reads, it
-never executes anything that could change that text, and the rank folds only
-parsed text and commit metadata. The three together close every path by which
-the instrument's own state could reach its output.
+**Mechanism of conjunction:** The scanner never writes the text it reads. One
+commit supplies every snapshot input. Verification stays citation-only, and
+the rank folds only parsed text and commit metadata. The four together close
+every path by which another repository world could reach the output.
 
-**Breaks if:** The scanner repairs a record, a verification command gains a
-pipe or a redirection, or a rank component reads a clock, a machine path, or a
-random source.
+**Breaks if:** The scanner repairs a record, reads one HEAD input from the
+working tree, executes a record command against another checkout state, or a
+rank component reads a clock, a machine path, or a random source.
 
 ### A readable history
 
-**Members:** [Rank depends only on the contract set and its history][pure] ·
+**Members:** [One commit supplies each snapshot][one-commit] ·
+[Rank depends only on the contract set and its history][pure] ·
 [A renamed record keeps its identity][identity] ·
 [Rot moves a record outward only][rot] ·
 [R is an asymptote no record reaches][asymptote].
@@ -153,19 +164,21 @@ differently from any other.
 ## The generated system
 
 Because the scanner may only read, the instrument can be pointed at itself
-without the measurement becoming circular. Because rank is a pure fold over
-text and commits, the same repository always yields the same field, so the
-timeline is evidence rather than animation. Because rot has one direction and
-R is unreachable, the field's one spatial channel — distance — carries a
-single, open-ended reading. Because one fold, one radius, and one token table
-serve every surface, the rail, the field, the lens, and the timeline are views
-of one state rather than four programs that agree by luck.
+without the measurement becoming circular. Because one commit supplies every
+snapshot input and rank is a pure fold over text and commits, the same
+repository always yields the same field. The timeline is evidence rather than
+animation. Because rot has one direction and R is unreachable, the field's one
+spatial channel — distance — carries a single, open-ended reading. Because one
+fold, one radius, and one token table serve every surface, the rail, the field,
+the lens, and the timeline are views of one state rather than four programs
+that agree by luck.
 
 The last composition is the reason this contract exists at all: an instrument
 that cannot measure itself is asking its users to trust a claim it refuses to
 test.
 
 [no-write]: invariant-field.invariants.md#a-scanner-that-writes-contracts-measures-itself
+[one-commit]: invariant-field.invariants.md#one-commit-supplies-each-snapshot
 [pure]: invariant-field.invariants.md#rank-depends-only-on-the-contract-set-and-its-history
 [asymptote]: invariant-field.invariants.md#r-is-an-asymptote-no-record-reaches
 [weights]: invariant-field.invariants.md#the-rank-weights-are-normalized-and-sum-to-one
@@ -173,6 +186,6 @@ test.
 [focus]: invariant-field.invariants.md#one-focus-fold-serves-every-surface
 [same-radius]: invariant-field.invariants.md#both-field-views-place-a-record-at-the-same-radius
 [tokens]: invariant-field.invariants.md#design-tokens-are-the-only-source-of-colour-and-timing
-[bounded-read]: invariant-field.invariants.md#a-bounded-read-is-the-only-verification-the-instrument-runs
+[snapshot-verification]: invariant-field.invariants.md#snapshot-verification-never-crosses-its-commit
 [idle]: invariant-field.invariants.md#an-idle-instrument-does-no-work
 [identity]: invariant-field.invariants.md#a-renamed-record-keeps-its-identity
