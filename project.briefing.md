@@ -4,6 +4,44 @@
 
 ### OPERATIVE STATE
 
+RESUME ANCHOR 22 (2026-07-31 ~16:40 EDT — written at CHECKPOINT, pre-compaction)
+
+LANES: one builder lane #428 (fold-dense count-based fix) is READY at
+commit 068e8aa2; its combined-tree gate is RUNNING (log
+tmp/gate-428.log; read GATE_EXIT, land via land.sh with GATE_LOG on 0;
+the known flake IS what #428 fixes, so a fold-dense red on the OLD
+predicate cannot occur — any red is real). After landing: run
+write-active, commit views.
+
+OPEN USER QUESTION (asked, unanswered): #430 bottom-panel span. My own
+PTY probe (tmp/probe-430-preset-spans.ts, mouse kind press/release is
+required — down/up silently no-ops) proved: in Centered panel both
+docks end at row 19 and the freed area becomes primaryDockRemainder +
+rightDockRemainder while bottomPanel keeps editor width 54/120.
+Default has the same on the right side only. Asked the user: fix
+Centered only, or apply dock-yields-to-panel in Default's right side
+too? Task #430 folder is DRAFTED IN CONTEXT ONLY (user rejected the
+early dispatch — they wanted the probe first; the folder does NOT
+exist on disk). On answer: file #430 with the probe table as evidence,
+brief per the invariant "a dock that ends at the panel yields its
+columns to the panel below".
+
+TODAY'S LANDINGS (all on main): 414,422,412,423,424,425,421,426,388,
+395,379,382,391,429,427 — see project.tasks-completed.md. #428 in
+flight. User-directed queue: 12 held items remain in
+project.active-tasks.md.
+
+WATCHERS: fleet-watch Monitor b5j7xg9gf (liveness = heartbeat file
+-mmin -3, NEVER TaskList — family 12). Crons: hourly :07 + sweep :37,
+both live this session. Re-arm set after restart: Monitor + both crons
+(conductor SKILL.md verbatim).
+
+STEER RULES: steer.sh only (landed-proof in builder's own session
+record); relaunch.sh for dead lanes (resume --last / --continue).
+Gate rules: read GATE_EXIT from the log, never wrapper exit; serial
+landings; overlap-check with merge-base; contract-only landings use
+GATE_OVERRIDE with written reason.
+
 DAY CHAIN 2026-07-31 (all landed, fleet idle): #414 354d1527,
 #422 ea808dcb, #412 22e667f2 (LSP CPU rows), #423 e92011c0, #424
 41715591 (ten condition-wait fixes; gates stopped flaking), #425
