@@ -1,0 +1,15 @@
+{
+  "task": 417,
+  "slug": "field-v2-3d-field-timeline-playout",
+  "branch": "fleet/417-field-v2-3d-field-timeline-playout",
+  "worktree": ".invar/worktrees/417-field-v2-3d-field-timeline-playout",
+  "tmuxSession": "invar/417-field-v2-3d-field-timeline-playout",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-417-field-v2-3d-field-timeline-playout.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "9a99eb2c35b8a6eb623c302e0a7b00a8e4650295",
+  "startedAt": "2026-07-31T04:01:40-04:00"
+}

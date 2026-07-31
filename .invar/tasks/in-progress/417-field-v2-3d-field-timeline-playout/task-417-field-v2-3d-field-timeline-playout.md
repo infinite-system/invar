@@ -1,7 +1,7 @@
 # Task 417 — Field v2: 3D field, polished 2D, timeline playout
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
