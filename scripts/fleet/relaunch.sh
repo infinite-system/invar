@@ -82,7 +82,10 @@ fi
 task_folder_name="$1"
 session_name="invar/${task_folder_name}"
 task_directory=""
-for state_directory in in-progress active; do
+relaunch_states="in-progress active"
+# Closed lanes revive only deliberately (steer.sh passes STEER_REVIVE=1).
+[ "${STEER_REVIVE:-0}" = "1" ] && relaunch_states="in-progress active completed retired"
+for state_directory in $relaunch_states; do
   candidate="${repository_root}/.invar/tasks/${state_directory}/${task_folder_name}"
   [ -d "$candidate" ] && { task_directory="$candidate"; break; }
 done

@@ -81,8 +81,13 @@ if ! tmux has-session -t "$session_name" 2>/dev/null; then
   # resumes the builder's own conversation first (relaunch.sh: codex resume
   # --last / claude --continue), then delivers. The steer ritual subsumes
   # recovery, so nothing depends on the conductor remembering relaunch.sh.
-  # ONLY in-progress: steering must never resurrect a landed/retired lane.
-  if [ -d ".invar/tasks/in-progress/${task_folder_name}" ]; then
+  # Auto-restore follows the RECORDED TASK STATE: in-progress restores
+  # automatically; a closed lane (completed/retired) restores only under
+  # STEER_REVIVE=1 — a closed-lane steer is usually a typo, and the default
+  # must fail loud, not guess. Deliberate post-landing follow-ups are
+  # legitimate (the worktree may be gone; relaunch fails loudly on that
+  # independently).
+  if [ -d ".invar/tasks/in-progress/${task_folder_name}" ] || [ "${STEER_REVIVE:-0}" = "1" ]; then
     echo "steer: session '${session_name}' is gone and the task is in-progress — auto-restoring its conversation"
     bash "$(dirname "$0")/relaunch.sh" "$task_folder_name" || {
       echo "steer: FAILED — auto-restore failed; relaunch by hand" >&2
@@ -96,7 +101,7 @@ if ! tmux has-session -t "$session_name" 2>/dev/null; then
       fi
     done
   else
-    echo "steer: REFUSING — no tmux session '$session_name' and the task is not in-progress (never resurrect a closed lane)" >&2
+    echo "steer: REFUSING — no tmux session '$session_name' and the task is not in-progress. A closed-lane steer is usually a typo; if the follow-up is deliberate, re-run with STEER_REVIVE=1." >&2
     exit 3
   fi
 fi
