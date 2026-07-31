@@ -1,6 +1,6 @@
 # #388 — go to line and wrap line get keyboard shortcuts
 
-State: IN-PROGRESS
+State: COMPLETED — 59d28c7a — Alt+G/Alt+Z registered, discoverable, driven; hints follow effective bindings. Bycatch (welcome Ctrl+P mislabel) already owned by #354 — no new task.
 Priority: user-directed
 Engine: codex
 Environment: linux
