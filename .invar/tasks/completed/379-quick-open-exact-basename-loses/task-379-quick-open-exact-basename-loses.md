@@ -1,6 +1,6 @@
 # #379 — quick open ranks a sibling above an exact basename match
 
-State: IN-PROGRESS
+State: COMPLETED — 0ed73fa8 — Greedy-prefix scoring diagnosed with printouts; tier rule landed; smoke ratcheted. Bycatch converted to #427 before landing.
 Priority: user-directed
 Engine: codex
 Environment: linux
