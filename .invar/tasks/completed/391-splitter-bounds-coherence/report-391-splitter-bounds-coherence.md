@@ -100,7 +100,8 @@ No sibling layout record was missed.
 - `git diff --check` and committed-tree check: pass.
 
 The brief prohibited the full merge gate. The pre-commit hook started it automatically, so I used
-its documented `SKIP_GATE=1` commit bypass after the focused final pass.
+its documented `SKIP_GATE=1` commit bypass after the focused final pass. I stopped the remaining
+hook process.
 
 ## Bycatch
 
