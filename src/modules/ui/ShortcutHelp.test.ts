@@ -52,6 +52,10 @@ describe('ShortcutHelp', () => {
     const quitRow = bindingRowFor(rows, 'app.quit');
     expect(quitRow?.label).toBe('Application: Quit');
     expect(quitRow?.chordLabel.length).toBeGreaterThan(0);
+    expect(bindingRowFor(rows, 'editor.goToLine')?.chordLabel).toBe('Alt+G');
+    expect(bindingRowFor(rows, 'view.toggleWordWrap')?.chordLabel).toBe(
+      'Alt+Z',
+    );
   });
 
   test('the sheet lists itself — its own open chord is a row', () => {
