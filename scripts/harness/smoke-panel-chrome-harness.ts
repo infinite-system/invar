@@ -2,7 +2,8 @@
 // Drive the mixed workspace-tab and editor-action row through its keyboard and mouse paths.
 // Run: bun scripts/harness/smoke-panel-chrome-harness.ts
 // ALL-PASS means tabs survive when editor actions truncate, both action shortcuts work,
-// wide action buttons use their painted geometry, and all panel controls still work.
+// their tooltips show effective chords, wide buttons use their painted geometry, and all panel
+// controls still work.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -390,6 +391,34 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         status.wordWrap === false && status.goToLineOpen === false,
         `${columns}-column editor-action effects start absent before clicks`,
       );
+      const expectedTooltipByCommandIdentifier = new Map([
+        ['view.toggleWordWrap', 'View: Toggle Word Wrap (Alt+Z)'],
+        ['editor.goToLine', 'Editor: Go to Line (Alt+G)'],
+      ]);
+      for (const action of initialTabBar.editorActions) {
+        const expectedTooltip = expectedTooltipByCommandIdentifier.get(
+          action.commandId,
+        );
+        if (!expectedTooltip) continue;
+        const actionColumn =
+          action.startColumn +
+          Math.floor((action.endColumnExclusive - action.startColumn) / 2);
+        driver.sendMouse({
+          kind: 'move',
+          column: actionColumn,
+          row: initialTabBar.row,
+          button: 'none',
+        });
+        const tooltipSnapshot = await driver.awaitGridCondition(
+          `${columns}-column ${action.commandId} tooltip shows ${expectedTooltip}`,
+          (candidate) => candidate.findText(expectedTooltip) !== null,
+          5_000,
+        );
+        HarnessSmoke.Class.requireCondition(
+          tooltipSnapshot.findText(expectedTooltip) !== null,
+          `${columns}-column ${action.commandId} tooltip shows its effective chord`,
+        );
+      }
       clickSegment(driver, initialTabBar.row, initialTabBar.editorActions[0]!);
       await HarnessSmoke.Class.awaitStatus(
         driver,

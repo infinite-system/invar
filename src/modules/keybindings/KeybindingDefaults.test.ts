@@ -431,6 +431,29 @@ test('Alt+G opens go-to-line without taking the Git chords', () => {
         binding.action === 'editor.goToLine' && binding.chord?.ctrl === true,
     ),
   ).toBe(false);
+  expect(registry.bindingHint('editor.goToLine', 'editor')).toBe('Alt+G');
+});
+
+test('Alt+Z toggles word wrap through the panel command action', () => {
+  const registry = new KeybindingRegistry.Class();
+  registry.registerLayer(
+    'canonical',
+    KeybindingDefaults.Class.canonicalBindings,
+  );
+  expect(
+    registry.resolve(
+      {
+        name: 'z',
+        ctrl: false,
+        shift: false,
+        option: true,
+        super: false,
+      },
+      'editor',
+      0,
+    ).action,
+  ).toBe('view.toggleWordWrap');
+  expect(registry.bindingHint('view.toggleWordWrap', 'editor')).toBe('Alt+Z');
 });
 
 test('the popup search field gets the same table minus the keys the popup owns', () => {

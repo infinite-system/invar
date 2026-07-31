@@ -2256,8 +2256,6 @@ class $Bootstrap {
         if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.performRedo();
       },
-      'editor.toggleWordWrap': () =>
-        workspaceSet.active.editor.toggleWordWrap(),
       'editor.moveLineUp': () => workspaceSet.active.editor.moveLineUp(),
       'editor.moveLineDown': () => workspaceSet.active.editor.moveLineDown(),
       'editor.duplicateLine': () => workspaceSet.active.editor.duplicateLine(),

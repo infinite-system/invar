@@ -54,6 +54,19 @@ function shortcutSheetVisibleRange(snapshot: HarnessSnapshot.Model): {
   return null;
 }
 
+function shortcutBindingIsVisible(
+  snapshot: HarnessSnapshot.Model,
+  actionLabel: string,
+  chordLabel: string,
+): boolean {
+  return snapshot
+    .textRows()
+    .some(
+      (rowText) =>
+        rowText.includes(actionLabel) && rowText.includes(chordLabel),
+    );
+}
+
 async function scrollUntilVisible(
   driver: PtyTestDriver.Model,
   marker: string,
@@ -216,10 +229,20 @@ try {
     snapshot.findText('Quit') !== null,
     'sheet shows the Quit action',
   );
+  snapshot = await scrollUntilVisible(driver, 'Go to Line');
+  HarnessSmoke.Class.requireCondition(
+    shortcutBindingIsVisible(snapshot, 'Go to Line', 'Alt+G'),
+    'Go to Line row shows its effective Alt+G binding',
+  );
   snapshot = await scrollUntilVisible(driver, 'Go to File');
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('Ctrl+P') !== null,
     'Go to File row shows its effective Ctrl+P binding',
+  );
+  snapshot = await scrollUntilVisible(driver, 'Toggle Word Wrap');
+  HarnessSmoke.Class.requireCondition(
+    shortcutBindingIsVisible(snapshot, 'Toggle Word Wrap', 'Alt+Z'),
+    'Toggle Word Wrap row shows its effective Alt+Z binding',
   );
   await scrollToTop(driver, statusPath);
   await scrollUntilVisible(driver, 'Ctrl+Shift+H');
