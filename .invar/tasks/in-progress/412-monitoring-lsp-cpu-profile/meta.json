@@ -1,0 +1,15 @@
+{
+  "task": 412,
+  "slug": "monitoring-lsp-cpu-profile",
+  "branch": "fleet/412-monitoring-lsp-cpu-profile",
+  "worktree": ".invar/worktrees/412-monitoring-lsp-cpu-profile",
+  "tmuxSession": "invar/412-monitoring-lsp-cpu-profile",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-412-monitoring-lsp-cpu-profile.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "2661c6e8dec8644b49fc36dff9ef39217b1d475b",
+  "startedAt": "2026-07-31T07:31:24-04:00"
+}

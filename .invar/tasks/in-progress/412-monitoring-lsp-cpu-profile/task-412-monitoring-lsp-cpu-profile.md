@@ -1,11 +1,11 @@
 # Task 412 — Monitoring plugin: LSP CPU profile rows (any server, not just tsgo)
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: medium
+Effort: high
 
 ## User request (2026-07-30 ~18:2x, verbatim)
 
