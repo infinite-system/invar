@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #420 [terminal-stage-stale-expanded-result](.invar/tasks/in-progress/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md)  [building]
-  `tmux attach -t invar/420-terminal-stage-stale-expanded-result`
+## IN-PROGRESS (1)
 - #419 [field-v2-opus-synthesis](.invar/tasks/in-progress/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md)  [building]
   `tmux attach -t invar/419-field-v2-opus-synthesis`
 
@@ -139,7 +137,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 149 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 150 — full log: project.tasks-completed.md)
+- #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 - #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
 - #417 [field-v2-3d-field-timeline-playout](.invar/tasks/completed/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md) — 508616e9 — Field v2: exact 2D + constrained 3D + timeline playout (one geometry generator; no ambient loop)
 - #416 [field-v2-design-language-research](.invar/tasks/completed/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md) — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)
@@ -154,4 +153,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #389 [tasks-watch-overpaints-phantom-items](.invar/tasks/completed/389-tasks-watch-overpaints-phantom-items/task-389-tasks-watch-overpaints-phantom-items.md) — b982c493 — tasks watch: no phantom rows after shrink (autowrap tails clipped to live width)
 - #387 [splitter-slim-vertical-and-left-pad](.invar/tasks/completed/387-splitter-slim-vertical-and-left-pad/task-387-splitter-slim-vertical-and-left-pad.md) — 69ca67ed — slim splitters on both axes everywhere; pad cell before the bottom drag span
 - #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/completed/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md) — 157dda25 — theme glyphs survive capability negotiation (OSC 66 payloads decoded by the emulator)
-- #384 [quit-dialog-buttons-and-padding](.invar/tasks/completed/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md) — e6ed1b0f — quit dialog: bracketless padded buttons with theme affordances
