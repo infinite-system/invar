@@ -111,7 +111,11 @@ outward by a measured 0.0778.
 
 ## The instrument's own contract
 
-`tools/invariant-field-v2/invariant-field.invariants.md` — 3 reality-based and
+```
+tools/invariant-field-v2/invariant-field.invariants.md
+```
+
+3 reality-based and
 8 chosen records, canonical schema, checker `PASS`, `--refs` 0 problems, and no
 uncovered record: every one has an annotation at an enforcement point, with the
 two absence-enforced records annotated on the tests that guard the absence.
@@ -150,8 +154,13 @@ evidence rather than by taste:
   in `.claude/skills/invariants/`, because the schema decides which fields a
   rank may read.
 
-The sibling `tools/invariant-field-v2/invariant-field.lattice.md` carries the
-dependency map and four compositions: *An honest measurement*, *A readable
+The sibling lattice,
+
+```
+tools/invariant-field-v2/invariant-field.lattice.md
+```
+
+carries the dependency map and four compositions: *An honest measurement*, *A readable
 history*, *One instrument, not four surfaces*, and *The instrument inside its
 own field*. It also records the recurring two-owner shape this synthesis met
 three times (the filter, the token table, the field frame).

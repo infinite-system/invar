@@ -1,7 +1,7 @@
 # Task 419 — Field v2: Opus synthesis — the Invariable representation instrument
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate
 Engine: claude
 Environment: linux
 Model: opus-5
