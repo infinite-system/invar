@@ -53,6 +53,10 @@ function rankedRecord(
     incomingConnections: 1,
     outgoingConnections: 0,
     latticeMemberships: ['fixture.lattice.md#stable'],
+    incomingRecordIdentifiers: [],
+    outgoingRecordIdentifiers: [],
+    siblingRecordIdentifiers: [],
+    codeReferences: [],
     verificationMode: 'executed-pass',
     evidenceResolution: {
       referenced: 1,
@@ -123,7 +127,11 @@ const metadata: InvariantFieldMetadata = {
 describe('ivue field models', () => {
   test('RecordList state drives search and ordering', () => {
     const records = new RecordList.Class(
-      { snapshot, selectedCompositionIdentifier: '' },
+      {
+        snapshot,
+        selectedRecordIdentifier: null,
+        selectedCompositionIdentifier: '',
+      },
       () => undefined,
     );
     expect(records.recordCards[0]?.identifier).toBe('first');

@@ -51,49 +51,25 @@ const { searchQuery, selectedKind, selectedDomain, sortOrder } = recordList;
     </div>
     <p class="result-count">{{ recordList.resultCount }}</p>
     <div class="record-list">
-      <details
-        v-for="card in recordList.recordCards"
-        :id="card.elementIdentifier"
-        :key="card.identifier"
-        class="record-card"
+      <button
+        v-for="record in recordList.recordRows"
+        :id="record.elementIdentifier"
+        :key="record.identifier"
+        type="button"
+        :class="record.className"
+        @click="recordList.selectRecord(record.identifier)"
       >
-        <summary @click="recordList.selectRecord(card.identifier)">
-          <span class="rank-badge">{{ card.rank }}</span>
-          <span class="record-essence">
-            <strong>{{ card.name }}</strong>
-            <span>{{ card.essence }}</span>
-          </span>
-          <span class="record-meta">
-            <span :class="card.kindClass">{{ card.kindLabel }}</span>
-            <span>{{ card.contractPath }}</span>
-          </span>
-        </summary>
-        <dl class="record-body">
-          <div
-            v-for="field in card.fields"
-            :key="field.fieldName"
-            class="record-field"
-          >
-            <dt>{{ field.fieldName }}</dt>
-            <dd>{{ field.value }}</dd>
-          </div>
-          <div
-            v-for="composition in card.compositions"
-            :key="composition.identifier"
-            class="record-field"
-          >
-            <dt>Lattice composition</dt>
-            <dd>
-              <strong>{{ composition.name }}</strong>
-              <span>{{ composition.guarantee }}</span>
-            </dd>
-          </div>
-          <div class="record-field">
-            <dt>Rank evidence</dt>
-            <dd>{{ card.rankEvidence }}</dd>
-          </div>
-        </dl>
-      </details>
+        <span class="rank-badge">{{ record.rank }}</span>
+        <span class="record-essence">
+          <strong>{{ record.name }}</strong>
+          <span>{{ record.essence }}</span>
+        </span>
+        <span class="record-meta">
+          <span class="selected-record-label">{{ record.selectedLabel }}</span>
+          <span :class="record.kindClass">{{ record.kindLabel }}</span>
+          <span>{{ record.contractPath }}</span>
+        </span>
+      </button>
     </div>
   </section>
 </template>

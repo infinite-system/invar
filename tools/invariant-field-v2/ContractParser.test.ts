@@ -1,16 +1,25 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   parseAnnotations,
   parseContract,
   parseLatticeCompositions,
+  parseLatticeDependencies,
   recordKey,
   slugifyInvariantName,
 } from './ContractParser';
 import {
   assignStableIdentities,
+  buildInvariantFieldStore,
+  codeReferenceTargets,
   scanConnections,
   verificationMode,
 } from './RepositoryHistory';
@@ -171,6 +180,31 @@ describe('canonical contract parser', () => {
     expect(compositions[0]?.guarantee).toBe('The fixture stays repeatable.');
   });
 
+  test('resolves lattice dependency direction from stands-on prose', () => {
+    const result = parseContract('fixture.invariants.md', canonicalContract());
+    const records = new Map(
+      result.records.map((record) => [
+        recordKey(record.contractPath, record.name),
+        record,
+      ]),
+    );
+    const dependencies = parseLatticeDependencies(
+      'fixture.lattice.md',
+      `[Chosen record][chosen] stands on [Reality record][reality].
+
+[chosen]: fixture.invariants.md#chosen-record
+[reality]: fixture.invariants.md#reality-record
+`,
+      records,
+    );
+    expect(dependencies).toEqual([
+      {
+        sourceIdentifier: result.records[1]!.stableIdentifier,
+        targetIdentifier: result.records[0]!.stableIdentifier,
+      },
+    ]);
+  });
+
   test('keeps identity through one atomic rename ripple', () => {
     const previousRecord = parseContract(
       'old.invariants.md',
@@ -209,6 +243,122 @@ describe('canonical contract parser', () => {
     expect(
       connections.membershipsByRecord.get(records[0]!.stableIdentifier),
     ).toEqual(['fixture.lattice.md#stable-fixture']);
+  });
+
+  test('publishes exact dependency identities and code locations', () => {
+    const contractSource = canonicalContract().replace(
+      '**Mechanism:** One pure operation produces the result.',
+      '**Mechanism:** `tools/invariant-field-v2/ContractParser.ts:254` produces the result with [Chosen record](fixture.invariants.md#chosen-record).',
+    );
+    const records = parseContract(
+      'fixture.invariants.md',
+      contractSource,
+    ).records;
+    const connections = scanConnections(
+      new Map([['fixture.invariants.md', contractSource]]),
+      records,
+    );
+    expect(
+      connections.outgoingIdentifiersByRecord.get(records[0]!.stableIdentifier),
+    ).toEqual([records[1]!.stableIdentifier]);
+    expect(
+      codeReferenceTargets('mechanism', records[0]!.fields.Mechanism ?? ''),
+    ).toEqual([
+      {
+        source: 'mechanism',
+        label: 'tools/invariant-field-v2/ContractParser.ts:254',
+        path: 'tools/invariant-field-v2/ContractParser.ts',
+        line: 254,
+      },
+    ]);
+    expect(
+      codeReferenceTargets(
+        'evidence',
+        '`tools/invariant-field-v2/ui/InvariantField.vue:1`, `README.md`, and `missing.ts`',
+      ),
+    ).toEqual([
+      {
+        source: 'evidence',
+        label: 'tools/invariant-field-v2/ui/InvariantField.vue:1',
+        path: 'tools/invariant-field-v2/ui/InvariantField.vue',
+        line: 1,
+      },
+      {
+        source: 'evidence',
+        label: 'README.md',
+        path: 'README.md',
+        line: 1,
+      },
+      {
+        source: 'evidence',
+        label: 'missing.ts',
+        path: 'missing.ts',
+        line: 1,
+      },
+    ]);
+  });
+
+  test('keeps an exact dead citation unresolved', () => {
+    const scratchRepository = mkdtempSync(
+      join(tmpdir(), 'invariant-field-dead-citation-'),
+    );
+    mkdirSync(join(scratchRepository, 'src/modules/text'), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(scratchRepository, 'fixture.invariants.md'),
+      canonicalContract().replace(
+        '`tools/invariant-field-v2/ContractParser.test.ts`',
+        '`src/modules/editor/TextDocument.ts` and `TextDocument.ts`',
+      ),
+    );
+    writeFileSync(
+      join(scratchRepository, 'src/modules/text/TextDocument.ts'),
+      'export class TextDocument {}\n',
+    );
+    const runGitFixture = (...argumentsList: string[]) =>
+      Bun.spawnSync({
+        cmd: ['git', ...argumentsList],
+        cwd: scratchRepository,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+    try {
+      expect(runGitFixture('init').exitCode).toBe(0);
+      expect(runGitFixture('add', '.').exitCode).toBe(0);
+      expect(
+        runGitFixture(
+          '-c',
+          'user.name=Field fixture',
+          '-c',
+          'user.email=field-fixture@example.test',
+          'commit',
+          '-m',
+          'add fixture',
+        ).exitCode,
+      ).toBe(0);
+      const store = buildInvariantFieldStore(scratchRepository);
+      const realityRecord = store.snapshots
+        .at(-1)!
+        .records.find((record) => record.name === 'Reality record')!;
+      expect(
+        realityRecord.codeReferences.map((reference) => ({
+          path: reference.path,
+          resolved: reference.resolved,
+        })),
+      ).toEqual([
+        {
+          path: 'src/modules/editor/TextDocument.ts',
+          resolved: false,
+        },
+        {
+          path: 'src/modules/text/TextDocument.ts',
+          resolved: true,
+        },
+      ]);
+    } finally {
+      rmSync(scratchRepository, { recursive: true });
+    }
   });
 
   test('executes only bounded read-only verification on the current tree', () => {

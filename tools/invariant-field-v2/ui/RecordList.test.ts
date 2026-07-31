@@ -10,6 +10,7 @@ describe('RecordList', () => {
           records: [],
           compositions: [],
         } as unknown as InvariantSnapshot,
+        selectedRecordIdentifier: null,
         selectedCompositionIdentifier: '',
       },
       () => undefined,
