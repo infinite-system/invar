@@ -1,0 +1,15 @@
+{
+  "task": 395,
+  "slug": "database-connect-hidden-field-focus",
+  "branch": "fleet/395-database-connect-hidden-field-focus",
+  "worktree": ".invar/worktrees/395-database-connect-hidden-field-focus",
+  "tmuxSession": "invar/395-database-connect-hidden-field-focus",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-395-database-connect-hidden-field-focus.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "1abc3683c07a783fb7a747481136b06040518e8f",
+  "startedAt": "2026-07-31T11:31:42-04:00"
+}
