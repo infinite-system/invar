@@ -108,9 +108,10 @@ Depth combines kind, falsifiability, resolved evidence, verification mode,
 status, generativity, guarded simplicity, connection density, annotation
 coverage, and survival. Orphan annotations apply outward pressure. Open the
 formula panel or a record calculation to inspect every input and weight.
-The current snapshot executes bounded `grep` and `rg` verification commands.
-Historical and broader commands stay citation-only because running them
-against the current checkout would give a false result.
+Every snapshot keeps Verification commands citation-only. Running a command
+against the current checkout would give a false result for another commit.
+The code lens reads cited source from the snapshot's commit for the same
+reason.
 
 The rail on the left holds one focus. Search, kind, contract, and composition
 all fold into one focused record set, so the rail rows and the lit field marks

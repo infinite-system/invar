@@ -51,7 +51,6 @@ interface RecordHistory {
 interface SnapshotSource {
   commit: HistoryCommit;
   files: Map<string, string>;
-  isCurrentTree: boolean;
 }
 
 interface AnnotationScan {
@@ -180,22 +179,6 @@ function applyCommitChanges(
   }
 }
 
-function currentTrackedFiles(repositoryRoot: string): Map<string, string> {
-  const paths = runGit(repositoryRoot, [
-    'ls-files',
-    '*.invariants.md',
-    '*.lattice.md',
-  ])
-    .split('\n')
-    .filter(Boolean);
-  return new Map(
-    paths.map((path) => [
-      path,
-      readFileSync(join(repositoryRoot, path), 'utf8'),
-    ]),
-  );
-}
-
 function currentCommit(repositoryRoot: string): HistoryCommit {
   const [commit, committedAt, ...subjectParts] = runGit(repositoryRoot, [
     'show',
@@ -213,6 +196,7 @@ function currentCommit(repositoryRoot: string): HistoryCommit {
   };
 }
 
+// invariant: One commit supplies each snapshot (tools/invariant-field-v2/invariant-field.invariants.md)
 function buildSnapshotSources(repositoryRoot: string): SnapshotSource[] {
   const files = new Map<string, string>();
   const snapshots: SnapshotSource[] = [];
@@ -222,22 +206,14 @@ function buildSnapshotSources(repositoryRoot: string): SnapshotSource[] {
     snapshots.push({
       commit,
       files: new Map(files),
-      isCurrentTree: false,
     });
   }
   const head = currentCommit(repositoryRoot);
   if (snapshots.at(-1)?.commit.commit !== head.commit) {
     snapshots.push({
       commit: head,
-      files: currentTrackedFiles(repositoryRoot),
-      isCurrentTree: true,
+      files: new Map(files),
     });
-  } else {
-    snapshots[snapshots.length - 1] = {
-      commit: head,
-      files: currentTrackedFiles(repositoryRoot),
-      isCurrentTree: true,
-    };
   }
   return snapshots;
 }
@@ -662,33 +638,11 @@ export function resolveEvidence(
   };
 }
 
-// invariant: A bounded read is the only verification the instrument runs (tools/invariant-field-v2/invariant-field.invariants.md)
-export function verificationMode(
-  record: InvariantRecord,
-  repositoryRoot: string,
-  executeCheapCommands: boolean,
-): VerificationMode {
+// invariant: Snapshot verification never crosses its commit (tools/invariant-field-v2/invariant-field.invariants.md)
+export function verificationMode(record: InvariantRecord): VerificationMode {
   const verification = record.fields['Verification']?.trim() ?? '';
   if (!verification) return 'missing';
-  if (!executeCheapCommands) return 'citation-only';
-  const readOnlyCommand = [...verification.matchAll(/`([^`]+)`/g)]
-    .map((match) => match[1]!.trim())
-    .find(
-      (command) =>
-        /^(?:grep|rg)\s/.test(command) &&
-        !/[;&><\n]/.test(command) &&
-        !/\$\(/.test(command) &&
-        !/(?<!\\)\|/.test(command),
-    );
-  if (!readOnlyCommand) return 'citation-only';
-  const result = Bun.spawnSync({
-    cmd: ['bash', '-lc', readOnlyCommand],
-    cwd: repositoryRoot,
-    stdout: 'pipe',
-    stderr: 'pipe',
-    timeout: 2_000,
-  });
-  return result.exitCode === 0 ? 'executed-pass' : 'executed-fail';
+  return 'citation-only';
 }
 
 function ageInDays(firstSeenAt: string, currentDate: string): number {
@@ -804,11 +758,7 @@ function buildSnapshot(
         annotations,
         pathsByBasename,
       ),
-      verificationMode: verificationMode(
-        record,
-        repositoryRoot,
-        source.isCurrentTree,
-      ),
+      verificationMode: verificationMode(record),
       evidenceResolution: resolveEvidence(record, tree),
       ageInDays: ageInDays(history.firstSeenAt, source.commit.committedAt),
       maximumAgeInDays,

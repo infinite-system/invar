@@ -1,8 +1,9 @@
-import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
 
-// invariant: A bounded read is the only verification the instrument runs (tools/invariant-field-v2/invariant-field.invariants.md)
+// invariant: Snapshot verification never crosses its commit (tools/invariant-field-v2/invariant-field.invariants.md)
+// invariant: One commit supplies each snapshot (tools/invariant-field-v2/invariant-field.invariants.md)
 import {
   createHighlighter,
   type BundledLanguage,
@@ -75,14 +76,11 @@ class $CodeLens {
         404,
       );
     }
-    const sourceResult =
-      requestedCommit === options.currentCommit
-        ? this.readCurrentSource(options.repositoryRoot, requestedPath)
-        : this.readHistoricalSource(
-            options.repositoryRoot,
-            requestedCommit,
-            requestedPath,
-          );
+    const sourceResult = this.readHistoricalSource(
+      options.repositoryRoot,
+      requestedCommit,
+      requestedPath,
+    );
     if (!sourceResult.resolved) {
       return this.jsonResponse(
         {
@@ -102,48 +100,6 @@ class $CodeLens {
       ...span,
       highlightedHtml: await this.highlight(span),
     });
-  }
-
-  static readCurrentSource(
-    repositoryRoot: string,
-    requestedPath: string,
-  ): CodeLensSourceResult {
-    const confinedPath = this.confinedPath(repositoryRoot, requestedPath);
-    if (!confinedPath.resolved) return confinedPath;
-    let realTargetPath: string;
-    try {
-      realTargetPath = realpathSync(confinedPath.absolutePath);
-    } catch {
-      return {
-        resolved: false,
-        reason: 'not-found',
-        message: 'The cited file does not resolve in the repository.',
-        path: confinedPath.path,
-      };
-    }
-    const realRepositoryRoot = realpathSync(repositoryRoot);
-    const targetRelativePath = relative(realRepositoryRoot, realTargetPath);
-    if (targetRelativePath.startsWith('..') || isAbsolute(targetRelativePath)) {
-      return {
-        resolved: false,
-        reason: 'outside-repository',
-        message: 'The cited file resolves outside the repository.',
-        path: confinedPath.path,
-      };
-    }
-    if (!statSync(realTargetPath).isFile()) {
-      return {
-        resolved: false,
-        reason: 'not-found',
-        message: 'The cited path is not a file.',
-        path: confinedPath.path,
-      };
-    }
-    return {
-      resolved: true,
-      path: confinedPath.path,
-      source: readFileSync(realTargetPath, 'utf8'),
-    };
   }
 
   static readHistoricalSource(
@@ -236,7 +192,6 @@ class $CodeLens {
     return {
       resolved: true,
       path: repositoryRelativePath.replaceAll('\\', '/'),
-      absolutePath,
     };
   }
 
@@ -324,7 +279,6 @@ type CodeLensSourceResult = CodeLensSource | CodeLensFailure;
 interface CodeLensConfinedPath {
   resolved: true;
   path: string;
-  absolutePath: string;
 }
 
 type CodeLensConfinedPathResult = CodeLensConfinedPath | CodeLensFailure;

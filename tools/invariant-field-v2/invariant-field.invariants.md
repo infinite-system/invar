@@ -59,22 +59,60 @@ places the instrument's own output back into its input, and a measurement that
 feeds itself reports its own loop instead of the thing measured.
 
 **Generates:** The read-only file access in the scanner (`git show`,
-`git ls-tree`, `git grep`, `readFileSync`); the refusal to run any
-verification command that is not a bounded read; the store written to an
-ignored `generated/` directory instead of into the tree.
+`git ls-tree`, `git grep`, `readFileSync`); the refusal to execute record
+Verification commands; the store written to an ignored `generated/`
+directory instead of into the tree.
 
 **Rejected alternatives:** Let the instrument repair a malformed record it
 parses — a self-repairing scanner reports a contract set nobody wrote.
 
 **Evidence:** `tools/invariant-field-v2/RepositoryHistory.ts` (`runGit`,
-`currentTrackedFiles`, `verificationMode` command filter);
+`buildSnapshotSources`, `verificationMode`);
 `tools/invariant-field-v2/calibrate.ts` copies a contract to a private
 temporary directory before it plants rot.
 
 **Impossible if true:** A tracked contract or lattice file changed by starting
 the server, building the store, or running the calibration.
 
-**Verification:** `grep -n "readOnlyCommand" tools/invariant-field-v2/RepositoryHistory.ts`
+**Verification:** `grep -n "function runGit" tools/invariant-field-v2/RepositoryHistory.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-31
+
+### One commit supplies each snapshot
+
+**Invariant:** If a snapshot names a commit, then its contract text,
+annotations, lattice links, evidence paths, verification state, and code lens
+source all resolve from that commit.
+
+**Scope:** Every snapshot in `buildInvariantFieldStore`, including the final
+snapshot that names `HEAD`. The uncommitted working tree is outside the
+timeline.
+
+**Mechanism:** `buildSnapshotSources` accumulates contract and lattice text
+only through `git show`. `buildSnapshot` uses the same commit for its Git tree
+and annotation scan. `verificationMode` stays citation-only, and `CodeLens`
+reads every selected source with `git show`.
+
+**Generates:** A timeline in which each point is one repository world; a HEAD
+snapshot that ignores uncommitted contract edits; code lenses that show the
+source used to rank the selected record.
+
+**Rejected alternatives:** Parse HEAD contracts from the working tree while
+scanning annotations at HEAD — one snapshot then combines two repository
+worlds and reports a rank that neither world had.
+
+**Evidence:** `tools/invariant-field-v2/RepositoryHistory.ts`
+(`buildSnapshotSources`, `buildSnapshot`);
+`tools/invariant-field-v2/ContractParser.test.ts` (working-tree snapshot
+source regression); `tools/invariant-field-v2/CodeLens.test.ts` (selected
+commit source regression).
+
+**Impossible if true:** A snapshot named for HEAD displays an uncommitted
+contract heading, or its code lens displays uncommitted source.
+
+**Verification:** `bun test tools/invariant-field-v2/ContractParser.test.ts tools/invariant-field-v2/CodeLens.test.ts`
 
 **Status:** established
 
@@ -86,10 +124,7 @@ the server, building the store, or running the calibration.
 text, then every historical snapshot they produce carries the same rank and
 the same radius for the same record.
 
-**Scope:** Every snapshot except the current one. The current snapshot also
-executes the bounded verification commands, so it additionally observes the
-working tree — that arm is named in
-[a bounded read is the only verification the instrument runs](invariant-field.invariants.md#a-bounded-read-is-the-only-verification-the-instrument-runs).
+**Scope:** Every snapshot, including the final snapshot that names `HEAD`.
 
 **Renegotiable at:** the invariant contract schema in
 `.claude/skills/invariants/` — the schema decides which fields exist, and the
@@ -280,25 +315,22 @@ channels, or a millisecond literal inside `styles.css`.
 
 **Last refined:** 2026-07-31
 
-### A bounded read is the only verification the instrument runs
+### Snapshot verification never crosses its commit
 
 **Invariant:** If a record's Verification field names a command, then the
-instrument executes it only when it is a single `grep` or `rg` invocation with
-no pipe, no redirection, no command substitution, and no separator, and only
-against the current checkout.
+snapshot reports it as citation-only and does not execute it against a
+different checkout state.
 
 **Scope:** `verificationMode` in the scanner, and the `/api/code` endpoint that
 serves source for the code lens.
 
-**Mechanism:** The command is matched against a read-only pattern before it
-runs, and it runs with a two-second timeout. Historical snapshots are never
-executed, because running today's checkout against an old record would report a
-result that never happened. The code endpoint resolves every requested path
-against the repository root and refuses anything outside it.
+**Mechanism:** `verificationMode` returns `citation-only` for every nonempty
+Verification field. The code endpoint resolves every requested path against
+the repository root, reads it from the selected commit, and refuses anything
+outside the root.
 
-**Generates:** The `executed-pass`, `executed-fail`, and `citation-only`
-verification marks; the honest half-rim for a record the instrument only cites;
-the 403 answer for a path outside the root.
+**Generates:** The honest half-rim for citation-only verification; a code lens
+that matches the snapshot; the 403 answer for a path outside the root.
 
 **Rejected alternatives:** Run each record's full Verification command — the
 instrument would become an arbitrary command runner driven by file contents.
@@ -307,10 +339,10 @@ instrument would become an arbitrary command runner driven by file contents.
 (`verificationMode`); `tools/invariant-field-v2/CodeLens.ts` path resolution;
 `tools/invariant-field-v2/CodeLens.test.ts`.
 
-**Impossible if true:** A shell pipeline executed from a contract file, or a
-successful `/api/code` read of a path above the repository root.
+**Impossible if true:** A record command runs against a different checkout
+state, or `/api/code` reads a path above the repository root.
 
-**Verification:** `grep -n "timeout: 2_000" tools/invariant-field-v2/RepositoryHistory.ts`
+**Verification:** `bun test tools/invariant-field-v2/ContractParser.test.ts tools/invariant-field-v2/CodeLens.test.ts`
 
 **Status:** established
 
