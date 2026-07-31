@@ -6,6 +6,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Splitter paint and hit testing share one geometry (src/modules/ui/ui.invariants.md)
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
+// invariant: A dock ending at the panel yields its columns (src/modules/layout/layout.invariants.md)
 // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
 // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
 // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
@@ -87,29 +88,57 @@ function layoutTopRow(
   return snapshot.rows - 1 - rectangleBottom(bottomPanel);
 }
 
-function assertPanelAlignmentGeometry(
+function assertBottomPanelGeometry(
   driver: PtyTestDriver.Model,
   status: StatusSnapshot,
   context: string,
 ): void {
-  const panelAlignment = String(status.panelAlignment);
+  const activityBar = layoutSlot(status, 'activityBar');
+  const sidebarSplitter = layoutSlot(status, 'sidebarSplitter');
   const editorCenter = layoutSlot(status, 'editorCenter');
+  const rightActivityBar = layoutSlot(status, 'rightActivityBar');
+  const bottomPanelSplitter = layoutSlot(status, 'bottomPanelSplitter');
+  const bottomPanelTabs = layoutSlot(status, 'bottomPanelTabs');
   const bottomPanel = layoutSlot(status, 'bottomPanel');
   const rightDockSplitter = layoutSlot(status, 'rightDockSplitter');
-  const expectedLeft = editorCenter.left;
-  const alignmentRight =
-    panelAlignment === 'right'
-      ? Number(status.width)
-      : rectangleRight(editorCenter);
+  const primaryDockRemainder = layoutSlot(status, 'primaryDockRemainder');
+  const rightDockRemainder = layoutSlot(status, 'rightDockRemainder');
+  const expectedLeft =
+    status.sidebarPosition === 'left' &&
+    status.primaryDockVisible === true &&
+    status.leftDockVerticalSpan === 'full-height'
+      ? editorCenter.left
+      : status.sidebarPosition === 'left'
+        ? rectangleRight(activityBar)
+        : editorCenter.left;
   const expectedRight =
-    status.rightDockVisible === true &&
-    status.rightDockVerticalSpan === 'full-height'
-      ? Math.min(alignmentRight, rightDockSplitter.left)
-      : alignmentRight;
+    status.sidebarPosition === 'left'
+      ? status.rightDockVisible === true &&
+        status.rightDockVerticalSpan === 'full-height'
+        ? rightDockSplitter.left
+        : Number(status.width) - rightActivityBar.width
+      : status.primaryDockVisible === true &&
+          status.leftDockVerticalSpan === 'full-height'
+        ? sidebarSplitter.left
+        : activityBar.width > 0
+          ? activityBar.left
+          : status.rightDockVisible === true &&
+              status.rightDockVerticalSpan === 'full-height'
+            ? rightDockSplitter.left
+            : Number(status.width) - rightActivityBar.width;
   HarnessSmoke.Class.requireCondition(
     bottomPanel.left === expectedLeft &&
-      rectangleRight(bottomPanel) === expectedRight,
-    `${context}: ${panelAlignment} alignment resolves exact slot edges ${expectedLeft}-${expectedRight}`,
+      rectangleRight(bottomPanel) === expectedRight &&
+      bottomPanelSplitter.left === expectedLeft &&
+      rectangleRight(bottomPanelSplitter) === expectedRight &&
+      bottomPanelTabs.left === expectedLeft &&
+      rectangleRight(bottomPanelTabs) === expectedRight &&
+      (status.leftDockVerticalSpan !== 'ends-at-panel' ||
+        primaryDockRemainder.width * primaryDockRemainder.height === 0) &&
+      (status.sidebarPosition !== 'left' ||
+        status.rightDockVerticalSpan !== 'ends-at-panel' ||
+        rightDockRemainder.width * rightDockRemainder.height === 0),
+    `${context}: bottom panel spans ${expectedLeft}-${expectedRight} with no absorbable dock remainder`,
   );
 
   const snapshot = driver.snapshot();
@@ -124,7 +153,7 @@ function assertPanelAlignmentGeometry(
       rightCorner !== null &&
       !['╭', '┌'].includes(leftCorner.characters) &&
       !['╮', '┐'].includes(rightCorner.characters),
-    `${context}: ${panelAlignment} slot edges stay flat in the emulator frame`,
+    `${context}: bottom-panel slot edges stay flat in the emulator frame`,
   );
 }
 
@@ -221,28 +250,6 @@ function assertDockVerticalSpanGeometry(
       ['╰', '└', '+'].includes(dockBottomCorner.characters),
     `${context}: ${slotName} ${verticalSpan} exact bottom-left border cell is painted in the emulator frame`,
   );
-}
-
-function frameSignature(snapshot: HarnessSnapshot.Model): string {
-  const cellSignatures: string[] = [];
-  for (let row = 0; row < snapshot.rows; row++) {
-    for (let column = 0; column < snapshot.columns; column++) {
-      const cell = snapshot.cell(row, column);
-      if (!cell) continue;
-      cellSignatures.push(
-        [
-          cell.characters,
-          cell.foreground,
-          cell.background,
-          cell.isBold,
-          cell.isDim,
-          cell.isUnderline,
-          cell.isInverse,
-        ].join(':'),
-      );
-    }
-  }
-  return cellSignatures.join('|');
 }
 
 function splitterPoint(region: SplitterRegion): {
@@ -483,10 +490,8 @@ async function cyclePanelAlignments(
   driver: PtyTestDriver.Model,
   statusPath: string,
   context: string,
-  assertPairwiseFrameDifferences = false,
 ): Promise<StatusSnapshot> {
   const alignmentCycle = ['center', 'right'] as const;
-  const alignmentFrameSignatures = new Map<string, string>();
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -513,22 +518,8 @@ async function cyclePanelAlignments(
       expectedAlignment,
     );
     await closeSettingsForLayoutFrame(driver, statusPath);
-    assertPanelAlignmentGeometry(driver, status, context);
-    if (assertPairwiseFrameDifferences) {
-      alignmentFrameSignatures.set(
-        String(status.panelAlignment),
-        frameSignature(driver.snapshot()),
-      );
-    }
+    assertBottomPanelGeometry(driver, status, context);
     await reopenSettingsAfterLayoutFrame(driver, statusPath);
-  }
-  if (assertPairwiseFrameDifferences) {
-    HarnessSmoke.Class.requireCondition(
-      alignmentFrameSignatures.size === alignmentCycle.length &&
-        new Set(alignmentFrameSignatures.values()).size ===
-          alignmentCycle.length,
-      `${context}: every surviving alignment produces a pairwise-distinct emulator frame`,
-    );
   }
   return status;
 }
@@ -574,14 +565,8 @@ async function exerciseLayoutSettingsConfigurationMatrix(
   driver: PtyTestDriver.Model,
   statusPath: string,
   context: string,
-  assertDefaultAlignmentDifferences = false,
 ): Promise<StatusSnapshot> {
-  let status = await cyclePanelAlignments(
-    driver,
-    statusPath,
-    context,
-    assertDefaultAlignmentDifferences,
-  );
+  let status = await cyclePanelAlignments(driver, statusPath, context);
   status = await changeDockVerticalSpan(
     driver,
     statusPath,
@@ -1017,7 +1002,7 @@ try {
       candidate.leftDockVerticalSpan === 'full-height' &&
       candidate.rightDockVerticalSpan === 'full-height',
   );
-  assertPanelAlignmentGeometry(driver, status, 'Full-height docks preset');
+  assertBottomPanelGeometry(driver, status, 'Full-height docks preset');
   assertTotalLayoutTiling(status, 'Full-height docks preset');
   assertDockVerticalSpanGeometry(
     driver,
@@ -1042,7 +1027,12 @@ try {
       candidate.leftDockVerticalSpan === 'ends-at-panel' &&
       candidate.rightDockVerticalSpan === 'ends-at-panel',
   );
-  assertPanelAlignmentGeometry(driver, status, 'Centered panel preset');
+  assertBottomPanelGeometry(driver, status, 'Centered panel preset');
+  const centeredBottomPanel = layoutSlot(status, 'bottomPanel');
+  HarnessSmoke.Class.requireCondition(
+    centeredBottomPanel.left === 4 && centeredBottomPanel.width === 116,
+    'Centered panel preset spans L4 W116 at 120 columns',
+  );
   assertTotalLayoutTiling(status, 'Centered panel preset');
   assertDockVerticalSpanGeometry(
     driver,
@@ -1111,10 +1101,10 @@ try {
     bottomPanel.height === 20,
     '50-row viewport gives the panel body its 45% allocation after the tab row',
   );
+  assertBottomPanelGeometry(driver, status, 'Default preset');
   HarnessSmoke.Class.requireCondition(
-    bottomPanel.left === editorCenter.left &&
-      rectangleRight(bottomPanel) === rectangleRight(editorCenter),
-    'center alignment puts the bottom panel exactly under the editor',
+    rectangleRight(bottomPanel) === Number(status.width),
+    'Default preset extends the panel through the ended right-dock columns',
   );
   assertTotalLayoutTiling(status, 'Default preset');
   const sidebarScreenRegion = splitterRegion(status, 'sidebar');
@@ -1274,7 +1264,6 @@ try {
     driver,
     statusPath,
     'left sidebar with right dock visible',
-    true,
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(

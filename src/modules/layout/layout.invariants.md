@@ -105,24 +105,23 @@ layout configuration and viewport; no slot re-derives an edge from a sibling ren
 named layout switch, the nonzero rectangles cover every available layout cell exactly once.
 
 **Scope:** The left primary dock, editor center, right dock, bottom panel, and their splitters in
-`RootView`, across dock visibility, sidebar position, panel alignment, and each dock vertical-span
-setting; plus the named configurations offered by the command-bar Layouts menu.
+`RootView`, across dock visibility, sidebar position, and each dock vertical-span setting; plus the
+named configurations offered by the command-bar Layouts menu.
 
 **Mechanism:** `LayoutModel` consumes viewport cells, configured widths/heights, visibility, and the
 layout settings, then emits every slot rectangle in one coordinate space. The panel allocation
-contains a one-row container-tab slot followed by a body that is one row shorter. Center and right
-panel alignment select the two surviving horizontal ranges. A visible full-height right dock owns
-its columns, so the panel right edge stops at the right-dock splitter. If a dock ends at the panel,
-`LayoutModel` emits a remainder slot for its released columns below the splitter; `RootView` paints
-that plain slot with the panel background without changing either panel chrome row. A hidden dock
-resolves to a zero-area slot. `presets()`
+contains a one-row container-tab slot followed by a body that is one row shorter. The panel occupies
+the connected horizontal range that contains the editor center. Full-height docks and activity bars
+bound that range. A dock that ends at the panel releases every contiguous column into the panel.
+Only a released region separated from the panel by another full-height slot needs a remainder slot
+to complete the tiling. A hidden dock resolves to a zero-area slot. `presets()`
 publishes Default, Full-height docks, Centered panel, and Focus as named selections over those same
 axes instead of enumerating their Cartesian product. RootView applies the rectangles directly.
 
-**Generates:** Live sidebar-side changes; two visible panel alignments; independent full-height or
-ends-at-panel docks; a focus layout with zero-area side docks; four named menu presets; a reserved
-right-dock slot that future PaneContent citizens can occupy without new root math; no unpainted
-region after switching between named layouts.
+**Generates:** Live sidebar-side changes; independent full-height or ends-at-panel docks; a focus
+layout with zero-area side docks; four named menu presets; a reserved right-dock slot that future
+PaneContent citizens can occupy without new root math; no unpainted region after switching between
+named layouts.
 
 **Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/LayoutModel.test.ts`;
 `src/modules/ui/RootView.ts`.
@@ -130,9 +129,9 @@ region after switching between named layouts.
 **Impossible if true:** RootView positioning one slot by reading another slot's laid-out edge; a
 configuration change requiring a second panel or dock formula; the bottom panel painting over the
 lower rows of a visible full-height right dock; a visible full-height dock slot stopping at the panel
-splitter; a hidden dock retaining a nonzero slot; a Layouts menu rebuilt from encoded axis
-permutations; named-layout slot areas summing to less or more than the available viewport, or any two
-named-layout slots overlapping.
+splitter; an absorbable ended dock retaining a nonzero remainder; a hidden dock retaining a nonzero
+slot; a Layouts menu rebuilt from encoded axis permutations; named-layout slot areas summing to less
+or more than the available viewport, or any two named-layout slots overlapping.
 
 **Verification:** `bun test src/modules/layout/LayoutModel.test.ts` plus the live configuration and
 counted named-layout tiling assertions in `bun scripts/harness/smoke-layout-harness.ts`, registered in
@@ -140,7 +139,40 @@ counted named-layout tiling assertions in `bun scripts/harness/smoke-layout-harn
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-07-31
+
+### A dock ending at the panel yields its columns
+
+**Invariant:** If a visible dock ends at the bottom panel and no full-height slot separates its
+released columns from that panel, then the bottom-panel splitter, tab row, and body absorb all those
+columns.
+
+**Scope:** `LayoutModel.resolve` and the bottom-panel projection in `RootView`, across all four
+left-dock and right-dock vertical-span combinations. Activity bars and full-height docks remain
+outside the panel.
+
+**Mechanism:** `LayoutModel.resolve` finds the connected horizontal range that contains the editor
+center after full-height dock groups and activity bars take their columns. It assigns that same left
+edge and width to `bottomPanelSplitter`, `bottomPanelTabs`, and `bottomPanel`. RootView applies those
+rectangles directly to panel chrome, panel content, and shared hit geometry.
+
+**Generates:** The Default panel extends under the ended right dock; the Centered panel extends under
+both ended docks; hand-set span combinations absorb either, both, or neither dock group.
+
+**Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/LayoutModel.test.ts` (the four
+span combinations); `scripts/harness/smoke-layout-harness.ts`; task probe
+`.invar/tasks/in-progress/430-bottom-panel-absorbs-dock-remainders/430-span-combination-probe.ts`.
+
+**Impossible if true:** An absorbable dock ending at the panel leaves a nonzero remainder slot; the
+panel body expands while its splitter or tab row keeps the editor width; a full-height dock loses its
+columns to the panel.
+
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts && bun
+scripts/harness/smoke-layout-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-31
 
 ### Layout slot sizes are workspace scoped
 

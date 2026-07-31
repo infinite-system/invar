@@ -314,12 +314,13 @@ describe('LayoutModel', () => {
     ).toBe(1);
   });
 
-  test('the user default keeps the sidebar full height and the panel under the editor', () => {
+  test('the user default keeps the sidebar full height and lets the panel absorb the ended right dock', () => {
     const geometry = resolve();
 
     expect(geometry.sidebar.top + geometry.sidebar.height).toBe(39);
     expect(geometry.bottomPanel.left).toBe(geometry.editorCenter.left);
-    expect(geometry.bottomPanel.width).toBe(geometry.editorCenter.width);
+    expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(120);
+    expect(geometry.rightDockRemainder.width).toBe(0);
     expect(geometry.rightDock.top + geometry.rightDock.height).toBe(
       geometry.bottomPanelSplitter.top,
     );
@@ -338,10 +339,10 @@ describe('LayoutModel', () => {
   });
 
   test.each([
-    ['center', 37, 95],
-    ['right', 37, 120],
+    ['center', 4, 120],
+    ['right', 4, 120],
   ] as const)(
-    '%s alignment selects its configured panel range while remainder slots fill released dock columns',
+    '%s alignment cannot leave released dock columns outside the panel',
     (panelAlignment, expectedLeft, expectedRight) => {
       const geometry = resolve({
         panelAlignment,
@@ -351,6 +352,42 @@ describe('LayoutModel', () => {
       expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(
         expectedRight,
       );
+    },
+  );
+
+  test.each([
+    ['full-height', 'full-height', 37, 95],
+    ['full-height', 'ends-at-panel', 37, 120],
+    ['ends-at-panel', 'full-height', 4, 95],
+    ['ends-at-panel', 'ends-at-panel', 4, 120],
+  ] as const)(
+    'left %s and right %s leave only full-height flanks outside the panel',
+    (
+      leftDockVerticalSpan,
+      rightDockVerticalSpan,
+      expectedPanelLeft,
+      expectedPanelRight,
+    ) => {
+      const geometry = resolve({
+        leftDockVerticalSpan,
+        rightDockVerticalSpan,
+      });
+
+      expect(geometry.bottomPanel.left).toBe(expectedPanelLeft);
+      expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(
+        expectedPanelRight,
+      );
+      expect(geometry.bottomPanelSplitter.left).toBe(expectedPanelLeft);
+      expect(
+        geometry.bottomPanelSplitter.left + geometry.bottomPanelSplitter.width,
+      ).toBe(expectedPanelRight);
+      expect(geometry.bottomPanelTabs.left).toBe(expectedPanelLeft);
+      expect(
+        geometry.bottomPanelTabs.left + geometry.bottomPanelTabs.width,
+      ).toBe(expectedPanelRight);
+      expect(geometry.primaryDockRemainder.width).toBe(0);
+      expect(geometry.rightDockRemainder.width).toBe(0);
+      expectTotalTiling(geometry, 120, 39);
     },
   );
 
@@ -434,18 +471,24 @@ describe('LayoutModel', () => {
                 rightDockVerticalSpan,
                 panelAlignment,
               });
-              const editorRight =
-                geometry.editorCenter.left + geometry.editorCenter.width;
-              const expectedPanelLeft = geometry.editorCenter.left;
-              const alignmentPanelRight =
-                panelAlignment === 'right' ? 120 : editorRight;
+              const expectedPanelLeft =
+                sidebarPosition === 'left' &&
+                leftDockVerticalSpan === 'ends-at-panel'
+                  ? geometry.activityBar.left + geometry.activityBar.width
+                  : geometry.editorCenter.left;
               const expectedPanelRight =
-                rightDockVisible && rightDockVerticalSpan === 'full-height'
-                  ? Math.min(
-                      alignmentPanelRight,
-                      geometry.rightDockSplitter.left,
-                    )
-                  : alignmentPanelRight;
+                sidebarPosition === 'left'
+                  ? rightDockVisible && rightDockVerticalSpan === 'full-height'
+                    ? geometry.rightDockSplitter.left
+                    : 120 - geometry.rightActivityBar.width
+                  : leftDockVerticalSpan === 'full-height'
+                    ? geometry.sidebarSplitter.left
+                    : geometry.activityBar.width > 0
+                      ? geometry.activityBar.left
+                      : rightDockVisible &&
+                          rightDockVerticalSpan === 'full-height'
+                        ? geometry.rightDockSplitter.left
+                        : 120 - geometry.rightActivityBar.width;
               const expectedPrimaryDockBottom =
                 leftDockVerticalSpan === 'full-height'
                   ? 39
@@ -462,6 +505,13 @@ describe('LayoutModel', () => {
               ).toBe(expectedPanelRight);
               expect(geometry.sidebar.height).toBe(expectedPrimaryDockBottom);
               expect(geometry.rightDock.height).toBe(expectedRightDockBottom);
+              expect(geometry.primaryDockRemainder.width).toBe(0);
+              if (
+                sidebarPosition === 'left' &&
+                rightDockVerticalSpan === 'ends-at-panel'
+              ) {
+                expect(geometry.rightDockRemainder.width).toBe(0);
+              }
               if (!rightDockVisible) {
                 expect(geometry.rightDock.left).toBe(
                   geometry.rightDockSplitter.left,
