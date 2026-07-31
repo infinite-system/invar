@@ -36,6 +36,17 @@ function paneText(
     .join('\n');
 }
 
+function findBottommostText(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): { row: number; column: number } | null {
+  for (let rowIndex = snapshot.rows - 1; rowIndex >= 0; rowIndex -= 1) {
+    const column = snapshot.rowText(rowIndex).lastIndexOf(marker);
+    if (column >= 0) return { row: rowIndex, column };
+  }
+  return null;
+}
+
 function activePanelText(
   snapshot: HarnessSnapshot.Model,
   statusPath: string,
@@ -361,13 +372,21 @@ async function driveAnimatedTerminalTools(
           'Current terminal input: printf BROKN_COMMAND',
         ),
     );
-    snapshot = await driver.awaitGridCondition(
-      'the completed readTerminalInput result summary is visible',
-      (candidate) =>
-        candidate.findText('lines') !== null &&
-        candidate.findText('readTerminalInput') !== null,
+    driver.sendKeys('Control+j');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the terminal group is active before the completed transcript repaints',
+      (candidate) => candidate.panelActiveContent === 'terminal',
     );
-    const readResultSummary = snapshot.findText('lines');
+    await openAgentPane(driver, statusPath);
+    snapshot = await driver.awaitGridCondition(
+      'the completed readTerminalInput result summary repaints after returning to the agent',
+      (candidate) =>
+        findBottommostText(candidate, 'lines') !== null &&
+        findBottommostText(candidate, 'readTerminalInput') !== null,
+    );
+    const readResultSummary = findBottommostText(snapshot, 'lines');
     HarnessSmoke.Class.requireCondition(
       readResultSummary !== null,
       'readTerminalInput returns terminal scrollback through the provider tool path',
