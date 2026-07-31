@@ -1,7 +1,7 @@
 # Task 418 — Field v2: record explorer with code lenses into the implementation
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

@@ -6,13 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #418 [field-v2-code-lens-explorer](.invar/tasks/in-progress/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md)  [building]
+  `tmux attach -t invar/418-field-v2-code-lens-explorer`
 - #417 [field-v2-3d-field-timeline-playout](.invar/tasks/in-progress/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md)  [building]
   `tmux attach -t invar/417-field-v2-3d-field-timeline-playout`
 
-## USER-DIRECTED (20)
+## USER-DIRECTED (19)
 - #419 [field-v2-opus-synthesis](.invar/tasks/active/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md)
-- #418 [field-v2-code-lens-explorer](.invar/tasks/active/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md)
 - #412 [monitoring-lsp-cpu-profile](.invar/tasks/active/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
