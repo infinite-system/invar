@@ -485,3 +485,21 @@ and `Part 2` (antipatterns and traps) is the ancestor of families 1 and 10.
 
 **NOT here.** Their verbatim copies live in the skill (`## Live cron prompts`). Crons are
 session-only and die on restart; the words are the durable artifact.
+
+## Family 12 — TaskList is blind to Monitors; a stale-check with no present arm arms duplicates (2026-07-31)
+
+The sweep's STALE-MONITOR check read TaskList, saw "No tasks found",
+and re-armed fleet-watch — three sweeps in a row. TaskList never lists
+Monitor tasks, so the check had no PRESENT arm: it could not
+distinguish "monitor dead" from "instrument cannot see monitors".
+Result: four concurrent fleet-watch instances (one 28h old), duplicate
+event notifications, and a false STEER/QUIET-noise risk. Family 2
+exactly (both arms), applied to the conductor's own watcher.
+
+Operative fix: verify fleet-watch liveness STRUCTURALLY — the
+heartbeat file it stamps every cycle:
+  find /tmp/fleet-watch.heartbeat -mmin -3
+Fresh heartbeat = armed (dispatch.sh already keys on this). Stale =
+re-arm ONE Monitor after confirming zero live fleet-watch processes
+(pgrep -f is acceptable here only to COUNT, never to kill; stop
+extras via TaskStop by id, oldest first).
