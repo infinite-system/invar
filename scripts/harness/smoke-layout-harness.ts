@@ -1657,13 +1657,14 @@ try {
         layoutSlot(candidate, 'rightDock').width > 12,
     );
     await compactDriver.awaitGridCondition(
-      'the restored 80-column frame paints the layouts control at its new edge',
+      'the restored 80-column frame paints the layout switcher at its new edge',
       (snapshot) => {
-        const layoutsPosition = snapshot.findText(' layouts ');
+        const switcherPosition = commandBarLayoutSwitcherPosition(snapshot);
         return (
           snapshot.columns === 80 &&
-          layoutsPosition !== null &&
-          layoutsPosition.column + ' layouts '.length === snapshot.columns
+          switcherPosition !== null &&
+          // one glyph cell plus one padding cell reaches the right edge
+          switcherPosition.column + 2 === snapshot.columns
         );
       },
     );
