@@ -1,0 +1,157 @@
+:root {
+  color-scheme: dark;
+
+  --field-background-abyss: #06080c;
+  --field-background-canvas: #090d13;
+  --field-background-panel: #0d131c;
+  --field-background-panel-raised: #111a26;
+  --field-background-control: #162131;
+  --field-background-scrim: rgb(2 5 9 / 78%);
+
+  --field-border-quiet: #1d2a3a;
+  --field-border-default: #293a50;
+  --field-border-strong: #405a78;
+
+  --field-text-primary: #eaf1fa;
+  --field-text-secondary: #aec0d4;
+  --field-text-tertiary: #7f93aa;
+  --field-text-disabled: #526276;
+  --field-text-inverse: #071018;
+
+  --field-signal-focus: #6de2ff;
+  --field-signal-selection: #b99cff;
+  --field-signal-reality: #ffd166;
+  --field-signal-success: #5ee3b1;
+  --field-signal-warning: #ffc76b;
+  --field-signal-alarm: #ff657d;
+  --field-signal-rot: #ff916b;
+  --field-signal-orphan: #ffb45e;
+
+  --field-kind-reality-absolute: #f2e9ff;
+  --field-kind-reality-renegotiable: #77e4ff;
+  --field-kind-chosen: #bea7ff;
+
+  --field-domain-system: #63d8ff;
+  --field-domain-state: #79a7ff;
+  --field-domain-interaction: #aa91ff;
+  --field-domain-language: #e48eff;
+  --field-domain-data: #5ee3b1;
+  --field-domain-process: #a8e66b;
+  --field-domain-evidence: #ffd166;
+  --field-domain-risk: #ff916b;
+
+  --field-alpha-grid: rgb(115 177 221 / 13%);
+  --field-alpha-axis: rgb(115 204 255 / 25%);
+  --field-alpha-fog: rgb(7 14 23 / 72%);
+  --field-alpha-selection-halo: rgb(185 156 255 / 24%);
+  --field-alpha-reality-halo: rgb(255 209 102 / 20%);
+  --field-alpha-alarm-halo: rgb(255 101 125 / 22%);
+
+  --field-font-interface:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  --field-font-instrument:
+    'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --field-type-micro: 0.625rem;
+  --field-type-label: 0.6875rem;
+  --field-type-metadata: 0.75rem;
+  --field-type-body-small: 0.8125rem;
+  --field-type-body: 0.875rem;
+  --field-type-title-small: 1rem;
+  --field-type-title: 1.25rem;
+  --field-type-display: 2rem;
+
+  --field-leading-compact: 1.15;
+  --field-leading-interface: 1.35;
+  --field-leading-reading: 1.6;
+  --field-tracking-data: 0.01em;
+  --field-tracking-label: 0.12em;
+  --field-tracking-display: -0.035em;
+  --field-weight-regular: 400;
+  --field-weight-medium: 520;
+  --field-weight-semibold: 640;
+  --field-weight-bold: 720;
+
+  --field-space-hairline: 1px;
+  --field-space-compact: 0.25rem;
+  --field-space-control: 0.5rem;
+  --field-space-cluster: 0.75rem;
+  --field-space-content: 1rem;
+  --field-space-section: 1.5rem;
+  --field-space-region: 2rem;
+  --field-space-canvas: 3rem;
+
+  --field-radius-dot: 999px;
+  --field-radius-control: 0.375rem;
+  --field-radius-card: 0.625rem;
+  --field-radius-panel: 0.875rem;
+
+  --field-elevation-base: inset 0 1px 0 rgb(255 255 255 / 2%);
+  --field-elevation-panel:
+    0 18px 50px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 3%);
+  --field-elevation-floating:
+    0 24px 70px rgb(0 0 0 / 42%), 0 0 0 1px rgb(109 226 255 / 9%);
+  --field-elevation-selected:
+    0 0 0 1px rgb(185 156 255 / 65%), 0 0 30px rgb(185 156 255 / 20%);
+
+  --field-layer-background: 0;
+  --field-layer-grid: 10;
+  --field-layer-trace: 20;
+  --field-layer-dot: 30;
+  --field-layer-label: 40;
+  --field-layer-chrome: 100;
+  --field-layer-sticky-chrome: 150;
+  --field-layer-tooltip: 300;
+  --field-layer-dialog: 500;
+
+  --field-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --field-ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --field-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --field-ease-focus-flight: cubic-bezier(0.16, 1, 0.3, 1);
+  --field-ease-confirm: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --field-ease-linear: linear;
+
+  --field-duration-input-feedback: 70ms;
+  --field-duration-hover-feedback: 90ms;
+  --field-duration-selection-confirm: 140ms;
+  --field-duration-chrome-transition: 180ms;
+  --field-duration-tooltip-entrance: 160ms;
+  --field-duration-focus-flight: 520ms;
+  --field-duration-snapshot-morph: 640ms;
+  --field-duration-record-birth: 420ms;
+  --field-duration-record-rot: 520ms;
+  --field-duration-trace-decay: 900ms;
+
+  --field-component-stage-background: #06080c;
+  --field-component-stage-grid: rgb(115 177 221 / 13%);
+  --field-component-stage-axis: rgb(115 204 255 / 25%);
+  --field-component-dot-focus: #6de2ff;
+  --field-component-dot-selection: #b99cff;
+  --field-component-dot-alarm: #ff657d;
+  --field-component-dot-rot: #ff916b;
+  --field-component-card-background: #0d131c;
+  --field-component-card-hover-background: #111a26;
+  --field-component-card-selected-rule: #b99cff;
+  --field-component-list-background: #090d13;
+  --field-component-list-row-hover-background: #111a26;
+  --field-component-list-selected-rule: #b99cff;
+  --field-component-timeline-background: #080c12;
+  --field-component-timeline-track: #293a50;
+  --field-component-timeline-current: #b99cff;
+  --field-component-timeline-birth: #5ee3b1;
+  --field-component-timeline-rot: #ff916b;
+  --field-component-lens-background: #0d131c;
+  --field-component-lens-border: #293a50;
+  --field-component-lens-selected-rule: #b99cff;
+
+  --field-dot-hit-target: 24px;
+  --field-dot-diameter: 8px;
+  --field-dot-selected-diameter: 12px;
+  --field-reality-diameter: 18px;
+  --field-grid-line-width: 1px;
+  --field-selected-trace-width: 1.5px;
+  --field-camera-maximum-yaw: 24deg;
+  --field-camera-maximum-pitch: 12deg;
+  --field-focus-safe-region: 62%;
+}
