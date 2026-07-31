@@ -1,7 +1,7 @@
 # Task 419 — Field v2: Opus synthesis — the Invariable representation instrument
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: opus-5

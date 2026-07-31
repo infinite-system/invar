@@ -6,12 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
 - #420 [terminal-stage-stale-expanded-result](.invar/tasks/in-progress/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md)  [building]
   `tmux attach -t invar/420-terminal-stage-stale-expanded-result`
+- #419 [field-v2-opus-synthesis](.invar/tasks/in-progress/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md)  [building]
+  `tmux attach -t invar/419-field-v2-opus-synthesis`
 
-## USER-DIRECTED (19)
-- #419 [field-v2-opus-synthesis](.invar/tasks/active/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md)
+## USER-DIRECTED (18)
 - #412 [monitoring-lsp-cpu-profile](.invar/tasks/active/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)

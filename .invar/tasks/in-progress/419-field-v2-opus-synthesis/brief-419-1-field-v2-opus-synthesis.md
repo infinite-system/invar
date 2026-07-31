@@ -29,14 +29,15 @@ framework ([.claude/skills/ibr/IBR.md](../../../../.claude/skills/ibr/IBR.md)).
    conventions gate keeps covering the tree; do not build a second
    merge-gate.
 3. THE INSTRUMENT'S OWN CONTRACT:
-   tools/invariant-field-v2/invariant-field.invariants.md — the
+   a colocated contract in tools/invariant-field-v2/ (canonical
+   naming: invariant-field dot invariants dot md) — the
    invariants FOUND while building (reality: rank is a pure function
    of tree+history; R is asymptotic; scanner is read-only toward
    contracts; span endpoint read-only + path-confined; no ambient
    render loop) and CHOSEN (weights, normalization policy, tokens as
    law) — canonical schema, checker green, annotations at enforcement
-   points. Plus invariant-field.lattice.md: how they compose into the
-   instrument's guarantees.
+   points. Plus the sibling lattice file (invariant-field dot lattice
+   dot md): how they compose into the instrument's guarantees.
 4. SELF-MEASUREMENT: once the contract exists the scanner ingests it —
    the Field gains its own dots and its own birth in the playout.
    Surface this DELIBERATELY and beautifully (user: "Can the

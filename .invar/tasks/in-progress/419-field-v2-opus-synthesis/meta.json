@@ -1,0 +1,15 @@
+{
+  "task": 419,
+  "slug": "field-v2-opus-synthesis",
+  "branch": "fleet/419-field-v2-opus-synthesis",
+  "worktree": ".invar/worktrees/419-field-v2-opus-synthesis",
+  "tmuxSession": "invar/419-field-v2-opus-synthesis",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-medium-419-field-v2-opus-synthesis.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "5c2c3e34afcca39fc7edfaf947d58a5152579a14",
+  "startedAt": "2026-07-31T04:56:09-04:00"
+}
