@@ -1,0 +1,15 @@
+{
+  "task": 420,
+  "slug": "terminal-stage-stale-expanded-result",
+  "branch": "fleet/420-terminal-stage-stale-expanded-result",
+  "worktree": ".invar/worktrees/420-terminal-stage-stale-expanded-result",
+  "tmuxSession": "invar/420-terminal-stage-stale-expanded-result",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-420-terminal-stage-stale-expanded-result.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "afe9ae89483b9392ac6e6bfc8ecc7c97c63fd940",
+  "startedAt": "2026-07-31T04:55:22-04:00"
+}

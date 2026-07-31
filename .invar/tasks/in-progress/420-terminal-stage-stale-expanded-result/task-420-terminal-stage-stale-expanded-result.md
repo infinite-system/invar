@@ -1,7 +1,7 @@
 # Task 420 — terminal-stage: expanded tool result paints the previous command
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
