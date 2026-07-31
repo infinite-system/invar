@@ -2,7 +2,7 @@
  * Find class selectors in the Field v2 stylesheet that no source file can
  * produce, and find rules that a later rule of the same selector overrides.
  *
- * Run: bun .invar/tasks/in-progress/419-field-v2-opus-synthesis/419-dead-selector-census.ts
+ * Run: bun tools/invariant-field-v2/check-stylesheet.ts
  *
  * Output: one UNREACHABLE line per class token that appears in no template,
  * no TypeScript file, and no template-literal prefix that could build it; then
@@ -98,6 +98,10 @@ for (const token of unreachableTokens.sort()) {
 for (const [selector, count] of [...selectorCounts].sort()) {
   if (count > 1) console.log(`DUPLICATE ${count}x ${selector}`);
 }
+const duplicatedCount = [...selectorCounts.values()].filter(
+  (count) => count > 1,
+).length;
 console.log(
-  `CENSUS unreachable=${unreachableTokens.length} duplicated=${[...selectorCounts.values()].filter((count) => count > 1).length}`,
+  `CENSUS unreachable=${unreachableTokens.length} duplicated=${duplicatedCount}`,
 );
+if (unreachableTokens.length || duplicatedCount) process.exit(1);

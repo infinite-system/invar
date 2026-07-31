@@ -10,7 +10,7 @@
  * A count of zero means the surface did not render.
  */
 import { mkdirSync } from 'node:fs';
-import { driveChromiumPage } from './419-chromium-drive';
+import { driveChromiumPage } from '../../../../tools/invariant-field-v2/BrowserDrive';
 
 const pageUrl = process.argv[2] ?? 'http://localhost:4419/';
 const outputDirectory = '/tmp/419-field-look';

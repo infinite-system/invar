@@ -6,8 +6,8 @@
  * This module is a library. It runs no page by itself. Import
  * `driveChromiumPage` from a sibling drive script:
  *
- *   import { driveChromiumPage } from './419-chromium-drive';
- *   await driveChromiumPage('http://localhost:4419/', async (page) => {
+ *   import { driveChromiumPage } from './BrowserDrive';
+ *   await driveChromiumPage('http://localhost:4314/', async (page) => {
  *     console.log(await page.evaluate('document.title'));
  *     await page.screenshot('/tmp/field.png');
  *   });
@@ -98,9 +98,9 @@ class DevToolsConnection {
 }
 
 async function chromiumDebuggerUrl(
-  chromiumProcess: ReturnType<typeof Bun.spawn>,
+  standardErrorStream: ReadableStream<Uint8Array>,
 ): Promise<string> {
-  const standardErrorReader = chromiumProcess.stderr.getReader();
+  const standardErrorReader = standardErrorStream.getReader();
   let standardError = '';
   while (true) {
     const nextChunk = await standardErrorReader.read();
@@ -150,7 +150,7 @@ export async function driveChromiumPage<Result>(
   const chromiumExecutable = Bun.which('chromium');
   if (!chromiumExecutable) throw new Error('Chromium is not installed.');
   const chromiumProfileDirectory = mkdtempSync(
-    join(tmpdir(), 'invariant-field-419-browser-drive-'),
+    join(tmpdir(), 'invariant-field-browser-drive-'),
   );
   const chromiumProcess = Bun.spawn({
     cmd: [
@@ -171,7 +171,11 @@ export async function driveChromiumPage<Result>(
   let connection: DevToolsConnection | null = null;
   try {
     connection = await DevToolsConnection.connect(
-      await pageDebuggerUrl(await chromiumDebuggerUrl(chromiumProcess)),
+      await pageDebuggerUrl(
+        await chromiumDebuggerUrl(
+          chromiumProcess.stderr as ReadableStream<Uint8Array>,
+        ),
+      ),
     );
     const openConnection = connection;
     await openConnection.send('Page.enable');
