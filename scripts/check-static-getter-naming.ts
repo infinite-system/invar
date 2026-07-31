@@ -211,8 +211,8 @@ function sourceFiles(directory: string): string[] {
 
 if (import.meta.main) {
   const repositoryRoot = process.cwd();
-  const inspectedFiles = ['src', 'scripts'].flatMap((directory) =>
-    sourceFiles(resolve(repositoryRoot, directory)),
+  const inspectedFiles = ['src', 'scripts', 'tools/invariant-field-v2'].flatMap(
+    (directory) => sourceFiles(resolve(repositoryRoot, directory)),
   );
   if (inspectedFiles.length === 0) {
     console.error('static-getter-naming: FAIL (inspected zero files)');

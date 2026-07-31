@@ -5,5 +5,7 @@
 dist/
 node_modules/
 src/modules/terminal/fixtures/
+tools/invariant-field/generated/
+tools/invariant-field-v2/generated/
 .perf-history/
 artifacts/

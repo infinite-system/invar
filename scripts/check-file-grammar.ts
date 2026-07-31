@@ -58,6 +58,7 @@ export const CONVERTED_MODULES = new Set<string>([
   'editor',
   'git',
   'image',
+  'invariant-field-v2',
   'kernel',
   'keybindings',
   'layout',
@@ -94,9 +95,21 @@ function eponymousNameFor(fileName: string): string {
 
 function moduleNameFor(fileName: string): string {
   const pathParts = normalizeFileName(fileName).split('/');
-  return pathParts[0] === 'src' && pathParts[1] === 'modules'
-    ? (pathParts[2] ?? '(modules-root)')
-    : '(outside-modules)';
+  if (pathParts[0] === 'src' && pathParts[1] === 'modules') {
+    return pathParts[2] ?? '(modules-root)';
+  }
+  if (
+    pathParts[0] === 'tools' &&
+    pathParts[1] === 'invariant-field-v2' &&
+    (pathParts[2] === 'ui' ||
+      pathParts[2] === 'DesignTokens.ts' ||
+      pathParts[2] === 'DesignTokens.test.ts' ||
+      pathParts[2] === 'VueSingleFileComponentPlugin.ts' ||
+      pathParts[2] === 'VueSingleFileComponentPlugin.test.ts')
+  ) {
+    return 'invariant-field-v2';
+  }
+  return '(outside-modules)';
 }
 
 function isTestFile(fileName: string): boolean {
