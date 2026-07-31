@@ -161,9 +161,13 @@ const DEPTH_CHECKPOINT_TARGETS = [75_000] as const;
 
 const DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES = 80_000;
 
-const DEPTH_CHECKPOINT_FPS_FLOOR = 28;
+const DEPTH_CHECKPOINT_FPS_CANARY = 28;
 
 const DEPTH_GESTURE_REFRESH_FRAME_INTERVAL = 6;
+
+const DEPTH_GESTURE_EXACT_ROW_MAXIMUM_CORRECTIONS = Math.ceil(
+  VERTICAL_FLING_CEILING * MAXIMUM_ANIMATION_DELTA_TIME_SECONDS,
+);
 
 const TERMINAL_COLUMNS = 120;
 
@@ -442,6 +446,7 @@ interface DepthCheckpointMeasurement {
   readonly actualStartLine: number;
   readonly actualEndLine: number;
   readonly rowsTravelled: number;
+  readonly exactRowCorrectionCount: number;
   readonly observedFrameCount: number;
   readonly movingFrameCount: number;
   readonly durationMilliseconds: number;
@@ -1351,6 +1356,7 @@ async function jumpEditorToDepth(
 
 async function measureDepthCheckpoint(
   driver: PtyTestDriver.Model,
+  statusPath: string,
   targetDepthLine: number,
   actualStartLine: number,
 ): Promise<Omit<DepthCheckpointMeasurement, 'ratioToReference'>> {
@@ -1386,6 +1392,71 @@ async function measureDepthCheckpoint(
     },
     timeoutMilliseconds: 30_000,
   });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'press',
+    column: EDITOR_WHEEL_COLUMN,
+    row: EDITOR_WHEEL_ROW,
+    button: 'left',
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'release',
+    column: EDITOR_WHEEL_COLUMN,
+    row: EDITOR_WHEEL_ROW,
+    button: 'left',
+  });
+  await drainToQuiescence(statusPath, 'editor');
+  let exactEndLine = visibleTopLineIndex(driver.snapshot());
+  if (exactEndLine === null) {
+    throw new Error(
+      `Depth-${targetDepthLine} halt produced no visible fixture line`,
+    );
+  }
+  let exactRowCorrectionCount = 0;
+  for (
+    ;
+    exactEndLine !== targetEndLine &&
+    exactRowCorrectionCount < DEPTH_GESTURE_EXACT_ROW_MAXIMUM_CORRECTIONS;
+    exactRowCorrectionCount++
+  ) {
+    const correctionDirection = exactEndLine < targetEndLine ? 'down' : 'up';
+    const distanceBeforeCorrection = Math.abs(exactEndLine - targetEndLine);
+    driver.sendRawInputWithoutFrameExpectation(
+      wheelInput(correctionDirection, 1),
+    );
+    await awaitStatusCondition(
+      statusPath,
+      `the depth-${targetDepthLine} exact-row correction ${exactRowCorrectionCount + 1} ` +
+        `to move closer with one ${correctionDirection} wheel impulse and reach rest`,
+      (status) =>
+        Math.abs(Number(status.editorScrollTop) - targetEndLine) <
+          distanceBeforeCorrection &&
+        status.workspaceScrollMomentumAtRest === true,
+    );
+    await driver.awaitGridCondition(
+      `the depth-${targetDepthLine} exact-row correction ${exactRowCorrectionCount + 1} ` +
+        `to paint a row closer to line ${targetEndLine}`,
+      (snapshot) => {
+        const candidateEndLine = visibleTopLineIndex(snapshot);
+        if (candidateEndLine === null) return false;
+        return (
+          Math.abs(candidateEndLine - targetEndLine) < distanceBeforeCorrection
+        );
+      },
+    );
+    exactEndLine = visibleTopLineIndex(driver.snapshot());
+    if (exactEndLine === null) {
+      throw new Error(
+        `Depth-${targetDepthLine} correction produced no visible fixture line`,
+      );
+    }
+  }
+  if (exactEndLine !== targetEndLine) {
+    throw new Error(
+      `Depth-${targetDepthLine} could not stop at commanded line ${targetEndLine}; ` +
+        `stopped at ${exactEndLine} after at most ` +
+        `${DEPTH_GESTURE_EXACT_ROW_MAXIMUM_CORRECTIONS} one-notch corrections`,
+    );
+  }
   const firstSample = samples[0];
   const finalSample = samples.at(-1);
   if (!firstSample || !finalSample) {
@@ -1403,8 +1474,9 @@ async function measureDepthCheckpoint(
   return {
     targetDepthLine,
     actualStartLine,
-    actualEndLine: finalSample.scrollTop,
-    rowsTravelled: finalSample.scrollTop - actualStartLine,
+    actualEndLine: exactEndLine,
+    rowsTravelled: exactEndLine - actualStartLine,
+    exactRowCorrectionCount,
     observedFrameCount: samples.length,
     movingFrameCount,
     durationMilliseconds,
@@ -1429,17 +1501,24 @@ async function measureDepthCheckpoints(
       targetDepthLine,
     );
     checkpointsWithoutRatios.push(
-      await measureDepthCheckpoint(driver, targetDepthLine, actualStartLine),
+      await measureDepthCheckpoint(
+        driver,
+        statusPath,
+        targetDepthLine,
+        actualStartLine,
+      ),
     );
   }
-  return checkpointsWithoutRatios.map((checkpoint) => ({
+  const checkpoints = checkpointsWithoutRatios.map((checkpoint) => ({
     ...checkpoint,
     ratioToReference:
       checkpoint.framesPerSecond / DEPTH_REFERENCE_FRAMES_PER_SECOND,
   }));
+  assertDepthCheckpointRows('measured', checkpoints);
+  return checkpoints;
 }
 
-function assertDepthCheckpointFloors(
+function assertDepthCheckpointRows(
   caseLabel: string,
   checkpoints: readonly DepthCheckpointMeasurement[],
 ): void {
@@ -1452,42 +1531,53 @@ function assertDepthCheckpointFloors(
         `${caseLabel} depth-${targetDepthLine} checkpoint is missing`,
       );
     }
-    if (checkpoint.framesPerSecond < DEPTH_CHECKPOINT_FPS_FLOOR) {
+    const measuredRowsTravelled =
+      checkpoint.actualEndLine - checkpoint.actualStartLine;
+    if (
+      checkpoint.rowsTravelled !== DEPTH_GESTURE_TARGET_ROWS ||
+      measuredRowsTravelled !== DEPTH_GESTURE_TARGET_ROWS
+    ) {
       throw new Error(
-        `${caseLabel} depth-${targetDepthLine} checkpoint ` +
-          `${checkpoint.framesPerSecond.toFixed(1)} FPS is below ` +
-          `${DEPTH_CHECKPOINT_FPS_FLOOR} FPS`,
+        `${caseLabel} depth-${targetDepthLine} checkpoint stopped after ` +
+          `${measuredRowsTravelled} rows and reported ` +
+          `${checkpoint.rowsTravelled}; commanded ` +
+          `${DEPTH_GESTURE_TARGET_ROWS}`,
       );
     }
   }
 }
 
-function proveDepthCheckpointFloorCanFail(): string {
+function proveDepthCheckpointRowsCanFail(): string {
   const syntheticCheckpoints = DEPTH_CHECKPOINT_TARGETS.map(
     (targetDepthLine): DepthCheckpointMeasurement => ({
       targetDepthLine,
       actualStartLine: targetDepthLine,
-      actualEndLine: targetDepthLine + DEPTH_GESTURE_TARGET_ROWS,
-      rowsTravelled: DEPTH_GESTURE_TARGET_ROWS,
+      actualEndLine: targetDepthLine + DEPTH_GESTURE_TARGET_ROWS - 1,
+      rowsTravelled: DEPTH_GESTURE_TARGET_ROWS - 1,
+      exactRowCorrectionCount: 0,
       observedFrameCount: 100,
       movingFrameCount: 100,
       durationMilliseconds: 3_300,
-      framesPerSecond: 27,
-      ratioToReference: 0.9,
+      framesPerSecond: 30,
+      ratioToReference: 1,
     }),
   );
   try {
-    assertDepthCheckpointFloors('positive-control', syntheticCheckpoints);
+    assertDepthCheckpointRows('positive-control', syntheticCheckpoints);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('depth-75000') && message.includes('27.0 FPS')) {
+    if (
+      message.includes('depth-75000') &&
+      message.includes('999 rows') &&
+      message.includes('commanded 1000')
+    ) {
       return message;
     }
     throw new Error(
-      `Depth floor positive control failed with the wrong red: ${message}`,
+      `Depth row-count positive control failed with the wrong red: ${message}`,
     );
   }
-  throw new Error('Depth floor positive control did not fail');
+  throw new Error('Depth row-count positive control did not fail');
 }
 
 function aggregateEditorFrameAttribution(
@@ -1661,16 +1751,21 @@ function printDepthCheckpointTable(
       `${surfaceMeasurement.fixtureLineCount}-line editor`,
   );
   console.error(
-    '| target depth | actual start | rows travelled | FPS | ' +
-      'ratio to 100k top | floor |',
+    '| target depth | actual start | rows travelled | corrections | FPS | ' +
+      'ratio to 100k top | cadence canary |',
   );
-  console.error('| ---: | ---: | ---: | ---: | ---: | :---: |');
+  console.error('| ---: | ---: | ---: | ---: | ---: | ---: | :---: |');
   for (const checkpoint of surfaceMeasurement.depthCheckpoints) {
+    const cadenceCanary =
+      checkpoint.framesPerSecond >= DEPTH_CHECKPOINT_FPS_CANARY
+        ? 'meets'
+        : 'misses';
     console.error(
       `| ${checkpoint.targetDepthLine} | ${checkpoint.actualStartLine} | ` +
         `${checkpoint.rowsTravelled} | ` +
+        `${checkpoint.exactRowCorrectionCount} | ` +
         `${checkpoint.framesPerSecond.toFixed(1)} | ` +
-        `${checkpoint.ratioToReference.toFixed(3)} | PASS |`,
+        `${checkpoint.ratioToReference.toFixed(3)} | ${cadenceCanary} |`,
     );
   }
 }
@@ -2305,11 +2400,11 @@ if (
   throw new Error('fold-dense fixture positive control failed');
 }
 
-const depthCheckpointFloorPositiveControl = proveDepthCheckpointFloorCanFail();
+const depthCheckpointRowsPositiveControl = proveDepthCheckpointRowsCanFail();
 
 console.error(
-  `depth-floor positive control RED (expected): ` +
-    depthCheckpointFloorPositiveControl,
+  `depth-row-count positive control RED (expected): ` +
+    depthCheckpointRowsPositiveControl,
 );
 
 const editorScaleInvariancePositiveControl =
@@ -2482,13 +2577,13 @@ const report = {
   continuationBoundaryPositiveControl,
   targetFramesPerSecond: 30,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
-  depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,
+  depthCheckpointFpsCanary: DEPTH_CHECKPOINT_FPS_CANARY,
   depthReferenceFramesPerSecond: Number.isFinite(
     DEPTH_REFERENCE_FRAMES_PER_SECOND,
   )
     ? DEPTH_REFERENCE_FRAMES_PER_SECOND
     : null,
-  depthCheckpointFloorPositiveControl,
+  depthCheckpointRowsPositiveControl,
   editorScaleInvariancePositiveControl,
   editorScaleInvariance,
   wallClockMilliseconds,

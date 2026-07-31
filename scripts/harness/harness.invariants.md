@@ -788,10 +788,11 @@ condition wait or feed a report-only warning.
 The soft performance step is outside the blocking population.
 
 **Mechanism:** Scroll contracts compare events, impulses, frames, rows, and
-work counts; their FPS canaries call `warn`, never `bad`. Terminal-stage checks
-first-frame completeness and relative completed-frame counts. Input-byte
-blocking authority is `completedFramesUntilCondition === 1`, while its
-millisecond thresholds only warn. `perf-baselines.sh` remains an on-demand
+work counts. The fold-dense checkpoint commands an exact row count and rejects
+a one-row truncation; its FPS canary calls `warn`, never `bad`. Terminal-stage
+checks first-frame completeness and relative completed-frame counts.
+Input-byte blocking authority is `completedFramesUntilCondition === 1`, while
+its millisecond thresholds only warn. `perf-baselines.sh` remains an on-demand
 soft report outside `merge-gate.sh`.
 
 **Generates:** Gate verdicts independent of machine load; concurrent gates
@@ -809,14 +810,15 @@ without timing-based serialization.
 **Impossible if true:** a blocking branch comparing measured milliseconds or
 FPS to a threshold; `MEASUREMENT INVALID` from lock contention blocking a
 gate; two identical blocking-step runs reaching different verdicts solely
-because one runs under CPU contention.
+because one runs under CPU contention; a 995-row and a 1,004-row fold-dense
+drive receiving different verdicts when both have healthy cadence.
 
 **Verification:** `bash -n scripts/merge-gate.sh
 scripts/behavioral-contracts.sh && bash scripts/behavioral-contracts.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-07-31
 
 ### Soft duration reports use a machine-wide quiet lock
 

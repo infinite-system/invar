@@ -321,7 +321,10 @@ controls the blocking scale contract.
 The fold-dense editor checkpoint keeps folding, indent guides, and
 version-control gutter marks enabled, direct-jumps to line 75,000, settles on
 observed scroll state and frame quiescence, excludes jump frames, then drives
-at least 1,000 rows of real wheel input. Unit cost ratchets in
+exactly the commanded 1,000 rows of real wheel input. The driver halts active
+momentum at the target, then uses isolated one-notch wheel corrections to
+reach the exact row. A drive truncated at 999 rows is the positive control.
+Unit cost ratchets in
 `CodeFolding.test.ts`, `Editor.test.ts`, and `DiffView.test.ts` prove
 unchanged-frame lookups do not rescan their document-scale inputs. Idle CPU
 remains ~0 after activity. Continuous input-path evidence comes from the
@@ -342,7 +345,7 @@ ticks by the painted window in a 500-folder fixture.
 
 **Status:** established
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-07-31
 
 ### Held key movement accelerates within a ceiling
 
