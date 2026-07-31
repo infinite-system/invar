@@ -57,6 +57,45 @@ SPRAWL_STATE_FILE="${SPRAWL_STATE_FILE:-/tmp/fleet-watch-disk.prev}"
 SPRAWL_THROTTLE_STAMP="${SPRAWL_THROTTLE_STAMP:-/tmp/fleet-watch-sprawl.throttle}"
 HEARTBEAT_FILE="${HEARTBEAT_FILE:-/tmp/fleet-watch.heartbeat}"
 
+# Pending steers: steer.sh hands off composer-clear-but-unconfirmed steers as
+# /tmp/steer-pending-* markers. Confirm each against the builder's own session
+# record (append LANDED to the task's steers.log, drop the marker), or raise
+# STEER_LOST once when a marker outlives the grace window unconfirmed. Only
+# CONFIRMED steers are ever logged — an attempts-log is a deceptive metric.
+STEER_LOST_MINUTES="${STEER_LOST_MINUTES:-15}"
+emit_steer_events() {
+  local marker fragment task_directory session_name message marker_age_minutes record_file
+  for marker in /tmp/steer-pending-*; do
+    [ -f "$marker" ] || continue
+    case "$marker" in *.lost) continue ;; esac
+    fragment="$(sed -n 's/^fragment=//p' "$marker")"
+    task_directory="$(sed -n 's/^task_directory=//p' "$marker")"
+    session_name="$(sed -n 's/^session_name=//p' "$marker")"
+    message="$(sed -n 's/^message=//p' "$marker")"
+    record_file=""
+    if [ -n "$session_name" ] && tmux has-session -t "$session_name" 2>/dev/null; then
+      local cwd f
+      cwd="$(tmux display-message -t "$session_name" -p '#{pane_current_path}' 2>/dev/null)"
+      if [ -n "$cwd" ]; then
+        for f in $(ls -1t "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | head -40); do
+          head -c 2048 "$f" 2>/dev/null | grep -qF "\"cwd\":\"$cwd\"" && { record_file="$f"; break; }
+        done
+      fi
+    fi
+    [ -z "$record_file" ] && record_file="$(ls -t "$HOME"/.claude/projects/*"$(basename "$task_directory")"*/*.jsonl 2>/dev/null | head -1)"
+    if [ -n "$record_file" ] && [ -n "$fragment" ] && grep -qF -- "$fragment" "$record_file" 2>/dev/null; then
+      printf '%s LANDED %s\n' "$(date '+%F %T')" "$message" >> "${task_directory}/steers.log"
+      rm -f "$marker"
+      continue
+    fi
+    marker_age_minutes="$(( ( $(date +%s) - $(stat -c %Y "$marker") ) / 60 ))"
+    if [ "$marker_age_minutes" -ge "$STEER_LOST_MINUTES" ]; then
+      echo "STEER_LOST: ${session_name} — steer unconfirmed in the session record after ${marker_age_minutes}m: ${message}"
+      mv "$marker" "${marker}.lost"
+    fi
+  done
+}
+
 emit_ready_events() {
   local ready_file
   for ready_file in /tmp/*-READY*.md; do
@@ -252,6 +291,7 @@ run_cycle_emitters() {
   emit_silent_events
   emit_gate_events
   emit_sprawl_events
+  emit_steer_events
 }
 
 emit_cycle() {
@@ -364,7 +404,28 @@ if [ "${1:-}" = "--self-test" ]; then
   # CHECKPOINT absent arm: a healthy gauge emits nothing.
   calm_cp="$(CONTEXT_GAUGE_SCRIPT="$cool_gauge" CHECKPOINT_STAMP="$sandbox/cp2.fired" emit_checkpoint_event | grep -c . || true)"
   [ "$calm_cp" = "0" ] || { echo "FAIL checkpoint absent arm (got $calm_cp)"; failures=1; }
+  # STEER arms — confirm-and-log, lose-loudly-once.
+  steer_store="$HOME/.claude/projects/selftest-steer-record-$$"
+  mkdir -p "$steer_store" "$sandbox/selftest-steer-record-$$"
+  echo '{"text":"please read the round brief and act on it"}' > "$steer_store/record.jsonl"
+  confirm_marker="/tmp/steer-pending-selftest-confirm-$$"
+  printf 'task_directory=%s\nsession_name=no-such-session\nfragment=%s\nmessage=%s\n' \
+    "$sandbox/selftest-steer-record-$$" "read the round brief and act" "selftest confirm steer" > "$confirm_marker"
+  lost_marker="/tmp/steer-pending-selftest-lost-$$"
+  printf 'task_directory=%s\nsession_name=no-such-session\nfragment=%s\nmessage=%s\n' \
+    "$sandbox" "fragment that appears in no record anywhere" "selftest lost steer" > "$lost_marker"
+  touch -d '20 minutes ago' "$lost_marker"
+  steer_events="$(emit_steer_events)"
+  grep -q "LANDED selftest confirm steer" "$sandbox/selftest-steer-record-$$/steers.log" 2>/dev/null \
+    || { echo "FAIL steer confirm arm (no LANDED logged)"; failures=1; }
+  [ ! -f "$confirm_marker" ] || { echo "FAIL steer confirm arm (marker not cleared)"; failures=1; }
+  printf '%s' "$steer_events" | grep -q "STEER_LOST: no-such-session" \
+    || { echo "FAIL steer lost arm (no STEER_LOST)"; failures=1; }
+  second_steer="$(emit_steer_events | grep -c 'STEER_LOST' || true)"
+  [ "$second_steer" = "0" ] || { echo "FAIL steer lost arm (fired twice)"; failures=1; }
+  rm -rf "$steer_store" "$lost_marker" "${lost_marker}.lost" "$confirm_marker"
   rm -rf "$sandbox"
+
   if [ "$failures" = "0" ]; then
     echo "SELF-TEST: all arms fire, clean state stays silent."
     exit 0

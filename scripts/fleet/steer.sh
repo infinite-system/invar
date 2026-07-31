@@ -75,6 +75,30 @@ if ! tmux has-session -t "$session_name" 2>/dev/null; then
   exit 3
 fi
 
+task_directory=""
+for state_directory in in-progress active completed; do
+  candidate=".invar/tasks/${state_directory}/${task_folder_name}"
+  [ -d "$candidate" ] && { task_directory="$candidate"; break; }
+done
+[ -n "$task_directory" ] || task_directory="/tmp"
+
+# The builder's own session record: codex rollout matched by session-meta cwd
+# (identity, never content grep — the #280/#313 lesson), or the claude store
+# dir named by the worktree path. Empty when not yet identifiable.
+find_session_record() {
+  local cwd record_file
+  cwd="$(tmux display-message -t "$session_name" -p '#{pane_current_path}' 2>/dev/null)"
+  [ -n "$cwd" ] || return 0
+  for record_file in $(ls -1t "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | head -40); do
+    if head -c 2048 "$record_file" 2>/dev/null | grep -qF "\"cwd\":\"$cwd\""; then
+      printf '%s' "$record_file"; return 0
+    fi
+  done
+  record_file="$(ls -t "$HOME"/.claude/projects/*"${task_folder_name}"*/*.jsonl 2>/dev/null | head -1)"
+  [ -n "$record_file" ] && printf '%s' "$record_file"
+  return 0
+}
+
 # A distinctive tail fragment of the message, to detect it lingering in the
 # composer. Use the last 40 characters — long enough to be unambiguous —
 # whitespace-normalized so composer line-wrapping cannot hide it.
@@ -96,11 +120,35 @@ for attempt in 1 2 3 4 5 6 7 8; do
   # (2026-07-29, #326: 13 minutes unsubmitted), and the "tab to queue message"
   # pending hint, in one predicate with a self-test (--self-test).
   if ! composer_occupied "$pane_text" "$message_tail"; then
-    if printf '%s' "$pane_text" | grep -qE 'esc to interrupt|• Working'; then
-      echo "steer: DELIVERED to $session_name — composer cleared, builder processing (attempt $attempt)"
-    else
-      echo "steer: DELIVERED to $session_name — composer cleared (attempt $attempt)"
-    fi
+    # Composer clear is NECESSARY, not SUFFICIENT: the pane is a rendering,
+    # and it has lied four recorded times. The PROOF of landing is the
+    # builder's own session record (codex rollout / claude store jsonl) —
+    # the producer's append-only file, immune to wrapping and redraws.
+    record_fragment="$(printf '%s' "$message" | tr -c 'a-zA-Z0-9 ' ' ' | tr -s ' ')"
+    record_fragment="${record_fragment: -30}"
+    session_record="$(find_session_record)"
+    for confirm_attempt in 1 2 3 4 5; do
+      if [ -n "$session_record" ] && grep -qF -- "$record_fragment" "$session_record" 2>/dev/null; then
+        printf '%s LANDED %s\n' "$(date '+%F %T')" "$message" >> "${task_directory}/steers.log"
+        echo "steer: LANDED on $session_name — confirmed in the builder's own session record (${session_record##*/})"
+        exit 0
+      fi
+      sleep 2
+      [ -n "$session_record" ] || session_record="$(find_session_record)"
+    done
+    # Mid-turn steers are QUEUED by the terminal and only enter the record
+    # when the builder picks them up — that can be minutes. Hand the pending
+    # confirmation to fleet-watch: it confirms (and logs LANDED) or raises
+    # STEER_LOST. NOTHING is appended to steers.log for an unconfirmed steer —
+    # a log of attempts would be a deceptive metric.
+    pending_marker="/tmp/steer-pending-$(printf '%s' "$task_folder_name" | tr -c 'a-zA-Z0-9-' '-')-$(date +%s)"
+    {
+      printf 'task_directory=%s\n' "$task_directory"
+      printf 'session_name=%s\n' "$session_name"
+      printf 'fragment=%s\n' "$record_fragment"
+      printf 'message=%s\n' "$(printf '%s' "$message" | normalize)"
+    } > "$pending_marker"
+    echo "steer: QUEUED on $session_name — composer clear but not yet in the session record; fleet-watch will confirm LANDED or raise STEER_LOST (marker: $pending_marker)"
     exit 0
   fi
   # Message still visible near the prompt — stuck in the composer. Mid-turn
