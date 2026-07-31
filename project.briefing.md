@@ -4,7 +4,32 @@
 
 ### OPERATIVE STATE
 
-RESUME ANCHOR 22 (2026-07-31 ~16:40 EDT — written at CHECKPOINT, pre-compaction)
+RESUME ANCHOR 23 (2026-07-31 ~17:2x EDT — CHECKPOINT update; supersedes 22 below)
+
+LANES: ONE live builder — #430-bottom-panel-absorbs-dock-remainders
+(codex sol high, dispatched 14:59, tmux invar/430-bottom-panel-absorbs-dock-remainders).
+Brief carries the USER RULING (verbatim in task file): bottom panel
+absorbs EVERY dock remainder, all presets, all span combinations —
+no blank space. Evidence: conductor probe tmp/probe-430-preset-spans.ts
+(mouse kind press/release, NOT down/up). On READY: triage report,
+merge main forward, gate (read GATE_EXIT), land serially, convert
+bycatch first.
+
+RESOLVED SINCE ANCHOR 22: #428 LANDED (fold-dense == commanded rows;
+gate flake class closed). The open #430 question was ANSWERED by the
+user (always absorb). ORPHAN RETIRED: the user-rejected early
+dispatch had already launched 430-bottom-panel-span-centered-layout
+(folder now in retired/, branch tagged retired/, builder killed by
+cwd-resolved pid, zero work lost). LESSON: a rejected tool call may
+have PARTIALLY EXECUTED — after any mid-call interruption, verify
+side effects on disk (family 13).
+
+QUEUE: 12 held user-directed items in project.active-tasks.md.
+WATCHERS: fleet-watch Monitor b5j7xg9gf (liveness = heartbeat file,
+never TaskList). Crons :07 + :37 live. Restart re-arm: Monitor + two
+crons per conductor SKILL.md.
+
+RESUME ANCHOR 22 (2026-07-31 ~16:40 EDT — superseded by 23)
 
 LANES: one builder lane #428 (fold-dense count-based fix) is READY at
 commit 068e8aa2; its combined-tree gate is RUNNING (log
