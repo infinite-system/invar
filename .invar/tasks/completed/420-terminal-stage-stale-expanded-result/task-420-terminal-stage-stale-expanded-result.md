@@ -1,7 +1,7 @@
 # Task 420 — terminal-stage: expanded tool result paints the previous command
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 Engine: codex
 Environment: linux
 Model: 5.6-sol

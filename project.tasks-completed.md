@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 - #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
 - #417 [field-v2-3d-field-timeline-playout](.invar/tasks/completed/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md) — 508616e9 — Field v2: exact 2D + constrained 3D + timeline playout (one geometry generator; no ambient loop)
 - #416 [field-v2-design-language-research](.invar/tasks/completed/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md) — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)

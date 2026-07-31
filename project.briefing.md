@@ -18,12 +18,19 @@ THE PIPELINE (task folders + briefs all committed):
   Bun.build+compiler-sfc, tokens seam; v1 untouched, ports 4313/4314).
 - #416 design language — LANDED ff82192e (spec+tokens+mockup at
   tools/invariant-field-v2-design/; mockup is the visual north star).
-- #417 3D field + timeline playout — DISPATCHED (codex sol HIGH),
-  brief in folder; owns FieldView/camera/3D/playout, seam = selection
-  state on InvariantFieldApp.
-- #418 code-lens explorer — DISPATCHED (codex sol HIGH), parallel;
-  owns cards/lenses/list + read-only path-confined span endpoint;
-  keeps out of FieldView.
+- #417 3D+playout — LANDED 508616e9 (GATE_OVERRIDE: pre-existing main
+  terminal-stage red, conductor-verified standalone -> #420).
+- #418 code lenses — LANDED 7435c3c8 (shiki TS+Vue lenses, honest
+  unresolved states, read-only path-confined span endpoint).
+- #419 Opus synthesis — DISPATCHED (claude opus MEDIUM, verified by
+  pane: thinking at medium). Brief: coherence pass + simple release
+  gate + the instrument's own invariants+lattice + SELF-MEASUREMENT
+  (its contract enters the scan -> own dots + own birth in playout) +
+  title it the "Invariable representation instrument". Land on green;
+  the #420 red is pre-classified for its gate.
+- #420 terminal-stage stale expanded result — DISPATCHED (codex sol
+  HIGH): DETERMINISTIC main red (was #411 flake, hardened); bisect
+  79b325ea..main by driving; fix code never timeout.
 - #419 Opus synthesis (claude opus MEDIUM, user explicit) — last;
   integrates all into the "Invariable representation instrument".
   USER ADDITIONS (recorded verbatim in the #419 task file): a simple
