@@ -1,7 +1,7 @@
 # Task 417 — Field v2: 3D field, polished 2D, timeline playout
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 508616e9 — Field v2: exact 2D + constrained 3D + timeline playout (one geometry generator; no ambient loop)
 Engine: codex
 Environment: linux
 Model: 5.6-sol
