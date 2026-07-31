@@ -1,7 +1,7 @@
 # Task 421 — Field scanner: current snapshot mixes working tree and HEAD
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
