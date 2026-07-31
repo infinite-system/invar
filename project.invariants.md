@@ -1008,7 +1008,7 @@ an explicit child terminal cell; a host theme change leaving child defaults or u
 on the previous palette.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts
-src/modules/ui/PanelHeading.test.ts && bun scripts/harness/smoke-activitybar-harness.ts`; grep for
+src/modules/ui/PanelTabBar.test.ts && bun scripts/harness/smoke-activitybar-harness.ts`; grep for
 hard-coded colors/glyphs outside `theme`.
 
 **Status:** provisional
