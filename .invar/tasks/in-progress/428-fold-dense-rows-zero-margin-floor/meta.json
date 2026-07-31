@@ -1,0 +1,15 @@
+{
+  "task": 428,
+  "slug": "fold-dense-rows-zero-margin-floor",
+  "branch": "fleet/428-fold-dense-rows-zero-margin-floor",
+  "worktree": ".invar/worktrees/428-fold-dense-rows-zero-margin-floor",
+  "tmuxSession": "invar/428-fold-dense-rows-zero-margin-floor",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-428-fold-dense-rows-zero-margin-floor.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "1fe407dfd8a7eaf0b9941ff2503febe682922bc8",
+  "startedAt": "2026-07-31T14:31:04-04:00"
+}

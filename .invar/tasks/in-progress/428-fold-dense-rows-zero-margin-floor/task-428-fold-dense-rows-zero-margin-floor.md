@@ -1,7 +1,7 @@
 # Task 428 — fold-dense row floor sits inside the load jitter band
 
 Priority: verification-integrity
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
