@@ -4,8 +4,9 @@
 
 ### OPERATIVE STATE
 
-ACTIVE USER GOAL (a session Stop hook enforces it): the FIELD V2
-PROGRAM — make the Invariant Field app look awesome, game-like,
+FIELD V2 PROGRAM: COMPLETE (all six landed; see #419 summary). The
+goal hook's condition is met. Remaining follow-ups: #421 (scanner
+mixed sources), #414, #412, and the held queue. Original goal — make the Invariant Field app look awesome, game-like,
 reimagined; 3D version; code lenses with TS/Vue syntax highlighting
 (the Field as a door into the implementation); Vue SFC script setup
 lang ts; strict project.conventions.md same as the app; timeline
