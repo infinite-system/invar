@@ -6,12 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/in-progress/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md)  [building]
+  `tmux attach -t invar/430-bottom-panel-absorbs-dock-remainders`
 - #430 [bottom-panel-span-centered-layout](.invar/tasks/in-progress/430-bottom-panel-span-centered-layout/task-430-bottom-panel-span-centered-layout.md)  [building]
   `tmux attach -t invar/430-bottom-panel-span-centered-layout`
 
-## USER-DIRECTED (14)
-- #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/active/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md)
+## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)

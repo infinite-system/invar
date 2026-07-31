@@ -1,7 +1,7 @@
 # Task 430 — the bottom panel absorbs every dock remainder
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
