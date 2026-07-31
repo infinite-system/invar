@@ -1,7 +1,7 @@
 # Task 423 — sweep the last PanelHeading-era naming out of the contracts
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: COMPLETED — e92011c0 — Sweep grep to zero; four records repointed; the chain of bycatch pairs is closed. Punctuation notes are known legacy tolerance (no action); glyph breach converted to #426 before landing.
 Engine: codex
 Environment: linux
 Model: 5.6-sol

@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #423 [panelheading-rot-remainder-sweep](.invar/tasks/completed/423-panelheading-rot-remainder-sweep/task-423-panelheading-rot-remainder-sweep.md) — e92011c0 — Sweep grep to zero; four records repointed; the chain of bycatch pairs is closed. Punctuation notes are known legacy tolerance (no action); glyph breach converted to #426 before landing.
 - #422 [verification-field-panelheading-rot](.invar/tasks/completed/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md) — ea808dcb — Repointed the three PanelHeading-rotted records to PanelTabBar-era artifacts; UI geometry record re-derived. Contract-only; checker green. Bycatch converted to #423 (class-closing sweep) before landing.
 - #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 - #419 [field-v2-opus-synthesis](.invar/tasks/completed/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md) — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate
