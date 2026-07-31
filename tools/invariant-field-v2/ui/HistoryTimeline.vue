@@ -20,6 +20,15 @@ const historyTimeline = new HistoryTimeline.Class(props, emit);
     <div class="timeline-control">
       <button
         type="button"
+        class="timeline-play-button"
+        :aria-label="historyTimeline.playButtonLabel"
+        :aria-pressed="historyTimeline.isPlaying"
+        @click="historyTimeline.toggleTimeline"
+      >
+        {{ historyTimeline.playButtonGlyph }}
+      </button>
+      <button
+        type="button"
         aria-label="Previous snapshot"
         :disabled="historyTimeline.isPreviousDisabled"
         @click="historyTimeline.selectPrevious"
@@ -42,6 +51,9 @@ const historyTimeline = new HistoryTimeline.Class(props, emit);
       >
         →
       </button>
+      <span class="snapshot-position">{{
+        historyTimeline.snapshotPositionLabel
+      }}</span>
     </div>
   </section>
 </template>

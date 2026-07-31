@@ -143,7 +143,7 @@ describe('ivue field models', () => {
       () => undefined,
     );
     const highlightedDots = field.fieldDots.filter((dot) =>
-      dot.className.includes('record-dot-composition'),
+      dot.className.includes('record-mark-composition'),
     );
     expect(highlightedDots.map((dot) => dot.identifier)).toEqual(['first']);
   });

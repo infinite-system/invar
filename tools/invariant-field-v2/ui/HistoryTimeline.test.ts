@@ -23,5 +23,7 @@ describe('HistoryTimeline', () => {
     expect(historyTimeline.title).toBe('12345678 · Fixture snapshot');
     expect(historyTimeline.isPreviousDisabled).toBe(true);
     expect(historyTimeline.isNextDisabled).toBe(true);
+    expect(historyTimeline.playButtonLabel).toBe('Replay timeline');
+    expect(historyTimeline.snapshotPositionLabel).toBe('1 / 1');
   });
 });

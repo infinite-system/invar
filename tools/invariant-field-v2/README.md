@@ -56,8 +56,15 @@ The parity test compares both parsers against the current contract set.
 ## How to read the field
 
 R is reality at the center. It is an asymptote. The displayed radius is
-`0.10 + 0.90 × e^(-2.5 × depth)`, so no record reaches R. Contract files form
-angular sectors. Dot color shows record kind. Radius alone carries rank.
+`0.10 + 0.90 × e^(-2.5 × depth)`, so no record reaches R. The field has eight
+stable domain sectors. Domain sets color. The diamond, open hexagon, and circle
+silhouettes distinguish absolute, renegotiable, and chosen reality. Radius
+alone carries rank.
+
+The field opens in a constrained three-dimensional view. Use 2D for the exact
+plan projection. Both views use the same radius and angle. A secondary-pointer
+drag changes only the camera yaw and pitch. Use 2, 3, and 0 to select 2D, select
+3D, and reset the camera. Reduced-motion environments stay in 2D.
 
 Depth combines kind, falsifiability, resolved evidence, verification mode,
 status, generativity, guarded simplicity, connection density, annotation
@@ -68,5 +75,7 @@ Historical and broader commands stay citation-only because running them
 against the current checkout would give a false result.
 
 The time control switches among every commit that touched a contract or
-lattice. A URL such as `?snapshot=0` opens a specific snapshot. A lattice
-composition filters the list and lights its records together.
+lattice. Play advances on the client and shows birth, removal, inward,
+outward, and rot events between snapshots. A URL such as `?snapshot=0` opens a
+specific snapshot. A lattice composition filters the list and lights its
+records together.

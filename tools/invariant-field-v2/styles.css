@@ -44,7 +44,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible,
-.record-dot:focus-visible {
+.record-mark:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
@@ -227,15 +227,6 @@ h2 {
     var(--color-field);
 }
 
-#field {
-  display: block;
-  width: min(100%, 840px);
-  min-width: 620px;
-  height: auto;
-  margin: var(--space-none) auto;
-  overflow: visible;
-}
-
 .field-background {
   fill: var(--color-field);
   stroke: var(--color-border);
@@ -290,38 +281,6 @@ h2 {
   fill: var(--color-reality);
   font-size: var(--font-size-reality-label);
   font-weight: var(--font-weight-heavy);
-}
-
-.record-dot {
-  cursor: pointer;
-  stroke: var(--color-field);
-  stroke-width: 1.2;
-  transition:
-    opacity 140ms ease,
-    r 140ms ease;
-}
-
-.record-dot:hover,
-.record-dot-selected,
-.record-dot-composition {
-  stroke: var(--color-white);
-  stroke-width: 2;
-}
-
-.record-dot-reality-absolute {
-  fill: var(--color-reality-absolute);
-}
-
-.record-dot-reality-renegotiable {
-  fill: var(--color-reality-renegotiable);
-}
-
-.record-dot-chosen {
-  fill: var(--color-chosen);
-}
-
-.record-dot-muted {
-  opacity: 0.09;
 }
 
 .field-tooltip {
@@ -662,5 +621,456 @@ h2 {
   .record-field {
     grid-template-columns: 1fr;
     gap: var(--space-5-pixels);
+  }
+}
+
+.timeline-control {
+  grid-template-columns: 38px 38px minmax(180px, 1fr) 38px auto;
+  align-items: center;
+}
+
+.timeline-play-button {
+  color: var(--color-focus);
+}
+
+.snapshot-position {
+  color: var(--color-muted);
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+}
+
+.field-panel {
+  outline: none;
+}
+
+.field-panel-heading {
+  align-items: center;
+}
+
+.field-controls,
+.field-mode-group {
+  display: flex;
+  gap: var(--space-8-pixels);
+  align-items: end;
+}
+
+.field-controls > button,
+.field-mode-group button {
+  min-height: 34px;
+  padding: var(--space-7-pixels) var(--space-10-pixels);
+}
+
+.field-mode-group {
+  gap: var(--space-2-pixels);
+  padding: var(--space-2-pixels);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.field-mode-group button {
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+}
+
+.field-mode-group .field-mode-active {
+  background: var(--color-panel-active);
+  color: var(--color-focus);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.field-stage {
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle,
+      rgb(var(--color-accent-components) / 7%) 0,
+      transparent 42%
+    ),
+    repeating-radial-gradient(
+      circle,
+      transparent 0 39px,
+      var(--color-field-grid) 40px,
+      transparent 41px 80px
+    ),
+    var(--color-field);
+}
+
+.field-coordinate-readout {
+  position: absolute;
+  z-index: 6;
+  top: var(--space-14-pixels);
+  left: var(--space-16-pixels);
+  display: flex;
+  gap: var(--space-12-pixels);
+  padding: var(--space-7-pixels) var(--space-10-pixels);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: rgb(var(--color-panel-components) / 82%);
+  color: var(--color-muted);
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-micro);
+  letter-spacing: var(--letter-spacing-eyebrow);
+  pointer-events: none;
+}
+
+.field-two-dimensional {
+  display: block;
+  width: min(100%, 840px);
+  min-width: 620px;
+  height: auto;
+  margin: var(--space-none) auto;
+  overflow: visible;
+}
+
+.field-background {
+  fill: var(--color-field);
+  stroke: var(--color-border);
+}
+
+.domain-sector {
+  stroke: var(--color-field-axis);
+  stroke-width: 0.6;
+}
+
+.domain-sector-0 {
+  fill: color-mix(in srgb, var(--color-domain-system) 4%, transparent);
+}
+
+.domain-sector-1 {
+  fill: color-mix(in srgb, var(--color-domain-state) 4%, transparent);
+}
+
+.domain-sector-2 {
+  fill: color-mix(in srgb, var(--color-domain-interaction) 4%, transparent);
+}
+
+.domain-sector-3 {
+  fill: color-mix(in srgb, var(--color-domain-language) 4%, transparent);
+}
+
+.domain-sector-4 {
+  fill: color-mix(in srgb, var(--color-domain-data) 4%, transparent);
+}
+
+.domain-sector-5 {
+  fill: color-mix(in srgb, var(--color-domain-process) 4%, transparent);
+}
+
+.domain-sector-6 {
+  fill: color-mix(in srgb, var(--color-domain-evidence) 4%, transparent);
+}
+
+.domain-sector-7 {
+  fill: color-mix(in srgb, var(--color-domain-risk) 4%, transparent);
+}
+
+.domain-label {
+  fill: var(--color-muted-dark);
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-field-label);
+  letter-spacing: var(--letter-spacing-field-label);
+}
+
+.rank-ring {
+  fill: none;
+  stroke: var(--color-field-grid);
+  stroke-dasharray: 3 6;
+}
+
+.reality-glow {
+  fill: var(--color-reality-halo);
+}
+
+.reality {
+  fill: var(--color-reality);
+  filter: drop-shadow(0 0 8px var(--color-reality));
+}
+
+.record-mark {
+  cursor: pointer;
+  outline: none;
+  color: var(--record-domain-color);
+}
+
+.record-motion-layer {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.record-hit-target {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 1;
+}
+
+.record-halo {
+  fill: var(--record-domain-color);
+  opacity: 0;
+  transition: opacity var(--duration-hover-feedback) var(--ease-enter);
+}
+
+.record-mark:hover .record-halo,
+.record-mark:focus-visible .record-halo,
+.record-mark-selected .record-halo {
+  opacity: 0.16;
+}
+
+.record-core {
+  fill: var(--record-domain-color);
+  stroke: var(--color-foreground-strong);
+  stroke-width: 0.7;
+  transition: transform var(--duration-selection-confirm) var(--ease-confirm);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.record-core-absolute {
+  transform: rotate(45deg);
+}
+
+.record-core-renegotiable {
+  fill: var(--color-field);
+  stroke: var(--record-domain-color);
+  stroke-width: 1.4;
+}
+
+.record-verification-rim {
+  fill: none;
+  stroke: var(--color-foreground);
+  stroke-width: 1;
+}
+
+.record-verification-citation-only .record-verification-rim {
+  stroke-dasharray: 10 12;
+}
+
+.record-verification-missing .record-verification-rim,
+.record-verification-executed-fail .record-verification-rim {
+  stroke: var(--color-danger);
+  stroke-dasharray: 3 4;
+}
+
+.record-mark-selected .record-core {
+  transform: scale(1.42);
+}
+
+.record-mark-selected.record-mark-reality-absolute .record-core {
+  transform: rotate(45deg) scale(1.42);
+}
+
+.record-selection-bracket {
+  fill: none;
+  stroke: var(--color-selection);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 4;
+  filter: drop-shadow(0 0 5px var(--color-selection));
+}
+
+.record-selection-anchor {
+  stroke: var(--color-selection);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 7;
+  pointer-events: none;
+}
+
+.record-selection-label {
+  fill: var(--color-foreground-strong);
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-caption);
+  paint-order: stroke;
+  stroke: var(--color-field);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+.record-rot-fracture {
+  fill: none;
+  stroke: var(--color-rot);
+  stroke-width: 1.4;
+}
+
+.record-mark-muted {
+  opacity: 0.12;
+}
+
+.record-event-trace {
+  stroke: transparent;
+  stroke-width: 1.2;
+  stroke-dasharray: 3 5;
+  pointer-events: none;
+}
+
+.record-event-trace-visible {
+  stroke: var(--color-focus);
+  animation: field-trace-decay var(--duration-trace-decay) var(--ease-exit) both;
+}
+
+.record-event-weaken .record-event-trace,
+.record-event-rot .record-event-trace {
+  stroke: var(--color-rot);
+}
+
+.record-event-birth .record-motion-layer {
+  animation: field-record-birth var(--duration-record-birth)
+    var(--ease-focus-flight) both;
+}
+
+.record-event-strengthen .record-motion-layer,
+.record-event-weaken .record-motion-layer,
+.record-event-rot .record-motion-layer {
+  animation: field-record-morph var(--duration-record-rot)
+    var(--ease-focus-flight) both;
+}
+
+.record-event-removed .record-motion-layer {
+  animation: field-record-remove var(--duration-chrome-transition)
+    var(--ease-exit) both;
+}
+
+.field-three-dimensional {
+  position: absolute;
+  inset: 0;
+}
+
+.field-three-dimensional canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.three-dimensional-hit-target {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  padding: var(--space-none);
+  border: 0;
+  border-radius: var(--radius-dot);
+  background: transparent;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.three-dimensional-hit-target:focus-visible,
+.three-dimensional-hit-target-selected {
+  outline: 1px dashed var(--color-selection);
+  outline-offset: -3px;
+}
+
+.timeline-event-readout {
+  position: absolute;
+  z-index: 6;
+  right: var(--space-16-pixels);
+  bottom: var(--space-16-pixels);
+  display: flex;
+  gap: var(--space-8-pixels);
+  padding: var(--space-7-pixels) var(--space-10-pixels);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: rgb(var(--color-panel-components) / 88%);
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-micro);
+}
+
+.timeline-event-count-birth,
+.timeline-event-count-strengthen {
+  color: var(--color-success);
+}
+
+.timeline-event-count-weaken,
+.timeline-event-count-rot,
+.timeline-event-count-removed {
+  color: var(--color-rot);
+}
+
+.timeline-transition-sentinel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  animation: field-transition-settlement var(--duration-snapshot-morph)
+    var(--ease-standard);
+}
+
+.timeline-transition-sentinel-reduced {
+  animation-duration: var(--duration-selection-confirm);
+}
+
+@keyframes field-record-birth {
+  from {
+    opacity: 0;
+    transform: translate(var(--record-previous-x), var(--record-previous-y));
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes field-record-morph {
+  from {
+    transform: translate(var(--record-previous-x), var(--record-previous-y));
+  }
+
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes field-record-remove {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+}
+
+@keyframes field-trace-decay {
+  from {
+    opacity: 0.9;
+    stroke-dashoffset: 20;
+  }
+
+  to {
+    opacity: 0.1;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes field-transition-settlement {
+  from {
+    opacity: 0.99;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-panel .record-motion-layer {
+    animation-name: field-record-dissolve;
+    animation-duration: var(--duration-selection-confirm);
+  }
+
+  .field-panel .record-event-trace {
+    animation: none;
+  }
+}
+
+@keyframes field-record-dissolve {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
