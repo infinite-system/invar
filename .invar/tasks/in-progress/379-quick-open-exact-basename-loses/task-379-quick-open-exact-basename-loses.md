@@ -1,6 +1,6 @@
 # #379 — quick open ranks a sibling above an exact basename match
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
