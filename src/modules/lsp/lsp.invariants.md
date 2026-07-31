@@ -281,6 +281,46 @@ semantic command has run.
 
 **Last refined:** 2026-07-21
 
+### Monitored server identity comes from its owner
+
+**Invariant:** If Monitoring names a language-server process, then its server name and PID come from
+the `LanguageClient` that spawned it through `LanguageServerProcessRegistry`, never from a
+process-table search by executable name.
+
+**Scope:** The successful `LanguageClient.activate` spawn path,
+`LanguageServerProcessRegistry`, and the language-server registrations consumed by
+`MonitoringStats`. Processes that no live `LanguageClient` registered are outside the monitored LSP
+population.
+
+**Mechanism:** `LanguageClient` registers its own PID only after process and transport startup.
+`LanguageServerProcessRegistry` keys registrations by owner, preserves manager order, and replaces
+one owner's registration in place. `MonitoringStats` samples that ordered registry directly, so
+executable-name similarity cannot create or redirect an LSP row.
+
+**Generates:** One ordered monitored row per registered `LanguageClient`; exact owner PID sampling;
+registration replacement on restart; removal on normal disposal.
+
+**Rejected alternatives:** Search the process table for known server names — an unrelated process
+can share a name, one server can launch under different names, and a rename silently removes it from
+the monitored population.
+
+**Evidence:** `src/modules/lsp/LanguageClient.ts` (`activate`,
+`registerLanguageServerProcess`, and `dispose`); `src/modules/lsp/LanguageServerProcessRegistry.ts`;
+`src/modules/lsp/LanguageServerProcessRegistry.test.ts`; `src/modules/monitoring/MonitoringStats.ts`
+(`readLanguageServerRows`); `src/modules/monitoring/MonitoringStats.test.ts` (the ordered three-server
+fixture contract).
+
+**Impossible if true:** Monitoring attaches a row to an unrelated same-name process; a process that
+no live `LanguageClient` spawned appears as an LSP row; two owners with the same executable name are
+collapsed into one registration.
+
+**Verification:** `bun test src/modules/lsp/LanguageServerProcessRegistry.test.ts
+src/modules/monitoring/MonitoringStats.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-31
+
 ### Client disposal releases the server
 
 **Invariant:** If a `LanguageClient` is disposed, then its subprocess is killed and its transport
