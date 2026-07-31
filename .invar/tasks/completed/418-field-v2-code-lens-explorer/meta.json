@@ -1,0 +1,18 @@
+{
+  "task": 418,
+  "slug": "field-v2-code-lens-explorer",
+  "branch": "fleet/418-field-v2-code-lens-explorer",
+  "worktree": ".invar/worktrees/418-field-v2-code-lens-explorer",
+  "tmuxSession": "invar/418-field-v2-code-lens-explorer",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-418-field-v2-code-lens-explorer.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "52dabf2a22df381ad04d8e4a2ac9417ae1ed303c",
+  "startedAt": "2026-07-31T04:02:14-04:00",
+  "landedAt": "2026-07-31T04:37:47-04:00",
+  "durationMinutes": 35,
+  "mergeCommit": "7435c3c8"
+}

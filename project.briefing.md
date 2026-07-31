@@ -14,15 +14,16 @@ capstone. USER: v2 is built on a CLONE (tools/invariant-field-v2/);
 v1 (tools/invariant-field/) stays byte-untouched.
 
 THE PIPELINE (task folders + briefs all committed):
-- #415 foundation (Vue SFC toolchain + ivue + strict conventions +
-  tokens seam, in the v2 clone) — DISPATCHED, codex sol HIGH.
-- #416 design language (web research -> spec + tokens + static mockup
-  in tools/invariant-field-v2-design/) — DISPATCHED, codex sol HIGH.
-- #417 3D field + timeline playout — file brief AFTER 415+416 land;
-  builds on toolchain + design spec. codex sol HIGH.
-- #418 code-lens explorer (cards, relationships, code line refs, popup
-  lenses w/ shiki TS+Vue highlighting) — brief after 415+416; parallel
-  with 417. codex sol HIGH.
+- #415 foundation — LANDED c25b135f (v2 clone, Vue SFC + ivue,
+  Bun.build+compiler-sfc, tokens seam; v1 untouched, ports 4313/4314).
+- #416 design language — LANDED ff82192e (spec+tokens+mockup at
+  tools/invariant-field-v2-design/; mockup is the visual north star).
+- #417 3D field + timeline playout — DISPATCHED (codex sol HIGH),
+  brief in folder; owns FieldView/camera/3D/playout, seam = selection
+  state on InvariantFieldApp.
+- #418 code-lens explorer — DISPATCHED (codex sol HIGH), parallel;
+  owns cards/lenses/list + read-only path-confined span endpoint;
+  keeps out of FieldView.
 - #419 Opus synthesis (claude opus MEDIUM, user explicit) — last;
   integrates all into the "Invariable representation instrument".
   USER ADDITIONS (recorded verbatim in the #419 task file): a simple

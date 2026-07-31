@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import FieldView from './FieldView.vue';
 import HistoryTimeline from './HistoryTimeline.vue';
-import RankDisplay from './RankDisplay.vue';
 import RecordList from './RecordList.vue';
+import RecordLens from './RecordLens.vue';
 import { InvariantFieldApp } from './InvariantFieldApp';
 
 const invariantFieldApp = new InvariantFieldApp.Class();
@@ -55,13 +55,18 @@ const {
         @transition-settled="invariantFieldApp.settleTimelineTransition"
         @cancel-timeline="invariantFieldApp.stopTimeline"
       />
-      <RankDisplay
+      <RecordLens
         :metadata="invariantFieldApp.readyMetadata"
+        :snapshot="invariantFieldApp.readySnapshot"
         :selected-record="invariantFieldApp.selectedRecord"
+        @select-record="invariantFieldApp.selectRecord"
+        @select-composition="invariantFieldApp.selectComposition"
+        @clear-selection="invariantFieldApp.clearSelection"
       />
     </section>
     <RecordList
       :snapshot="invariantFieldApp.readySnapshot"
+      :selected-record-identifier="selectedRecordIdentifier"
       :selected-composition-identifier="selectedCompositionIdentifier"
       @select-record="invariantFieldApp.selectRecord"
     />

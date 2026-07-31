@@ -1,5 +1,6 @@
 import type {
   CitationResolution,
+  CodeReference,
   InvariantKind,
   InvariantRecord,
   RankComponents,
@@ -32,6 +33,10 @@ export interface RankInput {
   outgoingConnections: number;
   maximumConnectionCount: number;
   latticeMemberships: string[];
+  incomingRecordIdentifiers?: string[];
+  outgoingRecordIdentifiers?: string[];
+  siblingRecordIdentifiers?: string[];
+  codeReferences?: CodeReference[];
   verificationMode: VerificationMode;
   evidenceResolution: CitationResolution;
   ageInDays: number;
@@ -167,6 +172,10 @@ export function calculateRank(input: RankInput): RankedRecord {
     incomingConnections: input.incomingConnections,
     outgoingConnections: input.outgoingConnections,
     latticeMemberships: input.latticeMemberships,
+    incomingRecordIdentifiers: input.incomingRecordIdentifiers ?? [],
+    outgoingRecordIdentifiers: input.outgoingRecordIdentifiers ?? [],
+    siblingRecordIdentifiers: input.siblingRecordIdentifiers ?? [],
+    codeReferences: input.codeReferences ?? [],
     verificationMode: input.verificationMode,
     evidenceResolution: input.evidenceResolution,
     ageInDays: input.ageInDays,

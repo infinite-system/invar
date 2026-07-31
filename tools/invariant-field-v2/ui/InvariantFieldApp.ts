@@ -209,7 +209,13 @@ class $InvariantFieldApp {
     this.selectedRecordIdentifier.value = recordIdentifier;
   }
 
+  clearSelection() {
+    this.stopTimeline();
+    this.selectedRecordIdentifier.value = null;
+  }
+
   selectComposition(compositionIdentifier: string) {
+    this.stopTimeline();
     this.selectedCompositionIdentifier.value = compositionIdentifier;
   }
 

@@ -7,6 +7,7 @@ import type {
   InvariantKind,
   InvariantRecord,
   LatticeComposition,
+  LatticeDependency,
 } from './types';
 
 const REALITY_HEADING = '## Reality-based invariants';
@@ -511,6 +512,47 @@ export function parseLatticeCompositions(
   });
   flushComposition();
   return compositions;
+}
+
+export function parseLatticeDependencies(
+  latticePath: string,
+  source: string,
+  availableRecords: ReadonlyMap<string, InvariantRecord>,
+): LatticeDependency[] {
+  const document = maskInertContent(source);
+  const activeSource = document.lines
+    .map((line, lineIndex) => (document.activeLines[lineIndex] ? line : ''))
+    .join('\n');
+  const dependencies: LatticeDependency[] = [];
+  const seenDependencies = new Set<string>();
+  for (const paragraph of activeSource.split(/\n\s*\n/)) {
+    const dependencyPhrase = /\bstands?\s+on\b/i.exec(paragraph);
+    if (!dependencyPhrase) continue;
+    const sourcePart = paragraph.slice(0, dependencyPhrase.index);
+    const targetPart = paragraph.slice(
+      dependencyPhrase.index + dependencyPhrase[0].length,
+    );
+    const sourceIdentifiers = extractMarkdownLinks(sourcePart, source)
+      .map((link) =>
+        resolveContractLink(latticePath, link.target, availableRecords),
+      )
+      .filter((identifier): identifier is string => Boolean(identifier));
+    const targetIdentifiers = extractMarkdownLinks(targetPart, source)
+      .map((link) =>
+        resolveContractLink(latticePath, link.target, availableRecords),
+      )
+      .filter((identifier): identifier is string => Boolean(identifier));
+    for (const sourceIdentifier of sourceIdentifiers) {
+      for (const targetIdentifier of targetIdentifiers) {
+        if (sourceIdentifier === targetIdentifier) continue;
+        const dependencyIdentifier = `${sourceIdentifier}->${targetIdentifier}`;
+        if (seenDependencies.has(dependencyIdentifier)) continue;
+        seenDependencies.add(dependencyIdentifier);
+        dependencies.push({ sourceIdentifier, targetIdentifier });
+      }
+    }
+  }
+  return dependencies;
 }
 
 export function collectContractLinks(

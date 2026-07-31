@@ -42,10 +42,26 @@ export interface LatticeComposition {
   memberIdentifiers: string[];
 }
 
+export interface LatticeDependency {
+  sourceIdentifier: string;
+  targetIdentifier: string;
+}
+
 export interface CitationResolution {
   referenced: number;
   resolved: number;
   unresolved: string[];
+}
+
+export type CodeReferenceSource = 'evidence' | 'mechanism' | 'annotation';
+
+export interface CodeReference {
+  identifier: string;
+  source: CodeReferenceSource;
+  label: string;
+  path: string;
+  line: number;
+  resolved: boolean;
 }
 
 export interface RankComponents {
@@ -79,6 +95,10 @@ export interface RankedRecord {
   incomingConnections: number;
   outgoingConnections: number;
   latticeMemberships: string[];
+  incomingRecordIdentifiers: string[];
+  outgoingRecordIdentifiers: string[];
+  siblingRecordIdentifiers: string[];
+  codeReferences: CodeReference[];
   verificationMode: VerificationMode;
   evidenceResolution: CitationResolution;
   ageInDays: number;

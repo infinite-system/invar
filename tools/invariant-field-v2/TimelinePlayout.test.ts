@@ -38,6 +38,10 @@ describe('TimelinePlayout', () => {
         incomingConnections: 0,
         outgoingConnections: 0,
         latticeMemberships: [],
+        incomingRecordIdentifiers: [],
+        outgoingRecordIdentifiers: [],
+        siblingRecordIdentifiers: [],
+        codeReferences: [],
         verificationMode: 'executed-pass',
         evidenceResolution: {
           referenced: 1,
