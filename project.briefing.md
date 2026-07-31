@@ -65,7 +65,7 @@ review-pause was superseded by the user's Field v2 goal.
 ### WATCHERS
 
 fleet-watch Monitor: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)` — re-arm if TaskList shows none.
-Crons: PERMANENTLY DISARMED (user order, 740c5d81) — never re-arm.
+Crons: RE-ARMED by user 2026-07-31 ~02:2x ("The 2 crons loaded?") — the pair per the conductor skill: hourly orchestration :07 + reconciliation sweep :37. This supersedes the 740c5d81 disarm. Re-arm both on restart.
 
 ### USER CONTEXT
 
