@@ -25,7 +25,10 @@ normalize() { tr '\n' ' ' | tr -s ' '; }
 
 # The composer region is the pane text from the LAST '›' prompt line onward —
 # submitted messages echo HIGHER in the transcript and must not count.
-composer_region() { awk '/^›/{n=NR} {line[NR]=$0} END{for(i=n;i<=NR;i++) print line[i]}'; }
+# Prompt anchors: codex uses '›', claude uses '❯' (found live, #419: a
+# claude lane's whole pane counted as composer and a delivered steer read
+# FAILED for 5 Enter rounds). No anchor -> region is empty, not the pane.
+composer_region() { awk '/^›/||/^❯/{n=NR} {line[NR]=$0} END{if(n) for(i=n;i<=NR;i++) print line[i]}'; }
 
 # occupied <pane_text> <normalized_tail> -> 0 if the composer still holds the
 # message (wrapped or chip-collapsed) or shows the queue hint for pending text.
