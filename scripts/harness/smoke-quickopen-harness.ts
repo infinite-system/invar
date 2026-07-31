@@ -44,6 +44,19 @@ for (const fileName of [
   await Bun.write(join(fixtureRoot, fileName), 'x\n');
 }
 
+const exactBasename =
+  'report-299-structure-filter-uses-shared-input-generator.md';
+const exactBasenameTaskDirectory =
+  'completed/299-structure-filter-uses-shared-input-generator';
+const exactBasenamePath = join(exactBasenameTaskDirectory, exactBasename);
+const exactBasenameSiblingPath = join(
+  exactBasenameTaskDirectory,
+  'task-299-structure-filter-uses-shared-input-generator.md',
+);
+mkdirSync(join(fixtureRoot, exactBasenameTaskDirectory), { recursive: true });
+await Bun.write(join(fixtureRoot, exactBasenamePath), 'exact basename\n');
+await Bun.write(join(fixtureRoot, exactBasenameSiblingPath), 'fuzzy sibling\n');
+
 mkdirSync(join(fixtureRoot, 'src'));
 
 await Bun.write(join(fixtureRoot, 'src', 'widget.txt'), 'content\n');
@@ -222,6 +235,34 @@ try {
   HarnessSmoke.Class.pass(
     'Enter opened the exact Quick Open entry published as selected ' +
       `(${String(identityOpenedStatus.activeBuffer)})`,
+  );
+
+  console.log(
+    '== harness quick-open: an exact basename outranks a fuzzy sibling ==',
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Quick Open completes enumeration before the exact-basename query',
+    (status) =>
+      status.quickOpenOpen === true &&
+      status.quickOpenQuery === '' &&
+      status.quickOpenFileEnumerationState === 'complete',
+  );
+  driver.sendText(exactBasename);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the exact basename is selected above its fuzzy sibling',
+    (status) =>
+      status.quickOpenQuery === exactBasename &&
+      status.quickOpenMatches === 2 &&
+      status.quickOpenSelected === 0 &&
+      status.quickOpenSelectedIdentifier === exactBasenamePath,
+  );
+  HarnessSmoke.Class.pass(
+    `Quick Open selected the exact basename (${exactBasenamePath})`,
   );
 
   console.log(
