@@ -1,7 +1,7 @@
 # Task 427 — record the quick open ranking order as a contract
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — dbe86131 — Ranking tiers now contract-recorded with annotation. Bycatch: only known punctuation notes.
 Engine: codex
 Environment: linux
 Model: 5.6-sol

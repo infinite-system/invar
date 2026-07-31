@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/in-progress/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md)  [building]
   `tmux attach -t invar/428-fold-dense-rows-zero-margin-floor`
-- #427 [quickopen-ranking-contract-record](.invar/tasks/in-progress/427-quickopen-ranking-contract-record/task-427-quickopen-ranking-contract-record.md)  [building]
-  `tmux attach -t invar/427-quickopen-ranking-contract-record`
 
 ## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -132,8 +130,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 165 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 166 — full log: project.tasks-completed.md)
 - #429 [layout-switcher-icon-tooltip](.invar/tasks/completed/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md) — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
+- #427 [quickopen-ranking-contract-record](.invar/tasks/completed/427-quickopen-ranking-contract-record/task-427-quickopen-ranking-contract-record.md) — dbe86131 — Ranking tiers now contract-recorded with annotation. Bycatch: only known punctuation notes.
 - #426 [tabbar-hardcoded-glyph-breach](.invar/tasks/completed/426-tabbar-hardcoded-glyph-breach/task-426-tabbar-hardcoded-glyph-breach.md) — 5b761903 — Theme contract's one known breach closed; vocabulary slot at three tiers, driven at each; no visual change at the default tier. Bycatch: none actionable (single unreproduced keystroke drop; known checker notes).
 - #425 [monitoring-lsp-contract-records](.invar/tasks/completed/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md) — db19dec4 — Two proven disciplines now recorded with annotations at enforcement points; scope refine applied. Bycatch (stale drive-command paths) fixed as follow-up doc commit on main.
 - #424 [quit-smoke-theme-tone-wait](.invar/tasks/completed/424-quit-smoke-theme-tone-wait/task-424-quit-smoke-theme-tone-wait.md) — 41715591 — Ten assert-after-switch sites converted to condition waits across four smokes; census committed; both arms proven by plants; gate green on the exact tip. Bycatch: brief's invariants-in-scope was wrong (conductor error, acknowledged); hook-vs-brief tooling conflict noted, no task needed.
@@ -147,4 +146,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #416 [field-v2-design-language-research](.invar/tasks/completed/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md) — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)
 - #415 [field-v2-foundation-vue-sfc](.invar/tasks/completed/415-field-v2-foundation-vue-sfc/task-415-field-v2-foundation-vue-sfc.md) — c25b135f — Field v2 foundation: Vue SFC on Bun + ivue + strict conventions + tokens seam (v1 untouched)
 - #414 [invariant-citation-drift-pair](.invar/tasks/completed/414-invariant-citation-drift-pair/task-414-invariant-citation-drift-pair.md) — 354d1527 — Repointed two rotted citations (PanelTabBar glyph vocabulary; text/TextDocument.ts). Claims verified true against current code; contract-only diff; checker fully green. Bycatch converted to #422 before landing.
-- #413 [invariant-field-web-app](.invar/tasks/completed/413-invariant-field-web-app/task-413-invariant-field-web-app.md) — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
