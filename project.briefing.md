@@ -1,165 +1,73 @@
 # Overnight briefing — started 2026-07-29 00:28
 
-## RESUME ANCHOR 20 — 2026-07-30 14:06 (written at 77.6% gauge, pre-compaction)
+## RESUME ANCHOR 21 — 2026-07-31 ~02:0x (written at the 86% CHECKPOINT; supersedes anchor 20)
 
-### ANCHOR 20 — delta 4 (2026-07-30 ~19:5x): #393 LANDED — PAUSE IS NOW ACTIVE
+### OPERATIVE STATE
 
-#393 landed at 79b325ea (summary in the completed folder: 9 rounds, two
-builders, evidence re-attributed mid-task, one refuted red
-classification). Fleet is EMPTY. The user's review pause is IN FORCE:
-no dispatches, no queue draining, no experiments, until the user's
-word. #412 (monitoring LSP CPU rows) filed and queued. fleet-watch
-Monitor stays armed; crons stay disarmed (740c5d81). User should
-rebuild to get the idle fix.
+ACTIVE USER GOAL (a session Stop hook enforces it): the FIELD V2
+PROGRAM — make the Invariant Field app look awesome, game-like,
+reimagined; 3D version; code lenses with TS/Vue syntax highlighting
+(the Field as a door into the implementation); Vue SFC script setup
+lang ts; strict project.conventions.md same as the app; timeline
+playout. 5 tasks, max 3 builders concurrent, Opus-5-MEDIUM synthesis
+capstone. USER: v2 is built on a CLONE (tools/invariant-field-v2/);
+v1 (tools/invariant-field/) stays byte-untouched.
 
-### ANCHOR 20 — delta 3 (2026-07-30 ~17:5x, post-compaction — OPERATIVE ORDER)
+THE PIPELINE (task folders + briefs all committed):
+- #415 foundation (Vue SFC toolchain + ivue + strict conventions +
+  tokens seam, in the v2 clone) — DISPATCHED, codex sol HIGH.
+- #416 design language (web research -> spec + tokens + static mockup
+  in tools/invariant-field-v2-design/) — DISPATCHED, codex sol HIGH.
+- #417 3D field + timeline playout — file brief AFTER 415+416 land;
+  builds on toolchain + design spec. codex sol HIGH.
+- #418 code-lens explorer (cards, relationships, code line refs, popup
+  lenses w/ shiki TS+Vue highlighting) — brief after 415+416; parallel
+  with 417. codex sol HIGH.
+- #419 Opus synthesis (claude opus MEDIUM, user explicit) — last;
+  integrates all into the "Invariable representation instrument".
+Wave sequencing: land 415+416 -> write briefs 417+418 from their
+reports -> dispatch both -> land -> write 419 brief -> dispatch ->
+land. Landing ritual unchanged (extract-gate-verdict.sh, overlap
+check, land.sh with GATE_LOG).
 
-USER ORDER (verbatim): "keep cooking on this, have a break after this
-task, no more tasks for now, i need to do a review of everything, been
-resting." Meaning: land #393 when READY, then FULL STOP — no new
-dispatches, no queue draining, no experiments, until the user's word.
-The NEXT DISPATCHES list in delta 2 is HELD for the user's review, not
-a work order.
+LANDED THIS SESSION: #393 idle CPU (79b325ea, painted-priced
+dashboard); #413 Invariant Field v1 (df9419cc, 77m — 377 records,
+axiom-mapped 11-component rank, ivue UI, calibration by planted rot).
+V1 runs: bun tools/invariant-field/server.ts --host=0.0.0.0 (port
+4313; --host flag committed; user views from macOS host at
+http://10.211.55.7:4313/). A field server may still be running.
 
-ONE LANE LIVE: #393 relaunched fresh (codex sol-medium, 17:37) after the
-prior builder wedged (killed by cwd-resolved pid only). Consolidated
-round-5 brief: merge main + observed=painted hidden-pane fix +
-proportional visible tick + real-shaped fixture contracts + one gate.
-Land via the ritual (extract-gate-verdict.sh, overlap check FIRST —
-Bootstrap + dashboard smoke are hot files).
+FILED: #414 citation-drift pair (#413 bycatch; fixing it moves two
+dots inward). #412 monitoring LSP CPU rows (queued). The pre-goal
+review-pause was superseded by the user's Field v2 goal.
 
-Briefing TRIMMED this delta (user-requested): anchors 8-19 + overnight
-sections pruned; git history holds them.
+### MECHANICS HARDENED TODAY (all committed, self-tested)
 
-### ANCHOR 20 — delta 2 (2026-07-30 ~16:0x, at 96% — FINAL before compaction)
-
-LANDED since delta 1: #409 (layout tiling, 91249982, narrow-rule
-markdown flake recorded into #362), #404 (panel v2, 17b89a64 — full
-three-message spec), #381 (LSP everywhere, d8526062 — compiled binary
-lacked PATH augmentation; app-root discovery added; #294 fixture blind
-spot explained), #408 (workspace isolation, 68fcad24, 2 rounds — six
-leaks closed, v2 panel covered). 27 landings today. FILED #410
-(merge-gate scratch cleanup; 2212 dead-owner files swept by hand once)
-and #411 (gate-load starvation family — retry-green machinery defect,
-evidence consolidated).
-
-ONE LANE LIVE: #393 — merge round done or near; then the two queued
-rounds: hidden-tasks-pane 30% polling (observed=painted fix +
-proportional visible tick, real-shaped fixture). Land on its green via
-the ritual (extract-gate-verdict for codex; overlap check FIRST — comm
--12 on merge-base diffs; builder merge-forward round on semantic
-overlap).
-
-NEXT DISPATCHES when slots free: #382 (claude resume dialog cut off),
-#395 (Database connect hidden-field focus), #397 (FrameProbe misdecode),
-#403 (shrunk: record the cache bound), #405 (check against v2 PanelHost
-first), #406, #407, #410, #411, #376 (delta sampling + whoami),
-#392/#394/#396/#399/#400/#401 hygiene. User offer OPEN: flip
-~/.codex/config.toml effort to medium — awaiting their word.
-
-Post-compaction: read this anchor, verify lanes via tmux ls + git log,
-re-arm fleet-watch Monitor if TaskList shows none. Landed-today count
-and ritual live in delta 1 + anchor 20 body.
-
-### ANCHOR 20 — delta 1 (2026-07-30 ~14:5x, written at the 85% CHECKPOINT)
-
-Since anchor 20: LANDED #402 Invar Monitoring plugin (dae7fba9, opus —
-answers the memory question: allocator high-water RSS, NOT file cache;
-cache is bounded at 2 hydrated docs). FILED #405 (PanelHost kind tables,
-coordinate with #404), #406 (SettingSpec text kind), #407 (keybinding
-collision detection), #408 (workspace state isolation — user verbatim +
-modularity addendum), #409 (layout switch leaves unfilled space — total
-tiling contract). #403 SHRUNK (cache already bounded — record it).
-
-LANES LIVE (5): #393 (merge round + hidden-pane-30%-polling rounds
-queued), #404 (panel v2, three verbatim details), #408 (workspace
-isolation, opus — census by enumeration, must not touch #404 files),
-#409 (layout tiling, codex), #381 (TS LSP only in launch workspace —
-routing/rooting experiment, codex).
-
-CODEX EFFORT: all fleet lanes verified medium TWICE by /proc cmdline +
-TUI footers. The "sol high" the user sees is their OWN bare codex (pid
-843626, from zsh) running ~/.codex/config.toml default high. OFFERED to
-flip their config to medium — awaiting their word; do NOT touch it
-unprompted.
-
-LESSONS this window: (1) a user field report beat two green fixture
-verdicts twice — idle contracts now require REAL-SHAPED fixtures
-(hundreds of task folders); (2) overlap check before EVERY landing
-(comm -12 on merge-base diffs) is now the ritual's hard step — semantic
-merges broke the build once and needed rounds twice; (3) claude-lane
-session-link repair done by hand 3x — HARDENED into archive-session.sh
-lazy resolution this checkpoint.
-
-Supersedes anchor 19 and its deltas. State reconstructed from disk; verify with
-git log --oneline -15 and bun scripts/tasks/tasks-status.ts on resume.
-
-### Session shape
-- Conductor pid 3752392 in the MAIN checkout /home/parallels/dev/invar. The
-  twin guard is LANDED in scripts/claude-conductor.sh (refuses when a live
-  conductor exists; CONDUCTOR_TWIN_OK=1 overrides). A pre-guard twin pid
-  1494453 may still sit idle in the user's Invar pane — user cancels by hand;
-  never kill without their word.
-- Fleet mix: 2 codex sol-MEDIUM + 1 opus-MEDIUM, cap flexed to 4 on user
-  priorities. dispatch.sh effort floor is medium (fixed today).
-- Landed today: 21 tasks incl. #380 (idle motion), #383 (right dock bound),
-  #386 (OSC 66 glyphs), #346 (panel tab bar, 3 rounds), #389 (watch autowrap),
-  #387 (slim splitters + pad, opus), #384 (quit dialog), #390 (both docks
-  bounded). Build hotfix c325bb41 (the #380 x #348 semantic merge break).
-
-### LANES LIVE (3)
-1. #393 idle-cpu-multiple-workspaces (codex) — merge-forward round PLUS two
-   queued rounds: hidden-tasks-pane-still-observed (user evidence: hidden pane
-   polls at ~30% CPU; hypothesis selected-vs-painted in isObserved derivation;
-   fix observed=painted; real-shaped fixture: hundreds of folders) AND the
-   addendum (visible tick must be proportional — profile the tick, target low
-   single digits on a 250-folder tree). Brief files brief-393-3 + addendum in
-   its in-progress folder.
-2. #402 invar-monitoring-plugin (opus) — user-directed observability plugin:
-   pane citizen, delta CPU (never ps lifetime), heap vs RSS, per-plugin render
-   load with logging toggle, file memory ledger, agent-readable projections,
-   one stats generator shared with future #376 CLI. Must answer the user's
-   206->263MB question in its report.
-3. #404 panel-two-row-chrome (codex) — BIG user redesign, THREE verbatim
-   details in the task file: two rows (splitter row with wrap/go-to-line/NEW
-   go-to-bottom icons left; tab row BELOW with per-tab close + blank cell +
-   ellipsis); tabs create CONTAINERS only; lower-level + adds WINDOWS
-   (Terminal/Claude/Invar Agent) inside a container — NEVER nested tabs; add
-   never auto-splits (full-width groups, explicit split button per list item,
-   joined glyphs, drag-out separates, reorder at both levels); pane list pins
-   sticky + splitter-resizable + persists closed.
-
-### LANDING RITUAL (unchanged, plus one lesson)
-extract-gate-verdict.sh writes its OWN log (never redirect onto the same
-path); claude lanes get a hand-written verdict log + session-link repair from
-the worktree-keyed project dir. ALWAYS check overlap before landing:
-comm -12 of both sides' diffs from merge-base; overlap on a hot file =
-round-brief the builder to merge forward + re-gate (semantic conflicts merged
-cleanly TWICE today: #380 x #348 broke the build; #346 x #383 needed manual
-rounds). Trivial disjoint overlap MAY be conductor-combined with targeted
-smokes and a composed three-part verdict log (#387 precedent).
-
-### QUEUE (user-directed first)
-381 (LSP missing realized/blackline — reopens #294, hover repro) -> 382
-(claude resume dialog cut off) -> 395 (Database connect hidden-field focus) ->
-361 (tasks-icon crash) -> 356 (Invar Agent plugin decoupling — partially
-refined by #404's composable-placement) -> 397 (FrameProbe misdecode) -> 403
-(file cache bounds audit; coordinate with #402) -> 376 (instances:watch CLI;
-delta sampling + whoami notes in task) -> 391/392/394/396/399/400/401 hygiene
--> #214/#359/#360/385 flake family (NOTE: #398 retired — one-based offset
-already fixed on main).
+- steer.sh: landing PROVEN at the builder's own session record
+  (rollout/claude store); steers.log records ONLY confirmed landings;
+  pending markers -> fleet-watch confirms or raises STEER_LOST (15m).
+  Fragment = longest punctuation-free run (em-dash/period defeats
+  found live). Composer occupancy = normalized region after last
+  prompt + queue-hint. If a steer reports QUEUED mid-turn that is
+  normal.
+- steer.sh AUTO-RESTORES dead in-progress lanes (relaunch.sh: codex
+  resume --last / claude --continue); closed lanes need STEER_REVIVE=1.
+  Never hand-relaunch bare (plants @ready/@busy markers land.sh needs).
+- relaunch.sh: resume-in-conversation relauncher, meta.json-driven.
+- Doctrine for all of this is IN the conductor skill (Liveness section).
 
 ### WATCHERS
-fleet-watch Monitor persistent (ONE only — TaskStop duplicates). Crons
-permanently disarmed (user order, commit 740c5d81) — do NOT re-arm.
+
+fleet-watch Monitor: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)` — re-arm if TaskList shows none.
+Crons: PERMANENTLY DISARMED (user order, 740c5d81) — never re-arm.
 
 ### USER CONTEXT
-- IV_WHOAMI=egor marks the user's instance; measure with DELTA sampling only.
-- User's idle measured 0.6% real when tasks deselected; 30% when tasks pane
-  hidden-but-selected (the #393 round-3 subject).
-- Standing safety: never drive the app with THIS repo as opened workspace
-  (real tasks.json spawns aws-vault+conductor sessions); fixtures only.
-  Never kill user sessions. Branches never deleted. Builders never push.
+
+User on macOS host, VM is 10.211.55.7. Codex effort floor HIGH
+(dc24997d) for creative work; opus synthesis MEDIUM (explicit). Open
+offer (untouched): flip user's ~/.codex/config.toml to medium.
+Known open bugs the user mentioned but has NOT yet detailed: "I see
+some bugs, but will get back to it soon" — expect reports later.
 
 ## NORTH STAR (user, 2026-07-29 12:4x, verbatim intent — long-term direction)
 
