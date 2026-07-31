@@ -64,8 +64,16 @@ function snapshotResponse(snapshotIndex: number): Response {
   });
 }
 
+const hostArgument = process.argv.find((argument) =>
+  argument.startsWith('--host='),
+);
+const hostname = hostArgument
+  ? hostArgument.slice('--host='.length)
+  : 'localhost';
+
 const server = Bun.serve({
   port,
+  hostname,
   routes: {
     '/': invariantFieldPage,
     '/api/meta': () =>
