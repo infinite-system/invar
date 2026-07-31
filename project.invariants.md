@@ -986,7 +986,7 @@ tokens. Explicit RGB, indexed slots 16–255, and OSC 4 overrides remain child-o
 
 **Mechanism:** Stands on *Terminal color and glyph support varies*. `theme.palettes.ts` /
 `ThemeIcons.ts` are semantic-token data; `InterfaceGlyphVocabulary` gives behavior a stable slot
-name while `$interfaceGlyphVocabularies` supplies the nerd→unicode→ascii values.
+name while `ThemeIcons.INTERFACE_GLYPH_VOCABULARIES` supplies the nerd→unicode→ascii values.
 `TerminalCapabilities` also drives truecolor→256→16 resolution; the active theme is a reactive
 selection; themes/icons are contribution-plugin extension points.
 
@@ -995,8 +995,9 @@ theme/icon plugin contributions; activity and heading consumers that name slots 
 
 **Evidence:** The brief's diagnostic undercurl→underline→gutter fallback; the `theme` module
 lands M2; `src/modules/theme/ThemeIcons.ts`; `src/modules/ui/ActivityBar.ts`;
-`src/modules/ui/PanelHeading.ts`; `src/modules/ui/BoundedListPopup.ts`;
-`src/modules/ui/BreadcrumbPicker.ts`; `src/modules/theme/ThemeIcons.test.ts`;
+`src/modules/ui/PanelTabBar.ts` (`projectSplitterControls`, `projectTabRow`);
+`src/modules/ui/BoundedListPopup.ts`; `src/modules/ui/BreadcrumbPicker.ts`;
+`src/modules/theme/ThemeIcons.test.ts`;
 `scripts/harness/smoke-activitybar-harness.ts` (its expected glyph row is DERIVED from the
 vocabulary, so a glyph change never edits the drive).
 
@@ -1012,7 +1013,7 @@ hard-coded colors/glyphs outside `theme`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-07-31
 
 ### Completion is proven not declared
 

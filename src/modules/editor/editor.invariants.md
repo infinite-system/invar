@@ -33,7 +33,7 @@ redo applies them forward through the same document write path.
 **Generates:** O(edit) undo capture and memory; bounded coalesced history; one mutation seam for
 ordinary edits, undo, and redo.
 
-**Evidence:** `src/modules/editor/TextDocument.ts` (`onLineChange`, `applyLineChange`);
+**Evidence:** `src/modules/text/TextDocument.ts` (`onLineChange`, `applyLineChange`);
 `src/modules/editor/Editor.ts`; `src/modules/storage/UndoStore.ts` and its tests.
 
 **Impossible if true:** a typing path calling `document.snapshot()` or undo memory growing with
@@ -45,7 +45,7 @@ src/modules/editor --require-zero`.
 
 **Status:** established
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-07-31
 
 ### Selection is an anchor plus the cursor and edits replace it
 
