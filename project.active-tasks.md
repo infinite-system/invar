@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (15)
-- #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
+## IN-PROGRESS (1)
+- #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/in-progress/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)  [building]
+  `tmux attach -t invar/382-agent-pane-resume-dialog-unreachable`
+
+## USER-DIRECTED (14)
 - #379 [quick-open-exact-basename-loses](.invar/tasks/active/379-quick-open-exact-basename-loses/task-379-quick-open-exact-basename-loses.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)

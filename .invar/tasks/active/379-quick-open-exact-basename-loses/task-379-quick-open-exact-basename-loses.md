@@ -5,7 +5,7 @@ Priority: user-directed
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: medium
+Effort: high
 
 ## Bycatch from #347 (reproduced every census run)
 

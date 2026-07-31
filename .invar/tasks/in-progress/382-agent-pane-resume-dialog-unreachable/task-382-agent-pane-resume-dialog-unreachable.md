@@ -1,11 +1,11 @@
 # #382 — claude's resume dialog is cut off in a small agent pane
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: medium
+Effort: high
 
 ## The report (user, 2026-07-30 ~08:0x)
 

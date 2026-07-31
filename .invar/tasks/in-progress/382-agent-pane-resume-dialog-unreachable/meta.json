@@ -1,0 +1,15 @@
+{
+  "task": 382,
+  "slug": "agent-pane-resume-dialog-unreachable",
+  "branch": "fleet/382-agent-pane-resume-dialog-unreachable",
+  "worktree": ".invar/worktrees/382-agent-pane-resume-dialog-unreachable",
+  "tmuxSession": "invar/382-agent-pane-resume-dialog-unreachable",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-382-agent-pane-resume-dialog-unreachable.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "42cc247ca0b1bce9e537659b0c13e46104141e2f",
+  "startedAt": "2026-07-31T12:31:19-04:00"
+}
