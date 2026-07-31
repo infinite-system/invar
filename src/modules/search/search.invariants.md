@@ -127,6 +127,34 @@ scripts/harness/smoke-quickopen-harness.ts`
 
 **Last refined:** 2026-07-27
 
+### Exact basenames rank above fuzzy paths
+
+**Invariant:** If file-mode Quick Open ranks paths for a query, then every case-insensitive exact
+basename match ranks above every other fuzzy match; fuzzy score ranks within each tier, and lexical
+path order breaks equal scores.
+
+**Scope:** `QuickOpen.refilter` in `files` mode. The open-project directory navigator is outside this
+rule.
+
+**Mechanism:** `QuickOpen.refilter` records exact basename paths in `exactBasenameMatchPaths`.
+`scoredMatches.sort` compares that tier before `QuickOpenMatch.score` and then
+`QuickOpenMatch.path`.
+
+**Generates:** Exact file-name queries select the exact file first; fuzzy relevance still orders each
+tier; equal fuzzy scores have one stable path order.
+
+**Evidence:** `scripts/harness/smoke-quickopen-harness.ts` waits for "the exact basename is selected
+above its fuzzy sibling"; the [score-printout diagnosis](../../../.invar/tasks/completed/379-quick-open-exact-basename-loses/report-379-quick-open-exact-basename-loses.md#cause)
+records why full-path fuzzy score alone ranked the sibling first.
+
+**Impossible if true:** An exact basename match observed ranked below any fuzzy match.
+
+**Verification:** `bun scripts/harness/smoke-quickopen-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-31
+
 ### File enumeration failures stay visible
 
 **Invariant:** If Quick Open accepts a workspace for file enumeration, then
