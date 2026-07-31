@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/in-progress/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md)  [building]
   `tmux attach -t invar/430-bottom-panel-absorbs-dock-remainders`
-- #430 [bottom-panel-span-centered-layout](.invar/tasks/in-progress/430-bottom-panel-span-centered-layout/task-430-bottom-panel-span-centered-layout.md)  [building]
-  `tmux attach -t invar/430-bottom-panel-span-centered-layout`
 
 ## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
