@@ -1,6 +1,6 @@
 # #391 — splitter size writes and bounds stay coherent
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux

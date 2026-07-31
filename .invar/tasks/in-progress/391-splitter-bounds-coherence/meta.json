@@ -1,0 +1,15 @@
+{
+  "task": 391,
+  "slug": "splitter-bounds-coherence",
+  "branch": "fleet/391-splitter-bounds-coherence",
+  "worktree": ".invar/worktrees/391-splitter-bounds-coherence",
+  "tmuxSession": "invar/391-splitter-bounds-coherence",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-391-splitter-bounds-coherence.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "0b2be999f6078b5aabcf69e5551875bcb6e110e1",
+  "startedAt": "2026-07-31T13:07:43-04:00"
+}
