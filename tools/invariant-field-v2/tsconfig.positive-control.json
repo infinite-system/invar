@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["fixtures/typecheck-positive-control/BrokenComponent.vue"],
+  "exclude": []
+}

@@ -21,6 +21,70 @@ else
   echo "CONVENTIONS WARN: bunx not found — skipping tsc (install bun so the gate can typecheck)"
 fi
 
+# 0.1) FIELD-V2 SFC TYPECHECK: Vue templates need vue-tsc because plain tsc does not inspect
+#      template expressions. The known-bad fixture proves the command can see a missing template
+#      binding before the real SFC graph is trusted.
+field_v2_typecheck_control_log="/tmp/conventions-gate-field-v2-control.$$.log"
+if "$bunx" vue-tsc --noEmit \
+  -p tools/invariant-field-v2/tsconfig.positive-control.json \
+  >"$field_v2_typecheck_control_log" 2>&1; then
+  echo "CONVENTIONS FAIL: field-v2 vue-tsc accepted its known-bad template control"
+  fail=1
+elif ! grep -q 'missingTypecheckControlIdentifier' "$field_v2_typecheck_control_log"; then
+  echo "CONVENTIONS FAIL: field-v2 vue-tsc rejected its control for the wrong reason:"
+  head -20 "$field_v2_typecheck_control_log"
+  fail=1
+fi
+rm -f "$field_v2_typecheck_control_log"
+if ! "$bunx" vue-tsc --noEmit -p tools/invariant-field-v2/tsconfig.json \
+  >/tmp/conventions-gate-field-v2-tsc.$$.log 2>&1; then
+  echo "CONVENTIONS FAIL: field-v2 Vue SFC type errors:"
+  head -20 /tmp/conventions-gate-field-v2-tsc.$$.log
+  fail=1
+fi
+rm -f /tmp/conventions-gate-field-v2-tsc.$$.log
+
+# 0.2) FIELD-V2 SOURCE SHAPE: the migrated frontend is exactly five TypeScript SFCs and carries
+#      no JavaScript source. Check both sides of each matcher before trusting the real tree.
+if ! printf '%s\n' '<script setup lang="ts">' | grep -qF '<script setup lang="ts">' ||
+  printf '%s\n' '<script setup>' | grep -qF '<script setup lang="ts">'; then
+  echo "CONVENTIONS FAIL: field-v2 TypeScript SFC matcher failed its positive control"
+  fail=1
+fi
+field_v2_single_file_components=(
+  tools/invariant-field-v2/ui/InvariantField.vue
+  tools/invariant-field-v2/ui/HistoryTimeline.vue
+  tools/invariant-field-v2/ui/FieldView.vue
+  tools/invariant-field-v2/ui/RecordList.vue
+  tools/invariant-field-v2/ui/RankDisplay.vue
+)
+field_v2_single_file_component_count=$(
+  find tools/invariant-field-v2/ui -maxdepth 1 -name '*.vue' -type f | wc -l
+)
+if [ "$field_v2_single_file_component_count" -ne "${#field_v2_single_file_components[@]}" ]; then
+  echo "CONVENTIONS FAIL: field-v2 must contain exactly five UI SFCs, found ${field_v2_single_file_component_count}"
+  fail=1
+fi
+for field_v2_single_file_component in "${field_v2_single_file_components[@]}"; do
+  if ! grep -qF '<script setup lang="ts">' "$field_v2_single_file_component"; then
+    echo "CONVENTIONS FAIL: ${field_v2_single_file_component} is not a TypeScript script-setup SFC"
+    fail=1
+  fi
+done
+if ! printf '%s\n' 'fixture.js' | grep -qE '\.js$' ||
+  printf '%s\n' 'fixture.ts' | grep -qE '\.js$'; then
+  echo "CONVENTIONS FAIL: field-v2 JavaScript-source matcher failed its positive control"
+  fail=1
+fi
+field_v2_javascript_sources=$(
+  find tools/invariant-field-v2 -type f -name '*.js' -print
+)
+if [ -n "$field_v2_javascript_sources" ]; then
+  echo "CONVENTIONS FAIL: field-v2 contains JavaScript source:"
+  echo "$field_v2_javascript_sources"
+  fail=1
+fi
+
 # 0.5) SKILLS INDEX COMPLETENESS: every skill in .claude/skills/ must be named in AGENTS.md's
 #      skills index — codex-lineage agents cannot auto-discover the skills directory, so an
 #      unindexed skill is invisible to half the fleet. Forgetting is made impossible, not
@@ -39,6 +103,15 @@ done
 bun_binary="$(command -v bun || echo "$HOME/.bun/bin/bun")"
 if ! "$bun_binary" scripts/check-file-grammar.ts; then
   echo "CONVENTIONS FAIL: src/modules file grammar:"
+  fail=1
+fi
+if ! "$bun_binary" scripts/check-file-grammar.ts \
+  tools/invariant-field-v2/ui \
+  tools/invariant-field-v2/DesignTokens.ts \
+  tools/invariant-field-v2/DesignTokens.test.ts \
+  tools/invariant-field-v2/VueSingleFileComponentPlugin.ts \
+  tools/invariant-field-v2/VueSingleFileComponentPlugin.test.ts; then
+  echo "CONVENTIONS FAIL: tools/invariant-field-v2 file grammar:"
   fail=1
 fi
 
@@ -156,6 +229,11 @@ if ! "$bun_binary" scripts/ast-query.ts hash-private-members \
   echo "CONVENTIONS FAIL: #private member prevents Static() subclass access"
   fail=1
 fi
+if ! "$bun_binary" scripts/ast-query.ts hash-private-members \
+  --path tools/invariant-field-v2 --require-zero; then
+  echo "CONVENTIONS FAIL: tools/invariant-field-v2 has a #private member"
+  fail=1
+fi
 
 # 1.75) STATIC-GETTER NAMING: cached versus uncached is the `$` axis; literal versus derived is
 #       the CASE axis. Parse getter bodies so comments, strings, and instance knobs cannot satisfy
@@ -166,7 +244,8 @@ if ! "$bun_binary" scripts/check-static-getter-naming.ts; then
 fi
 
 # 1.8) IMMUTABLE INHERITANCE ANCHOR: an extends clause must never snapshot the mutable Class slot.
-mutable_class_extends=$(grep -rnE 'extends [A-Za-z_][A-Za-z0-9_]*\.Class\b' src scripts --include='*.ts' || true)
+mutable_class_extends=$(grep -rnE 'extends [A-Za-z_][A-Za-z0-9_]*\.Class\b' \
+  src scripts tools/invariant-field-v2 --include='*.ts' || true)
 if [ -n "$mutable_class_extends" ]; then
   echo "CONVENTIONS FAIL: extends uses a mutable Class slot — extend the immutable \$Class anchor:"
   echo "$mutable_class_extends"
@@ -177,7 +256,8 @@ fi
 #      wrapper, or a downstream customization replaces it in place. `const` freezes the slot and
 #      makes the class un-extensible, which contradicts the always-extensible invariant. The
 #      IMMUTABLE anchor is `$Class` (always `const`); `Class` is always `let`.
-frozen_class_slot=$(grep -rnE '^\s*(export )?const Class\b\s*=' src scripts --include='*.ts' || true)
+frozen_class_slot=$(grep -rnE '^\s*(export )?const Class\b\s*=' \
+  src scripts tools/invariant-field-v2 --include='*.ts' || true)
 if [ -n "$frozen_class_slot" ]; then
   echo "CONVENTIONS FAIL: the Class slot is const — it must be \`export let Class = …\` so a"
   echo "double, a Reactive wrapper, or a customization can replace it (\$Class stays const):"
@@ -192,7 +272,8 @@ fi
 #       twice on 2026-07-27. Required shape: `$Class = Static($Raw); Class = $Class`.
 #       NOT applicable to `Reactive()`, which mutates IN PLACE — there the raw class
 #       IS the reactive class, so `Class = Reactive($Class)` is correct.
-wrapper_off_anchor=$(grep -rnE '^\s*export (const|let) Class = Static\(' src scripts --include='*.ts' || true)
+wrapper_off_anchor=$(grep -rnE '^\s*export (const|let) Class = Static\(' \
+  src scripts tools/invariant-field-v2 --include='*.ts' || true)
 if [ -n "$wrapper_off_anchor" ]; then
   echo "CONVENTIONS FAIL: Static() wraps at the Class slot, leaving \$Class unwrapped."
   echo "Static() returns a NEW subclass, so \`extends X.\$Class\` would get uncached"
@@ -214,6 +295,8 @@ rm -f /tmp/conventions-gate-exported-capabilities.$$.log
 
 # 3) Naming: banned abbreviation identifiers (declarations only; word-bounded).
 abbreviations=$(grep -rnE "\b(const|let|var) (ed|ws|gp|cl|pal|idx|opts|prev|cur|repo|msg|cmd|btn|len)\b *=" src/modules --include='*.ts' | grep -v "__tests__" || true)
+abbreviations+=$(grep -rnE "\b(const|let|var) (ed|ws|gp|cl|pal|idx|opts|prev|cur|repo|msg|cmd|btn|len)\b *=" \
+  tools/invariant-field-v2 --include='*.ts' --include='*.vue' || true)
 if [ -n "$abbreviations" ]; then
   echo "CONVENTIONS FAIL: abbreviated identifier declaration(s):"
   echo "$abbreviations"
@@ -246,7 +329,11 @@ while IFS= read -r file; do
   if [ -n "$namespace" ] && [ "$namespace" != "$base" ]; then
     mismatch="$mismatch$file (namespace=$namespace, expected $namespace.ts)"$'\n'
   fi
-done < <(grep -rlE "Static\(\\\$|Reactive\(\\\$" src/modules --include='*.ts' | grep -vE "\.test\.ts")
+done < <(grep -rlE "Static\(\\\$|Reactive\(\\\$" \
+  src/modules tools/invariant-field-v2/ui \
+  tools/invariant-field-v2/DesignTokens.ts \
+  tools/invariant-field-v2/VueSingleFileComponentPlugin.ts \
+  --include='*.ts' | grep -vE "\.test\.ts")
 if [ -n "$mismatch" ]; then
   echo "CONVENTIONS FAIL: namespace+Static/Reactive file(s) not named after their namespace (atomic-bind):"
   echo "$mismatch"
@@ -254,7 +341,9 @@ if [ -n "$mismatch" ]; then
 fi
 
 # 7) $-RAW-FORM: the old '...Implementation' backing-member suffix is banned (use $name).
-impl_suffix=$(grep -rnE "[A-Za-z0-9_]+Implementation\b" src/modules --include='*.ts' | grep -vE "\.test\.ts" || true)
+impl_suffix=$(grep -rnE "[A-Za-z0-9_]+Implementation\b" \
+  src/modules tools/invariant-field-v2 --include='*.ts' \
+  | grep -vE "\.test\.ts" || true)
 if [ -n "$impl_suffix" ]; then
   echo "CONVENTIONS FAIL: '...Implementation'-suffixed member(s) — the raw form is \$name:"
   echo "$impl_suffix"
