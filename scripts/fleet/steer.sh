@@ -11,9 +11,58 @@
 # Usage: scripts/fleet/steer.sh <task-folder-name> <message...>
 set -euo pipefail
 
-if [ "$#" -lt 2 ]; then
+if [ "${1:-}" != "--self-test" ] && [ "$#" -lt 2 ]; then
   echo "usage: $0 <task-folder-name> <message...>" >&2
   exit 2
+fi
+
+# Composer occupancy is judged on WHITESPACE-NORMALIZED text: the codex
+# composer WRAPS long messages, splitting any fixed substring across a line
+# break (2026-07-30, #413: a wrapped steer defeated the raw tail grep and
+# steer declared DELIVERED while the message sat in the composer — the user
+# caught it, not the script). Normalize both sides before comparing.
+normalize() { tr '\n' ' ' | tr -s ' '; }
+
+# The composer region is the pane text from the LAST '›' prompt line onward —
+# submitted messages echo HIGHER in the transcript and must not count.
+composer_region() { awk '/^›/{n=NR} {line[NR]=$0} END{for(i=n;i<=NR;i++) print line[i]}'; }
+
+# occupied <pane_text> <normalized_tail> -> 0 if the composer still holds the
+# message (wrapped or chip-collapsed) or shows the queue hint for pending text.
+composer_occupied() {
+  local region_normalized
+  region_normalized="$(printf '%s' "$1" | composer_region | normalize)"
+  case "$region_normalized" in
+    *"$2"*) return 0 ;;
+    *'[Pasted Content'*) return 0 ;;
+    *'tab to queue message'*) return 0 ;;
+  esac
+  return 1
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+  failures=0
+  wrapped_pane='• Working (1m • esc to interrupt)
+
+› Conductor: read the framework and map each rank component to the
+  axiom it operationalizes.
+
+  tab to queue message     25% context left'
+  cleared_pane='    read the framework and map each rank component to the
+    axiom it operationalizes.
+
+› Write tests for @filename
+
+  gpt-5.6-sol high · ~/dev/invar'
+  tail_normalized="$(printf '%s' "component to the axiom it operationalizes." | normalize)"
+  # PRESENT arm: a wrapped composer message must read OCCUPIED.
+  composer_occupied "$wrapped_pane" "$tail_normalized" || { echo "FAIL present arm (wrapped message not seen)"; failures=1; }
+  # ABSENT arm: a cleared composer (message echoed above the prompt) must read CLEAR.
+  if composer_occupied "$cleared_pane" "$tail_normalized"; then echo "FAIL absent arm (echo above prompt counted as composer)"; failures=1; fi
+  # CHIP arm: a pasted-content chip is an occupant regardless of tail.
+  composer_occupied '› [Pasted Content 812 chars]' "$tail_normalized" || { echo "FAIL chip arm"; failures=1; }
+  [ "$failures" = 0 ] && { echo "SELF-TEST: wrapped/cleared/chip arms all correct."; exit 0; }
+  exit 1
 fi
 
 task_folder_name="$1"
@@ -27,8 +76,9 @@ if ! tmux has-session -t "$session_name" 2>/dev/null; then
 fi
 
 # A distinctive tail fragment of the message, to detect it lingering in the
-# composer. Use the last 40 characters — long enough to be unambiguous.
-message_tail="${message: -40}"
+# composer. Use the last 40 characters — long enough to be unambiguous —
+# whitespace-normalized so composer line-wrapping cannot hide it.
+message_tail="$(printf '%s' "${message: -40}" | normalize)"
 
 tmux send-keys -t "$session_name" "$message"
 tmux send-keys -t "$session_name" Enter
@@ -41,17 +91,11 @@ for attempt in 1 2 3 4 5 6 7 8; do
   # matched while the steer sat composed and unsubmitted for 14 minutes
   # (#314). Codex echoes submitted messages higher in the transcript, so
   # only the last lines near the prompt count as "still in the composer".
-  pane_tail="$(printf '%s' "$pane_text" | tail -8)"
-  # A long message can collapse into a "[Pasted Content N chars]" chip: the
-  # message tail is then ABSENT from the pane while the text still sits in
-  # the composer (2026-07-29, #326 — the tail check passed and the steer sat
-  # unsubmitted 13 minutes). A visible chip near the prompt is a composer
-  # occupant regardless of the tail check.
-  if printf '%s' "$pane_tail" | grep -qF -- '[Pasted Content'; then
-    tmux send-keys -t "$session_name" Enter
-    continue
-  fi
-  if ! printf '%s' "$pane_tail" | grep -qF -- "$message_tail"; then
+  # Occupancy is judged on the composer REGION (last '›' onward), whitespace-
+  # normalized — this catches wrapped messages, "[Pasted Content" chips
+  # (2026-07-29, #326: 13 minutes unsubmitted), and the "tab to queue message"
+  # pending hint, in one predicate with a self-test (--self-test).
+  if ! composer_occupied "$pane_text" "$message_tail"; then
     if printf '%s' "$pane_text" | grep -qE 'esc to interrupt|• Working'; then
       echo "steer: DELIVERED to $session_name — composer cleared, builder processing (attempt $attempt)"
     else
