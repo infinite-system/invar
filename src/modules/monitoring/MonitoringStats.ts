@@ -207,7 +207,12 @@ class $MonitoringStats {
     return rows;
   }
 
-  /** Read every PID registered by the LSP owner. Absence is GONE, never fabricated idle use. */
+  /**
+   * Read every PID registered by the LSP owner. Absence is GONE, never fabricated idle use.
+   *
+   * invariant: Monitored server identity comes from its owner (src/modules/lsp/lsp.invariants.md)
+   * invariant: A missing process is gone not idle (src/modules/monitoring/monitoring.invariants.md)
+   */
   protected readLanguageServerRows(): readonly MonitoredLanguageServerRow[] {
     const currentSamples = new Map<number, ProcessResourceSample>();
     const rows = this.dependencies

@@ -1,5 +1,6 @@
 import { Static } from 'ivue/extras';
 
+// invariant: Monitored server identity comes from its owner (src/modules/lsp/lsp.invariants.md)
 class $LanguageServerProcessRegistry {
   protected static get $registrations(): Map<
     object,

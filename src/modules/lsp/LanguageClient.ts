@@ -1260,7 +1260,11 @@ class $LanguageClient {
     this.publishStatus();
   }
 
-  /** Register the PID from the owned spawn path. A crashed server stays registered and paints GONE. */
+  /**
+   * Register the PID from the owned spawn path. A crashed server stays registered and paints GONE.
+   *
+   * invariant: Monitored server identity comes from its owner (src/modules/lsp/lsp.invariants.md)
+   */
   protected registerLanguageServerProcess(
     command: string,
     process: LspProcessLike,
