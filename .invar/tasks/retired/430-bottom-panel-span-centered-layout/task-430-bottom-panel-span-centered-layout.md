@@ -27,3 +27,9 @@ width (under left dock, editor, and right dock). Compare: the
 Full-height docks preset presumably narrows it deliberately — state
 each preset's intended bottom-panel span in the report and make
 Centered span full width.
+
+RETIRED 2026-07-31: superseded before any work. The user rejected the
+early dispatch mid-call, but the folder/worktree/builder had already
+been created. Replaced by 430-bottom-panel-absorbs-dock-remainders
+(same number, richer evidence: user ruling + conductor probe table).
+No builder commits existed; the tree was clean.

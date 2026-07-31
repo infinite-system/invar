@@ -503,3 +503,19 @@ Fresh heartbeat = armed (dispatch.sh already keys on this). Stale =
 re-arm ONE Monitor after confirming zero live fleet-watch processes
 (pgrep -f is acceptable here only to COUNT, never to kill; stop
 extras via TaskStop by id, oldest first).
+
+## Family 13 — a rejected tool call may have partially executed (2026-07-31)
+
+The user rejected a dispatch tool call mid-flight. The rejection
+message says "the tool use was rejected" — but the compound command
+had already created the task folder, committed it, cut the worktree,
+and LAUNCHED THE BUILDER before the interrupt landed. The orphan sat
+idle 20 minutes on a superseded brief until fleet-watch's QUIET event
+exposed it; only the second (correct) lane was in my model.
+
+Operative rule: after ANY mid-call interruption or rejection, verify
+the side effects on disk before proceeding — tmux ls, task folders,
+worktrees, branches, git log. A rejection is a statement about
+intent, not a rollback. Compound commands widen the window: prefer
+small, separately-confirmable steps for destructive or launching
+acts when the user is actively steering.
