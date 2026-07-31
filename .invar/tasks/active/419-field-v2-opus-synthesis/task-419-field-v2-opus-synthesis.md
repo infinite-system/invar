@@ -33,3 +33,11 @@ Conductor reduction for the brief:
    the Field contains its own dots and its own evolution timeline.
    Surface this deliberately and beautifully (a "the instrument
    itself" domain/lens; its birth visible in the playout).
+
+## Converted bycatch from #415 (fold into synthesis)
+
+- Dead v1 CSS selector: v1 stylesheet has #field but the SVG carries no
+  such id (reproduced in both surfaces). Resolve in v2 during synthesis
+  (v1 stays untouched).
+- No tool-local contract yet — already this task's deliverable
+  (invariant-field.invariants.md + .lattice.md).
