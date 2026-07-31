@@ -393,7 +393,11 @@ async function proveContinuousScrollbarThumbDrag(
           );
           return (
             lightThemeTargets.map((target) => target.name).join(',') ===
-            'editorHorizontal,editorVertical,rightDockVertical'
+              'editorHorizontal,editorVertical,rightDockVertical' &&
+            scrollbarColorsMatch(
+              editorVerticalScrollbarColors(candidate, lightThemeTargets),
+              LIGHT_SCROLLBAR_COLORS,
+            )
           );
         } catch {
           return false;
