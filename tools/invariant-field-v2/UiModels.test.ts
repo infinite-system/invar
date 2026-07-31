@@ -117,6 +117,7 @@ const metadata: InvariantFieldMetadata = {
       committedAt: snapshot.committedAt,
       subject: snapshot.subject,
       recordCount: snapshot.records.length,
+      instrumentRecordCount: 0,
       annotationCount: snapshot.annotationCount,
       orphanCount: snapshot.orphanCount,
       parseIssueCount: 0,
@@ -125,20 +126,29 @@ const metadata: InvariantFieldMetadata = {
 };
 
 describe('ivue field models', () => {
-  test('RecordList state drives search and ordering', () => {
+  test('RecordList renders exactly the focused records it is given', () => {
     const records = new RecordList.Class(
       {
-        snapshot,
+        records: snapshot.records,
+        totalRecordCount: snapshot.records.length,
+        contractPaths: ['fixture.invariants.md'],
         selectedRecordIdentifier: null,
-        selectedCompositionIdentifier: '',
+        searchQuery: '',
+        selectedKind: '',
+        selectedDomain: '',
+        sortOrder: 'rank-descending',
+        activeFocusChips: [],
+        instrumentFocusLabel: 'Measure the instrument',
+        isInstrumentFocused: false,
+        instrumentRecordCount: 0,
       },
       () => undefined,
     );
-    expect(records.recordCards[0]?.identifier).toBe('first');
-    records.searchQuery.value = 'second';
-    expect(records.recordCards.map((card) => card.identifier)).toEqual([
+    expect(records.recordRows.map((row) => row.identifier)).toEqual([
+      'first',
       'second',
     ]);
+    expect(records.resultCount).toBe('2 of 2 records');
   });
 
   test('FieldView lights every selected composition member', () => {
@@ -147,6 +157,8 @@ describe('ivue field models', () => {
         snapshot,
         selectedRecordIdentifier: null,
         selectedCompositionIdentifier: 'fixture.lattice.md#stable',
+        focusedRecordIdentifiers: new Set(['first']),
+        isFocused: true,
       },
       () => undefined,
     );

@@ -1,23 +1,29 @@
 import { describe, expect, test } from 'bun:test';
 import { RecordList } from './RecordList';
-import type { InvariantSnapshot } from '../types';
 
 describe('RecordList', () => {
-  test('starts with all filters clear', () => {
+  test('reports an empty focus without inventing rows', () => {
     const recordList = new RecordList.Class(
       {
-        snapshot: {
-          records: [],
-          compositions: [],
-        } as unknown as InvariantSnapshot,
+        records: [],
+        totalRecordCount: 0,
+        contractPaths: [],
         selectedRecordIdentifier: null,
-        selectedCompositionIdentifier: '',
+        searchQuery: '',
+        selectedKind: '',
+        selectedDomain: '',
+        sortOrder: 'rank-descending',
+        activeFocusChips: [],
+        instrumentFocusLabel: 'Measure the instrument',
+        isInstrumentFocused: false,
+        instrumentRecordCount: 0,
       },
       () => undefined,
     );
-    expect(recordList.searchQuery.value).toBe('');
-    expect(recordList.selectedKind.value).toBe('');
-    expect(recordList.selectedDomain.value).toBe('');
+    expect(recordList.recordRows).toEqual([]);
     expect(recordList.resultCount).toBe('0 of 0 records');
+    expect(recordList.instrumentRecordSummary).toBe(
+      'The instrument carries no record in this snapshot.',
+    );
   });
 });

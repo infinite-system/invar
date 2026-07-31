@@ -55,8 +55,43 @@ class $HistoryTimeline {
   get snapshotPositionLabel() {
     return `${this.snapshotIndex + 1} / ${this.metadata.snapshots.length}`;
   }
+  get instrumentBirthSnapshotIndex() {
+    return this.props.instrumentBirthSnapshotIndex ?? -1;
+  }
+  get hasInstrumentBirth() {
+    return this.instrumentBirthSnapshotIndex >= 0;
+  }
+  /**
+   * Where the instrument's own contract first appears on the track. The marker
+   * is placed by snapshot position, so it stays true when history grows.
+   */
+  get instrumentBirthMarkerStyle() {
+    const trackFraction = this.maximumSnapshotIndex
+      ? this.instrumentBirthSnapshotIndex / this.maximumSnapshotIndex
+      : 0;
+    return { left: `${(trackFraction * 100).toFixed(3)}%` };
+  }
+  get instrumentBirthLabel() {
+    if (!this.hasInstrumentBirth) return '';
+    const birthSnapshot =
+      this.metadata.snapshots[this.instrumentBirthSnapshotIndex]!;
+    return `The instrument was born here: ${birthSnapshot.shortCommit}`;
+  }
+  get isInstrumentPresent() {
+    return (this.props.instrumentRecordCount ?? 0) > 0;
+  }
+  get instrumentPresenceLabel() {
+    return this.isInstrumentPresent
+      ? `Instrument: ${this.props.instrumentRecordCount} own records`
+      : 'Instrument: not yet recorded';
+  }
 
   // --- methods ---
+  selectInstrumentBirth() {
+    if (!this.hasInstrumentBirth) return;
+    this.emit('select-snapshot', this.instrumentBirthSnapshotIndex);
+  }
+
   selectFromInput(event: Event) {
     const input = event.currentTarget as EventTarget & { value: string };
     this.emit('select-snapshot', Number(input.value));
@@ -88,6 +123,8 @@ export interface HistoryTimelineProps {
   metadata: InvariantFieldMetadata;
   snapshotIndex: number;
   isPlaying?: boolean;
+  instrumentRecordCount?: number;
+  instrumentBirthSnapshotIndex?: number;
 }
 
 export interface HistoryTimelineEmits {

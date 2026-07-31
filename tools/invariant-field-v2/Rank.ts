@@ -8,6 +8,7 @@ import type {
   VerificationMode,
 } from './types';
 
+// invariant: The rank weights are normalized and sum to one (tools/invariant-field-v2/invariant-field.invariants.md)
 export const RANK_WEIGHTS = {
   kind: 0.14,
   falsifiability: 0.1,
@@ -103,6 +104,7 @@ function simplicityDepth(
   return clamp(compactness * 0.45 + breadth * 0.55);
 }
 
+// invariant: Rank depends only on the contract set and its history (tools/invariant-field-v2/invariant-field.invariants.md)
 export function calculateRank(input: RankInput): RankedRecord {
   const totalConnections =
     input.incomingConnections + input.outgoingConnections;
@@ -153,7 +155,9 @@ export function calculateRank(input: RankInput): RankedRecord {
       depth + components[componentName] * RANK_WEIGHTS[componentName],
     0,
   );
+  // invariant: Rot moves a record outward only (tools/invariant-field-v2/invariant-field.invariants.md)
   const rank = clamp(weightedDepth - components.rotPenalty);
+  // invariant: R is an asymptote no record reaches (tools/invariant-field-v2/invariant-field.invariants.md)
   const radius = 0.1 + 0.9 * Math.exp(-2.5 * rank);
   return {
     stableIdentifier: input.record.stableIdentifier,

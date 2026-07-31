@@ -5,6 +5,8 @@
  *
  * The server builds the history store when HEAD changes. It holds no watcher
  * and starts no timer. An idle server therefore adds no recurring work.
+ *
+ * invariant: An idle instrument does no work (tools/invariant-field-v2/invariant-field.invariants.md)
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,6 +17,7 @@ import {
 } from './RepositoryHistory';
 import { CodeLens } from './CodeLens';
 import { DesignTokens } from './DesignTokens';
+import { Instrument } from './Instrument';
 import { VueSingleFileComponentPlugin } from './VueSingleFileComponentPlugin';
 import type { InvariantFieldStore } from './types';
 
@@ -140,6 +143,9 @@ const server = Bun.serve({
           committedAt: snapshot.committedAt,
           subject: snapshot.subject,
           recordCount: snapshot.records.length,
+          instrumentRecordCount: snapshot.records.filter(
+            (record) => record.contractPath === Instrument.Class.CONTRACT_PATH,
+          ).length,
           annotationCount: snapshot.annotationCount,
           orphanCount: snapshot.orphanCount,
           parseIssueCount: snapshot.parseIssues.length,

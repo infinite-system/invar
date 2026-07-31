@@ -13,6 +13,7 @@ const {
   reducedMotion,
   threeDimensionalCanvas,
   threeDimensionalHitTargets,
+  threeDimensionalOverlayLabels,
 } = fieldView;
 </script>
 
@@ -88,7 +89,7 @@ const {
           r="328"
           class="field-background"
         />
-        <g v-for="sector in fieldView.fieldSectors" :key="sector.domainName">
+        <g v-for="sector in fieldView.fieldSectors" :key="sector.paletteName">
           <path :d="sector.path" :class="sector.className">
             <title>{{ sector.label }}</title>
           </path>
@@ -240,6 +241,14 @@ const {
           @blur="fieldView.hideTooltip"
           @click="fieldView.selectRecord(hitTarget.identifier)"
         ></button>
+        <span
+          v-for="overlayLabel in threeDimensionalOverlayLabels"
+          :key="overlayLabel.identifier"
+          :class="overlayLabel.className"
+          :style="overlayLabel.style"
+          aria-hidden="true"
+          >{{ overlayLabel.text }}</span
+        >
       </div>
 
       <div

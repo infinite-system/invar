@@ -1,5 +1,6 @@
 import { Static } from 'ivue/extras';
 
+// invariant: Design tokens are the only source of colour and timing (tools/invariant-field-v2/invariant-field.invariants.md)
 class $DesignTokens {
   static get VALUES() {
     return Object.freeze({
