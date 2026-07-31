@@ -35,14 +35,25 @@ const historyTimeline = new HistoryTimeline.Class(props, emit);
       >
         ←
       </button>
-      <input
-        type="range"
-        min="0"
-        :max="historyTimeline.maximumSnapshotIndex"
-        :value="historyTimeline.snapshotIndex"
-        aria-label="Contract history snapshot"
-        @input="historyTimeline.selectFromInput"
-      />
+      <div class="timeline-track">
+        <input
+          type="range"
+          min="0"
+          :max="historyTimeline.maximumSnapshotIndex"
+          :value="historyTimeline.snapshotIndex"
+          aria-label="Contract history snapshot"
+          @input="historyTimeline.selectFromInput"
+        />
+        <button
+          v-if="historyTimeline.hasInstrumentBirth"
+          type="button"
+          class="instrument-birth-marker"
+          :style="historyTimeline.instrumentBirthMarkerStyle"
+          :title="historyTimeline.instrumentBirthLabel"
+          :aria-label="historyTimeline.instrumentBirthLabel"
+          @click="historyTimeline.selectInstrumentBirth"
+        ></button>
+      </div>
       <button
         type="button"
         aria-label="Next snapshot"
@@ -53,6 +64,9 @@ const historyTimeline = new HistoryTimeline.Class(props, emit);
       </button>
       <span class="snapshot-position">{{
         historyTimeline.snapshotPositionLabel
+      }}</span>
+      <span class="instrument-presence">{{
+        historyTimeline.instrumentPresenceLabel
       }}</span>
     </div>
   </section>

@@ -152,6 +152,7 @@ export interface InvariantSnapshotMetadata {
   committedAt: string;
   subject: string;
   recordCount: number;
+  instrumentRecordCount: number;
   annotationCount: number;
   orphanCount: number;
   parseIssueCount: number;

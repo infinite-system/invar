@@ -8,46 +8,77 @@ import {
 const props = defineProps<RecordListProps>();
 const emit = defineEmits<RecordListEmits>();
 const recordList = new RecordList.Class(props, emit);
-const { searchQuery, selectedKind, selectedDomain, sortOrder } = recordList;
 </script>
 
 <template>
   <section class="records-panel" aria-labelledby="records-heading">
     <div class="records-heading">
-      <div>
-        <p class="eyebrow">Essence first</p>
-        <h2 id="records-heading">Invariant records</h2>
-      </div>
-      <div class="record-controls">
-        <input
-          v-model="searchQuery"
-          type="search"
-          placeholder="Search names and fields"
-          aria-label="Search invariant records"
-        />
-        <select v-model="selectedKind" aria-label="Filter by invariant kind">
-          <option value="">All kinds</option>
-          <option value="reality-absolute">Reality · absolute</option>
-          <option value="reality-renegotiable">Reality · renegotiable</option>
-          <option value="chosen">Chosen</option>
-        </select>
-        <select v-model="selectedDomain" aria-label="Filter by contract file">
-          <option value="">All contracts</option>
-          <option
-            v-for="domain in recordList.domains"
-            :key="domain"
-            :value="domain"
-          >
-            {{ domain }}
-          </option>
-        </select>
-        <select v-model="sortOrder" aria-label="Sort invariant records">
-          <option value="rank-descending">Closest to R</option>
-          <option value="rank-ascending">Farthest from R</option>
-          <option value="name">Name</option>
-          <option value="domain">Contract</option>
-        </select>
-      </div>
+      <p class="eyebrow">Focus</p>
+      <h2 id="records-heading">Invariant records</h2>
+    </div>
+    <div class="record-controls">
+      <input
+        :value="searchQuery"
+        type="search"
+        placeholder="Search names and fields"
+        aria-label="Search invariant records"
+        @input="recordList.changeSearch"
+      />
+      <select
+        :value="selectedKind"
+        aria-label="Filter by invariant kind"
+        @change="recordList.changeKind"
+      >
+        <option value="">All kinds</option>
+        <option value="reality-absolute">Reality · absolute</option>
+        <option value="reality-renegotiable">Reality · renegotiable</option>
+        <option value="chosen">Chosen</option>
+      </select>
+      <select
+        :value="selectedDomain"
+        aria-label="Filter by contract file"
+        @change="recordList.changeDomain"
+      >
+        <option value="">All contracts</option>
+        <option
+          v-for="contractPath in contractPaths"
+          :key="contractPath"
+          :value="contractPath"
+        >
+          {{ contractPath }}
+        </option>
+      </select>
+      <select
+        :value="sortOrder"
+        aria-label="Sort invariant records"
+        @change="recordList.changeSortOrder"
+      >
+        <option value="rank-descending">Closest to R</option>
+        <option value="rank-ascending">Farthest from R</option>
+        <option value="name">Name</option>
+        <option value="domain">Contract</option>
+      </select>
+    </div>
+    <button
+      type="button"
+      :class="recordList.instrumentButtonClassName"
+      :aria-pressed="isInstrumentFocused"
+      @click="recordList.focusInstrument"
+    >
+      <span>{{ instrumentFocusLabel }}</span>
+      <small>{{ recordList.instrumentRecordSummary }}</small>
+    </button>
+    <div v-if="activeFocusChips.length" class="focus-chips">
+      <button
+        v-for="chip in activeFocusChips"
+        :key="chip.key"
+        type="button"
+        class="focus-chip"
+        :aria-label="`Clear focus ${chip.label}`"
+        @click="recordList.clearFocusChip(chip.key)"
+      >
+        {{ chip.label }} ✕
+      </button>
     </div>
     <p class="result-count">{{ recordList.resultCount }}</p>
     <div class="record-list">

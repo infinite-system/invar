@@ -65,6 +65,9 @@ class $FieldView {
   get threeDimensionalHitTargets() {
     return shallowRef<ThreeDimensionalHitTarget[]>([]);
   }
+  get threeDimensionalOverlayLabels() {
+    return shallowRef<ThreeDimensionalOverlayLabel[]>([]);
+  }
   get cameraYawDegrees() {
     return ref(0);
   }
@@ -138,25 +141,45 @@ class $FieldView {
       name: composition.name,
     }));
   }
+  /**
+   * Which repository contract domains landed in each hue slot, most populous
+   * first. The sector label is built from this, so it names real contracts
+   * instead of an invented noun.
+   */
+  get domainsBySector() {
+    const countsBySector = new Map<number, Map<string, number>>();
+    for (const record of this.snapshot.records) {
+      const sectorIndex = this.domainIndex(record.domain);
+      const counts =
+        countsBySector.get(sectorIndex) ?? new Map<string, number>();
+      const domainName = this.shortDomainName(record.domain);
+      counts.set(domainName, (counts.get(domainName) ?? 0) + 1);
+      countsBySector.set(sectorIndex, counts);
+    }
+    return countsBySector;
+  }
   get fieldSectors() {
     const sectorWidthRadians =
-      (Math.PI * 2) / this.constructorClass.DOMAIN_NAMES.length;
-    return this.constructorClass.DOMAIN_NAMES.map((domainName, domainIndex) => {
-      const startAngle = -Math.PI / 2 + domainIndex * sectorWidthRadians;
-      const endAngle = startAngle + sectorWidthRadians;
-      const labelAngle = startAngle + sectorWidthRadians / 2;
-      const labelPoint = this.polarPoint(this.fieldRadius + 21, labelAngle);
-      return {
-        domainName,
-        domainIndex,
-        path: this.sectorPath(startAngle, endAngle),
-        className: `domain-sector domain-sector-${domainIndex}`,
-        label: domainName.toUpperCase(),
-        labelX: labelPoint.x,
-        labelY: labelPoint.y,
-        labelTransform: `rotate(${(labelAngle * 180) / Math.PI + 90} ${labelPoint.x} ${labelPoint.y})`,
-      };
-    });
+      (Math.PI * 2) / this.constructorClass.SECTOR_PALETTE_NAMES.length;
+    return this.constructorClass.SECTOR_PALETTE_NAMES.map(
+      (paletteName, sectorIndex) => {
+        const startAngle = -Math.PI / 2 + sectorIndex * sectorWidthRadians;
+        const endAngle = startAngle + sectorWidthRadians;
+        const labelAngle = startAngle + sectorWidthRadians / 2;
+        const labelPoint = this.polarPoint(this.fieldRadius + 21, labelAngle);
+        return {
+          paletteName,
+          sectorIndex,
+          labelAngle,
+          path: this.sectorPath(startAngle, endAngle),
+          className: `domain-sector domain-sector-${sectorIndex}`,
+          label: this.sectorLabel(sectorIndex),
+          labelX: labelPoint.x,
+          labelY: labelPoint.y,
+          labelTransform: `rotate(${(labelAngle * 180) / Math.PI + 90} ${labelPoint.x} ${labelPoint.y})`,
+        };
+      },
+    );
   }
   get transitionEventsByRecord() {
     const eventsByRecord = new Map<string, TimelineRecordEvent[]>();
@@ -205,9 +228,9 @@ class $FieldView {
       const isCompositionMember = selectedMemberIdentifiers.has(
         record.stableIdentifier,
       );
-      const hasActiveComposition = Boolean(
-        this.props.selectedCompositionIdentifier,
-      );
+      const isOutsideFocus =
+        this.props.isFocused &&
+        !this.props.focusedRecordIdentifiers.has(record.stableIdentifier);
       const eventTypes = recordEvents.map((event) => event.type);
       return {
         identifier: record.stableIdentifier,
@@ -218,8 +241,9 @@ class $FieldView {
         previousY: previousPoint.y,
         traceStartX: previousPoint.x - point.x,
         traceStartY: previousPoint.y - point.y,
-        labelX: point.x + 13,
+        labelX: point.x + (point.x > this.fieldCenter ? -13 : 13),
         labelY: point.y - 10,
+        labelAnchor: point.x > this.fieldCenter ? 'end' : 'start',
         labelKey: `label-${record.stableIdentifier}`,
         transform: `translate(${point.x} ${point.y})`,
         domainIndex,
@@ -230,9 +254,7 @@ class $FieldView {
           `record-mark-${record.kind}`,
           `record-verification-${record.verificationMode}`,
           isSelected ? 'record-mark-selected' : '',
-          hasActiveComposition && !isCompositionMember
-            ? 'record-mark-muted'
-            : '',
+          isOutsideFocus ? 'record-mark-muted' : '',
           isCompositionMember ? 'record-mark-composition' : '',
           ...eventTypes.map((eventType) => `record-event-${eventType}`),
         ]
@@ -245,7 +267,7 @@ class $FieldView {
           .filter(Boolean)
           .join(' '),
         style: {
-          '--record-domain-color': `var(--color-domain-${this.constructorClass.DOMAIN_NAMES[domainIndex]})`,
+          '--record-domain-color': `var(--color-domain-${this.constructorClass.SECTOR_PALETTE_NAMES[domainIndex]})`,
           '--record-previous-x': `${previousPoint.x - point.x}px`,
           '--record-previous-y': `${previousPoint.y - point.y}px`,
         },
@@ -254,6 +276,7 @@ class $FieldView {
         isRealityRenegotiable: record.kind === 'reality-renegotiable',
         isChosen: record.kind === 'chosen',
         isSelected,
+        isOutsideFocus,
         hasTimelineEvent: eventTypes.length > 0,
         hasRot:
           record.rankComponents.rotPenalty > 0 || eventTypes.includes('rot'),
@@ -506,6 +529,7 @@ class $FieldView {
     this.disposeScene(this.threeDimensionalResources.scene);
     this.threeDimensionalResources.scene.clear();
     this.addThreeDimensionalGrid();
+    this.addThreeDimensionalRealityWell();
     this.addThreeDimensionalRecords();
     this.renderThreeDimensionalField(true);
     if (this.timelineTransition) {
@@ -551,6 +575,29 @@ class $FieldView {
     }
   }
 
+  /**
+   * Reality is the whole point of the field, so it must be present in both
+   * views. Without this the 3D view shows rings around nothing.
+   */
+  protected addThreeDimensionalRealityWell() {
+    const resources = this.threeDimensionalResources!;
+    const realityColor = new THREE.Color(this.cssColor('color-reality'));
+    const core = new THREE.Mesh(
+      new THREE.CircleGeometry(this.realityRadius, 48),
+      new THREE.MeshBasicMaterial({ color: realityColor }),
+    );
+    resources.scene.add(core);
+    const halo = new THREE.Mesh(
+      new THREE.CircleGeometry(this.realityGlowRadius, 48),
+      new THREE.MeshBasicMaterial({
+        color: realityColor,
+        transparent: true,
+        opacity: 0.16,
+      }),
+    );
+    resources.scene.add(halo);
+  }
+
   protected addThreeDimensionalRecords() {
     const resources = this.threeDimensionalResources!;
     const dots = this.fieldDots;
@@ -561,6 +608,7 @@ class $FieldView {
     const verificationModes = new Float32Array(dots.length);
     const selectedStates = new Float32Array(dots.length);
     const rotStates = new Float32Array(dots.length);
+    const mutedStates = new Float32Array(dots.length);
     const eventTypes = new Float32Array(dots.length);
 
     dots.forEach((dot, dotIndex) => {
@@ -578,7 +626,7 @@ class $FieldView {
       startPosition.toArray(startPositions, dotIndex * 3);
       const domainColor = new THREE.Color(
         this.cssColor(
-          `color-domain-${this.constructorClass.DOMAIN_NAMES[dot.domainIndex]}`,
+          `color-domain-${this.constructorClass.SECTOR_PALETTE_NAMES[dot.domainIndex]}`,
         ),
       );
       domainColor.toArray(colors, dotIndex * 3);
@@ -588,6 +636,7 @@ class $FieldView {
       );
       selectedStates[dotIndex] = dot.isSelected ? 1 : 0;
       rotStates[dotIndex] = dot.hasRot ? 1 : 0;
+      mutedStates[dotIndex] = dot.isOutsideFocus ? 1 : 0;
       eventTypes[dotIndex] = this.timelineEventNumber(dot.eventTypes);
     });
 
@@ -610,6 +659,10 @@ class $FieldView {
       new THREE.BufferAttribute(selectedStates, 1),
     );
     geometry.setAttribute('rotState', new THREE.BufferAttribute(rotStates, 1));
+    geometry.setAttribute(
+      'mutedState',
+      new THREE.BufferAttribute(mutedStates, 1),
+    );
     geometry.setAttribute(
       'eventType',
       new THREE.BufferAttribute(eventTypes, 1),
@@ -666,6 +719,7 @@ class $FieldView {
     resources.camera.lookAt(0, 0, 0);
     resources.renderer.render(resources.scene, resources.camera);
     if (updateHitTargets) this.updateThreeDimensionalHitTargets(bounds);
+    this.updateThreeDimensionalOverlayLabels(bounds);
   }
 
   protected animateThreeDimensionalTransition() {
@@ -754,6 +808,68 @@ class $FieldView {
     );
   }
 
+  /**
+   * Project the frame labels — R, the eight sector labels, and the selected
+   * record name — into screen space, so the 3D view names the same channels
+   * the 2D view names.
+   */
+  protected updateThreeDimensionalOverlayLabels(bounds: BrowserBounds) {
+    const resources = this.threeDimensionalResources;
+    if (!resources) {
+      this.threeDimensionalOverlayLabels.value = [];
+      return;
+    }
+    const project = (worldPosition: THREE.Vector3) => {
+      const projectedPosition = worldPosition.clone().project(resources.camera);
+      return {
+        left: `${((projectedPosition.x + 1) / 2) * bounds.width}px`,
+        top: `${((1 - projectedPosition.y) / 2) * bounds.height}px`,
+      };
+    };
+    const labels: ThreeDimensionalOverlayLabel[] = [
+      {
+        identifier: 'reality',
+        text: 'R',
+        className: 'field-overlay-label field-overlay-label-reality',
+        style: project(new THREE.Vector3(0, 0, 0)),
+      },
+      ...this.fieldSectors.map((sector) => {
+        const labelPoint = this.polarPoint(
+          this.fieldRadius + 26,
+          sector.labelAngle,
+        );
+        return {
+          identifier: `sector-${sector.sectorIndex}`,
+          text: sector.label,
+          className: 'field-overlay-label field-overlay-label-sector',
+          style: project(
+            this.threeDimensionalPosition(
+              labelPoint.x,
+              labelPoint.y,
+              sector.sectorIndex,
+            ),
+          ),
+        };
+      }),
+    ];
+    const selectedDot = resources.dots.find((dot) => dot.isSelected);
+    if (selectedDot) {
+      labels.push({
+        identifier: 'selection',
+        text: selectedDot.record.name,
+        className: 'field-overlay-label field-overlay-label-selection',
+        style: project(
+          this.threeDimensionalPosition(
+            selectedDot.x,
+            selectedDot.y,
+            selectedDot.domainIndex,
+          ),
+        ),
+      });
+    }
+    this.threeDimensionalOverlayLabels.value = labels;
+  }
+
   protected pickThreeDimensionalRecord(
     event: BrowserPointerEvent,
     selectRecord: boolean,
@@ -812,15 +928,33 @@ class $FieldView {
     );
   }
 
+  protected shortDomainName(domain: string) {
+    return domain.split('/').at(-1)!;
+  }
+
+  protected sectorLabel(sectorIndex: number) {
+    const counts = this.domainsBySector.get(sectorIndex);
+    if (!counts?.size) return 'EMPTY';
+    const orderedNames = [...counts.entries()]
+      .sort(
+        (left, right) => right[1] - left[1] || left[0].localeCompare(right[0]),
+      )
+      .map(([domainName]) => domainName);
+    const shownNames = orderedNames.slice(0, 2).join(' · ').toUpperCase();
+    const remainingCount = orderedNames.length - 2;
+    return remainingCount > 0 ? `${shownNames} +${remainingCount}` : shownNames;
+  }
+
   protected domainIndex(domain: string) {
     return Math.floor(
-      this.stableFraction(domain) * this.constructorClass.DOMAIN_NAMES.length,
+      this.stableFraction(domain) *
+        this.constructorClass.SECTOR_PALETTE_NAMES.length,
     );
   }
 
   protected recordAngle(record: RankedRecord, domainIndex: number) {
     const sectorWidthRadians =
-      (Math.PI * 2) / this.constructorClass.DOMAIN_NAMES.length;
+      (Math.PI * 2) / this.constructorClass.SECTOR_PALETTE_NAMES.length;
     return (
       -Math.PI / 2 +
       domainIndex * sectorWidthRadians +
@@ -865,6 +999,7 @@ class $FieldView {
     return modes.indexOf(mode);
   }
 
+  // invariant: Both field views place a record at the same radius (tools/invariant-field-v2/invariant-field.invariants.md)
   protected threeDimensionalPosition(
     fieldX: number,
     fieldY: number,
@@ -925,7 +1060,11 @@ class $FieldView {
 
   protected disposeScene(scene: THREE.Scene) {
     scene.traverse((object) => {
-      if (object instanceof THREE.Points || object instanceof THREE.Line) {
+      if (
+        object instanceof THREE.Points ||
+        object instanceof THREE.Line ||
+        object instanceof THREE.Mesh
+      ) {
         object.geometry.dispose();
         const materials = Array.isArray(object.material)
           ? object.material
@@ -942,12 +1081,14 @@ class $FieldView {
       attribute float verificationMode;
       attribute float selectedState;
       attribute float rotState;
+      attribute float mutedState;
       attribute float eventType;
       varying vec3 projectedDomainColor;
       varying float projectedRecordKind;
       varying float projectedVerificationMode;
       varying float projectedSelectedState;
       varying float projectedRotState;
+      varying float projectedMutedState;
       varying float projectedEventType;
       uniform float pointScale;
       void main() {
@@ -956,6 +1097,7 @@ class $FieldView {
         projectedVerificationMode = verificationMode;
         projectedSelectedState = selectedState;
         projectedRotState = rotState;
+        projectedMutedState = mutedState;
         projectedEventType = eventType;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         gl_PointSize = mix(13.0, 19.0, selectedState) * pointScale;
@@ -971,6 +1113,7 @@ class $FieldView {
       varying float projectedVerificationMode;
       varying float projectedSelectedState;
       varying float projectedRotState;
+      varying float projectedMutedState;
       varying float projectedEventType;
       uniform float transitionProgress;
       uniform vec3 fieldColor;
@@ -1013,6 +1156,7 @@ class $FieldView {
           : 0.0;
         color = mix(color, projectedEventType > 3.5 ? rotColor : focusColor, eventSignal * 0.65);
         float alpha = max(core, max(rim, selectionRing));
+        alpha *= mix(1.0, 0.14, projectedMutedState);
         if (projectedEventType > 4.5) alpha *= 1.0 - transitionProgress;
         if (projectedEventType > 0.5 && projectedEventType < 1.5) alpha *= transitionProgress;
         gl_FragColor = vec4(color, alpha);
@@ -1028,7 +1172,11 @@ class $FieldView {
     return globalThis as unknown as FieldBrowserWindow;
   }
 
-  protected static get DOMAIN_NAMES() {
+  /**
+   * Eight stable hue slots, not eight domains. Repository domains hash into
+   * these slots; the visible sector label names the domains that landed here.
+   */
+  protected static get SECTOR_PALETTE_NAMES() {
     return [
       'system',
       'state',
@@ -1056,6 +1204,8 @@ export interface FieldViewProps {
   snapshot: InvariantSnapshot;
   selectedRecordIdentifier: string | null;
   selectedCompositionIdentifier: string;
+  focusedRecordIdentifiers: Set<string>;
+  isFocused: boolean;
   timelineTransition?: TimelineTransition | null;
 }
 
@@ -1077,6 +1227,7 @@ interface FieldDot {
   traceStartY: number;
   labelX: number;
   labelY: number;
+  labelAnchor: string;
   labelKey: string;
   transform: string;
   domainIndex: number;
@@ -1090,6 +1241,7 @@ interface FieldDot {
   isRealityRenegotiable: boolean;
   isChosen: boolean;
   isSelected: boolean;
+  isOutsideFocus: boolean;
   hasTimelineEvent: boolean;
   hasRot: boolean;
 }
@@ -1105,6 +1257,13 @@ interface FieldTooltip {
 interface Direction {
   horizontal: number;
   vertical: number;
+}
+
+interface ThreeDimensionalOverlayLabel {
+  identifier: string;
+  text: string;
+  className: string;
+  style: Record<string, string>;
 }
 
 interface ThreeDimensionalHitTarget {

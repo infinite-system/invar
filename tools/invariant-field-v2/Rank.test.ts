@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { calculateRank, type RankInput } from './Rank';
+import { RANK_WEIGHTS, calculateRank, type RankInput } from './Rank';
 import type { InvariantRecord } from './types';
 
 function record(
@@ -143,5 +143,24 @@ describe('invariant rank', () => {
     const ranked = calculateRank(input(vacuousRecord));
     expect(ranked.rankComponents.falsifiability).toBe(0);
     expect(ranked.rankComponents.simplicity).toBe(0);
+  });
+
+  test('the rank weights are a partition of one', () => {
+    const weightSum = Object.values(RANK_WEIGHTS).reduce(
+      (runningSum, weight) => runningSum + weight,
+      0,
+    );
+    expect(weightSum).toBeCloseTo(1, 10);
+    for (const weight of Object.values(RANK_WEIGHTS)) {
+      expect(weight).toBeGreaterThan(0);
+    }
+  });
+
+  test('keeps every rank inside the range and R out of reach', () => {
+    const ranked = calculateRank(input(record()));
+    expect(ranked.rank).toBeGreaterThanOrEqual(0);
+    expect(ranked.rank).toBeLessThanOrEqual(1);
+    expect(ranked.radius).toBeGreaterThan(0.1);
+    expect(ranked.radius).toBeLessThanOrEqual(1);
   });
 });

@@ -6,6 +6,7 @@ import type {
   RankedRecord,
   TimelineTransition,
 } from '../types';
+import { Instrument } from '../Instrument';
 import { TimelinePlayout } from '../TimelinePlayout';
 
 class $InvariantFieldApp {
@@ -28,6 +29,18 @@ class $InvariantFieldApp {
   }
   get selectedCompositionIdentifier() {
     return ref('');
+  }
+  get searchQuery() {
+    return ref('');
+  }
+  get selectedKind() {
+    return ref('');
+  }
+  get selectedDomain() {
+    return ref('');
+  }
+  get sortOrder() {
+    return ref('rank-descending');
   }
   get errorMessage() {
     return ref('');
@@ -68,6 +81,115 @@ class $InvariantFieldApp {
           record.stableIdentifier === this.selectedRecordIdentifier.value,
       ) ?? null
     );
+  }
+  get selectedComposition() {
+    return (
+      this.snapshot.value?.compositions.find(
+        (composition) =>
+          composition.identifier === this.selectedCompositionIdentifier.value,
+      ) ?? null
+    );
+  }
+  /**
+   * The one focus fold. The field, the rail, and the lens all read this set;
+   * none of them filters again on its own.
+   */
+  // invariant: One focus fold serves every surface (tools/invariant-field-v2/invariant-field.invariants.md)
+  get focusedRecords(): RankedRecord[] {
+    const query = this.searchQuery.value.toLowerCase().trim();
+    const memberIdentifiers = new Set(
+      this.selectedComposition?.memberIdentifiers ?? [],
+    );
+    const records = (this.snapshot.value?.records ?? []).filter((record) => {
+      if (this.selectedKind.value && record.kind !== this.selectedKind.value) {
+        return false;
+      }
+      if (
+        this.selectedDomain.value &&
+        record.contractPath !== this.selectedDomain.value
+      ) {
+        return false;
+      }
+      if (
+        this.selectedComposition &&
+        !memberIdentifiers.has(record.stableIdentifier)
+      ) {
+        return false;
+      }
+      if (!query) return true;
+      return [record.name, record.contractPath, ...Object.values(record.fields)]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+    return records.toSorted((left, right) => this.compareRecords(left, right));
+  }
+  get focusedRecordIdentifiers(): Set<string> {
+    return new Set(
+      this.focusedRecords.map((record) => record.stableIdentifier),
+    );
+  }
+  get isFocused() {
+    return (
+      this.focusedRecords.length !== (this.snapshot.value?.records.length ?? 0)
+    );
+  }
+  get contractPaths() {
+    return [
+      ...new Set(
+        (this.snapshot.value?.records ?? []).map(
+          (record) => record.contractPath,
+        ),
+      ),
+    ].sort();
+  }
+  get activeFocusChips() {
+    const chips: Array<{ key: string; label: string }> = [];
+    if (this.searchQuery.value.trim()) {
+      chips.push({
+        key: 'search',
+        label: `“${this.searchQuery.value.trim()}”`,
+      });
+    }
+    if (this.selectedKind.value) {
+      chips.push({
+        key: 'kind',
+        label: this.kindLabel(this.selectedKind.value),
+      });
+    }
+    if (this.selectedDomain.value) {
+      chips.push({ key: 'domain', label: this.selectedDomain.value });
+    }
+    if (this.selectedComposition) {
+      chips.push({
+        key: 'composition',
+        label: this.selectedComposition.name,
+      });
+    }
+    return chips;
+  }
+  get instrumentRecordCount() {
+    const snapshotMetadata =
+      this.metadata.value?.snapshots[this.snapshotIndex.value];
+    return snapshotMetadata?.instrumentRecordCount ?? 0;
+  }
+  get instrumentBirthSnapshotIndex() {
+    return (
+      this.metadata.value?.snapshots.findIndex(
+        (snapshotMetadata) => snapshotMetadata.instrumentRecordCount > 0,
+      ) ?? -1
+    );
+  }
+  get isInstrumentFocused() {
+    return this.selectedDomain.value === Instrument.Class.CONTRACT_PATH;
+  }
+  get instrumentFocusLabel() {
+    if (this.instrumentBirthSnapshotIndex < 0) {
+      return 'The instrument has no contract yet';
+    }
+    return this.isInstrumentFocused
+      ? 'Release the instrument'
+      : 'Measure the instrument';
   }
   get headerStatistics() {
     const snapshotMetadata =
@@ -217,6 +339,79 @@ class $InvariantFieldApp {
   selectComposition(compositionIdentifier: string) {
     this.stopTimeline();
     this.selectedCompositionIdentifier.value = compositionIdentifier;
+  }
+
+  selectSearchQuery(query: string) {
+    this.searchQuery.value = query;
+  }
+
+  selectKind(kind: string) {
+    this.selectedKind.value = kind;
+  }
+
+  selectDomain(contractPath: string) {
+    this.selectedDomain.value = contractPath;
+  }
+
+  selectSortOrder(sortOrder: string) {
+    this.sortOrder.value = sortOrder;
+  }
+
+  clearFocusChip(chipKey: string) {
+    if (chipKey === 'search') this.searchQuery.value = '';
+    if (chipKey === 'kind') this.selectedKind.value = '';
+    if (chipKey === 'domain') this.selectedDomain.value = '';
+    if (chipKey === 'composition')
+      this.selectedCompositionIdentifier.value = '';
+  }
+
+  clearFocus() {
+    this.searchQuery.value = '';
+    this.selectedKind.value = '';
+    this.selectedDomain.value = '';
+    this.selectedCompositionIdentifier.value = '';
+  }
+
+  /**
+   * Turn the instrument on itself: focus its own contract and rewind to the
+   * snapshot that first carried it, so the playout shows the field being born
+   * inside the field.
+   */
+  async focusInstrument() {
+    this.stopTimeline();
+    if (this.isInstrumentFocused) {
+      this.clearFocus();
+      return;
+    }
+    const birthSnapshotIndex = this.instrumentBirthSnapshotIndex;
+    if (birthSnapshotIndex < 0) return;
+    this.clearFocus();
+    this.selectedDomain.value = Instrument.Class.CONTRACT_PATH;
+    this.selectedRecordIdentifier.value = null;
+    if (this.snapshotIndex.value !== birthSnapshotIndex) {
+      await this.loadSnapshot(birthSnapshotIndex);
+    }
+  }
+
+  compareRecords(left: RankedRecord, right: RankedRecord) {
+    if (this.sortOrder.value === 'rank-ascending')
+      return left.rank - right.rank;
+    if (this.sortOrder.value === 'name') {
+      return left.name.localeCompare(right.name);
+    }
+    if (this.sortOrder.value === 'domain') {
+      return (
+        left.contractPath.localeCompare(right.contractPath) ||
+        left.name.localeCompare(right.name)
+      );
+    }
+    return right.rank - left.rank;
+  }
+
+  kindLabel(kind: string) {
+    if (kind === 'reality-absolute') return 'Reality · absolute';
+    if (kind === 'reality-renegotiable') return 'Reality · renegotiable';
+    return 'Chosen';
   }
 
   protected get browserWindow(): InvariantFieldBrowserWindow {

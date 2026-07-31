@@ -1,6 +1,8 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
+
+// invariant: A bounded read is the only verification the instrument runs (tools/invariant-field-v2/invariant-field.invariants.md)
 import {
   createHighlighter,
   type BundledLanguage,

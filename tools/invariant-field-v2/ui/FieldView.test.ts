@@ -12,6 +12,8 @@ describe('FieldView', () => {
         } as unknown as InvariantSnapshot,
         selectedRecordIdentifier: null,
         selectedCompositionIdentifier: '',
+        focusedRecordIdentifiers: new Set<string>(),
+        isFocused: false,
       },
       () => undefined,
     );
@@ -29,6 +31,8 @@ describe('FieldView', () => {
         } as unknown as InvariantSnapshot,
         selectedRecordIdentifier: null,
         selectedCompositionIdentifier: '',
+        focusedRecordIdentifiers: new Set<string>(),
+        isFocused: false,
       },
       () => undefined,
     );
@@ -56,6 +60,8 @@ describe('FieldView', () => {
         } as unknown as InvariantSnapshot,
         selectedRecordIdentifier: null,
         selectedCompositionIdentifier: '',
+        focusedRecordIdentifiers: new Set<string>(),
+        isFocused: false,
       },
       () => undefined,
     );

@@ -80,6 +80,7 @@ export interface StableIdentityAssignment {
   matchedPreviousIdentifiers: Set<string>;
 }
 
+// invariant: A scanner that writes contracts measures itself (tools/invariant-field-v2/invariant-field.invariants.md)
 function runGit(repositoryRoot: string, argumentsList: string[]): string {
   const processResult = Bun.spawnSync({
     cmd: ['git', ...argumentsList],
@@ -262,6 +263,7 @@ function jaccardSimilarity(left: string, right: string): number {
   return intersectionCount / union.size;
 }
 
+// invariant: A renamed record keeps its identity (tools/invariant-field-v2/invariant-field.invariants.md)
 export function assignStableIdentities(
   previousRecords: InvariantRecord[],
   nextRecords: InvariantRecord[],
@@ -660,6 +662,7 @@ export function resolveEvidence(
   };
 }
 
+// invariant: A bounded read is the only verification the instrument runs (tools/invariant-field-v2/invariant-field.invariants.md)
 export function verificationMode(
   record: InvariantRecord,
   repositoryRoot: string,
