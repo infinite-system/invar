@@ -61,7 +61,13 @@ if [ "${1:-}" = "--self-test" ]; then
   if composer_occupied "$cleared_pane" "$tail_normalized"; then echo "FAIL absent arm (echo above prompt counted as composer)"; failures=1; fi
   # CHIP arm: a pasted-content chip is an occupant regardless of tail.
   composer_occupied '› [Pasted Content 812 chars]' "$tail_normalized" || { echo "FAIL chip arm"; failures=1; }
-  [ "$failures" = 0 ] && { echo "SELF-TEST: wrapped/cleared/chip arms all correct."; exit 0; }
+  # RESURRECTION-GUARD arm: a dead session on a NON-in-progress task must
+  # refuse (exit 3), never relaunch. (The auto-restore present arm needs a
+  # live dead lane and is exercised operationally, not here.)
+  if bash "$0" "no-such-task-selftest-$$" "test message" 2>/dev/null; then
+    echo "FAIL resurrection-guard arm (steer to a closed lane did not refuse)"; failures=1
+  fi
+  [ "$failures" = 0 ] && { echo "SELF-TEST: wrapped/cleared/chip/resurrection-guard arms all correct."; exit 0; }
   exit 1
 fi
 
@@ -71,8 +77,28 @@ message="$*"
 session_name="invar/${task_folder_name}"
 
 if ! tmux has-session -t "$session_name" 2>/dev/null; then
-  echo "steer: REFUSING — no tmux session '$session_name'" >&2
-  exit 3
+  # AUTO-RESTORE (user design, 2026-07-30): a steer to a dead IN-PROGRESS lane
+  # resumes the builder's own conversation first (relaunch.sh: codex resume
+  # --last / claude --continue), then delivers. The steer ritual subsumes
+  # recovery, so nothing depends on the conductor remembering relaunch.sh.
+  # ONLY in-progress: steering must never resurrect a landed/retired lane.
+  if [ -d ".invar/tasks/in-progress/${task_folder_name}" ]; then
+    echo "steer: session '${session_name}' is gone and the task is in-progress — auto-restoring its conversation"
+    bash "$(dirname "$0")/relaunch.sh" "$task_folder_name" || {
+      echo "steer: FAILED — auto-restore failed; relaunch by hand" >&2
+      exit 3
+    }
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+      sleep 2
+      restored_pane="$(tmux capture-pane -p -t "$session_name" 2>/dev/null || true)"
+      if printf '%s' "$restored_pane" | grep -qE '^›|for shortcuts|for agents'; then
+        break
+      fi
+    done
+  else
+    echo "steer: REFUSING — no tmux session '$session_name' and the task is not in-progress (never resurrect a closed lane)" >&2
+    exit 3
+  fi
 fi
 
 task_directory=""

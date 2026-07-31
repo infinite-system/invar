@@ -636,6 +636,16 @@ looks identical to that tool in a text search over command lines.**
 - **Heartbeat over PID-watching.** PIDs rotate. Give long workers a heartbeat artifact
   (phase + last-progress timestamp + done-flag), so "still building" ≠ "done-and-stranded"
   ≠ "crashed".
+- **Steer via `scripts/fleet/steer.sh`, and it does three jobs (2026-07-30).** (1) It
+  proves LANDING at the builder's OWN session record (codex rollout / claude store), not
+  the pane — `steers.log` in the task folder records only CONFIRMED landings; unconfirmed
+  steers become pending markers that fleet-watch confirms or raises as `STEER_LOST`.
+  (2) A steer to a dead IN-PROGRESS lane AUTO-RESTORES the builder's conversation first
+  (`relaunch.sh`: `codex resume --last` / `claude --continue`), so recovery needs no
+  separate memory; it refuses to resurrect a landed/retired lane. (3) Never relaunch a
+  builder bare by hand — `scripts/fleet/relaunch.sh <task-folder>` resumes the same
+  conversation, reads the assignment from meta.json, and plants the agent-tmux
+  ready/busy markers land.sh's idle detection needs.
 
 ---
 
