@@ -117,7 +117,7 @@ literal hex or glyph at the drawing site — the `theme` module is the single so
 appearance.
 
 **Scope:** All styled output across ui, editor, syntax, diagnostics, git
-decorations, and the tasks dashboard, including activity-bar, panel-heading,
+decorations, and the tasks dashboard, including activity-bar and `PanelTabBar` controls,
 editor-fold, and task-action control glyphs and the file-type marks the file
 tree and the breadcrumb popup share. Child terminal defaults and unmodified ANSI slots are terminal theme
 tokens. Explicit RGB, indexed slots 16–255, and OSC 4 overrides are outside host authority and follow
@@ -277,13 +277,13 @@ the resolved glyph.
 `agentTranscriptIconsFor`, and `tabSeparatorFor`, plus the `Theme` getters that call them.
 Covers file-tree,
 breadcrumb-popup, and completion-popup marks, git changes-row action buttons,
-task row actions, staging checkboxes, activity-bar items, panel-heading
+task row actions, staging checkboxes, activity-bar items, `PanelTabBar`
 controls, editor fold controls, find controls, status affordances, agent
 transcript cells, alerts, tab separators, and Markdown table borders.
 
 **Mechanism:** `$symbolMarks`, `$actionIcons`, `$taskActionIcons`, and
 `$checkboxIcons` are keyed by `GlyphLevel`, and `$symbolMarks` and
-`$interfaceGlyphVocabularies` each map EVERY key at each level, so selection
+`INTERFACE_GLYPH_VOCABULARIES` each map EVERY key at each level, so selection
 is a total lookup with no missing rung —
 a `Record<SymbolClass, string>` makes a missing mark a type error rather than
 an undefined cell. The `ascii` entries remain printable; icon-cell glyphs are
@@ -312,7 +312,7 @@ of exactly one cell at every tier; a closed width class without per-glyph
 exceptions.
 
 **Evidence:** `src/modules/theme/ThemeIcons.ts` (`$symbolMarks`,
-`$actionIcons`, `$taskActionIcons`, `$checkboxIcons`, `$interfaceGlyphVocabularies`,
+`$actionIcons`, `$taskActionIcons`, `$checkboxIcons`, `INTERFACE_GLYPH_VOCABULARIES`,
 `symbolMarkFor`, `glyphFor`, `iconFor`); `icon fallback ladder`, `unicode icon
 set resolves known extension and falls back for unknown`, `checkbox icons
 ladder`, `git action icons ladder`, `semantic interface glyph slots resolve
@@ -429,4 +429,4 @@ scripts/harness/smoke-tasks-dashboard-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-07-31

@@ -978,7 +978,7 @@ semantic glyph slots, icon sets), never hard-coded, and each resolves through a 
 fallback ladder; changing a glyph vocabulary never changes input or projection behavior.
 
 **Scope:** Themes, file-type icons wherever they are painted (file tree and breadcrumb popup rows
-alike), syntax colors, git/diagnostic decorations, gutter, activity-bar items, and panel-heading
+alike), syntax colors, git/diagnostic decorations, gutter, activity-bar items, and `PanelTabBar`
 controls. Text content that is not an icon or control glyph — a filename, a `..` parent label — is
 outside the glyph-slot rule. Child terminal defaults and unmodified ANSI slots use terminal theme
 tokens. Explicit RGB, indexed slots 16–255, and OSC 4 overrides remain child-owned and follow
