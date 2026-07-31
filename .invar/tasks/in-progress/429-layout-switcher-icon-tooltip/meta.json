@@ -1,0 +1,15 @@
+{
+  "task": 429,
+  "slug": "layout-switcher-icon-tooltip",
+  "branch": "fleet/429-layout-switcher-icon-tooltip",
+  "worktree": ".invar/worktrees/429-layout-switcher-icon-tooltip",
+  "tmuxSession": "invar/429-layout-switcher-icon-tooltip",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-429-layout-switcher-icon-tooltip.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "2252f1658dfbca32ba6d653958607bf9351e4fbf",
+  "startedAt": "2026-07-31T13:24:54-04:00"
+}

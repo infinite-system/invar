@@ -1,7 +1,7 @@
 # Task 429 — the layout switcher is an icon with a tooltip
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
