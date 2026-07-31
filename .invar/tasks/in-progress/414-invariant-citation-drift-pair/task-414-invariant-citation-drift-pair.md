@@ -1,11 +1,11 @@
 # Task 414 — two invariant records cite files that no longer exist
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: medium
+Effort: high
 
 ## Source
 

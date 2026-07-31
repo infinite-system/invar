@@ -1,0 +1,15 @@
+{
+  "task": 414,
+  "slug": "invariant-citation-drift-pair",
+  "branch": "fleet/414-invariant-citation-drift-pair",
+  "worktree": ".invar/worktrees/414-invariant-citation-drift-pair",
+  "tmuxSession": "invar/414-invariant-citation-drift-pair",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-414-invariant-citation-drift-pair.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "7d0cd74d6cfa6b9ade263e1f9b7a459efdb08cbc",
+  "startedAt": "2026-07-31T06:31:15-04:00"
+}
