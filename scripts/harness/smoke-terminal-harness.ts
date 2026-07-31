@@ -30,6 +30,228 @@ function terminalSizePattern(rows: number, columns: number): RegExp {
   return new RegExp(`(?:^|\\D)${rows} ${columns}(?:\\D|$)`);
 }
 
+interface TaskPaneSizeObservation {
+  readonly columns: number;
+  readonly rows: number;
+  readonly resizeEventCount: number;
+  readonly visibleRowNumbers: readonly number[];
+}
+
+function taskPaneSizeObservation(
+  snapshot: HarnessSnapshot.Model,
+  paneLabel: string,
+): TaskPaneSizeObservation | null {
+  const pattern = new RegExp(
+    `${paneLabel}\\s+(\\d+)\\/(\\d+)\\s+(\\d+)x(\\d+)\\s+E(\\d+)`,
+    'g',
+  );
+  const matches = snapshot
+    .textRows()
+    .flatMap((rowText) => [...rowText.matchAll(pattern)]);
+  const lastMatch = matches.at(-1);
+  if (!lastMatch) return null;
+  return {
+    columns: Number(lastMatch[3]),
+    rows: Number(lastMatch[4]),
+    resizeEventCount: Number(lastMatch[5]),
+    visibleRowNumbers: [
+      ...new Set(matches.map((match) => Number(match[1]))),
+    ].sort((left, right) => left - right),
+  };
+}
+
+function taskPaneFrameIsComplete(
+  snapshot: HarnessSnapshot.Model,
+  paneLabel: string,
+  columns: number,
+  rows: number,
+  minimumResizeEventCount: number,
+): boolean {
+  const observation = taskPaneSizeObservation(snapshot, paneLabel);
+  return (
+    observation !== null &&
+    observation.columns === columns &&
+    observation.rows === rows &&
+    observation.resizeEventCount >= minimumResizeEventCount &&
+    observation.visibleRowNumbers.length === rows &&
+    observation.visibleRowNumbers[0] === 1 &&
+    observation.visibleRowNumbers.at(-1) === rows
+  );
+}
+
+function panelCellColumns(status: StatusSnapshot): number[] {
+  return Array.isArray(status.panelCellColumns)
+    ? status.panelCellColumns.map(Number)
+    : [];
+}
+
+function bottomPanelRows(status: StatusSnapshot): number {
+  return Number(
+    (status.layoutSlots as Record<string, { height?: number }> | undefined)
+      ?.bottomPanel?.height ?? 0,
+  );
+}
+
+// invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
+async function driveTaskPaneSizeProbe(): Promise<void> {
+  const workspaceRoot = mkdtempSync(
+    join(tmpdir(), 'tui-terminal-task-pane-workspace-'),
+  );
+  const taskHomeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-terminal-task-pane-home-'),
+  );
+  const taskStatusPath = join(taskHomeDirectory, 'status.json');
+  const probeScriptPath = join(taskHomeDirectory, 'pty-size-probe.py');
+  mkdirSync(join(workspaceRoot, '.invar'), { recursive: true });
+  await Bun.write(
+    probeScriptPath,
+    [
+      'import os',
+      'import signal',
+      'import sys',
+      'pane_label = sys.argv[1]',
+      'resize_event_count = 0',
+      'def draw_frame():',
+      '    terminal_size = os.get_terminal_size(sys.stdout.fileno())',
+      '    columns = max(1, terminal_size.columns)',
+      '    rows = max(1, terminal_size.lines)',
+      '    row_number_width = len(str(rows))',
+      '    frame_lines = []',
+      '    for row_number in range(1, rows + 1):',
+      '        label = f"{pane_label} {row_number:0{row_number_width}d}/{rows} {columns}x{rows} E{resize_event_count}"',
+      '        frame_lines.append(label[:columns - 1].ljust(columns - 1))',
+      '    sys.stdout.write("\\x1b[2J\\x1b[H" + "\\r\\n".join(frame_lines))',
+      '    sys.stdout.flush()',
+      'def handle_window_change(_signal_number, _frame):',
+      '    global resize_event_count',
+      '    resize_event_count += 1',
+      '    draw_frame()',
+      'signal.signal(signal.SIGWINCH, handle_window_change)',
+      'sys.stdout.write("\\x1b[?1049h\\x1b[?25l")',
+      'draw_frame()',
+      'while True:',
+      '    signal.pause()',
+      '',
+    ].join('\n'),
+  );
+  await Bun.write(
+    join(workspaceRoot, '.invar', 'tasks.json'),
+    `${JSON.stringify(
+      {
+        version: '2.0.0',
+        tasks: ['A', 'B'].map((paneLabel) => ({
+          label: `PTY Probe ${paneLabel}`,
+          type: 'shell',
+          command: 'python3',
+          args: [probeScriptPath, paneLabel],
+          problemMatcher: [],
+          presentation: {
+            group: 'pty-size-probes',
+            panel: 'dedicated',
+          },
+          runOptions: { runOn: 'folderOpen' },
+        })),
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  const taskDriver = new PtyTestDriver.Class({
+    workspaceRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory: taskHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: taskStatusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+      INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '0',
+      INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS: '0',
+    },
+  });
+  try {
+    const initialStatus = await HarnessSmoke.Class.awaitStatus(
+      taskDriver,
+      taskStatusPath,
+      'two task PTYs launch in one split panel group',
+      (status) =>
+        status.ready === true &&
+        Array.isArray(status.taskLaunchedLabels) &&
+        status.taskLaunchedLabels.length === 2 &&
+        panelCellColumns(status).length === 2,
+      20_000,
+    );
+    const initialPaneColumns = panelCellColumns(initialStatus).map((columns) =>
+      Math.max(1, columns - 4),
+    );
+    const initialPaneRows = Math.max(1, bottomPanelRows(initialStatus) - 2);
+    const initialSnapshot = await taskDriver.awaitGridCondition(
+      'both task guests report and fill their initial visible split grids',
+      (snapshot) =>
+        taskPaneFrameIsComplete(
+          snapshot,
+          'A',
+          initialPaneColumns[0] ?? 1,
+          initialPaneRows,
+          0,
+        ) &&
+        taskPaneFrameIsComplete(
+          snapshot,
+          'B',
+          initialPaneColumns[1] ?? 1,
+          initialPaneRows,
+          0,
+        ),
+      15_000,
+    );
+    const initialAResizeEventCount =
+      taskPaneSizeObservation(initialSnapshot, 'A')?.resizeEventCount ?? 0;
+    const initialBResizeEventCount =
+      taskPaneSizeObservation(initialSnapshot, 'B')?.resizeEventCount ?? 0;
+
+    taskDriver.resize(100, 30);
+    const resizedStatus = await HarnessSmoke.Class.awaitStatus(
+      taskDriver,
+      taskStatusPath,
+      'the task-pane drive publishes the resized outer grid',
+      (status) =>
+        status.width === 100 &&
+        status.height === 30 &&
+        panelCellColumns(status).length === 2,
+    );
+    const resizedPaneColumns = panelCellColumns(resizedStatus).map((columns) =>
+      Math.max(1, columns - 4),
+    );
+    const resizedPaneRows = Math.max(1, bottomPanelRows(resizedStatus) - 2);
+    await taskDriver.awaitGridCondition(
+      'both task guests report and fill their resized visible split grids',
+      (snapshot) =>
+        taskPaneFrameIsComplete(
+          snapshot,
+          'A',
+          resizedPaneColumns[0] ?? 1,
+          resizedPaneRows,
+          initialAResizeEventCount + 1,
+        ) &&
+        taskPaneFrameIsComplete(
+          snapshot,
+          'B',
+          resizedPaneColumns[1] ?? 1,
+          resizedPaneRows,
+          initialBResizeEventCount + 1,
+        ),
+      5_000,
+    );
+    HarnessSmoke.Class.pass(
+      `task guests resized to ${resizedPaneColumns.join(',')}x${resizedPaneRows} and exposed rows 1 through ${resizedPaneRows}`,
+    );
+  } finally {
+    await taskDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(workspaceRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(taskHomeDirectory);
+  }
+}
+
 function bottomPanelSlot(status: StatusSnapshot): Rectangle {
   const layoutSlots = status.layoutSlots as
     Record<string, Rectangle> | undefined;
@@ -506,6 +728,11 @@ HarnessSmoke.Class.requireCondition(
   unitResult.exitCode === 0,
   'terminal core and PanelHost unit tests',
 );
+
+console.log(
+  '== harness terminal: task PTYs match their visible split grids after resize ==',
+);
+await driveTaskPaneSizeProbe();
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(process.cwd(), 'fixtures'),
