@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #413 [invariant-field-web-app](.invar/tasks/in-progress/413-invariant-field-web-app/task-413-invariant-field-web-app.md)  [building]
+- #413 [invariant-field-web-app](.invar/tasks/in-progress/413-invariant-field-web-app/task-413-invariant-field-web-app.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/413-invariant-field-web-app`
 
 ## USER-DIRECTED (18)
@@ -96,7 +96,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (34)
+## ARCHITECTURE-HYGIENE (35)
+- #414 [invariant-citation-drift-pair](.invar/tasks/active/414-invariant-citation-drift-pair/task-414-invariant-citation-drift-pair.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
 - #405 [panelhost-hardcoded-kind-tables](.invar/tasks/active/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)
