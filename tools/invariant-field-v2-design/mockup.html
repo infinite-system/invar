@@ -1,0 +1,2088 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#06080c" />
+    <title>Invar Field v2 visual proof</title>
+    <link rel="stylesheet" href="./tokens.css" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            circle at 44% 36%,
+            rgb(47 99 140 / 12%),
+            transparent 34rem
+          ),
+          radial-gradient(
+            circle at 65% 110%,
+            rgb(92 63 146 / 9%),
+            transparent 38rem
+          ),
+          var(--field-background-abyss);
+        color: var(--field-text-secondary);
+        font-family: var(--field-font-interface);
+        font-size: var(--field-type-body);
+      }
+
+      button,
+      input {
+        color: inherit;
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 2px solid var(--field-signal-focus);
+        outline-offset: 2px;
+      }
+
+      .instrument {
+        display: grid;
+        grid-template-rows: 54px minmax(0, 1fr) 116px;
+        width: 100vw;
+        height: 100vh;
+        min-width: 1040px;
+        background:
+          linear-gradient(rgb(255 255 255 / 1%), transparent 1px) 0 54px / 100%
+            1px no-repeat,
+          repeating-linear-gradient(
+            90deg,
+            transparent 0 79px,
+            rgb(112 166 207 / 2.8%) 80px
+          );
+      }
+
+      .topbar {
+        z-index: var(--field-layer-sticky-chrome);
+        display: grid;
+        grid-template-columns: 238px minmax(320px, 1fr) auto;
+        align-items: center;
+        border-bottom: 1px solid var(--field-border-quiet);
+        background: rgb(6 10 15 / 82%);
+        box-shadow: var(--field-elevation-base);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand {
+        display: flex;
+        gap: 11px;
+        align-items: center;
+        height: 100%;
+        padding: 0 18px;
+        border-right: 1px solid var(--field-border-quiet);
+      }
+
+      .brand-mark {
+        position: relative;
+        width: 22px;
+        height: 22px;
+        border: 1px solid var(--field-border-strong);
+        border-radius: 50%;
+        box-shadow: inset 0 0 12px rgb(109 226 255 / 10%);
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        position: absolute;
+        content: '';
+        border-radius: 50%;
+      }
+
+      .brand-mark::before {
+        inset: 5px;
+        border: 1px solid var(--field-signal-reality);
+      }
+
+      .brand-mark::after {
+        inset: 9px;
+        background: var(--field-signal-reality);
+        box-shadow: 0 0 10px var(--field-signal-reality);
+      }
+
+      .brand-name,
+      .eyebrow,
+      .instrument-label,
+      .metric-label,
+      .domain-count,
+      .timeline-time,
+      .rank-value,
+      .coordinate-label {
+        font-family: var(--field-font-instrument);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .brand-name {
+        color: var(--field-text-primary);
+        font-size: var(--field-type-metadata);
+        font-weight: var(--field-weight-bold);
+        letter-spacing: var(--field-tracking-label);
+      }
+
+      .brand-subtitle {
+        margin-top: 2px;
+        color: var(--field-text-tertiary);
+        font-size: var(--field-type-micro);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .snapshot-strip {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        min-width: 0;
+        padding: 0 18px;
+      }
+
+      .live-indicator {
+        display: inline-flex;
+        gap: 7px;
+        align-items: center;
+        color: var(--field-signal-success);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+        letter-spacing: 0.1em;
+      }
+
+      .live-indicator::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 10px currentColor;
+        content: '';
+      }
+
+      .snapshot-title {
+        overflow: hidden;
+        color: var(--field-text-primary);
+        font-size: var(--field-type-body-small);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .snapshot-hash {
+        color: var(--field-text-tertiary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-metadata);
+      }
+
+      .topbar-actions {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        padding: 0 13px;
+      }
+
+      .quiet-button,
+      .mode-button,
+      .play-button,
+      .domain-button {
+        min-height: 30px;
+        border: 1px solid var(--field-border-quiet);
+        border-radius: var(--field-radius-control);
+        background: rgb(17 26 38 / 72%);
+        cursor: pointer;
+        transition:
+          border-color var(--field-duration-hover-feedback)
+            var(--field-ease-enter),
+          background var(--field-duration-hover-feedback)
+            var(--field-ease-enter),
+          color var(--field-duration-hover-feedback) var(--field-ease-enter),
+          transform var(--field-duration-input-feedback)
+            var(--field-ease-standard);
+      }
+
+      .quiet-button:hover,
+      .mode-button:hover,
+      .play-button:hover,
+      .domain-button:hover {
+        border-color: var(--field-border-strong);
+        background: var(--field-background-control);
+        color: var(--field-text-primary);
+      }
+
+      .quiet-button:active,
+      .mode-button:active,
+      .play-button:active,
+      .domain-button:active {
+        transform: scale(0.96);
+      }
+
+      .quiet-button,
+      .mode-button {
+        padding: 5px 10px;
+        color: var(--field-text-tertiary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .mode-group {
+        display: flex;
+        padding: 2px;
+        border: 1px solid var(--field-border-quiet);
+        border-radius: calc(var(--field-radius-control) + 2px);
+      }
+
+      .mode-button {
+        min-height: 25px;
+        border: 0;
+        background: transparent;
+      }
+
+      .mode-button.is-active {
+        background: var(--field-background-control);
+        color: var(--field-signal-focus);
+        box-shadow: inset 0 0 0 1px rgb(109 226 255 / 12%);
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 176px minmax(0, 1fr) 336px;
+        min-height: 0;
+      }
+
+      .domain-rail,
+      .lens {
+        z-index: var(--field-layer-chrome);
+        min-height: 0;
+        background: rgb(9 13 19 / 82%);
+        backdrop-filter: blur(16px);
+      }
+
+      .domain-rail {
+        padding: 18px 12px;
+        border-right: 1px solid var(--field-border-quiet);
+      }
+
+      .eyebrow,
+      .instrument-label,
+      .metric-label {
+        color: var(--field-text-tertiary);
+        font-size: var(--field-type-micro);
+        font-weight: var(--field-weight-semibold);
+        letter-spacing: var(--field-tracking-label);
+        text-transform: uppercase;
+      }
+
+      .rail-heading {
+        display: flex;
+        justify-content: space-between;
+        margin: 0 6px 14px;
+      }
+
+      .rail-heading span:last-child {
+        color: var(--field-text-disabled);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+      }
+
+      .domain-list {
+        display: grid;
+        gap: 5px;
+      }
+
+      .domain-button {
+        display: grid;
+        grid-template-columns: 8px minmax(0, 1fr) auto;
+        gap: 9px;
+        align-items: center;
+        width: 100%;
+        padding: 8px 9px;
+        color: var(--field-text-secondary);
+        text-align: left;
+      }
+
+      .domain-button[aria-pressed='false'] {
+        opacity: 0.42;
+      }
+
+      .domain-swatch {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--domain-color);
+        box-shadow: 0 0 9px
+          color-mix(in srgb, var(--domain-color) 58%, transparent);
+      }
+
+      .domain-name {
+        overflow: hidden;
+        font-size: var(--field-type-body-small);
+        text-overflow: ellipsis;
+      }
+
+      .domain-count {
+        color: var(--field-text-tertiary);
+        font-size: var(--field-type-micro);
+      }
+
+      .rail-legend {
+        position: absolute;
+        bottom: 132px;
+        left: 13px;
+        width: 150px;
+        padding: 12px;
+        border: 1px solid var(--field-border-quiet);
+        border-radius: var(--field-radius-card);
+        background: rgb(13 19 28 / 72%);
+      }
+
+      .legend-row {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        margin-top: 10px;
+        color: var(--field-text-tertiary);
+        font-size: var(--field-type-micro);
+      }
+
+      .kind-symbol {
+        display: inline-grid;
+        width: 13px;
+        height: 13px;
+        place-items: center;
+      }
+
+      .kind-symbol::before {
+        display: block;
+        width: 7px;
+        height: 7px;
+        border: 1px solid var(--field-text-secondary);
+        content: '';
+      }
+
+      .kind-symbol.absolute::before {
+        transform: rotate(45deg);
+        background: var(--field-kind-reality-absolute);
+      }
+
+      .kind-symbol.renegotiable::before {
+        border-radius: 2px;
+        background: transparent;
+        transform: rotate(30deg);
+      }
+
+      .kind-symbol.chosen::before {
+        border-radius: 50%;
+        background: var(--field-kind-chosen);
+      }
+
+      .field-panel {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .field-toolbar {
+        position: absolute;
+        z-index: var(--field-layer-chrome);
+        top: 14px;
+        right: 16px;
+        left: 16px;
+        display: flex;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+
+      .coordinate-readout,
+      .field-search {
+        border: 1px solid var(--field-border-quiet);
+        border-radius: var(--field-radius-control);
+        background: rgb(8 13 20 / 76%);
+        box-shadow: var(--field-elevation-base);
+        backdrop-filter: blur(12px);
+        pointer-events: auto;
+      }
+
+      .coordinate-readout {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        min-height: 32px;
+        padding: 6px 10px;
+      }
+
+      .coordinate-label {
+        color: var(--field-text-tertiary);
+        font-size: var(--field-type-micro);
+      }
+
+      .coordinate-label strong {
+        margin-left: 4px;
+        color: var(--field-text-secondary);
+        font-weight: var(--field-weight-medium);
+      }
+
+      .field-search {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        width: 226px;
+        padding: 0 10px;
+      }
+
+      .field-search span {
+        color: var(--field-text-disabled);
+        font-family: var(--field-font-instrument);
+      }
+
+      .field-search input {
+        width: 100%;
+        min-width: 0;
+        height: 31px;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--field-text-primary);
+        font-size: var(--field-type-body-small);
+      }
+
+      .field-search input::placeholder {
+        color: var(--field-text-disabled);
+      }
+
+      .field-stage {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            circle at 50% 48%,
+            rgb(23 65 92 / 17%),
+            transparent 38%
+          ),
+          repeating-radial-gradient(
+            ellipse at 50% 50%,
+            transparent 0 39px,
+            rgb(105 173 218 / 2.5%) 40px,
+            transparent 41px 80px
+          ),
+          linear-gradient(180deg, rgb(9 14 21 / 56%), rgb(4 7 11 / 82%));
+        perspective: 1200px;
+      }
+
+      .field-stage::before,
+      .field-stage::after {
+        position: absolute;
+        z-index: 2;
+        pointer-events: none;
+        content: '';
+      }
+
+      .field-stage::before {
+        inset: 0;
+        background:
+          linear-gradient(
+            90deg,
+            transparent 49.9%,
+            rgb(109 226 255 / 5%) 50%,
+            transparent 50.1%
+          ),
+          linear-gradient(
+            transparent 49.9%,
+            rgb(109 226 255 / 4%) 50%,
+            transparent 50.1%
+          );
+        mask-image: radial-gradient(circle, black, transparent 68%);
+      }
+
+      .field-stage::after {
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 34%;
+        background: linear-gradient(transparent, rgb(3 6 10 / 80%));
+      }
+
+      .field-plane {
+        position: absolute;
+        z-index: 1;
+        inset: 28px 0 -42px;
+        width: 100%;
+        height: calc(100% + 14px);
+        overflow: visible;
+        transform: rotateX(9deg) rotateZ(-1deg) scale(1.02);
+        transform-origin: 50% 52%;
+        transition: transform var(--field-duration-focus-flight)
+          var(--field-ease-focus-flight);
+      }
+
+      .field-panel.is-two-dimensional .field-plane {
+        transform: none;
+      }
+
+      .field-panel.is-two-dimensional .depth-only {
+        opacity: 0;
+      }
+
+      .grid-ring,
+      .grid-axis,
+      .sector-line,
+      .relation-line,
+      .record-trail {
+        vector-effect: non-scaling-stroke;
+      }
+
+      .grid-ring {
+        fill: none;
+        stroke: var(--field-alpha-grid);
+        stroke-width: 1;
+      }
+
+      .grid-ring.major {
+        stroke: rgb(115 177 221 / 21%);
+      }
+
+      .grid-axis,
+      .sector-line {
+        stroke: var(--field-alpha-axis);
+        stroke-width: 0.8;
+      }
+
+      .sector-line {
+        stroke-dasharray: 2 8;
+      }
+
+      .depth-line {
+        stroke: rgb(170 145 255 / 12%);
+        stroke-width: 1;
+        stroke-dasharray: 2 7;
+      }
+
+      .rank-label,
+      .sector-label,
+      .reality-caption,
+      .selected-field-label {
+        fill: var(--field-text-tertiary);
+        font-family: var(--field-font-instrument);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+      }
+
+      .rank-label {
+        fill: #5f758b;
+      }
+
+      .sector-label {
+        font-size: 9px;
+      }
+
+      .reality-core {
+        fill: var(--field-signal-reality);
+        filter: url('#reality-glow');
+      }
+
+      .reality-ring {
+        fill: none;
+        stroke: rgb(255 209 102 / 44%);
+        stroke-width: 1;
+      }
+
+      .reality-caption {
+        fill: var(--field-signal-reality);
+        font-size: 9px;
+      }
+
+      .relation-line {
+        fill: none;
+        stroke: rgb(185 156 255 / 48%);
+        stroke-width: 1.2;
+        stroke-dasharray: 1 5;
+      }
+
+      .relation-line.secondary {
+        stroke: rgb(99 216 255 / 28%);
+      }
+
+      .record-trail {
+        fill: none;
+        stroke: var(--field-signal-rot);
+        stroke-width: 1;
+        stroke-dasharray: 3 5;
+        opacity: 0.58;
+      }
+
+      .field-node {
+        color: var(--node-color, var(--field-domain-system));
+        cursor: pointer;
+        outline: none;
+      }
+
+      .field-node .node-hit {
+        fill: transparent;
+        stroke: transparent;
+        stroke-width: 20;
+      }
+
+      .field-node .node-halo {
+        fill: color-mix(in srgb, currentColor 14%, transparent);
+        opacity: 0;
+        transition:
+          opacity var(--field-duration-hover-feedback) var(--field-ease-enter),
+          transform var(--field-duration-selection-confirm)
+            var(--field-ease-confirm);
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+
+      .field-node .node-core {
+        fill: currentColor;
+        stroke: rgb(238 246 255 / 84%);
+        stroke-width: 0.7;
+        filter: url('#dot-glow');
+        transition:
+          transform var(--field-duration-selection-confirm)
+            var(--field-ease-confirm),
+          opacity var(--field-duration-chrome-transition)
+            var(--field-ease-standard);
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+
+      .field-node.kind-absolute .node-core {
+        rx: 0;
+        transform: rotate(45deg);
+      }
+
+      .field-node.kind-renegotiable .node-core {
+        fill: var(--field-background-canvas);
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+
+      .field-node.is-citation .node-verification {
+        stroke-dasharray: 8 8;
+      }
+
+      .field-node.is-alarm .node-verification {
+        stroke: var(--field-signal-alarm);
+        stroke-dasharray: 3 4;
+      }
+
+      .node-verification {
+        fill: none;
+        stroke: rgb(229 242 255 / 48%);
+        stroke-width: 1;
+      }
+
+      .field-node:hover .node-halo,
+      .field-node:focus-visible .node-halo,
+      .field-node.is-selected .node-halo {
+        opacity: 1;
+      }
+
+      .field-node:hover .node-core,
+      .field-node:focus-visible .node-core {
+        transform: scale(1.28);
+      }
+
+      .field-node.is-selected .node-halo {
+        fill: var(--field-alpha-selection-halo);
+        transform: scale(1.15);
+      }
+
+      .field-node.is-selected .node-core {
+        stroke: var(--field-text-primary);
+        stroke-width: 1.4;
+        transform: scale(1.55);
+      }
+
+      .field-node.is-domain-muted,
+      .field-node.is-search-muted {
+        pointer-events: none;
+        opacity: 0.12;
+      }
+
+      .selection-bracket {
+        fill: none;
+        stroke: var(--field-signal-selection);
+        stroke-width: 1.2;
+        stroke-dasharray: 5 4;
+        filter: url('#selection-glow');
+      }
+
+      .selected-field-label {
+        fill: var(--field-text-primary);
+        font-size: 10px;
+        letter-spacing: 0.03em;
+      }
+
+      .field-status {
+        position: absolute;
+        z-index: 4;
+        right: 18px;
+        bottom: 18px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        color: var(--field-text-tertiary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+      }
+
+      .field-status strong {
+        color: var(--field-text-secondary);
+        font-weight: var(--field-weight-medium);
+      }
+
+      .lens {
+        position: relative;
+        overflow: auto;
+        border-left: 1px solid var(--field-border-default);
+        box-shadow: -22px 0 56px rgb(0 0 0 / 18%);
+      }
+
+      .lens::before {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 1px;
+        background: linear-gradient(
+          transparent,
+          var(--field-signal-selection) 24%,
+          transparent 72%
+        );
+        content: '';
+      }
+
+      .lens-header {
+        padding: 19px 20px 17px;
+        border-bottom: 1px solid var(--field-border-quiet);
+      }
+
+      .lens-heading-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: start;
+        margin-top: 9px;
+      }
+
+      .lens h1 {
+        margin: 0;
+        color: var(--field-text-primary);
+        font-size: var(--field-type-title);
+        font-weight: var(--field-weight-semibold);
+        letter-spacing: -0.025em;
+        line-height: 1.25;
+      }
+
+      .selected-badge {
+        flex: none;
+        padding: 4px 6px;
+        border: 1px solid rgb(185 156 255 / 42%);
+        border-radius: var(--field-radius-control);
+        background: rgb(185 156 255 / 9%);
+        color: var(--field-signal-selection);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .record-path {
+        margin-top: 9px;
+        overflow: hidden;
+        color: var(--field-text-tertiary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        border-bottom: 1px solid var(--field-border-quiet);
+        background: var(--field-border-quiet);
+      }
+
+      .metric {
+        padding: 13px 12px;
+        background: var(--field-background-panel);
+      }
+
+      .metric-value {
+        margin-top: 6px;
+        color: var(--field-text-primary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-body-small);
+      }
+
+      .lens-section {
+        padding: 17px 20px;
+        border-bottom: 1px solid var(--field-border-quiet);
+      }
+
+      .lens-section h2 {
+        margin: 0 0 10px;
+        color: var(--field-text-tertiary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+        letter-spacing: var(--field-tracking-label);
+        text-transform: uppercase;
+      }
+
+      .lens-section p {
+        margin: 0;
+        color: var(--field-text-secondary);
+        font-size: var(--field-type-body-small);
+        line-height: var(--field-leading-reading);
+      }
+
+      .evidence-row {
+        display: grid;
+        grid-template-columns: 16px minmax(0, 1fr) auto;
+        gap: 9px;
+        align-items: center;
+        margin-top: 9px;
+        color: var(--field-text-tertiary);
+        font-size: var(--field-type-metadata);
+      }
+
+      .evidence-icon {
+        color: var(--field-signal-success);
+      }
+
+      .evidence-value {
+        color: var(--field-text-secondary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+      }
+
+      .rank-strip {
+        height: 4px;
+        margin-top: 12px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--field-background-control);
+      }
+
+      .rank-strip span {
+        display: block;
+        width: 82%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          var(--field-signal-reality),
+          var(--field-signal-selection)
+        );
+        box-shadow: 0 0 12px rgb(185 156 255 / 44%);
+      }
+
+      .timeline {
+        z-index: var(--field-layer-sticky-chrome);
+        display: grid;
+        grid-template-columns: 176px minmax(0, 1fr) 336px;
+        border-top: 1px solid var(--field-border-default);
+        background: rgb(8 12 18 / 95%);
+        box-shadow: 0 -20px 50px rgb(0 0 0 / 22%);
+      }
+
+      .timeline-summary {
+        display: grid;
+        align-content: center;
+        padding: 14px 18px;
+        border-right: 1px solid var(--field-border-quiet);
+      }
+
+      .timeline-time {
+        margin-top: 8px;
+        color: var(--field-text-primary);
+        font-size: var(--field-type-title-small);
+      }
+
+      .timeline-date {
+        margin-top: 3px;
+        color: var(--field-text-tertiary);
+        font-size: var(--field-type-micro);
+      }
+
+      .timeline-control {
+        display: grid;
+        grid-template-rows: 1fr auto;
+        min-width: 0;
+        padding: 13px 18px 12px;
+      }
+
+      .timeline-events {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        min-width: 0;
+        padding: 0 16px 8px;
+      }
+
+      .timeline-events::before {
+        position: absolute;
+        right: 16px;
+        bottom: 13px;
+        left: 16px;
+        height: 1px;
+        background: var(--field-border-default);
+        content: '';
+      }
+
+      .commit-mark {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        width: 9px;
+        height: 9px;
+        border: 1px solid var(--field-border-strong);
+        border-radius: 50%;
+        background: var(--field-background-panel);
+        place-items: center;
+      }
+
+      .commit-mark.has-birth::after,
+      .commit-mark.has-rot::after,
+      .commit-mark.is-current::after {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--field-signal-success);
+        content: '';
+      }
+
+      .commit-mark.has-rot::after {
+        background: var(--field-signal-rot);
+      }
+
+      .commit-mark.is-current {
+        width: 13px;
+        height: 13px;
+        border-color: var(--field-signal-selection);
+        box-shadow: 0 0 12px rgb(185 156 255 / 30%);
+      }
+
+      .commit-mark.is-current::after {
+        background: var(--field-signal-selection);
+      }
+
+      .timeline-input-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .play-button {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        color: var(--field-signal-focus);
+        place-items: center;
+      }
+
+      .timeline-range {
+        width: 100%;
+        accent-color: var(--field-signal-selection);
+      }
+
+      .snapshot-count {
+        color: var(--field-text-tertiary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-micro);
+      }
+
+      .timeline-change-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-left: 1px solid var(--field-border-quiet);
+      }
+
+      .change-metric {
+        display: grid;
+        align-content: center;
+        padding: 0 15px;
+        border-right: 1px solid var(--field-border-quiet);
+      }
+
+      .change-value {
+        margin-top: 7px;
+        color: var(--field-text-primary);
+        font-family: var(--field-font-instrument);
+        font-size: var(--field-type-title-small);
+      }
+
+      .change-value.birth {
+        color: var(--field-signal-success);
+      }
+
+      .change-value.inward {
+        color: var(--field-signal-focus);
+      }
+
+      .change-value.rot {
+        color: var(--field-signal-rot);
+      }
+
+      .is-playing .selected-field-label {
+        animation: selected-label-confirm 640ms var(--field-ease-standard) both;
+      }
+
+      .is-playing .record-trail {
+        animation: trace-play 900ms var(--field-ease-exit) both;
+      }
+
+      @keyframes selected-label-confirm {
+        0% {
+          opacity: 0.3;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      @keyframes trace-play {
+        0% {
+          opacity: 0;
+          stroke-dashoffset: 20;
+        }
+        40% {
+          opacity: 0.8;
+        }
+        100% {
+          opacity: 0.28;
+          stroke-dashoffset: 0;
+        }
+      }
+
+      @media (max-width: 1180px) {
+        .workspace,
+        .timeline {
+          grid-template-columns: 164px minmax(0, 1fr) 300px;
+        }
+
+        .topbar {
+          grid-template-columns: 164px minmax(260px, 1fr) auto;
+        }
+
+        .brand-subtitle,
+        .quiet-button.sound-button {
+          display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+
+        .field-plane {
+          transform: none;
+        }
+
+        .depth-only {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="instrument">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <div class="brand-name">INVAR // FIELD</div>
+            <div class="brand-subtitle">Invariant observatory</div>
+          </div>
+        </div>
+
+        <div class="snapshot-strip">
+          <span class="live-indicator">CURRENT</span>
+          <span class="snapshot-title"
+            >Field v2 design language enters the lattice</span
+          >
+          <span class="snapshot-hash">a84f6e2</span>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="quiet-button sound-button" type="button">
+            Sound off
+          </button>
+          <button class="quiet-button" id="reset-view" type="button">
+            Reset view
+          </button>
+          <div class="mode-group" aria-label="Field dimension">
+            <button
+              class="mode-button"
+              id="mode-two-dimensional"
+              type="button"
+              aria-pressed="false"
+            >
+              2D
+            </button>
+            <button
+              class="mode-button is-active"
+              id="mode-three-dimensional"
+              type="button"
+              aria-pressed="true"
+            >
+              3D
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="domain-rail" aria-label="Domain filters">
+          <div class="rail-heading">
+            <span class="eyebrow">Domains</span>
+            <span>137 total</span>
+          </div>
+          <div class="domain-list">
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-system)"
+              data-domain-filter="system"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">System</span>
+              <span class="domain-count">24</span>
+            </button>
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-state)"
+              data-domain-filter="state"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">State</span>
+              <span class="domain-count">19</span>
+            </button>
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-interaction)"
+              data-domain-filter="interaction"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">Interaction</span>
+              <span class="domain-count">22</span>
+            </button>
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-language)"
+              data-domain-filter="language"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">Language</span>
+              <span class="domain-count">17</span>
+            </button>
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-data)"
+              data-domain-filter="data"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">Data</span>
+              <span class="domain-count">21</span>
+            </button>
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-process)"
+              data-domain-filter="process"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">Process</span>
+              <span class="domain-count">14</span>
+            </button>
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-evidence)"
+              data-domain-filter="evidence"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">Evidence</span>
+              <span class="domain-count">12</span>
+            </button>
+            <button
+              class="domain-button"
+              style="--domain-color: var(--field-domain-risk)"
+              data-domain-filter="risk"
+              type="button"
+              aria-pressed="true"
+            >
+              <span class="domain-swatch"></span>
+              <span class="domain-name">Risk</span>
+              <span class="domain-count">08</span>
+            </button>
+          </div>
+
+          <div class="rail-legend">
+            <div class="instrument-label">Record kind</div>
+            <div class="legend-row">
+              <span class="kind-symbol absolute"></span>
+              <span>Reality absolute</span>
+            </div>
+            <div class="legend-row">
+              <span class="kind-symbol renegotiable"></span>
+              <span>Renegotiable</span>
+            </div>
+            <div class="legend-row">
+              <span class="kind-symbol chosen"></span>
+              <span>Chosen</span>
+            </div>
+          </div>
+        </aside>
+
+        <section
+          class="field-panel"
+          id="field-panel"
+          aria-label="Invariant field"
+        >
+          <div class="field-toolbar">
+            <div class="coordinate-readout">
+              <span class="coordinate-label"
+                >RADIUS <strong>0.182</strong></span
+              >
+              <span class="coordinate-label"
+                >AZIMUTH <strong>071.4°</strong></span
+              >
+              <span class="coordinate-label">ZOOM <strong>1.00×</strong></span>
+            </div>
+            <label class="field-search">
+              <span aria-hidden="true">/</span>
+              <input
+                id="field-search"
+                type="search"
+                placeholder="Find an invariant"
+              />
+            </label>
+          </div>
+
+          <div class="field-stage">
+            <svg
+              class="field-plane"
+              viewBox="0 0 900 650"
+              role="img"
+              aria-labelledby="field-title field-description"
+            >
+              <title id="field-title">Invariance field</title>
+              <desc id="field-description">
+                Records settle around reality by rank. Shape shows record kind,
+                hue shows domain, and a violet bracket shows selection.
+              </desc>
+              <defs>
+                <filter
+                  id="dot-glow"
+                  x="-300%"
+                  y="-300%"
+                  width="700%"
+                  height="700%"
+                >
+                  <feGaussianBlur stdDeviation="1.8" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <filter
+                  id="reality-glow"
+                  x="-400%"
+                  y="-400%"
+                  width="900%"
+                  height="900%"
+                >
+                  <feGaussianBlur stdDeviation="7" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <filter
+                  id="selection-glow"
+                  x="-300%"
+                  y="-300%"
+                  width="700%"
+                  height="700%"
+                >
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <radialGradient id="well-gradient">
+                  <stop offset="0%" stop-color="#19304a" stop-opacity="0.3" />
+                  <stop offset="46%" stop-color="#0b1622" stop-opacity="0.12" />
+                  <stop offset="100%" stop-color="#06090e" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+
+              <ellipse
+                cx="450"
+                cy="324"
+                rx="330"
+                ry="248"
+                fill="url(#well-gradient)"
+              />
+              <ellipse
+                class="grid-ring major"
+                cx="450"
+                cy="324"
+                rx="308"
+                ry="225"
+              />
+              <ellipse class="grid-ring" cx="450" cy="324" rx="250" ry="182" />
+              <ellipse
+                class="grid-ring major"
+                cx="450"
+                cy="324"
+                rx="194"
+                ry="141"
+              />
+              <ellipse class="grid-ring" cx="450" cy="324" rx="135" ry="98" />
+              <ellipse
+                class="grid-ring major"
+                cx="450"
+                cy="324"
+                rx="77"
+                ry="56"
+              />
+
+              <line class="grid-axis" x1="103" y1="324" x2="797" y2="324" />
+              <line class="grid-axis" x1="450" y1="70" x2="450" y2="578" />
+              <line class="sector-line" x1="450" y1="324" x2="675" y2="122" />
+              <line class="sector-line" x1="450" y1="324" x2="744" y2="436" />
+              <line class="sector-line" x1="450" y1="324" x2="342" y2="557" />
+              <line class="sector-line" x1="450" y1="324" x2="147" y2="233" />
+
+              <g class="depth-only">
+                <path
+                  class="depth-line"
+                  d="M158 384 C302 272 584 245 754 348"
+                  fill="none"
+                />
+                <path
+                  class="depth-line"
+                  d="M178 420 C335 310 592 294 731 386"
+                  fill="none"
+                />
+              </g>
+
+              <text class="rank-label" x="464" y="271">0.15</text>
+              <text class="rank-label" x="464" y="230">0.32</text>
+              <text class="rank-label" x="464" y="183">0.52</text>
+              <text class="rank-label" x="464" y="141">0.72</text>
+              <text class="rank-label" x="464" y="99">1.00 / PERIPHERY</text>
+
+              <text class="sector-label" x="620" y="116">SYSTEM</text>
+              <text class="sector-label" x="751" y="450">INTERACTION</text>
+              <text class="sector-label" x="278" y="574">DATA</text>
+              <text class="sector-label" x="104" y="218">EVIDENCE</text>
+
+              <path
+                class="relation-line"
+                d="M570 292 C542 251 513 248 493 275 C476 298 462 310 450 324"
+              />
+              <path
+                class="relation-line secondary"
+                d="M570 292 C622 271 653 285 681 322"
+              />
+              <path
+                class="relation-line secondary"
+                d="M570 292 C589 340 559 378 518 399"
+              />
+              <path
+                class="record-trail"
+                d="M270 438 C238 450 215 463 190 485"
+              />
+
+              <g aria-label="Reality asymptote">
+                <circle class="reality-ring" cx="450" cy="324" r="24" />
+                <circle class="reality-ring" cx="450" cy="324" r="13" />
+                <circle class="reality-core" cx="450" cy="324" r="4.5" />
+                <text class="reality-caption" x="464" y="321">REALITY</text>
+                <text class="reality-caption" x="464" y="333">ASYMPTOTE</text>
+              </g>
+
+              <g
+                class="field-node kind-absolute"
+                style="--node-color: var(--field-domain-system)"
+                data-name="The terminal shows a bounded viewport"
+                data-domain="system"
+                data-kind="Reality absolute"
+                data-rank="0.931"
+                data-status="Established"
+                data-path="project.invariants.md"
+                transform="translate(493 275)"
+                role="button"
+                tabindex="0"
+                aria-label="The terminal shows a bounded viewport, rank 0.931"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="8" />
+                <rect
+                  class="node-core"
+                  x="-3.5"
+                  y="-3.5"
+                  width="7"
+                  height="7"
+                />
+              </g>
+
+              <g
+                class="field-node kind-renegotiable"
+                style="--node-color: var(--field-domain-evidence)"
+                data-name="Completion is proven not declared"
+                data-domain="evidence"
+                data-kind="Reality renegotiable"
+                data-rank="0.884"
+                data-status="Provisional"
+                data-path="project.invariants.md"
+                transform="translate(393 250)"
+                role="button"
+                tabindex="0"
+                aria-label="Completion is proven not declared, rank 0.884"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="8" />
+                <rect
+                  class="node-core"
+                  x="-3.7"
+                  y="-3.7"
+                  width="7.4"
+                  height="7.4"
+                  rx="2"
+                />
+              </g>
+
+              <g
+                class="field-node is-selected"
+                style="--node-color: var(--field-domain-data)"
+                data-name="Cost tracks the actively observed set"
+                data-domain="data"
+                data-kind="Chosen"
+                data-rank="0.918"
+                data-status="Established"
+                data-path="project.invariants.md"
+                transform="translate(570 292)"
+                role="button"
+                tabindex="0"
+                aria-label="Cost tracks the actively observed set, rank 0.918, selected"
+              >
+                <circle class="node-hit" r="14" />
+                <circle class="node-halo" r="14" />
+                <circle class="node-verification" r="8.5" />
+                <circle class="node-core" r="4" />
+                <circle class="selection-bracket" r="14" />
+              </g>
+              <text
+                class="selected-field-label"
+                id="selected-field-label"
+                x="590"
+                y="286"
+              >
+                COST TRACKS THE OBSERVED SET
+              </text>
+              <text class="rank-label" x="590" y="301">
+                RANK 0.918 · ESTABLISHED
+              </text>
+
+              <g
+                class="field-node"
+                style="--node-color: var(--field-domain-interaction)"
+                data-name="Data flows one way"
+                data-domain="interaction"
+                data-kind="Chosen"
+                data-rank="0.801"
+                data-status="Provisional"
+                data-path="project.invariants.md"
+                transform="translate(681 322)"
+                role="button"
+                tabindex="0"
+                aria-label="Data flows one way, rank 0.801"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="7" />
+                <circle class="node-core" r="3.7" />
+              </g>
+
+              <g
+                class="field-node is-citation"
+                style="--node-color: var(--field-domain-language)"
+                data-name="Imported dependencies are read late"
+                data-domain="language"
+                data-kind="Chosen"
+                data-rank="0.746"
+                data-status="Citation only"
+                data-path="project.invariants.md"
+                transform="translate(608 192)"
+                role="button"
+                tabindex="0"
+                aria-label="Imported dependencies are read late, rank 0.746"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="7" />
+                <circle class="node-core" r="3.6" />
+              </g>
+
+              <g
+                class="field-node"
+                style="--node-color: var(--field-domain-process)"
+                data-name="The immediate layer never blocks the deferred layer"
+                data-domain="process"
+                data-kind="Chosen"
+                data-rank="0.832"
+                data-status="Provisional"
+                data-path="project.invariants.md"
+                transform="translate(518 399)"
+                role="button"
+                tabindex="0"
+                aria-label="The immediate layer never blocks the deferred layer, rank 0.832"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="7" />
+                <circle class="node-core" r="3.7" />
+              </g>
+
+              <g
+                class="field-node is-alarm"
+                style="--node-color: var(--field-domain-risk)"
+                data-name="A referenced resource stays alive"
+                data-domain="risk"
+                data-kind="Chosen"
+                data-rank="0.412"
+                data-status="Verification missing"
+                data-path="project.invariants.md"
+                transform="translate(270 438)"
+                role="button"
+                tabindex="0"
+                aria-label="A referenced resource stays alive, rank 0.412, verification missing"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="8" />
+                <circle class="node-core" r="3.8" />
+              </g>
+
+              <g
+                class="field-node kind-renegotiable"
+                style="--node-color: var(--field-domain-state)"
+                data-name="An async result can outlive the state it described"
+                data-domain="state"
+                data-kind="Reality renegotiable"
+                data-rank="0.711"
+                data-status="Provisional"
+                data-path="project.invariants.md"
+                transform="translate(330 318)"
+                role="button"
+                tabindex="0"
+                aria-label="An async result can outlive the state it described, rank 0.711"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="7" />
+                <rect
+                  class="node-core"
+                  x="-3.5"
+                  y="-3.5"
+                  width="7"
+                  height="7"
+                  rx="2"
+                />
+              </g>
+
+              <g
+                class="field-node"
+                style="--node-color: var(--field-domain-interaction)"
+                data-name="No action requires a memorized motion"
+                data-domain="interaction"
+                data-kind="Chosen"
+                data-rank="0.658"
+                data-status="Provisional"
+                data-path="project.invariants.md"
+                transform="translate(730 386)"
+                role="button"
+                tabindex="0"
+                aria-label="No action requires a memorized motion, rank 0.658"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="7" />
+                <circle class="node-core" r="3.5" />
+              </g>
+
+              <g
+                class="field-node"
+                style="--node-color: var(--field-domain-data)"
+                data-name="Seams are drawn at the shared generator"
+                data-domain="data"
+                data-kind="Chosen"
+                data-rank="0.854"
+                data-status="Established"
+                data-path="project.invariants.md"
+                transform="translate(405 425)"
+                role="button"
+                tabindex="0"
+                aria-label="Seams are drawn at the shared generator, rank 0.854"
+              >
+                <circle class="node-hit" r="13" />
+                <circle class="node-halo" r="13" />
+                <circle class="node-verification" r="7" />
+                <circle class="node-core" r="3.7" />
+              </g>
+
+              <g opacity="0.72" aria-hidden="true">
+                <circle
+                  cx="225"
+                  cy="275"
+                  r="2.4"
+                  fill="var(--field-domain-system)"
+                />
+                <circle
+                  cx="205"
+                  cy="359"
+                  r="2.1"
+                  fill="var(--field-domain-state)"
+                />
+                <circle
+                  cx="297"
+                  cy="176"
+                  r="2.6"
+                  fill="var(--field-domain-evidence)"
+                />
+                <circle
+                  cx="376"
+                  cy="129"
+                  r="2.2"
+                  fill="var(--field-domain-language)"
+                />
+                <circle
+                  cx="526"
+                  cy="111"
+                  r="2.5"
+                  fill="var(--field-domain-system)"
+                />
+                <circle
+                  cx="693"
+                  cy="205"
+                  r="2.1"
+                  fill="var(--field-domain-process)"
+                />
+                <circle
+                  cx="649"
+                  cy="446"
+                  r="2.4"
+                  fill="var(--field-domain-data)"
+                />
+                <circle
+                  cx="554"
+                  cy="501"
+                  r="2.2"
+                  fill="var(--field-domain-risk)"
+                />
+                <circle
+                  cx="372"
+                  cy="504"
+                  r="2.5"
+                  fill="var(--field-domain-interaction)"
+                />
+                <circle
+                  cx="176"
+                  cy="410"
+                  r="2.2"
+                  fill="var(--field-domain-evidence)"
+                />
+                <circle
+                  cx="765"
+                  cy="300"
+                  r="2.5"
+                  fill="var(--field-domain-language)"
+                />
+                <circle
+                  cx="477"
+                  cy="452"
+                  r="2"
+                  fill="var(--field-domain-state)"
+                />
+              </g>
+            </svg>
+
+            <div class="field-status" aria-live="polite">
+              <span
+                ><strong id="visible-record-count">137</strong> visible</span
+              >
+              <span><strong>61%</strong> verified</span>
+              <span><strong>08</strong> under pressure</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="lens" aria-label="Selected invariant lens">
+          <div class="lens-header">
+            <div class="eyebrow">Invariant lens / 082</div>
+            <div class="lens-heading-row">
+              <h1 id="lens-name">Cost tracks the actively observed set</h1>
+              <span class="selected-badge">Selected</span>
+            </div>
+            <div class="record-path" id="lens-path">project.invariants.md</div>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-label">Rank</div>
+              <div class="metric-value rank-value" id="lens-rank">0.918</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Kind</div>
+              <div class="metric-value" id="lens-kind">Chosen</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Status</div>
+              <div class="metric-value" id="lens-status">Established</div>
+            </div>
+          </div>
+
+          <section class="lens-section">
+            <h2>Invariant</h2>
+            <p id="lens-description">
+              Data cost scales with a bounded visible, observed, or recently
+              interactive set. It never scales with the total population.
+            </p>
+            <div class="rank-strip" aria-label="Rank 0.918">
+              <span id="rank-strip-value"></span>
+            </div>
+          </section>
+
+          <section class="lens-section">
+            <h2>Evidence stack</h2>
+            <div class="evidence-row">
+              <span class="evidence-icon">◇</span>
+              <span>Executed verification</span>
+              <span class="evidence-value">PASS</span>
+            </div>
+            <div class="evidence-row">
+              <span class="evidence-icon">↳</span>
+              <span>Resolved citations</span>
+              <span class="evidence-value">14 / 14</span>
+            </div>
+            <div class="evidence-row">
+              <span class="evidence-icon">⌁</span>
+              <span>Connected records</span>
+              <span class="evidence-value">09</span>
+            </div>
+            <div class="evidence-row">
+              <span class="evidence-icon">◴</span>
+              <span>Survival</span>
+              <span class="evidence-value">173 days</span>
+            </div>
+          </section>
+
+          <section class="lens-section">
+            <h2>Position</h2>
+            <p>
+              The record sits inside the second rank shell. Its domain hue is
+              data mint. A complete rim marks executed evidence.
+            </p>
+          </section>
+        </aside>
+      </main>
+
+      <footer class="timeline" aria-label="Invariant history timeline">
+        <div class="timeline-summary">
+          <div class="instrument-label">Snapshot</div>
+          <div class="timeline-time" id="timeline-hash">a84f6e2</div>
+          <div class="timeline-date" id="timeline-date">
+            31 Jul 2026 · 14:22
+          </div>
+        </div>
+
+        <div class="timeline-control">
+          <div class="timeline-events" aria-hidden="true">
+            <span class="commit-mark"></span>
+            <span class="commit-mark has-birth"></span>
+            <span class="commit-mark"></span>
+            <span class="commit-mark has-rot"></span>
+            <span class="commit-mark"></span>
+            <span class="commit-mark has-birth"></span>
+            <span class="commit-mark"></span>
+            <span class="commit-mark has-rot"></span>
+            <span class="commit-mark"></span>
+            <span class="commit-mark"></span>
+            <span class="commit-mark is-current"></span>
+          </div>
+          <div class="timeline-input-row">
+            <button
+              class="play-button"
+              id="timeline-play"
+              type="button"
+              aria-label="Play timeline"
+              aria-pressed="false"
+            >
+              ▶
+            </button>
+            <input
+              class="timeline-range"
+              id="timeline-range"
+              type="range"
+              min="0"
+              max="10"
+              value="10"
+              aria-label="Snapshot"
+            />
+            <span class="snapshot-count" id="snapshot-count">184 / 184</span>
+          </div>
+        </div>
+
+        <div class="timeline-change-summary">
+          <div class="change-metric">
+            <div class="metric-label">Born</div>
+            <div class="change-value birth">+03</div>
+          </div>
+          <div class="change-metric">
+            <div class="metric-label">Inward</div>
+            <div class="change-value inward">12</div>
+          </div>
+          <div class="change-metric">
+            <div class="metric-label">Rot</div>
+            <div class="change-value rot">02</div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      const fieldPanel = document.querySelector('#field-panel');
+      const twoDimensionalButton = document.querySelector(
+        '#mode-two-dimensional',
+      );
+      const threeDimensionalButton = document.querySelector(
+        '#mode-three-dimensional',
+      );
+      const resetViewButton = document.querySelector('#reset-view');
+      const fieldNodes = [...document.querySelectorAll('.field-node')];
+      const domainButtons = [
+        ...document.querySelectorAll('[data-domain-filter]'),
+      ];
+      const fieldSearch = document.querySelector('#field-search');
+      const timelineRange = document.querySelector('#timeline-range');
+      const timelinePlay = document.querySelector('#timeline-play');
+      const timelineHash = document.querySelector('#timeline-hash');
+      const timelineDate = document.querySelector('#timeline-date');
+      const snapshotCount = document.querySelector('#snapshot-count');
+      const visibleRecordCount = document.querySelector(
+        '#visible-record-count',
+      );
+
+      const snapshotLabels = [
+        ['0f2e8a1', '19 Jul 2026 · 09:14'],
+        ['15bc492', '20 Jul 2026 · 11:08'],
+        ['23ad716', '21 Jul 2026 · 18:31'],
+        ['3472c0d', '23 Jul 2026 · 08:56'],
+        ['4a019bf', '24 Jul 2026 · 16:20'],
+        ['55f72e8', '25 Jul 2026 · 10:47'],
+        ['672bc11', '26 Jul 2026 · 15:04'],
+        ['743f82a', '28 Jul 2026 · 12:11'],
+        ['891c4d0', '29 Jul 2026 · 20:06'],
+        ['93a8f6c', '30 Jul 2026 · 17:38'],
+        ['a84f6e2', '31 Jul 2026 · 14:22'],
+      ];
+
+      let timelineTimer = null;
+
+      function setDimension(dimension) {
+        const isTwoDimensional = dimension === 'two-dimensional';
+        fieldPanel.classList.toggle('is-two-dimensional', isTwoDimensional);
+        twoDimensionalButton.classList.toggle('is-active', isTwoDimensional);
+        threeDimensionalButton.classList.toggle('is-active', !isTwoDimensional);
+        twoDimensionalButton.setAttribute(
+          'aria-pressed',
+          String(isTwoDimensional),
+        );
+        threeDimensionalButton.setAttribute(
+          'aria-pressed',
+          String(!isTwoDimensional),
+        );
+      }
+
+      function setSelectedNode(node) {
+        for (const fieldNode of fieldNodes) {
+          fieldNode.classList.toggle('is-selected', fieldNode === node);
+          const baseLabel = `${fieldNode.dataset.name}, rank ${fieldNode.dataset.rank}`;
+          fieldNode.setAttribute(
+            'aria-label',
+            fieldNode === node ? `${baseLabel}, selected` : baseLabel,
+          );
+        }
+
+        document.querySelector('#lens-name').textContent = node.dataset.name;
+        document.querySelector('#lens-path').textContent = node.dataset.path;
+        document.querySelector('#lens-rank').textContent = node.dataset.rank;
+        document.querySelector('#lens-kind').textContent = node.dataset.kind;
+        document.querySelector('#lens-status').textContent =
+          node.dataset.status;
+        document.querySelector('#selected-field-label').textContent =
+          node.dataset.name.toUpperCase();
+        document.querySelector('#rank-strip-value').style.width =
+          `${Number(node.dataset.rank) * 100}%`;
+      }
+
+      function updateVisibleNodes() {
+        const enabledDomains = new Set(
+          domainButtons
+            .filter((button) => button.getAttribute('aria-pressed') === 'true')
+            .map((button) => button.dataset.domainFilter),
+        );
+        const query = fieldSearch.value.trim().toLowerCase();
+        let visibleExampleCount = 0;
+
+        for (const node of fieldNodes) {
+          const domainVisible = enabledDomains.has(node.dataset.domain);
+          const searchVisible =
+            query.length === 0 ||
+            node.dataset.name.toLowerCase().includes(query);
+          node.classList.toggle('is-domain-muted', !domainVisible);
+          node.classList.toggle('is-search-muted', !searchVisible);
+          if (domainVisible && searchVisible) visibleExampleCount += 1;
+        }
+
+        const domainRatio = enabledDomains.size / domainButtons.length;
+        visibleRecordCount.textContent =
+          query.length > 0
+            ? String(visibleExampleCount)
+            : String(Math.round(137 * domainRatio));
+      }
+
+      function updateTimeline() {
+        const snapshotIndex = Number(timelineRange.value);
+        const [hash, date] = snapshotLabels[snapshotIndex];
+        timelineHash.textContent = hash;
+        timelineDate.textContent = date;
+        snapshotCount.textContent = `${174 + snapshotIndex} / 184`;
+        document.body.classList.remove('is-playing');
+        requestAnimationFrame(() => document.body.classList.add('is-playing'));
+
+        const marks = [...document.querySelectorAll('.commit-mark')];
+        marks.forEach((mark, markIndex) => {
+          mark.classList.toggle('is-current', markIndex === snapshotIndex);
+        });
+      }
+
+      function stopTimeline() {
+        if (timelineTimer !== null) window.clearInterval(timelineTimer);
+        timelineTimer = null;
+        timelinePlay.textContent = '▶';
+        timelinePlay.setAttribute('aria-label', 'Play timeline');
+        timelinePlay.setAttribute('aria-pressed', 'false');
+      }
+
+      twoDimensionalButton.addEventListener('click', () =>
+        setDimension('two-dimensional'),
+      );
+      threeDimensionalButton.addEventListener('click', () =>
+        setDimension('three-dimensional'),
+      );
+      resetViewButton.addEventListener('click', () => {
+        setDimension('three-dimensional');
+        fieldSearch.value = '';
+        for (const button of domainButtons) {
+          button.setAttribute('aria-pressed', 'true');
+        }
+        updateVisibleNodes();
+      });
+
+      for (const node of fieldNodes) {
+        node.addEventListener('click', () => setSelectedNode(node));
+        node.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setSelectedNode(node);
+          }
+        });
+      }
+
+      for (const button of domainButtons) {
+        button.addEventListener('click', () => {
+          const nextState = button.getAttribute('aria-pressed') !== 'true';
+          button.setAttribute('aria-pressed', String(nextState));
+          updateVisibleNodes();
+        });
+      }
+
+      fieldSearch.addEventListener('input', updateVisibleNodes);
+      timelineRange.addEventListener('input', () => {
+        stopTimeline();
+        updateTimeline();
+      });
+      timelinePlay.addEventListener('click', () => {
+        if (timelineTimer !== null) {
+          stopTimeline();
+          return;
+        }
+
+        if (Number(timelineRange.value) >= Number(timelineRange.max)) {
+          timelineRange.value = timelineRange.min;
+          updateTimeline();
+        }
+
+        timelinePlay.textContent = 'Ⅱ';
+        timelinePlay.setAttribute('aria-label', 'Pause timeline');
+        timelinePlay.setAttribute('aria-pressed', 'true');
+        timelineTimer = window.setInterval(() => {
+          const nextValue = Number(timelineRange.value) + 1;
+          if (nextValue > Number(timelineRange.max)) {
+            stopTimeline();
+            return;
+          }
+          timelineRange.value = String(nextValue);
+          updateTimeline();
+        }, 850);
+      });
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setDimension('two-dimensional');
+      }
+    </script>
+  </body>
+</html>
