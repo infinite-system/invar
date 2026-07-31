@@ -76,8 +76,9 @@ class $SplitterElement {
     return this.model.size.value;
   }
 
+  // invariant: A reported size stays within its live effective bounds (src/modules/layout/layout.invariants.md)
   set size(size: number) {
-    this.model.size.value = size;
+    this.model.setSize(size);
   }
 
   setExtentCells(extentCells: number): void {
@@ -127,7 +128,8 @@ class $SplitterElement {
     this.renderable.onMouseDown = (event) => {
       this.capturePointer();
       const currentSize = this.options.currentSize?.();
-      if (currentSize !== undefined) this.model.size.value = currentSize;
+      // The live host value can be a remembered request above the current painted maximum.
+      if (currentSize !== undefined) this.model.setSize(currentSize);
       const extentCells = this.options.currentExtentCells?.();
       if (extentCells !== undefined) this.model.setExtentCells(extentCells);
       this.model.beginDrag(this.pointerPosition(event));
@@ -174,7 +176,7 @@ export interface SplitterElementOptions {
   orientation: 'vertical' | 'horizontal';
   reportUnit: 'cells' | 'ratio';
   initialSize: number;
-  minimumSize?: number;
+  minimumSize?: number | (() => number);
   maximumSize?: number | (() => number);
   extentCells?: number;
   /**

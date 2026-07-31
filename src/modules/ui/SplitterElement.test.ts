@@ -6,7 +6,10 @@ import {
 } from '@opentui/core/testing';
 import { RGBA } from '@opentui/core';
 import { ThemePalettes } from '../theme/ThemePalettes';
-import { SplitterElement } from './SplitterElement';
+import {
+  SplitterElement,
+  type SplitterElementOptions,
+} from './SplitterElement';
 
 const darkPalette = ThemePalettes.Class.DARK;
 
@@ -29,6 +32,7 @@ afterEach(() => {
 async function createSplitter(
   orientation: 'vertical' | 'horizontal' = 'vertical',
   leadingPaintPadCells = 0,
+  overrides: Partial<SplitterElementOptions> = {},
 ): Promise<SplitterElement.Model> {
   const setup = await createTestRenderer({ width: 80, height: 24 });
   renderer = setup.renderer;
@@ -47,12 +51,30 @@ async function createSplitter(
     currentSize: () => 20,
     leadingPaintPadCells,
     onSizeChange: () => {},
+    ...overrides,
   });
   renderer.root.add(splitter.renderable);
   return splitter;
 }
 
 describe('SplitterElement', () => {
+  test('the host size setter clamps through the model', async () => {
+    const splitter = await createSplitter();
+    splitter.size = 99;
+    expect(splitter.size).toBe(40);
+  });
+
+  test('the pointer-down seed clamps through the model', async () => {
+    const splitter = await createSplitter('vertical', 0, {
+      currentSize: () => 99,
+    });
+    splitter.setGeometry({ left: 17, top: 3, length: 14 });
+    await renderOnce?.();
+    await mockMouse?.pressDown(17, 3);
+    expect(splitter.size).toBe(40);
+    await mockMouse?.release(17, 3);
+  });
+
   test('one geometry defines both the painted element and its hit zone', async () => {
     const splitter = await createSplitter('vertical');
     splitter.setGeometry({ left: 17, top: 3, length: 14 });

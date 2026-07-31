@@ -1,6 +1,6 @@
 # #391 — splitter size writes and bounds stay coherent
 
-State: IN-PROGRESS
+State: COMPLETED — e7f7b7ef — Switch path clean on this build; resize-coherence trio fixed; report==paint and remembered width locked by smoke. If the user still sees stuck panes on switch, we need their exact recipe.
 Priority: user-directed
 Engine: codex
 Environment: linux
