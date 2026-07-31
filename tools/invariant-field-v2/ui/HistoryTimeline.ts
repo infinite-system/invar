@@ -42,6 +42,19 @@ class $HistoryTimeline {
   get isNextDisabled() {
     return this.snapshotIndex === this.maximumSnapshotIndex;
   }
+  get isPlaying() {
+    return Boolean(this.props.isPlaying);
+  }
+  get playButtonLabel() {
+    if (this.isPlaying) return 'Pause timeline';
+    return this.isNextDisabled ? 'Replay timeline' : 'Play timeline';
+  }
+  get playButtonGlyph() {
+    return this.isPlaying ? 'Ⅱ' : '▶';
+  }
+  get snapshotPositionLabel() {
+    return `${this.snapshotIndex + 1} / ${this.metadata.snapshots.length}`;
+  }
 
   // --- methods ---
   selectFromInput(event: Event) {
@@ -59,6 +72,10 @@ class $HistoryTimeline {
       Math.min(this.maximumSnapshotIndex, this.snapshotIndex + 1),
     );
   }
+
+  toggleTimeline() {
+    this.emit('toggle-timeline', this.snapshotIndex);
+  }
 }
 
 export namespace HistoryTimeline {
@@ -70,8 +87,10 @@ export namespace HistoryTimeline {
 export interface HistoryTimelineProps {
   metadata: InvariantFieldMetadata;
   snapshotIndex: number;
+  isPlaying?: boolean;
 }
 
 export interface HistoryTimelineEmits {
   (event: 'select-snapshot', snapshotIndex: number): void;
+  (event: 'toggle-timeline', snapshotIndex: number): void;
 }

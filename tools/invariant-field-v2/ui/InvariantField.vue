@@ -11,6 +11,8 @@ const {
   selectedRecordIdentifier,
   selectedCompositionIdentifier,
   errorMessage,
+  isTimelinePlaying,
+  timelineTransition,
 } = invariantFieldApp;
 </script>
 
@@ -38,15 +40,20 @@ const {
     <HistoryTimeline
       :metadata="invariantFieldApp.readyMetadata"
       :snapshot-index="snapshotIndex"
-      @select-snapshot="invariantFieldApp.loadSnapshot"
+      :is-playing="isTimelinePlaying"
+      @select-snapshot="invariantFieldApp.selectSnapshot"
+      @toggle-timeline="invariantFieldApp.toggleTimeline"
     />
     <section class="instrument-grid">
       <FieldView
         :snapshot="invariantFieldApp.readySnapshot"
         :selected-record-identifier="selectedRecordIdentifier"
         :selected-composition-identifier="selectedCompositionIdentifier"
+        :timeline-transition="timelineTransition"
         @select-record="invariantFieldApp.selectRecord"
         @select-composition="invariantFieldApp.selectComposition"
+        @transition-settled="invariantFieldApp.settleTimelineTransition"
+        @cancel-timeline="invariantFieldApp.stopTimeline"
       />
       <RecordLens
         :metadata="invariantFieldApp.readyMetadata"

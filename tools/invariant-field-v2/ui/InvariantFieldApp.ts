@@ -4,7 +4,9 @@ import type {
   InvariantFieldMetadata,
   InvariantSnapshot,
   RankedRecord,
+  TimelineTransition,
 } from '../types';
+import { TimelinePlayout } from '../TimelinePlayout';
 
 class $InvariantFieldApp {
   constructor() {
@@ -29,6 +31,18 @@ class $InvariantFieldApp {
   }
   get errorMessage() {
     return ref('');
+  }
+  get isTimelinePlaying() {
+    return ref(false);
+  }
+  get timelineTransition() {
+    return shallowRef<TimelineTransition | null>(null);
+  }
+  get snapshotRequest() {
+    return shallowRef<AbortController | null>(null);
+  }
+  get timelineTransitionIdentifier() {
+    return ref(0);
   }
 
   // --- derived ---
@@ -98,11 +112,33 @@ class $InvariantFieldApp {
     }
   }
 
-  async loadSnapshot(snapshotIndex: number) {
-    const response = await fetch(`/api/snapshots/${snapshotIndex}`);
+  async loadSnapshot(snapshotIndex: number, showTransition = false) {
+    this.snapshotRequest.value?.abort();
+    const snapshotRequest = new AbortController();
+    this.snapshotRequest.value = snapshotRequest;
+    const response = await fetch(`/api/snapshots/${snapshotIndex}`, {
+      signal: snapshotRequest.signal,
+    });
     if (!response.ok) throw new Error('The snapshot request failed.');
-    this.snapshot.value = (await response.json()) as InvariantSnapshot;
+    const nextSnapshot = (await response.json()) as InvariantSnapshot;
+    if (this.snapshotRequest.value !== snapshotRequest) return;
+    const previousSnapshot = this.snapshot.value;
+    const previousSnapshotIndex = this.snapshotIndex.value;
+    this.snapshot.value = nextSnapshot;
     this.snapshotIndex.value = snapshotIndex;
+    this.snapshotRequest.value = null;
+    this.timelineTransition.value =
+      showTransition && previousSnapshot
+        ? {
+            identifier: ++this.timelineTransitionIdentifier.value,
+            fromSnapshotIndex: previousSnapshotIndex,
+            toSnapshotIndex: snapshotIndex,
+            events: TimelinePlayout.Class.eventsBetween(
+              previousSnapshot,
+              nextSnapshot,
+            ),
+          }
+        : null;
     const location = new URL(this.browserWindow.location.href);
     location.searchParams.set('snapshot', String(snapshotIndex));
     this.browserWindow.history.replaceState(null, '', location);
@@ -117,15 +153,69 @@ class $InvariantFieldApp {
     }
   }
 
+  async selectSnapshot(snapshotIndex: number) {
+    this.stopTimeline();
+    await this.loadSnapshot(snapshotIndex, true);
+  }
+
+  async toggleTimeline() {
+    if (this.isTimelinePlaying.value) {
+      this.stopTimeline();
+      return;
+    }
+    this.isTimelinePlaying.value = true;
+    if (this.snapshotIndex.value >= this.readyMetadata.snapshots.length - 1) {
+      await this.loadSnapshot(0);
+    }
+    await this.advanceTimeline();
+  }
+
+  stopTimeline() {
+    this.isTimelinePlaying.value = false;
+    this.timelineTransition.value = null;
+    this.snapshotRequest.value?.abort();
+    this.snapshotRequest.value = null;
+  }
+
+  async advanceTimeline() {
+    if (!this.isTimelinePlaying.value || this.timelineTransition.value) return;
+    const nextSnapshotIndex = this.snapshotIndex.value + 1;
+    if (nextSnapshotIndex >= this.readyMetadata.snapshots.length) {
+      this.isTimelinePlaying.value = false;
+      return;
+    }
+    try {
+      await this.loadSnapshot(nextSnapshotIndex, true);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      this.isTimelinePlaying.value = false;
+      this.errorMessage.value =
+        error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  settleTimelineTransition(transitionIdentifier: number) {
+    if (this.timelineTransition.value?.identifier !== transitionIdentifier) {
+      return;
+    }
+    this.timelineTransition.value = null;
+    if (this.isTimelinePlaying.value) {
+      this.browserWindow.queueMicrotask(() => void this.advanceTimeline());
+    }
+  }
+
   selectRecord(recordIdentifier: string) {
+    this.stopTimeline();
     this.selectedRecordIdentifier.value = recordIdentifier;
   }
 
   clearSelection() {
+    this.stopTimeline();
     this.selectedRecordIdentifier.value = null;
   }
 
   selectComposition(compositionIdentifier: string) {
+    this.stopTimeline();
     this.selectedCompositionIdentifier.value = compositionIdentifier;
   }
 
@@ -148,4 +238,5 @@ interface InvariantFieldBrowserWindow {
   history: {
     replaceState(data: unknown, unused: string, url?: URL | string): void;
   };
+  queueMicrotask(callback: () => void): void;
 }

@@ -164,3 +164,20 @@ export interface InvariantFieldMetadata {
   formula: InvariantFieldStore['formula'];
   snapshots: InvariantSnapshotMetadata[];
 }
+
+export type TimelineEventType =
+  'birth' | 'strengthen' | 'weaken' | 'rot' | 'removed';
+
+export interface TimelineRecordEvent {
+  type: TimelineEventType;
+  recordIdentifier: string;
+  beforeRecord: RankedRecord | null;
+  afterRecord: RankedRecord | null;
+}
+
+export interface TimelineTransition {
+  identifier: number;
+  fromSnapshotIndex: number;
+  toSnapshotIndex: number;
+  events: TimelineRecordEvent[];
+}
