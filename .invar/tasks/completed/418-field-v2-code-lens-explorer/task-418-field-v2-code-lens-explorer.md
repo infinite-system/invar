@@ -1,7 +1,7 @@
 # Task 418 — Field v2: record explorer with code lenses into the implementation
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
 Engine: codex
 Environment: linux
 Model: 5.6-sol

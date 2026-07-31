@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #418 [field-v2-code-lens-explorer](.invar/tasks/in-progress/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md)  [building]
-  `tmux attach -t invar/418-field-v2-code-lens-explorer`
+## IN-PROGRESS (1)
 - #417 [field-v2-3d-field-timeline-playout](.invar/tasks/in-progress/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md)  [building]
   `tmux attach -t invar/417-field-v2-3d-field-timeline-playout`
 
@@ -140,7 +138,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 147 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 148 — full log: project.tasks-completed.md)
+- #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
 - #416 [field-v2-design-language-research](.invar/tasks/completed/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md) — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)
 - #415 [field-v2-foundation-vue-sfc](.invar/tasks/completed/415-field-v2-foundation-vue-sfc/task-415-field-v2-foundation-vue-sfc.md) — c25b135f — Field v2 foundation: Vue SFC on Bun + ivue + strict conventions + tokens seam (v1 untouched)
 - #413 [invariant-field-web-app](.invar/tasks/completed/413-invariant-field-web-app/task-413-invariant-field-web-app.md) — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
@@ -155,4 +154,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #386 [theme-glyphs-vanish-at-narrow-geometry](.invar/tasks/completed/386-theme-glyphs-vanish-at-narrow-geometry/task-386-theme-glyphs-vanish-at-narrow-geometry.md) — 157dda25 — theme glyphs survive capability negotiation (OSC 66 payloads decoded by the emulator)
 - #384 [quit-dialog-buttons-and-padding](.invar/tasks/completed/384-quit-dialog-buttons-and-padding/task-384-quit-dialog-buttons-and-padding.md) — e6ed1b0f — quit dialog: bracketless padded buttons with theme affordances
 - #383 [structure-pane-width-proportional](.invar/tasks/completed/383-structure-pane-width-proportional/task-383-structure-pane-width-proportional.md) — 97b0a60f — right panel proportional: editor stays prominent (two-bound clamp at the layout generator)
-- #381 [realized-typescript-lsp-still-missing](.invar/tasks/completed/381-realized-typescript-lsp-still-missing/task-381-realized-typescript-lsp-still-missing.md) — d8526062 — TS LSP discovery includes the app root: every workspace gets tooltips
