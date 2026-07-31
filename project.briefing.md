@@ -25,6 +25,12 @@ THE PIPELINE (task folders + briefs all committed):
   with 417. codex sol HIGH.
 - #419 Opus synthesis (claude opus MEDIUM, user explicit) — last;
   integrates all into the "Invariable representation instrument".
+  USER ADDITIONS (recorded verbatim in the #419 task file): a simple
+  release GATE (tests + driven smoke confirming the formula); the
+  instrument's OWN invariant-field.invariants.md + .lattice.md
+  (found vs chosen, interactions); SELF-MEASUREMENT — its contract
+  enters the scan so the Field shows its own dots and evolution,
+  surfaced beautifully.
 Wave sequencing: land 415+416 -> write briefs 417+418 from their
 reports -> dispatch both -> land -> write 419 brief -> dispatch ->
 land. Landing ritual unchanged (extract-gate-verdict.sh, overlap
