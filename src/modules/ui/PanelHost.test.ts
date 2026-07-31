@@ -502,6 +502,33 @@ test('new instances stay full width until an explicit split joins their groups',
   ]);
 });
 
+test('showContent selects the owning space and group before it focuses content', () => {
+  const host = new PanelHost.Class();
+  const terminal = fakeContent('terminal', 'terminal');
+  const agent = fakeContent('agent', 'agent');
+  const database = fakeContent('database', 'database');
+  host.register(terminal);
+  host.register(agent);
+  host.split(['terminal', 'agent']);
+  host.show();
+  host.registerShared(database);
+
+  host.showContent('database');
+
+  expect(host.activeSpace?.kind).toBe('database');
+  expect(host.activeSpace?.activeGroupId).toBe(
+    host.activeSpace?.groups?.[0]?.identifier,
+  );
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'database',
+  ]);
+  expect(host.focusedContent).toBe(database);
+  expect(host.focused.value).toBe(true);
+  expect(database.focused).toBe(true);
+  expect(terminal.focused).toBe(false);
+  expect(agent.focused).toBe(false);
+});
+
 test('groups and split members reorder, and a member detaches into a full-width group', () => {
   const host = new PanelHost.Class();
   host.register(fakeContent('terminal', 'terminal'));

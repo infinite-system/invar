@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 // This smoke connects the Database pane to a real SQLite file through the Command Palette and
 // path field. Run `bun scripts/harness/smoke-database-harness.ts`. PASS lines mean the user
-// gesture, schema walk, 20-row pages, reconnect, disconnect, and file errors all held.
+// gesture, content-space reveal, schema walk, 20-row pages, reconnect, disconnect, and file errors
+// all held.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
@@ -109,6 +110,27 @@ async function runPaletteCommand(commandTitle: string): Promise<void> {
   driver.sendKeys('Enter');
 }
 
+async function revealDatabasePathInputThroughUserGesture(): Promise<void> {
+  await runPaletteCommand('Database: Connect');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Database Connect reveals and focuses the path field in its owning content space',
+    (status) =>
+      status.databasePathInputActive === true &&
+      status.panelActiveContent === 'database' &&
+      status.panelFocused === true &&
+      Array.isArray(status.panelActiveSpacePaneIds) &&
+      status.panelActiveSpacePaneIds.includes('database') &&
+      Array.isArray(status.panelCellIds) &&
+      status.panelCellIds.includes('database'),
+  );
+  await driver.awaitGridCondition(
+    'the focused database path field is visible in the active content space',
+    (snapshot) => snapshot.findText('SQLite file path') !== null,
+  );
+}
+
 async function connectThroughUserGesture(filePath: string): Promise<void> {
   if (
     HarnessSmoke.Class.readStatus(statusPath).databasePathInputActive === true
@@ -121,45 +143,7 @@ async function connectThroughUserGesture(filePath: string): Promise<void> {
       (status) => status.databasePathInputActive === false,
     );
   }
-  await runPaletteCommand('Database: Connect');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the shared database path field owns input',
-    (status) => status.databasePathInputActive === true,
-  );
-  if (
-    HarnessSmoke.Class.readStatus(statusPath).panelActiveContent !== 'database'
-  ) {
-    const tabBar = HarnessSmoke.Class.readStatus(statusPath)
-      .panelSeparatorGeometry as {
-      row: number;
-      editorActions: readonly {
-        commandId: string;
-        startColumn: number;
-        endColumnExclusive: number;
-      }[];
-    };
-    const databaseTab = tabBar.editorActions.find((tab) =>
-      tab.commandId.startsWith('database-space-'),
-    );
-    if (!databaseTab) throw new Error('Missing Database tab geometry');
-    driver.sendMouseClick({
-      column:
-        databaseTab.startColumn +
-        Math.floor(
-          (databaseTab.endColumnExclusive - databaseTab.startColumn) / 2,
-        ),
-      row: tabBar.row,
-      button: 'left',
-    });
-    await HarnessSmoke.Class.awaitStatus(
-      driver,
-      statusPath,
-      'the Database content space receives its path input',
-      (status) => status.panelActiveContent === 'database',
-    );
-  }
+  await revealDatabasePathInputThroughUserGesture();
   const previousDatabasePath = String(
     HarnessSmoke.Class.readStatus(statusPath).databasePathInputValue ?? '',
   );
@@ -374,6 +358,22 @@ try {
     (snapshot) => snapshot.findText('Connection error') !== null,
   );
   HarnessSmoke.Class.pass('a missing path states that the file does not exist');
+
+  console.log(
+    '== database focus: connect restores its content space after a failed path ==',
+  );
+  await revealDatabasePathInputThroughUserGesture();
+  driver.sendText('x');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'one typed character reaches the visible database path field',
+    (status) => status.databasePathInputValue === `${missingDatabasePath}x`,
+  );
+  HarnessSmoke.Class.pass(
+    'Database Connect restores and focuses its visible content space after an error',
+  );
+  driver.sendKeys('Escape');
 } finally {
   await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
