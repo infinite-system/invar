@@ -513,6 +513,7 @@ class $QuickOpen {
       }
     }
 
+    // invariant: Exact basenames rank above fuzzy paths (src/modules/search/search.invariants.md)
     scoredMatches.sort(
       (firstMatch, secondMatch) =>
         Number(exactBasenameMatchPaths.has(secondMatch.path)) -
