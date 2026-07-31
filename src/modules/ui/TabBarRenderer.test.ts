@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { TextCoordinates } from '../text/TextCoordinates';
+import { ThemeIcons } from '../theme/ThemeIcons';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { TabBarRenderer } from './TabBarRenderer';
 import { TabStrip } from './TabStrip';
@@ -72,6 +73,7 @@ test('buffer tab row does not render editor title actions', () => {
     projectRoot: '/project',
     separatorGlyph: '❯',
     closeGlyph: '×',
+    tabMarkerGlyph: '●',
     hover: null,
     closePressed: null,
     arrowPressed: null,
@@ -82,4 +84,73 @@ test('buffer tab row does not render editor title actions', () => {
     .join('');
 
   expect(renderedText.includes('◫')).toBe(false);
+});
+
+test('tab marker uses the tiered theme slot in every tab strip', () => {
+  const workspaceItems = [
+    {
+      identifier: '/project',
+      label: 'project',
+      detailLabel: 'main',
+      active: true,
+    },
+  ];
+  const bufferStrip = new TabStrip.Class('horizontal', () => [
+    {
+      identifier: '/project/README.md',
+      label: 'README.md',
+      active: true,
+      dirty: true,
+      closable: true,
+    },
+  ]);
+
+  for (const glyphLevel of ['nerd', 'unicode', 'ascii'] as const) {
+    const tabMarkerGlyph = ThemeIcons.Class.glyphFor(
+      glyphLevel,
+      'tabDirtyMarker',
+    );
+    const workspaceRenderContext = {
+      palette: ThemePalettes.Class.DARK,
+      hover: null,
+      lastRevealedIndex: -1,
+      barWidthValue: 40,
+      barHeightValue: 8,
+      rendererWidth: 80,
+      rendererHeight: 24,
+      closeGlyph: ThemeIcons.Class.glyphFor(glyphLevel, 'panelClose'),
+      tabMarkerGlyph,
+    } as const;
+    const horizontalWorkspaceText = TabBarRenderer.Class.renderWorkspace({
+      ...workspaceRenderContext,
+      strip: new TabStrip.Class('horizontal', () => workspaceItems),
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+    const verticalWorkspaceText = TabBarRenderer.Class.renderWorkspace({
+      ...workspaceRenderContext,
+      strip: new TabStrip.Class('vertical', () => workspaceItems),
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+    const bufferText = TabBarRenderer.Class.renderBuffer({
+      strip: bufferStrip,
+      palette: ThemePalettes.Class.DARK,
+      barWidth: 40,
+      projectRoot: '/project',
+      separatorGlyph: ThemeIcons.Class.tabSeparatorFor(glyphLevel),
+      closeGlyph: ThemeIcons.Class.glyphFor(glyphLevel, 'panelClose'),
+      tabMarkerGlyph,
+      hover: null,
+      closePressed: null,
+      arrowPressed: null,
+      lastRevealedIndex: -1,
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+
+    expect(horizontalWorkspaceText.includes(tabMarkerGlyph)).toBe(true);
+    expect(verticalWorkspaceText.includes(tabMarkerGlyph)).toBe(true);
+    expect(bufferText.includes(tabMarkerGlyph)).toBe(true);
+  }
 });

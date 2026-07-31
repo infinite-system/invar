@@ -545,15 +545,22 @@ test('the mark-sharing detector reports a collision when one exists', () => {
   ).toEqual([]);
 });
 
-// The resolved collision, stated so it cannot silently come back: the JavaScript file mark and the
-// dirty/active tab marker were the same code point with unrelated meanings.
-test('the javascript mark is not the dirty tab marker', () => {
-  const dirtyTabMarker = '●';
-  expect(ThemeIcons.Class.markOwnersFor(dirtyTabMarker)).toEqual([
-    'the dirty and active tab marker (a TabBarRenderer literal)',
+test('the dirty tab marker degrades through one-cell theme slots', () => {
+  const dirtyTabMarkers = (['nerd', 'unicode', 'ascii'] as const).map(
+    (glyphLevel) => ThemeIcons.Class.glyphFor(glyphLevel, 'tabDirtyMarker'),
+  );
+
+  expect(dirtyTabMarkers).toEqual(['\u{f111}', '●', '*']);
+  expect(
+    dirtyTabMarkers.every(
+      (dirtyTabMarker) => TextCoordinates.Class.lineWidth(dirtyTabMarker) === 1,
+    ),
+  ).toBe(true);
+  expect(ThemeIcons.Class.markOwnersFor(dirtyTabMarkers[1]!)).toEqual([
+    'the dirty and active tab marker',
   ]);
   expect(ThemeIcons.Class.symbolMarkFor('unicode', 'javascript')).not.toBe(
-    dirtyTabMarker,
+    dirtyTabMarkers[1],
   );
 });
 
