@@ -1,0 +1,15 @@
+{
+  "task": 430,
+  "slug": "bottom-panel-span-centered-layout",
+  "branch": "fleet/430-bottom-panel-span-centered-layout",
+  "worktree": ".invar/worktrees/430-bottom-panel-span-centered-layout",
+  "tmuxSession": "invar/430-bottom-panel-span-centered-layout",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-430-bottom-panel-span-centered-layout.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "49074be3f7f17918e218763f7e94c80a06028318",
+  "startedAt": "2026-07-31T14:41:04-04:00"
+}
