@@ -338,20 +338,21 @@ class $RootView {
         ),
     });
     const sidebarDivider = paneSplitters.sidebar.renderable;
+    const maximumRightDockSize = (): number =>
+      LayoutModel.Class.maximumRightDockColumns(
+        buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
+      );
     const rightDockSplitter = new SplitterElement.Class({
       renderer,
       identifier: 'right-dock-divider',
       orientation: 'vertical',
       reportUnit: 'cells',
       initialSize: layoutSlots.rightDockColumns.value,
-      minimumSize: 16,
+      minimumSize: () => Math.min(16, maximumRightDockSize()),
       // The live bound, not a fixed 70: the same generator the layout clamps with, so the divider
       // stops exactly where the painted dock stops at this terminal width.
       // invariant: Each dock stays a bounded minority of the row (src/modules/layout/layout.invariants.md)
-      maximumSize: () =>
-        LayoutModel.Class.maximumRightDockColumns(
-          buildLayoutModelOptions(currentLayoutColumns, currentLayoutRows),
-        ),
+      maximumSize: maximumRightDockSize,
       pointerDirection: -1,
       // Same two meanings as the sidebar divider: the live slot belongs to this workspace, the
       // setting is what the next fresh workspace starts at.
@@ -1367,6 +1368,12 @@ class $RootView {
       layoutSlotGeometry = LayoutModel.Class.resolve(
         buildLayoutModelOptions(totalColumns, totalRows),
       );
+      if (primaryDockHost.visible.value) {
+        paneSplitters.sidebar.size = layoutSlotGeometry.sidebar.width;
+      }
+      if (rightDockHost.visible.value) {
+        rightDockSplitter.size = layoutSlotGeometry.rightDock.width;
+      }
       editorFrameAttribution.recordLayoutComputation();
       activityBar.bar.position = 'absolute';
       activityBar.bar.left = layoutSlotGeometry.activityBar.left;
@@ -2491,6 +2498,10 @@ class $RootView {
         }
         return regions;
       },
+      splitterSizes: () => ({
+        sidebar: paneSplitters.sidebar.size,
+        rightDock: rightDockSplitter.size,
+      }),
       activityBarItemIdentifiers: () => activityBar.itemIdentifiers(),
       dispose() {
         try {
@@ -2615,6 +2626,7 @@ export interface RootView {
       visible: boolean;
     }
   >;
+  splitterSizes(): { sidebar: number; rightDock: number };
   activityBarItemIdentifiers(): string[];
   dispose(): void;
 }

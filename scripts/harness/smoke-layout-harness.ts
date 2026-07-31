@@ -56,6 +56,19 @@ function splitterRegion(
   return region;
 }
 
+function splitterSize(
+  status: StatusSnapshot,
+  splitterName: 'sidebar' | 'rightDock',
+): number {
+  const splitterSizes = status.splitterSizes as
+    Record<'sidebar' | 'rightDock', number> | undefined;
+  const size = splitterSizes?.[splitterName];
+  if (size === undefined) {
+    throw new Error(`Missing splitter size ${splitterName}`);
+  }
+  return size;
+}
+
 function rectangleRight(rectangle: Rectangle): number {
   return rectangle.left + rectangle.width;
 }
@@ -736,7 +749,7 @@ await Bun.write(
 
 await Bun.write(
   join(compactSettingsDirectory, 'settings.json'),
-  '{"glyphMode":"ascii","panelAlignment":"justify"}\n',
+  '{"glyphMode":"ascii","panelAlignment":"justify","rightDockWidth":33}\n',
 );
 
 await Bun.write(join(fixtureRoot, 'layout.txt'), 'layout geometry\n');
@@ -1286,6 +1299,71 @@ try {
     'right-dock splitter resize live-applied and persisted its width setting',
   );
 
+  const widthsBeforeLayoutSwitch = {
+    sidebar: layoutSlot(status, 'sidebar').width,
+    rightDock: layoutSlot(status, 'rightDock').width,
+  };
+  const fullHeightStatusAfterDrag = await selectLayoutPreset(
+    driver,
+    statusPath,
+    'Full-height docks',
+    (candidate) =>
+      candidate.primaryDockVisible === true &&
+      candidate.rightDockVisible === true &&
+      candidate.terminalVisible === true &&
+      candidate.leftDockVerticalSpan === 'full-height' &&
+      candidate.rightDockVerticalSpan === 'full-height',
+  );
+  const centeredStatusAfterDrag = await selectLayoutPreset(
+    driver,
+    statusPath,
+    'Centered panel',
+    (candidate) =>
+      candidate.primaryDockVisible === true &&
+      candidate.rightDockVisible === true &&
+      candidate.terminalVisible === true &&
+      candidate.leftDockVerticalSpan === 'ends-at-panel' &&
+      candidate.rightDockVerticalSpan === 'ends-at-panel',
+  );
+  await selectLayoutPreset(
+    driver,
+    statusPath,
+    'Focus',
+    (candidate) =>
+      candidate.primaryDockVisible === false &&
+      candidate.rightDockVisible === false &&
+      candidate.terminalVisible === false,
+  );
+  const statusAfterLayoutSwitch = await selectLayoutPreset(
+    driver,
+    statusPath,
+    'Default',
+    (candidate) =>
+      candidate.primaryDockVisible === true &&
+      candidate.rightDockVisible === true &&
+      candidate.terminalVisible === true &&
+      candidate.sidebarPosition === 'left' &&
+      candidate.panelAlignment === 'center' &&
+      candidate.leftDockVerticalSpan === 'full-height' &&
+      candidate.rightDockVerticalSpan === 'ends-at-panel',
+  );
+  HarnessSmoke.Class.requireCondition(
+    layoutSlot(fullHeightStatusAfterDrag, 'sidebar').width ===
+      widthsBeforeLayoutSwitch.sidebar &&
+      layoutSlot(fullHeightStatusAfterDrag, 'rightDock').width ===
+        widthsBeforeLayoutSwitch.rightDock &&
+      layoutSlot(centeredStatusAfterDrag, 'sidebar').width ===
+        widthsBeforeLayoutSwitch.sidebar &&
+      layoutSlot(centeredStatusAfterDrag, 'rightDock').width ===
+        widthsBeforeLayoutSwitch.rightDock &&
+      layoutSlot(statusAfterLayoutSwitch, 'sidebar').width ===
+        widthsBeforeLayoutSwitch.sidebar &&
+      layoutSlot(statusAfterLayoutSwitch, 'rightDock').width ===
+        widthsBeforeLayoutSwitch.rightDock,
+    `the layout cycle restores both pre-switch widths (${widthsBeforeLayoutSwitch.sidebar}/${widthsBeforeLayoutSwitch.rightDock})`,
+  );
+  status = statusAfterLayoutSwitch;
+
   console.log(
     '== harness layout: each dock stays a bounded minority of the row ==',
   );
@@ -1325,6 +1403,12 @@ try {
       rectangleRight(layoutSlot(candidate, 'rightDock')) <= 80,
   );
   const narrowRightDock = layoutSlot(narrowStatus, 'rightDock');
+  HarnessSmoke.Class.requireCondition(
+    splitterSize(narrowStatus, 'sidebar') ===
+      layoutSlot(narrowStatus, 'sidebar').width &&
+      splitterSize(narrowStatus, 'rightDock') === narrowRightDock.width,
+    `the 80-column splitter reports match painted dock widths (${splitterSize(narrowStatus, 'sidebar')}/${splitterSize(narrowStatus, 'rightDock')})`,
+  );
   const narrowEditorCenter = layoutSlot(narrowStatus, 'editorCenter');
   const narrowPrimaryDockGroup =
     layoutSlot(narrowStatus, 'activityBar').width +
@@ -1373,6 +1457,11 @@ try {
     layoutSlot(restoredStatus, 'activityBar').width +
     layoutSlot(restoredStatus, 'sidebar').width +
     layoutSlot(restoredStatus, 'sidebarSplitter').width;
+  HarnessSmoke.Class.requireCondition(
+    layoutSlot(restoredStatus, 'sidebar').width === draggedSidebarWidth &&
+      layoutSlot(restoredStatus, 'rightDock').width === draggedRightDockWidth,
+    `the 120-column regrow restores both pre-shrink widths (${draggedSidebarWidth}/${draggedRightDockWidth})`,
+  );
   HarnessSmoke.Class.requireCondition(
     restoredPrimaryDockGroup < layoutSlot(restoredStatus, 'editorCenter').width,
     'the restored primary dock request is still narrower than the editor',
@@ -1432,6 +1521,47 @@ try {
       (candidate) => candidate.rightDockVisible === true,
     );
     const compactRightDock = layoutSlot(compactRightDockStatus, 'rightDock');
+    HarnessSmoke.Class.requireCondition(
+      Number(compactRightDockStatus.rightDockWidth) === 33 &&
+        compactRightDock.width === 20 &&
+        splitterSize(compactRightDockStatus, 'rightDock') ===
+          compactRightDock.width,
+      `the persisted 33-column request paints and reports ${compactRightDock.width} at 80 columns`,
+    );
+    compactDriver.resize(64, 24);
+    const tinyStatus = await HarnessSmoke.Class.awaitStatus(
+      compactDriver,
+      compactStatusPath,
+      'the 64-column dock publishes its tiny painted width',
+      (candidate) =>
+        Number(candidate.width) === 64 &&
+        layoutSlot(candidate, 'rightDock').width <= 12,
+    );
+    HarnessSmoke.Class.requireCondition(
+      layoutSlot(tinyStatus, 'rightDock').width === 12 &&
+        splitterSize(tinyStatus, 'rightDock') === 12,
+      'the 64-column right dock paints and reports its 12-column live maximum',
+    );
+    compactDriver.resize(80, 24);
+    await HarnessSmoke.Class.awaitStatus(
+      compactDriver,
+      compactStatusPath,
+      'the compact layout returns to 80 columns after the tiny probe',
+      (candidate) =>
+        Number(candidate.width) === 80 &&
+        layoutSlot(candidate, 'rightDock').width > 12,
+    );
+    await compactDriver.awaitGridCondition(
+      'the restored 80-column frame paints the layouts control at its new edge',
+      (snapshot) => {
+        const layoutsPosition = snapshot.findText(' layouts ');
+        return (
+          snapshot.columns === 80 &&
+          layoutsPosition !== null &&
+          layoutsPosition.column + ' layouts '.length === snapshot.columns
+        );
+      },
+    );
     const compactEditorCenter = layoutSlot(
       compactRightDockStatus,
       'editorCenter',

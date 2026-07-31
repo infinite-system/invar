@@ -234,6 +234,7 @@ describe('AppStatusProjection', () => {
           },
           rightDock: { left: 92, top: 0, width: 1, height: 40, visible: false },
         }),
+        splitterSizes: () => ({ sidebar: 32, rightDock: 28 }),
         activityBarItemIdentifiers: () => ['files', 'git', 'extensions'],
       },
       get mouse() {
