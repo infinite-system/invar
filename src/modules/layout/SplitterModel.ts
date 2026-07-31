@@ -11,7 +11,7 @@
 // reports the pane's share of the axis extent in [0,1] (git split). A pointer moves in cells either
 // way; ratio mode converts a cell delta to a ratio delta through the configured axis extent.
 //
-// invariant: A reported size never leaves its configured bounds (src/modules/layout/layout.invariants.md)
+// invariant: A reported size stays within its live effective bounds (src/modules/layout/layout.invariants.md)
 // invariant: Only a drag in progress moves the size (src/modules/layout/layout.invariants.md)
 // invariant: A split ratio stays within zero and one (src/modules/layout/layout.invariants.md)
 // invariant: The splitter model carries no renderable dependency (src/modules/layout/layout.invariants.md)
@@ -52,6 +52,9 @@ class $SplitterModel {
   }
 
   get minimumSize(): number {
+    if (typeof this.options.minimumSize === 'function') {
+      return this.options.minimumSize();
+    }
     return this.options.minimumSize ?? 0;
   }
 
@@ -67,6 +70,12 @@ class $SplitterModel {
    *  ratio drag stays calibrated. No-op effect in cells mode. */
   setExtentCells(totalExtentCells: number): void {
     this.totalExtentCells = totalExtentCells;
+  }
+
+  /** Replace the reported size from a host-owned layout value without treating the synchronization
+   *  as a user drag. The stored value still passes through the live bounds. */
+  setSize(size: number): void {
+    this.storeSize(this.clamp(size));
   }
 
   /** How much one dragged CELL moves the reported size: 1:1 in cells mode; 1/extent in ratio mode
@@ -91,7 +100,7 @@ class $SplitterModel {
     if (!this.dragging.value) return;
     const pointerDeltaCells = pointerPosition - this.dragStartPointerPosition;
     const sizeDelta = pointerDeltaCells * this.unitsPerCell;
-    this.applySize(this.clamp(this.dragStartSize + sizeDelta));
+    this.applySize(this.dragStartSize + sizeDelta);
   }
 
   /** End the drag: stop tracking. The size keeps its last value; the host may persist it. */
@@ -100,9 +109,15 @@ class $SplitterModel {
   }
 
   protected applySize(nextSize: number): void {
-    if (nextSize === this.size.value) return;
+    const clampedSize = this.clamp(nextSize);
+    if (!this.storeSize(clampedSize)) return;
+    this.onSizeChange(clampedSize);
+  }
+
+  protected storeSize(nextSize: number): boolean {
+    if (nextSize === this.size.value) return false;
     this.size.value = nextSize;
-    this.onSizeChange(nextSize);
+    return true;
   }
 
   /** Persist seam — fires on every size change. Defaults to the constructor callback; override to
@@ -114,7 +129,7 @@ class $SplitterModel {
 
   /** Clamp to [minimumSize, maximumSize]; ratio mode additionally pins into [0,1] so a mis-configured
    *  bound can never report an out-of-range ratio. */
-  // invariant: A reported size never leaves its configured bounds (src/modules/layout/layout.invariants.md)
+  // invariant: A reported size stays within its live effective bounds (src/modules/layout/layout.invariants.md)
   // invariant: A split ratio stays within zero and one (src/modules/layout/layout.invariants.md)
   protected clamp(size: number): number {
     let lowerBound = this.minimumSize;
@@ -123,6 +138,7 @@ class $SplitterModel {
       lowerBound = Math.max(0, lowerBound);
       upperBound = Math.min(1, upperBound);
     }
+    lowerBound = Math.min(lowerBound, upperBound);
     return Math.max(lowerBound, Math.min(upperBound, size));
   }
 }
@@ -150,7 +166,7 @@ export interface SplitterModelOptions {
   /** Starting size in the report unit (cells, or a [0,1] ratio). */
   initialSize: number;
   /** Lower bound in the report unit. Defaults to 0. */
-  minimumSize?: number;
+  minimumSize?: number | (() => number);
   /** Upper bound in the report unit. Defaults to Infinity for cells, 1 for ratio. */
   maximumSize?: number | (() => number);
   /** Total cells along the drag axis — required for 'ratio' mode to convert a cell delta into a

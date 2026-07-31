@@ -318,6 +318,7 @@ class $AppStatusProjection {
       rightDockRows: ports.view.rightDockViewportRows(),
       layoutSlots: ports.view.layoutGeometry(),
       splitterRegions: ports.view.splitterRegions(),
+      splitterSizes: ports.view.splitterSizes(),
       // Active buffer is an image the editor renders as half-block cells (drives smoke-image-preview).
       activeFileIsImage: ports.workspaceSet.active.activeFileIsImage,
       // Bracket match is an EDITOR question, so the editor contributes it (matchingBracketLine /
@@ -544,6 +545,7 @@ export interface AppStatusProjectionPorts {
     | 'rightDockViewportRows'
     | 'layoutGeometry'
     | 'splitterRegions'
+    | 'splitterSizes'
     | 'activityBarItemIdentifiers'
     | 'overlayDialogBounds'
     | 'overlayScrollPositions'

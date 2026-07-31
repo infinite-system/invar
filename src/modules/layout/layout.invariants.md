@@ -356,33 +356,37 @@ src/modules/layout/SplitterModel.test.ts && bun scripts/harness/smoke-panel-chro
 
 **Last refined:** 2026-07-25
 
-### A reported size never leaves its configured bounds
+### A reported size stays within its live effective bounds
 
-**Invariant:** If any code path sets the splitter size (construction seed or a drag), then the value it
-stores and reports is within [minimumSize, maximumSize].
+**Invariant:** If any code path sets the splitter size, then the stored and reported value stays
+within the live effective bounds. If the configured minimum exceeds the live maximum, the effective
+minimum equals that maximum.
 
-**Scope:** every write to `size` in `SplitterModel` — the `get size()` seed and `dragTo` via
-`applySize`. Both the stored `size.value` and the `onSizeChange` payload.
+**Scope:** Every `SplitterModel` size write: the construction seed, host synchronization and pointer
+seed through `setSize`, and `dragTo` through `applySize`. This covers `size.value` and every
+`onSizeChange` payload.
 
-**Mechanism:** the ONLY size writes route through `clamp`; there is no unclamped setter. `dragTo`
-applies the pointer delta to the drag-start anchor and clamps the sum, so a drag can never walk the
-size past a bound by accumulation.
+**Mechanism:** Every write routes through `clamp`. `clamp` reads both bounds live and collapses an
+empty interval to its maximum. Host synchronization does not fire `onSizeChange`, so a narrow layout
+can report its painted width without replacing the remembered request.
 
-**Generates:** the host lays panes out directly from `size` with no bounds re-check; persisted values
-reloaded as `initialSize` are re-clamped on the next construction.
+**Generates:** A visible splitter reports the painted pane size at every layout. A layout switch or
+terminal resize can clamp the report and later restore the remembered request when space returns.
 
-**Evidence:** `SplitterModel.ts` `clamp` guards every write; tests "clamps at the maximum", "clamps at
-the minimum", and "an out-of-range initialSize is clamped at construction".
+**Evidence:** `src/modules/layout/SplitterModel.ts`; `src/modules/ui/SplitterElement.ts`;
+`src/modules/ui/RootView.ts`; `src/modules/layout/SplitterModel.test.ts`;
+`src/modules/ui/SplitterElement.test.ts`; `scripts/harness/smoke-layout-harness.ts`.
 
-**Impossible if true:** a `size.value` outside [minimumSize, maximumSize] after any begin/drag/end
-sequence.
+**Impossible if true:** A visible splitter report differs from its painted pane width; a pointer-down
+seed stores a remembered request above the live maximum; a 64-column right dock reports 16 while it
+paints 12.
 
-**Verification:** `bun test src/modules/layout/SplitterModel.test.ts` — the clamp cases drag far past
-each bound and assert the bound value.
+**Verification:** `bun test src/modules/layout/SplitterModel.test.ts
+src/modules/ui/SplitterElement.test.ts && bun scripts/harness/smoke-layout-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-31
 
 ### Only a drag in progress moves the size
 

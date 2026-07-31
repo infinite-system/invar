@@ -86,6 +86,13 @@ describe('SplitterModel — drag lifecycle', () => {
 });
 
 describe('SplitterModel — onSizeChange persist seam', () => {
+  test('host size synchronization clamps without persisting', () => {
+    const { splitter, changes } = makeSplitter();
+    splitter.setSize(999);
+    expect(splitter.size.value).toBe(50);
+    expect(changes).toEqual([]);
+  });
+
   test('fires with the new size on every change', () => {
     const { splitter, changes } = makeSplitter();
     splitter.beginDrag(100);
@@ -101,6 +108,19 @@ describe('SplitterModel — onSizeChange persist seam', () => {
     splitter.dragTo(2000); // still 50 — no new notification
     expect(changes).toEqual([50]);
   });
+});
+
+test('a live maximum below the configured minimum collapses the interval', () => {
+  let maximumSize = 12;
+  const { splitter } = makeSplitter({
+    initialSize: 33,
+    minimumSize: 16,
+    maximumSize: () => maximumSize,
+  });
+  expect(splitter.size.value).toBe(12);
+  maximumSize = 20;
+  splitter.setSize(33);
+  expect(splitter.size.value).toBe(20);
 });
 
 describe('SplitterModel — ratio mode (git-split divider)', () => {
