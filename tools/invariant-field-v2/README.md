@@ -6,9 +6,8 @@ evidence, and draws the result as distance from reality. It does not join the
 Invar runtime.
 
 It also measures itself. Its own contract lives beside this file
-([invariant-field.invariants.md](invariant-field.invariants.md) and
-[invariant-field.lattice.md](invariant-field.lattice.md)), the scanner reads it
-like any other, and the rail carries a `Measure the instrument` control that
+(`invariant-field.invariants.md` and `invariant-field.lattice.md`), the
+scanner reads it like any other, and the rail carries a `Measure the instrument` control that
 focuses the instrument's own records and rewinds the timeline to the snapshot
 that first carried them.
 

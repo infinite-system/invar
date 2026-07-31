@@ -1348,12 +1348,15 @@ h2 {
 }
 
 .field-overlay-label-selection {
+  max-width: 40%;
   padding: var(--space-2-pixels) var(--space-6-pixels);
+  overflow: hidden;
   border-radius: var(--radius-small);
   background: rgb(var(--color-panel-components) / 88%);
   color: var(--color-foreground-strong);
   font-size: var(--font-size-caption);
-  transform: translate(14px, -140%);
+  text-overflow: ellipsis;
+  transform: translate(-50%, -220%);
 }
 
 /* --- Timeline: the instrument's own birth is a place you can go --- */

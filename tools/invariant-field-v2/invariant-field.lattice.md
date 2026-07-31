@@ -59,8 +59,11 @@ instrument met it three times:
   Two owners of "what is being looked at" — resolved by
   [One focus fold serves every surface][focus].
 - The design folder and the tool each held a token table. Two owners of "what
-  colour is a domain" — resolved by
-  [Design tokens are the only source of colour and timing][tokens].
+  colour is a domain". The tool's table is the one the app reads; the design
+  table stays because the static mockup needs it. The seam is held by
+  [Design tokens are the only source of colour and timing][tokens] plus a
+  parity test over every shared role, so the two tables may differ in what
+  they cover but never in what they say.
 - The 2D view owned the frame — R, the shells, the sector labels — while the
   3D view drew only dots. Two owners of "where is reality", one of which
   answered "nowhere" — resolved by

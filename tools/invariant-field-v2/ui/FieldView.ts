@@ -241,8 +241,9 @@ class $FieldView {
         previousY: previousPoint.y,
         traceStartX: previousPoint.x - point.x,
         traceStartY: previousPoint.y - point.y,
-        labelX: point.x + 13,
+        labelX: point.x + (point.x > this.fieldCenter ? -13 : 13),
         labelY: point.y - 10,
+        labelAnchor: point.x > this.fieldCenter ? 'end' : 'start',
         labelKey: `label-${record.stableIdentifier}`,
         transform: `translate(${point.x} ${point.y})`,
         domainIndex,
@@ -1226,6 +1227,7 @@ interface FieldDot {
   traceStartY: number;
   labelX: number;
   labelY: number;
+  labelAnchor: string;
   labelKey: string;
   transform: string;
   domainIndex: number;

@@ -204,6 +204,7 @@ const {
             class="record-selection-label"
             :x="dot.labelX"
             :y="dot.labelY"
+            :text-anchor="dot.labelAnchor"
           >
             {{ dot.record.name }}
           </text>
