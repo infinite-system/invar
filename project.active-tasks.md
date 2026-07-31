@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/in-progress/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md)  [building]
-  `tmux attach -t invar/421-field-scanner-mixed-snapshot-sources`
-
 ## USER-DIRECTED (17)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
@@ -136,11 +132,12 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 157 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 158 — full log: project.tasks-completed.md)
 - #425 [monitoring-lsp-contract-records](.invar/tasks/completed/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md) — db19dec4 — Two proven disciplines now recorded with annotations at enforcement points; scope refine applied. Bycatch (stale drive-command paths) fixed as follow-up doc commit on main.
 - #424 [quit-smoke-theme-tone-wait](.invar/tasks/completed/424-quit-smoke-theme-tone-wait/task-424-quit-smoke-theme-tone-wait.md) — 41715591 — Ten assert-after-switch sites converted to condition waits across four smokes; census committed; both arms proven by plants; gate green on the exact tip. Bycatch: brief's invariants-in-scope was wrong (conductor error, acknowledged); hook-vs-brief tooling conflict noted, no task needed.
 - #423 [panelheading-rot-remainder-sweep](.invar/tasks/completed/423-panelheading-rot-remainder-sweep/task-423-panelheading-rot-remainder-sweep.md) — e92011c0 — Sweep grep to zero; four records repointed; the chain of bycatch pairs is closed. Punctuation notes are known legacy tolerance (no action); glyph breach converted to #426 before landing.
 - #422 [verification-field-panelheading-rot](.invar/tasks/completed/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md) — ea808dcb — Repointed the three PanelHeading-rotted records to PanelTabBar-era artifacts; UI geometry record re-derived. Contract-only; checker green. Bycatch converted to #423 (class-closing sweep) before landing.
+- #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/completed/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md) — b327cc93 — Mixed-source snapshot reproduced by driving, fixed to one-commit-per-snapshot, locked by tests and a new established record. Full repo gate green — first field test of #424's condition waits, passed. No bycatch.
 - #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 - #419 [field-v2-opus-synthesis](.invar/tasks/completed/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md) — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate
 - #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
@@ -151,4 +148,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #413 [invariant-field-web-app](.invar/tasks/completed/413-invariant-field-web-app/task-413-invariant-field-web-app.md) — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
 - #412 [monitoring-lsp-cpu-profile](.invar/tasks/completed/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md) — 22e667f2 — LSP CPU/RSS rows landed: registry pids, /proc delta sampling, GONE state, platform sampler seam. Gate red twice on two distinct pre-existing smoke flakes (standalone-green both sides) -> #424. Contract-record gaps from bycatch -> #425 pending.
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/completed/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md) — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
-- #408 [workspace-state-isolation](.invar/tasks/completed/408-workspace-state-isolation/task-408-workspace-state-isolation.md) — 68fcad24 — workspace state isolation: six leaks closed, geometry workspace-owned, v2 panel covered

@@ -1,7 +1,7 @@
 # Task 421 — Field scanner: current snapshot mixes working tree and HEAD
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — b327cc93 — Mixed-source snapshot reproduced by driving, fixed to one-commit-per-snapshot, locked by tests and a new established record. Full repo gate green — first field test of #424's condition waits, passed. No bycatch.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
