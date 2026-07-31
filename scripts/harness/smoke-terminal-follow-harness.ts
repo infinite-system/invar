@@ -174,7 +174,24 @@ class $SmokeTerminalFollowHarness {
         (status) =>
           status.paletteOpen === true && Number(status.paletteMatches) === 1,
       );
-      driver.sendKeys('Enter');
+      const followModeChangeSnapshot =
+        await driver.assertContentInvariantAcrossAction({
+          invariantRegion: {
+            startRow: footerRegion.row,
+            endRowExclusive: footerRegion.row + 1,
+            startColumn: footerRegion.startColumn,
+            endColumnExclusive: footerRegion.endColumnExclusive,
+          },
+          changedRegion: {
+            startRow: 0,
+            endRowExclusive: Math.floor(driver.snapshot().rows / 2),
+            startColumn: 0,
+            endColumnExclusive: driver.snapshot().columns,
+          },
+          actionDescription:
+            'the palette changes follow mode without changing the agent footer',
+          performAction: () => driver.sendKeys('Enter'),
+        });
       await this.awaitStatus(
         'the palette command runs the same cycle action',
         (status) =>
@@ -191,8 +208,10 @@ class $SmokeTerminalFollowHarness {
           this.agentFooterSignature(candidate, footerRegion) !== null,
       );
       HarnessSmoke.Class.requireCondition(
-        this.agentFooterSignature(followAllFooterSnapshot, footerRegion) ===
-          offModeFooterSignature,
+        this.agentFooterSignature(followModeChangeSnapshot, footerRegion) ===
+          offModeFooterSignature &&
+          this.agentFooterSignature(followAllFooterSnapshot, footerRegion) !==
+            null,
         'terminal-follow state changes leave the agent footer byte-identical',
       );
       await this.cycleModeByKeyboard(

@@ -267,6 +267,79 @@ function packedThemeColor(color: string): number {
   return Number.parseInt(color.slice(1), 16);
 }
 
+function previewMarkersUseTheme(
+  snapshot: HarnessSnapshot.Model,
+  expectations: readonly (readonly [marker: string, color: string])[],
+): boolean {
+  try {
+    return expectations.every(([marker, color]) => {
+      const position = previewMarkerPosition(snapshot, marker);
+      return (
+        snapshot.cell(position.row, position.column)?.foreground ===
+        packedThemeColor(color)
+      );
+    });
+  } catch {
+    return false;
+  }
+}
+
+function headingsUseTheme(
+  snapshot: HarnessSnapshot.Model,
+  markers: readonly string[],
+  accentColor: string,
+  formerTitleColor: string,
+): boolean {
+  try {
+    const headingCells = markers.map((marker) => {
+      const position = previewMarkerPosition(snapshot, marker);
+      return snapshot.cell(position.row, position.column);
+    });
+    const packedAccent = packedThemeColor(accentColor);
+    return (
+      headingCells.every((cell) => cell?.foreground === packedAccent) &&
+      headingCells[0]?.foreground !== packedThemeColor(formerTitleColor)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function taskPresentationUsesTheme(
+  snapshot: HarnessSnapshot.Model,
+  palette: { accent: string; error: string },
+): boolean {
+  try {
+    const heading1 = previewMarkerPosition(snapshot, 'Task presentation');
+    const heading2 = previewMarkerPosition(snapshot, 'Existing section');
+    const heading3 = previewMarkerPosition(snapshot, 'Lower section');
+    const prose = previewMarkerPosition(
+      snapshot,
+      'Prose joins across source lines.',
+    );
+    const heading1Cell = snapshot.cell(heading1.row, heading1.column);
+    const heading2Cell = snapshot.cell(heading2.row, heading2.column);
+    const heading3Cell = snapshot.cell(heading3.row, heading3.column);
+    const proseCell = snapshot.cell(prose.row, prose.column);
+    return (
+      heading1Cell?.isUnderline === false &&
+      heading1Cell.isBold === true &&
+      heading1Cell.foreground === heading2Cell?.foreground &&
+      heading1Cell.foreground === heading3Cell?.foreground &&
+      heading1Cell.foreground !== proseCell?.foreground &&
+      heading2Cell?.isUnderline === false &&
+      heading2Cell.isBold === true &&
+      previewMarkersUseTheme(snapshot, [
+        ['current link', palette.accent],
+        ['dead link', palette.error],
+        ['external link', palette.accent],
+      ])
+    );
+  } catch {
+    return false;
+  }
+}
+
 function requireUniformHeadingColor(
   snapshot: HarnessSnapshot.Model,
   markers: readonly string[],
@@ -274,14 +347,8 @@ function requireUniformHeadingColor(
   formerTitleColor: string,
   label: string,
 ): void {
-  const headingCells = markers.map((marker) => {
-    const position = previewMarkerPosition(snapshot, marker);
-    return snapshot.cell(position.row, position.column);
-  });
-  const packedAccent = packedThemeColor(accentColor);
   HarnessSmoke.Class.requireCondition(
-    headingCells.every((cell) => cell?.foreground === packedAccent) &&
-      headingCells[0]?.foreground !== packedThemeColor(formerTitleColor),
+    headingsUseTheme(snapshot, markers, accentColor, formerTitleColor),
     `${label} paints H1 through H6 with one theme accent and removes the former H1 color`,
   );
 }
@@ -326,31 +393,42 @@ function requireCodeFenceAppearance(
   palette: { selectionMuted: string; fg: string },
   label: string,
 ): void {
-  const language = previewMarkerPosition(snapshot, 'bash');
-  const body = previewMarkerPosition(snapshot, 'open docs/index.html');
-  const previewLeft = previewBorder(snapshot).column;
-  const previewRight = previewPaneRightColumn(snapshot);
-  const headerText = snapshot.rowText(language.row);
-  const bodyText = snapshot.rowText(body.row);
-  const footerRow = body.row + 1;
-  const footerText = snapshot.rowText(footerRow);
-  const frameLeft = headerText.indexOf('╭', previewLeft);
-  const frameRight = headerText.lastIndexOf('╮', previewRight);
-  const expectedBackground = packedThemeColor(palette.selectionMuted);
-  const fenceRows = [language.row, body.row, footerRow];
-  const everyFenceCellHasBackground = fenceRows.every((row) =>
-    snapshot
-      .rowCells(row)
-      .slice(frameLeft, frameRight + 1)
-      .every(
-        (cell) =>
-          cell.isBackgroundRgb && cell.background === expectedBackground,
-      ),
-  );
-  const prose = previewMarkerPosition(snapshot, 'Before adjacent H6');
-
   HarnessSmoke.Class.requireCondition(
-    frameLeft >= previewLeft &&
+    codeFenceUsesTheme(snapshot, palette),
+    `${label} paints rounded header, body, and footer cells with one code background and a readable label`,
+  );
+}
+
+function codeFenceUsesTheme(
+  snapshot: HarnessSnapshot.Model,
+  palette: { selectionMuted: string; fg: string },
+): boolean {
+  try {
+    const language = previewMarkerPosition(snapshot, 'bash');
+    const body = previewMarkerPosition(snapshot, 'open docs/index.html');
+    const previewLeft = previewBorder(snapshot).column;
+    const previewRight = previewPaneRightColumn(snapshot);
+    const headerText = snapshot.rowText(language.row);
+    const bodyText = snapshot.rowText(body.row);
+    const footerRow = body.row + 1;
+    const footerText = snapshot.rowText(footerRow);
+    const frameLeft = headerText.indexOf('╭', previewLeft);
+    const frameRight = headerText.lastIndexOf('╮', previewRight);
+    const expectedBackground = packedThemeColor(palette.selectionMuted);
+    const fenceRows = [language.row, body.row, footerRow];
+    const everyFenceCellHasBackground = fenceRows.every((row) =>
+      snapshot
+        .rowCells(row)
+        .slice(frameLeft, frameRight + 1)
+        .every(
+          (cell) =>
+            cell.isBackgroundRgb && cell.background === expectedBackground,
+        ),
+    );
+    const prose = previewMarkerPosition(snapshot, 'Before adjacent H6');
+
+    return (
+      frameLeft >= previewLeft &&
       frameRight > frameLeft &&
       bodyText[frameLeft] === '│' &&
       bodyText[frameRight] === '│' &&
@@ -361,9 +439,11 @@ function requireCodeFenceAppearance(
         packedThemeColor(palette.fg) &&
       snapshot.cell(language.row, language.column)?.foreground !==
         expectedBackground &&
-      snapshot.cell(prose.row, prose.column)?.background !== expectedBackground,
-    `${label} paints rounded header, body, and footer cells with one code background and a readable label`,
-  );
+      snapshot.cell(prose.row, prose.column)?.background !== expectedBackground
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function switchLiveTheme(
@@ -485,8 +565,10 @@ async function driveTaskPresentationInTheme(
         status.markdownPreviewOpen === true &&
         status.markdownParsing === false,
     );
+    const palette =
+      theme === 'dark' ? ThemePalettes.Class.DARK : ThemePalettes.Class.LIGHT;
     const snapshot = await taskDriver.awaitGridCondition(
-      `${theme} task metadata and prose paint in the preview`,
+      `${theme} task metadata, prose, headings, and link tones paint in the preview`,
       (candidate) =>
         candidate.findText('╭─Preview') !== null &&
         previewHasMarker(candidate, 'Task presentation') &&
@@ -498,7 +580,8 @@ async function driveTaskPresentationInTheme(
         previewHasMarker(candidate, 'dead link') &&
         previewHasMarker(candidate, 'external link') &&
         previewHasMarker(candidate, 'Lower section') &&
-        previewHasMarker(candidate, 'Existing section'),
+        previewHasMarker(candidate, 'Existing section') &&
+        taskPresentationUsesTheme(candidate, palette),
     );
     const state = previewMarkerPosition(snapshot, 'State: IN-PROGRESS');
     const created = previewMarkerPosition(snapshot, 'Created: 2026-07-29');
@@ -534,8 +617,6 @@ async function driveTaskPresentationInTheme(
         heading2Cell.foreground !== proseCell?.foreground,
       `${theme} H2 keeps its bold accent treatment shared with H1`,
     );
-    const palette =
-      theme === 'dark' ? ThemePalettes.Class.DARK : ThemePalettes.Class.LIGHT;
     const currentLink = previewMarkerPosition(snapshot, 'current link');
     const deadLink = previewMarkerPosition(snapshot, 'dead link');
     const externalLink = previewMarkerPosition(snapshot, 'external link');
@@ -649,18 +730,24 @@ async function driveUpwardLinkAndDoubleClickAtScale(
     const documentPath = String(
       HarnessSmoke.Class.readStatus(linkStatusPath).activeBuffer,
     );
+    const palette = ThemePalettes.Class.DARK;
+    const linkExpectations = [
+      ['live up link', palette.accent],
+      ['dead up link', palette.error],
+      ['external up link', palette.accent],
+    ] as const;
     const linkSnapshot = await linkDriver.awaitGridCondition(
-      `${scaleLabel} preview paints all three upward links`,
+      `${scaleLabel} preview paints all three upward links with their resolved tones`,
       (candidate) =>
         previewHasMarker(candidate, 'live up link') &&
         previewHasMarker(candidate, 'dead up link') &&
-        previewHasMarker(candidate, 'external up link'),
+        previewHasMarker(candidate, 'external up link') &&
+        previewMarkersUseTheme(candidate, linkExpectations),
     );
 
     // A link that walks UP out of the document's directory but stays inside the workspace root
     // resolves; only a genuinely absent target is dead. The dead and external links in the same
     // frame are the positive controls for this colour claim.
-    const palette = ThemePalettes.Class.DARK;
     const liveUpLink = previewMarkerPosition(linkSnapshot, 'live up link');
     const deadUpLink = previewMarkerPosition(linkSnapshot, 'dead up link');
     const externalUpLink = previewMarkerPosition(
@@ -716,7 +803,9 @@ async function driveUpwardLinkAndDoubleClickAtScale(
     );
     const repaintedSnapshot = await linkDriver.awaitGridCondition(
       `${scaleLabel} preview repaints the external link`,
-      (candidate) => previewHasMarker(candidate, 'external up link'),
+      (candidate) =>
+        previewHasMarker(candidate, 'external up link') &&
+        previewMarkersUseTheme(candidate, linkExpectations),
     );
     const repaintedExternal = previewMarkerPosition(
       repaintedSnapshot,
@@ -968,17 +1057,6 @@ async function driveTerminalShrinkAtScale(
         status.height === 50 &&
         status.rightDockVisible === false,
     );
-    const dockConcealedSnapshot = await scaleDriver.awaitGridCondition(
-      `${fixtureLineCount}-line code fence reflows after parent growth without a preview remount`,
-      (candidate) =>
-        previewHasMarker(candidate, 'bash') &&
-        previewHasMarker(candidate, 'open docs/index.html') &&
-        hasAuthoredHeadingSpacing(candidate, fixtureLineCount),
-    );
-    const dockConcealedPreviewColumns =
-      previewPaneRightColumn(dockConcealedSnapshot) -
-      previewBorder(dockConcealedSnapshot).column -
-      1;
     const scaleHeadingMarkers = [
       `Scale fixture ${fixtureLineCount}`,
       'Adjacent H2',
@@ -987,6 +1065,24 @@ async function driveTerminalShrinkAtScale(
       'Spaced H5',
       'Adjacent H6',
     ];
+    const dockConcealedSnapshot = await scaleDriver.awaitGridCondition(
+      `${fixtureLineCount}-line code fence reflows after parent growth without a preview remount`,
+      (candidate) =>
+        previewHasMarker(candidate, 'bash') &&
+        previewHasMarker(candidate, 'open docs/index.html') &&
+        hasAuthoredHeadingSpacing(candidate, fixtureLineCount) &&
+        headingsUseTheme(
+          candidate,
+          scaleHeadingMarkers,
+          ThemePalettes.Class.DARK.accent,
+          ThemePalettes.Class.DARK.keyword,
+        ) &&
+        codeFenceUsesTheme(candidate, ThemePalettes.Class.DARK),
+    );
+    const dockConcealedPreviewColumns =
+      previewPaneRightColumn(dockConcealedSnapshot) -
+      previewBorder(dockConcealedSnapshot).column -
+      1;
     HarnessSmoke.Class.requireCondition(
       hasAuthoredHeadingSpacing(dockConcealedSnapshot, fixtureLineCount),
       `${fixtureLineCount}-line preview keeps only authored heading gaps across H1 through H6`,
@@ -1019,13 +1115,13 @@ async function driveTerminalShrinkAtScale(
           )
         )
           return false;
-        const title = previewMarkerPosition(
-          candidate,
-          `Scale fixture ${fixtureLineCount}`,
-        );
         return (
-          candidate.cell(title.row, title.column)?.foreground ===
-          packedThemeColor(ThemePalettes.Class.LIGHT.accent)
+          headingsUseTheme(
+            candidate,
+            scaleHeadingMarkers,
+            ThemePalettes.Class.LIGHT.accent,
+            ThemePalettes.Class.LIGHT.keyword,
+          ) && codeFenceUsesTheme(candidate, ThemePalettes.Class.LIGHT)
         );
       },
     );
@@ -1057,13 +1153,13 @@ async function driveTerminalShrinkAtScale(
           )
         )
           return false;
-        const title = previewMarkerPosition(
-          candidate,
-          `Scale fixture ${fixtureLineCount}`,
-        );
         return (
-          candidate.cell(title.row, title.column)?.foreground ===
-          packedThemeColor(ThemePalettes.Class.DARK.accent)
+          headingsUseTheme(
+            candidate,
+            scaleHeadingMarkers,
+            ThemePalettes.Class.DARK.accent,
+            ThemePalettes.Class.DARK.keyword,
+          ) && codeFenceUsesTheme(candidate, ThemePalettes.Class.DARK)
         );
       },
     );
@@ -1086,7 +1182,12 @@ async function driveTerminalShrinkAtScale(
         previewHasMarker(candidate, 'dead scale link') &&
         previewHasMarker(candidate, 'external scale link') &&
         previewHasMarker(candidate, 'Left') &&
-        previewHasMarker(candidate, 'alpha'),
+        previewHasMarker(candidate, 'alpha') &&
+        previewMarkersUseTheme(candidate, [
+          ['current scale link', ThemePalettes.Class.DARK.accent],
+          ['dead scale link', ThemePalettes.Class.DARK.error],
+          ['external scale link', ThemePalettes.Class.DARK.accent],
+        ]),
     );
     const currentScaleLink = previewMarkerPosition(
       linksAndTableSnapshot,
@@ -1969,8 +2070,15 @@ try {
   const readmeTabPosition = snapshot.findText('README.md');
   if (!readmeTabPosition) throw new Error('FAIL README tab missing');
   clickCell(driver, readmeTabPosition.column + 2, readmeTabPosition.row);
-  snapshot = await driver.awaitSnapshot((candidate) =>
-    previewHasMarker(candidate, 'Rendered heading'),
+  snapshot = await driver.awaitGridCondition(
+    'the returned README preview paints its heading and link tones',
+    (candidate) =>
+      previewHasMarker(candidate, 'Rendered heading') &&
+      previewMarkersUseTheme(candidate, [
+        ['the target', ThemePalettes.Class.DARK.accent],
+        ['the docs', ThemePalettes.Class.DARK.accent],
+        ['the missing note', ThemePalettes.Class.DARK.error],
+      ]),
   );
 
   console.log(
@@ -1980,7 +2088,7 @@ try {
   // Anchor on a RESOLVABLE hover first: layout may still be shifting after the tab return (the
   // structure dock re-reveals for the markdown TOC), and hovered-reference status is the one
   // signal that proves the measured grid coordinates are live before any click is spent.
-  const anchorPosition = previewMarkerPosition(driver.snapshot(), 'the target');
+  const anchorPosition = previewMarkerPosition(snapshot, 'the target');
   driver.sendMouse({
     kind: 'move',
     column: anchorPosition.column,
@@ -1993,23 +2101,18 @@ try {
     'the hover anchor resolves before the unresolvable-link clicks',
     (status) => String(status.markdownHoveredReference).endsWith('/target.ts'),
   );
-  const externalLinkPosition = previewMarkerPosition(
-    driver.snapshot(),
-    'the docs',
-  );
+  const externalLinkPosition = previewMarkerPosition(snapshot, 'the docs');
   const missingLinkPaintPosition = previewMarkerPosition(
-    driver.snapshot(),
+    snapshot,
     'the missing note',
   );
   HarnessSmoke.Class.requireCondition(
-    driver
-      .snapshot()
-      .cell(externalLinkPosition.row, externalLinkPosition.column)
+    snapshot.cell(externalLinkPosition.row, externalLinkPosition.column)
       ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
-      driver
-        .snapshot()
-        .cell(missingLinkPaintPosition.row, missingLinkPaintPosition.column)
-        ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error),
+      snapshot.cell(
+        missingLinkPaintPosition.row,
+        missingLinkPaintPosition.column,
+      )?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error),
     'a missing relative link paints red while an external link stays normal',
   );
   driver.sendMouse({

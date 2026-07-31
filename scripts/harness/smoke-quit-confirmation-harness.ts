@@ -231,11 +231,16 @@ async function driveScale(
     const palette =
       theme === 'dark' ? ThemePalettes.Class.DARK : ThemePalettes.Class.LIGHT;
     let snapshot = await driver.awaitGridCondition(
-      `scale ${lineCount}: title, body, buttons, and shared close glyph paint`,
+      `scale ${lineCount}: title, body, buttons, shared close glyph, and focused No selection tone paint`,
       (candidate) =>
         candidate.findText('Are you sure you want to quit?') !== null &&
         candidate.findText('Yes') !== null &&
         candidate.findText('No') !== null &&
+        focusedButtonUsesTheme(
+          candidate,
+          'No',
+          parseRgbColor(palette.selection),
+        ) &&
         candidate
           .rowText(bounds.closeButtonTop)
           .slice(
