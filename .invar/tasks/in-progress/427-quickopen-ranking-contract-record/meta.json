@@ -1,0 +1,15 @@
+{
+  "task": 427,
+  "slug": "quickopen-ranking-contract-record",
+  "branch": "fleet/427-quickopen-ranking-contract-record",
+  "worktree": ".invar/worktrees/427-quickopen-ranking-contract-record",
+  "tmuxSession": "invar/427-quickopen-ranking-contract-record",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-427-quickopen-ranking-contract-record.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "fe0f2633fa015a17cd67f39bdcfa20c187235733",
+  "startedAt": "2026-07-31T14:31:57-04:00"
+}

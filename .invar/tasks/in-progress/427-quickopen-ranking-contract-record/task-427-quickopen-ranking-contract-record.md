@@ -1,7 +1,7 @@
 # Task 427 — record the quick open ranking order as a contract
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
