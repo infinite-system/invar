@@ -1,6 +1,6 @@
 # #395 — Database Connect can focus a hidden path input
 
-State: IN-PROGRESS
+State: COMPLETED — 300b5bff — Already-fixed by #404; builder honestly declined to fabricate and ratcheted the repair into contracts instead. Bycatch: hook-vs-brief conflict (known, no task); one unreferenced ui.lattice record noted pre-existing.
 Priority: user-directed
 Engine: codex
 Environment: linux
