@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (19)
-- #413 [invariant-field-web-app](.invar/tasks/active/413-invariant-field-web-app/task-413-invariant-field-web-app.md)
+## IN-PROGRESS (1)
+- #413 [invariant-field-web-app](.invar/tasks/in-progress/413-invariant-field-web-app/task-413-invariant-field-web-app.md)  [building]
+  `tmux attach -t invar/413-invariant-field-web-app`
+
+## USER-DIRECTED (18)
 - #412 [monitoring-lsp-cpu-profile](.invar/tasks/active/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)

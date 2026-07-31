@@ -1,0 +1,15 @@
+{
+  "task": 413,
+  "slug": "invariant-field-web-app",
+  "branch": "fleet/413-invariant-field-web-app",
+  "worktree": ".invar/worktrees/413-invariant-field-web-app",
+  "tmuxSession": "invar/413-invariant-field-web-app",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-413-invariant-field-web-app.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "423aa3c223ed85e88ec564f6cd5dfb39cc15e12c",
+  "startedAt": "2026-07-30T23:29:06-04:00"
+}
