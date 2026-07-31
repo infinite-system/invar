@@ -1,7 +1,7 @@
 # Task 422 — three records still name removed PanelHeading artifacts
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

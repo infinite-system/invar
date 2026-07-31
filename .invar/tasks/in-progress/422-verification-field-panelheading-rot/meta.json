@@ -1,0 +1,15 @@
+{
+  "task": 422,
+  "slug": "verification-field-panelheading-rot",
+  "branch": "fleet/422-verification-field-panelheading-rot",
+  "worktree": ".invar/worktrees/422-verification-field-panelheading-rot",
+  "tmuxSession": "invar/422-verification-field-panelheading-rot",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-422-verification-field-panelheading-rot.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "5cf431bb75cc239f7d7a1c530d2d3d9116294621",
+  "startedAt": "2026-07-31T07:32:07-04:00"
+}

@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #422 [verification-field-panelheading-rot](.invar/tasks/in-progress/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md)  [building]
+  `tmux attach -t invar/422-verification-field-panelheading-rot`
 - #412 [monitoring-lsp-cpu-profile](.invar/tasks/in-progress/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)  [building]
   `tmux attach -t invar/412-monitoring-lsp-cpu-profile`
 
@@ -95,8 +97,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (36)
-- #422 [verification-field-panelheading-rot](.invar/tasks/active/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md)
+## ARCHITECTURE-HYGIENE (35)
 - #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/active/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
