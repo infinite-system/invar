@@ -1431,11 +1431,15 @@ class $RootView {
             .actionsForSurface('panelSeparator')
             .flatMap((command) => {
               const iconName = command.actionIcons?.panelSeparator;
+              // invariant: Advertised bindings are deliverable bindings (src/modules/keybindings/keybindings.invariants.md)
+              const bindingHint = keybindings.bindingHint(command.id, 'editor');
               return iconName
                 ? [
                     {
                       commandId: command.id,
-                      title: command.title,
+                      title: bindingHint
+                        ? `${command.title} (${bindingHint})`
+                        : command.title,
                       icon: theme.actionIcons[iconName],
                       toggled: command.toggled?.() ?? false,
                     },

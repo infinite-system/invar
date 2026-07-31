@@ -712,7 +712,7 @@ class $KeybindingDefaults {
       // Alt+Z toggles word wrap (VS Code parity; `alt` matches the event's option/meta slot).
       {
         chord: { key: 'z', alt: true },
-        action: 'editor.toggleWordWrap',
+        action: 'view.toggleWordWrap',
         context: 'editor',
       },
       // Ctrl+Shift+[/] are deliverable through both input parsers, but already cycle WORKSPACES.
