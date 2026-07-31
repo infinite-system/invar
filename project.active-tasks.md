@@ -92,7 +92,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (36)
+## ARCHITECTURE-HYGIENE (37)
+- #425 [monitoring-lsp-contract-records](.invar/tasks/active/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md)
 - #423 [panelheading-rot-remainder-sweep](.invar/tasks/active/423-panelheading-rot-remainder-sweep/task-423-panelheading-rot-remainder-sweep.md)
 - #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/active/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
