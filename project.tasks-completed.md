@@ -6,6 +6,7 @@ derived from `.invar/tasks/completed/`. Each line: number, name, and the landing
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
 - #416 [field-v2-design-language-research](.invar/tasks/completed/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md) — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)
+- #415 [field-v2-foundation-vue-sfc](.invar/tasks/completed/415-field-v2-foundation-vue-sfc/task-415-field-v2-foundation-vue-sfc.md) — c25b135f — Field v2 foundation: Vue SFC on Bun + ivue + strict conventions + tokens seam (v1 untouched)
 - #413 [invariant-field-web-app](.invar/tasks/completed/413-invariant-field-web-app/task-413-invariant-field-web-app.md) — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/completed/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md) — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
 - #408 [workspace-state-isolation](.invar/tasks/completed/408-workspace-state-isolation/task-408-workspace-state-isolation.md) — 68fcad24 — workspace state isolation: six leaks closed, geometry workspace-owned, v2 panel covered
