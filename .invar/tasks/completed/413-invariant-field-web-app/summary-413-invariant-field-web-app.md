@@ -28,4 +28,8 @@ What happened:
   found and fixed the same hour; both steers ultimately confirmed
   LANDED at the rollout; one false STEER_LOST corrected.
 
-Run it: cd tools/invariant-field && bun run serve (see its README).
+Run it (verified by driving): bun tools/invariant-field/server.ts from
+the repo root -> http://localhost:4313/. First run rebuilds the
+gitignored snapshot store (~3 min, 308 snapshots); later runs are
+instant unless HEAD moved. (An earlier draft of this summary said
+'bun run serve' — an instruction written without running it.)
