@@ -1,7 +1,7 @@
 # Task 416 — Field v2 design language: UI and UX research plus spec
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)
 Engine: codex
 Environment: linux
 Model: 5.6-sol
