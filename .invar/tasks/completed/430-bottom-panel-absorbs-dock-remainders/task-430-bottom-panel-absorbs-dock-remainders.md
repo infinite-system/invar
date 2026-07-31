@@ -1,7 +1,7 @@
 # Task 430 — the bottom panel absorbs every dock remainder
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 483725e4 — The user's layout complaint is closed at the composition seam with the four-combination proof. Bycatch converted to #431 before landing.
 Engine: codex
 Environment: linux
 Model: 5.6-sol

@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/in-progress/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md)  [building]
-  `tmux attach -t invar/430-bottom-panel-absorbs-dock-remainders`
-
 ## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -91,7 +87,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (33)
+## ARCHITECTURE-HYGIENE (34)
+- #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
 - #405 [panelhost-hardcoded-kind-tables](.invar/tasks/active/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)
@@ -130,7 +127,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 167 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 168 — full log: project.tasks-completed.md)
+- #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/completed/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md) — 483725e4 — The user's layout complaint is closed at the composition seam with the four-combination proof. Bycatch converted to #431 before landing.
 - #429 [layout-switcher-icon-tooltip](.invar/tasks/completed/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md) — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
 - #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/completed/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md) — d5c4ec0c — The contract that blocked two landings today is now genuinely count-based. No bycatch.
 - #427 [quickopen-ranking-contract-record](.invar/tasks/completed/427-quickopen-ranking-contract-record/task-427-quickopen-ranking-contract-record.md) — dbe86131 — Ranking tiers now contract-recorded with annotation. Bycatch: only known punctuation notes.
@@ -145,4 +143,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
 - #417 [field-v2-3d-field-timeline-playout](.invar/tasks/completed/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md) — 508616e9 — Field v2: exact 2D + constrained 3D + timeline playout (one geometry generator; no ambient loop)
 - #416 [field-v2-design-language-research](.invar/tasks/completed/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md) — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)
-- #415 [field-v2-foundation-vue-sfc](.invar/tasks/completed/415-field-v2-foundation-vue-sfc/task-415-field-v2-foundation-vue-sfc.md) — c25b135f — Field v2 foundation: Vue SFC on Bun + ivue + strict conventions + tokens seam (v1 untouched)
