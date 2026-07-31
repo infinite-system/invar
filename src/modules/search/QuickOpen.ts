@@ -501,14 +501,22 @@ class $QuickOpen {
 
     const query = this.query.value;
     const scoredMatches: QuickOpenMatch[] = [];
+    const exactBasenameMatchPaths = new Set<string>();
+    const normalizedQuery = query.toLowerCase();
 
     for (const filePath of this.projectFiles) {
       const score = CommandScoring.Class.fuzzyScore(query, filePath);
-      if (score >= 0) scoredMatches.push({ path: filePath, score });
+      if (score < 0) continue;
+      scoredMatches.push({ path: filePath, score });
+      if (Files.Class.basename(filePath).toLowerCase() === normalizedQuery) {
+        exactBasenameMatchPaths.add(filePath);
+      }
     }
 
     scoredMatches.sort(
       (firstMatch, secondMatch) =>
+        Number(exactBasenameMatchPaths.has(secondMatch.path)) -
+          Number(exactBasenameMatchPaths.has(firstMatch.path)) ||
         firstMatch.score - secondMatch.score ||
         (firstMatch.path < secondMatch.path
           ? -1

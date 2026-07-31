@@ -206,6 +206,30 @@ describe('QuickOpen', () => {
     expect(quickOpen.selectedIndex.value).toBe(0);
   });
 
+  test('an exact basename ranks before a better fuzzy path score', async () => {
+    const exactBasename =
+      'report-299-structure-filter-uses-shared-input-generator.md';
+    const taskDirectory =
+      'completed/299-structure-filter-uses-shared-input-generator';
+    const exactPath = `${taskDirectory}/${exactBasename}`;
+    const fuzzySiblingPath = `${taskDirectory}/task-299-structure-filter-uses-shared-input-generator.md`;
+    const quickOpen = new QuickOpen.Class({
+      enumerateProjectFiles: async () => [fuzzySiblingPath, exactPath],
+    });
+    await quickOpen.show('/project');
+
+    quickOpen.setQuery(exactBasename.toUpperCase());
+
+    expect(quickOpen.matches.value.map((match) => match.path)).toEqual([
+      exactPath,
+      fuzzySiblingPath,
+    ]);
+    expect(quickOpen.matches.value[0]!.score).toBeGreaterThan(
+      quickOpen.matches.value[1]!.score,
+    );
+    expect(quickOpen.selectedIndex.value).toBe(0);
+  });
+
   test('moveSelection wraps at both ends and stays unselected when there are no matches', async () => {
     const quickOpen = new QuickOpen.Class({
       enumerateProjectFiles: fixedProjectFileEnumerator(),
