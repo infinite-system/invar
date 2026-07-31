@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #425 [monitoring-lsp-contract-records](.invar/tasks/in-progress/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md)  [building]
+  `tmux attach -t invar/425-monitoring-lsp-contract-records`
 - #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/in-progress/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md)  [building]
   `tmux attach -t invar/421-field-scanner-mixed-snapshot-sources`
 
@@ -95,9 +97,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (36)
+## ARCHITECTURE-HYGIENE (35)
 - #426 [tabbar-hardcoded-glyph-breach](.invar/tasks/active/426-tabbar-hardcoded-glyph-breach/task-426-tabbar-hardcoded-glyph-breach.md)
-- #425 [monitoring-lsp-contract-records](.invar/tasks/active/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
 - #405 [panelhost-hardcoded-kind-tables](.invar/tasks/active/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)

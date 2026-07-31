@@ -1,7 +1,7 @@
 # Task 425 — record the LSP monitoring invariants #412 proved but never wrote
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
