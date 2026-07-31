@@ -41,6 +41,7 @@ function state(
     documentRows: [],
     retainedDocumentBytes: 0,
     renderLoadRows: [],
+    languageServerRows: [],
     renderRequestsSinceOpen: 0,
     sampleIntervalSeconds: 1,
     sampleCount: 3,
@@ -95,6 +96,34 @@ describe('MonitoringPaneRenderer', () => {
     expect(painted).toContain('cpu  1.3% of one core');
     expect(painted).toContain('delta over 5s');
     expect(painted).toContain('pid 4242');
+  });
+
+  test('the LSP section names each server PID, delta CPU, resident set, and gone state', () => {
+    const painted = paintedRows(
+      state({
+        languageServerRows: [
+          {
+            serverName: 'tsgo',
+            processId: 4243,
+            state: 'running',
+            processorPercent: 12.25,
+            residentSetBytes: 84 * 1024 * 1024,
+          },
+          {
+            serverName: 'rust-analyzer',
+            processId: 4244,
+            state: 'gone',
+            processorPercent: null,
+            residentSetBytes: null,
+          },
+        ],
+      }),
+    ).join('\n');
+    expect(painted).toContain('lsp 2 servers');
+    expect(painted).toContain('tsgo pid 4243');
+    expect(painted).toContain('cpu 12.3% rss 84.0 MB');
+    expect(painted).toContain('rust-analyzer pid 4244');
+    expect(painted).toContain('GONE');
   });
 
   test('without a census the pane states why heap-used is not the retained truth', () => {

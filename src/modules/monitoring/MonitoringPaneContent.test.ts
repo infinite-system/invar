@@ -26,6 +26,8 @@ function createStats(): MonitoringStats.Model {
     ],
     ownIdentifier: () => 'monitoring',
     logFilePath: () => null,
+    languageServerProcesses: () => [],
+    processSampler: { sample: () => null },
   });
 }
 

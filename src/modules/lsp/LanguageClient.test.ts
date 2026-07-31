@@ -3,6 +3,7 @@ import { LanguageClient } from './LanguageClient';
 import { TextDocument } from '../text/TextDocument';
 import { StatusChannel } from '../system/StatusChannel';
 import { FakeLspProcess, FakeProvider, flush } from './lsp.fakes.test';
+import { LanguageServerProcessRegistry } from './LanguageServerProcessRegistry';
 
 const ROOT = '/tmp/fake-lsp-root';
 
@@ -60,6 +61,10 @@ test('opening a supported document lazily starts the server and reaches ready', 
     expect(methods).toContain('textDocument/didOpen');
     // The live subprocess pid is published on the status channel.
     expect(StatusChannel.Class.snapshot.subprocessPids).toContain(5002);
+    expect(LanguageServerProcessRegistry.Class.entries()).toContainEqual({
+      serverName: 'fake-lsp',
+      processId: 5002,
+    });
   } finally {
     await client.dispose();
   }
@@ -164,6 +169,10 @@ test('dispose kills the subprocess, stops the transport, and drops the published
   const exitCode = await fake.exited; // no orphan — the child has exited
   expect(exitCode).toBe(0);
   expect(StatusChannel.Class.snapshot.subprocessPids).not.toContain(5004);
+  expect(LanguageServerProcessRegistry.Class.entries()).not.toContainEqual({
+    serverName: 'fake-lsp',
+    processId: 5004,
+  });
 });
 
 test('a missing server executable degrades to unavailable without throwing', async () => {
