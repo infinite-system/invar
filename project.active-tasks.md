@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #430 [bottom-panel-span-centered-layout](.invar/tasks/in-progress/430-bottom-panel-span-centered-layout/task-430-bottom-panel-span-centered-layout.md)  [building]
+  `tmux attach -t invar/430-bottom-panel-span-centered-layout`
 - #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/in-progress/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md)  [building]
   `tmux attach -t invar/428-fold-dense-rows-zero-margin-floor`
 
