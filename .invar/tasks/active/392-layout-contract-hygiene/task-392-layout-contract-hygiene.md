@@ -23,3 +23,11 @@ ui.invariants.md cites the DELETED PanelSeparatorRow in three places:
 Mechanism near line 372, Evidence near line 389, Verification near line
 400 (names a test file that cannot run). Repair citations to PanelTabBar
 equivalents.
+
+## Folded in from #391 bycatch (2026-07-31)
+
+Sibling record "Only a drag in progress moves the size"
+(layout.invariants.md) has wording narrower than its mechanism:
+construction and explicit host synchronization (the #391 seam,
+88e01cc9) also move the stored report. Refine the record's scope to
+cover all three movers.

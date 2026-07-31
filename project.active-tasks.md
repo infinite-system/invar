@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #429 [layout-switcher-icon-tooltip](.invar/tasks/in-progress/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md)  [building]
+  `tmux attach -t invar/429-layout-switcher-icon-tooltip`
 - #391 [splitter-bounds-coherence](.invar/tasks/in-progress/391-splitter-bounds-coherence/task-391-splitter-bounds-coherence.md)  [building]
   `tmux attach -t invar/391-splitter-bounds-coherence`
 
