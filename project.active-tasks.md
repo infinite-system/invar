@@ -6,11 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/in-progress/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/382-agent-pane-resume-dialog-unreachable`
-
-## USER-DIRECTED (13)
+## USER-DIRECTED (14)
+- #391 [splitter-bounds-coherence](.invar/tasks/active/391-splitter-bounds-coherence/task-391-splitter-bounds-coherence.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
@@ -25,7 +22,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (26)
+## VERIFICATION-INTEGRITY (27)
+- #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/active/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)
 - #407 [keybinding-conflict-detection](.invar/tasks/active/407-keybinding-conflict-detection/task-407-keybinding-conflict-detection.md)
 - #399 [splitter-regions-stale-rectangle](.invar/tasks/active/399-splitter-regions-stale-rectangle/task-399-splitter-regions-stale-rectangle.md)
@@ -91,7 +89,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (35)
+## ARCHITECTURE-HYGIENE (34)
 - #427 [quickopen-ranking-contract-record](.invar/tasks/active/427-quickopen-ranking-contract-record/task-427-quickopen-ranking-contract-record.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
@@ -100,7 +98,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #400 [script-to-src-seam-governance](.invar/tasks/active/400-script-to-src-seam-governance/task-400-script-to-src-seam-governance.md)
 - #394 [panel-contract-refinements-apply](.invar/tasks/active/394-panel-contract-refinements-apply/task-394-panel-contract-refinements-apply.md)
 - #392 [layout-contract-hygiene](.invar/tasks/active/392-layout-contract-hygiene/task-392-layout-contract-hygiene.md)
-- #391 [splitter-bounds-coherence](.invar/tasks/active/391-splitter-bounds-coherence/task-391-splitter-bounds-coherence.md)
 - #378 [worktree-path-citations-die-at-landing](.invar/tasks/active/378-worktree-path-citations-die-at-landing/task-378-worktree-path-citations-die-at-landing.md)
 - #377 [path-confinement-needs-a-record](.invar/tasks/active/377-path-confinement-needs-a-record/task-377-path-confinement-needs-a-record.md)
 - #372 [separator-painter-ignores-glyph-tier](.invar/tasks/active/372-separator-painter-ignores-glyph-tier/task-372-separator-painter-ignores-glyph-tier.md)
@@ -132,7 +129,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 162 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 163 — full log: project.tasks-completed.md)
 - #426 [tabbar-hardcoded-glyph-breach](.invar/tasks/completed/426-tabbar-hardcoded-glyph-breach/task-426-tabbar-hardcoded-glyph-breach.md) — 5b761903 — Theme contract's one known breach closed; vocabulary slot at three tiers, driven at each; no visual change at the default tier. Bycatch: none actionable (single unreproduced keystroke drop; known checker notes).
 - #425 [monitoring-lsp-contract-records](.invar/tasks/completed/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md) — db19dec4 — Two proven disciplines now recorded with annotations at enforcement points; scope refine applied. Bycatch (stale drive-command paths) fixed as follow-up doc commit on main.
 - #424 [quit-smoke-theme-tone-wait](.invar/tasks/completed/424-quit-smoke-theme-tone-wait/task-424-quit-smoke-theme-tone-wait.md) — 41715591 — Ten assert-after-switch sites converted to condition waits across four smokes; census committed; both arms proven by plants; gate green on the exact tip. Bycatch: brief's invariants-in-scope was wrong (conductor error, acknowledged); hook-vs-brief tooling conflict noted, no task needed.

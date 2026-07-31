@@ -1,6 +1,6 @@
 # #382 — claude's resume dialog is cut off in a small agent pane
 
-State: IN-PROGRESS
+State: COMPLETED — e4722005 — Experiment answered: stale sizing and clipping refuted by probe table; claude-side layout remains — user's real terminal is the final check. Resize-parity ratchet landed. First gate red was fold-dense rowsTravelled=995 vs floor 1000 (zero-margin bound, FPS healthy, branch touched no src/) -> filed #428; rerun green on the identical tip.
 Priority: user-directed
 Engine: codex
 Environment: linux

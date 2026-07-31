@@ -1,11 +1,20 @@
 # #391 — splitter size writes and bounds stay coherent
 
 State: ACTIVE
-Priority: architecture-hygiene
+Priority: user-directed
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: medium
+Effort: high
+
+## User report (2026-07-31, verbatim)
+
+> Can we fix layout rendering when you resize it, i think there was a
+> task for it
+> layout left/right panes get stuck in smaller mode
+
+Resize the window smaller then larger: left/right panes stay stuck at
+the small size. Reproduce by DRIVING this exact path first.
 
 ## Origin — two #383 bycatch items at the same seam (read, not driven)
 
