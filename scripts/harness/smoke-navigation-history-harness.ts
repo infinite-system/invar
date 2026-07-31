@@ -9,6 +9,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
+import { commandBarLayoutSwitcherPosition } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(
@@ -137,26 +138,18 @@ try {
   );
   let snapshot = await driver.awaitGridCondition(
     'the workspace command bar renders the navigation and layouts controls',
-    (candidate) =>
-      candidate.findText(' layouts ') !== null &&
-      candidate
-        .textRows()
-        .some(
-          (rowText) =>
-            rowText.includes('‹') &&
-            rowText.includes('›') &&
-            rowText.includes(' layouts '),
-        ),
+    (candidate) => {
+      const layoutSwitcherPosition =
+        commandBarLayoutSwitcherPosition(candidate);
+      if (!layoutSwitcherPosition) return false;
+      const rowText = candidate.rowText(layoutSwitcherPosition.row);
+      return rowText.includes('‹') && rowText.includes('›');
+    },
   );
-  let commandBarRow = -1;
-  let backColumn = -1;
-  for (let row = 0; row < snapshot.rows; row++) {
-    const rowText = snapshot.rowText(row);
-    if (!rowText.includes(' layouts ') || !rowText.includes('‹')) continue;
-    commandBarRow = row;
-    backColumn = rowText.indexOf('‹');
-    break;
-  }
+  const layoutSwitcherPosition = commandBarLayoutSwitcherPosition(snapshot);
+  const commandBarRow = layoutSwitcherPosition?.row ?? -1;
+  const backColumn =
+    commandBarRow >= 0 ? snapshot.rowText(commandBarRow).indexOf('‹') : -1;
   HarnessSmoke.Class.requireCondition(
     commandBarRow >= 0 && backColumn >= 0,
     `command-bar buttons rendered (‹ at col ${backColumn}, row ${commandBarRow})`,

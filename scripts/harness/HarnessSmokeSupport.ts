@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 
@@ -101,6 +102,29 @@ export function markerPosition(
   if (!position)
     throw new Error(`Marker is not visible: ${marker}\n${snapshot.text()}`);
   return position;
+}
+
+/** The workspace layout switcher is the middle cell of its three-cell right-edge segment.
+ *  Resolve its mark through the theme vocabulary so a ladder change does not rewrite each smoke. */
+export function commandBarLayoutSwitcherPosition(
+  snapshot: HarnessSnapshot.Model,
+): { row: number; column: number } | null {
+  const layoutSwitcherGlyphs = new Set(
+    (['nerd', 'unicode', 'ascii'] as const).map((glyphLevel) =>
+      ThemeIcons.Class.glyphFor(glyphLevel, 'layoutSwitcher'),
+    ),
+  );
+  const layoutSwitcherColumn = snapshot.columns - 2;
+  for (let row = 0; row < snapshot.rows; row++) {
+    if (
+      layoutSwitcherGlyphs.has(
+        snapshot.cell(row, layoutSwitcherColumn)?.characters ?? '',
+      )
+    ) {
+      return { row, column: layoutSwitcherColumn };
+    }
+  }
+  return null;
 }
 
 export function clickMarker(

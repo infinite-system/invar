@@ -204,6 +204,10 @@ class $ThemeIcons {
         mark: unicodeVocabulary.activityAccentBar,
         owner: 'the diff and activity accent bar',
       },
+      {
+        mark: unicodeVocabulary.layoutSwitcher,
+        owner: 'the workspace layout switcher',
+      },
       { mark: unicodeVocabulary.panelAdd, owner: 'panel add' },
       { mark: unicodeVocabulary.panelExpand, owner: 'panel expand' },
       { mark: unicodeVocabulary.panelRestore, owner: 'panel restore' },
@@ -450,6 +454,7 @@ class $ThemeIcons {
   // Semantic glyph slots are the indirection between behavior and vocabulary. Consumers name what
   // a cell means; this table alone chooses how that meaning looks at each capability tier.
   // invariant: Appearance is data with a capability fallback (project.invariants.md)
+  // invariant: The glyph ladder degrades icons single-cell and legible (src/modules/theme/theme.invariants.md)
   protected static get INTERFACE_GLYPH_VOCABULARIES(): Record<
     GlyphLevel,
     InterfaceGlyphVocabulary
@@ -463,6 +468,7 @@ class $ThemeIcons {
         activityTasks: '\u{f04b}',
         activitySettings: '\u{f013}',
         activityAccentBar: '▎',
+        layoutSwitcher: '\u{f009}',
         panelAdd: '\u{f067}',
         panelExpand: '\u{f065}',
         panelRestore: '\u{f066}',
@@ -499,6 +505,7 @@ class $ThemeIcons {
         activityTasks: '▶',
         activitySettings: '⚙',
         activityAccentBar: '▎',
+        layoutSwitcher: '▧',
         panelAdd: '+',
         panelExpand: '↗',
         panelRestore: '↙',
@@ -522,6 +529,7 @@ class $ThemeIcons {
         activityTasks: 'P',
         activitySettings: '*',
         activityAccentBar: '|',
+        layoutSwitcher: 'L',
         panelAdd: '+',
         panelExpand: '>',
         panelRestore: '<',
@@ -931,6 +939,7 @@ export interface InterfaceGlyphVocabulary {
   activityTasks: string;
   activitySettings: string;
   activityAccentBar: string;
+  layoutSwitcher: string;
   panelAdd: string;
   panelExpand: string;
   panelRestore: string;

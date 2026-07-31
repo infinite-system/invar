@@ -27,6 +27,7 @@ import type { Tooltip } from './Tooltip';
 
 // invariant: Command bar paint and hit geometry are identical (src/modules/ui/ui.invariants.md)
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
+// invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 class $CommandBar {
   readonly bar: TextRenderable;
   protected currentGeometry: CommandBarGeometry = {
@@ -46,14 +47,18 @@ class $CommandBar {
     this.wirePointerInput();
   }
 
-  static layoutGeometry(width: number, folderName: string): CommandBarGeometry {
+  static layoutGeometry(
+    width: number,
+    folderName: string,
+    layoutSwitcherGlyph: string,
+  ): CommandBarGeometry {
     const boundedWidth = Math.max(1, Math.floor(width));
-    const layoutsLabel = ' layouts ';
-    const layoutsStartColumn = Math.max(
+    const layoutSwitcherLabel = ` ${layoutSwitcherGlyph} `;
+    const layoutSwitcherStartColumn = Math.max(
       0,
-      boundedWidth - TextCoordinates.Class.lineWidth(layoutsLabel),
+      boundedWidth - TextCoordinates.Class.lineWidth(layoutSwitcherLabel),
     );
-    const availableCenterColumns = Math.max(1, layoutsStartColumn);
+    const availableCenterColumns = Math.max(1, layoutSwitcherStartColumn);
     const fixedNavigationColumns = 6;
     const maximumFolderColumns = Math.max(
       1,
@@ -79,7 +84,7 @@ class $CommandBar {
       0,
       Math.min(
         centeredStartColumn,
-        Math.max(0, layoutsStartColumn - centerWidth),
+        Math.max(0, layoutSwitcherStartColumn - centerWidth),
       ),
     );
     const backEndColumn =
@@ -108,15 +113,15 @@ class $CommandBar {
         endColumn: folderEndColumn,
       },
     ];
-    if (layoutsStartColumn < boundedWidth) {
+    if (layoutSwitcherStartColumn < boundedWidth) {
       segments.push({
         control: 'layouts',
         label: TextCoordinates.Class.displayColumnWindow(
-          layoutsLabel,
+          layoutSwitcherLabel,
           0,
-          boundedWidth - layoutsStartColumn,
+          boundedWidth - layoutSwitcherStartColumn,
         ),
-        startColumn: layoutsStartColumn,
+        startColumn: layoutSwitcherStartColumn,
         endColumn: boundedWidth,
       });
     }
@@ -132,7 +137,11 @@ class $CommandBar {
       Files.Class.basename(this.dependencies.workspaceSet.active.root) ||
       this.dependencies.workspaceSet.active.root ||
       '.';
-    this.currentGeometry = $CommandBar.layoutGeometry(width, folderName);
+    this.currentGeometry = $CommandBar.layoutGeometry(
+      width,
+      folderName,
+      this.dependencies.theme.glyphVocabulary.layoutSwitcher,
+    );
     this.bar.content = this.renderGeometry(this.currentGeometry);
     this.bar.fg = this.dependencies.theme.palette.fg;
   }

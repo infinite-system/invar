@@ -184,6 +184,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'activitySearch',
     'activityTasks',
     'activitySettings',
+    'layoutSwitcher',
     'panelAdd',
     'panelStack',
     'panelExpand',
@@ -205,6 +206,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f002}',
       '\u{f04b}',
       '\u{f013}',
+      '\u{f009}',
       '\u{f067}',
       '\u{f0c9}',
       '\u{f065}',
@@ -225,6 +227,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '⌕',
       '▶',
       '⚙',
+      '▧',
       '+',
       '▦',
       '↗',
@@ -245,6 +248,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '/',
       'P',
       '*',
+      'L',
       '+',
       '#',
       '>',
@@ -293,6 +297,24 @@ test('the tasks activity glyph reads as run through every fallback tier', () => 
   expect(ThemeIcons.Class.markOwnersFor('▶')).toEqual(['activity: Tasks']);
 });
 
+test('the layout switcher has a legible one-cell fallback at every tier', () => {
+  const glyphLevels = ['nerd', 'unicode', 'ascii'] as const;
+  const layoutSwitcherGlyphs = glyphLevels.map((glyphLevel) =>
+    ThemeIcons.Class.glyphFor(glyphLevel, 'layoutSwitcher'),
+  );
+
+  expect(layoutSwitcherGlyphs).toEqual(['\u{f009}', '▧', 'L']);
+  expect(
+    layoutSwitcherGlyphs.every(
+      (layoutSwitcherGlyph) =>
+        TextCoordinates.Class.lineWidth(layoutSwitcherGlyph) === 1,
+    ),
+  ).toBe(true);
+  expect(ThemeIcons.Class.markOwnersFor('▧')).toEqual([
+    'the workspace layout switcher',
+  ]);
+});
+
 test('activity and panel control glyphs stay pairwise distinct at every tier', () => {
   const distinctGlyphSlots = [
     'activityFiles',
@@ -301,6 +323,7 @@ test('activity and panel control glyphs stay pairwise distinct at every tier', (
     'activitySearch',
     'activityTasks',
     'activitySettings',
+    'layoutSwitcher',
     'panelAdd',
     'panelStack',
     'panelExpand',
