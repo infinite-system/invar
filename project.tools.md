@@ -270,7 +270,7 @@ KNOWN RESULT (2026-07-30, 20 files): resident set 230.6 → 234.1 → 253.8 → 
 heap after collection moved only 21.9 → 27.9 MB and retained document bytes returned to zero. The
 resident set is allocator high-water, not retention — read the census column, never the RSS column.
 
-### `bun .invar/tasks/in-progress/412-monitoring-lsp-cpu-profile/412-lsp-cpu-profile-drive.ts [line-count]`
+### `bun .invar/tasks/completed/412-monitoring-lsp-cpu-profile/412-lsp-cpu-profile-drive.ts [line-count]`
 Drives a real TypeScript file, opens Monitoring, waits for an idle LSP delta, then edits the file.
 It prints the ordered server row for three later samples and the peak processor use.
 Run it with `10` and `10000` for source-size parity.

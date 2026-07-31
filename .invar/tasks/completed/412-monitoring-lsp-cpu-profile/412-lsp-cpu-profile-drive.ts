@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // This probe drives a real TypeScript server and prints its Monitoring CPU rows before and after an
-// editor paste. Run `bun .invar/tasks/in-progress/412-monitoring-lsp-cpu-profile/412-lsp-cpu-profile-drive.ts 10`
+// editor paste. Run `bun .invar/tasks/completed/412-monitoring-lsp-cpu-profile/412-lsp-cpu-profile-drive.ts 10`
 // and repeat with `10000` for scale parity. The output shows the idle row, three ordered post-edit
 // samples, and their peak. A higher post-edit peak means the delta sampler observed server work.
 // The positive-control row comes from a child that completes 30,000,000 counted operations between
