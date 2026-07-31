@@ -1,0 +1,15 @@
+{
+  "task": 424,
+  "slug": "quit-smoke-theme-tone-wait",
+  "branch": "fleet/424-quit-smoke-theme-tone-wait",
+  "worktree": ".invar/worktrees/424-quit-smoke-theme-tone-wait",
+  "tmuxSession": "invar/424-quit-smoke-theme-tone-wait",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-424-quit-smoke-theme-tone-wait.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "21ff1a876895b7cfdee53adc9d59f77761aae9f5",
+  "startedAt": "2026-07-31T08:31:08-04:00"
+}

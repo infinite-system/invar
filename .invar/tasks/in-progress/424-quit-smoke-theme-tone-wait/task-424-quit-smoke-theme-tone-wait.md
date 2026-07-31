@@ -1,7 +1,7 @@
 # Task 424 — quit-confirmation smoke asserts theme tone before repaint under load
 
 Priority: flake-evidence
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #424 [quit-smoke-theme-tone-wait](.invar/tasks/in-progress/424-quit-smoke-theme-tone-wait/task-424-quit-smoke-theme-tone-wait.md)  [building]
+  `tmux attach -t invar/424-quit-smoke-theme-tone-wait`
+
 ## USER-DIRECTED (17)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
@@ -53,8 +57,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (24)
-- #424 [quit-smoke-theme-tone-wait](.invar/tasks/active/424-quit-smoke-theme-tone-wait/task-424-quit-smoke-theme-tone-wait.md)
+## FLAKE-EVIDENCE (23)
 - #374 [word-delete-harness-alt-delete-timeout](.invar/tasks/active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md)
 - #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
 - #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
