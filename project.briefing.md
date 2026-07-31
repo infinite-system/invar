@@ -4,7 +4,13 @@
 
 ### OPERATIVE STATE
 
-FIELD V2 PROGRAM: COMPLETE (all six landed; see #419 summary). The
+DAY CHAIN 2026-07-31 (all landed, fleet idle): #414 354d1527,
+#422 ea808dcb, #412 22e667f2 (LSP CPU rows), #423 e92011c0, #424
+41715591 (ten condition-wait fixes; gates stopped flaking), #425
+db19dec4, #421 b327cc93 (one-commit snapshots), #426 5b761903 (glyph
+breach closed). Fresh queue EMPTY; 17 held user-directed tasks await
+user review. Watcher truth: fleet-watch liveness = heartbeat file,
+NEVER TaskList (family 12). FIELD V2 PROGRAM: COMPLETE (all six landed; see #419 summary). The
 goal hook's condition is met. Remaining follow-ups: #421 (scanner
 mixed sources), #414, #412, and the held queue. Original goal — make the Invariant Field app look awesome, game-like,
 reimagined; 3D version; code lenses with TS/Vue syntax highlighting
