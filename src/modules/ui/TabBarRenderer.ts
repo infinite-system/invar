@@ -94,7 +94,7 @@ class $TabBarRenderer {
           .slice(0, labelWidth)
           .padEnd(labelWidth, ' ');
         const closeGlyph = workspaceTabs.length > 1 ? context.closeGlyph : ' ';
-        const rowText = ` ${workspaceTab.active ? '●' : ' '} ${label}${closeGlyph} `;
+        const rowText = ` ${workspaceTab.active ? context.tabMarkerGlyph : ' '} ${label}${closeGlyph} `;
         const styledRow = fg(
           closeHovered
             ? palette.error
@@ -215,7 +215,7 @@ class $TabBarRenderer {
           : null;
       const maximumLabelWidth = Math.max(1, measuredWorkspaceTab.width - 6);
       const label = this.ellipsize(workspaceTab.label, maximumLabelWidth);
-      const tabText = ` ${workspaceTab.active ? '●' : ' '} ${label} `;
+      const tabText = ` ${workspaceTab.active ? context.tabMarkerGlyph : ' '} ${label} `;
       const styledTab = fg(workspaceTab.active ? palette.fg : palette.dim)(
         tabText,
       );
@@ -413,7 +413,7 @@ class $TabBarRenderer {
       chunks.push(paint(` ${entry.name} `, labelColor));
       chunks.push(
         paint(
-          entry.tab.dirty ? '●' : ' ',
+          entry.tab.dirty ? context.tabMarkerGlyph : ' ',
           isActive ? palette.warning : palette.accent,
         ),
       );
@@ -640,6 +640,8 @@ export interface WorkspaceTabBarRenderContext {
   rendererHeight: number;
   /** The tier-aware close token shared with panel headings and the panel contents list. */
   closeGlyph: string;
+  /** The tier-aware marker shared by active workspace tabs and dirty buffer tabs. */
+  tabMarkerGlyph: string;
 }
 
 export interface BufferTabBarRenderContext {
@@ -652,6 +654,8 @@ export interface BufferTabBarRenderContext {
   separatorGlyph: string;
   /** The tier-aware close token shared with panel headings and the panel contents list. */
   closeGlyph: string;
+  /** The tier-aware marker shared by active workspace tabs and dirty buffer tabs. */
+  tabMarkerGlyph: string;
   hover: TabBarHover;
   closePressed: number | null;
   arrowPressed: 'arrowLeft' | 'arrowRight' | null;

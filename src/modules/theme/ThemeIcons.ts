@@ -170,9 +170,7 @@ class $ThemeIcons {
   // incomplete is a claim that cannot fail.
   //
   // It is DERIVED from the vocabularies that paint the marks, so swapping a glyph cannot leave this
-  // table describing the previous one. The single literal is `●`, and that is itself the finding: the
-  // dirty/active tab marker is written inside `TabBarRenderer` instead of being a theme slot, so the
-  // theme cannot read it from its owner.
+  // table describing the previous one.
   //
   // It is scoped to the UNICODE tier on purpose. That is the tier where every surface draws from one
   // small portable alphabet, so it is the tier where marks are forced to meet. The nerd tier gives
@@ -256,8 +254,8 @@ class $ThemeIcons {
         owner: 'the un-openable path warning',
       },
       {
-        mark: '●',
-        owner: 'the dirty and active tab marker (a TabBarRenderer literal)',
+        mark: unicodeVocabulary.tabDirtyMarker,
+        owner: 'the dirty and active tab marker',
       },
       ...(
         Object.entries(unicodeSymbolMarks) as readonly [SymbolClass, string][]
@@ -478,6 +476,7 @@ class $ThemeIcons {
         foldClosed: '›',
         structureDepth: '⛭',
         statusUser: '\u{f007}',
+        tabDirtyMarker: '\u{f111}',
       },
       unicode: {
         // ≡ (U+2261) not ☰ (U+2630): OpenTUI measures U+2630 as TWO cells while the terminal
@@ -513,6 +512,7 @@ class $ThemeIcons {
         foldClosed: '›',
         structureDepth: '⛭',
         statusUser: '♙',
+        tabDirtyMarker: '●',
       },
       ascii: {
         activityFiles: 'F',
@@ -535,6 +535,7 @@ class $ThemeIcons {
         foldClosed: ']',
         structureDepth: '#',
         statusUser: '@',
+        tabDirtyMarker: '*',
       },
     };
   }
@@ -943,6 +944,7 @@ export interface InterfaceGlyphVocabulary {
   foldClosed: string;
   structureDepth: string;
   statusUser: string;
+  tabDirtyMarker: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;

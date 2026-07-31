@@ -141,9 +141,9 @@ plugin extension points; a single grep boundary for auditing hard-coded appearan
 literals live only in `ThemePalettes.ts` and the glyph literals only in `ThemeIcons.ts`;
 `src/modules/ui/BreadcrumbPicker.ts`
 and `src/modules/ui/CompletionPopup.ts` both resolve their row marks through the theme rather than
-restating a table; `ThemeIcons.test.ts` verifies the semantic slot ladder. The one known breach is
-`src/modules/ui/TabBarRenderer.ts`, which writes the dirty/active tab marker `●` as a literal instead
-of naming a slot.
+restating a table; `src/modules/ui/TabBar.ts` supplies the tiered dirty/active tab marker to
+`TabBarRenderer`; `ThemeIcons.test.ts` and `TabBarRenderer.test.ts` verify the semantic slot ladder
+and all three marker consumers.
 
 **Impossible if true:** A host rendering component outside `src/modules/theme` naming a `#rrggbb`
 color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a
@@ -278,7 +278,7 @@ the resolved glyph.
 Covers file-tree,
 breadcrumb-popup, and completion-popup marks, git changes-row action buttons,
 task row actions, staging checkboxes, activity-bar items, `PanelTabBar`
-controls, editor fold controls, find controls, status affordances, agent
+controls, editor fold controls, tab markers, find controls, status affordances, agent
 transcript cells, alerts, tab separators, and Markdown table borders.
 
 **Mechanism:** `$symbolMarks`, `$actionIcons`, `$taskActionIcons`, and

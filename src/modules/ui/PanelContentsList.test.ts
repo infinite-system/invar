@@ -180,6 +180,7 @@ test('tabs and panel rows project one tier-aware close token', () => {
       projectRoot: '/project',
       separatorGlyph: '>',
       closeGlyph: expectedCloseGlyph,
+      tabMarkerGlyph: glyphVocabulary.tabDirtyMarker,
       hover: null,
       closePressed: null,
       arrowPressed: null,

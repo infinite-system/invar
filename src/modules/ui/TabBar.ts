@@ -72,6 +72,7 @@ class $TabBar {
       rendererWidth: renderer.width,
       rendererHeight: renderer.height,
       closeGlyph: theme.glyphVocabulary.panelClose,
+      tabMarkerGlyph: theme.glyphVocabulary.tabDirtyMarker,
     });
     this.workspaceSegments = result.segments;
     this.lastRevealedWorkspaceIndex = result.revealedIndex;
@@ -114,6 +115,8 @@ class $TabBar {
       // invariant: Appearance is data with a capability fallback (project.invariants.md)
       separatorGlyph: ThemeIcons.Class.tabSeparatorFor(theme.glyphLevel.value),
       closeGlyph: theme.glyphVocabulary.panelClose,
+      // invariant: Appearance is data with a capability fallback (project.invariants.md)
+      tabMarkerGlyph: theme.glyphVocabulary.tabDirtyMarker,
     });
     this.bufferSegments = result.segments;
     this.lastRevealedActiveIndex = result.revealedIndex;
