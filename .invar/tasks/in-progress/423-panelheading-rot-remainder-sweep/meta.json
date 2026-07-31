@@ -1,0 +1,15 @@
+{
+  "task": 423,
+  "slug": "panelheading-rot-remainder-sweep",
+  "branch": "fleet/423-panelheading-rot-remainder-sweep",
+  "worktree": ".invar/worktrees/423-panelheading-rot-remainder-sweep",
+  "tmuxSession": "invar/423-panelheading-rot-remainder-sweep",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-423-panelheading-rot-remainder-sweep.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "555e82aea6790cb03cb57b91d6503acdb3f924a0",
+  "startedAt": "2026-07-31T08:31:51-04:00"
+}

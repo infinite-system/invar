@@ -1,7 +1,7 @@
 # Task 423 — sweep the last PanelHeading-era naming out of the contracts
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
