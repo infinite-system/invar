@@ -1,7 +1,7 @@
 # Task 414 — two invariant records cite files that no longer exist
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — 354d1527 — Repointed two rotted citations (PanelTabBar glyph vocabulary; text/TextDocument.ts). Claims verified true against current code; contract-only diff; checker fully green. Bycatch converted to #422 before landing.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
