@@ -1,7 +1,7 @@
 # Task 429 — the layout switcher is an icon with a tooltip
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
