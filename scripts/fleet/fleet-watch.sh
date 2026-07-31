@@ -69,6 +69,7 @@ emit_steer_events() {
     [ -f "$marker" ] || continue
     case "$marker" in *.lost) continue ;; esac
     fragment="$(sed -n 's/^fragment=//p' "$marker")"
+    fragment="${fragment# }"; fragment="${fragment% }"
     task_directory="$(sed -n 's/^task_directory=//p' "$marker")"
     session_name="$(sed -n 's/^session_name=//p' "$marker")"
     message="$(sed -n 's/^message=//p' "$marker")"

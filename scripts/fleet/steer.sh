@@ -155,8 +155,13 @@ for attempt in 1 2 3 4 5 6 7 8; do
     # and it has lied four recorded times. The PROOF of landing is the
     # builder's own session record (codex rollout / claude store jsonl) —
     # the producer's append-only file, immune to wrapping and redraws.
-    record_fragment="$(printf '%s' "$message" | tr -c 'a-zA-Z0-9 ' ' ' | tr -s ' ')"
-    record_fragment="${record_fragment: -30}"
+    # The fragment must match the record BYTE-FOR-BYTE, so it is the longest
+    # punctuation-free run of the message: flattening punctuation to spaces
+    # produced fragments the raw record could never contain (found live,
+    # #413: an em-dash mid-span and a trailing period each defeated grep -F
+    # while the steer had in fact landed).
+    record_fragment="$(printf '%s' "$message" | tr -c 'a-zA-Z0-9 ' '\n' | awk '{ gsub(/^ +| +$/, ""); if (length($0) > length(best)) best=$0 } END { print best }')"
+    record_fragment="${record_fragment:0:60}"
     session_record="$(find_session_record)"
     for confirm_attempt in 1 2 3 4 5; do
       if [ -n "$session_record" ] && grep -qF -- "$record_fragment" "$session_record" 2>/dev/null; then
