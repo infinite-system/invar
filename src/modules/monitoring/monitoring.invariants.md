@@ -21,9 +21,11 @@ annotations. Chosen invariants stand on reality invariants, never the reverse.
 between two samples divided by the interval between them, and the pane names that interval — never a
 lifetime total divided by process age.
 
-**Scope:** Every processor figure `RuntimeSample` produces, for this process and for any other Invar
-process sampled through `/proc`. Absolute counts (resident set, retained bytes, tab counts) are
-outside this rule; they are instantaneous by nature.
+**Scope:** Every processor figure derived from cumulative counters for the Invar process or a
+registered child process. `RuntimeSample` owns the delta calculation; `ProcessSampler` supplies a
+timestamped cumulative counter through the platform adapter; `MonitoringStats` applies the same
+calculation to registered language-server processes. Absolute counts (resident set, retained bytes,
+tab counts) are outside this rule; they are instantaneous by nature.
 
 **Renegotiable at:** the operating-system accounting model. This changes only if a platform starts
 publishing an instantaneous rate instead of a monotonic total.
@@ -42,6 +44,9 @@ which nothing was measured.
 **Evidence:** `src/modules/monitoring/RuntimeSample.ts`;
 `src/modules/monitoring/RuntimeSample.test.ts` (half a core over one second, and a process whose
 lifetime total is enormous but whose window is empty reading as idle);
+`src/modules/monitoring/ProcessSampler.interface.ts`;
+`src/modules/monitoring/MonitoringStats.ts` (`readLanguageServerRows`);
+`src/modules/monitoring/MonitoringStats.test.ts` (the busy, idle, and gone fixture contract);
 `src/modules/monitoring/MonitoringPaneRenderer.test.ts` (the painted window label).
 
 **Impossible if true:** A processor percentage derived from one reading; a rate that spans a period
@@ -98,6 +103,42 @@ heap.
 **Last refined:** 2026-07-30
 
 ## Chosen invariants
+
+### A missing process is gone not idle
+
+**Invariant:** If the platform sampler cannot read a registered child process in the current sample,
+then Monitoring reports that process as gone with no processor or resident-set figure, never as a
+running process with zero use.
+
+**Scope:** `ProcessSampler.sample`, `MonitoringStats.readLanguageServerRows`, and every registered
+language-server row published through `MonitoringStats.languageServerRows`. A present process whose
+cumulative processor counter did not advance remains running at zero percent.
+
+**Mechanism:** `ProcessSampler.sample` returns `null` when the platform has no current reading.
+`MonitoringStats.readLanguageServerRows` maps that absence to `state: 'gone'` with null figures and
+omits the PID from `previousLanguageServerSamples`. If the PID becomes readable later, its first
+sample starts a new delta window instead of spanning the absence.
+
+**Generates:** The `gone` row state; nullable processor and resident-set figures; a fresh delta
+window after a process becomes readable again.
+
+**Rejected alternatives:** Treat a missing sample as zero use — this makes a dead server
+indistinguishable from an idle live server and can preserve stale resource figures.
+
+**Evidence:** `src/modules/monitoring/ProcessSampler.interface.ts` (`sample` returns a sample or
+`null`); `src/modules/monitoring/MonitoringStats.ts` (`readLanguageServerRows`);
+`src/modules/monitoring/MonitoringStats.test.ts` (`registered servers keep manager order while busy,
+idle, and gone remain distinct`).
+
+**Impossible if true:** A registered server with no current sample painted as running at zero
+percent; a gone row carrying a resident-set figure; a new delta spanning a missing-sample interval.
+
+**Verification:** `bun test src/modules/monitoring/MonitoringStats.test.ts -t "registered servers
+keep manager order while busy, idle, and gone remain distinct"`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-31
 
 ### The monitor names its own cost and pays it only when observed
 

@@ -1,0 +1,18 @@
+{
+  "task": 425,
+  "slug": "monitoring-lsp-contract-records",
+  "branch": "fleet/425-monitoring-lsp-contract-records",
+  "worktree": ".invar/worktrees/425-monitoring-lsp-contract-records",
+  "tmuxSession": "invar/425-monitoring-lsp-contract-records",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-425-monitoring-lsp-contract-records.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "fd03b0e33d5b9d7671c68e976b708ddde528cd4b",
+  "startedAt": "2026-07-31T09:31:46-04:00",
+  "landedAt": "2026-07-31T09:41:53-04:00",
+  "durationMinutes": 10,
+  "mergeCommit": "db19dec4"
+}

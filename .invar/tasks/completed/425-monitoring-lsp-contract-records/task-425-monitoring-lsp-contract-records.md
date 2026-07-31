@@ -1,7 +1,7 @@
 # Task 425 — record the LSP monitoring invariants #412 proved but never wrote
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: COMPLETED — db19dec4 — Two proven disciplines now recorded with annotations at enforcement points; scope refine applied. Bycatch (stale drive-command paths) fixed as follow-up doc commit on main.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
