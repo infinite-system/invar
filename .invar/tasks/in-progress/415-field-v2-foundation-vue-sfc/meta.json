@@ -1,0 +1,15 @@
+{
+  "task": 415,
+  "slug": "field-v2-foundation-vue-sfc",
+  "branch": "fleet/415-field-v2-foundation-vue-sfc",
+  "worktree": ".invar/worktrees/415-field-v2-foundation-vue-sfc",
+  "tmuxSession": "invar/415-field-v2-foundation-vue-sfc",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-415-field-v2-foundation-vue-sfc.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "33e245c1af5512edeba476da3657befcfe27470b",
+  "startedAt": "2026-07-31T03:14:21-04:00"
+}
