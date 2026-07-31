@@ -107,8 +107,10 @@ one fold-dense editor FPS floor remain secondary report-only wall-clock
 canaries. The
 fold-dense checkpoint keeps folding, indent guides, and version-control
 gutter marks on, direct-jumps to line 75,000, settles on observed scroll state
-and frame quiescence, excludes jump frames, and measures a fresh 1,000-row
-real wheel drive.
+and frame quiescence, excludes jump frames, and measures a fresh, exact
+1,000-row real wheel drive. It halts momentum after crossing the target and
+uses isolated one-notch wheel corrections to stop at the exact row. Its
+positive control stops at 999 rows and must fail.
 USE IT WHEN: scrolling "feels" wrong. It distinguishes the two failures that feel identical —
 choppiness (few frames, big steps) from low velocity (fewer rows for the same gesture).
 KNOWN RESULTS: before the 2026-07-26 cadence and gesture-gain repair, a fling ran 19-23 whole-glide

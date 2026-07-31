@@ -286,7 +286,9 @@ completed-frame boundaries across its three flicks, render progress uses
 completed-frame counts per input window, and real-rate coalescing uses window,
 event, impulse, projection, and row counts. Their delivered delays, pauses,
 input durations, and frame gaps are diagnostic only and never control a
-blocking verdict.
+blocking verdict. The fold-dense checkpoint commands 1,000 rows, halts
+momentum when the drive crosses that target, and uses isolated one-notch wheel
+corrections until the observed end row is exactly 1,000 rows after the start.
 
 **Generates:** Phase-independent live contracts; expected values that survive
 host load, frame coalescing, and refactoring while the mechanism remains the
@@ -296,26 +298,31 @@ same.
 the former 24-frame rapid-ceiling assertion varied from 22 to 24 while whole
 row travel remained exactly 197. Treat target FPS or a requested timer delay
 as exact scheduling — Bootstrap permits a 100 millisecond integration step,
-and the OS delivers timers after their requested deadline.
+and the OS delivers timers after their requested deadline. Accept at least
+1,000 rows from a time-driven fold-dense drive — 995 and 1,004 rows both ran
+at healthy cadence, so host load could flip the blocking verdict.
 
 **Evidence:** Commit `9125b0f`; the `glide-accumulation`,
 `glide-input-coalescing`, and editor scale-invariance predicates in
 `scripts/behavioral-contracts.sh`; `src/modules/app/Bootstrap.ts`
-`MAXIMUM_DELTA_TIME_SECONDS`; positive controls for every derived bound.
+`MAXIMUM_DELTA_TIME_SECONDS`; the fold-dense exact-row predicate and its
+999-row positive control; positive controls for every derived bound.
 
 **Impossible if true:** A driven scroll contract whose expected value came
 from an observation rather than the mechanism; a live assertion that fails
 only because identical travel was divided across a different number of
 completed frames; a requested delay used as though it were a delivered delay;
-a 30 FPS target used as though it capped frame duration.
+a 30 FPS target used as though it capped frame duration; a fold-dense count
+verdict changing between 995 and 1,004 rows because host load changed.
 
 **Verification:** `bash scripts/behavioral-contracts.sh`; the rapid 60-notch
 clause enforces the derived whole-row floor and rejects a decaying synthetic
 sequence. The scale-travel, continuation, accumulation, render-progress, and
-real-rate predicates print their planted reds. Future additions remain
-review-time enforced because no mechanical checker can distinguish a derived
-constant from an observed one.
+real-rate predicates print their planted reds. The fold-dense predicate
+requires exactly its commanded row count and rejects a drive truncated one
+row early. Future additions remain review-time enforced because no mechanical
+checker can distinguish a derived constant from an observed one.
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-31

@@ -767,10 +767,13 @@ elif SMOOTHNESS_GESTURES=2 \
      >"$FOLD_DENSE_JSON" 2>"$FOLD_DENSE_LOG"; then
   read -r fold_dense_case_count fold_dense_full_stack \
     fold_dense_checkpoint_count fold_dense_minimum_rows \
+    fold_dense_target_rows fold_dense_exact_row_count \
+    fold_dense_positive_control_rejected \
     fold_dense_minimum_fast_fps fold_dense_shape_holds \
     fold_dense_cadence_canary_passes <<<"$(python3 -c "
 import json
-cases = json.load(open('$FOLD_DENSE_JSON'))['cases']
+report = json.load(open('$FOLD_DENSE_JSON'))
+cases = report['cases']
 matching = [
     case for case in cases
     if case['surface'] == 'editor'
@@ -791,20 +794,49 @@ checkpoints = [
 minimum_fast_fps = min(
     checkpoint['framesPerSecond'] for checkpoint in checkpoints
 ) if checkpoints else 0
-target_depths = {
-    checkpoint['targetDepthLine'] for checkpoint in checkpoints
-}
 checkpoint_count = len(checkpoints)
 minimum_rows = min(
     checkpoint['rowsTravelled'] for checkpoint in checkpoints
 ) if checkpoints else 0
+target_rows = report['depthGestureTargetRows']
+exact_row_count = sum(
+    checkpoint['rowsTravelled'] == target_rows
+    and checkpoint['actualEndLine'] - checkpoint['actualStartLine']
+        == target_rows
+    for checkpoint in checkpoints
+)
+
+def checkpoint_shape_holds(candidate_checkpoints):
+    return (
+        full_stack
+        and len(candidate_checkpoints) == 1
+        and {
+            checkpoint['targetDepthLine']
+            for checkpoint in candidate_checkpoints
+        } == {75000}
+        and all(
+            checkpoint['rowsTravelled'] == target_rows
+            and checkpoint['actualEndLine'] - checkpoint['actualStartLine']
+                == target_rows
+            for checkpoint in candidate_checkpoints
+        )
+    )
+
+truncated_checkpoint = dict(checkpoints[0]) if checkpoints else {
+    'targetDepthLine': 75000,
+    'actualStartLine': 75000,
+}
+truncated_checkpoint.update({
+    'actualEndLine': truncated_checkpoint['actualStartLine'] + target_rows - 1,
+    'rowsTravelled': target_rows - 1,
+})
+positive_control_rejected = not checkpoint_shape_holds([truncated_checkpoint])
+fps_canary = report['depthCheckpointFpsCanary']
 print(len(matching), int(full_stack), checkpoint_count, minimum_rows,
+      target_rows, exact_row_count, int(positive_control_rejected),
       f'{minimum_fast_fps:.1f}',
-      int(full_stack
-          and checkpoint_count == 1
-          and target_depths == {75000}
-          and minimum_rows >= 1000),
-      int(minimum_fast_fps >= 28))
+      int(checkpoint_shape_holds(checkpoints)),
+      int(minimum_fast_fps >= fps_canary))
 ")"
   python3 - "$FOLD_DENSE_JSON" <<'PY'
 import json
@@ -812,21 +844,23 @@ import sys
 
 report = json.load(open(sys.argv[1]))
 print(
-    "  depth-floor positive control RED (expected): "
-    + report["depthCheckpointFloorPositiveControl"]
+    "  depth-row-count positive control RED (expected): "
+    + report["depthCheckpointRowsPositiveControl"]
 )
 print(
-    "  | fixture | target depth | actual start | rows travelled | "
-    "FPS | ratio to 100k top |"
+    "  | fixture | target depth | actual start | actual end | "
+    "rows travelled | corrections | FPS | ratio to 100k top |"
 )
-print("  | :--- | ---: | ---: | ---: | ---: | ---: |")
+print("  | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 for case in report["cases"]:
     for checkpoint in case["depthCheckpoints"]:
         print(
             f"  | {case['fixtureShape']} | "
             f"{checkpoint['targetDepthLine']} | "
             f"{checkpoint['actualStartLine']} | "
+            f"{checkpoint['actualEndLine']} | "
             f"{checkpoint['rowsTravelled']} | "
+            f"{checkpoint['exactRowCorrectionCount']} | "
             f"{checkpoint['framesPerSecond']:.1f} | "
             f"{checkpoint['ratioToReference']:.3f} |"
         )
@@ -836,7 +870,9 @@ PY
     fold_dense_message+=" (cases=$fold_dense_case_count,"
     fold_dense_message+=" fullStack=$fold_dense_full_stack,"
     fold_dense_message+=" checkpoints=$fold_dense_checkpoint_count,"
-    fold_dense_message+=" rows=$fold_dense_minimum_rows,"
+    fold_dense_message+=" exactRows=$fold_dense_exact_row_count,"
+    fold_dense_message+=" rows=$fold_dense_minimum_rows/"
+    fold_dense_message+="$fold_dense_target_rows,"
     fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps}fps)"
     pass "$fold_dense_message"
   else
@@ -844,10 +880,17 @@ PY
     fold_dense_message+=" (cases=${fold_dense_case_count:-0},"
     fold_dense_message+=" fullStack=${fold_dense_full_stack:-0},"
     fold_dense_message+=" checkpoints=${fold_dense_checkpoint_count:-0},"
-    fold_dense_message+=" rows=${fold_dense_minimum_rows:-0},"
+    fold_dense_message+=" exactRows=${fold_dense_exact_row_count:-0},"
+    fold_dense_message+=" rows=${fold_dense_minimum_rows:-0}/"
+    fold_dense_message+="${fold_dense_target_rows:-missing},"
     fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps:-0}fps,"
-    fold_dense_message+=" floor 28)"
+    fold_dense_message+=" expected one exact commanded checkpoint)"
     bad "$fold_dense_message"
+  fi
+  if [ "${fold_dense_positive_control_rejected:-0}" -eq 1 ] 2>/dev/null; then
+    pass "fold-dense count predicate rejects a drive truncated one row early"
+  else
+    bad "fold-dense count predicate accepted a drive truncated one row early"
   fi
   if [ "${fold_dense_cadence_canary_passes:-0}" -eq 1 ] 2>/dev/null; then
     warn "fold-dense cadence canary ${fold_dense_minimum_fast_fps}fps meets 28fps (report-only)"
