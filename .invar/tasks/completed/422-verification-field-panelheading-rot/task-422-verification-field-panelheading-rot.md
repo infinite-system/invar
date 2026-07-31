@@ -1,7 +1,7 @@
 # Task 422 — three records still name removed PanelHeading artifacts
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — ea808dcb — Repointed the three PanelHeading-rotted records to PanelTabBar-era artifacts; UI geometry record re-derived. Contract-only; checker green. Bycatch converted to #423 (class-closing sweep) before landing.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
