@@ -1,7 +1,7 @@
 # Task 416 — Field v2 design language: UI and UX research plus spec
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

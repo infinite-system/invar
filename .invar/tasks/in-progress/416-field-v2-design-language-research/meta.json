@@ -1,0 +1,15 @@
+{
+  "task": 416,
+  "slug": "field-v2-design-language-research",
+  "branch": "fleet/416-field-v2-design-language-research",
+  "worktree": ".invar/worktrees/416-field-v2-design-language-research",
+  "tmuxSession": "invar/416-field-v2-design-language-research",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-416-field-v2-design-language-research.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e05b86c15a5ff359fa195f7b9b01bc8c52b20e3e",
+  "startedAt": "2026-07-31T03:15:07-04:00"
+}
