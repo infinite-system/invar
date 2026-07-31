@@ -1,7 +1,7 @@
 # Task 428 — fold-dense row floor sits inside the load jitter band
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — d5c4ec0c — The contract that blocked two landings today is now genuinely count-based. No bycatch.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
