@@ -1,7 +1,7 @@
 # Task 412 — Monitoring plugin: LSP CPU profile rows (any server, not just tsgo)
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 22e667f2 — LSP CPU/RSS rows landed: registry pids, /proc delta sampling, GONE state, platform sampler seam. Gate red twice on two distinct pre-existing smoke flakes (standalone-green both sides) -> #424. Contract-record gaps from bycatch -> #425 pending.
 Engine: codex
 Environment: linux
 Model: 5.6-sol

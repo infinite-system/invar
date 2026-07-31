@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #412 [monitoring-lsp-cpu-profile](.invar/tasks/in-progress/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md)  [building]
-  `tmux attach -t invar/412-monitoring-lsp-cpu-profile`
-
 ## USER-DIRECTED (17)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/active/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)
 - #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
@@ -57,7 +53,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (23)
+## FLAKE-EVIDENCE (24)
+- #424 [quit-smoke-theme-tone-wait](.invar/tasks/active/424-quit-smoke-theme-tone-wait/task-424-quit-smoke-theme-tone-wait.md)
 - #374 [word-delete-harness-alt-delete-timeout](.invar/tasks/active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md)
 - #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
 - #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
@@ -137,7 +134,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 153 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 154 — full log: project.tasks-completed.md)
 - #422 [verification-field-panelheading-rot](.invar/tasks/completed/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md) — ea808dcb — Repointed the three PanelHeading-rotted records to PanelTabBar-era artifacts; UI geometry record re-derived. Contract-only; checker green. Bycatch converted to #423 (class-closing sweep) before landing.
 - #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 - #419 [field-v2-opus-synthesis](.invar/tasks/completed/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md) — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate
@@ -147,9 +144,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #415 [field-v2-foundation-vue-sfc](.invar/tasks/completed/415-field-v2-foundation-vue-sfc/task-415-field-v2-foundation-vue-sfc.md) — c25b135f — Field v2 foundation: Vue SFC on Bun + ivue + strict conventions + tokens seam (v1 untouched)
 - #414 [invariant-citation-drift-pair](.invar/tasks/completed/414-invariant-citation-drift-pair/task-414-invariant-citation-drift-pair.md) — 354d1527 — Repointed two rotted citations (PanelTabBar glyph vocabulary; text/TextDocument.ts). Claims verified true against current code; contract-only diff; checker fully green. Bycatch converted to #422 before landing.
 - #413 [invariant-field-web-app](.invar/tasks/completed/413-invariant-field-web-app/task-413-invariant-field-web-app.md) — df9419cc — Invariant Field app: 377 records ranked by axiom-mapped depth, rendered on an asymptotic field with git-history time slider; ivue UI; calibration proven by planted rot
+- #412 [monitoring-lsp-cpu-profile](.invar/tasks/completed/412-monitoring-lsp-cpu-profile/task-412-monitoring-lsp-cpu-profile.md) — 22e667f2 — LSP CPU/RSS rows landed: registry pids, /proc delta sampling, GONE state, platform sampler seam. Gate red twice on two distinct pre-existing smoke flakes (standalone-green both sides) -> #424. Contract-record gaps from bycatch -> #425 pending.
 - #409 [layout-switch-leaves-unfilled-space](.invar/tasks/completed/409-layout-switch-leaves-unfilled-space/task-409-layout-switch-leaves-unfilled-space.md) — 91249982 — layout switches tile the full terminal (remainder slots owned and painted)
 - #408 [workspace-state-isolation](.invar/tasks/completed/408-workspace-state-isolation/task-408-workspace-state-isolation.md) — 68fcad24 — workspace state isolation: six leaks closed, geometry workspace-owned, v2 panel covered
 - #404 [panel-two-row-chrome-and-pane-level-add](.invar/tasks/completed/404-panel-two-row-chrome-and-pane-level-add/task-404-panel-two-row-chrome-and-pane-level-add.md) — 17b89a64 — panel chrome v2: two rows, container tabs, full-width window groups with explicit split
 - #402 [invar-monitoring-plugin](.invar/tasks/completed/402-invar-monitoring-plugin/task-402-invar-monitoring-plugin.md) — dae7fba9 — Invar Monitoring plugin: delta CPU, heap vs RSS, file ledger, per-plugin render load
 - #393 [idle-cpu-multiple-workspaces](.invar/tasks/completed/393-idle-cpu-multiple-workspaces/task-393-idle-cpu-multiple-workspaces.md) — 79b325ea — tasks dashboard idle cost painted-priced: hidden panes at rest on every hide path; visible tick scales with painted rows (2.40->0.07 pts)
-- #390 [left-sidebar-proportional-bound](.invar/tasks/completed/390-left-sidebar-proportional-bound/task-390-left-sidebar-proportional-bound.md) — 181936b7 — both docks bounded: editor is the widest actor at every geometry
