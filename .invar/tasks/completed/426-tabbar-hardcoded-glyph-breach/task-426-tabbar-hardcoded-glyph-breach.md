@@ -1,7 +1,7 @@
 # Task 426 — TabBarRenderer hard-codes the dirty glyph, breaching theme-only appearance
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — 5b761903 — Theme contract's one known breach closed; vocabulary slot at three tiers, driven at each; no visual change at the default tier. Bycatch: none actionable (single unreproduced keystroke drop; known checker notes).
 Engine: codex
 Environment: linux
 Model: 5.6-sol
