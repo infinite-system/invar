@@ -324,33 +324,40 @@ class $LayoutModel {
         )
       : 0;
 
-    const panelLeft = editorLeft;
-    let panelRight = this.panelRight(
-      options.panelAlignment,
-      editorRight,
-      totalColumns - rightActivityBarColumns,
-    );
-    if (
-      options.rightDockVisible &&
-      options.rightDockVerticalSpan === 'full-height'
-    ) {
-      panelRight = Math.min(panelRight, rightDockSplitterLeft);
-    }
+    // invariant: A dock ending at the panel yields its columns (src/modules/layout/layout.invariants.md)
+    const panelLeft =
+      options.sidebarPosition === 'left' &&
+      primaryDockVisible &&
+      options.leftDockVerticalSpan === 'full-height'
+        ? editorLeft
+        : options.sidebarPosition === 'left'
+          ? activityBarLeft + activityBarColumns
+          : editorLeft;
+    const panelRight =
+      options.sidebarPosition === 'left'
+        ? options.rightDockVisible &&
+          options.rightDockVerticalSpan === 'full-height'
+          ? rightDockSplitterLeft
+          : totalColumns - rightActivityBarColumns
+        : primaryDockVisible && options.leftDockVerticalSpan === 'full-height'
+          ? sidebarSplitterLeft
+          : activityBarColumns > 0
+            ? activityBarLeft
+            : options.rightDockVisible &&
+                options.rightDockVerticalSpan === 'full-height'
+              ? rightDockSplitterLeft
+              : totalColumns - rightActivityBarColumns;
     const panelFillTop = panelSplitterTop;
     const panelFillRows = options.bottomPanelVisible
       ? totalRows - panelFillTop
       : 0;
-    const primaryDockRemainderLeft = activityBarLeft + activityBarColumns;
-    const primaryDockRemainderColumns =
-      primaryDockVisible &&
-      options.sidebarPosition === 'left' &&
-      options.leftDockVerticalSpan === 'ends-at-panel'
-        ? Math.max(0, panelLeft - primaryDockRemainderLeft)
-        : 0;
-    const rightDockRemainderLeft = panelRight;
+    const primaryDockRemainderLeft = panelLeft;
+    const primaryDockRemainderColumns = 0;
+    const rightDockRemainderLeft = rightDockSplitterLeft;
     const rightDockRemainderColumns =
       options.rightDockVisible &&
-      options.rightDockVerticalSpan === 'ends-at-panel'
+      options.rightDockVerticalSpan === 'ends-at-panel' &&
+      panelRight <= rightDockSplitterLeft
         ? Math.max(
             0,
             totalColumns - rightActivityBarColumns - rightDockRemainderLeft,
@@ -456,14 +463,6 @@ class $LayoutModel {
       return totalRows;
     }
     return Math.max(1, panelSplitterTop);
-  }
-
-  protected static panelRight(
-    alignment: PanelAlignment,
-    editorRight: number,
-    totalColumns: number,
-  ): number {
-    return alignment === 'right' ? totalColumns : editorRight;
   }
 }
 
