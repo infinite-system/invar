@@ -1,6 +1,6 @@
 # #388 — go to line and wrap line get keyboard shortcuts
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux

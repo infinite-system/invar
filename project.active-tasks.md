@@ -6,12 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
 - #395 [database-connect-hidden-field-focus](.invar/tasks/in-progress/395-database-connect-hidden-field-focus/task-395-database-connect-hidden-field-focus.md)  [building]
   `tmux attach -t invar/395-database-connect-hidden-field-focus`
+- #388 [goto-line-and-wrap-shortcuts](.invar/tasks/in-progress/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)  [building]
+  `tmux attach -t invar/388-goto-line-and-wrap-shortcuts`
 
-## USER-DIRECTED (16)
-- #388 [goto-line-and-wrap-shortcuts](.invar/tasks/active/388-goto-line-and-wrap-shortcuts/task-388-goto-line-and-wrap-shortcuts.md)
+## USER-DIRECTED (15)
 - #382 [agent-pane-resume-dialog-unreachable](.invar/tasks/active/382-agent-pane-resume-dialog-unreachable/task-382-agent-pane-resume-dialog-unreachable.md)
 - #379 [quick-open-exact-basename-loses](.invar/tasks/active/379-quick-open-exact-basename-loses/task-379-quick-open-exact-basename-loses.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
