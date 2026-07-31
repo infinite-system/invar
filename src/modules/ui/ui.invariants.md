@@ -535,27 +535,31 @@ Vertical drag reorders groups or members; dragging a joined member from the grou
 it. Close unregisters and disposes the selected session. `SplitterElement` owns the list boundary.
 `PanelContentSet` retains the pin and width in memory, while `Settings.panelWorkspaceStates` retains
 them across relaunch.
-The row close, panel-heading close, and tab close all read the `panelClose` slot from the active
-`InterfaceGlyphVocabulary`; no consumer restates a close character.
+The row close, panel close, and content-tab close projected by `PanelTabBar` all read the
+`panelClose` slot from the active `InterfaceGlyphVocabulary`; no consumer restates a close character.
 Panel-context keybindings delegate to the same host methods. `RootView` requests both the immediate
 frame and a next-turn `RenderRequest`, so a queued frame cannot coalesce away the projection that
 publishes the closed session list.
 
 **Generates:** VS Code-style grouped session rows; visible and hidden groups in one list; explicit
 split creation; group and member reorder; drag-out detachment; sticky, resizable list state; per-row
-close affordances that match tabs and panel headings in every glyph tier.
+close affordances that match `PanelTabBar` panel and content-tab closes in every glyph tier.
 
 **Rejected alternatives:** Use `BoundedListPopup` — a modal popup does not remain docked beside panel
 content and cannot continuously mirror the open split.
 
-**Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/RootView.ts`;
+**Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/PanelTabBar.ts`
+(`projectSplitterControls`, `projectTabRow`); `src/modules/theme/ThemeIcons.ts`
+(`INTERFACE_GLYPH_VOCABULARIES`); `src/modules/ui/RootView.ts`;
 `src/modules/ui/RenderRequest.ts`; `src/modules/ui/RenderRequest.test.ts`;
-`src/modules/keybindings/KeybindingDefaults.ts`; `src/modules/ui/PanelContentsList.test.ts`.
+`src/modules/keybindings/KeybindingDefaults.ts`; `src/modules/ui/PanelContentsList.test.ts`;
+`src/modules/ui/PanelTabBar.test.ts`.
 
 **Impossible if true:** The list showing with one container window; an ordinary body click closing a
 pinned list; a full-width group rendering beside another group; Add auto-splitting; a split member
 moving only in presentation; drag-out leaving a joined member; a close row retaining its backend; a
-list row, tab, or panel heading drawing a different close glyph for the same active tier.
+list row, `PanelTabBar` content tab, or `PanelTabBar` panel control drawing a different close glyph
+for the same active tier.
 
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts
 src/modules/ui/RenderRequest.test.ts && bun
@@ -564,7 +568,7 @@ scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-07-31
 
 ### Completion reuses bounded popup geometry
 
