@@ -129,7 +129,7 @@ name semantic slots, they do not mint appearance.
 `checkboxIcons`, `symbolMark()`, and `icon()` as plain getters that re-derive from `PALETTES` and the
 mark table on read. Its
 `glyphVocabulary`/`glyph` surfaces resolve stable semantic slots through
-`$interfaceGlyphVocabularies`; because the data is reactive selection, a palette, vocabulary, or
+`INTERFACE_GLYPH_VOCABULARIES`; because the data is reactive selection, a palette, vocabulary, or
 capability change reaches every consumer without changing behavior or copying appearance.
 
 **Generates:** *The palette ladder quantizes color without leaving the palette*; *The glyph ladder
@@ -152,11 +152,11 @@ change recoloring an explicit child RGB, indexed, or OSC 4 terminal cell; a host
 a child default or unmodified ANSI terminal cell on the previous palette.
 
 **Verification:** Audit hard-coded host colors outside `src/modules/theme`; `bun test src/modules/theme
-src/modules/ui/PanelHeading.test.ts`; `bun scripts/harness/smoke-terminal-harness.ts`.
+src/modules/ui/PanelTabBar.test.ts`; `bun scripts/harness/smoke-terminal-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-07-31
 
 ### One table resolves every symbol mark
 
