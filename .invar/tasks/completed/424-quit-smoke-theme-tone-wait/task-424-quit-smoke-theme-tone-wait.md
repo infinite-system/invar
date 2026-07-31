@@ -1,7 +1,7 @@
 # Task 424 — quit-confirmation smoke asserts theme tone before repaint under load
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — 41715591 — Ten assert-after-switch sites converted to condition waits across four smokes; census committed; both arms proven by plants; gate green on the exact tip. Bycatch: brief's invariants-in-scope was wrong (conductor error, acknowledged); hook-vs-brief tooling conflict noted, no task needed.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
