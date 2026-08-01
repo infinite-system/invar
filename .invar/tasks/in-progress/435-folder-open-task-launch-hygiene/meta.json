@@ -1,0 +1,15 @@
+{
+  "task": 435,
+  "slug": "folder-open-task-launch-hygiene",
+  "branch": "fleet/435-folder-open-task-launch-hygiene",
+  "worktree": ".invar/worktrees/435-folder-open-task-launch-hygiene",
+  "tmuxSession": "invar/435-folder-open-task-launch-hygiene",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-435-folder-open-task-launch-hygiene.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "866b037db6f5cad3d7569f07faf3cb8f451db9e4",
+  "startedAt": "2026-08-01T06:54:33-04:00"
+}

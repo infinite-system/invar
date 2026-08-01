@@ -6,8 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/in-progress/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md)  [building]
+## IN-PROGRESS (2)
+- #435 [folder-open-task-launch-hygiene](.invar/tasks/in-progress/435-folder-open-task-launch-hygiene/task-435-folder-open-task-launch-hygiene.md)  [building]
+  `tmux attach -t invar/435-folder-open-task-launch-hygiene`
+- #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/in-progress/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/433-tasks-dashboard-auto-reveal-priced-out`
 
 ## USER-DIRECTED (13)
@@ -91,7 +93,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (34)
+## ARCHITECTURE-HYGIENE (35)
+- #434 [gate-glance-null-render-branch-dead](.invar/tasks/active/434-gate-glance-null-render-branch-dead/task-434-gate-glance-null-render-branch-dead.md)
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
