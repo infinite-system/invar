@@ -19,7 +19,22 @@ edits cannot touch the source. Directory input drives that workspace in place.
 bun run drive --size 100000 --key End --wheel down --click 60,20
 ```
 
-`--key`, `--wheel`, and `--click` are repeatable. Key names use the existing
+`--key`, `--wheel`, and `--click` are repeatable. Two conveniences fold the
+common sighting boilerplate into single flags:
+
+- `--gesture NAME` runs a named user gesture with its condition wait built in.
+  Known gestures: `openPanel` (Ctrl+j, waits for `panelVisible=true`) and
+  `closePanel` (waits for `panelVisible=false`). Add gestures to
+  `gestureActions` in `Drive.ts` as the vocabulary grows.
+- `--cells ROW,C1-C2` (repeatable) prints characters plus bg/fg colors for a
+  cell range with every observation — the color evidence a text grid hides:
+
+```sh
+bun run drive --geometry 120x40 --gesture openPanel \
+  --cells 22,33-44 --cells 23,100-119
+```
+
+ Key names use the existing
 harness vocabulary (`Down`, `Control+g`, `Escape`); wheel directions are
 `up`, `down`, `left`, or `right`.
 

@@ -24,8 +24,12 @@ specifications, not one-bug-one-agent waste.
 ## The loop
 
 1. **SEE — drive before you speak.** The moment a UI topic opens,
-   write or reuse a probe (PtyTestDriver at a real size, real
-   fixtures) or run the app path the user names. Capture the concrete
+   reach for `bun run drive` FIRST (scripts/harness/drive.md): ordered
+   action flags with per-action condition waits, `--gesture` verbs,
+   and `--cells ROW,C1-C2` color dumps — most sightings are one
+   command, no probe file. Write a probe .ts (PtyTestDriver at a real
+   size, real fixtures) only when the sighting needs loops or logic
+   a flag chain cannot express. Capture the concrete
    geometry/text/colors: slot tables, findText positions, cell
    values. THE SIGHTING IS THE ENTRY TICKET to the conversation —
    a fix for something that exists must be CONFIRMED AS SEEN before
