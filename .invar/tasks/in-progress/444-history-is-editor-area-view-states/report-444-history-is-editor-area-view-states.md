@@ -1,117 +1,93 @@
 ## In plain words
 
-Back used to remember files and forget a Git change that filled the main area. The editor, Git, and
-Markdown now put their own places into one shared trail. I drove a file, a Git comparison, and a
-second file, and Back returned through the comparison to the first file.
+Main changed after the history work was accepted. I merged the new main without bringing in the
+red editor-history-row branch. The real app still walks from a file to a Git comparison and back to
+the first file, and every required check now passes.
 
-## READY
+## READY — round 2 reintegration
 
-Commit: `cedef9783f744fc2488a5494e1f7030c94cdb67c`
+Accepted feature commit: `cedef9783f744fc2488a5494e1f7030c94cdb67c`
 
-The worktree is clean. I committed with `SKIP_GATE=1`. I did not run the merge gate.
+Merge commit: `2c6fa013a26a36c558cc7c8713cec42497632885`
 
-## Result
+Merged main commit: `5055cd44898ade30f9d008bb99195f2a358fe7ae`
 
-- [NavigationHistory.ts](../../../../src/modules/navigation/NavigationHistory.ts) now owns only the
-  bounded sequence, current index, branching, contributor registration, replay, and replay
-  suppression. An entry contains a contributor identifier and an opaque payload.
-- [EditorNavigationHistoryContribution.ts](../../../../src/modules/editor/EditorNavigationHistoryContribution.ts)
-  owns the source file, line, and column payload. It keeps the same-document and same-line collapse
-  rule.
-- [GitWorkspace.ts](../../../../src/modules/git/GitWorkspace.ts) records every comparison with a new
-  token. Forty comparison opens therefore produce forty entries.
-- [MarkdownWorkspace.ts](../../../../src/modules/markdown/MarkdownWorkspace.ts) records and restores
-  preview and split states without importing Git or the source editor.
-- A contributor can reject a payload. History drops that entry and continues in the requested
-  direction. A dead entry must not become a Back target that traps the user.
-- [Workspace.ts](../../../../src/modules/workspace/Workspace.ts) now marks generic view-state capture
-  points. It no longer owns the source editor payload or replay guard.
+Merge base: `6401bf6cf4345e7cf7b6844ab6f97a06bf2687c1`
+
+The worktree is clean. I amended the merge commit with `SKIP_GATE=1`. I did not run the merge gate.
+
+## Merge result
+
+`git merge main` completed automatically with no conflict hunks. I classified the only shared code
+file against the merge base before the merge:
+
+- This branch changed [GitWorkspace.ts](../../../../src/modules/git/GitWorkspace.ts) to register,
+  capture, and restore Git comparison history states.
+- Main changed the same file to replace `static projectNameForRoot` with an instance method, call it
+  through `this`, remove the `Static` import, and publish the raw `$Class` anchor.
+- The merged file contains both changes. No feature code was deleted or resurrected.
+
+I merged only `main`. I did not merge #442 (editor history row and shortcuts). Main contains that
+task's report file, but it does not contain the red branch's navigation smoke rewrite or feature
+code.
+
+I did not restructure the navigation smoke in this round. The coming conflict is in the shared
+gesture sequence itself. Moving the same assertions into a local helper would not remove that
+overlap and would add merge churn before the red branch is fixed.
 
 ## Driven evidence
 
-The default experience reproduced the defect in `/tmp/invar-444-history-repro`. The exact visible
-trail after opening `alpha.ts`, its Git comparison, and `beta.ts` was:
+The post-merge run of
+[smoke-navigation-history-harness.ts](../../../../scripts/harness/smoke-navigation-history-harness.ts)
+drove the real PTY and reported `ALL-PASS`.
+
+The exact Back trail remained:
 
 ```text
-Before: beta.ts -> alpha.ts -> alpha.ts
+beta.ts -> sourceControl.comparison -> alpha.ts
 ```
 
-The Git comparison was absent from both Back steps.
-
-After the change, the same real key and pointer path produced:
-
-```text
-After: beta.ts -> sourceControl.comparison -> alpha.ts
-```
-
-Forward then produced `alpha.ts -> sourceControl.comparison -> beta.ts`. The existing
-[navigation history PTY smoke](../../../../scripts/harness/smoke-navigation-history-harness.ts)
-now drives that full trail. Its final run reported `ALL-PASS`, including both command-bar buttons.
-
-This change has no per-row, per-item, or per-frame work. Small and large document scale do not
-change the sequence path. The explicit depth case opened forty Git comparisons and retained forty
-distinct entries.
-
-## Red then green
-
-I used three positive controls.
-
-- I made the Git contributor return no current state. The PTY smoke stopped at the first Back step
-  while it waited for the Git comparison. Restoring the capture made the full smoke pass.
-- I removed seam-wide replay suppression. The fake-contributor test failed with `Expected: 2` and
-  `Received: 3`. Restoring suppression made it pass.
-- I stopped incrementing the Git comparison token. The forty-comparison test failed with
-  `Expected: 40` and `Received: 1`. Restoring the token increment made it pass.
+Forward walked through the same three states in reverse. The smoke also passed the command-bar Back
+and Forward checks.
 
 ## Invariants
 
-- **Programmatic history navigation does not record new history — needs refinement, then upheld.**
-  The title remains true. The old scope and mechanism named source locations and a Workspace guard,
-  so they did not hold verbatim after generalization. I refined
-  [navigation.invariants.md](../../../../src/modules/navigation/navigation.invariants.md) around
-  registered view states and suppression inside `NavigationHistory.navigate`. The fake contributor
-  proves that replay suppresses every contributor.
-- **Editor records — upheld.** None of the eleven records in
-  [editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) was stressed. The new
-  contributor observes document identity and cursor state, then uses the existing file-open and
-  reveal paths. It does not change editing, projection, or frame work.
-- **Only the newest Git request mutates state — upheld.** Async generation guards still run before
-  `showComparison`, so stale completions cannot record or display a comparison.
-- **Commit selection previews without focus transfer — upheld.** History capture does not change the
-  existing `transferFocus` choice. The existing focus test still passes.
-- **Public classes use the namespace pattern — upheld.** The new source contributor publishes
-  `$Class`, `Class`, and `Model`. It has no statics or reactive state, so `Class` selects the raw
-  `$Class`.
-- The brief's contract map missed **Seams are drawn at the shared generator** and **Plugin boundaries
-  grant one authority** in
-  [project.invariants.md](../../../../project.invariants.md). Both apply and remain upheld. Sequence
-  mechanics have one shared generator. Each view owns only capture, restore, and same-place policy.
-  No new domain record or lattice is missing.
+- **Programmatic history navigation does not record new history — upheld.** The merged history seam
+  still suppresses all contributor capture during replay. The full tests and PTY smoke pass.
+- **Seams are drawn at the shared generator — upheld.** `NavigationHistory` owns sequence behavior.
+  The source editor, Git, and Markdown contributors still own only their payload and same-place
+  rules.
+- **Plugin boundaries grant one authority — upheld.** The editor plugin registers one workspace
+  contribution. Git and Markdown do not import each other or the source contributor.
+- **Live static reads follow the receiving class — upheld.** The new source history contributor has
+  no static members. `NavigationHistory` reads its live entry cap through `this.constructor`. Main's
+  Git change now reads `projectNameForRoot` through `this`. The new conventions census found zero
+  changed-file violations, and I added no allowlist row.
+- **Public classes use the namespace pattern — upheld.** The new source contributor still publishes
+  its raw `$Class`, `Class`, and `Model`. Main's Git change selects a raw anchor with a reactive
+  `Class`, which matches its new no-statics shape.
+- The editor and Git domain records from round 1 remain upheld. The merge changed no editing,
+  comparison focus, or async supersession behavior.
 
 ## Verification
 
-- `bun test` passed: 2,284 tests, 0 failures, and 71,832 expectations across 349 files.
+- `bun test` ran in full: 2,287 tests passed, 0 failed, and 71,842 expectations ran across 349
+  files.
 - `bun scripts/harness/smoke-navigation-history-harness.ts` passed with `ALL-PASS`.
-- `node .claude/skills/invariants/scripts/check_invariants.mjs --all` passed every record file.
-- `node .claude/skills/invariants/scripts/check_invariants.mjs --refs` resolved 1,329 annotations
-  and 263 lattice links with 0 problems.
-- `git diff --check` passed.
-- `bunx tsc --noEmit` exited 2 because of the four pre-existing findings in
-  [Drive.ts](../../../../scripts/harness/Drive.ts): lines 921, 922, 968, and 969 read
-  `resolvedPosition` from a hover action whose type has no such property.
-- `bash scripts/conventions-gate.sh` exited 1 only because it runs the same failing type check. Its
-  file grammar, changed-file grammar, static getter naming, AST censuses, and retired smoke checks
-  passed. The changed-file grammar inspected 16 TypeScript files and found 0 problems.
+- `bunx tsc --noEmit` passed.
+- `bash scripts/conventions-gate.sh` passed. Its changed-file static-self-read census found 0
+  instance reads and 0 static reads. No allowlist row was added.
+- `node .claude/skills/invariants/scripts/check_invariants.mjs --all` passed all record files.
+- `node .claude/skills/invariants/scripts/check_invariants.mjs --refs` resolved 1,334 annotations
+  and 266 lattice links with 0 problems.
+- Both parent comparisons passed `git diff --check`.
 
 ## Bycatch
 
-- PRE-EXISTING: [Drive.ts](../../../../scripts/harness/Drive.ts) has four `TS2339` errors at lines
-  921, 922, 968, and 969. The file is unchanged by this commit. The repository-wide type check and
-  conventions gate reproduced the errors twice. I did not fix this out-of-scope driver defect.
-- SUSPECT: `Ctrl+P` did not open Quick Open while a Git comparison owned focus. The drive timed out
-  waiting for the Quick Open surface. I reproduced this once and used the Explorer shortcut for the
-  task path. I did not change shortcuts because editor-area chrome and shortcut work belong to
+- No new runtime or contract defect appeared during reintegration.
+- RESOLVED ON MAIN: the four `resolvedPosition` type errors in
+  [Drive.ts](../../../../scripts/harness/Drive.ts) from round 1 are gone. The repository-wide type
+  check and conventions gate now pass.
+- CARRIED FROM ROUND 1, SUSPECT: `Ctrl+P` did not open Quick Open while a Git comparison owned
+  focus. I reproduced it once in round 1. I did not retest or change it because shortcuts belong to
   #442 (editor history row and shortcuts).
-- CONTRACT MAP: The brief omitted **Seams are drawn at the shared generator** and **Plugin boundaries
-  grant one authority**. Both govern this registration seam. I applied them and reported their
-  verdicts above.

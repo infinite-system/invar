@@ -1,3 +1,53 @@
+# RESUME ANCHOR 29 — 2026-08-01 ~18:00 EDT
+
+## Fleet state
+
+- **#452 pane-identity-collides-by-name** — BUILDING (codex 5.6-sol high).
+  The user's terminal bug. Filed as an EXPERIMENT: candidate 1 is
+  identity collision in `PaneRuntimes.allocateInstanceIdentity`
+  (counter-based ids, in-memory count blind to restored panes,
+  `TerminalPlugin.panes` keyed by `content.id` so a collision silently
+  replaces a live entry); candidate 2 is `OpenPty.startMasterRead`'s
+  `close` handler never restarting. Three candidates already ELIMINATED
+  in the brief (runtime deadlock — UI stayed responsive; resource
+  exhaustion — measured; dead child — shell alive). #441 folded in.
+- **#442 panel-editor-tree-chrome-polish** — round 10, fixing two gate
+  reds that reproduce on its branch alone: `FileTreePaneContent.test.ts:74`
+  tooltipAt(8,0) not null, and a coverage declaration understating its
+  own smoke (declared 25→16/46→49, actual 25→19/46→55).
+- **#444 history-is-editor-area-view-states** — READY at merge
+  `2c6fa013`, merged main clean, no conflicts. NOT gated yet.
+- **Landed tonight:** #443 (`3d9fdca6`), #448 (`eec0e5ea`). Census on
+  main reports `16 instance, 0 static`, exit 0.
+
+## Next actions, in order
+
+1. Gate #444 alone when #442 and #452 go quiet. Land it.
+2. #442's fix round returns → gate → land. Then the six-hunk union in
+   `smoke-navigation-history-harness.ts` between #442 and #444 must be
+   resolved by whichever lands second; BOTH assertion sets survive.
+3. Queue: #445 (Ctrl+Alt+B dock), #446 (Quick Open enumeration), #447
+   (panel-drag flake), #450 (Ctrl+P blocked by comparison focus — check
+   for one shared cause with #445), #451 (Ffmpeg raw anchor).
+
+## Laws delta this session
+
+- **Every brief's verification list ends with `bun test` in FULL.**
+  Bought by #442: builders correctly told not to run merge-gate ran only
+  focused tests, so a full-suite red and a gate-only ratchet check
+  reached the gate unseen. Conductor's brief-template gap, not a builder
+  failure.
+- **`## In plain words` is required on every brief AND every report.**
+  Enforced by `dispatch.sh` and `round-brief.sh`; stated in AGENTS.md.
+- Fresh integration worktrees need a real `bun install` — a symlinked
+  `node_modules` fails merge-gate's dependency preflight (correctly).
+
+## Watcher re-arm
+
+    Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+
+CRONS REMAIN DISARMED BY USER ORDER. Do not re-arm.
+
 # Overnight briefing — started 2026-07-29 00:28
 
 ## RESUME ANCHOR 21 — 2026-07-31 ~02:0x (written at the 86% CHECKPOINT; supersedes anchor 20)
