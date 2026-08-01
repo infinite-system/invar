@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// Byte-level port of navigation history: file opens, Alt-bracket replay, and command-bar clicks use
-// the real terminal path; exact locations remain semantic status assertions.
+// Byte-level port of editor-area navigation history: source files and a Git comparison share one
+// trail, while Alt-bracket replay and command-bar clicks use the real terminal path.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -28,12 +28,28 @@ const betaPath = join(fixtureRoot, 'beta.ts');
 
 await Bun.write(
   alphaPath,
-  'alpha one\nalpha two\nalpha three\nalpha four\nalpha five\n',
+  'alpha before\nalpha two\nalpha three\nalpha four\nalpha five\n',
 );
 
 await Bun.write(
   betaPath,
   'beta one\nbeta two\nbeta three\nbeta four\nbeta five\n',
+);
+
+HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+HarnessSmoke.Class.runGit(fixtureRoot, [
+  '-c',
+  'user.email=history@example.test',
+  '-c',
+  'user.name=History Smoke',
+  'commit',
+  '-qm',
+  'initial files',
+]);
+await Bun.write(
+  alphaPath,
+  'alpha after\nalpha two\nalpha three\nalpha four\nalpha five\n',
 );
 
 const driver = new PtyTestDriver.Class({
@@ -52,6 +68,13 @@ try {
     (snapshot) => snapshot.findText('alpha.ts') !== null,
     15_000,
   );
+  driver.sendKeys('Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.treeSelected === 1',
+    (status) => status.treeSelected === 1,
+  );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -61,7 +84,7 @@ try {
   );
   await driver.awaitGridCondition(
     'alpha.ts content is visible after opening the file',
-    (snapshot) => snapshot.findText('alpha one') !== null,
+    (snapshot) => snapshot.findText('alpha after') !== null,
   );
   HarnessSmoke.Class.pass('alpha.ts opened as the active buffer');
   driver.sendKeys('Down', 'Down', 'Down');
@@ -74,19 +97,44 @@ try {
   HarnessSmoke.Class.pass('cursor moved to alpha.ts line 3 (3,0)');
   await driver.awaitScreenChange();
 
-  driver.sendKeys('Escape');
+  console.log(
+    '== harness navigation history: open a Git comparison between source files ==',
+  );
+  driver.sendKeys('Control+g');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.focus === 'files'",
-    (status) => status.focus === 'files',
+    "status condition: status.focus === 'git' && status.gitChangedCount === 1",
+    (status) => status.focus === 'git' && status.gitChangedCount === 1,
+  );
+  driver.sendKeys('o');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.showingDiff === true',
+    (status) => status.showingDiff === true,
+  );
+  await driver.awaitGridCondition(
+    'the Git comparison shows both alpha revisions',
+    (snapshot) =>
+      snapshot.findText('alpha before') !== null &&
+      snapshot.findText('alpha after') !== null,
+  );
+  HarnessSmoke.Class.pass('the Git comparison opened between source files');
+
+  driver.sendKeys('Control+Shift+e');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: status.sidebarView === 'files' && status.treeSelected === 1",
+    (status) => status.sidebarView === 'files' && status.treeSelected === 1,
   );
   driver.sendKeys('Down');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.treeSelected === 1',
-    (status) => status.treeSelected === 1,
+    'status condition: status.treeSelected === 2',
+    (status) => status.treeSelected === 2,
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
@@ -102,8 +150,22 @@ try {
   HarnessSmoke.Class.pass('beta.ts opened as the active buffer');
 
   console.log(
-    '== harness navigation history: Alt+[ and Alt+] replay both directions ==',
+    '== harness navigation history: Alt+[ restores diff, then source ==',
   );
+  driver.sendKeys('Alt+[');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.showingDiff === true',
+    (status) => status.showingDiff === true,
+  );
+  await driver.awaitGridCondition(
+    'the Git comparison is visible after navigating back once',
+    (snapshot) =>
+      snapshot.findText('alpha before') !== null &&
+      snapshot.findText('alpha after') !== null,
+  );
+  HarnessSmoke.Class.pass('the first Alt+[ restored the Git comparison');
   driver.sendKeys('Alt+[');
   const backStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -118,20 +180,34 @@ try {
   );
   await driver.awaitGridCondition(
     'alpha.ts content is visible after navigating back',
-    (snapshot) => snapshot.findText('alpha one') !== null,
+    (snapshot) => snapshot.findText('alpha after') !== null,
+  );
+  driver.sendKeys('Alt+]');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.showingDiff === true',
+    (status) => status.showingDiff === true,
+  );
+  await driver.awaitGridCondition(
+    'the Git comparison is visible after navigating forward once',
+    (snapshot) => snapshot.findText('alpha before') !== null,
   );
   driver.sendKeys('Alt+]');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'status condition: status.activeBuffer === betaPath',
-    (status) => status.activeBuffer === betaPath,
+    (status) =>
+      status.activeBuffer === betaPath && status.showingDiff === false,
   );
   await driver.awaitGridCondition(
     'beta.ts content is visible after navigating forward',
     (snapshot) => snapshot.findText('beta one') !== null,
   );
-  HarnessSmoke.Class.pass('Alt+] returned forward to beta.ts');
+  HarnessSmoke.Class.pass(
+    'two Alt+] inputs returned through the comparison to beta.ts',
+  );
 
   console.log(
     '== harness navigation history: command-bar buttons drive the same history ==',
@@ -169,14 +245,16 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'clicking command-bar back activates alpha.ts',
-    (status) => status.activeBuffer === alphaPath,
+    'clicking command-bar back restores the Git comparison',
+    (status) => status.showingDiff === true,
   );
   await driver.awaitGridCondition(
-    'alpha.ts content is visible after clicking the back breadcrumb',
-    (candidate) => candidate.findText('alpha one') !== null,
+    'the Git comparison is visible after clicking the back breadcrumb',
+    (candidate) => candidate.findText('alpha before') !== null,
   );
-  HarnessSmoke.Class.pass('clicking command-bar ‹ went back to alpha.ts');
+  HarnessSmoke.Class.pass(
+    'clicking command-bar ‹ went back to the Git comparison',
+  );
   snapshot = driver.snapshot();
   driver.sendMouse({
     kind: 'press',
@@ -194,7 +272,8 @@ try {
     driver,
     statusPath,
     'status condition: status.activeBuffer === betaPath',
-    (status) => status.activeBuffer === betaPath,
+    (status) =>
+      status.activeBuffer === betaPath && status.showingDiff === false,
   );
   await driver.awaitGridCondition(
     'beta.ts content is visible after clicking the forward breadcrumb',

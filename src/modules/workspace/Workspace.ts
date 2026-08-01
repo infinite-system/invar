@@ -1,10 +1,7 @@
 import { Reactive } from 'ivue';
 import { ref, type Ref } from 'vue';
 import { OpenBufferSet, type LiveBuffer } from './OpenBufferSet';
-import {
-  NavigationHistory,
-  type Location,
-} from '../navigation/NavigationHistory';
+import { NavigationHistory } from '../navigation/NavigationHistory';
 import type { GoToLineTarget } from '../navigation/GoToLinePrompt';
 import { Files } from '../system/Files';
 import { TaskStatePath } from '../system/TaskStatePath';
@@ -364,8 +361,8 @@ class $Workspace {
     // Record the SOURCE (the symbol under the cursor) before the jump moves us away, open the
     // target WITHOUT the tab-open auto-record (we record the precise declaration landing ourselves,
     // not the fresh-open 0,0), then record the DESTINATION so Forward returns to the declaration.
-    this.recordCurrentLocation();
-    this.withSuppressedLocationRecording(() => {
+    this.recordCurrentViewState();
+    this.navigationHistory.runWithoutRecording(() => {
       this.openFileInTab(targetPath);
       this.focus.value = 'editor';
       this.revealSourceLocation(
@@ -373,7 +370,7 @@ class $Workspace {
         location.range.start.column,
       );
     });
-    this.recordCurrentLocation();
+    this.recordCurrentViewState();
     return true;
   }
 
@@ -619,34 +616,12 @@ class $Workspace {
   // discipline; Workspace just releases any contributed surface and keeps the dirty flag fresh.
 
   // --- navigation history (Go Back / Go Forward) ---------------------------
-  // A programmatic back()/forward() restore MUST NOT itself record a new location, or the stack
-  // could never be escaped. This guard is raised around a history restore AND around the internal
-  // openFileInTab of a go-to-definition jump (which records its own source + destination
-  // explicitly). It is a plain field — an internal control flag, not observable view state.
+  // NavigationHistory owns replay suppression. Workspace only marks the capture points shared by
+  // file opens and explicit source jumps; the registered editor-area contributor decides what the
+  // current view state means.
   // invariant: Programmatic history navigation does not record new history (src/modules/navigation/navigation.invariants.md)
-  protected suppressLocationRecording = false;
-
-  /** Run `action` with location recording suppressed (history restore / an already-recorded jump). */
-  protected withSuppressedLocationRecording(action: () => void): void {
-    const previouslySuppressed = this.suppressLocationRecording;
-    this.suppressLocationRecording = true;
-    try {
-      action();
-    } finally {
-      this.suppressLocationRecording = previouslySuppressed;
-    }
-  }
-
-  /** Snapshot the visible editor's current location into the history (no-op without a real
-   *  document — the empty-state editor carries no navigable path). */
-  recordCurrentLocation(): void {
-    const editor = this.editor;
-    if (!editor.hasDocument.value || !editor.document.path) return;
-    this.navigationHistory.record({
-      documentPath: editor.document.path,
-      line: editor.cursor.line.value,
-      column: editor.cursor.col.value,
-    });
+  recordCurrentViewState(): void {
+    this.navigationHistory.recordCurrentState();
   }
 
   /** Place and reveal one source location, then let any same-document projection follow it. */
@@ -656,26 +631,14 @@ class $Workspace {
     this.editorSurfaces.revealPresentedSourceLine(lineIndex);
   }
 
-  /** Open a recorded location and land the cursor on it — the shared back/forward restore path.
-   *  Suppresses recording so replaying history never mutates it. */
-  protected restoreNavigationLocation(location: Location): void {
-    this.withSuppressedLocationRecording(() => {
-      this.openFileInTab(location.documentPath);
-      this.focus.value = 'editor';
-      this.revealSourceLocation(location.line, location.column);
-    });
-  }
-
-  /** Go Back (Alt+[): restore the previous location in the trail; safe no-op at the start. */
+  /** Go Back (Alt+[): restore the previous view state; safe no-op at the start. */
   navigateBack(): void {
-    const location = this.navigationHistory.back();
-    if (location) this.restoreNavigationLocation(location);
+    this.navigationHistory.back();
   }
 
-  /** Go Forward (Alt+]): restore the next location in the trail; safe no-op at the end. */
+  /** Go Forward (Alt+]): restore the next view state; safe no-op at the end. */
   navigateForward(): void {
-    const location = this.navigationHistory.forward();
-    if (location) this.restoreNavigationLocation(location);
+    this.navigationHistory.forward();
   }
 
   /** Jump to a one-based line and column, clamped to the active document, and record both ends. */
@@ -695,20 +658,19 @@ class $Workspace {
         TextCoordinates.Class.graphemeCount(lineText),
       ),
     );
-    this.recordCurrentLocation();
+    this.recordCurrentViewState();
     this.revealSourceLocation(lineIndex, graphemeColumn);
-    this.recordCurrentLocation();
+    this.recordCurrentViewState();
     return true;
   }
 
-  /** Open `path` as a tab: focus its tab if already open, else add a new active one. Records the
-   *  location left (before the switch) AND the location arrived at (after) into the navigation
-   *  history, unless recording is suppressed (a history restore, or a jump that records itself). */
+  /** Open `path` as a tab: focus its tab if already open, else add a new active one. Captures the
+   *  view left and the view reached. NavigationHistory suppresses both captures during replay. */
   openFileInTab(path: string): void {
-    if (!this.suppressLocationRecording) this.recordCurrentLocation(); // where we were, before we leave
+    this.recordCurrentViewState();
     this.editorSurfaces.releaseOccupying(); // a real file replaces any transient surface
     this.buffers.open(path);
-    if (!this.suppressLocationRecording) this.recordCurrentLocation(); // where we arrived
+    this.recordCurrentViewState();
   }
 
   /** True when the reference is a `scheme:` URL (http, https, mailto, …) — a target that can

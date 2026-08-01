@@ -6,6 +6,17 @@ import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 import type { Workspace } from '../workspace/Workspace';
 import type { RegisteredSetting } from '../settings/SettingContribution.interface';
+import { NavigationHistory } from '../navigation/NavigationHistory';
+import { Workspace as RealWorkspace } from '../workspace/Workspace';
+import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorNavigationHistoryContribution } from '../editor/EditorNavigationHistoryContribution';
+import {
+  mkdtempSync as makeTemporaryDirectorySync,
+  rmSync as removeSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir as temporaryDirectory } from 'node:os';
+import { join } from 'node:path';
 
 function createViewModeSetting(
   initialValue: string,
@@ -24,6 +35,7 @@ function createHostWorkspace(path: string) {
   let focused = '';
   const workspace = {
     editorSurfaces,
+    navigationHistory: new NavigationHistory.Class(),
     providers: new ProviderRegistry.Class(),
     root: '/project',
     get activeDocumentHandle() {
@@ -40,6 +52,9 @@ function createHostWorkspace(path: string) {
       return focused;
     },
     activateTab(nextPath: string) {
+      activePath.value = nextPath;
+    },
+    openFileInTab(nextPath: string) {
       activePath.value = nextPath;
     },
   };
@@ -287,4 +302,40 @@ describe('MarkdownWorkspace', () => {
     expect(contribution.showingPreview).toBe(false);
     expect(contribution.viewOnly).toBe(false);
   });
+});
+
+it('restores a rendered Markdown view between source editor states', () => {
+  const workspaceDirectory = makeTemporaryDirectorySync(
+    join(temporaryDirectory(), 'invar-markdown-history-'),
+  );
+  try {
+    const notesPath = join(workspaceDirectory, 'notes.md');
+    const sourcePath = join(workspaceDirectory, 'source.ts');
+    writeFileSync(notesPath, '# Notes\n');
+    writeFileSync(sourcePath, 'const source = true;\n');
+    const workspace = new RealWorkspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
+    const editorContribution = new EditorNavigationHistoryContribution.Class(
+      workspace,
+    );
+    const markdownContribution = new MarkdownWorkspace.Class(
+      workspace,
+      () => false,
+      () => {},
+      createViewModeSetting('editor'),
+    );
+    workspace.openFileInTab(notesPath);
+    markdownContribution.togglePreview();
+    workspace.openFileInTab(sourcePath);
+
+    expect(workspace.navigationHistory.back()).toBe(true);
+    expect(workspace.activeDocumentHandle?.path).toBe(notesPath);
+    expect(markdownContribution.showingPreview).toBe(true);
+    expect(markdownContribution.viewMode).toBe('preview');
+    markdownContribution.disposed();
+    editorContribution.disposed();
+  } finally {
+    removeSync(workspaceDirectory, { recursive: true, force: true });
+  }
 });
