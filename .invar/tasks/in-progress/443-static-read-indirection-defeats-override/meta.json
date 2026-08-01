@@ -1,0 +1,15 @@
+{
+  "task": 443,
+  "slug": "static-read-indirection-defeats-override",
+  "branch": "fleet/443-static-read-indirection-defeats-override",
+  "worktree": ".invar/worktrees/443-static-read-indirection-defeats-override",
+  "tmuxSession": "invar/443-static-read-indirection-defeats-override",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-443-static-read-indirection-defeats-override.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "d08ba4f613415d6d27b90165b0d952d59edd508f",
+  "startedAt": "2026-08-01T15:39:40-04:00"
+}
