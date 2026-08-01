@@ -6,14 +6,15 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #452 [pane-identity-collides-by-name](.invar/tasks/in-progress/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md)  [building]
+  `tmux attach -t invar/452-pane-identity-collides-by-name`
 - #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/444-history-is-editor-area-view-states`
 - #442 [panel-editor-tree-chrome-polish](.invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/442-panel-editor-tree-chrome-polish`
 
-## USER-DIRECTED (14)
-- #452 [pane-identity-collides-by-name](.invar/tasks/active/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md)
+## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
