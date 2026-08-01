@@ -37,6 +37,9 @@ task_folder="${repository_root}/.invar/tasks/in-progress/${task_folder_name}"
 
 [ -d "$task_folder" ] || { echo "round-brief: REFUSING — not in-progress: ${task_folder}" >&2; exit 2; }
 [ -f "$brief_file" ] || { echo "round-brief: brief not found: ${brief_file}" >&2; exit 2; }
+grep -q "^## In plain words" "$brief_file" || {
+  echo "round-brief: REFUSING. The brief has no '## In plain words' section." >&2
+  echo "  Write two or three sentences a ten year old could follow." >&2; exit 2; }
 grep -q "^## Invariants in scope" "$brief_file" || {
   echo "round-brief: REFUSING — the brief has no '## Invariants in scope' section." >&2; exit 2; }
 grep -q "^## Bycatch expected" "$brief_file" || {

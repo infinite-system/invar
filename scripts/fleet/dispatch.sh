@@ -59,10 +59,17 @@ task_pointer_target=".invar/tasks/in-progress/${name}/${brief_dated_name}#invari
 
 # THE INVARIANT DIALOGUE IS MECHANICAL. A brief without its two sections does
 # not launch — the loop cannot depend on the conductor remembering it.
+#   ## In plain words        — the ten-year-old layer (ste-expression skill)
 #   ## Invariants in scope   — enumerated records, or the explicit word "none"
 #   ## Bycatch expected      — the standing order restated, with the taxonomy pointer
 # Its relative document links must resolve, and bare document references are
 # not records a reader can open.
+if ! grep -q "^## In plain words" "$brief_file"; then
+  echo "dispatch: REFUSING. The brief has no '## In plain words' section." >&2
+  echo "  Write two or three sentences a ten year old could follow: what is wrong now," >&2
+  echo "  and what must be true after. Keep the exact values in the items." >&2
+  exit 2
+fi
 if ! grep -q "^## Invariants in scope" "$brief_file"; then
   echo "dispatch: REFUSING — the brief has no '## Invariants in scope' section." >&2
   echo "  Enumerate the records this task implicates (name, path, why), or write 'none'." >&2

@@ -550,6 +550,50 @@ export namespace Settings {
 
 No static members → no wrapper: `$Class = $X`, the standard form unchanged.
 
+## Reading your own statics — the ladder
+
+`Reactive(X) === X`, so a namespace's `Class` slot IS the base class. A getter
+that reads statics through it therefore hard-binds to the base and silently
+IGNORES a subclass override — the exact opposite of what a live (non-`$`)
+static getter is for:
+
+```ts
+// ❌ three members, a double cast, and the override never applies
+protected get Tooltip() {
+  return Tooltip.Class as unknown as typeof $Tooltip;
+}
+public static get TOOLTIP_DWELL_SECONDS() { return 0.4; }
+protected get tooltipDwellSeconds() {
+  return this.Tooltip.TOOLTIP_DWELL_SECONDS;   // base value forever
+}
+```
+
+Measured: a subclass setting `0.1` still reads `0.4` through this shape.
+
+Take the first rung that applies:
+
+1. **Nothing outside the instance reads it** → delete the static. A plain
+   instance getter is zero bytes per instance and natively overridable:
+   ```ts
+   protected get tooltipDwellSeconds() { return 0.4; }
+   ```
+2. **Something outside reads it** (tests pinching the knob, another class)
+   → keep the static and read it live off the receiver:
+   ```ts
+   protected get tooltipDwellSeconds() {
+     return (this.constructor as typeof $Tooltip).TOOLTIP_DWELL_SECONDS;
+   }
+   ```
+   `this.constructor` is the actual class: the subclass when subclassed, and
+   an engine class that INHERITS `$Class` for a plain reactive instance, so
+   statics resolve in both cases. TypeScript types `constructor` as
+   `Function`, so the one cast is required and is the honest cost.
+3. **Overriding must NOT happen** → name the class directly,
+   `$Tooltip.TOOLTIP_DWELL_SECONDS`, and let the code say so.
+
+Never introduce a `protected get <ClassName>()` self-reference getter. It is a
+cast wearing a getter costume: it looks live and is not.
+
 ## Generic classes (brief)
 
 `ReactiveClass<C>` cannot carry `<T>` through (no higher-kinded types), but
