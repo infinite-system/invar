@@ -5,7 +5,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 69886b7e — Once-per-root launch memory + restored-identity adoption; issues are notice panes, not pseudo-terminals; Terminal space restores with contents. Contracts refined in-branch. Bycatch converted: #437, #438; drive --home stale-status fix landed mid-task.
 
 ## What
 
