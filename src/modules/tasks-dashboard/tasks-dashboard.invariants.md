@@ -50,11 +50,11 @@ from anything but the current folder read.
 
 ### Fleet paths derive from the workspace, never the bundle
 
-**Invariant:** If the dashboard resolves a fleet artifact path (a task worktree, gate registry
-facts), then the fleet repository root derives from the active workspace root at call time —
+**Invariant:** If the dashboard resolves a workspace-owned fleet artifact path, such as a task
+worktree, then the fleet repository root derives from the active workspace root at call time —
 never from `import.meta.dir` or any other build-location constant.
 
-**Scope:** Every fleet path the tasks-dashboard module resolves.
+**Scope:** Every workspace-owned fleet path the tasks-dashboard module resolves.
 
 **Renegotiable at:** the build system — a bundler that preserved source-relative paths in
 compiled binaries would remove the forcing fact, but the workspace would still be the truer
@@ -84,6 +84,38 @@ returns the workspace checkout, not a `$bunfs` path (driven 2026-08-01, worktree
 **Last refined:** 2026-08-01
 
 ## Chosen invariants
+
+### Harness fleet facts are isolated from host state
+
+**Invariant:** If a harness launches the dashboard, then every process-global fleet fact the
+dashboard reads comes from a harness-owned path. Host fleet state cannot add, remove, or change a
+dashboard row in that run.
+
+**Scope:** Gate registry reads in `scripts/tasks/tasks-status.ts` and every PTY process launched by
+`scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Mechanism:** `readFleetGateGlance` resolves `INVAR_FLEET_GATE_REGISTRY` at each refresh and uses
+`/tmp/fleet-watch-gates` only when the override is absent. The smoke gives every driver the same
+fixture-owned registry path. The missing, running, and finished fixture states therefore generate
+zero, one, and one gate rows without consulting the host registry.
+
+**Generates:** One injectable gate registry seam; one fixture path shared by all task-dashboard
+smoke arms; exact row counts based on the fixture glance rather than its exit-code nullability.
+
+**Evidence:** `scripts/tasks/tasks-status.ts` (`refreshGateGlance`);
+`scripts/harness/smoke-tasks-dashboard-harness.ts` (the missing, running, finished, and 500-task
+arms).
+
+**Impossible if true:** A running landing gate changes a harness row count; a null gate exit code
+means that no gate row exists; one task-dashboard smoke arm reads `/tmp/fleet-watch-gates` while
+another reads its fixture.
+
+**Verification:** Run `bun scripts/harness/smoke-tasks-dashboard-harness.ts` with the host registry
+absent and again while it names a running gate. Both runs pass with the same fixture-derived rows.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-01
 
 ### Dashboard motion exists only while observed
 

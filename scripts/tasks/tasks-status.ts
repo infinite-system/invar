@@ -1006,8 +1006,9 @@ function refreshLineDeltas(
   }
 }
 
-// THE GATE GLANCE. The merge gate registers its log in /tmp/fleet-watch-gates
-// (the same registry fleet-watch consumes). The glance derives, mechanically:
+// THE GATE GLANCE. The merge gate registers its log in a host registry. The
+// INVAR_FLEET_GATE_REGISTRY override gives a harness its own registry. The default is
+// /tmp/fleet-watch-gates, which is the same registry fleet-watch consumes. The glance derives:
 //   phase   — the last `== merge-gate: <phase> ==` banner in the log tail
 //   timer   — since the run START. The log FILE is truncated between runs, so
 //             birthtime lies for reruns; the watch detects a size DROP (a new
@@ -1027,10 +1028,12 @@ let gateRunAnchor: {
   startedAtMilliseconds: number;
 } | null = null;
 
+// invariant: Harness fleet facts are isolated from host state (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 function refreshGateGlance(): void {
   gateGlanceCache = null;
   try {
-    const registryPath = '/tmp/fleet-watch-gates';
+    const registryPath =
+      process.env.INVAR_FLEET_GATE_REGISTRY?.trim() || '/tmp/fleet-watch-gates';
     if (!existsSync(registryPath)) return;
     const registered = readFileSync(registryPath, 'utf8')
       .trim()
