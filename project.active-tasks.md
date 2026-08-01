@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #435 [folder-open-task-launch-hygiene](.invar/tasks/in-progress/435-folder-open-task-launch-hygiene/task-435-folder-open-task-launch-hygiene.md)  [building]
   `tmux attach -t invar/435-folder-open-task-launch-hygiene`
-- #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/in-progress/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/433-tasks-dashboard-auto-reveal-priced-out`
 
 ## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -55,7 +53,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (23)
+## FLAKE-EVIDENCE (24)
+- #436 [tasks-watch-partial-frame-under-load](.invar/tasks/active/436-tasks-watch-partial-frame-under-load/task-436-tasks-watch-partial-frame-under-load.md)
 - #374 [word-delete-harness-alt-delete-timeout](.invar/tasks/active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md)
 - #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
 - #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
@@ -134,7 +133,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 169 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 170 — full log: project.tasks-completed.md)
+- #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/completed/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md) — 7a33c34b — Filed diagnosis refuted by driving: red was a stale predicate + host-registry coupling. Glance and smoke isolated via INVAR_FLEET_GATE_REGISTRY; three registry states driven; new invariant record. Landed over pre-existing #436 red.
 - #432 [panel-editor-actions-instances-overhaul](.invar/tasks/completed/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md) — 7d2cc879 — All 21 brief items landed in one round; generic Dialog + DragReorder seams; design.invariants.md seeded; markdown preview actions fixed; landed over documented pre-existing 417084fa red (#433)
 - #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/completed/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md) — 483725e4 — The user's layout complaint is closed at the composition seam with the four-combination proof. Bycatch converted to #431 before landing.
 - #429 [layout-switcher-icon-tooltip](.invar/tasks/completed/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md) — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
@@ -149,4 +149,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
 - #419 [field-v2-opus-synthesis](.invar/tasks/completed/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md) — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate
 - #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
-- #417 [field-v2-3d-field-timeline-playout](.invar/tasks/completed/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md) — 508616e9 — Field v2: exact 2D + constrained 3D + timeline playout (one geometry generator; no ambient loop)

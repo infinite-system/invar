@@ -1,7 +1,7 @@
 # 433 — tasks dashboard auto-reveal priced out by idle-work pricing
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — 7a33c34b — Filed diagnosis refuted by driving: red was a stale predicate + host-registry coupling. Glance and smoke isolated via INVAR_FLEET_GATE_REGISTRY; three registry states driven; new invariant record. Landed over pre-existing #436 red.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
