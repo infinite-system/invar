@@ -81,6 +81,12 @@ The shared interaction and appearance rules for every Invar interface.
 
 **Impossible if true:** Breadcrumbs below file tabs; history disappearing when the last file closes; project navigation centered in the row.
 
+**Verification:** `bun test src/modules/ui/CommandBar.test.ts src/modules/ui/TabBarRenderer.test.ts` and `bun scripts/harness/smoke-navigation-history-harness.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-08-01
+
 ### Chrome strips take the panel tone
 
 **Invariant:** Workspace tabs, branch detail, project navigation, breadcrumbs, history, and file tabs sit on the panel tone. The editor canvas alone keeps the content tone, and the active file-tab chip borrows that tone to show which content it touches.
@@ -90,6 +96,8 @@ The shared interaction and appearance rules for every Invar interface.
 **Mechanism:** RootView gives the application column one `palette.panel` chrome backdrop. Panels and unpainted top strips inherit it, while the editor canvas sets `palette.bg`. `TabBarRenderer` paints the active file-tab segment with that same content tone.
 
 **Generates:** One dark signpost band across all five top rows, one light editor canvas, and one active file tab that joins visually to that canvas.
+
+**Evidence:** `src/modules/ui/RootView.ts`; `src/modules/ui/TabBarRenderer.ts`; `scripts/harness/smoke-navigation-history-harness.ts`.
 
 **Impossible if true:** An empty top-strip cell painted like editor content; a breadcrumb row with a different base tone; an inactive file tab borrowing the editor tone; the active file tab detached from the content below it.
 
