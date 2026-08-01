@@ -1,6 +1,6 @@
 ---
 name: ste-expression
-description: Express yourself in Simplified Technical English (ASD-STE100, adapted for Invar). Applies to replies, briefs, task files, reports, and script messages — never to code. Use when writing any prose for this project, or when asked to make text plain.
+description: Express yourself in Simplified Technical English (ASD-STE100, adapted for Invar). Applies to replies, briefs, task files, reports, and script messages — never to code. Use when writing any prose for this project, when asked to make text plain, or when explaining what you did, found, or propose — the ten-year-old layer applies to every finding, fix, and refusal.
 ---
 
 # ste-expression — plain prose for Invar
@@ -53,6 +53,58 @@ STRUCTURE
 - No contractions.
 - Error messages name three things: what failed, why, what to do next.
 
+## The ten-year-old layer
+
+Plain sentences are not the same as a plain explanation. A reader can parse
+every word and still not know what happened. So for anything you did, found,
+or propose, add the version a ten-year-old could follow.
+
+This is not dumbing down. It is a proof of comprehension. If you cannot say
+what a thing does without the jargon, you do not yet know what it does. The
+jargon was carrying the understanding for you.
+
+HOW
+
+- Name real things, not categories. Say "the test counted the rows on the
+  screen", not "the assertion evaluated the projected row cardinality".
+- Use cause and effect in order. "A ran. Then B ran on top of A. B erased A."
+- Prefer things a person can picture: a click, a file, a row, a wait, a
+  timer, a copy.
+- Keep it to two or three sentences. If it needs ten, the thing itself is
+  probably two things.
+- Say what it means for the reader. "So the panel looked empty" beats "so
+  the invariant was violated".
+
+EXAMPLES from real work
+
+- Jargon: the smoke priced host fleet state into its row counts.
+  Plain: the test counted rows on the screen. One row only appears while a
+  build is running on this machine. So the test passed on a quiet machine and
+  failed on a busy one.
+
+- Jargon: a pre-satisfied wait inverted the gesture.
+  Plain: I clicked a button to open a menu. The menu was already open, so my
+  click closed it. Then I reported that it closed by itself.
+
+- Jargon: folder-open task launch preceded panel restoration.
+  Plain: the app started the terminals first. Then it loaded the saved layout
+  on top of them. The saved layout wiped out the terminals it had just made.
+
+WHERE IT APPLIES
+
+- Replies to the user: after any finding, fix, or refusal. Lead with the
+  plain version when the reader has not seen the area today.
+- READY reports and summaries: one plain paragraph near the top.
+- Briefs: the plain version of the DEFECT, so the builder recognizes it on
+  screen. The exact values stay in the item.
+- Commit messages: the first line. A reader six months out has no context.
+
+THE GUARD
+
+The plain version is added, never substituted. Exact values, paths, hashes,
+and counts stay. Write the plain sentence, then the exact one. A plain
+sentence that drops the number is not an explanation. It is a mood.
+
 ## What the rules must never remove
 
 Precision outranks brevity. Keep exact paths, exit codes, commit hashes,
@@ -67,6 +119,8 @@ than a dense one that is exact.
 3. Passive voice with a known actor? Make it active.
 4. "Perform an analysis" shapes? Use the verb.
 5. The same thing under two names? Pick one.
+6. Could a ten-year-old say back what happened? If not, add the plain
+   version, and keep the exact one.
 
 ## The linter
 
