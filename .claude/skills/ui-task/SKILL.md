@@ -133,6 +133,37 @@ Consequences:
   deterministic gestures) — a surface only a human can reach is a
   surface no agent can verify.
 
+## The driver is also the test driver
+
+Gated smokes drive through the SAME gesture layer — a second, frozen
+test path would fork the definition of "what the user does" and the
+two would drift apart. A helper's contract is the user ACTION (drive
+to the wrap toggle and click it); its mechanics (byte forms, travel,
+waits) are refined only toward higher fidelity to the real path. So
+when a driver improvement flips a smoke, exactly two cases exist:
+the old driver's lower fidelity was hiding a bug (the flip is a
+finding, file it), or the driver regressed (also a finding, in the
+driver). Neither is flake. A driver change must classify every flip
+it causes in its report, never silently re-green.
+
+Guards that keep this safe:
+- Smoke assertions bind to END-STATE and ordering, never to driver
+  internals (travel step counts, timing) — the timeless-gate rule.
+- The driver carries its own small fidelity contract (press/release
+  byte forms, hover-precedes-click, waits that actually wait), so a
+  driver change gates itself before downstream smokes judge it.
+
+Migration is a RATCHET, never a wholesale conversion:
+- New smokes use the gesture helpers, always.
+- A task touching a surface migrates that surface's smokes in the
+  same branch.
+- A smoke that flakes or is caught green-while-broken converts on
+  the spot as part of its fix.
+- Smokes that TELEPORT past an affordance the user must traverse
+  (command-registry calls where the user clicks a control) are the
+  one class worth converting deliberately — they can be green while
+  the visible path is broken.
+
 ## Illustrations — reproduce the target in cells
 
 Terminal UI has the rare property that a mockup IS the medium: an

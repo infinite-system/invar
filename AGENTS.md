@@ -255,6 +255,18 @@ Non-negotiable conventions (summarized from the `ivue` + `invariants` skills and
    behavior into a gated smoke so it cannot silently regress. tmux is a LEGACY opt-in audit
    tier (`INVAR_FULL_TMUX=1`), skipped by the gate. Never write a new tmux smoke. Extend a
    PTY-harness one.
+   **The gesture driver is the ONE entry point — for probes AND tests.** The named gesture
+   helpers (drive to the control and click it, press the shortcut) are how the user, the
+   conductor, and every agent reach the app. Gestures stay REAL: mouse travels through
+   cells, hover precedes click, press/release byte forms — never a teleport through the
+   command registry where the user clicks a control. New smokes use the gesture helpers,
+   always. Old smokes convert by RATCHET, never wholesale: migrate a surface's smokes when
+   a task touches that surface, convert a smoke on the spot when it flakes or is caught
+   green-while-broken, and convert deliberately any smoke that teleports past an affordance
+   the user must traverse. Assertions bind to END-STATE and ordering, never to driver
+   internals (travel steps, timing) — so a driver fidelity improvement that flips a smoke
+   is a FINDING to classify (old driver hid a bug, or the driver regressed), never flake;
+   a driver change must classify every flip in its report, never silently re-green.
 6. **Every check needs a POSITIVE CONTROL — a check that can only pass is not an
    instrument.** Before you trust a green, make it go RED on purpose: plant the defect it
    claims to catch, run it, quote the failure, remove the plant. This applies to smokes,
