@@ -10,7 +10,7 @@ import type { PanelHost, PanelSpace } from './PanelHost';
 class $PanelWorkspaceState {
   static snapshot(
     panelHost: PanelHost.Instance,
-    paneKind: (content: PaneContent) => string,
+    paneKind: (content: PaneContent) => string | null,
   ): PersistedPanelWorkspaceState {
     return {
       spaces: panelHost.spaces.value.map((space) => {
@@ -18,20 +18,24 @@ class $PanelWorkspaceState {
         return {
           kind: space.kind,
           label: space.label,
-          groups: groups.map((group) =>
-            group.contentIds.flatMap((identifier) => {
-              const content = panelHost.content(identifier);
-              return content
-                ? [
-                    {
-                      identifier: content.id,
-                      kind: paneKind(content),
-                      label: content.instanceLabel ?? content.title,
-                    },
-                  ]
-                : [];
-            }),
-          ),
+          groups: groups
+            .map((group) =>
+              group.contentIds.flatMap((identifier) => {
+                const content = panelHost.content(identifier);
+                if (!content) return [];
+                const kind = paneKind(content);
+                return kind === null
+                  ? []
+                  : [
+                      {
+                        identifier: content.id,
+                        kind,
+                        label: content.instanceLabel ?? content.title,
+                      },
+                    ];
+              }),
+            )
+            .filter((group) => group.length > 0),
           activeGroupIndex: Math.max(
             0,
             groups.findIndex(
@@ -61,6 +65,9 @@ class $PanelWorkspaceState {
         const identifier = `${spaceState.kind}-space-restored-${spaceIndex + 1}`;
         const groups = spaceState.groups.flatMap((paneStates, groupIndex) => {
           const contentIds = paneStates.flatMap((paneState) => {
+            const paneSpaceKind =
+              paneState.kind === 'database' ? 'database' : 'terminal';
+            if (paneSpaceKind !== spaceState.kind) return [];
             const content = createPane(paneState);
             return content ? [content.id] : [];
           });

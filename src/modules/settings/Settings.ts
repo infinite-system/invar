@@ -420,6 +420,14 @@ class $Settings {
       ...this.storedUserRecord,
       ...this.snapshot(),
     };
+    const settingsClass = this.constructor as typeof $Settings;
+    values.panelContentOrder = this.panelContentOrder.value.filter(
+      (identifier) => !settingsClass.isTaskNoticeIdentifier(identifier),
+    );
+    values.panelWorkspaceStates =
+      settingsClass.sanitizePanelWorkspaceStates(
+        this.panelWorkspaceStates.value,
+      ) ?? {};
     for (const [identifier, record] of this.contributedSettings) {
       values[identifier] = record.value.value;
     }
@@ -549,6 +557,19 @@ class $Settings {
       return undefined;
     }
     return [...new Set(candidate as string[])];
+  }
+
+  protected static isTaskNoticeIdentifier(identifier: string): boolean {
+    return identifier.endsWith(':notice');
+  }
+
+  protected static sanitizePanelContentOrder(
+    candidate: unknown,
+  ): string[] | undefined {
+    const identifiers = this.sanitizeIdentifierOrder(candidate)?.filter(
+      (identifier) => !this.isTaskNoticeIdentifier(identifier),
+    );
+    return identifiers && identifiers.length > 0 ? identifiers : undefined;
   }
 
   /** Keep only recognized keys whose value has the right shape — corrupt entries are dropped. */
@@ -689,7 +710,7 @@ class $Settings {
     );
     if (primaryDockContentOrder)
       result.primaryDockContentOrder = primaryDockContentOrder;
-    const panelContentOrder = this.sanitizeIdentifierOrder(
+    const panelContentOrder = this.sanitizePanelContentOrder(
       record.panelContentOrder,
     );
     if (panelContentOrder) result.panelContentOrder = panelContentOrder;
@@ -740,6 +761,13 @@ class $Settings {
               return [];
             }
             const pane = paneValue as Record<string, unknown>;
+            if (
+              pane.kind === 'task-notice' ||
+              (typeof pane.identifier === 'string' &&
+                this.isTaskNoticeIdentifier(pane.identifier))
+            ) {
+              return [];
+            }
             return typeof pane.kind === 'string' &&
               typeof pane.label === 'string'
               ? [

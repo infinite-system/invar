@@ -88,17 +88,23 @@ class $TaskConfiguration {
     builtInTasks: readonly TaskDefinition[],
   ): TaskConfigurationResult {
     // invariant: File sources report displaced built-ins (src/modules/tasks/tasks.invariants.md)
-    if (builtInTasks.length === 0) return configuration;
+    const configuredLabels = new Set(
+      configuration.tasks.map((task) => task.label),
+    );
+    const displacedBuiltInTasks = builtInTasks.filter(
+      (task) => !configuredLabels.has(task.label),
+    );
+    if (displacedBuiltInTasks.length === 0) return configuration;
 
     const configurationIndex =
       configuration.tasks.length + configuration.issues.length;
-    const displacedLabels = builtInTasks
+    const displacedLabels = displacedBuiltInTasks
       .map((task) => JSON.stringify(task.label))
       .join(', ');
-    const displacedTaskNames = builtInTasks
+    const displacedTaskNames = displacedBuiltInTasks
       .map((task) => task.label)
       .join(', ');
-    const taskNoun = builtInTasks.length === 1 ? 'task' : 'tasks';
+    const taskNoun = displacedBuiltInTasks.length === 1 ? 'task' : 'tasks';
     return {
       ...configuration,
       issues: [

@@ -126,6 +126,28 @@ describe('TaskConfiguration', () => {
     }
   });
 
+  test('a file task with the built-in label explicitly replaces its displacement notice', () => {
+    const workspaceRoot = createWorkspace();
+    writeConfiguration(
+      workspaceRoot,
+      '.invar',
+      JSON.stringify({
+        tasks: [
+          {
+            label: 'Claude',
+            type: 'shell',
+            command: 'configured-claude',
+          },
+        ],
+      }),
+    );
+
+    const result = TaskConfiguration.Class.resolve(workspaceRoot);
+
+    expect(result.tasks.map((task) => task.label)).toEqual(['Claude']);
+    expect(result.issues).toEqual([]);
+  });
+
   test('unsupported task forms become named issues', () => {
     const workspaceRoot = createWorkspace();
     writeConfiguration(

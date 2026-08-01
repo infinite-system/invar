@@ -973,65 +973,6 @@ class $Bootstrap {
       connectTerminalFollow();
     };
 
-    const taskLauncher = new TaskLauncher.Class({
-      port: {
-        launch: (request) => {
-          // invariant: Each task owns one terminal (src/modules/tasks/tasks.invariants.md)
-          if (panelHost.has(request.identifier)) {
-            panelHost.removeContent(request.identifier);
-          }
-          // A declared task is the same runtime request as an ordinary terminal, plus the process it
-          // declares. The host passes the declaration through; only the runtime knows a PTY is how
-          // it gets started.
-          const content = paneRuntimes.createPane('terminal', {
-            identifier: request.identifier,
-            label: request.label,
-            kind: request.identifier,
-            heading: request.label,
-            columns: view.panelViewportColumns() || 80,
-            rows: view.panelViewportRows() || 24,
-            workingDirectory: request.workspaceRoot,
-            process: {
-              command: request.command,
-              arguments: request.arguments,
-              environment: request.environment,
-            },
-          });
-          if (content) panelHost.register(content);
-        },
-        notice: (request) => {
-          panelHost.register(new TaskNoticePaneContent.Class(request));
-        },
-        // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
-        present: (identifiers, transferFocus) => {
-          panelHost.split([...identifiers]);
-          if (transferFocus) {
-            panelHost.show();
-          } else {
-            panelHost.visible.value = true;
-          }
-        },
-        has: (identifier) => panelHost.has(identifier),
-        remove: (identifier) => {
-          if (panelHost.has(identifier)) panelHost.removeContent(identifier);
-        },
-      },
-    });
-    const tasks = new Tasks.Class({
-      commands,
-      launcher: taskLauncher,
-      builtInDefaultEnabled:
-        Environment.Class.env('INVAR_TEST_SUPPRESS_BUILT_IN_TASK') !== '1',
-      folderOpenTaskLaunchEnabled:
-        Environment.Class.env('INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS') !== '1',
-    });
-    const disposeTasksContribution = workspaceSet.registerContributor(tasks);
-    const disposeTasksStatus = statusProjectionContributions.register({
-      snapshot: () => tasks.statusSnapshot(),
-    });
-    app.onDispose(disposeTasksStatus);
-    app.onDispose(disposeTasksContribution);
-
     const createDatabaseInstance = (): PaneContent | null => {
       const databaseContent = panelHost.contentOfKind('database');
       if (!databaseContent?.createInstance) return databaseContent;
@@ -1115,14 +1056,16 @@ class $Bootstrap {
     });
     let restoringPanelWorkspaceState = false;
     const restoredPanelWorkspaceState = new WeakSet<Workspace.Instance>();
-    const persistedPaneKind = (content: PaneContent): string =>
-      content instanceof AgentPaneContent.Class
-        ? 'invar-agent'
-        : (content.kind ?? content.id) === 'database'
-          ? 'database'
-          : (content.instanceLabel ?? '').startsWith('Terminal (Agent)')
-            ? 'terminal-agent'
-            : 'terminal';
+    const persistedPaneKind = (content: PaneContent): string | null =>
+      content instanceof TaskNoticePaneContent.Class
+        ? null
+        : content instanceof AgentPaneContent.Class
+          ? 'invar-agent'
+          : (content.kind ?? content.id) === 'database'
+            ? 'database'
+            : (content.instanceLabel ?? '').startsWith('Terminal (Agent)')
+              ? 'terminal-agent'
+              : 'terminal';
     persistPanelWorkspaceState = (): void => {
       if (restoringPanelWorkspaceState) return;
       const workspaceRoot = workspaceSet.active.root;
@@ -1184,6 +1127,64 @@ class $Bootstrap {
       }
     };
     restorePanelWorkspaceState(workspaceSet.active);
+    const taskLauncher = new TaskLauncher.Class({
+      port: {
+        launch: (request) => {
+          // invariant: Each task owns one terminal (src/modules/tasks/tasks.invariants.md)
+          if (panelHost.has(request.identifier)) {
+            panelHost.removeContent(request.identifier);
+          }
+          // A declared task is the same runtime request as an ordinary terminal, plus the process it
+          // declares. The host passes the declaration through; only the runtime knows a PTY is how
+          // it gets started.
+          const content = paneRuntimes.createPane('terminal', {
+            identifier: request.identifier,
+            label: request.label,
+            kind: request.identifier,
+            heading: request.label,
+            columns: view.panelViewportColumns() || 80,
+            rows: view.panelViewportRows() || 24,
+            workingDirectory: request.workspaceRoot,
+            process: {
+              command: request.command,
+              arguments: request.arguments,
+              environment: request.environment,
+            },
+          });
+          if (content) panelHost.register(content);
+        },
+        notice: (request) => {
+          panelHost.register(new TaskNoticePaneContent.Class(request));
+        },
+        // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
+        present: (identifiers, transferFocus) => {
+          panelHost.split([...identifiers]);
+          if (transferFocus) {
+            panelHost.show();
+          } else {
+            panelHost.visible.value = true;
+          }
+        },
+        has: (identifier) => panelHost.has(identifier),
+        remove: (identifier) => {
+          if (panelHost.has(identifier)) panelHost.removeContent(identifier);
+        },
+      },
+    });
+    const tasks = new Tasks.Class({
+      commands,
+      launcher: taskLauncher,
+      builtInDefaultEnabled:
+        Environment.Class.env('INVAR_TEST_SUPPRESS_BUILT_IN_TASK') !== '1',
+      folderOpenTaskLaunchEnabled:
+        Environment.Class.env('INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS') !== '1',
+    });
+    const disposeTasksContribution = workspaceSet.registerContributor(tasks);
+    const disposeTasksStatus = statusProjectionContributions.register({
+      snapshot: () => tasks.statusSnapshot(),
+    });
+    app.onDispose(disposeTasksStatus);
+    app.onDispose(disposeTasksContribution);
     app.onDispose(() => {
       testVoiceBackend?.dispose();
       terminalFollowController?.dispose();

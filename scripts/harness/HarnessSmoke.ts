@@ -136,6 +136,114 @@ class $HarnessSmoke {
     );
   }
 
+  /** Close one row in the pinned panel contents list through its visible hover control. */
+  static async closePanelContentsListRow(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    visibleTitle: string,
+  ): Promise<void> {
+    await this.awaitStatus(
+      driver,
+      statusPath,
+      `the pinned panel list shows ${visibleTitle}`,
+      (candidate) =>
+        candidate.panelListVisible === true &&
+        typeof candidate.panelListGeometry === 'object' &&
+        Array.isArray(candidate.panelContentLabels) &&
+        candidate.panelContentLabels.some(
+          (label) =>
+            typeof label === 'string' && label.startsWith(visibleTitle),
+        ),
+    );
+    const geometry = this.readStatus(statusPath).panelListGeometry as {
+      width: number;
+    };
+    const snapshot = await driver.awaitGridCondition(
+      `the pinned panel list paints ${visibleTitle}`,
+      (candidate) => {
+        const header =
+          candidate.findText('+ Terminal') ?? candidate.findText('+ Database');
+        if (!header) return false;
+        return candidate.textRows().some((rowText, row) => {
+          if (row <= header.row) return false;
+          return rowText
+            .slice(header.column, header.column + geometry.width)
+            .includes(visibleTitle);
+        });
+      },
+    );
+    const headerPosition =
+      snapshot.findText('+ Terminal') ?? snapshot.findText('+ Database');
+    if (!headerPosition) {
+      throw new Error('The pinned panel list did not paint its Add header');
+    }
+    const targetRow = snapshot.textRows().findIndex((rowText, row) => {
+      if (row <= headerPosition.row) return false;
+      return rowText
+        .slice(headerPosition.column, headerPosition.column + geometry.width)
+        .includes(visibleTitle);
+    });
+    if (targetRow < 0) {
+      throw new Error(`The pinned panel list did not paint ${visibleTitle}`);
+    }
+    const targetColumn = headerPosition.column + geometry.width - 2;
+    for (
+      let column = headerPosition.column + 1;
+      column <= targetColumn;
+      column += 1
+    ) {
+      driver.sendMouseWithoutFrameExpectation({
+        kind: 'move',
+        column,
+        row: targetRow,
+        button: 'none',
+      });
+    }
+    const hoveredSnapshot = await driver.awaitGridCondition(
+      `${visibleTitle} reveals its close control on hover`,
+      (candidate) => candidate.findText('Close instance') !== null,
+    );
+    const revealedCloseColumn = hoveredSnapshot
+      .rowText(targetRow)
+      .lastIndexOf('×');
+    if (revealedCloseColumn < 0) {
+      throw new Error(`${visibleTitle} did not paint its close glyph`);
+    }
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'move',
+      column: revealedCloseColumn,
+      row: targetRow,
+      button: 'none',
+    });
+    driver.sendMouse({
+      kind: 'press',
+      column: revealedCloseColumn,
+      row: targetRow,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: revealedCloseColumn,
+      row: targetRow,
+      button: 'left',
+    });
+    await this.awaitStatus(
+      driver,
+      statusPath,
+      `${visibleTitle} is absent after its row close`,
+      (candidate) =>
+        Array.isArray(candidate.panelContentLabels) &&
+        !candidate.panelContentLabels.some(
+          (label) =>
+            typeof label === 'string' && label.startsWith(visibleTitle),
+        ),
+    );
+    await driver.awaitGridCondition(
+      `${visibleTitle} is no longer painted after its row close`,
+      (candidate) => candidate.findText(visibleTitle) === null,
+    );
+  }
+
   static async awaitScrollPosition(
     driver: PtyTestDriver.Model,
     statusPath: string,

@@ -252,6 +252,58 @@ try {
   );
 
   console.log(
+    '== harness tasks: restored pin closes a derived notice without touching task terminals ==',
+  );
+  driven = await nextDriver({}, async (homeDirectory) => {
+    const configurationDirectory = join(homeDirectory, '.config', 'invar');
+    mkdirSync(configurationDirectory, { recursive: true });
+    await Bun.write(
+      join(configurationDirectory, 'settings.json'),
+      `${JSON.stringify({
+        panelWorkspaceStates: {
+          [workspaceRoot]: {
+            spaces: [
+              {
+                kind: 'terminal',
+                label: 'Terminal',
+                groups: [[{ kind: 'terminal', label: 'Restored Terminal' }]],
+                activeGroupIndex: 0,
+              },
+            ],
+            activeSpaceIndex: 0,
+            panelListExpanded: true,
+            panelListWidth: 24,
+            visible: true,
+          },
+        },
+      })}\n`,
+    );
+  });
+  status = await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'restored state keeps its list pinned beside two live task terminals and one derived notice',
+    (candidate) =>
+      taskIdentifiers(candidate).length === 2 &&
+      taskNoticeIdentifiers(candidate).length === 1 &&
+      candidate.panelListVisible === true,
+  );
+  await HarnessSmoke.Class.closePanelContentsListRow(
+    driven.driver,
+    join(driven.homeDirectory, 'status.json'),
+    'Displaced',
+  );
+  status = HarnessSmoke.Class.readStatus(
+    join(driven.homeDirectory, 'status.json'),
+  );
+  HarnessSmoke.Class.requireCondition(
+    taskIdentifiers(status).length === 2 &&
+      taskNoticeIdentifiers(status).length === 0 &&
+      status.panelListVisible === true,
+    'the restored hover-close removes only the notice and keeps the list pinned',
+  );
+
+  console.log(
     '== harness tasks: .invar wins outright over the existing VS Code file ==',
   );
   await Bun.write(
@@ -487,6 +539,43 @@ try {
             'agent',
             'terminal',
           ],
+          panelWorkspaceStates: {
+            [workspaceRoot]: {
+              spaces: [
+                {
+                  kind: 'terminal',
+                  label: 'Terminal',
+                  groups: [
+                    [
+                      {
+                        kind: 'terminal',
+                        label: 'Restored Terminal',
+                      },
+                    ],
+                    [
+                      {
+                        identifier: `task:${encodeURIComponent(workspaceRoot)}:2:notice`,
+                        kind: 'terminal',
+                        label: 'Displaced: Claude',
+                      },
+                    ],
+                    [
+                      {
+                        identifier: 'database',
+                        kind: 'database',
+                        label: 'Database',
+                      },
+                    ],
+                  ],
+                  activeGroupIndex: 0,
+                },
+              ],
+              activeSpaceIndex: 0,
+              panelListExpanded: true,
+              panelListWidth: 35,
+              visible: true,
+            },
+          },
         })}\n`,
       );
     },
@@ -501,6 +590,12 @@ try {
       candidate.taskLaunchedLabels.includes('Claude') &&
       candidate.taskLaunchedLabels.includes('Terminal') &&
       taskIdentifiers(candidate).length === 2 &&
+      taskNoticeIdentifiers(candidate).length === 0 &&
+      !taskLabels(candidate).includes('Displaced: Claude') &&
+      taskLabels(candidate).includes('Claude') &&
+      taskLabels(candidate).includes('Terminal') &&
+      Array.isArray(candidate.panelActiveSpacePaneIds) &&
+      !candidate.panelActiveSpacePaneIds.includes('database') &&
       Array.isArray(candidate.panelCellColumns) &&
       candidate.panelCellColumns.length === 2,
   );
@@ -523,10 +618,17 @@ try {
     'both nested login-shell task panes receive a live split width',
   );
   HarnessSmoke.Class.requireCondition(
-    taskLabels(status).includes('Displaced: Claude') &&
+    !taskLabels(status).includes('Displaced: Claude') &&
+      taskNoticeIdentifiers(status).length === 0 &&
       taskLabels(status).includes('Claude') &&
-      taskLabels(status).includes('Terminal'),
-    'a persisted displacement row cannot hide either live task pane',
+      taskLabels(status).includes('Terminal') &&
+      Array.isArray(status.panelActiveSpacePaneIds) &&
+      !status.panelActiveSpacePaneIds.includes('database'),
+    'a planted notice and mismatched Database pane do not restore beside the explicit Claude override',
+  );
+  HarnessSmoke.Class.requireCondition(
+    status.panelListVisible === true,
+    'the planted restored list pin remains open after folder tasks adopt their identifiers',
   );
   HarnessSmoke.Class.pass(
     'command, args, login shell, credentials wrapper, and inner TTY all reached both panes',
