@@ -1,13 +1,21 @@
 #!/usr/bin/env bun
 // The tasks dashboard pane through the real PTY: the three lenses over a real .invar/tasks tree,
 // the cycling overview, selection opening the task record in the editor, the absent-tree degrade,
-// and the Extensions uninstall/reinstall symmetry.
+// isolated missing/running/finished gate registry facts, and the Extensions uninstall/reinstall
+// symmetry.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: The tasks dashboard is a pane content citizen (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: An absent task tree is stated, never blank (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+// invariant: Harness fleet facts are isolated from host state (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FrameDump } from '../../src/modules/system/FrameProbe';
@@ -164,6 +172,21 @@ async function selectSettingByVisibleLabel(
   );
 }
 
+async function reobserveTasksThroughUserShortcuts(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  refreshDescription: string,
+): Promise<void> {
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `Structure replaces Tasks before ${refreshDescription}`,
+    (status) => status.rightDockActiveContent === 'structure',
+  );
+  driver.sendKeys('Control+Shift+t');
+}
+
 function writeTask(
   tasksRoot: string,
   state: string,
@@ -194,6 +217,8 @@ function writeTask(
 // The tasks fixture: one building, one READY, one prioritised active, one landed.
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tasks-dashboard-'));
 const tasksRoot = join(fixtureRoot, '.invar', 'tasks');
+const isolatedGateRegistryPath = join(fixtureRoot, 'fleet-watch-gates');
+const isolatedGateLogPath = join(fixtureRoot, 'fleet-gate.log');
 const pastFilingMs = Date.now() - 600_000;
 const fakeTmuxDirectory = join(fixtureRoot, 'fake-bin');
 const fakeTmuxSessionListPath = join(fixtureRoot, 'fake-tmux-sessions.txt');
@@ -327,6 +352,7 @@ const driver = new PtyTestDriver.Class({
     COLORTERM: 'truecolor',
     NERD_FONT: '0',
     LANG: 'en_US.UTF-8',
+    INVAR_FLEET_GATE_REGISTRY: isolatedGateRegistryPath,
     PATH: `${fakeTmuxDirectory}:${process.env.PATH ?? ''}`,
     FAKE_TMUX_SESSION_LIST: fakeTmuxSessionListPath,
   },
@@ -400,7 +426,7 @@ try {
       status.tasksAvailable === true &&
       status.tasksAnimationAtRest === false &&
       status.tasksDataHeartbeatAtRest === false &&
-      Number(status.tasksRows) === 5,
+      Number(status.tasksRows) === 4,
   );
   await driver.awaitGridCondition(
     'the live lens paints each title above its own status row',
@@ -416,6 +442,64 @@ try {
   );
   HarnessSmoke.Class.pass(
     'the live lens lists the in-progress fixture with the standing vocabulary',
+  );
+  HarnessSmoke.Class.pass('a missing registry adds no gate row');
+  writeFileSync(
+    isolatedGateLogPath,
+    '== merge-gate: behavioral contracts ==\n',
+  );
+  writeFileSync(isolatedGateRegistryPath, `${isolatedGateLogPath}\n`);
+  await reobserveTasksThroughUserShortcuts(
+    driver,
+    statusPath,
+    'the running gate refresh',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a running gate adds one row while its exit code stays null',
+    (status) =>
+      status.tasksGateExitCode === null && Number(status.tasksRows) === 5,
+  );
+  await driver.awaitGridCondition(
+    'the running gate row names its current phase',
+    (snapshot) => snapshot.findText('Gate: running behaviora') !== null,
+  );
+  writeFileSync(
+    isolatedGateLogPath,
+    '== merge-gate: behavioral contracts ==\nGATE_EXIT=0\n',
+  );
+  await reobserveTasksThroughUserShortcuts(
+    driver,
+    statusPath,
+    'the finished gate refresh',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a finished gate keeps its row and publishes exit zero',
+    (status) =>
+      status.tasksGateExitCode === 0 && Number(status.tasksRows) === 5,
+  );
+  await driver.awaitGridCondition(
+    'the finished gate row states that its phase passed',
+    (snapshot) => snapshot.findText('Gate: passed behaviora') !== null,
+  );
+  rmSync(isolatedGateRegistryPath);
+  rmSync(isolatedGateLogPath);
+  await reobserveTasksThroughUserShortcuts(
+    driver,
+    statusPath,
+    'the missing registry refresh',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'removing the isolated registry removes the gate row',
+    (status) => Number(status.tasksRows) === 4,
+  );
+  HarnessSmoke.Class.pass(
+    'missing, running, and finished gate registry states stay inside the fixture',
   );
   await driver.awaitGridCondition(
     'the 150 by 40 dashboard paints every Unicode task action glyph',
@@ -647,7 +731,7 @@ try {
     driver,
     statusPath,
     'the active lens groups the waiting fixture by priority',
-    (status) => status.tasksLens === 'active' && Number(status.tasksRows) === 3,
+    (status) => status.tasksLens === 'active' && Number(status.tasksRows) === 2,
   );
   await driver.awaitGridCondition(
     'the active lens paints a capitalized group and one truncated task row',
@@ -717,7 +801,7 @@ try {
     driver,
     statusPath,
     'the done lens lists the landed fixture',
-    (status) => status.tasksLens === 'done' && Number(status.tasksRows) === 2,
+    (status) => status.tasksLens === 'done' && Number(status.tasksRows) === 1,
   );
   await driver.awaitGridCondition(
     'the done lens paints one truncated task row',
@@ -896,7 +980,7 @@ try {
     (status) =>
       status.rightDockActiveContent === 'tasks' &&
       status.rightDockFocused === true &&
-      Number(status.tasksRows) === 5,
+      Number(status.tasksRows) === 4,
   );
   HarnessSmoke.Class.pass(
     'the tasks dashboard uninstalls and reinstalls symmetrically',
@@ -928,6 +1012,7 @@ const narrowDriver = new PtyTestDriver.Class({
     COLORTERM: 'truecolor',
     NERD_FONT: '0',
     LANG: 'en_US.UTF-8',
+    INVAR_FLEET_GATE_REGISTRY: isolatedGateRegistryPath,
     PATH: `${fakeTmuxDirectory}:${process.env.PATH ?? ''}`,
     FAKE_TMUX_SESSION_LIST: fakeTmuxSessionListPath,
   },
@@ -976,6 +1061,7 @@ const asciiDriver = new PtyTestDriver.Class({
   environment: {
     TUI_STATUS_PATH: asciiStatusPath,
     COLORTERM: 'truecolor',
+    INVAR_FLEET_GATE_REGISTRY: isolatedGateRegistryPath,
     PATH: `${fakeTmuxDirectory}:${process.env.PATH ?? ''}`,
     FAKE_TMUX_SESSION_LIST: fakeTmuxSessionListPath,
   },
@@ -1024,7 +1110,11 @@ const bareDriver = new PtyTestDriver.Class({
   columns: 150,
   rows: 40,
   homeDirectory: bareHome,
-  environment: { TUI_STATUS_PATH: bareStatusPath, COLORTERM: 'truecolor' },
+  environment: {
+    TUI_STATUS_PATH: bareStatusPath,
+    COLORTERM: 'truecolor',
+    INVAR_FLEET_GATE_REGISTRY: isolatedGateRegistryPath,
+  },
   command: [process.execPath, 'src/main.ts', bareRoot],
 });
 try {
@@ -1098,6 +1188,7 @@ const largeDriver = new PtyTestDriver.Class({
   environment: {
     TUI_STATUS_PATH: largeStatusPath,
     INVAR_FLEET_REPOSITORY_ROOT: largeRoot,
+    INVAR_FLEET_GATE_REGISTRY: isolatedGateRegistryPath,
     COLORTERM: 'truecolor',
     NERD_FONT: '0',
     LANG: 'en_US.UTF-8',
