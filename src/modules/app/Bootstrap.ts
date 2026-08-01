@@ -32,7 +32,7 @@ import { RenderRequest } from '../ui/RenderRequest';
 import { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
-import { Settings } from '../settings/Settings';
+import { Settings, type PanelWorkspacePaneState } from '../settings/Settings';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
@@ -96,6 +96,7 @@ import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 import { ApplicationContributions } from './ApplicationContributions';
 import { TaskLauncher } from '../tasks/TaskLauncher';
+import { TaskNoticePaneContent } from '../tasks/TaskNoticePaneContent';
 import { Tasks } from '../tasks/Tasks';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { Dialog } from '../ui/Dialog';
@@ -998,6 +999,9 @@ class $Bootstrap {
           });
           if (content) panelHost.register(content);
         },
+        notice: (request) => {
+          panelHost.register(new TaskNoticePaneContent.Class(request));
+        },
         // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
         present: (identifiers, transferFocus) => {
           panelHost.split([...identifiers]);
@@ -1131,18 +1135,39 @@ class $Bootstrap {
       };
       settings.save();
     };
-    const restorePane = (kind: string, label: string): PaneContent | null => {
-      if (kind === 'database') return panelHost.contentOfKind('database');
-      if (kind === 'invar-agent') return createAgent(true, label);
-      if (kind === 'terminal-agent') {
+    const restorePane = (pane: PanelWorkspacePaneState): PaneContent | null => {
+      if (pane.identifier) {
+        const existingContent = panelHost.content(pane.identifier);
+        if (existingContent) return existingContent;
+        if (pane.identifier.endsWith(':notice')) return null;
+        if (pane.identifier.startsWith('task:')) {
+          const taskContent = paneRuntimes.createPane('terminal', {
+            identifier: pane.identifier,
+            label: pane.label,
+            kind: pane.identifier,
+            heading: pane.label,
+            columns: view.panelViewportColumns() || 80,
+            rows: view.panelViewportRows() || 24,
+            workingDirectory: workspaceSet.active.root,
+          });
+          if (taskContent) panelHost.register(taskContent);
+          return taskContent;
+        }
+      }
+      if (pane.kind === 'database') {
+        return panelHost.contentOfKind('database');
+      }
+      if (pane.kind === 'invar-agent') return createAgent(true, pane.label);
+      if (pane.kind === 'terminal-agent') {
         return createRuntimePane(
           'terminal',
           true,
           { command: 'claude' },
-          label,
+          pane.label,
         );
       }
-      return createRuntimePane('terminal', true, undefined, label);
+      if (pane.kind === 'task-notice') return null;
+      return createRuntimePane('terminal', true, undefined, pane.label);
     };
     restorePanelWorkspaceState = (workspace): void => {
       if (restoredPanelWorkspaceState.has(workspace)) return;
@@ -1152,9 +1177,7 @@ class $Bootstrap {
       restoringPanelWorkspaceState = true;
       try {
         panelHost.restoreWorkspaceState(
-          PanelWorkspaceState.Class.restore(state, (pane) =>
-            restorePane(pane.kind, pane.label),
-          ),
+          PanelWorkspaceState.Class.restore(state, (pane) => restorePane(pane)),
         );
       } finally {
         restoringPanelWorkspaceState = false;

@@ -742,7 +742,15 @@ class $Settings {
             const pane = paneValue as Record<string, unknown>;
             return typeof pane.kind === 'string' &&
               typeof pane.label === 'string'
-              ? [{ kind: pane.kind, label: pane.label }]
+              ? [
+                  {
+                    kind: pane.kind,
+                    label: pane.label,
+                    ...(typeof pane.identifier === 'string'
+                      ? { identifier: pane.identifier }
+                      : {}),
+                  },
+                ]
               : [];
           });
           return panes.length > 0 ? [panes] : [];
@@ -866,6 +874,7 @@ export interface PanelWorkspaceSpaceState {
 export interface PanelWorkspacePaneState {
   readonly kind: string;
   readonly label: string;
+  readonly identifier?: string;
 }
 
 /** Narrow filesystem seam the store depends on — the whole surface a fake must satisfy. */

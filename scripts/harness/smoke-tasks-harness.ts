@@ -12,9 +12,15 @@
 // invariant: Each task owns one terminal (src/modules/tasks/tasks.invariants.md)
 // invariant: Task variables resolve pass through or refuse (src/modules/tasks/tasks.invariants.md)
 // invariant: Unsupported tasks fail visibly (src/modules/tasks/tasks.invariants.md)
-import { chmodSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -74,11 +80,23 @@ function shellTask(label: string, marker: string): DrivenTask {
 }
 
 function taskIdentifiers(status: StatusSnapshot): string[] {
-  const identifiers = status.panelCellIds;
+  const identifiers = status.panelContentIds;
   return Array.isArray(identifiers)
     ? identifiers.filter(
         (identifier): identifier is string =>
-          typeof identifier === 'string' && identifier.startsWith('task:'),
+          typeof identifier === 'string' &&
+          identifier.startsWith('task:') &&
+          !identifier.endsWith(':notice'),
+      )
+    : [];
+}
+
+function taskNoticeIdentifiers(status: StatusSnapshot): string[] {
+  const identifiers = status.panelContentIds;
+  return Array.isArray(identifiers)
+    ? identifiers.filter(
+        (identifier): identifier is string =>
+          typeof identifier === 'string' && identifier.endsWith(':notice'),
       )
     : [];
 }
@@ -137,6 +155,15 @@ async function awaitTaskStatus(
 
 const workspaceRoot = mkdtempSync(
   join(tmpdir(), 'invar-tasks-harness-workspace-'),
+);
+
+const secondaryWorkspaceRoot = `${workspaceRoot}-secondary`;
+
+mkdirSync(secondaryWorkspaceRoot);
+
+await Bun.write(
+  join(secondaryWorkspaceRoot, 'secondary.txt'),
+  'secondary workspace\n',
 );
 
 const visualStudioCodeDirectory = join(workspaceRoot, '.vscode');
@@ -258,6 +285,120 @@ try {
   );
 
   console.log(
+    '== harness tasks: closing and reopening one root stays silent in the app session ==',
+  );
+  const launchRecordPath = join(workspaceRoot, 'folder-open-launches.txt');
+  await Bun.write(
+    join(invarDirectory, 'tasks.json'),
+    taskConfiguration([
+      {
+        label: 'Once Per Root',
+        type: 'shell',
+        command: '/bin/sh',
+        args: [
+          '-lc',
+          `printf 'launch\\n' >> ${JSON.stringify(launchRecordPath)}; ` +
+            `printf 'ONCE_PER_ROOT_READY\\n'; exec /bin/sh -i`,
+        ],
+        runOptions: { runOn: 'folderOpen' },
+      },
+    ]),
+  );
+  driven = await nextDriver({
+    INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '1',
+  });
+  status = await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'the first folder open launches the declared task',
+    (candidate) =>
+      Array.isArray(candidate.taskLaunchedLabels) &&
+      candidate.taskLaunchedLabels.includes('Once Per Root') &&
+      taskIdentifiers(candidate).length === 1,
+  );
+  await driven.driver.awaitGridCondition(
+    'the first folder-open task reaches its real shell',
+    (snapshot) => snapshot.findText('ONCE_PER_ROOT_READY') !== null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    readFileSync(launchRecordPath, 'utf8') === 'launch\n',
+    'the present arm records exactly one process launch',
+  );
+
+  driven.driver.sendKeys('Control+Shift+o');
+  await driven.driver.awaitGridCondition(
+    'the workspace picker opens at the task root parent',
+    (snapshot) => snapshot.findText(`+ ${dirname(workspaceRoot)}/`) !== null,
+  );
+  driven.driver.sendText(basename(secondaryWorkspaceRoot));
+  await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'the picker contains the secondary workspace path',
+    (candidate) => candidate.quickOpenQuery === secondaryWorkspaceRoot,
+  );
+  driven.driver.sendKeys('Enter');
+  await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'the secondary workspace is open',
+    (candidate) =>
+      candidate.workspaceCount === 2 &&
+      candidate.activeWorkspaceRoot === secondaryWorkspaceRoot,
+  );
+  driven.driver.sendKeys('Control+Shift+PageUp');
+  await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'the task workspace is active before close',
+    (candidate) => candidate.activeWorkspaceRoot === workspaceRoot,
+  );
+  driven.driver.sendKeys('Control+Shift+w');
+  await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'closing the task workspace returns to the secondary workspace',
+    (candidate) =>
+      candidate.workspaceCount === 1 &&
+      candidate.activeWorkspaceRoot === secondaryWorkspaceRoot,
+  );
+  driven.driver.sendKeys('Control+Shift+o');
+  await driven.driver.awaitGridCondition(
+    'the workspace picker reopens at the shared parent',
+    (snapshot) =>
+      snapshot.findText(`+ ${dirname(secondaryWorkspaceRoot)}/`) !== null,
+  );
+  driven.driver.sendText(basename(workspaceRoot));
+  await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'the picker contains the original task workspace path',
+    (candidate) => candidate.quickOpenQuery === workspaceRoot,
+  );
+  driven.driver.sendKeys('Enter');
+  status = await awaitTaskStatus(
+    driven.driver,
+    driven.homeDirectory,
+    'the reopened root reports no new automatic task launch',
+    (candidate) =>
+      candidate.workspaceCount === 2 &&
+      candidate.activeWorkspaceRoot === workspaceRoot &&
+      Array.isArray(candidate.taskLaunchedLabels) &&
+      candidate.taskLaunchedLabels.length === 0,
+  );
+  HarnessSmoke.Class.requireCondition(
+    taskIdentifiers(status).length === 0,
+    'the reopened panel world contains no replacement task terminal',
+  );
+  HarnessSmoke.Class.requireCondition(
+    readFileSync(launchRecordPath, 'utf8') === 'launch\n',
+    'the absent arm records no second process launch',
+  );
+  HarnessSmoke.Class.pass(
+    'folder-open tasks launch once per root while the app session lives',
+  );
+
+  console.log(
     '== harness tasks: nested interactive zsh commands load in two panes ==',
   );
   const exactShapeFakeBinaryDirectory = join(
@@ -342,7 +483,7 @@ try {
         join(configurationDirectory, 'settings.json'),
         `${JSON.stringify({
           panelContentOrder: [
-            `task:${encodeURIComponent(workspaceRoot)}:2:error`,
+            `task:${encodeURIComponent(workspaceRoot)}:2:notice`,
             'agent',
             'terminal',
           ],
@@ -467,7 +608,7 @@ try {
   status = await awaitTaskStatus(
     driven.driver,
     driven.homeDirectory,
-    'both planted unsupported definitions publish their exact errors',
+    'four planted unsupported definitions publish their exact errors',
     (candidate) =>
       Array.isArray(candidate.taskErrors) &&
       candidate.taskErrors.some((message) =>
@@ -481,19 +622,32 @@ try {
       ) &&
       candidate.taskErrors.some((message) =>
         String(message).includes('${command:target}'),
-      ),
+      ) &&
+      taskNoticeIdentifiers(candidate).length === 5 &&
+      Array.isArray(candidate.panelCellIds) &&
+      candidate.panelCellIds.length === 4,
   );
   await driven.driver.awaitGridCondition(
-    'unsupported errors are legible inside task-owned terminals',
-    (snapshot) =>
-      snapshot.findText('Unsupported Proces') !== null &&
-      snapshot.findText('${file} req') !== null &&
-      snapshot.findText('${input:target}') !== null &&
-      snapshot.findText('${command:target}') !== null,
+    'unsupported labels, severity, and messages are legible in task-owned notices',
+    (snapshot) => {
+      const paintedRows = snapshot.textRows();
+      return (
+        paintedRows.some((row) => row.split('Error').length - 1 === 4) &&
+        snapshot.findText('Unsupported Proce') !== null &&
+        snapshot.findText('Missing File Cont') !== null &&
+        snapshot.findText('Unsupported Input') !== null &&
+        snapshot.findText('Unsupported Comm') !== null &&
+        snapshot.findText('Task variable ${f') !== null
+      );
+    },
   );
   HarnessSmoke.Class.requireCondition(
-    taskIdentifiers(status).length === 4,
-    'the positive control rendered all four planted errors',
+    taskIdentifiers(status).length === 0 &&
+      taskNoticeIdentifiers(status).length === 5 &&
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.filter((kind) => kind === 'task-notice')
+        .length === 5,
+    'the positive control rendered four errors, one warning, and no pseudo-terminals',
   );
   const instancesToggle = (
     status.panelSeparatorGeometry as
@@ -587,6 +741,7 @@ try {
   const activeDriver = driver as PtyTestDriver.Model | null;
   if (activeDriver) await activeDriver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(workspaceRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(secondaryWorkspaceRoot);
   for (const homeDirectory of homeDirectories) {
     await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   }

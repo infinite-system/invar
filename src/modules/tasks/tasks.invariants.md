@@ -106,10 +106,9 @@ selected.
 no-file built-in source does not report a displacement.
 
 **Mechanism:** `TaskConfiguration.reportDisplacedBuiltIns` derives one issue
-from the built-in task labels. `TaskLauncher.launchFolderOpen` launches the
-issue terminal but leaves the first configured task group presented, so its
-`Displaced: <labels>` heading remains visible in the terminal list without
-hiding the selected file tasks.
+from the built-in task labels. `TaskLauncher.launchFolderOpen` registers a
+`TaskNoticePaneContent` and leaves the first configured task group presented.
+The notice remains discoverable without hiding the selected file tasks.
 
 **Generates:** A named warning at first file-source adoption; unchanged
 whole-file replacement; contributor-owned built-in labels instead of
@@ -119,10 +118,10 @@ host-owned task-name checks.
 each displaced built-in exactly once`; `scripts/harness/smoke-tasks-harness.ts`
 drives the no-file and file-source states through real PTYs.
 
-**Impossible if true:** A file source removes a built-in while `taskErrors`
-and the terminal list name no displacement; the report merges the built-in
-task into the selected file source; the report hides the configured
-folder-open task group.
+**Impossible if true:** A file source removes a built-in while neither
+`taskErrors` nor a task notice pane names the displacement; the report merges
+the built-in task into the selected file source; the report hides the
+configured folder-open task group.
 
 **Verification:** `bun test src/modules/tasks/TaskConfiguration.test.ts
 src/modules/tasks/TaskLauncher.test.ts && bun
@@ -130,14 +129,17 @@ scripts/harness/smoke-tasks-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-08-01
 
 ### Folder open starts declared tasks
 
 **Invariant:** If a resolved shell task declares
-`runOptions.runOn: "folderOpen"`, then opening its workspace starts it without
-another user action and presents its terminal without taking keyboard focus
-from the surface the workspace opened.
+`runOptions.runOn: "folderOpen"`, then the first opening of its workspace root
+in an app session starts it without another user action and presents its
+terminal without taking keyboard focus from the surface the workspace opened.
+Later openings or switches to that root start nothing new. If panel restore has
+already registered the same stable task identifier, folder open reuses it
+instead of launching a duplicate.
 
 **Scope:** Shell tasks, workspace contribution lifecycle, and the no-file
 built-in. Manual task reruns remain registered commands. `problemMatcher` is
@@ -182,7 +184,7 @@ scripts/harness/smoke-reserved-chord-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-08-01
 
 ### Each task owns one terminal
 
@@ -232,8 +234,9 @@ dependencies. Supported `shell` tasks in the same selected file may still
 launch.
 
 **Mechanism:** `TaskConfiguration.normalizeTask` returns named issues and
-`TaskLauncher.report` launches each issue through the same terminal runtime
-with a dedicated error heading.
+`TaskLauncher.launchFolderOpen` registers each issue as a
+`TaskNoticePaneContent` with its label, severity, and message and with no
+process runtime.
 
 **Generates:** Partial compatibility with explicit boundaries; actionable
 errors at the surface where task output normally appears.
@@ -241,18 +244,17 @@ errors at the surface where task output normally appears.
 **Evidence:** `src/modules/tasks/TaskConfiguration.test.ts`;
 `src/modules/tasks/TaskLauncher.test.ts`;
 `scripts/harness/smoke-tasks-harness.ts` plants a `process` task as the positive
-control and observes the error in status and terminal cells.
+control and observes the error in status and task notice cells.
 
-**Impossible if true:** An unsupported task is absent from both running
-terminals and reported errors; an error omits the task label or unsupported
-type.
+**Impossible if true:** An unsupported task is absent from both task notice
+panes and reported errors; an error omits the task label or unsupported type.
 
 **Verification:** `bun test src/modules/tasks/ && bun
 scripts/harness/smoke-tasks-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-08-01
 
 ### Task launch accepts process contributions
 

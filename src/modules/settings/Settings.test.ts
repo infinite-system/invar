@@ -380,7 +380,11 @@ describe('Settings', () => {
             label: 'Terminal',
             groups: [
               [
-                { kind: 'terminal', label: 'Terminal' },
+                {
+                  identifier: 'task:%2Fworkspace:0',
+                  kind: 'terminal',
+                  label: 'Terminal',
+                },
                 { kind: 'invar-agent', label: 'Invar Agent' },
               ],
               [{ kind: 'claude-agent', label: 'AI Agent (Claude)' }],

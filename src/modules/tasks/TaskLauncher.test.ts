@@ -3,7 +3,11 @@ import type {
   TaskConfigurationIssue,
   TaskDefinition,
 } from './TaskConfiguration';
-import { TaskLauncher, type TaskTerminalLaunchRequest } from './TaskLauncher';
+import {
+  TaskLauncher,
+  type TaskPanelNoticeRequest,
+  type TaskTerminalLaunchRequest,
+} from './TaskLauncher';
 
 function task(
   configurationIndex: number,
@@ -20,8 +24,10 @@ function task(
   };
 }
 
-function launcherFixture() {
+function launcherFixture(initialIdentifiers: readonly string[] = []) {
   const requests: TaskTerminalLaunchRequest[] = [];
+  const notices: TaskPanelNoticeRequest[] = [];
+  const availableIdentifiers = new Set(initialIdentifiers);
   const presentations: {
     identifiers: string[];
     transferFocus: boolean;
@@ -29,20 +35,30 @@ function launcherFixture() {
   const removedIdentifiers: string[] = [];
   const launcher = new TaskLauncher.Class({
     port: {
-      launch: (request) => requests.push(request),
+      launch: (request) => {
+        requests.push(request);
+        availableIdentifiers.add(request.identifier);
+      },
+      notice: (request) => {
+        notices.push(request);
+        availableIdentifiers.add(request.identifier);
+      },
       present: (identifiers, transferFocus) =>
         presentations.push({
           identifiers: [...identifiers],
           transferFocus,
         }),
-      has: (identifier) =>
-        requests.some((request) => request.identifier === identifier),
-      remove: (identifier) => removedIdentifiers.push(identifier),
+      has: (identifier) => availableIdentifiers.has(identifier),
+      remove: (identifier) => {
+        removedIdentifiers.push(identifier);
+        availableIdentifiers.delete(identifier);
+      },
     },
   });
   return {
     launcher,
     requests,
+    notices,
     presentations,
     removedIdentifiers,
   };
@@ -70,6 +86,34 @@ test('folder-open tasks launch and matching groups present as one split', () => 
   expect(fixture.presentations[0]!.identifiers).toHaveLength(2);
   expect(new Set(fixture.presentations[0]!.identifiers).size).toBe(2);
   expect(fixture.presentations[0]!.transferFocus).toBe(false);
+});
+
+test('folder-open tasks start once per workspace root in one app session', () => {
+  const fixture = launcherFixture();
+  const tasks = [task(0, 'Left'), task(1, 'Right')];
+
+  expect(fixture.launcher.launchFolderOpen('/workspace', tasks, [])).toEqual([
+    'Left',
+    'Right',
+  ]);
+  expect(fixture.launcher.launchFolderOpen('/workspace', tasks, [])).toEqual(
+    [],
+  );
+
+  expect(fixture.requests).toHaveLength(2);
+  expect(fixture.presentations).toHaveLength(1);
+});
+
+test('a restored task identifier suppresses another folder-open launch', () => {
+  const restoredIdentifier = `task:${encodeURIComponent('/workspace')}:0`;
+  const fixture = launcherFixture([restoredIdentifier]);
+
+  expect(
+    fixture.launcher.launchFolderOpen('/workspace', [task(0, 'Restored')], []),
+  ).toEqual([]);
+
+  expect(fixture.requests).toEqual([]);
+  expect(fixture.presentations).toEqual([]);
 });
 
 test('an ungrouped manual rerun presents only its own terminal', () => {
@@ -102,6 +146,7 @@ test('the future MCP injection point contributes environment and arguments', () 
     ],
     port: {
       launch: (request) => requests.push(request),
+      notice: () => {},
       present: () => {},
       has: () => false,
       remove: () => {},
@@ -120,7 +165,7 @@ test('the future MCP injection point contributes environment and arguments', () 
   });
 });
 
-test('configuration issues launch legible dedicated error terminals', () => {
+test('configuration issues publish legible panel notices', () => {
   const fixture = launcherFixture();
   const issues: TaskConfigurationIssue[] = [
     {
@@ -132,14 +177,15 @@ test('configuration issues launch legible dedicated error terminals', () => {
 
   fixture.launcher.launchFolderOpen('/workspace', [], issues);
 
-  expect(fixture.requests[0]).toMatchObject({
+  expect(fixture.requests).toEqual([]);
+  expect(fixture.notices[0]).toEqual({
+    identifier: `task:${encodeURIComponent('/workspace')}:2:notice`,
     label: 'Unsupported',
-    command: 'printf',
-    arguments: ['%s\n', 'Invar tasks: unsupported type "process"'],
-    presentationPanel: 'dedicated',
+    message: 'unsupported type "process"',
+    severity: 'error',
   });
   expect(fixture.presentations[0]).toEqual({
-    identifiers: [fixture.requests[0]!.identifier],
+    identifiers: [fixture.notices[0]!.identifier],
     transferFocus: false,
   });
 });
@@ -164,6 +210,8 @@ test('reports remain discoverable without hiding the first task group', () => {
   expect(fixture.requests.map((request) => request.label)).toEqual([
     'Left',
     'Right',
+  ]);
+  expect(fixture.notices.map((notice) => notice.label)).toEqual([
     'Displaced: Built In',
   ]);
   expect(fixture.presentations).toEqual([
@@ -190,4 +238,18 @@ test('disposing a workspace removes every terminal it launched', () => {
   expect(fixture.removedIdentifiers).toEqual(
     fixture.requests.map((request) => request.identifier),
   );
+});
+
+test('reopening a disposed root stays silent for the rest of the app session', () => {
+  const fixture = launcherFixture();
+  const tasks = [task(0, 'One')];
+  fixture.launcher.launchFolderOpen('/workspace', tasks, []);
+
+  fixture.launcher.disposeWorkspace('/workspace');
+  expect(fixture.launcher.launchFolderOpen('/workspace', tasks, [])).toEqual(
+    [],
+  );
+
+  expect(fixture.requests).toHaveLength(1);
+  expect(fixture.presentations).toHaveLength(1);
 });

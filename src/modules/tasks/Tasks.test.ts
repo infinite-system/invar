@@ -46,6 +46,9 @@ test('workspace open launches folder tasks and registers manual reruns', () => {
       tasks: readonly TaskDefinition[],
     ) => {
       folderOpenCalls.push(tasks.map((task) => task.label));
+      return tasks
+        .filter((task) => task.runOnFolderOpen)
+        .map((task) => task.label);
     },
     launchAndPresent: (_workspaceRoot: string, task: TaskDefinition) => {
       manualCalls.push(task.label);
@@ -95,6 +98,7 @@ test('an unrelated harness may suppress only the built-in convenience', () => {
       tasks: readonly TaskDefinition[],
     ) => {
       launchedTaskLabels.push(tasks.map((task) => task.label));
+      return [];
     },
     disposeWorkspace: () => {},
   } as unknown as TaskLauncher.Model;

@@ -94,14 +94,13 @@ class $Tasks implements WorkspaceContributor {
       );
     }
     if (this.options.folderOpenTaskLaunchEnabled !== false) {
-      this.options.launcher.launchFolderOpen(
-        root,
-        configuration.tasks,
-        configuration.issues,
-      );
-      state.launchedLabels = configuration.tasks
-        .filter((task) => task.runOnFolderOpen)
-        .map((task) => task.label);
+      state.launchedLabels = [
+        ...this.options.launcher.launchFolderOpen(
+          root,
+          configuration.tasks,
+          configuration.issues,
+        ),
+      ];
     }
   }
 
