@@ -78,6 +78,15 @@ lossy proxy, so a green suite and an unhappy user coexist comfortably.
 
 Never internal values: drive the path a user drives. Reproduce before diagnosing.
 
+**EVERY READY REPORT OPENS WITH `## In plain words`.** Two or three sentences a
+ten-year-old could follow: what was wrong, what you did, what is true now. Name
+real things (a click, a file, a row, a timer), in cause-and-effect order. This is
+not decoration and not a summary of your headings. It is the proof you understand
+what you changed: if you cannot say it plainly, you hold a description, not a
+generator (the `/ste-expression` skill carries the rule and worked examples). The
+plain words are ADDED, never substituted. Exact paths, counts, and hashes stay in
+the sections below.
+
 **BYCATCH — report every bug you SEE, fix only the one you were SENT for.** Driving the real
 app means you will notice defects outside your task: a mispainted cell, a focus jump, a
 stall, a wrong glyph. Do NOT fix them (scope creep destroys reviewability) and do NOT ignore

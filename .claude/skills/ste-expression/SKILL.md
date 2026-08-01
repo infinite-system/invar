@@ -111,14 +111,18 @@ EXAMPLES from real work
   Plain: the app started the terminals first. Then it loaded the saved layout
   on top of them. The saved layout wiped out the terminals it had just made.
 
-WHERE IT APPLIES
+WHERE IT APPLIES — REQUIRED, not optional
 
+- Briefs: a `## In plain words` section, before the items. `dispatch.sh` and
+  `round-brief.sh` REFUSE a brief without it.
+- READY reports and summaries: an `## In plain words` section near the top.
+  What was wrong, what you did, what is true now. The conductor rejects a
+  report without it.
 - Replies to the user: after any finding, fix, or refusal. Lead with the
   plain version when the reader has not seen the area today.
-- READY reports and summaries: one plain paragraph near the top.
-- Briefs: the plain version of the DEFECT, so the builder recognizes it on
-  screen. The exact values stay in the item.
 - Commit messages: the first line. A reader six months out has no context.
+- Landing reports to the user: what changed for THEM, before what changed in
+  the code.
 
 THE GUARD
 

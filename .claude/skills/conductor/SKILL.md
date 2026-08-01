@@ -89,6 +89,13 @@ because everything still looks rigorous.
 4. **One verification pass at the END.**
 5. Judge by observation of the real path. **Assertions PREVENT REGRESSION; they do not DISCOVER FIXES.**
 
+**PLAIN WORDS FIRST — `## In plain words` is required in every brief AND
+every report.** Two or three sentences a ten-year-old could follow: what is
+wrong now, what must be true after. `dispatch.sh` and `round-brief.sh` refuse
+a brief without it. A READY report without it goes back for one line. The
+exact values stay in the items — plain is added, never substituted (the
+ste-expression skill's generation-test section carries the why).
+
 **THE INVARIANT DIALOGUE — two sections every brief MUST carry.** This is the
 loop: the conductor speaks the contracts going out; the builder answers them
 and reports what the contracts missed coming back. Neither section is
