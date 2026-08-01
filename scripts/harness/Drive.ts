@@ -233,6 +233,12 @@ class $Drive {
           keyName: value,
           completion: this.defaultKeyCompletion(value),
         });
+      } else if (argument === '--type') {
+        actions.push({
+          kind: 'type',
+          text: value,
+          completion: { kind: 'screen-change' },
+        });
       } else if (argument === '--wheel') {
         actions.push({
           kind: 'wheel',
@@ -899,6 +905,10 @@ class $Drive {
       driver.sendKeys(action.keyName);
       return;
     }
+    if (action.kind === 'type') {
+      driver.sendText(action.text);
+      return;
+    }
     if (action.kind === 'wheel') {
       driver.sendMouse({
         kind: 'wheel',
@@ -933,6 +943,10 @@ class $Drive {
       driver.sendKeysWithoutFrameExpectation(action.keyName);
       return;
     }
+    if (action.kind === 'type') {
+      driver.sendText(action.text);
+      return;
+    }
     if (action.kind === 'wheel') {
       driver.sendMouseWithoutFrameExpectation({
         kind: 'wheel',
@@ -958,6 +972,7 @@ class $Drive {
 
   protected static actionDescription(action: DriveAction): string {
     if (action.kind === 'key') return `key ${action.keyName}`;
+    if (action.kind === 'type') return `type ${JSON.stringify(action.text)}`;
     if (action.kind === 'wheel') return `wheel ${action.direction}`;
     if (action.target.kind === 'coordinates') {
       return `click ${action.target.column},${action.target.row}`;
@@ -1017,6 +1032,7 @@ class $Drive {
       '  --size LINE_COUNT    generate and open a temporary scale fixture',
       '  --key NAME           send one named key; repeat to preserve order',
       '  --wheel DIRECTION    send one wheel notch at the grid center',
+      '  --type TEXT          type literal characters (palette filters, inputs)',
       '  --click TARGET       click COLUMN,ROW, text=TEXT, or fold-control=TEXT',
       '  --frame-silent      declare the preceding action needs no repaint',
       '  --wait-for-text TEXT make the preceding action wait for new visible text',
@@ -1072,6 +1088,11 @@ type DriveAction =
   | {
       readonly kind: 'wheel';
       readonly direction: DriveWheelDirection;
+      readonly completion: DriveActionCompletion;
+    }
+  | {
+      readonly kind: 'type';
+      readonly text: string;
       readonly completion: DriveActionCompletion;
     }
   | {

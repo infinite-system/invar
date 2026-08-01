@@ -4,6 +4,66 @@
 
 ### OPERATIVE STATE
 
+RESUME ANCHOR 28 (2026-08-01 ~14:2x EDT — CHECKPOINT at 84%; supersedes 27. ACTIVE ui-task session, user present)
+
+STATE (all verified on disk at write time):
+- LANDED TODAY: #433 (7a33c34b — dashboard smoke isolated from host fleet state via
+  INVAR_FLEET_GATE_REGISTRY; my filed diagnosis refuted twice, summary honest) and
+  #435 (69886b7e — folderOpen tasks once per root; issues are notice panes; green
+  gate 82 OK). Summaries written. Session archives repaired (link by COMMIT grep).
+- #439 READ (delta 14:3x): builder REFUTED my list-auto-close and inert-close
+  findings — my probe's toggle click on an already-pinned list caused both
+  (pre-satisfied gesture; lesson in conductor family 1). Real cascade cause:
+  folderOpen launch BEFORE panel restore; fixed by ordering. Bycatch converted:
+  #440 (panelListGeometry left:-24 impossible coords), #441 (contentIds/labels
+  pairing drift). REMAINING for landing: micro-round to apply the confirmed
+  displaced-builtins contract wording (report section Invariants), then merge
+  main -> gate -> land. Report (formerly UNREAD): .invar/tasks/in-progress/439-notice-persistence-
+  restored-state-defects/report-439-*.md. Task: notices persisted as terminals,
+  restored-state list auto-close (~1.5s), close-control unreliability, Displaced
+  suppression when config redeclares the label (user-approved), user cascade
+  (close Displaced -> neighbors die + Database takeover; conductor could NOT
+  reproduce in 4 attempts). NEXT: read report, convert bycatch, merge main into
+  fleet/439-..., gate combined tree (register log in /tmp/fleet-watch-gates),
+  land on read GATE_EXIT=0. Landing over red allowed ONLY for the #436
+  pre-existing step (tasks:watch partial frame under load; baseline proof
+  /tmp/gate-main-baseline-1785582277.log).
+- UI BATCH (ui-task loop, ACCUMULATE stage — user is actively adding items, do
+  NOT dispatch without their conclusion). Confirmed items with driven cell
+  evidence, all panel/editor chrome:
+  1. Vertical-splitter crossings on the bottom-panel splitter row keep the
+     vertical splitter bg 1447454 instead of row bg 1710886 — cols 37 (sidebar
+     seam) and 91 (right-dock seam, Ctrl+Alt+b opens dock). ONE generator.
+  2. Splitter left gap: first cell becomes a SPACE carrying row bg 1710886,
+     line starts one cell later (user design, merged with the old item 1).
+  3. Instances toggle padding: one space between the tab-row ☰ (col 118) and
+     the right border │ (col 119 is REAL border, not artifact — user corrected
+     me); the space joins the toggle hit area.
+  4. Editor bottom-border dashes left of the wrap/goto/bottom button trio
+     (row 21 cols 38-39) paint fg 1052692 instead of border tone 8037111.
+  Withdrawn: scroll-anchoring item (already works), close-fallback-to-Database
+  (rides #439), right-edge stray-bar artifact (was the real border).
+- QUEUE: #434 (dead no-registry gate render branch), #436 (tasks:watch partial
+  frame under load, four-log A/B evidence in task file), #437 (gesture mechanics
+  to shared driver layer), #438 (Engine: user — hook-gate policy in builder
+  worktrees, recommend auto-skip in .invar/worktrees/*).
+- DRIVE UPGRADES THIS SESSION (all landed on main): --home (persistent home;
+  stale status.json cleared on reuse — the #435 builder caught my bug), --env
+  KEY=VALUE, --type TEXT (literal characters). AGENTS.md now requires gesture
+  mechanics in the SHARED driver layer, CLI table only binds (commit this
+  morning). Realized 9-terminals mystery SOLVED: legacy pile persisted in
+  ~/.config/invar/settings.json; user cleared it; #439 sanitizes.
+- Probes: tmp/probe-close-displaced-notice.ts (copy shipped into #439 folder as
+  probe-439-...; PROBE_COPY_REAL_SETTINGS=1 copies user settings READ-ONLY).
+- LAWS DELTA today: AGENTS.md gesture-two-layer rule; land.sh needs GATE_LOG
+  with read GATE_EXIT or written GATE_OVERRIDE + BYCATCH_TRIAGED=1; archive-
+  session repair = write rollout path into tmp/transcripts/session-link-<slug>.txt.
+- WATCHER RE-ARM (verbatim): Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+  Crons remain DISARMED by user order — never re-arm without their word.
+- Gate discipline reminder: builder READY-idle counts as live in probe.sh; take
+  the written exception or steer a hold. My own PTY drives count as load too.
+
+
 RESUME ANCHOR 27 (2026-08-01 ~06:2x local — pre-compaction refresh; supersedes 26. ACTIVE ui-task session, user present)
 
 STATE: user ACTIVE and directing UI work. Crons DISARMED (user order; never re-arm without their word).
