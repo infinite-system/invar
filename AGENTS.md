@@ -25,7 +25,10 @@ skipping those is the exact failure two resurrection drills caught.**
 Your inner loop is **driving the real app in your own PTY** (`scripts/harness/PtyTestDriver.ts`
 + FrameProbe) and LOOKING at what it does. Seconds per turn. No gate, no suite. Start with
 [`bun run drive`](scripts/harness/drive.md) for a settled grid, published probes, scale fixtures,
-and repeatable key, wheel, or click input.
+and repeatable key, wheel, or click input — plus `--gesture` verbs (named user actions with
+their condition waits built in) and `--cells ROW,C1-C2` per-cell color dumps. Most sightings
+are ONE drive command; write a probe .ts only for logic a flag chain cannot express, and add
+new gestures to `Drive.ts`'s table so the whole fleet inherits them.
 
 1. **REPRODUCE BY DRIVING FIRST.** Write no assertion yet. If you cannot see the problem, you
    cannot fix it. If you truly cannot see it, say so and report what you tried.

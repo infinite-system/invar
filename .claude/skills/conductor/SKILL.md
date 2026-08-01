@@ -387,7 +387,9 @@ It requires a merge-base run. State whether it was verified at the merge base, a
 ## Verify by driving
 
 Verify everything by driving the real user path: the **PTY harness** (`PtyTestDriver` +
-frame probe), never internal values. This is the builder's inner loop, not only the gate's
+frame probe), never internal values. Quick sightings use `bun run drive`
+(scripts/harness/drive.md) — `--gesture` verbs with built-in waits, `--cells` color dumps —
+before any bespoke probe file; briefs name the drive command so builders see the same pixels. This is the builder's inner loop, not only the gate's
 instrument.
 
 **tmux is LEGACY and demoted.** About 44 `*_full_tmux_smoke` registrations survive as an
