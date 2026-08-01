@@ -26,6 +26,13 @@ set -euo pipefail
 
 repository_root="$(cd "$(dirname "$0")/../.." && pwd)"
 
+# Fleet records live in the MAIN checkout only. Filing into a linked worktree
+# is a SILENT no-op: every guard passes, the steer lands, and the builder sits
+# idle reading a path that does not exist for it. Bought on 2026-08-01, #452.
+# shellcheck source=scripts/fleet/require-main-checkout.sh
+. "${repository_root}/scripts/fleet/require-main-checkout.sh"
+fleet_require_main_checkout "round-brief" "${repository_root}" || exit 2
+
 if [ $# -ne 2 ]; then
   echo "usage: $0 <task-folder-name> <brief-file>" >&2
   exit 2

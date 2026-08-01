@@ -39,9 +39,18 @@ esac
 case "$slug" in
   ''|*[!a-z0-9-]*) echo "dispatch: slug must be lowercase letters, digits, hyphens" >&2; exit 2;;
 esac
+script_repository_root="$(cd "$(dirname "$0")/../.." && pwd)"
+
+# Fleet records live in the MAIN checkout only — see require-main-checkout.sh.
+# This sits with the other early guards because guards go first or they are not
+# guards: a late refusal already cut a worktree and committed a brief.
+# shellcheck source=scripts/fleet/require-main-checkout.sh
+. "${script_repository_root}/scripts/fleet/require-main-checkout.sh"
+fleet_require_main_checkout "dispatch" "${script_repository_root}" || exit 2
+
 [ -f "$brief_file" ] || { echo "dispatch: brief not found: $brief_file" >&2; exit 2; }
 name="${task_number}-${slug}"
-script_repository_root="$(cd "$(dirname "$0")/../.." && pwd)"
+
 brief_link_directory="${script_repository_root}/.invar/tasks/in-progress/${name}"
 for task_state in active in-progress completed retired; do
   task_record_directory="${script_repository_root}/.invar/tasks/${task_state}/${name}"
