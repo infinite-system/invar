@@ -15,6 +15,7 @@ import {
   mkdirSync,
   mkdtempSync,
   realpathSync,
+  rmSync,
   statSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -101,6 +102,10 @@ class $Drive {
       options.homeDirectoryOverride ?? this.createHomeDirectory();
     if (options.homeDirectoryOverride) {
       mkdirSync(homeDirectory, { recursive: true });
+      // A reused home keeps settings and session state, but a stale
+      // status.json would satisfy the new boot's waits with the OLD
+      // run's published state (seen live on #435, 2026-08-01).
+      rmSync(join(homeDirectory, 'status.json'), { force: true });
     }
     const statusPath = join(homeDirectory, 'status.json');
     const driver = new PtyTestDriver.Class({
