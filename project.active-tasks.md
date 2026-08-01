@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #452 [pane-identity-collides-by-name](.invar/tasks/in-progress/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md)  [building]
+- #452 [pane-identity-collides-by-name](.invar/tasks/in-progress/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/452-pane-identity-collides-by-name`
 - #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/444-history-is-editor-area-view-states`
@@ -59,7 +59,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (26)
+## FLAKE-EVIDENCE (30)
+- #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
+- #455 [agent-composer-never-activates](.invar/tasks/active/455-agent-composer-never-activates/task-455-agent-composer-never-activates.md)
+- #454 [agent-pane-invalid-grid-region](.invar/tasks/active/454-agent-pane-invalid-grid-region/task-454-agent-pane-invalid-grid-region.md)
+- #453 [diff-scrollbar-thumb-missing-at-start](.invar/tasks/active/453-diff-scrollbar-thumb-missing-at-start/task-453-diff-scrollbar-thumb-missing-at-start.md)
 - #447 [panel-drag-smoke-timed-out-once](.invar/tasks/active/447-panel-drag-smoke-timed-out-once/task-447-panel-drag-smoke-timed-out-once.md)
 - #446 [quick-open-enumeration-stuck-loading](.invar/tasks/active/446-quick-open-enumeration-stuck-loading/task-446-quick-open-enumeration-stuck-loading.md)
 - #436 [tasks-watch-partial-frame-under-load](.invar/tasks/active/436-tasks-watch-partial-frame-under-load/task-436-tasks-watch-partial-frame-under-load.md)

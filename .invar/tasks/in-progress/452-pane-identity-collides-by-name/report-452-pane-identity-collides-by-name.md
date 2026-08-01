@@ -1,10 +1,10 @@
 ## In plain words
 
-Two panes could get the same hidden ID after one pane closed, so the new pane could disappear behind the old one. Invar now gives every new pane its own ID, keeps old saved IDs, rejects duplicate ownership, and restarts a terminal read stream if it closes while the PTY is still open. The merged panel test also keeps every editor-history and chrome check: two panes can share the name “Database 3,” closing one leaves the other alive, and the surrounding controls still paint in the right cells.
+Two panes could get the same hidden ID after one pane closed, so the new pane could disappear behind the old one. Invar now gives every new pane its own ID, keeps old saved IDs, rejects duplicate ownership, and restarts a terminal read stream if it closes while the PTY is still open. The merged tests keep every editor-history and chrome check, and the dirty dot check now reads the tab row instead of the breadcrumb row.
 
 ## Result
 
-READY at merge commit `e05b7b61f7e3e3f39f7139588333afe319329ef9`. The round 1 implementation is commit `552cf6c79181e0c129f930ec9bbc0a42f85b6b2e`. The merge includes `9cf3817332cc2e6d9189184e56f8e8288f5caf5d` from `fleet/444-history-is-editor-area-view-states`.
+READY at merge commit `4222e760a9e63d06d58d043edb0e15540f0b30db`. The round 1 implementation is commit `552cf6c79181e0c129f930ec9bbc0a42f85b6b2e`. The round 2 union is commit `e05b7b61f7e3e3f39f7139588333afe319329ef9`. The round 3 merge includes `93e2488d088d3673487417a5ac9bda7d3b788ed1` from `fleet/442-panel-editor-tree-chrome-polish`.
 
 The worktree is clean. I did not run the merge gate, push, or land the work. I committed with `SKIP_GATE=1`, as the [round 2 union brief](brief-452-2-union-444.md) requires.
 
@@ -30,6 +30,14 @@ The database sequence merged without a textual conflict. It keeps this branch's 
 No assertion from either branch was dropped. The union contains and passes all named chrome checks: splitter columns 37 and 91, editor-action colors, instance-toggle padding, and the superscript count. It also contains and passes all identity checks: restored `terminal` ID, distinct IDs for two panes named `Database 3`, and one surviving after the other closes.
 
 The merge base measured 25 assertions and 46 waits. This branch measured 19 assertions and 50 waits before the union. The history and chrome branch measured 19 assertions and 55 waits. The resolved union measures 22 assertions and 56 waits. [project.coverage-deltas.md](../../../../project.coverage-deltas.md) declares those measured union numbers, and the coverage ratchet passes.
+
+## Round 3 dirty-marker pickup
+
+The second merge from `fleet/442-panel-editor-tree-chrome-polish` completed without conflicts. It changed only [HarnessSmokeSupport.ts](../../../../scripts/harness/HarnessSmokeSupport.ts) and [HarnessSmoke.test.ts](../../../../scripts/harness/HarnessSmoke.test.ts).
+
+The dirty dot was not lost. The shared `activeTabHasDirtyMarker` test helper still read the old breadcrumb row after the editor-area rewrite moved breadcrumbs above the tabs. The merged helper locates the tab row from the published editor geometry and verifies the dirty marker there. Its focused unit coverage, the full dirty-marker smoke, and the editor smoke all pass.
+
+I did not change the four unrelated red checks reported by #442 (panel, editor, and tree chrome polish): the diff scrollbar thumb, agent-pane grid region, agent composer activation, and structure-filter focus tone.
 
 ## Candidate verdicts
 
@@ -107,12 +115,14 @@ No existing record says that pane IDs are independent from labels, names, and li
 
 ## Verification
 
-- `bun test`: PASS in full. 2,303 tests, 0 failures, 71,908 expectations, 349 files.
+- `bun test`: PASS in full after the round 3 merge. 2,304 tests, 0 failures, 71,909 expectations, 349 files.
 - `bunx tsc --noEmit`: PASS.
 - `bash scripts/conventions-gate.sh`: PASS.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`: PASS. 1,334 annotations, 266 lattice links, 0 problems.
 - `bun scripts/check-coverage-ratchet.ts`: PASS. The panel chrome smoke measures 22 assertions and 56 waits; 392 files have no undeclared decrease against `a9700d9`.
 - `bun scripts/harness/smoke-panel-chrome-harness.ts`: PASS at 120×40 and 88×24. Both branches' named assertions are present and green.
+- `bun scripts/harness/smoke-dirty-marker-harness.ts`: PASS. The clean, edit, backspace, rewrite, save, and saved-baseline marker checks are green.
+- `bun scripts/harness/smoke-editor-harness.ts`: PASS. Its dirty flag and rendered dirty-dot checks are green.
 - `bun scripts/harness/smoke-workspace-tabs-harness.ts`: PASS.
 - `bun scripts/harness/smoke-panel-split-harness.ts`: PASS.
 - `bun scripts/harness/smoke-terminal-harness.ts`, `smoke-terminal-backpressure-harness.ts`, and `smoke-terminal-stage-harness.ts`: PASS.
@@ -120,6 +130,8 @@ No existing record says that pane IDs are independent from labels, names, and li
 - Focused `PaneRuntimes`, `PanelHost`, `TerminalPlugin`, `MediaPlugin`, `AppStatusProjection`, and `OpenPty` tests: PASS. 46 tests and 309 expectations.
 
 The merge surfaced no new evidence about why all old and new terminals in the original incident appeared blank together. The original incident remains unproven, and the open question about its shared cause stays open.
+
+One panel-chrome run timed out while it ran concurrently with two other PTY applications. The same complete smoke passed when run alone, including both sizes and all identity and chrome assertions. No round 3 product failure reproduced.
 
 ## Bycatch
 
