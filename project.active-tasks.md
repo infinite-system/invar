@@ -12,7 +12,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #442 [panel-editor-tree-chrome-polish](.invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/442-panel-editor-tree-chrome-polish`
 
-## USER-DIRECTED (13)
+## USER-DIRECTED (14)
+- #452 [pane-identity-collides-by-name](.invar/tasks/active/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
@@ -98,9 +99,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (38)
+## ARCHITECTURE-HYGIENE (37)
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/active/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)
-- #441 [status-projection-order-pairing](.invar/tasks/active/441-status-projection-order-pairing/task-441-status-projection-order-pairing.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
 - #434 [gate-glance-null-render-branch-dead](.invar/tasks/active/434-gate-glance-null-render-branch-dead/task-434-gate-glance-null-render-branch-dead.md)
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
