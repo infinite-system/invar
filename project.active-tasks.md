@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #439 [notice-persistence-restored-state-defects](.invar/tasks/in-progress/439-notice-persistence-restored-state-defects/task-439-notice-persistence-restored-state-defects.md)  [building]
-  `tmux attach -t invar/439-notice-persistence-restored-state-defects`
-
 ## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -25,7 +21,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (27)
+## VERIFICATION-INTEGRITY (28)
+- #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)
 - #407 [keybinding-conflict-detection](.invar/tasks/active/407-keybinding-conflict-detection/task-407-keybinding-conflict-detection.md)
@@ -93,7 +90,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (36)
+## ARCHITECTURE-HYGIENE (37)
+- #441 [status-projection-order-pairing](.invar/tasks/active/441-status-projection-order-pairing/task-441-status-projection-order-pairing.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
 - #434 [gate-glance-null-render-branch-dead](.invar/tasks/active/434-gate-glance-null-render-branch-dead/task-434-gate-glance-null-render-branch-dead.md)
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
@@ -135,7 +133,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 171 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 172 — full log: project.tasks-completed.md)
+- #439 [notice-persistence-restored-state-defects](.invar/tasks/completed/439-notice-persistence-restored-state-defects/task-439-notice-persistence-restored-state-defects.md) — ed401644 — Cascade cause found: folderOpen before restore; fixed by ordering. Notices non-persistent + legacy sanitization; Displaced suppressed for redeclared labels; my two probe findings refuted (pre-satisfied toggle). Landed over pre-existing #436 red.
 - #435 [folder-open-task-launch-hygiene](.invar/tasks/completed/435-folder-open-task-launch-hygiene/task-435-folder-open-task-launch-hygiene.md) — 69886b7e — Once-per-root launch memory + restored-identity adoption; issues are notice panes, not pseudo-terminals; Terminal space restores with contents. Contracts refined in-branch. Bycatch converted: #437, #438; drive --home stale-status fix landed mid-task.
 - #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/completed/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md) — 7a33c34b — Filed diagnosis refuted by driving: red was a stale predicate + host-registry coupling. Glance and smoke isolated via INVAR_FLEET_GATE_REGISTRY; three registry states driven; new invariant record. Landed over pre-existing #436 red.
 - #432 [panel-editor-actions-instances-overhaul](.invar/tasks/completed/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md) — 7d2cc879 — All 21 brief items landed in one round; generic Dialog + DragReorder seams; design.invariants.md seeded; markdown preview actions fixed; landed over documented pre-existing 417084fa red (#433)
@@ -150,4 +149,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #422 [verification-field-panelheading-rot](.invar/tasks/completed/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md) — ea808dcb — Repointed the three PanelHeading-rotted records to PanelTabBar-era artifacts; UI geometry record re-derived. Contract-only; checker green. Bycatch converted to #423 (class-closing sweep) before landing.
 - #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/completed/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md) — b327cc93 — Mixed-source snapshot reproduced by driving, fixed to one-commit-per-snapshot, locked by tests and a new established record. Full repo gate green — first field test of #424's condition waits, passed. No bycatch.
 - #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
-- #419 [field-v2-opus-synthesis](.invar/tasks/completed/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md) — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate

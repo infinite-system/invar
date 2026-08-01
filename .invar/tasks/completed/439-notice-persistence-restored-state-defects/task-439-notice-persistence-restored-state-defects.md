@@ -5,7 +5,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — ed401644 — Cascade cause found: folderOpen before restore; fixed by ordering. Notices non-persistent + legacy sanitization; Displaced suppressed for redeclared labels; my two probe findings refuted (pre-satisfied toggle). Landed over pre-existing #436 red.
 
 ## What
 
