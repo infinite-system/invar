@@ -7,9 +7,9 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (4)
-- #448 [static-reads-that-can-block-overrides](.invar/tasks/in-progress/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md)  [building]
+- #448 [static-reads-that-can-block-overrides](.invar/tasks/in-progress/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/448-static-reads-that-can-block-overrides`
-- #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [building]
+- #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/444-history-is-editor-area-view-states`
 - #443 [static-read-indirection-defeats-override](.invar/tasks/in-progress/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/443-static-read-indirection-defeats-override`
@@ -102,7 +102,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (37)
+## ARCHITECTURE-HYGIENE (38)
+- #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/active/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)
 - #441 [status-projection-order-pairing](.invar/tasks/active/441-status-projection-order-pairing/task-441-status-projection-order-pairing.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
 - #434 [gate-glance-null-render-branch-dead](.invar/tasks/active/434-gate-glance-null-render-branch-dead/task-434-gate-glance-null-render-branch-dead.md)
