@@ -11,6 +11,20 @@ STATE (all verified on disk at write time):
   INVAR_FLEET_GATE_REGISTRY; my filed diagnosis refuted twice, summary honest) and
   #435 (69886b7e — folderOpen tasks once per root; issues are notice panes; green
   gate 82 OK). Summaries written. Session archives repaired (link by COMMIT grep).
+- ANCHOR 28 DELTA 3 (2026-08-01 ~16:0x EDT, 97% gauge): PLAIN WORDS ARE NOW LAW.
+  dispatch.sh + round-brief.sh REFUSE a brief without '## In plain words';
+  AGENTS.md requires every READY report to OPEN with it; conductor skill and
+  ste-expression carry the rule plus the generation-test rationale (saying it
+  plainly proves you hold the generator, not a description; plain is ADDED,
+  never substituted). Both live builders steered mid-job; #443's report complied.
+  MECHANICS FIX: round-brief.sh and dispatch.sh now MOVE the brief instead of
+  copying — leftover copies were counted by the round tally, so #442 read rounds
+  1,4,6,8,10,12,14 for seven briefs. #442 folder deduped to 7 briefs.
+  #443 READY (report in its folder, commit 1e6f6dbe): five of six sites took
+  ladder rung 1 (statics and Static() wrappers deleted outright, nothing outside
+  read them); only Tooltip needed rung 2. NEXT: gate the combined tree and land
+  (#436's terminal-harness step is the only overridable red). #442 still building
+  with SIX amendments; ivue skill gained the static-read ladder section.
 - ANCHOR 28 DELTA 2 (2026-08-01 ~15:2x EDT, 96% CHECKPOINT): #442 DISPATCHED and
   building — the concluded ui-task batch, 12 items + FOUR amendments, all filed as
   numbered rounds in .invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/:
