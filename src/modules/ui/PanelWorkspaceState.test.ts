@@ -73,3 +73,59 @@ test('a relaunch rebuilds group order, active group, list pin, and list width', 
     [['terminal', 'agent'], ['terminal-2']],
   );
 });
+
+test('a notice pane never enters a workspace snapshot', () => {
+  const panelHost = new PanelHost.Class();
+  panelHost.register(new FakePane('terminal', 'Terminal', 'terminal'));
+  panelHost.register(
+    new FakePane('task:%2Fworkspace:1:notice', 'Notice', 'task-notice'),
+  );
+
+  const persisted = PanelWorkspaceState.Class.snapshot(panelHost, (content) =>
+    content.kind === 'task-notice' ? null : (content.kind ?? null),
+  );
+
+  expect(persisted.spaces.flatMap((space) => space.groups).flat()).toEqual([
+    {
+      identifier: 'terminal',
+      kind: 'terminal',
+      label: 'Terminal',
+    },
+  ]);
+});
+
+test('restore rejects a pane whose kind cannot belong to its saved space', () => {
+  const restoredIdentifiers: string[] = [];
+  const restoration = PanelWorkspaceState.Class.restore(
+    {
+      spaces: [
+        {
+          kind: 'terminal',
+          label: 'Terminal',
+          groups: [
+            [
+              {
+                identifier: 'database',
+                kind: 'database',
+                label: 'Database',
+              },
+            ],
+          ],
+          activeGroupIndex: 0,
+        },
+      ],
+      activeSpaceIndex: 0,
+      panelListExpanded: true,
+      panelListWidth: 35,
+      visible: true,
+    },
+    (pane) => {
+      restoredIdentifiers.push(pane.identifier ?? 'missing');
+      return new FakePane(pane.identifier ?? 'missing', pane.label, pane.kind);
+    },
+  );
+
+  expect(restoredIdentifiers).toEqual([]);
+  expect(restoration.spaces).toEqual([]);
+  expect(restoration.panelListExpanded).toBe(true);
+});

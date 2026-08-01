@@ -408,7 +408,8 @@ src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-h
 
 **Invariant:** If panel windows are reordered, then each container's ordered group sequence and each
 split group's ordered member sequence appear in the docked list and visible split immediately and
-after restart. The global content order remains the stable instance registry order.
+after restart. The global content order remains the stable instance registry order. Derived task
+notices may exist in the live order but never in the persisted sequence.
 
 **Scope:** The bottom `PanelHost`, `Settings.panelContentOrder`,
 `Settings.panelWorkspaceStates`, `PanelContentsList`, and explicit pane groups. Other `PanelHost`
@@ -438,7 +439,7 @@ scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-08-01
 
 ### Activity bar order is one persisted sequence
 

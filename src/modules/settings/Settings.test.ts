@@ -409,4 +409,121 @@ describe('Settings', () => {
       settings.panelWorkspaceStates.value['/workspace'],
     );
   });
+
+  test('load removes legacy task notices from panel workspace state', () => {
+    const { settings } = makeStore({
+      [USER_PATH]: JSON.stringify({
+        panelContentOrder: ['task:%2Fworkspace:1:notice', 'agent', 'terminal'],
+        panelWorkspaceStates: {
+          '/workspace': {
+            spaces: [
+              {
+                kind: 'terminal',
+                label: 'Terminal',
+                groups: [
+                  [
+                    {
+                      identifier: 'task:%2Fworkspace:0',
+                      kind: 'terminal',
+                      label: 'Task',
+                    },
+                    {
+                      identifier: 'task:%2Fworkspace:1:notice',
+                      kind: 'terminal',
+                      label: 'Legacy notice',
+                    },
+                    {
+                      identifier: 'task:%2Fworkspace:2:notice',
+                      kind: 'task-notice',
+                      label: 'Typed notice',
+                    },
+                  ],
+                ],
+                activeGroupIndex: 0,
+              },
+            ],
+            activeSpaceIndex: 0,
+            panelListExpanded: true,
+            panelListWidth: 21,
+            visible: true,
+          },
+        },
+      }),
+    });
+
+    settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+
+    expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
+    expect(
+      settings.panelWorkspaceStates.value['/workspace']?.spaces[0]?.groups,
+    ).toEqual([
+      [
+        {
+          identifier: 'task:%2Fworkspace:0',
+          kind: 'terminal',
+          label: 'Task',
+        },
+      ],
+    ]);
+  });
+
+  test('save excludes task notices from panel persistence', () => {
+    const { settings, store } = makeStore();
+    settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+    settings.panelContentOrder.value = [
+      'terminal',
+      'task:%2Fworkspace:1:notice',
+    ];
+    settings.panelWorkspaceStates.value = {
+      '/workspace': {
+        spaces: [
+          {
+            kind: 'terminal',
+            label: 'Terminal',
+            groups: [
+              [
+                {
+                  identifier: 'task:%2Fworkspace:0',
+                  kind: 'terminal',
+                  label: 'Task',
+                },
+                {
+                  identifier: 'task:%2Fworkspace:1:notice',
+                  kind: 'task-notice',
+                  label: 'Notice',
+                },
+              ],
+            ],
+            activeGroupIndex: 0,
+          },
+        ],
+        activeSpaceIndex: 0,
+        panelListExpanded: true,
+        panelListWidth: 20,
+        visible: true,
+      },
+    };
+
+    settings.save();
+
+    const persisted = JSON.parse(store.get(USER_PATH) ?? '{}') as {
+      panelContentOrder?: string[];
+      panelWorkspaceStates?: Record<
+        string,
+        { spaces?: Array<{ groups?: unknown }> }
+      >;
+    };
+    expect(persisted.panelContentOrder).toEqual(['terminal']);
+    expect(
+      persisted.panelWorkspaceStates?.['/workspace']?.spaces?.[0]?.groups,
+    ).toEqual([
+      [
+        {
+          identifier: 'task:%2Fworkspace:0',
+          kind: 'terminal',
+          label: 'Task',
+        },
+      ],
+    ]);
+  });
 });

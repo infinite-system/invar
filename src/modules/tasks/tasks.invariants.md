@@ -99,8 +99,8 @@ scripts/harness/smoke-tasks-harness.ts`
 ### File sources report displaced built-ins
 
 **Invariant:** If a file task source supersedes the built-in source, then one
-visible task report names every displaced built-in while the file tasks remain
-selected.
+visible task report names each built-in label that the file source does not
+redeclare, while the file tasks remain selected.
 
 **Scope:** `.invar/tasks.json` and `.vscode/tasks.json` source selection. The
 no-file built-in source does not report a displacement.
