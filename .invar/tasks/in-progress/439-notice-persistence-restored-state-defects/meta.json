@@ -1,0 +1,15 @@
+{
+  "task": 439,
+  "slug": "notice-persistence-restored-state-defects",
+  "branch": "fleet/439-notice-persistence-restored-state-defects",
+  "worktree": ".invar/worktrees/439-notice-persistence-restored-state-defects",
+  "tmuxSession": "invar/439-notice-persistence-restored-state-defects",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-439-notice-persistence-restored-state-defects.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "50ebd1980c2e0c78abc0c651df364337c21712ff",
+  "startedAt": "2026-08-01T13:46:06-04:00"
+}
