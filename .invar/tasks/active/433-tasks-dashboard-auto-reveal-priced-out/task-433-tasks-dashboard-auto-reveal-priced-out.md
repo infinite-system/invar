@@ -40,9 +40,9 @@ Keep "an off-screen live row owns no dashboard motion timer" green.
 
 ## Invariants in scope
 
-- tasks-dashboard.invariants.md — "Task truth lives in the folders the
+- [tasks-dashboard.invariants.md](../../../../src/modules/tasks-dashboard/tasks-dashboard.invariants.md) — "Task truth lives in the folders the
   CLI reads"; the pricing rationale in 417084fa's contract additions.
 
 ## Bycatch expected
 
-Report per AGENTS.md's bycatch taxonomy.
+Report per [AGENTS.md](../../../../AGENTS.md)'s bycatch taxonomy.
