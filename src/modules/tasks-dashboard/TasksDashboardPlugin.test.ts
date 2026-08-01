@@ -199,8 +199,12 @@ test('activation registers the dock pane, commands, keybindings, setting, and st
   expect(recording.commandIds).toContain('tasks.toggleCycle');
   const snapshot = recording.snapshot();
   expect(snapshot.tasksLens).toBe('live');
-  expect(snapshot.tasksAvailable).toBe(false);
-  expect(snapshot.tasksRows).toBe(0);
+  expect(snapshot.tasksAvailable).toBe(true);
+  expect(snapshot.tasksRows).toBe(2);
+  expect(snapshot.tasksTaskTreeReads).toBe(1);
+  expect(snapshot.tasksDataHeartbeatTicks).toBe(0);
+  expect(snapshot.tasksDataHeartbeatAtRest).toBe(true);
+  expect(snapshot.tasksAnimationAtRest).toBe(true);
   recording.commandRunners.get('view.showTasks')?.();
   expect(recording.snapshot().tasksAvailable).toBe(true);
   expect(recording.snapshot().tasksRows).toBe(3);

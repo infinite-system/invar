@@ -113,6 +113,9 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       section: this.name,
       suggestedSide: 'right',
     });
+    // invariant: Task truth lives in the folders the CLI reads (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+    // Seed availability once so default reveal policy can decide from current task truth.
+    this.requireOverview().refresh();
     this.requireOverview().startObservation();
     this.applyDefaultVisibility(showByDefaultSetting.value.value);
     this.disposeStatusProjection =
@@ -153,7 +156,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     );
   }
 
-  /** True while the tasks pane is on screen. A hidden pane owns no timer or task-tree read. */
+  /** True while the tasks pane is on screen. A hidden pane owns no timer or recurring read. */
   protected paneIsObserved(): boolean {
     return this.dockContent?.isPainted() ?? false;
   }

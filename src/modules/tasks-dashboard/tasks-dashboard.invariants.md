@@ -88,10 +88,11 @@ returns the workspace checkout, not a `$bunfs` path (driven 2026-08-01, worktree
 ### Dashboard motion exists only while observed
 
 **Invariant:** If no live task motion and no running gate is painted, then a motion tick causes
-no paint; if the pane itself is not painted, then it has no task-tree read, data timer, or motion
-timer. Selected, registered, and retained are not observed. While painted, each steady data tick
-reads fleet facts only for painted task rows, lists sessions at most once for those rows, and
-rebuilds only changed painted rows. While visible,
+no paint. Activation may seed current task truth with one task-tree read. After that seed, a pane
+that is not painted has no recurring task-tree read, data timer, or motion timer. Selected,
+registered, and retained are not observed. While painted, each steady data tick reads fleet facts
+only for painted task rows, lists sessions at most once for those rows, and rebuilds only changed
+painted rows. While visible,
 building, exploring, and gate motion use the exact exported CLI watch ramps and glyph frames,
 and they step on the exported wall-clock cadence, so the pane and the CLI watch show the same
 motion step at the same moment however often either repaints.
@@ -100,22 +101,26 @@ motion step at the same moment however often either repaints.
 
 **Mechanism:** `RegisteredDockContent.isPainted` derives from the same side-dock state the root
 view paints: the host is visible and its exact active content is the contribution. The pane starts
-and stops both ivue-owned intervals from that predicate. A constant four-directory stamp guards
-full task-tree reads. Worktree mtimes guard fleet reads, and the current row window selects fleet
-and session facts. The motion tick advances only when a painted row or gate needs it. The renderer indexes the
+and stops both ivue-owned intervals from that predicate. Plugin activation performs one refresh so
+availability and default reveal policy have current folder truth before the pane is painted. A
+constant four-directory stamp guards later full task-tree reads. Worktree mtimes guard fleet reads,
+and the current row window selects fleet and session facts. The motion tick advances only when a
+painted row or gate needs it. The renderer indexes the
 tables exported by `scripts/tasks/tasks-status.ts` at the step
 `tasksMotionStepAtElapsed(elapsedMilliseconds)` returns. The step is a pure function of elapsed
 time, never of a paint ordinal: a paint count made motion SPEED a hostage of the frame rate,
 which ran the CLI watch ten times too fast at 60 fps (#348).
 
-**Evidence:** `src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`startObservation`,
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardPlugin.ts` (`activateApplication`);
+`src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`startObservation`,
 `animationElapsedMilliseconds`); `src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts`;
 `scripts/tasks/tasks-status.ts` (`tasksMotionStepAtElapsed`); and
 `src/modules/tasks-dashboard/TasksDashboardOverview.test.ts`.
 
-**Impossible if true:** A timer for a collapsed dock, inactive tab, or inactive workspace; a
-steady visible tick that scans every task folder; a held READY row that repaints; a pane-local
-copy of a watch ramp or glyph sequence; a motion step derived from a frame or paint ordinal.
+**Impossible if true:** An unprompted hidden task-tree read after the activation seed; a timer for
+a collapsed dock, inactive tab, or inactive workspace; a steady visible tick that scans every task
+folder; a held READY row that repaints; a pane-local copy of a watch ramp or glyph sequence; a
+motion step derived from a frame or paint ordinal.
 
 **Verification:** `bun test src/modules/tasks-dashboard` and the hidden-path, 500-folder
 painted-window, positive-control, and motion arms of
@@ -123,7 +128,7 @@ painted-window, positive-control, and motion arms of
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-08-01
 
 ### Fleet extras name their repository scope
 
