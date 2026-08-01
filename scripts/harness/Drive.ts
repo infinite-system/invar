@@ -138,7 +138,12 @@ class $Drive {
             target.sourceFilePath,
         );
       }
-      this.printObservation(driver.snapshot(), statusPath, 'settled boot');
+      this.printObservation(
+        driver.snapshot(),
+        statusPath,
+        'settled boot',
+        options.cellDumps,
+      );
 
       for (const [actionIndex, action] of options.actions.entries()) {
         await this.performAction(
@@ -153,6 +158,7 @@ class $Drive {
           driver.snapshot(),
           statusPath,
           `after ${actionIndex + 1}: ${this.actionDescription(action)}`,
+          options.cellDumps,
         );
       }
     } finally {
@@ -176,6 +182,7 @@ class $Drive {
     let timeoutMilliseconds = this.DEFAULT_TIMEOUT_MILLISECONDS;
     let showHelp = false;
     const actions: DriveAction[] = [];
+    const cellDumps: CellDumpRequest[] = [];
 
     for (
       let argumentIndex = 0;
@@ -233,6 +240,10 @@ class $Drive {
           actions,
           this.parseStatusCompletion(value),
         );
+      } else if (argument === '--cells') {
+        cellDumps.push(this.parseCellDump(value));
+      } else if (argument === '--gesture') {
+        actions.push(...this.gestureActions(value));
       } else if (argument === '--timeout') {
         timeoutMilliseconds = this.parsePositiveInteger(value, '--timeout');
       } else {
@@ -249,8 +260,60 @@ class $Drive {
       rows,
       timeoutMilliseconds,
       actions,
+      cellDumps,
       showHelp,
     };
+  }
+
+  /** `--cells ROW,C1-C2` — a per-cell char+color dump printed with every observation. */
+  protected static parseCellDump(value: string): CellDumpRequest {
+    const match = /^(\d+),(\d+)-(\d+)$/.exec(value);
+    if (!match) {
+      throw new Error(
+        `Invalid --cells ${JSON.stringify(value)}; expected ROW,COLUMN_FROM-COLUMN_TO (zero-based)`,
+      );
+    }
+    const row = Number.parseInt(match[1]!, 10);
+    const from = Number.parseInt(match[2]!, 10);
+    const to = Number.parseInt(match[3]!, 10);
+    if (to < from)
+      throw new Error(`Invalid --cells ${value}: COLUMN_TO < COLUMN_FROM`);
+    return { row, from, to };
+  }
+
+  /** Named user gestures with their condition waits built in — the fluent verbs. */
+  protected static gestureActions(name: string): DriveAction[] {
+    const gestures: Record<string, DriveAction[]> = {
+      openPanel: [
+        {
+          kind: 'key',
+          keyName: 'Control+j',
+          completion: {
+            kind: 'status',
+            fieldName: 'panelVisible',
+            expectedValue: true,
+          },
+        },
+      ],
+      closePanel: [
+        {
+          kind: 'key',
+          keyName: 'Control+j',
+          completion: {
+            kind: 'status',
+            fieldName: 'panelVisible',
+            expectedValue: false,
+          },
+        },
+      ],
+    };
+    const actionsForGesture = gestures[name];
+    if (!actionsForGesture) {
+      throw new Error(
+        `Unknown --gesture ${JSON.stringify(name)}; known: ${Object.keys(gestures).join(', ')}`,
+      );
+    }
+    return actionsForGesture;
   }
 
   protected static defaultKeyCompletion(
@@ -877,6 +940,7 @@ class $Drive {
     snapshot: HarnessSnapshot.Model,
     statusPath: string,
     label: string,
+    cellDumps: readonly CellDumpRequest[] = [],
   ): void {
     const rowNumberWidth = String(snapshot.rows - 1).length;
     console.log(
@@ -886,6 +950,21 @@ class $Drive {
     for (let row = 0; row < snapshot.rows; row++) {
       const rowNumber = String(row).padStart(rowNumberWidth, '0');
       console.log(`${rowNumber} │${snapshot.rowText(row)}│`);
+    }
+
+    for (const dump of cellDumps) {
+      const cells: string[] = [];
+      for (let column = dump.from; column <= dump.to; column++) {
+        const cell = snapshot.cell(dump.row, column);
+        cells.push(
+          cell === null
+            ? `${column}:∅`
+            : `${column}:'${cell.characters}' bg${cell.background} fg${cell.foreground}`,
+        );
+      }
+      console.log(
+        `\n--- cells row ${dump.row}, columns ${dump.from}-${dump.to} ---\n${cells.join(' | ')}`,
+      );
     }
 
     const status = HarnessSmoke.Class.readStatus(statusPath);
@@ -913,6 +992,8 @@ class $Drive {
       '  --frame-silent      declare the preceding action needs no repaint',
       '  --wait-for-text TEXT make the preceding action wait for new visible text',
       '  --wait-for-status FIELD=JSON',
+      '  --gesture NAME       a named user gesture with its wait built in (openPanel, closePanel)',
+      '  --cells ROW,C1-C2    print chars + bg/fg for a cell range with every observation',
       '  --timeout MILLISECONDS',
       '  --help',
     ].join('\n');
@@ -931,7 +1012,14 @@ interface DriveOptions {
   readonly rows: number;
   readonly timeoutMilliseconds: number;
   readonly actions: readonly DriveAction[];
+  readonly cellDumps: readonly CellDumpRequest[];
   readonly showHelp: boolean;
+}
+
+interface CellDumpRequest {
+  readonly row: number;
+  readonly from: number;
+  readonly to: number;
 }
 
 interface DriveSettledStatusRule {

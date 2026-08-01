@@ -519,3 +519,29 @@ worktrees, branches, git log. A rejection is a statement about
 intent, not a rollback. Compound commands widen the window: prefer
 small, separately-confirmable steps for destructive or launching
 acts when the user is actively steering.
+
+## Family 14 — a caught wait error is a fabricated observation (2026-08-01)
+
+Three probes in a row reported "click did nothing, panel never opened" on an app that was
+fine. The waits were `awaitGridCondition(predicate, timeout)` — but the signature is
+`(label, predicate, timeout)`, so every call THREW — and each was wrapped in
+`.catch(() => log('never appeared'))`, which converted the arity error into a false
+negative observation. An hour of phantom regression hunting (invisible overlay theory,
+Escape theory, env theory) followed, all downstream of a broken instrument reporting in
+the vocabulary of a real result.
+
+The generator: family 2 (every check has two arms) applied to WAITS — a catch-all on a
+wait erases the distinction between "the condition never held" and "the wait itself is
+broken". Rules: (1) never catch-all a wait; let instrument errors crash the probe — a
+stack trace is the loud arm; (2) when a probe says everything is dead, suspect the probe
+before the app — run the app's own green smoke as the discriminator (it took one
+smoke-panel-chrome run to prove the app fine); (3) harness field names are part of the
+instrument: cell.background not backgroundColor — a wrong field prints '?' forever and
+looks like missing data, not a typo.
+
+Same night, same shape at gate level: the round-2 red included a smoke that had been
+green only because fleet scope NEVER matched in fixtures — my worktree-opener fix made
+scope truthful and the smoke's planted 'building' phase was revealed as fallback-only.
+A fixture that passes through an accidental out-of-scope fallback is family 5 (the
+fixture is the blind spot) — the repair is planting the REAL condition (a git worktree
+with a committed src edit), never re-widening the fallback.
