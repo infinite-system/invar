@@ -56,6 +56,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join, sep } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import {
   TasksWatchRenderer,
@@ -671,24 +672,59 @@ function report(tasksRoot: string): number {
 
 // The positive control. Every signal gets a planted instance and must be named back.
 /**
- * Mint the next task number and create its folder, ATOMICALLY.
+ * Parse a task identity into its namespace and number.
  *
- * The number was previously chosen by a human reading the tracker and typing
- * the next one. That is the same defect class this repo spent 2026-08-01
- * removing from its code: identity minted by reading live state, with nothing
- * refusing a duplicate. Two conductors, or one distracted conductor, collide —
- * and a task number is permanent, because branches and `finished/` tags carry
- * it forever.
+ * `454` is Invar's own — the implicit namespace, and the only one that may
+ * mint a bare number. `acme34` belongs to vendor `acme`. A namespace may NOT
+ * contain digits: if `acme12` were legal, `acme1234` could be read three ways
+ * (acme12/34, acme1/234, acme/1234), and an identity that parses two ways is
+ * not an identity. Forbidding digits makes trailing digits the number and
+ * leading letters the namespace, totally and unambiguously.
+ */
+export function parseTaskIdentity(
+  folderOrIdentity: string,
+): { namespace: string; number: number } | null {
+  // A namespace never ENDS in a hyphen: legacy tags like
+  // `finished/fleet-194-reserved-chord` would otherwise parse as namespace
+  // 'fleet-' and invent a vendor that never existed.
+  const identity = /^([a-z]([a-z-]*[a-z])?)?(\d+)(?:-|$)/.exec(
+    folderOrIdentity,
+  );
+  if (!identity) return null;
+  return { namespace: identity[1] ?? 'invar', number: Number(identity[3]) };
+}
+
+/** The written form: bare for Invar, prefixed for everyone else. */
+export function formatTaskIdentity(namespace: string, number: number): string {
+  return namespace === 'invar' ? String(number) : `${namespace}${number}`;
+}
+
+/**
+ * Mint the next task number IN ONE NAMESPACE and create its folder.
  *
- * The maximum is taken across ALL four states, so a retired or completed
- * number is never handed out again. `mkdirSync` without `recursive` is the
- * refusal: it throws EEXIST rather than adopting an existing folder, so the
- * mint cannot silently return a number someone else already holds.
+ * Namespaces PARTITION the number space instead of arbitrating access to it.
+ * A vendor registers a namespace ONCE and then every mint is purely local: no
+ * lock, no network, no shared resource in the hot path, and no possibility of
+ * colliding with another vendor. Arbitration only remains for two conductors
+ * inside the SAME namespace, which is a smaller problem with a filesystem
+ * answer.
+ *
+ * The maximum is taken across ALL four states so a retired or completed number
+ * is never reissued, and only within this namespace so a vendor's activity
+ * never advances ours.
+ *
+ * `mkdirSync` without `recursive` is the refusal, and the EEXIST retry covers
+ * two conductors in one namespace on one filesystem racing the same maximum.
+ * NOTE its real reach: two conductors choosing DIFFERENT slugs produce
+ * different folder names and both succeed, so this refusal is narrow by
+ * construction. The DUPLICATE-NUMBER drift signal is what actually catches
+ * that case.
  */
 export function mintTaskNumber(
   tasksRoot: string,
   slug: string,
-): { number: number; folderPath: string } {
+  namespace = 'invar',
+): { number: number; namespace: string; identity: string; folderPath: string } {
   const slugWordCount = slug.split('-').filter(Boolean).length;
   if (slugWordCount < 3) {
     throw new Error(
@@ -696,52 +732,66 @@ export function mintTaskNumber(
         'A two-word slug reads as a category, not a task.',
     );
   }
+  if (!/^[a-z]([a-z-]*[a-z])?$/.test(namespace)) {
+    throw new Error(
+      `tasks mint: '${namespace}' is not a legal namespace. Lowercase ` +
+        'letters and hyphens only — a digit anywhere makes the identity ' +
+        'parse two ways.',
+    );
+  }
   let highestNumber = 0;
   for (const directoryState of TASK_STATES) {
     const statePath = join(tasksRoot, directoryState);
     if (!existsSync(statePath)) continue;
     for (const folderName of readdirSync(statePath)) {
-      const leadingDigits = /^(\d+)-/.exec(folderName);
-      if (!leadingDigits) continue;
-      highestNumber = Math.max(highestNumber, Number(leadingDigits[1]));
+      const identity = parseTaskIdentity(folderName);
+      if (!identity || identity.namespace !== namespace) continue;
+      highestNumber = Math.max(highestNumber, identity.number);
     }
   }
   mkdirSync(join(tasksRoot, 'active'), { recursive: true });
-  // RETRY on EEXIST rather than failing. Two conductors on ONE filesystem can
-  // read the same maximum and race here: mkdirSync without `recursive` makes
-  // exactly one of them win (the kernel arbitrates), and the loser must take
-  // the next number rather than making a human rerun the command. The bound
-  // stops a pathological loop from spinning forever on a broken filesystem.
   for (
     let candidateNumber = highestNumber + 1;
     candidateNumber <= highestNumber + 1000;
     candidateNumber += 1
   ) {
-    const folderPath = join(tasksRoot, 'active', `${candidateNumber}-${slug}`);
+    const identity = formatTaskIdentity(namespace, candidateNumber);
+    const folderPath = join(tasksRoot, 'active', `${identity}-${slug}`);
     try {
       mkdirSync(folderPath);
-      return { number: candidateNumber, folderPath };
+      return {
+        number: candidateNumber,
+        namespace,
+        identity,
+        folderPath,
+      };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
     }
   }
   throw new Error(
     `tasks mint: 1000 consecutive numbers above ${highestNumber} already ` +
-      'exist as folders. Something is wrong with the tasks tree.',
+      `exist in namespace '${namespace}'. Something is wrong with the tree.`,
   );
 }
 
-function mint(tasksRoot: string, slug: string | undefined): number {
+function mint(
+  tasksRoot: string,
+  slug: string | undefined,
+  namespace: string | undefined,
+): number {
   if (!slug) {
-    console.error('usage: tasks-status.ts mint <descriptive-slug>');
+    console.error(
+      'usage: tasks-status.ts mint <descriptive-slug> [--namespace <vendor>]',
+    );
     return 2;
   }
   try {
-    const minted = mintTaskNumber(tasksRoot, slug);
-    console.log(`minted #${minted.number}`);
+    const minted = mintTaskNumber(tasksRoot, slug, namespace ?? 'invar');
+    console.log(`minted #${minted.identity}`);
     console.log(minted.folderPath);
     console.log(
-      `  next: write ${minted.folderPath}/task-${minted.number}-${slug}.md ` +
+      `  next: write ${minted.folderPath}/task-${minted.identity}-${slug}.md ` +
         'with the header block, then commit BEFORE dispatch.',
     );
     return 0;
@@ -749,6 +799,103 @@ function mint(tasksRoot: string, slug: string | undefined): number {
     console.error(`tasks mint: ${String((error as Error).message ?? error)}`);
     return 1;
   }
+}
+
+/**
+ * Filed and landed, per namespace — the contribution pair.
+ *
+ * FILED is the highest minted number: cheap, local, and inflatable by anyone
+ * willing to make folders nobody works. LANDED counts `finished/` tags, which
+ * cannot be minted — a tag exists only after a merge that passed a gate.
+ *
+ * Report them as a PAIR, never the single number. One half is cheap and one
+ * half is expensive, so inflating the cheap half makes a vendor look WORSE,
+ * not better. A number that becomes a scoreboard becomes a target; this shape
+ * makes gaming it self-defeating. The ratio is also a health signal: filed
+ * climbing while landed stalls is a vendor that is stuck.
+ */
+export function contributionByNamespace(
+  tasksRoot: string,
+  finishedTagNames: readonly string[],
+): { namespace: string; filed: number; landed: number }[] {
+  const filedByNamespace = new Map<string, number>();
+  for (const directoryState of TASK_STATES) {
+    const statePath = join(tasksRoot, directoryState);
+    if (!existsSync(statePath)) continue;
+    for (const folderName of readdirSync(statePath)) {
+      const identity = parseTaskIdentity(folderName);
+      if (!identity) continue;
+      filedByNamespace.set(
+        identity.namespace,
+        Math.max(
+          filedByNamespace.get(identity.namespace) ?? 0,
+          identity.number,
+        ),
+      );
+    }
+  }
+  const landedByNamespace = new Map<string, number>();
+  for (const tagName of finishedTagNames) {
+    const identity = parseTaskIdentity(tagName.replace(/^finished\//, ''));
+    if (!identity) continue;
+    landedByNamespace.set(
+      identity.namespace,
+      (landedByNamespace.get(identity.namespace) ?? 0) + 1,
+    );
+  }
+  const namespaces = new Set([
+    ...filedByNamespace.keys(),
+    ...landedByNamespace.keys(),
+  ]);
+  return [...namespaces]
+    .map((namespace) => ({
+      namespace,
+      filed: filedByNamespace.get(namespace) ?? 0,
+      landed: landedByNamespace.get(namespace) ?? 0,
+    }))
+    .sort((left, right) => right.landed - left.landed);
+}
+
+function contribution(tasksRoot: string): number {
+  let finishedTagNames: string[] = [];
+  try {
+    finishedTagNames = execFileSync('git', ['tag', '-l', 'finished/*'], {
+      cwd: join(tasksRoot, '..', '..'),
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    console.log('contribution: no git tags readable — landed counts are 0');
+  }
+  // The registry is what makes a namespace REAL. Without it, any legacy tag
+  // shaped `finished/port-smokes-wave-1` reads as a vendor that never existed,
+  // so unregistered namespaces are shown separately and never ranked beside
+  // registered ones. An absent registry means only Invar is registered.
+  const registryPath = join(tasksRoot, '..', 'vendors.txt');
+  const registered = new Set(['invar']);
+  if (existsSync(registryPath)) {
+    for (const line of readFileSync(registryPath, 'utf8').split('\n')) {
+      const name = line.trim();
+      if (name && !name.startsWith('#')) registered.add(name);
+    }
+  }
+  const rows = contributionByNamespace(tasksRoot, finishedTagNames);
+  console.log('CONTRIBUTION — filed is cheap, landed passed a gate:');
+  for (const row of rows.filter((row) => registered.has(row.namespace))) {
+    console.log(
+      `  ${row.namespace.padEnd(12)} ${String(row.filed).padStart(5)} filed` +
+        ` · ${String(row.landed).padStart(5)} landed`,
+    );
+  }
+  const unregistered = rows.filter((row) => !registered.has(row.namespace));
+  if (unregistered.length > 0) {
+    console.log(
+      `  (${unregistered.length} unregistered namespace(s) not ranked — ` +
+        'legacy tag names parse this way; register a vendor to be counted)',
+    );
+  }
+  return 0;
 }
 
 function selfTest(): number {
@@ -820,6 +967,80 @@ function selfTest(): number {
     console.error(
       'self-test FAIL: DUPLICATE-NUMBER fired on a tree with no duplicate — ' +
         'the signal cannot stay silent',
+    );
+    return 1;
+  }
+
+  // NAMESPACES — the partition. A vendor mint must not advance ours, a bare
+  // mint must not advance theirs, and a namespace carrying a digit must be
+  // refused outright (acme1234 would parse three ways).
+  const vendorFirst = mintTaskNumber(mintRoot, 'a-vendor-task-here', 'acme');
+  if (vendorFirst.identity !== 'acme1') {
+    console.error(
+      `self-test FAIL: first acme mint returned '${vendorFirst.identity}', ` +
+        "expected 'acme1' — a vendor must start its own numbering, not " +
+        "inherit Invar's maximum",
+    );
+    return 1;
+  }
+  const invarAfterVendor = mintTaskNumber(mintRoot, 'an-invar-task-here');
+  if (invarAfterVendor.number !== 81) {
+    console.error(
+      `self-test FAIL: invar mint returned ${invarAfterVendor.number} after a ` +
+        'vendor mint, expected 81 (78, 79 and the planted 80 already exist) — ' +
+        'a vendor advanced our namespace',
+    );
+    return 1;
+  }
+  let digitNamespaceRefused = false;
+  try {
+    mintTaskNumber(mintRoot, 'a-bad-namespace-task', 'acme12');
+  } catch {
+    digitNamespaceRefused = true;
+  }
+  if (!digitNamespaceRefused) {
+    console.error(
+      'self-test FAIL: a namespace containing a digit was accepted — ' +
+        'acme1234 then parses three ways and identity stops being identity',
+    );
+    return 1;
+  }
+  if (parseTaskIdentity('acme34-some-slug')?.namespace !== 'acme') {
+    console.error('self-test FAIL: acme34-some-slug did not parse as acme/34');
+    return 1;
+  }
+  if (parseTaskIdentity('454-some-slug')?.namespace !== 'invar') {
+    console.error('self-test FAIL: a bare number did not parse as invar');
+    return 1;
+  }
+
+  // CONTRIBUTION — filed is local and cheap, landed comes from finished/ tags
+  // that only exist after a gated merge. Both arms: counts are per namespace,
+  // and a vendor with tags but no folders still appears.
+  const contribution = contributionByNamespace(mintRoot, [
+    'finished/acme1-a-vendor-task-here',
+    'finished/78-a-freshly-minted-task',
+    'finished/other9-a-stranger-task',
+  ]);
+  const acmeRow = contribution.find((row) => row.namespace === 'acme');
+  const invarRow = contribution.find((row) => row.namespace === 'invar');
+  const strangerRow = contribution.find((row) => row.namespace === 'other');
+  if (acmeRow?.filed !== 1 || acmeRow?.landed !== 1) {
+    console.error(
+      `self-test FAIL: acme contribution was ${acmeRow?.filed}/${acmeRow?.landed}, expected 1 filed 1 landed`,
+    );
+    return 1;
+  }
+  if (invarRow?.filed !== 81 || invarRow?.landed !== 1) {
+    console.error(
+      `self-test FAIL: invar contribution was ${invarRow?.filed}/${invarRow?.landed}, expected 81 filed 1 landed`,
+    );
+    return 1;
+  }
+  if (strangerRow?.filed !== 0 || strangerRow?.landed !== 1) {
+    console.error(
+      'self-test FAIL: a namespace with a finished/ tag but no folders must ' +
+        'still appear, with 0 filed',
     );
     return 1;
   }
@@ -2092,19 +2313,27 @@ if (import.meta.main) {
     process.argv.includes('--self-test')
       ? selfTest()
       : process.argv[2] === 'mint'
-        ? mint(tasksRoot, process.argv[3])
-        : process.argv.includes('live')
-          ? live(tasksRoot)
-          : process.argv.includes('active')
-            ? activeOnly(tasksRoot)
-            : process.argv.includes('completed')
-              ? completedOnly(tasksRoot)
-              : process.argv.includes('all')
-                ? allLenses(tasksRoot)
-                : process.argv.includes('backlog')
-                  ? backlog(tasksRoot, false)
-                  : process.argv.includes('write-active')
-                    ? backlog(tasksRoot, true)
-                    : report(tasksRoot),
+        ? mint(
+            tasksRoot,
+            process.argv[3],
+            process.argv.includes('--namespace')
+              ? process.argv[process.argv.indexOf('--namespace') + 1]
+              : undefined,
+          )
+        : process.argv[2] === 'contribution'
+          ? contribution(tasksRoot)
+          : process.argv.includes('live')
+            ? live(tasksRoot)
+            : process.argv.includes('active')
+              ? activeOnly(tasksRoot)
+              : process.argv.includes('completed')
+                ? completedOnly(tasksRoot)
+                : process.argv.includes('all')
+                  ? allLenses(tasksRoot)
+                  : process.argv.includes('backlog')
+                    ? backlog(tasksRoot, false)
+                    : process.argv.includes('write-active')
+                      ? backlog(tasksRoot, true)
+                      : report(tasksRoot),
   );
 }
