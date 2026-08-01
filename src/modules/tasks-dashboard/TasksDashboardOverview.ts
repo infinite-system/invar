@@ -44,26 +44,26 @@ import {
 } from '../../../scripts/tasks/tasks-status';
 
 class $TasksDashboardOverview {
-  protected static readonly DATA_HEARTBEAT_MILLISECONDS = 1000;
+  protected readonly dataHeartbeatMilliseconds = 1000;
   // One heartbeat is one wall-clock motion step (#348's contract): the
   // interval IS the step duration, so each tick advances exactly one step
   // and the elapsed math below stays a pure product of tick count and time.
-  protected static readonly MOTION_HEARTBEAT_MILLISECONDS =
+  protected readonly motionHeartbeatMilliseconds =
     TASKS_MOTION_STEP_MILLISECONDS;
-  protected static readonly PROBE_EVERY_TICKS = 2;
-  protected static readonly DURATION_REFRESH_EVERY_TICKS = 60;
+  protected readonly probeEveryTicks = 2;
+  protected readonly durationRefreshEveryTicks = 60;
   declare $watch: typeof import('vue').watch;
   declare $stopEffects: () => void;
 
   /** The lens rotation, in the CLI's own order. */
-  static readonly LENS_ORDER: readonly TasksDashboardLens[] = [
+  protected readonly lensOrder: readonly TasksDashboardLens[] = [
     'live',
     'active',
     'done',
   ];
 
   // The CLI's priority badges, glyph vocabulary only — colour is the renderer's.
-  protected static readonly PRIORITY_GLYPHS: Record<string, string> = {
+  protected readonly priorityGlyphs: Record<string, string> = {
     'user-directed': '★',
     'verification-integrity': '⚑',
     'flake-evidence': '◍',
@@ -160,7 +160,7 @@ class $TasksDashboardOverview {
     this.refresh();
     this.dataHeartbeatTimer = setInterval(
       () => this.heartbeatTick(),
-      $TasksDashboardOverview.DATA_HEARTBEAT_MILLISECONDS,
+      this.dataHeartbeatMilliseconds,
     );
   }
 
@@ -212,12 +212,9 @@ class $TasksDashboardOverview {
     this.heartbeatCount += 1;
     this.dataHeartbeatTicks += 1;
     if (this.cycling.value && this.cycleIsDue()) this.advanceLens(1);
-    if (this.heartbeatCount % $TasksDashboardOverview.PROBE_EVERY_TICKS === 0)
-      this.probeTick();
+    if (this.heartbeatCount % this.probeEveryTicks === 0) this.probeTick();
     if (
-      this.heartbeatCount %
-        $TasksDashboardOverview.DURATION_REFRESH_EVERY_TICKS ===
-        0 &&
+      this.heartbeatCount % this.durationRefreshEveryTicks === 0 &&
       this.available.value
     ) {
       this.rebuildPaintedTaskRows();
@@ -231,10 +228,7 @@ class $TasksDashboardOverview {
    * 60 fps, and both must show the same step at the same moment (#348).
    */
   get animationElapsedMilliseconds(): number {
-    return (
-      this.animationPaint.value *
-      $TasksDashboardOverview.MOTION_HEARTBEAT_MILLISECONDS
-    );
+    return this.animationPaint.value * this.motionHeartbeatMilliseconds;
   }
 
   protected motionHeartbeatTick(): void {
@@ -258,7 +252,7 @@ class $TasksDashboardOverview {
     if (this.motionHeartbeatTimer !== null) return;
     this.motionHeartbeatTimer = setInterval(
       () => this.motionHeartbeatTick(),
-      $TasksDashboardOverview.MOTION_HEARTBEAT_MILLISECONDS,
+      this.motionHeartbeatMilliseconds,
     );
   }
 
@@ -466,12 +460,10 @@ class $TasksDashboardOverview {
   }
 
   advanceLens(step: number): void {
-    const currentIndex = $TasksDashboardOverview.LENS_ORDER.indexOf(
-      this.lens.value,
-    );
-    const lensCount = $TasksDashboardOverview.LENS_ORDER.length;
+    const currentIndex = this.lensOrder.indexOf(this.lens.value);
+    const lensCount = this.lensOrder.length;
     const nextIndex = (currentIndex + step + lensCount) % lensCount;
-    this.setLens($TasksDashboardOverview.LENS_ORDER[nextIndex] ?? 'live');
+    this.setLens(this.lensOrder[nextIndex] ?? 'live');
   }
 
   toggleCycling(): void {
@@ -708,10 +700,7 @@ class $TasksDashboardOverview {
         .filter((record) => record.priorityGroup === group)
         .sort((left, right) => this.byNumberDescending(left, right));
       if (inGroup.length === 0) continue;
-      const glyph =
-        group === null
-          ? '◌'
-          : ($TasksDashboardOverview.PRIORITY_GLYPHS[group] ?? '·');
+      const glyph = group === null ? '◌' : (this.priorityGlyphs[group] ?? '·');
       rows.push(
         this.nonTaskRow(
           'group',

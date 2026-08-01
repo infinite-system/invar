@@ -3,6 +3,7 @@
 // seams: a boot failure routes through handleFatal, stderr gets the message FIRST and unconditionally,
 // and the exit is observable without dying.
 // invariant: Construction goes through overridable seams (project.invariants.md)
+// invariant: Live static reads follow the receiving class (project.invariants.md)
 import { afterEach, expect, test } from 'bun:test';
 import { AppLoader } from './AppLoader';
 
@@ -37,10 +38,9 @@ test('a boot failure routes through handleFatal: stderr first, exit(1), never a 
       exits.push(code);
     }
   }
-  AppLoader.Class = $Failing;
   const stderr = captureStderr();
   try {
-    await AppLoader.Class.main(); // must resolve — the fatal path swallows, reports, exits
+    await $Failing.main(); // must resolve — the fatal path swallows, reports, exits
   } finally {
     stderr.restore();
   }
@@ -55,10 +55,9 @@ test('handleFatal writes stderr even when file logging is unavailable', () => {
       exits.push(code);
     }
   }
-  AppLoader.Class = $NoExit;
   const stderr = captureStderr();
   try {
-    AppLoader.Class.handleFatal(new Error('lost message bug'));
+    $NoExit.handleFatal(new Error('lost message bug'));
   } finally {
     stderr.restore();
   }

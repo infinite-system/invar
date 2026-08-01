@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Reactive } from 'ivue';
 import type { InterfaceGlyphVocabulary } from '../theme/ThemeIcons';
@@ -9,8 +8,8 @@ import { WrapText } from './WrapText';
 // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
 // invariant: The panel contents list mirrors open content (src/modules/ui/ui.invariants.md)
 class $PanelContentsList {
-  protected static readonly MINIMUM_WIDTH = 10;
-  protected static readonly MAXIMUM_WIDTH = 40;
+  protected readonly minimumWidth = 10;
+  protected readonly maximumWidth = 40;
   protected draggingRow: PanelContentsListRow | null = null;
   protected hoveredRowIndex = -1;
   protected hoveredAction: 'split' | 'close' | null = null;
@@ -62,9 +61,9 @@ class $PanelContentsList {
 
   get width(): number {
     return Math.max(
-      $PanelContentsList.MINIMUM_WIDTH,
+      this.minimumWidth,
       Math.min(
-        $PanelContentsList.MAXIMUM_WIDTH,
+        this.maximumWidth,
         Math.round(this.panelHost.panelListWidth.value),
       ),
     );
@@ -72,8 +71,8 @@ class $PanelContentsList {
 
   setWidth(width: number): void {
     this.panelHost.panelListWidth.value = Math.max(
-      $PanelContentsList.MINIMUM_WIDTH,
-      Math.min($PanelContentsList.MAXIMUM_WIDTH, Math.round(width)),
+      this.minimumWidth,
+      Math.min(this.maximumWidth, Math.round(width)),
     );
   }
 
@@ -232,7 +231,7 @@ class $PanelContentsList {
 }
 
 export namespace PanelContentsList {
-  export const $Class = Static($PanelContentsList);
+  export const $Class = $PanelContentsList;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }

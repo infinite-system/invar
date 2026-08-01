@@ -1,0 +1,15 @@
+# Deliberate fixed-base instance reads found by `bun scripts/ast-query.ts static-self-read-census`.
+# Each count is a maximum. New rows, larger counts, and every static-body self-read fail the gate.
+# A smaller count prints slack so this file can shrink with the code.
+src/modules/media/FfmpegVideoSource.ts | instance $FfmpegVideoSource.sampleArgumentVector | 1 | The ffmpeg probe uses the product's fixed sample argument recipe.
+src/modules/ui/CommandBar.ts | instance $CommandBar.layoutGeometry | 1 | The command bar uses its fixed shared layout calculation.
+src/modules/ui/CompletionPopup.ts | instance $CompletionPopup.filterItems | 1 | Completion filtering is a fixed shared ranking algorithm.
+src/modules/ui/StatusBar.ts | instance $StatusBar.composeStatusText | 1 | Status text composition is a fixed product formatting rule.
+src/modules/ui/ScrollPhysics.ts | instance $ScrollPhysics.keyAcceleration | 1 | Key acceleration uses the fixed product motion curve.
+src/modules/ui/ScrollPhysics.ts | instance $ScrollPhysics.jumpRows | 1 | Jump distance uses the fixed product motion curve.
+src/modules/ui/ScrollPhysics.ts | instance $ScrollPhysics.KEY_RUN_WINDOW_MS | 1 | The key-run window is a fixed product timing rule.
+src/modules/ui/BoundedListPopup.ts | instance $BoundedListPopup.DEFAULT_SEARCH_THRESHOLD | 2 | Search activation keeps the popup's fixed default threshold.
+src/modules/ui/BoundedListPopup.ts | instance $BoundedListPopup.nextEnabledFilteredIndex | 1 | Enabled-row navigation uses the fixed shared popup algorithm.
+src/modules/ui/BoundedListPopup.ts | instance $BoundedListPopup.filterItems | 1 | Item filtering uses the fixed shared popup algorithm.
+src/modules/ui/BoundedListPopup.ts | instance $BoundedListPopup.enabledNavigation | 1 | Enabled-row indexing uses the fixed shared popup algorithm.
+src/modules/ui/BoundedListPopup.ts | instance $BoundedListPopup.filterIndexAtRow | 4 | Pointer row mapping uses the fixed shared popup geometry algorithm.

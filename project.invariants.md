@@ -490,17 +490,18 @@ the class's actual state and lifetime.
 
 ### Construction goes through overridable seams
 
-**Invariant:** If an object assembles a dependency, then it does so through an overridable seam
-— the mutable `Class` slot or an overridable factory method — never a hidden hard-coded
-decision in a constructor.
+**Invariant:** If an object or class assembles a dependency or invokes its own extension seam,
+then construction and dispatch follow an overridable receiver — never a hidden hard-coded
+decision in a constructor or self-call.
 
-**Scope:** All domain-model and capability construction.
+**Scope:** All domain-model and capability construction, plus inherited self-dispatch.
 
 **Mechanism:** *Public classes use the namespace pattern* supplies the mutable `namespace.Class`
 binding (`new X.Class()` reads the live slot; a plugin/kernel swaps it) plus
 owner-constructs-child (`new Task.Class(this, data)`). Our chosen convention adds `createX()`
 factory methods for constructor-time assembly, overridable via subclass/`super` — `createX()` is
-our idiom, not an ivue feature.
+our idiom, not an ivue feature. Static methods dispatch through their receiving `this`; instance
+methods reach a live static receiver through `this.constructor`.
 
 **Generates:** The `Class`-slot swap for plugins; `createX()` factory methods; owner-injects-self
 child construction; testable replacement of ids/clocks/engines.
@@ -511,14 +512,54 @@ tests and plugins.
 **Evidence:** `../ivue` namespace-pattern docs + `examples/.../workspace-platform/Workspace.ts`
 (owner-constructs-child, `new Task.Class(this, data)`). Code from M1.
 
-**Impossible if true:** A dependency choice baked into a constructor with no override point.
+**Impossible if true:** A dependency choice baked into a constructor with no override point; an
+inherited method that names its base class and bypasses a subclass override.
 
 **Verification:** A test replacing a model's id/clock/storage seam via subclass or `Class` swap
 and observing the substitution take effect.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-08-01
+
+### Live static reads follow the receiving class
+
+**Invariant:** If class behavior reads a static member that is part of its live extension seam,
+then the read follows the receiving class. A class's own static body always uses `this`; its
+instance body uses `this.constructor` when the static is live.
+
+**Scope:** Own-class static reads in project class bodies. Cross-class dependencies are outside
+this rule. Deliberately fixed instance reads may name the immutable raw class only when the
+shrinking census allowlist states why; static bodies have no exception.
+
+**Mechanism:** JavaScript supplies the actual static receiver as `this`, including for inherited
+calls. An instance's `constructor` supplies the corresponding class receiver. Naming `$Class` or
+`Namespace.Class` instead pins either the base anchor or a global selection slot and can bypass
+the subclass that received the call.
+
+**Generates:** `this.member` inside static methods; `(this.constructor as typeof $Class).member`
+inside instance methods; a zero static-body census; a reasoned, shrink-only list of fixed-base
+instance reads.
+
+**Rejected alternatives:** Naming the raw class because a value looks constant — the same syntax
+also pins overridable methods and composite statics, so a later subclass silently stops taking
+effect. Reading the mutable namespace `Class` slot — that follows global replacement, not the
+receiver of the current call.
+
+**Evidence:** `src/modules/app/AppLoader.ts`; `src/modules/ui/BreadcrumbPicker.ts`;
+`scripts/ast-query.ts` `static-self-read-census`; the positive and negative fixtures under
+`scripts/fixtures/static-self-read-census-*-control/`.
+
+**Impossible if true:** A static body naming its own `$Class` or `Namespace.Class`; an unlisted
+instance read that hard-codes its own class; a subclass override that is skipped by an inherited
+self-call.
+
+**Verification:** `bun scripts/ast-query.ts static-self-read-census --allowlist
+scripts/static-self-read-allowlist.txt`.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-01
 
 ### Seams are drawn at the shared generator
 

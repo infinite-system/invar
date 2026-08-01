@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { Static } from 'ivue/extras';
 import type {
   ProcessResourceSample,
   ProcessSampler,
@@ -8,22 +7,14 @@ import type {
 // invariant: A runtime reading is a delta over a named window (src/modules/monitoring/monitoring.invariants.md)
 class $LinuxProcessSampler implements ProcessSampler {
   /** Field index of `utime`, counting from the field after the parenthesized command name. */
-  protected static get LINUX_STAT_USER_TIME_INDEX(): number {
-    return 11;
-  }
+  protected readonly linuxStatUserTimeIndex = 11;
 
-  protected static get LINUX_STAT_SYSTEM_TIME_INDEX(): number {
-    return 12;
-  }
+  protected readonly linuxStatSystemTimeIndex = 12;
 
   /** Field index of `rss`, in pages. */
-  protected static get LINUX_STAT_RESIDENT_PAGES_INDEX(): number {
-    return 21;
-  }
+  protected readonly linuxStatResidentPagesIndex = 21;
 
-  protected static get MICROSECONDS_PER_SECOND(): number {
-    return 1_000_000;
-  }
+  protected readonly microsecondsPerSecond = 1_000_000;
 
   protected clockTicksPerSecondValue: number | null = null;
   protected pageBytesValue: number | null = null;
@@ -58,15 +49,9 @@ class $LinuxProcessSampler implements ProcessSampler {
       .slice(commandEnd + 2)
       .trim()
       .split(/\s+/);
-    const userTicks = Number(
-      fields[$LinuxProcessSampler.LINUX_STAT_USER_TIME_INDEX],
-    );
-    const systemTicks = Number(
-      fields[$LinuxProcessSampler.LINUX_STAT_SYSTEM_TIME_INDEX],
-    );
-    const residentPages = Number(
-      fields[$LinuxProcessSampler.LINUX_STAT_RESIDENT_PAGES_INDEX],
-    );
+    const userTicks = Number(fields[this.linuxStatUserTimeIndex]);
+    const systemTicks = Number(fields[this.linuxStatSystemTimeIndex]);
+    const residentPages = Number(fields[this.linuxStatResidentPagesIndex]);
     if (
       !Number.isFinite(userTicks) ||
       !Number.isFinite(systemTicks) ||
@@ -79,7 +64,7 @@ class $LinuxProcessSampler implements ProcessSampler {
       atMilliseconds: this.options.nowMilliseconds?.() ?? performance.now(),
       processorMicroseconds:
         ((userTicks + systemTicks) / this.clockTicksPerSecond) *
-        $LinuxProcessSampler.MICROSECONDS_PER_SECOND,
+        this.microsecondsPerSecond,
       residentSetBytes: residentPages * this.pageBytes,
     };
   }
@@ -101,7 +86,7 @@ class $LinuxProcessSampler implements ProcessSampler {
 }
 
 export namespace LinuxProcessSampler {
-  export const $Class = Static($LinuxProcessSampler);
+  export const $Class = $LinuxProcessSampler;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

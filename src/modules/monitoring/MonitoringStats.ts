@@ -36,19 +36,13 @@ import type {
 
 class $MonitoringStats {
   /** Two bytes per UTF-16 unit is what a JavaScript string costs for text in the Latin range. */
-  protected static get BYTES_PER_TEXT_UNIT(): number {
-    return 2;
-  }
+  protected readonly bytesPerTextUnit = 2;
 
   /** The in-memory log ring. Bounded, so a monitor left running overnight holds a fixed cost. */
-  protected static get MAXIMUM_LOG_ENTRIES(): number {
-    return 200;
-  }
+  protected readonly maximumLogEntries = 200;
 
   /** Samples retained for the sparkline of recent resident-set movement. */
-  protected static get MAXIMUM_RETAINED_SAMPLES(): number {
-    return 120;
-  }
+  protected readonly maximumRetainedSamples = 120;
 
   declare $watch: typeof import('vue').watch;
   declare $stopEffects: () => void;
@@ -184,7 +178,7 @@ class $MonitoringStats {
     this.residentSetHistory.value = [
       ...this.residentSetHistory.value,
       current.residentSetBytes,
-    ].slice(-$MonitoringStats.MAXIMUM_RETAINED_SAMPLES);
+    ].slice(-this.maximumRetainedSamples);
     this.sampleCount.value += 1;
     this.sampleCostMilliseconds.value =
       performance.now() - startedAtMilliseconds;
@@ -199,8 +193,7 @@ class $MonitoringStats {
         rows.push({
           ...row,
           workspaceRoot: workspace.root,
-          retainedBytes:
-            row.retainedTextUnits * $MonitoringStats.BYTES_PER_TEXT_UNIT,
+          retainedBytes: row.retainedTextUnits * this.bytesPerTextUnit,
         });
       }
     }
@@ -344,9 +337,7 @@ class $MonitoringStats {
       renderRequestsSinceOpen: this.renderRequestsSinceOpen,
       languageServerRows: this.languageServerRows.value,
     });
-    this.logEntries = [...this.logEntries, line].slice(
-      -$MonitoringStats.MAXIMUM_LOG_ENTRIES,
-    );
+    this.logEntries = [...this.logEntries, line].slice(-this.maximumLogEntries);
     this.writeLogLine(line);
   }
 
