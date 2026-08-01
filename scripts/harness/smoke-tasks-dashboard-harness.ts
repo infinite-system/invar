@@ -505,7 +505,12 @@ try {
       status.rightDockActiveContent === 'tasks' &&
       status.rightDockFocused === true,
   );
-  const sessionTitlePosition = driver.snapshot().findText('#902 planted-ready');
+  const sessionTitlePosition = await driver
+    .awaitGridCondition(
+      'the READY task row repaints before its session action is addressed',
+      (snapshot) => snapshot.findText('#902 planted-ready') !== null,
+    )
+    .then((snapshot) => snapshot.findText('#902 planted-ready'));
   if (!sessionTitlePosition)
     throw new Error(
       'The READY task status target disappeared before its click',
