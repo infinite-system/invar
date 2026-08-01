@@ -4,6 +4,58 @@
 
 ### OPERATIVE STATE
 
+RESUME ANCHOR 26 (2026-08-01 ~06:1x local — CHECKPOINT; supersedes 25. ACTIVE ui-task session)
+
+STATE: user is BACK and directing. Crons remain DISARMED (user order; do not re-arm).
+fleet-watch Monitor armed (persistent). Re-arm on restart:
+Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true) — NOTHING ELSE.
+
+LANES:
+- #432 panel/editor/instances overhaul: LANDED 7d2cc879 (123m, one round). Landed over a
+  documented pre-existing red (GATE_OVERRIDE, see below). Summary written. User has NOT yet
+  confirmed the new UI in their terminal — their veto is outstanding.
+- #433 tasks-dashboard auto-reveal priced out (bisected to 417084fa: PASS at ~1, FAIL at it;
+  hidden pane does zero tree reads so auto-reveal-on-READY cannot fire): codex sol/high
+  DISPATCHED, in-progress. Attach: tmux attach -t invar/433-tasks-dashboard-auto-reveal-priced-out
+  Feed: bun scripts/fleet/agent-feed.ts 433 --follow
+- #434 accumulation (NOT filed yet): ui-task session live with the user. Confirmed items so far
+  (probe tmp/probe-splitter-edge-bg.ts, 120x40): (1) panel splitter first cell col37 bg 1447454
+  vs row bg 1710886 — one-cell off-tone left edge; (2) stray `|` fragment at col 119 rows 20+23
+  (right edge line-through artifact); (3) instances toggle at col 118 with NO trailing space,
+  col 119 is the stray border — needs its 1-space part-of-button cell. (4) queued: terminal pane
+  must hold scroll position when scrolled up + jump-to-bottom affordance (agent-feed follow UX).
+  ASK THE USER for more items; dispatch ONLY on their explicit conclusion.
+
+LANDING #432 ACCOUNT (for reference): round-1 gate caught my hotfix annotation without record
+(fixed 6f55ecc6); round-2 red = smoke small-fixture phase flip caused by my 68230d8a (fixed by
+planting real worktree diff 3825fc27) + pre-existing 417084fa large-fixture red (filed #433);
+landed with written GATE_OVERRIDE per the narrow rule. Gate log round-2:
+/tmp/gate-432-r2-1785573679.log.
+
+NEW INSTRUMENTS TODAY:
+- scripts/fleet/agent-feed.ts <task#> [--follow] — clean monitoring feed from codex rollout
+  jsonl (agent/steer/brief/patch lines, noise stripped). Indexed in project.tools.md. Monitoring
+  channel; tmux attach is steering only.
+- Compiled-binary defect class: import.meta.dir = /$bunfs/root in bun-compiled binaries; fleet
+  paths must derive from the workspace (record: tasks-dashboard.invariants.md "Fleet paths
+  derive from the workspace, never the bundle"). A census of other import.meta.dir uses in app
+  code is UNFILED follow-up.
+- ui-task skill + AGENTS.md now carry: gesture driver is the ONE entry point for probes AND
+  tests; ratchet migration (new smokes use helpers; old convert when touched/flaky/teleporting);
+  driver-caused smoke flips are findings to classify, never flake.
+
+PROBE GOTCHAS (cost an hour tonight): awaitGridCondition is (label, predicate, timeout) — 
+passing (predicate, timeout) THROWS, and a .catch() converts that into "condition never
+appeared". NEVER catch-all a wait. Cell colors are cell.background/.foreground, NOT
+backgroundColor. The panel splitter is the row matching /[-x]{6}/ WITH the arrow controls;
+row before it is the editor bottom border with actions.
+
+QUEUE after current: #431 (dead panelAlignment + zombie remainders), 12 held user-directed
+items in project.active-tasks.md, import.meta.dir census, teleport-census of old smokes.
+
+USER CHECKOUT: this checkout IS the user's; main at 008d30c3+ (they rebuild with bun run build).
+309 commits ahead of origin — push not requested; do not push unasked.
+
 RESUME ANCHOR 25 (2026-08-01 — CHECKPOINT; supersedes 24. STILL PAUSED)
 
 STATE: PAUSED per the user (resting; refinements coming). Crons
