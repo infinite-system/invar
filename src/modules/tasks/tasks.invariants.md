@@ -118,10 +118,10 @@ host-owned task-name checks.
 each displaced built-in exactly once`; `scripts/harness/smoke-tasks-harness.ts`
 drives the no-file and file-source states through real PTYs.
 
-**Impossible if true:** A file source removes a built-in while `taskErrors`
-and the terminal list name no displacement; the report merges the built-in
-task into the selected file source; the report hides the configured
-folder-open task group.
+**Impossible if true:** A file source removes a built-in while neither
+`taskErrors` nor a task notice pane names the displacement; the report merges
+the built-in task into the selected file source; the report hides the
+configured folder-open task group.
 
 **Verification:** `bun test src/modules/tasks/TaskConfiguration.test.ts
 src/modules/tasks/TaskLauncher.test.ts && bun
@@ -244,11 +244,10 @@ errors at the surface where task output normally appears.
 **Evidence:** `src/modules/tasks/TaskConfiguration.test.ts`;
 `src/modules/tasks/TaskLauncher.test.ts`;
 `scripts/harness/smoke-tasks-harness.ts` plants a `process` task as the positive
-control and observes the error in status and terminal cells.
+control and observes the error in status and task notice cells.
 
-**Impossible if true:** An unsupported task is absent from both running
-terminals and reported errors; an error omits the task label or unsupported
-type.
+**Impossible if true:** An unsupported task is absent from both task notice
+panes and reported errors; an error omits the task label or unsupported type.
 
 **Verification:** `bun test src/modules/tasks/ && bun
 scripts/harness/smoke-tasks-harness.ts`
