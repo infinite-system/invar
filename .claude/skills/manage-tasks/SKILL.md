@@ -126,6 +126,28 @@ task. That is worse than leaving it unplaced.
 `agent-dispatches/_archive-2026-07-27/` still holds 139 briefs and reports with no task number
 in their headers. They are not lost. They are unplaced, and placing one requires reading it.
 
+## FILE — mint the number, never choose it
+
+```sh
+bun scripts/tasks/tasks-status.ts mint <descriptive-slug>
+```
+
+It reads every folder across `active`, `in-progress`, `completed`, and
+`retired`, takes the maximum, adds one, and CREATES the folder. It refuses a
+slug under three words, and it refuses an existing folder rather than adopting
+it — `mkdirSync` without `recursive` is the refusal.
+
+Never pick the number by reading the tracker and typing the next one. A number
+chosen by a human reading live state is the same defect class this repo removed
+from its own code on 2026-08-01: identity minted from a stale read, with nothing
+refusing a duplicate. Task numbers are PERMANENT — branches and `finished/` tags
+carry them forever — so a collision is not recoverable by renaming.
+
+Verify before trusting: `bun scripts/tasks/tasks-status.ts --self-test` covers
+both arms (max+1 across every state including retired; an existing folder
+throws).
+
+
 ## The lifecycle — seven steps, each one a command
 
 **1. FILE** — the moment work is identified (user request, bycatch, your own finding):

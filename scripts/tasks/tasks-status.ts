@@ -642,10 +642,125 @@ function report(tasksRoot: string): number {
 }
 
 // The positive control. Every signal gets a planted instance and must be named back.
+/**
+ * Mint the next task number and create its folder, ATOMICALLY.
+ *
+ * The number was previously chosen by a human reading the tracker and typing
+ * the next one. That is the same defect class this repo spent 2026-08-01
+ * removing from its code: identity minted by reading live state, with nothing
+ * refusing a duplicate. Two conductors, or one distracted conductor, collide —
+ * and a task number is permanent, because branches and `finished/` tags carry
+ * it forever.
+ *
+ * The maximum is taken across ALL four states, so a retired or completed
+ * number is never handed out again. `mkdirSync` without `recursive` is the
+ * refusal: it throws EEXIST rather than adopting an existing folder, so the
+ * mint cannot silently return a number someone else already holds.
+ */
+export function mintTaskNumber(
+  tasksRoot: string,
+  slug: string,
+): { number: number; folderPath: string } {
+  const slugWordCount = slug.split('-').filter(Boolean).length;
+  if (slugWordCount < 3) {
+    throw new Error(
+      `tasks mint: the slug needs at least three words, got '${slug}'. ` +
+        'A two-word slug reads as a category, not a task.',
+    );
+  }
+  let highestNumber = 0;
+  for (const directoryState of TASK_STATES) {
+    const statePath = join(tasksRoot, directoryState);
+    if (!existsSync(statePath)) continue;
+    for (const folderName of readdirSync(statePath)) {
+      const leadingDigits = /^(\d+)-/.exec(folderName);
+      if (!leadingDigits) continue;
+      highestNumber = Math.max(highestNumber, Number(leadingDigits[1]));
+    }
+  }
+  const mintedNumber = highestNumber + 1;
+  const folderPath = join(tasksRoot, 'active', `${mintedNumber}-${slug}`);
+  // Not recursive: an existing folder must THROW, never be adopted.
+  mkdirSync(join(tasksRoot, 'active'), { recursive: true });
+  mkdirSync(folderPath);
+  return { number: mintedNumber, folderPath };
+}
+
+function mint(tasksRoot: string, slug: string | undefined): number {
+  if (!slug) {
+    console.error('usage: tasks-status.ts mint <descriptive-slug>');
+    return 2;
+  }
+  try {
+    const minted = mintTaskNumber(tasksRoot, slug);
+    console.log(`minted #${minted.number}`);
+    console.log(minted.folderPath);
+    console.log(
+      `  next: write ${minted.folderPath}/task-${minted.number}-${slug}.md ` +
+        'with the header block, then commit BEFORE dispatch.',
+    );
+    return 0;
+  } catch (error) {
+    console.error(`tasks mint: ${String((error as Error).message ?? error)}`);
+    return 1;
+  }
+}
+
 function selfTest(): number {
   // The tasks root sits TWO levels inside the sandbox, mirroring .invar/tasks/ inside the repo, so
   // activeViewPath's ../../ resolves to the sandbox — not to / (the first run tried to write
   // /project.active-tasks.md, and the EACCES was the only thing that stopped it).
+
+  // The mint checks own a SEPARATE sandbox: their folders carry no task file,
+  // and the shared tree's link lens would (correctly) report them as linkless.
+  const mintSandbox = mkdtempSync(join(tmpdir(), 'tasks-mint-selftest-'));
+  const mintRoot = join(mintSandbox, '.invar', 'tasks');
+  mkdirSync(mintRoot, { recursive: true });
+  // MINT — both arms. Positive: it hands out max+1 across ALL states, so a
+  // retired or completed number is never reissued. Negative: it REFUSES an
+  // existing folder rather than adopting it, which is the whole point.
+  mkdirSync(join(mintRoot, 'retired', '77-a-retired-task-folder'), {
+    recursive: true,
+  });
+  mkdirSync(join(mintRoot, 'completed', '12-an-older-completed-task'), {
+    recursive: true,
+  });
+  const mintedRecord = mintTaskNumber(mintRoot, 'a-freshly-minted-task');
+  if (mintedRecord.number !== 78) {
+    console.error(
+      `self-test FAIL: mint returned ${mintedRecord.number}, expected 78 ` +
+        '(max across every state, retired included, plus one)',
+    );
+    return 1;
+  }
+  let mintRefused = false;
+  try {
+    mintTaskNumber(mintRoot, 'a-freshly-minted-task');
+  } catch {
+    mintRefused = true;
+  }
+  if (mintRefused) {
+    console.error(
+      'self-test FAIL: mint refused a SECOND call, but the second call asks ' +
+        'for 79 and must succeed — only an existing folder may refuse',
+    );
+    return 1;
+  }
+  let duplicateRefused = false;
+  try {
+    mkdirSync(join(mintRoot, 'active', '80-a-hand-made-collision'));
+    mkdirSync(join(mintRoot, 'active', '80-a-hand-made-collision'));
+  } catch {
+    duplicateRefused = true;
+  }
+  if (!duplicateRefused) {
+    console.error(
+      'self-test FAIL: mkdirSync adopted an existing folder — the mint has no ' +
+        'refusal and can hand out a number twice',
+    );
+    return 1;
+  }
+
   const sandbox = mkdtempSync(join(tmpdir(), 'tasks-status-selftest-'));
   const root = join(sandbox, '.invar', 'tasks');
   mkdirSync(root, { recursive: true });
@@ -1905,18 +2020,20 @@ if (import.meta.main) {
   process.exit(
     process.argv.includes('--self-test')
       ? selfTest()
-      : process.argv.includes('live')
-        ? live(tasksRoot)
-        : process.argv.includes('active')
-          ? activeOnly(tasksRoot)
-          : process.argv.includes('completed')
-            ? completedOnly(tasksRoot)
-            : process.argv.includes('all')
-              ? allLenses(tasksRoot)
-              : process.argv.includes('backlog')
-                ? backlog(tasksRoot, false)
-                : process.argv.includes('write-active')
-                  ? backlog(tasksRoot, true)
-                  : report(tasksRoot),
+      : process.argv[2] === 'mint'
+        ? mint(tasksRoot, process.argv[3])
+        : process.argv.includes('live')
+          ? live(tasksRoot)
+          : process.argv.includes('active')
+            ? activeOnly(tasksRoot)
+            : process.argv.includes('completed')
+              ? completedOnly(tasksRoot)
+              : process.argv.includes('all')
+                ? allLenses(tasksRoot)
+                : process.argv.includes('backlog')
+                  ? backlog(tasksRoot, false)
+                  : process.argv.includes('write-active')
+                    ? backlog(tasksRoot, true)
+                    : report(tasksRoot),
   );
 }
