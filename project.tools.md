@@ -16,6 +16,18 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ## The instruments
 
+### [Agent feed — clean monitoring view of a running codex task](scripts/fleet/agent-feed.ts)
+
+`bun scripts/fleet/agent-feed.ts <task-number-or-slug> [--follow]` renders a
+running codex builder's structured rollout jsonl (`~/.codex/sessions/...`,
+matched by worktree cwd) as a plain-text narrative: agent messages, steers,
+patch and lifecycle markers. Tool calls, reasoning dumps, and token counts
+are stripped. Because it prints to the normal screen, any terminal scrolls
+it — this is the MONITORING channel; `tmux attach` is for steering only
+(codex's alt-screen TUI captures the wheel, so an attached session cannot
+scroll history). `--self-test` proves both arms: narrative renders, noise
+is stripped.
+
 ### [Merge-gate scratch paths](scripts/merge-gate.sh)
 
 `bash scripts/merge-gate.sh --print-scratch-paths` prints the current
