@@ -251,6 +251,12 @@ class $Drive {
           target: this.parseClickTarget(value),
           completion: { kind: 'screen-change' },
         });
+      } else if (argument === '--hover') {
+        actions.push({
+          kind: 'hover',
+          target: this.parseClickTarget(value),
+          completion: { kind: 'screen-change' },
+        });
       } else if (argument === '--wait-for-text') {
         this.replaceLastActionCompletion(actions, {
           kind: 'grid-text',
@@ -708,7 +714,7 @@ class $Drive {
     timeoutMilliseconds: number,
   ): Promise<void> {
     const resolvedAction =
-      action.kind === 'click'
+      action.kind === 'click' || action.kind === 'hover'
         ? {
             ...action,
             resolvedPosition: this.resolveClickTarget(
@@ -718,7 +724,7 @@ class $Drive {
           }
         : action;
     if (
-      resolvedAction.kind === 'click' &&
+      (resolvedAction.kind === 'click' || resolvedAction.kind === 'hover') &&
       resolvedAction.target.kind !== 'coordinates'
     ) {
       console.error(
@@ -909,6 +915,15 @@ class $Drive {
       driver.sendText(action.text);
       return;
     }
+    if (action.kind === 'hover') {
+      driver.sendMouse({
+        kind: 'move',
+        column: action.resolvedPosition.column,
+        row: action.resolvedPosition.row,
+        button: 'none',
+      });
+      return;
+    }
     if (action.kind === 'wheel') {
       driver.sendMouse({
         kind: 'wheel',
@@ -947,6 +962,15 @@ class $Drive {
       driver.sendText(action.text);
       return;
     }
+    if (action.kind === 'hover') {
+      driver.sendMouseWithoutFrameExpectation({
+        kind: 'move',
+        column: action.resolvedPosition.column,
+        row: action.resolvedPosition.row,
+        button: 'none',
+      });
+      return;
+    }
     if (action.kind === 'wheel') {
       driver.sendMouseWithoutFrameExpectation({
         kind: 'wheel',
@@ -973,6 +997,11 @@ class $Drive {
   protected static actionDescription(action: DriveAction): string {
     if (action.kind === 'key') return `key ${action.keyName}`;
     if (action.kind === 'type') return `type ${JSON.stringify(action.text)}`;
+    if (action.kind === 'hover') {
+      return action.target.kind === 'coordinates'
+        ? `hover ${action.target.column},${action.target.row}`
+        : `hover ${action.target.kind}=${JSON.stringify(action.target.text)}`;
+    }
     if (action.kind === 'wheel') return `wheel ${action.direction}`;
     if (action.target.kind === 'coordinates') {
       return `click ${action.target.column},${action.target.row}`;
@@ -1034,6 +1063,7 @@ class $Drive {
       '  --wheel DIRECTION    send one wheel notch at the grid center',
       '  --type TEXT          type literal characters (palette filters, inputs)',
       '  --click TARGET       click COLUMN,ROW, text=TEXT, or fold-control=TEXT',
+      '  --hover TARGET       move the pointer there without clicking (hover states)',
       '  --frame-silent      declare the preceding action needs no repaint',
       '  --wait-for-text TEXT make the preceding action wait for new visible text',
       '  --wait-for-status FIELD=JSON',
@@ -1093,6 +1123,11 @@ type DriveAction =
   | {
       readonly kind: 'type';
       readonly text: string;
+      readonly completion: DriveActionCompletion;
+    }
+  | {
+      readonly kind: 'hover';
+      readonly target: DriveClickTarget;
       readonly completion: DriveActionCompletion;
     }
   | {
