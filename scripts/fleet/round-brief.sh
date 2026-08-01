@@ -60,7 +60,14 @@ original_name="${original_name#brief-}"
 original_name="${original_name#"${task_number}"-}"
 destination="${task_folder}/brief-${task_number}-${round}-${original_name}.md"
 
-cp "$brief_file" "$destination"
+# MOVE, never copy. A leftover source file is counted by the round
+# tally above, so every later filing skips a number (seen on #442:
+# rounds 1,4,6,8,10,12,14 for seven briefs). The folder is the record.
+if [ "$(cd "$(dirname "$brief_file")" && pwd)/$(basename "$brief_file")" = "$destination" ]; then
+  echo "round-brief: the brief is already at its filed path; nothing to move."
+else
+  mv "$brief_file" "$destination"
+fi
 
 python3 - "$task_folder/meta.json" "$round" <<'PYTHON'
 import json, sys, time
