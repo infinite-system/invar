@@ -157,3 +157,12 @@ annotate colors/tones as labels beside the drawing, never invent
 glyphs the theme vocabulary lacks; keep each mockup minimal (the
 rows/columns under discussion, not the whole screen); a mockup the
 user corrected is re-shown corrected before it enters the brief.
+
+## The design contract
+
+`design.invariants.md` (repo root, once it exists) is the design
+system: how buttons, dialogs, paddings, hover reveals, and splitters
+are done, so every agent builds consistent UI. Every UI brief lists
+it in Invariants in scope; every settled design ruling from a ui-task
+conversation is proposed into it as a record — the conversation's
+design decisions outlive the task.
