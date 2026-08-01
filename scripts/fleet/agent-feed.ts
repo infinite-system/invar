@@ -88,7 +88,7 @@ function findRollout(worktreeName: string): string | null {
   return matches.length > 0 ? matches[matches.length - 1] : null;
 }
 
-type FeedLine = { stamp: string; text: string };
+type FeedLine = { stamp: string; text: string; compact?: boolean };
 
 function renderEvent(rawLine: string): FeedLine | null {
   let event;
@@ -110,8 +110,21 @@ function renderEvent(rawLine: string): FeedLine | null {
     case 'task_started':
       return { stamp, text: '──── task started ────' };
     case 'patch_apply_end': {
-      const status = payload.success === false ? 'FAILED' : 'applied';
-      return { stamp, text: `patch │ ${status}` };
+      const status = payload.success === false ? 'FAILED' : '';
+      const files = String(payload.stdout ?? '')
+        .split('\n')
+        .map((line) => line.match(/^([AMD]) (.+)$/))
+        .filter((match) => match !== null)
+        .map(
+          (match) =>
+            `${match![1]} ${match![2].replace(/^.*\/\.invar\/worktrees\/[^/]+\//, '')}`,
+        );
+      const summary = files.length > 0 ? files.join('  ·  ') : 'applied';
+      return {
+        stamp,
+        text: `patch │ ${status ? status + ' ' : ''}${summary}`,
+        compact: true,
+      };
     }
     case 'context_compacted':
       return { stamp, text: '──── context compacted ────' };
@@ -129,13 +142,22 @@ function renderFeed(
   const lastNewline = fresh.lastIndexOf('\n');
   if (lastNewline < 0) return { output: '', nextByte: fromByte };
   const complete = fresh.slice(0, lastNewline);
-  const lines: string[] = [];
+  const blocks: string[] = [];
+  let previousCompact = false;
   for (const rawLine of complete.split('\n')) {
     if (!rawLine.trim()) continue;
     const rendered = renderEvent(rawLine);
-    if (rendered) lines.push(`${rendered.stamp} ${rendered.text}`);
+    if (!rendered) continue;
+    const separator =
+      blocks.length === 0
+        ? ''
+        : rendered.compact && previousCompact
+          ? '\n'
+          : '\n\n';
+    blocks.push(`${separator}${rendered.stamp} ${rendered.text}`);
+    previousCompact = rendered.compact === true;
   }
-  return { output: lines.join('\n\n'), nextByte: fromByte + lastNewline + 1 };
+  return { output: blocks.join(''), nextByte: fromByte + lastNewline + 1 };
 }
 
 function selfTest(): void {
