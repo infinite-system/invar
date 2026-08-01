@@ -114,9 +114,11 @@ earlier moves.
     agent doing UI work. Seed it from the rules this brief settles —
     each as a proper record with Mechanism/Evidence from the items
     that implement them:
-    - A control's padding is part of the control (hit target =
-      glyph + padding cells; one hover tone over the whole target —
-      items 4, 10, 18).
+    - Small icon-buttons carry ONE space of padding left and right
+      (`␣▣␣`) — the app-wide standard; the padding is PART of the
+      control (hit target = glyph + padding cells; one hover tone
+      over the whole target — items 4, 10, 18; driven precedent:
+      the layout switcher's one-glyph-two-padding segment).
     - Secondary controls reveal on hover and carry tooltips
       (item 18).
     - One generic dialog component serves every confirm/prompt
