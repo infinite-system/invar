@@ -75,22 +75,36 @@ export async function awaitStatusPublication(
   throw new Error(`Timed out waiting for ${description} at ${statusPath}`);
 }
 
-/** The tab bar paints the dirty marker in the single cell that follows the tab's ` label ` run
- *  (`TabBarRenderer`), so the marker is addressed by that GEOMETRY — never by hunting the ● glyph as
- *  text, which would also match a bullet inside the document. Shared by every smoke that reads the
- *  marker so the geometry lives in one place. */
+/** The tab bar paints the dirty marker in the single cell that follows the tab's ` label ` run and
+ *  paints its close glyph two cells later (`TabBarRenderer`). Use both facts to distinguish the tab
+ *  from the same filename in the breadcrumb row. Never hunt the ● glyph as text because that would
+ *  also match a bullet inside the document. Shared by every smoke that reads the marker so the
+ *  geometry lives in one place. */
 export function activeTabHasDirtyMarker(
   snapshot: HarnessSnapshot.Model,
   bufferPath: string,
 ): boolean {
   const tabLabel = ` ${basename(bufferPath)} `;
+  const closeGlyphs = new Set(
+    (['nerd', 'unicode', 'ascii'] as const).map((glyphLevel) =>
+      ThemeIcons.Class.glyphFor(glyphLevel, 'panelClose'),
+    ),
+  );
+  let tabGeometryFound = false;
   for (let row = 0; row < snapshot.rows; row++) {
-    const labelColumn = snapshot.rowText(row).indexOf(tabLabel);
-    if (labelColumn < 0) continue;
-    return (
-      snapshot.cell(row, labelColumn + tabLabel.length)?.characters !== ' '
-    );
+    const rowText = snapshot.rowText(row);
+    let labelColumn = rowText.indexOf(tabLabel);
+    while (labelColumn >= 0) {
+      const markerColumn = labelColumn + tabLabel.length;
+      const closeColumn = markerColumn + 2;
+      if (closeGlyphs.has(snapshot.cell(row, closeColumn)?.characters ?? '')) {
+        tabGeometryFound = true;
+        if (snapshot.cell(row, markerColumn)?.characters !== ' ') return true;
+      }
+      labelColumn = rowText.indexOf(tabLabel, labelColumn + 1);
+    }
   }
+  if (tabGeometryFound) return false;
   throw new Error(`Active tab label is not visible: ${tabLabel}`);
 }
 
