@@ -11,6 +11,25 @@ STATE (all verified on disk at write time):
   INVAR_FLEET_GATE_REGISTRY; my filed diagnosis refuted twice, summary honest) and
   #435 (69886b7e — folderOpen tasks once per root; issues are notice panes; green
   gate 82 OK). Summaries written. Session archives repaired (link by COMMIT grep).
+- ANCHOR 28 DELTA 2 (2026-08-01 ~15:2x EDT, 96% CHECKPOINT): #442 DISPATCHED and
+  building — the concluded ui-task batch, 12 items + FOUR amendments, all filed as
+  numbered rounds in .invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/:
+  base brief-442-1 (splitter crossings one generator; splitter leading space;
+  toggle right padding; editor border dashes fg 8037111; reveal-button shift;
+  reveal CENTERS the file in the tree viewport + same on file open; PART 2 top
+  chrome: history moves to breadcrumb row leftmost with fat glyphs and padded hit
+  areas, project row gets search icon + one-cell pad + panel-tone bg, breadcrumbs
+  move ABOVE file tabs (Safari model, user-approved), mac Alt+[/] rebind to
+  Alt+Left/Right with real escape-sequence handling).
+  Amendments: (r4) reveal button shifts left ONLY while the scrollbar shows;
+  (r6) toggle count single space; (r8) small digits — superscript badge on the
+  toggle, SUBSCRIPT git count in place, 999 cap (user rejected a 4-cell bar,
+  '3 it is'), plain digits in ASCII mode; (r10) git count one leading space and
+  the git icon column must equal the files icon column in every count state.
+  NEXT: read the READY report against ALL FIVE briefs, convert bycatch, merge
+  main, gate, land (only #436's terminal-harness step may be overridden).
+  UI batch is now CLOSED — the user concluded it; new sightings start a new batch.
+  Drive gained --hover (committed 2026-08-01). Model switched to Opus 5 by user.
 - #439 LANDED (delta 21:1x): ed401644, over the pre-existing #436 red
   (override written; summary in completed/). Worktree left in place dirty
   (M Drive.ts, harmless merge residue) — branch preserved as always.
