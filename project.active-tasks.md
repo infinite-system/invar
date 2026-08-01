@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #432 [panel-editor-actions-instances-overhaul](.invar/tasks/in-progress/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md)  [building]
+- #432 [panel-editor-actions-instances-overhaul](.invar/tasks/in-progress/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/432-panel-editor-actions-instances-overhaul`
 
 ## USER-DIRECTED (13)
@@ -25,7 +25,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (26)
+## VERIFICATION-INTEGRITY (27)
+- #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/active/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)
 - #407 [keybinding-conflict-detection](.invar/tasks/active/407-keybinding-conflict-detection/task-407-keybinding-conflict-detection.md)
 - #399 [splitter-regions-stale-rectangle](.invar/tasks/active/399-splitter-regions-stale-rectangle/task-399-splitter-regions-stale-rectangle.md)
