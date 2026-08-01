@@ -65,6 +65,7 @@ import {
 export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
 
 export type DriftSignal =
+  | 'DUPLICATE-NUMBER'
   | 'REPORT-IN-OPEN'
   | 'STATE-MISMATCH'
   | 'DONE-NO-EVIDENCE'
@@ -321,6 +322,33 @@ export function readTaskRecords(tasksRoot: string): TaskRecord[] {
 
 function findDrift(records: TaskRecord[]): DriftFinding[] {
   const findings: DriftFinding[] = [];
+
+  // DUPLICATE-NUMBER. The mint refuses a collision on ONE filesystem, but two
+  // conductors in two checkouts each create `454-...` locally and git merges
+  // both cleanly — different files, no textual conflict. Nothing upstream can
+  // see that, so the tree itself is the only place the collision surfaces. A
+  // task number is permanent (branches and finished/ tags carry it), so this
+  // is reported loudest: the fix is renaming the YOUNGER task everywhere
+  // before its number reaches a branch.
+  const foldersByNumber = new Map<number, TaskRecord[]>();
+  for (const record of records) {
+    const sharing = foldersByNumber.get(record.taskNumber) ?? [];
+    sharing.push(record);
+    foldersByNumber.set(record.taskNumber, sharing);
+  }
+  for (const [taskNumber, sharing] of foldersByNumber) {
+    if (sharing.length < 2) continue;
+    const first = sharing[0];
+    if (!first) continue;
+    findings.push({
+      taskNumber,
+      folderName: sharing.map((record) => record.folderName).join(' + '),
+      directoryState: first.directoryState,
+      signal: 'DUPLICATE-NUMBER',
+      detail: `${sharing.length} folders share #${taskNumber} — two mints collided (likely separate checkouts). Rename the younger one everywhere before its number reaches a branch.`,
+    });
+  }
+
   for (const record of records) {
     const base = {
       taskNumber: record.taskNumber,
@@ -678,12 +706,29 @@ export function mintTaskNumber(
       highestNumber = Math.max(highestNumber, Number(leadingDigits[1]));
     }
   }
-  const mintedNumber = highestNumber + 1;
-  const folderPath = join(tasksRoot, 'active', `${mintedNumber}-${slug}`);
-  // Not recursive: an existing folder must THROW, never be adopted.
   mkdirSync(join(tasksRoot, 'active'), { recursive: true });
-  mkdirSync(folderPath);
-  return { number: mintedNumber, folderPath };
+  // RETRY on EEXIST rather than failing. Two conductors on ONE filesystem can
+  // read the same maximum and race here: mkdirSync without `recursive` makes
+  // exactly one of them win (the kernel arbitrates), and the loser must take
+  // the next number rather than making a human rerun the command. The bound
+  // stops a pathological loop from spinning forever on a broken filesystem.
+  for (
+    let candidateNumber = highestNumber + 1;
+    candidateNumber <= highestNumber + 1000;
+    candidateNumber += 1
+  ) {
+    const folderPath = join(tasksRoot, 'active', `${candidateNumber}-${slug}`);
+    try {
+      mkdirSync(folderPath);
+      return { number: candidateNumber, folderPath };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+  }
+  throw new Error(
+    `tasks mint: 1000 consecutive numbers above ${highestNumber} already ` +
+      'exist as folders. Something is wrong with the tasks tree.',
+  );
 }
 
 function mint(tasksRoot: string, slug: string | undefined): number {
@@ -753,6 +798,32 @@ function selfTest(): number {
   } catch {
     duplicateRefused = true;
   }
+  const collidingRecords = readTaskRecords(mintRoot);
+  mkdirSync(join(mintRoot, 'in-progress', '78-a-freshly-minted-task'), {
+    recursive: true,
+  });
+  const duplicateNumberFindings = findDrift(readTaskRecords(mintRoot)).filter(
+    (finding) => finding.signal === 'DUPLICATE-NUMBER',
+  );
+  if (duplicateNumberFindings.length !== 1) {
+    console.error(
+      `self-test FAIL: two folders share #78 across states but DUPLICATE-NUMBER ` +
+        `fired ${duplicateNumberFindings.length} time(s), expected 1`,
+    );
+    return 1;
+  }
+  if (
+    findDrift(collidingRecords).some(
+      (finding) => finding.signal === 'DUPLICATE-NUMBER',
+    )
+  ) {
+    console.error(
+      'self-test FAIL: DUPLICATE-NUMBER fired on a tree with no duplicate — ' +
+        'the signal cannot stay silent',
+    );
+    return 1;
+  }
+
   if (!duplicateRefused) {
     console.error(
       'self-test FAIL: mkdirSync adopted an existing folder — the mint has no ' +
