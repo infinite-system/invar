@@ -23,12 +23,13 @@ import { PtyTestDriver } from './PtyTestDriver';
 // painted cell IS the named slot and that it occupies exactly one cell.
 function activityGlyphsFor(
   glyphLevel: 'nerd' | 'unicode',
-): readonly [string, string, string] {
+): readonly [string, string, string, string] {
   const vocabulary = ThemeIcons.Class.interfaceGlyphVocabularyFor(glyphLevel);
   return [
     vocabulary.activityFiles,
     vocabulary.activitySourceControl,
     vocabulary.activityExtensions,
+    vocabulary.activityMonitoring,
   ];
 }
 
@@ -138,7 +139,7 @@ async function selectSettingByLabel(
 async function driveActivityGlyphTier(
   fixtureRoot: string,
   glyphLevel: 'nerd' | 'unicode',
-  expectedGlyphs: readonly [string, string, string],
+  expectedGlyphs: readonly [string, string, string, string],
 ): Promise<void> {
   const tierHomeDirectory = mkdtempSync(
     join(tmpdir(), `tui-activitybar-${glyphLevel}-`),
@@ -188,9 +189,14 @@ async function driveActivityGlyphTier(
       snapshot,
       glyphRow(snapshot, expectedGlyphs[2]),
     );
+    const monitoringEdgeColumn = sidebarEdgeColumn(
+      snapshot,
+      glyphRow(snapshot, expectedGlyphs[3]),
+    );
     HarnessSmoke.Class.requireCondition(
       sourceControlEdgeColumn > 0 &&
-        sourceControlEdgeColumn === extensionsEdgeColumn,
+        sourceControlEdgeColumn === extensionsEdgeColumn &&
+        sourceControlEdgeColumn === monitoringEdgeColumn,
       `${glyphLevel} activity rows keep the sidebar edge in one column`,
     );
   } finally {
@@ -447,12 +453,14 @@ try {
       glyphRow(candidate, 'F') >= 0 &&
       glyphRow(candidate, 'G') >= 0 &&
       glyphRow(candidate, 'X') >= 0 &&
+      glyphRow(candidate, 'O') >= 0 &&
       candidate.findText('tree-marker.txt') !== null,
     15_000,
   );
   const filesRow = glyphRow(snapshot, 'F');
   const gitRow = glyphRow(snapshot, 'G');
   const extensionsRow = glyphRow(snapshot, 'X');
+  const monitoringRow = glyphRow(snapshot, 'O');
   const structureRow = glyphRow(snapshot, 't');
   const tasksRow = glyphRow(
     snapshot,
@@ -462,6 +470,10 @@ try {
   HarnessSmoke.Class.pass(`Source Control glyph 'G' rendered (row ${gitRow})`);
   HarnessSmoke.Class.pass(
     `Extensions glyph 'X' rendered (row ${extensionsRow})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    monitoringRow >= 0 && snapshot.cell(monitoringRow, 2)?.width === 1,
+    `Monitoring glyph 'O' rendered as one cell (row ${monitoringRow})`,
   );
   HarnessSmoke.Class.requireCondition(
     structureRow >= 0 && tasksRow >= 0,

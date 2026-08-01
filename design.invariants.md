@@ -31,11 +31,11 @@ The shared interaction and appearance rules for every Invar interface.
 
 **Invariant:** If a small chrome control meets a border, scrollbar, or line start, then one surface-colored space separates the control ink from that edge without leaving the control's hit target.
 
-**Scope:** Panel instance controls, the panel splitter start, and file-tree header controls beside a visible scrollbar.
+**Scope:** Panel instance controls and file-tree header controls beside a visible scrollbar.
 
-**Mechanism:** Each row projection reserves the edge cell before it places control ink and publishes the same control or drag range for pointer input.
+**Mechanism:** Each row projection reserves the edge cell before it places control ink and publishes the same control range for pointer input.
 
-**Generates:** A panel toggle with a clickable right pad; a draggable splitter pad; a file-tree reveal button that shifts only while the scrollbar occupies its former right pad.
+**Generates:** A panel toggle with a clickable right pad and a file-tree reveal button that shifts only while the scrollbar occupies its former right pad.
 
 **Evidence:** `src/modules/ui/PanelTabBar.ts`; `src/modules/filetree/FileTreeHeaderRow.ts`; `src/modules/ui/SeparatorAppearance.ts`.
 
@@ -81,6 +81,18 @@ The shared interaction and appearance rules for every Invar interface.
 
 **Impossible if true:** Breadcrumbs below file tabs; history disappearing when the last file closes; project navigation centered in the row.
 
+### Chrome strips take the panel tone
+
+**Invariant:** Workspace tabs, branch detail, project navigation, breadcrumbs, history, and file tabs sit on the panel tone. The editor canvas alone keeps the content tone, and the active file-tab chip borrows that tone to show which content it touches.
+
+**Scope:** The horizontal top-chrome stack above the editor canvas. Workspace chips keep their own active and inactive tones, and hover or pressed chips keep their interaction tones.
+
+**Mechanism:** RootView gives the application column one `palette.panel` chrome backdrop. Panels and unpainted top strips inherit it, while the editor canvas sets `palette.bg`. `TabBarRenderer` paints the active file-tab segment with that same content tone.
+
+**Generates:** One dark signpost band across all five top rows, one light editor canvas, and one active file tab that joins visually to that canvas.
+
+**Impossible if true:** An empty top-strip cell painted like editor content; a breadcrumb row with a different base tone; an inactive file tab borrowing the editor tone; the active file tab detached from the content below it.
+
 **Verification:** `bun scripts/harness/smoke-navigation-history-harness.ts` and `bun scripts/harness/smoke-breadcrumb-harness.ts`.
 
 **Status:** established
@@ -95,7 +107,7 @@ The shared interaction and appearance rules for every Invar interface.
 
 **Mechanism:** `ThemeIcons.smallDigitCountFor` owns the two digit vocabularies, ASCII fallback, and cap. Consumers choose only the placement role.
 
-**Generates:** `☰ ¹²`, standalone `₁₂`, plain ASCII digits, and stable activity-icon alignment from zero through three count cells.
+**Generates:** `≡ ¹²`, standalone `₁₂`, plain ASCII digits, and stable activity-icon alignment from zero through three count cells.
 
 **Evidence:** `src/modules/theme/ThemeIcons.ts`; `src/modules/ui/PanelTabBar.ts`; `src/modules/ui/ActivityBar.ts`.
 

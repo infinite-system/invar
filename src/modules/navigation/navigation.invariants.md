@@ -38,7 +38,8 @@ never spams the stack.
 `withSuppressedLocationRecording`, `restoreNavigationLocation`, `openFileInTab`, `jumpToLocation`);
 `src/modules/navigation/__tests__/NavigationHistory.test.ts` (truncation + collapse + cap + at-end
 no-ops); `src/modules/workspace/Workspace.navigation.test.ts` (a programmatic back/forward does not
-change history size); `scripts/smoke-navigation-history.sh` (Alt+[/Alt+] drive the real app).
+change history size); `scripts/harness/smoke-navigation-history-harness.ts` (Alt+Left/Right and the
+protocol-safe fallbacks drive the real app).
 
 **Impossible if true:** a back() that appends the restored location and so pins the current index at
 the newest entry; a forward trail that survives navigating to a new location after going back; an

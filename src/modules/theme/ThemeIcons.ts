@@ -219,6 +219,10 @@ class $ThemeIcons {
       },
       { mark: unicodeVocabulary.activitySearch, owner: 'activity: Search' },
       { mark: unicodeVocabulary.activityTasks, owner: 'activity: Tasks' },
+      {
+        mark: unicodeVocabulary.activityMonitoring,
+        owner: 'activity: Monitoring',
+      },
       { mark: unicodeVocabulary.activitySettings, owner: 'activity: Settings' },
       {
         mark: unicodeVocabulary.activityAccentBar,
@@ -307,6 +311,11 @@ class $ThemeIcons {
           'other entries fail: a mark may be shared only by owners that mean the same thing.',
       ],
       [
+        '\u2261',
+        'INTENDED. Explorer and the panel pane-count control both open a list or stack, so the ' +
+          'same three-line mark carries the same interaction meaning in separate chrome rows.',
+      ],
+      [
         '\u2699',
         'INTENDED, resolved 2026-07-28. The gear now has exactly two owners — the Settings ' +
           'activity item and the status-bar settings affordance — and they mean the SAME ' +
@@ -323,6 +332,12 @@ class $ThemeIcons {
           'status-bar terminal affordance paint the same chevron with different meanings. They ' +
           'live in different chrome rows, so nothing is ambiguous today; unifying or splitting ' +
           'them is a vocabulary decision.',
+      ],
+      [
+        '\u25c9',
+        'KNOWN. Monitoring intentionally reuses the live Tasks READY circle, but the JavaScript ' +
+          'file mark already owns the same neutral-width fisheye for an unrelated meaning. The ' +
+          'activity strip and file tree keep the meanings in separate columns.',
       ],
     ]);
   }
@@ -491,6 +506,7 @@ class $ThemeIcons {
         activityExtensions: '\u{f487}',
         activitySearch: '\u{f002}',
         activityTasks: '\u{f04b}',
+        activityMonitoring: '◉',
         activitySettings: '\u{f013}',
         activityAccentBar: '▎',
         layoutSwitcher: '\u{f009}',
@@ -534,6 +550,8 @@ class $ThemeIcons {
         activityExtensions: '⧫',
         activitySearch: '⌕',
         activityTasks: '▶',
+        // The live Tasks surface paints this exact neutral-width fisheye for READY work.
+        activityMonitoring: '◉',
         activitySettings: '⚙',
         activityAccentBar: '▎',
         layoutSwitcher: '▧',
@@ -541,7 +559,8 @@ class $ThemeIcons {
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
-        panelStack: '☰',
+        // The one-cell three-line mark avoids the two-cell terminal width of the ☰ trigram.
+        panelStack: '≡',
         panelSplit: '◫',
         navigationBack: '❮',
         navigationForward: '❯',
@@ -564,6 +583,7 @@ class $ThemeIcons {
         activityExtensions: 'X',
         activitySearch: '/',
         activityTasks: 'P',
+        activityMonitoring: 'O',
         activitySettings: '*',
         activityAccentBar: '|',
         layoutSwitcher: 'L',
@@ -980,6 +1000,7 @@ export interface InterfaceGlyphVocabulary {
   activityExtensions: string;
   activitySearch: string;
   activityTasks: string;
+  activityMonitoring: string;
   activitySettings: string;
   activityAccentBar: string;
   layoutSwitcher: string;

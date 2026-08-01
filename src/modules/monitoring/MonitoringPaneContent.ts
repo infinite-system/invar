@@ -36,6 +36,10 @@ class $MonitoringPaneContent implements PaneContent {
     return 'Monitoring';
   }
 
+  get icon(): string {
+    return this.application.theme.glyphVocabulary.activityMonitoring;
+  }
+
   get activityAction(): string {
     return 'view.showMonitoring';
   }

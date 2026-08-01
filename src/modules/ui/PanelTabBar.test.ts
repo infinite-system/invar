@@ -101,7 +101,7 @@ test('the editor frame owns actions while the panel rows own tabs and frame cont
   expect(projection.editorActions).toEqual([]);
   expect(projection.splitterLeadingWidth).toBe(0);
   expect(projection.tabs[0]?.startColumn).toBe(0);
-  expect(projection.instancesToggle?.endColumn).toBe(79);
+  expect(projection.instancesToggle?.endColumn).toBe(78);
   expect(
     PanelTabBar.Class.spaceAddAtColumn(
       projection,
@@ -128,7 +128,7 @@ test('each container tab pads both sides of its close glyph and shares that hit 
 test('narrow container labels use ellipses without changing painted hit bounds', () => {
   const projection = project(1, 30);
   const text = projection.tabText.chunks.map((chunk) => chunk.text).join('');
-  expect(text).toBe(' Ter… ×  Dat… × ');
+  expect(text).toBe(' Te… ×  Dat… × ');
   expect(projection.tabs.at(-1)?.endColumn).toBe(text.length);
   expect(projection.spaceAdd?.startColumn).toBe(text.length);
 });
@@ -141,13 +141,13 @@ test('the splitter keeps only frame controls and the tab row always exposes inst
   ]);
   expect(projection.spaceAdd?.tooltip).toBe('Add Plugin');
   expect(projection.instancesToggle?.tooltip).toBe('Show Instances');
-  expect(projection.instancesToggle?.endColumn).toBe(79);
+  expect(projection.instancesToggle?.endColumn).toBe(78);
 });
 
-test('the drag span keeps a one-cell paint gap inside its full hit width', () => {
+test('the drag span paints from the first cell inside its full hit width', () => {
   const projection = project(2, 26);
   expect(projection.dragWidth).toBeGreaterThan(1);
-  expect(projection.dragLeadingPaintPadCells).toBe(1);
+  expect(projection.dragLeadingPaintPadCells).toBe(0);
   expect(
     projection.splitterLeadingWidth +
       projection.dragWidth +
@@ -165,15 +165,15 @@ test('the instances toggle owns its right pad and uses bounded superscript count
     .map((chunk) => chunk.text)
     .join('');
 
-  expect(text).toContain('☰ ¹² ');
-  expect(projection.instancesToggle?.endColumn).toBe(79);
+  expect(text).toContain('≡ ¹² ');
+  expect(projection.instancesToggle?.endColumn).toBe(78);
   expect(
-    PanelTabBar.Class.instancesToggleAtColumn(projection, 78),
+    PanelTabBar.Class.instancesToggleAtColumn(projection, 77),
   ).toBeDefined();
-  expect(PanelTabBar.Class.instancesToggleAtColumn(projection, 79)).toBeNull();
+  expect(PanelTabBar.Class.instancesToggleAtColumn(projection, 78)).toBeNull();
 
   const capped = project(1000)
     .tabControlText.chunks.map((chunk) => chunk.text)
     .join('');
-  expect(capped).toContain('☰ ⁹⁹⁹ ');
+  expect(capped).toContain('≡ ⁹⁹⁹ ');
 });

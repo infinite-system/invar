@@ -121,6 +121,31 @@ try {
     historyRow >= 0 && bufferTabRow === historyRow + 1,
     'the breadcrumb and history row sits directly above the buffer tab row',
   );
+  const panelTone = Number.parseInt('16161e', 16);
+  const contentTone = Number.parseInt('1a1b26', 16);
+  for (const [stripName, row] of [
+    ['workspace', 0],
+    ['branch', 1],
+    ['project', projectPosition.row],
+    ['breadcrumb', historyRow],
+    ['file-tab', bufferTabRow],
+  ] as const) {
+    HarnessSmoke.Class.requireCondition(
+      orderedChromeSnapshot.cell(row, 60)?.background === panelTone,
+      `${stripName} strip uses the panel tone`,
+    );
+  }
+  const activeFileTab = orderedChromeSnapshot.findText(' alpha.ts ');
+  const alphaContent = orderedChromeSnapshot.findText('alpha one');
+  HarnessSmoke.Class.requireCondition(
+    activeFileTab !== null &&
+      orderedChromeSnapshot.cell(activeFileTab.row, activeFileTab.column + 1)
+        ?.background === contentTone &&
+      alphaContent !== null &&
+      orderedChromeSnapshot.cell(alphaContent.row, alphaContent.column)
+        ?.background === contentTone,
+    'only the active file-tab chip and editor canvas use the content tone',
+  );
   HarnessSmoke.Class.pass('alpha.ts opened as the active buffer');
   driver.sendKeys('Down', 'Down', 'Down');
   await HarnessSmoke.Class.awaitStatus(

@@ -261,8 +261,8 @@ class $RootView {
       height: 1,
       width: '100%',
     });
-    // The breadcrumb row sits above the buffer-tab strip. It always shows history controls and adds the
-    // active file's `project › dir › file` path when one exists.
+    // The breadcrumb row sits above the buffer-tab strip. It always shows history controls and adds
+    // the current editor-area occupant's `project › dir › file` path when one exists.
     const breadcrumbBar = new TextRenderable(renderer, {
       id: 'editor-breadcrumb-bar',
       content: '',
@@ -1796,7 +1796,7 @@ class $RootView {
       synchronizeWorkspaceTabMount();
       synchronizePanelMount();
       editorContentMount.sync();
-      column.backgroundColor = palette.bg;
+      column.backgroundColor = palette.panel;
       activityBar.setVisible(settings.showActivityBar.value);
       rightActivityBar.setVisible(settings.showRightActivityBar.value);
       synchronizeLayoutGeometry();
@@ -1841,8 +1841,11 @@ class $RootView {
       tabBar.content = activeDocumentIsPresented
         ? tabBarController.renderBuffer()
         : '';
-      // History stays visible without a file. A presented source file adds its path and title actions.
-      breadcrumbBar.content = tabBarController.renderBreadcrumb();
+      // History belongs to the editor AREA. Its current occupant supplies the path through the one
+      // editor-surface contract; the shell never branches on comparison, preview, or source view.
+      breadcrumbBar.content = tabBarController.renderBreadcrumb(
+        editorContentMount.displayedPath,
+      );
       workspaceTabBar.content = tabBarController.renderWorkspace();
       workspaceTabBar.fg = palette.fg;
       const primaryDockContent = primaryDockHost.activeContent;

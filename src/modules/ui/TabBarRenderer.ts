@@ -339,7 +339,7 @@ class $TabBarRenderer {
     const barWidth = Math.max(1, context.barWidth);
     // Each tab lays out as filename + dirty + close; close has a space BEFORE and AFTER so it is never
     // flush against the tab edge, and the padding is identical regardless of label length. The tab shows
-    // just the FILENAME; the active file's full path renders in the breadcrumb bar BELOW the strip
+    // just the FILENAME; the active file's full path renders in the breadcrumb bar ABOVE the strip
     // (renderBreadcrumbBar), VS Code-style — so tabs stay compact (many fit) while the path is always
     // legible for the file you're editing.
     const measured = tabs.map((tab) => {
@@ -413,7 +413,7 @@ class $TabBarRenderer {
       const isTabHover = hover?.kind === 'tab' && hover.index === index;
       const isCloseHover = hover?.kind === 'close' && hover.index === index;
       const rowBackground = isActive
-        ? palette.selection
+        ? palette.bg
         : isTabHover
           ? palette.cursorLine
           : null;
@@ -520,11 +520,10 @@ class $TabBarRenderer {
   public static renderBreadcrumb(
     context: BreadcrumbBarRenderContext,
   ): BreadcrumbBarRender {
-    const { strip, palette, projectRoot } = context;
-    const activeTab = strip.items.find((tab) => tab.active);
+    const { displayedPath, palette, projectRoot } = context;
     const barWidth = Math.max(1, context.barWidth);
     const actionCellWidth = 3;
-    const actionsWidth = activeTab
+    const actionsWidth = displayedPath
       ? context.editorTitleActions.length * actionCellWidth
       : 0;
     const pathAreaWidth = Math.max(1, barWidth - actionsWidth);
@@ -559,13 +558,13 @@ class $TabBarRenderer {
       segments.push({ kind: control.kind, start, end });
       column = end;
     }
-    if (activeTab && column < pathAreaWidth) {
+    if (displayedPath && column < pathAreaWidth) {
       chunks.push(fg(palette.fg)(' '));
       column += 1;
     }
-    const crumbs = activeTab
+    const crumbs = displayedPath
       ? Breadcrumb.Class.fitPathSegments(
-          Breadcrumb.Class.pathSegments(activeTab.identifier, projectRoot),
+          Breadcrumb.Class.pathSegments(displayedPath, projectRoot),
           Math.max(
             1,
             pathAreaWidth - column - Breadcrumb.Class.HOVER_PAD_COLUMNS * 2,
@@ -604,7 +603,7 @@ class $TabBarRenderer {
       Math.max(0, pathAreaWidth - column),
     );
     column = pathAreaWidth;
-    const visibleEditorTitleActions = activeTab
+    const visibleEditorTitleActions = displayedPath
       ? context.editorTitleActions
       : [];
     for (const [actionIndex, action] of visibleEditorTitleActions.entries()) {
@@ -737,7 +736,8 @@ export interface BufferTabBarRender {
 }
 
 export interface BreadcrumbBarRenderContext {
-  strip: TabStrip.Instance;
+  /** Path supplied by the content that currently occupies the editor area. */
+  displayedPath: string | null;
   palette: Palette;
   barWidth: number;
   /** Active workspace root — the breadcrumb is the active file's path relative to it. */

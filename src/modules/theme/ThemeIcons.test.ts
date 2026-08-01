@@ -198,6 +198,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'activityExtensions',
     'activitySearch',
     'activityTasks',
+    'activityMonitoring',
     'activitySettings',
     'layoutSwitcher',
     'panelAdd',
@@ -220,6 +221,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f487}',
       '\u{f002}',
       '\u{f04b}',
+      '◉',
       '\u{f013}',
       '\u{f009}',
       '\u{f067}',
@@ -241,10 +243,11 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '⧫',
       '⌕',
       '▶',
+      '◉',
       '⚙',
       '▧',
       '+',
-      '☰',
+      '≡',
       '↗',
       '↙',
       '×',
@@ -262,6 +265,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       'X',
       '/',
       'P',
+      'O',
       '*',
       'L',
       '+',
@@ -312,6 +316,22 @@ test('the tasks activity glyph reads as run through every fallback tier', () => 
   expect(ThemeIcons.Class.markOwnersFor('▶')).toEqual(['activity: Tasks']);
 });
 
+test('the monitoring activity glyph reuses the live Tasks circle with an ASCII fallback', () => {
+  const glyphLevels = ['nerd', 'unicode', 'ascii'] as const;
+  const glyphs = glyphLevels.map((glyphLevel) =>
+    ThemeIcons.Class.glyphFor(glyphLevel, 'activityMonitoring'),
+  );
+
+  expect(glyphs).toEqual(['◉', '◉', 'O']);
+  expect(
+    glyphs.every((glyph) => TextCoordinates.Class.lineWidth(glyph) === 1),
+  ).toBe(true);
+  expect(ThemeIcons.Class.markOwnersFor('◉')).toEqual([
+    'activity: Monitoring',
+    'symbol class: javascript',
+  ]);
+});
+
 test('the layout switcher has a legible one-cell fallback at every tier', () => {
   const glyphLevels = ['nerd', 'unicode', 'ascii'] as const;
   const layoutSwitcherGlyphs = glyphLevels.map((glyphLevel) =>
@@ -337,10 +357,10 @@ test('activity and panel control glyphs stay pairwise distinct at every tier', (
     'activityExtensions',
     'activitySearch',
     'activityTasks',
+    'activityMonitoring',
     'activitySettings',
     'layoutSwitcher',
     'panelAdd',
-    'panelStack',
     'panelExpand',
     'panelRestore',
     'panelClose',
@@ -722,6 +742,7 @@ test('every semantic interface icon is one display cell and avoids reserved mark
     'activitySourceControl',
     'activityExtensions',
     'activitySearch',
+    'activityMonitoring',
     'activitySettings',
     'panelAdd',
     'panelStack',

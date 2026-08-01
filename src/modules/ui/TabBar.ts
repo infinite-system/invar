@@ -122,11 +122,11 @@ class $TabBar {
     this.lastRevealedActiveIndex = result.revealedIndex;
     return result.text;
   }
-  renderBreadcrumb(): StyledText {
-    const { bufferTabStrip, breadcrumbBar, workspaceSet, theme, readPalette } =
+  renderBreadcrumb(displayedPath: string | null): StyledText {
+    const { breadcrumbBar, workspaceSet, theme, readPalette } =
       this.dependencies;
     const result = TabBarRenderer.Class.renderBreadcrumb({
-      strip: bufferTabStrip,
+      displayedPath,
       palette: readPalette(),
       barWidth: breadcrumbBar.width as number,
       projectRoot: workspaceSet.active.root,

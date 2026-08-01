@@ -131,7 +131,7 @@ class $Workspace {
   }
   // Browser-style Go Back / Go Forward: every meaningful jump (go-to-definition, opening a file
   // from the tree / quick-open / a hover or a rendered reference) records the location left AND the
-  // location arrived at, so Alt+[ / Alt+] can walk the trail. Reactive so the UI can later show
+  // location arrived at, so Alt+Left / Alt+Right can walk the trail. Reactive so the UI can show
   // enabled/disabled affordances.
   navigationHistory = this.createNavigationHistory();
   // The provider that makes every buffer view for this workspace. The host never learns what it
@@ -666,13 +666,13 @@ class $Workspace {
     });
   }
 
-  /** Go Back (Alt+[): restore the previous location in the trail; safe no-op at the start. */
+  /** Go Back (Alt+Left): restore the previous location in the trail; safe no-op at the start. */
   navigateBack(): void {
     const location = this.navigationHistory.back();
     if (location) this.restoreNavigationLocation(location);
   }
 
-  /** Go Forward (Alt+]): restore the next location in the trail; safe no-op at the end. */
+  /** Go Forward (Alt+Right): restore the next location in the trail; safe no-op at the end. */
   navigateForward(): void {
     const location = this.navigationHistory.forward();
     if (location) this.restoreNavigationLocation(location);

@@ -109,6 +109,71 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
+async function driveRightDockCrossing(): Promise<void> {
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'invar-panel-right-dock-crossing-'),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: process.cwd(),
+    columns: 120,
+    rows: 40,
+    homeDirectory,
+    environment: { TUI_STATUS_PATH: statusPath },
+  });
+
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the panel crossing fixture is ready',
+      (status) => status.ready === true,
+      15_000,
+    );
+    driver.sendKeys('Control+j');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the panel opens before the right dock crossing check',
+      (status) => status.panelVisible === true,
+    );
+    driver.sendRawInput('\x1b[98;7u');
+    const status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the right dock opens across the panel splitter row',
+      (candidate) => candidate.rightDockVisible === true,
+    );
+    const crossingColumn = Number(
+      (
+        status.layoutSlots as {
+          rightDockSplitter?: { left?: number };
+        }
+      ).rightDockSplitter?.left,
+    );
+    const snapshot = await driver.awaitGridCondition(
+      'the panel splitter repaints the right-dock crossing',
+      (candidate) => {
+        const cell = candidate.cell(tabBar(status).row, crossingColumn);
+        return (
+          cell?.characters === '─' &&
+          cell.background === Number.parseInt('1a1b26', 16)
+        );
+      },
+    );
+    HarnessSmoke.Class.requireCondition(
+      crossingColumn === 91 &&
+        snapshot.cell(tabBar(status).row, crossingColumn)?.characters === '─' &&
+        snapshot.cell(tabBar(status).row, crossingColumn)?.background ===
+          Number.parseInt('1a1b26', 16),
+      'column 91 keeps its line and takes the panel-row background at the right dock',
+    );
+  } finally {
+    driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
 async function driveAtSize(columns: number, rows: number): Promise<void> {
   const homeDirectory = mkdtempSync(
     join(tmpdir(), `invar-panel-tabs-${columns}-`),
@@ -319,11 +384,9 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column splitter starts flush and meets the frame controls`,
     );
     const padCellCount = initialTabBar.drag.leadingPaintPadCells;
-    const expectedDragCells = ` ${'─'.repeat(
-      Math.max(0, initialTabBar.drag.width - 1),
-    )}`;
+    const expectedDragCells = '─'.repeat(initialTabBar.drag.width);
     const tabRowSnapshot = await driver.awaitGridCondition(
-      `${columns}-column published drag span paints one leading gap and a thin line`,
+      `${columns}-column published drag span paints a thin line from its first cell`,
       (snapshot) =>
         snapshot
           .rowText(initialTabBar.row)
@@ -340,63 +403,17 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
             initialTabBar.drag.left,
             initialTabBar.drag.left + initialTabBar.drag.width,
           ) === expectedDragCells,
-      `${columns}-column splitter paints its gap and thin marks between the left edge and controls`,
+      `${columns}-column splitter paints thin marks between the left edge and controls`,
     );
     HarnessSmoke.Class.requireCondition(
-      padCellCount === 1 &&
+      padCellCount === 0 &&
+        (columns !== 120 || initialTabBar.drag.left === 37) &&
+        tabRowSnapshot.cell(initialTabBar.row, initialTabBar.drag.left)
+          ?.characters === '─' &&
         tabRowSnapshot.cell(initialTabBar.row, initialTabBar.drag.left)
           ?.background === Number.parseInt('1a1b26', 16),
-      `${columns}-column splitter reports one leading gap in the row background`,
+      `${columns}-column splitter starts with a line in the row background${columns === 120 ? ' at column 37' : ''}`,
     );
-
-    if (columns === 120) {
-      driver.sendRawInput('\x1b[98;7u');
-      const rightDockStatus = await HarnessSmoke.Class.awaitStatus(
-        driver,
-        statusPath,
-        '120-column right dock opens across the panel splitter row',
-        (candidate) => candidate.rightDockVisible === true,
-      );
-      const rightDockSnapshot = await driver.awaitGridCondition(
-        '120-column panel splitter repaints the right-dock crossing',
-        (snapshot) => {
-          const crossingColumn = Number(
-            (
-              rightDockStatus.layoutSlots as {
-                rightDockSplitter?: { left?: number };
-              }
-            ).rightDockSplitter?.left,
-          );
-          const cell = snapshot.cell(
-            tabBar(rightDockStatus).row,
-            crossingColumn,
-          );
-          return (
-            cell?.characters === '─' &&
-            cell.background === Number.parseInt('1a1b26', 16)
-          );
-        },
-      );
-      const crossingColumn = Number(
-        (
-          rightDockStatus.layoutSlots as {
-            rightDockSplitter?: { left?: number };
-          }
-        ).rightDockSplitter?.left,
-      );
-      HarnessSmoke.Class.requireCondition(
-        rightDockSnapshot.cell(tabBar(rightDockStatus).row, crossingColumn)
-          ?.background === Number.parseInt('1a1b26', 16),
-        'the panel row owns the right-dock splitter crossing background',
-      );
-      driver.sendRawInput('\x1b[98;7u');
-      status = await HarnessSmoke.Class.awaitStatus(
-        driver,
-        statusPath,
-        '120-column right dock closes before panel control checks continue',
-        (candidate) => candidate.rightDockVisible === false,
-      );
-    }
 
     // Both ends of the flush drag span must grab. The two drags move in opposite directions so
     // neither asks the panel to push past a bound it already occupies.
@@ -614,11 +631,11 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
     const instancesToggleSnapshot = await driver.awaitGridCondition(
       `${columns}-column instances button paints its pad before the panel border`,
       (snapshot) =>
-        snapshot.cell(tabBar(status).tabRow, columns - 2)?.characters === ' ',
+        snapshot.cell(tabBar(status).tabRow, columns - 3)?.characters === ' ',
     );
     HarnessSmoke.Class.requireCondition(
-      instancesToggle.endColumnExclusive === columns - 1 &&
-        instancesToggleSnapshot.cell(tabBar(status).tabRow, columns - 2)
+      instancesToggle.endColumnExclusive === columns - 2 &&
+        instancesToggleSnapshot.cell(tabBar(status).tabRow, columns - 3)
           ?.characters === ' ',
       `${columns}-column instances button owns the pad before the panel border`,
     );
@@ -721,12 +738,25 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       );
       const countSnapshot = await driver.awaitGridCondition(
         '120-column instances toggle paints a superscript count with one separator space',
-        (snapshot) => snapshot.findText('☰ ² ') !== null,
+        (snapshot) => {
+          const countPosition = snapshot.findText('²');
+          return (
+            countPosition !== null &&
+            snapshot.cell(countPosition.row, countPosition.column - 2)
+              ?.characters === '≡' &&
+            snapshot.cell(countPosition.row, countPosition.column - 1)
+              ?.characters === ' '
+          );
+        },
       );
-      const countPosition = countSnapshot.findText('☰ ² ');
+      const countPosition = countSnapshot.findText('²');
       HarnessSmoke.Class.requireCondition(
         countPosition !== null &&
-          countPosition.column + 4 ===
+          countSnapshot.cell(countPosition.row, countPosition.column - 2)
+            ?.characters === '≡' &&
+          countSnapshot.cell(countPosition.row, countPosition.column - 1)
+            ?.characters === ' ' &&
+          countPosition.column + 2 ===
             tabBar(status).instancesToggle?.endColumnExclusive,
         'the superscript count and right pad stay inside the instances toggle hit area',
       );
@@ -894,6 +924,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
   }
 }
 
+await driveRightDockCrossing();
 await driveAtSize(120, 40);
 await driveAtSize(88, 24);
 console.log('smoke-panel-chrome-harness: ALL-PASS');

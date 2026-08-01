@@ -29,7 +29,7 @@ class $PanelTabBar {
       splitterLeadingWidth: 0,
       leadingWidth: 0,
       dragWidth: Math.max(0, width - splitterControls.width),
-      dragLeadingPaintPadCells: 1,
+      dragLeadingPaintPadCells: 0,
       splitterControlWidth: splitterControls.width,
       controlWidth: splitterControls.width,
       tabControlWidth: tabRow.controlWidth,
@@ -174,17 +174,19 @@ class $PanelTabBar {
     spaceAdd: PanelTabBarSpaceAddSegment | null;
     instancesToggle: PanelTabBarInstancesToggleSegment | null;
   } {
+    const panelStackGlyph = options.glyphVocabulary.panelStack;
+    const countSeparator = ' ';
     const countText =
       options.paneCount > 1
-        ? ` ${ThemeIcons.Class.smallDigitCountFor(
+        ? `${countSeparator}${ThemeIcons.Class.smallDigitCountFor(
             options.glyphLevel,
             options.paneCount,
             'iconBadge',
           )}`
         : '';
     const addText = ` ${options.glyphVocabulary.panelAdd} Plugin `;
-    const instancesText = ` ${options.glyphVocabulary.panelStack}${countText} `;
-    const trailingPaddingText = ' ';
+    const instancesText = ` ${panelStackGlyph}${countText} `;
+    const trailingPaddingText = '  ';
     const preferredControlText = `${addText}${instancesText}${trailingPaddingText}`;
     const controlWidth = Math.min(
       TextCoordinates.Class.lineWidth(preferredControlText),

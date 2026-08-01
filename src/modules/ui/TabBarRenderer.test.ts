@@ -10,13 +10,6 @@ test('tab bar rendering remains available through its static class seam', () => 
 });
 
 test('breadcrumb keeps editor actions right-aligned outside the path area', () => {
-  const strip = new TabStrip.Class('horizontal', () => [
-    {
-      identifier: '/project/a/very/long/path/README.md',
-      label: 'README.md',
-      active: true,
-    },
-  ]);
   const editorTitleActions = [
     {
       commandId: 'markdown.togglePreview',
@@ -26,7 +19,7 @@ test('breadcrumb keeps editor actions right-aligned outside the path area', () =
     },
   ];
   const projection = TabBarRenderer.Class.renderBreadcrumb({
-    strip,
+    displayedPath: '/project/a/very/long/path/README.md',
     palette: ThemePalettes.Class.DARK,
     barWidth: 24,
     projectRoot: '/project',
@@ -63,7 +56,7 @@ test('breadcrumb keeps editor actions right-aligned outside the path area', () =
 
 test('breadcrumb history owns two padded three-cell targets without an open file', () => {
   const projection = TabBarRenderer.Class.renderBreadcrumb({
-    strip: new TabStrip.Class('horizontal', () => []),
+    displayedPath: null,
     palette: ThemePalettes.Class.DARK,
     barWidth: 20,
     projectRoot: '/project',
