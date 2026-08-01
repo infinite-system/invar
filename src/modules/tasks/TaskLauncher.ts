@@ -19,12 +19,27 @@ class $TaskLauncher {
     workspaceRoot: string,
     tasks: readonly TaskDefinition[],
     issues: readonly TaskConfigurationIssue[],
-  ): void {
+  ): readonly string[] {
     // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
     const launchedGroups = new Map<string, string[]>();
+    const launchedLabels: string[] = [];
     for (const task of tasks) {
       if (!task.runOnFolderOpen) continue;
-      const identifier = this.launch(workspaceRoot, task);
+      const identifier = this.identifierFor(
+        workspaceRoot,
+        task.configurationIndex,
+      );
+      let launchedNow = false;
+      if (!this.wasLaunched(workspaceRoot, identifier)) {
+        if (this.options.port.has(identifier)) {
+          this.rememberIdentifier(workspaceRoot, identifier);
+        } else {
+          this.launch(workspaceRoot, task);
+          launchedNow = true;
+          launchedLabels.push(task.label);
+        }
+      }
+      if (!launchedNow || !this.options.port.has(identifier)) continue;
       const group = task.presentationGroup ?? identifier;
       const identifiers = launchedGroups.get(group) ?? [];
       identifiers.push(identifier);
@@ -33,10 +48,23 @@ class $TaskLauncher {
 
     const firstGroup =
       (launchedGroups.values().next().value as string[] | undefined) ?? [];
-    const issueReports = issues.map((issue) => ({
-      identifier: this.report(workspaceRoot, issue),
-      severity: issue.severity,
-    }));
+    const issueReports = issues.flatMap((issue) => {
+      const identifier = this.noticeIdentifierFor(
+        workspaceRoot,
+        issue.configurationIndex,
+      );
+      if (this.options.port.has(identifier)) return [];
+      this.options.port.notice({
+        identifier,
+        label: issue.label,
+        message: issue.message,
+        severity: issue.severity ?? 'error',
+      });
+      if (!this.options.port.has(identifier)) {
+        return [];
+      }
+      return [{ identifier, severity: issue.severity }];
+    });
     const errorIssueIdentifiers = issueReports
       .filter((report) => report.severity !== 'warning')
       .map((report) => report.identifier);
@@ -49,6 +77,7 @@ class $TaskLauncher {
     } else if (allIssueIdentifiers.length > 0) {
       this.options.port.present(allIssueIdentifiers, false);
     }
+    return launchedLabels;
   }
 
   launchAndPresent(
@@ -84,7 +113,6 @@ class $TaskLauncher {
     for (const identifier of identifiers) {
       this.options.port.remove(identifier);
     }
-    this.launchedIdentifiersByWorkspace.delete(workspaceRoot);
   }
 
   protected launch(workspaceRoot: string, task: TaskDefinition): string {
@@ -123,35 +151,26 @@ class $TaskLauncher {
     return identifier;
   }
 
-  protected report(
-    workspaceRoot: string,
-    issue: TaskConfigurationIssue,
-  ): string {
-    // invariant: Unsupported tasks fail visibly (src/modules/tasks/tasks.invariants.md)
-    const identifier = `${this.identifierFor(
-      workspaceRoot,
-      issue.configurationIndex,
-    )}:error`;
-    this.options.port.launch({
-      identifier,
-      label: issue.label,
-      workspaceRoot,
-      command: 'printf',
-      arguments: ['%s\n', `Invar tasks: ${issue.message}`],
-      environment: {},
-      presentationGroup: 'task-errors',
-      presentationPanel: 'dedicated',
-    });
-    this.rememberIdentifier(workspaceRoot, identifier);
-    return identifier;
-  }
-
   protected identifierFor(
     workspaceRoot: string,
     configurationIndex: number,
   ): string {
     return (
       `task:${encodeURIComponent(workspaceRoot)}:` + String(configurationIndex)
+    );
+  }
+
+  protected noticeIdentifierFor(
+    workspaceRoot: string,
+    configurationIndex: number,
+  ): string {
+    return `${this.identifierFor(workspaceRoot, configurationIndex)}:notice`;
+  }
+
+  protected wasLaunched(workspaceRoot: string, identifier: string): boolean {
+    return (
+      this.launchedIdentifiersByWorkspace.get(workspaceRoot)?.has(identifier) ??
+      false
     );
   }
 
@@ -179,9 +198,17 @@ export interface TaskLauncherOptions {
 
 export interface TaskTerminalLaunchPort {
   launch(request: TaskTerminalLaunchRequest): void;
+  notice(request: TaskPanelNoticeRequest): void;
   present(identifiers: readonly string[], transferFocus: boolean): void;
   has(identifier: string): boolean;
   remove(identifier: string): void;
+}
+
+export interface TaskPanelNoticeRequest {
+  readonly identifier: string;
+  readonly label: string;
+  readonly message: string;
+  readonly severity: 'warning' | 'error';
 }
 
 export interface TaskTerminalLaunchRequest {

@@ -42,12 +42,11 @@ test('a relaunch rebuilds group order, active group, list pin, and list width', 
   );
 
   const relaunchedHost = new PanelHost.Class();
-  let nextIdentifier = 1;
   const restoration = PanelWorkspaceState.Class.restore(
     persisted,
     (paneState) => {
       const pane = new FakePane(
-        `restored-${nextIdentifier++}`,
+        paneState.identifier ?? 'missing-identifier',
         paneState.label,
         paneState.kind,
       );
@@ -70,4 +69,7 @@ test('a relaunch rebuilds group order, active group, list pin, and list width', 
   expect(relaunchedHost.panelListExpanded.value).toBe(true);
   expect(relaunchedHost.panelListWidth.value).toBe(13);
   expect(relaunchedHost.panelListVisible).toBe(true);
+  expect(relaunchedHost.panelGroups().map((group) => group.contentIds)).toEqual(
+    [['terminal', 'agent'], ['terminal-2']],
+  );
 });

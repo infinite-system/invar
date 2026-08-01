@@ -24,6 +24,7 @@ class $PanelWorkspaceState {
               return content
                 ? [
                     {
+                      identifier: content.id,
                       kind: paneKind(content),
                       label: content.instanceLabel ?? content.title,
                     },
