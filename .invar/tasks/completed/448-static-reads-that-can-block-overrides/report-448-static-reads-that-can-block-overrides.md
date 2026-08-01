@@ -14,7 +14,7 @@ rule), is complete in commit `1908d47010d6e9df33e744f4c1c0bffc092256fd` on branc
 The dispatched worktree did not contain the landed #443 (static-read indirection defeats
 override) implementation. Its first census therefore found 70 instance candidates, not the
 required 55. I merged the exact landed commit `1e6f6dbe677c905dadf66b02090d0102e9b1a947` into this
-branch. The [#443 report](../443-static-read-indirection-defeats-override/report-443-static-read-indirection-defeats-override.md)
+branch. The [#443 report](../../completed/443-static-read-indirection-defeats-override/report-443-static-read-indirection-defeats-override.md)
 and census then reproduced 55 candidates in 14 production classes. I made no unrelated merge from
 the fleet integration branch.
 

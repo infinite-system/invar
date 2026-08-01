@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.
 
 ## In plain words
 
