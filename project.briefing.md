@@ -11,7 +11,15 @@ STATE (all verified on disk at write time):
   INVAR_FLEET_GATE_REGISTRY; my filed diagnosis refuted twice, summary honest) and
   #435 (69886b7e — folderOpen tasks once per root; issues are notice panes; green
   gate 82 OK). Summaries written. Session archives repaired (link by COMMIT grep).
-- #439 READ (delta 14:3x): builder REFUTED my list-auto-close and inert-close
+- #439 LANDED (delta 21:1x): ed401644, over the pre-existing #436 red
+  (override written; summary in completed/). Worktree left in place dirty
+  (M Drive.ts, harmless merge residue) — branch preserved as always.
+  UI batch grew: item 5 = scrollbar (col 34, bg7896217) covers the reveal
+  button's right space; user design: shift whole button one cell left.
+  Item 6 = reveal-in-tree must CENTER the file in the tree viewport (now:
+  barely scrolled in at edge), and opening a file scrolls the tree the
+  same centered way. Drive gained --type and --hover (committed).
+- (superseded delta) #439 READ: builder REFUTED my list-auto-close and inert-close
   findings — my probe's toggle click on an already-pinned list caused both
   (pre-satisfied gesture; lesson in conductor family 1). Real cascade cause:
   folderOpen launch BEFORE panel restore; fixed by ordering. Bycatch converted:
