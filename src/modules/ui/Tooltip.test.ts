@@ -5,7 +5,21 @@ import { Tooltip } from './Tooltip';
 
 const FRAME = 1 / 30;
 
+class ShortDwellTooltip extends Tooltip.$Class {
+  public static override get TOOLTIP_DWELL_SECONDS() {
+    return 0.1;
+  }
+}
+
 describe('Tooltip', () => {
+  test('a subclass can change the observed dwell time', () => {
+    const tooltip = new ShortDwellTooltip();
+    tooltip.point('Open diff', 10, 5);
+
+    expect(tooltip.tick(ShortDwellTooltip.TOOLTIP_DWELL_SECONDS)).toBe(false);
+    expect(tooltip.visible.value).toBe(true);
+  });
+
   test('idle tick needs no frames and shows nothing', () => {
     const tooltip = new Tooltip.Class();
     expect(tooltip.tick(FRAME)).toBe(false);

@@ -5,17 +5,13 @@
 //
 // invariant: The shortcut sheet lists the effective bindings (src/modules/ui/ui.invariants.md)
 // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 
 class $ShortcutHelp {
-  protected get ShortcutHelp() {
-    return ShortcutHelp.Class as unknown as typeof $ShortcutHelp;
-  }
-  protected static get $mergedShortcutContexts() {
+  protected get mergedShortcutContexts() {
     const mergedShortcutContextsValue = [
       'global',
       'editor',
@@ -30,10 +26,7 @@ class $ShortcutHelp {
     ] as const;
     return mergedShortcutContextsValue;
   }
-  protected get mergedShortcutContexts() {
-    return this.ShortcutHelp.$mergedShortcutContexts;
-  }
-  protected static get $categoryByActionPrefix(): Record<string, string> {
+  protected get categoryByActionPrefix(): Record<string, string> {
     const categoryByActionPrefixValue: Record<string, string> = {
       app: 'Application',
       workspace: 'Workspace',
@@ -55,13 +48,7 @@ class $ShortcutHelp {
     };
     return categoryByActionPrefixValue;
   }
-  protected get categoryByActionPrefix(): Record<string, string> {
-    return this.ShortcutHelp.$categoryByActionPrefix;
-  }
-  protected static get $fallbackTitleByActionIdentifier(): Record<
-    string,
-    string
-  > {
+  protected get fallbackTitleByActionIdentifier(): Record<string, string> {
     const fallbackTitleByActionIdentifierValue: Record<string, string> = {
       'quickopen.open': 'Go to File',
       'palette.open': 'Show All Commands',
@@ -74,9 +61,6 @@ class $ShortcutHelp {
       'settings.toggle': 'Open Settings',
     };
     return fallbackTitleByActionIdentifierValue;
-  }
-  protected get fallbackTitleByActionIdentifier(): Record<string, string> {
-    return this.ShortcutHelp.$fallbackTitleByActionIdentifier;
   }
   protected humanizeActionMember(actionMember: string): string {
     const spaced = actionMember.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
@@ -175,7 +159,7 @@ class $ShortcutHelp {
 }
 
 export namespace ShortcutHelp {
-  export const $Class = Static($ShortcutHelp);
+  export const $Class = $ShortcutHelp;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }

@@ -7,7 +7,6 @@
 // Reactive class holding plain renderable fields), instantiated `new HoverCard.Class(deps)`.
 //
 // invariant: A hover card reflects the language server type at the pointed symbol (src/modules/ui/ui.invariants.md)
-import { Static } from 'ivue/extras';
 import {
   BoxRenderable,
   StyledText,
@@ -34,46 +33,25 @@ import type {
 } from '../workspace/LanguageProvider.interface';
 
 class $HoverCard {
-  protected get HoverCard() {
-    return HoverCard.Class as unknown as typeof $HoverCard;
-  }
-  public static get HOVER_DWELL_SECONDS() {
-    return 0.5;
-  }
   protected get hoverDwellSeconds() {
-    return this.HoverCard.HOVER_DWELL_SECONDS;
-  }
-  public static get HOVER_SYMBOL_OFF_DISMISS_SECONDS() {
     return 0.5;
   }
   protected get hoverSymbolOffDismissSeconds() {
-    return this.HoverCard.HOVER_SYMBOL_OFF_DISMISS_SECONDS;
-  }
-  public static get HOVER_IDLE_DISMISS_SECONDS() {
-    return 2.5;
+    return 0.5;
   }
   protected get hoverIdleDismissSeconds() {
-    return this.HoverCard.HOVER_IDLE_DISMISS_SECONDS;
-  }
-  protected static get MAX_CARD_COLUMNS() {
-    return 64;
+    return 2.5;
   }
   protected get maxCardColumns() {
-    return this.HoverCard.MAX_CARD_COLUMNS;
-  }
-  protected static get MAX_CARD_ROWS() {
-    return 16;
+    return 64;
   }
   protected get maxCardRows() {
-    return this.HoverCard.MAX_CARD_ROWS;
-  }
-  protected static get ANCHOR_OFFSET_COLUMNS() {
-    return 2;
+    return 16;
   }
   protected get anchorOffsetColumns() {
-    return this.HoverCard.ANCHOR_OFFSET_COLUMNS;
+    return 2;
   }
-  protected static get $fenceLanguage(): Record<string, LangId> {
+  protected get fenceLanguage(): Record<string, LangId> {
     const fenceLanguageValue: Record<string, LangId> = {
       typescript: 'typescript',
       ts: 'typescript',
@@ -87,9 +65,6 @@ class $HoverCard {
       diff: 'diff',
     };
     return fenceLanguageValue;
-  }
-  protected get fenceLanguage(): Record<string, LangId> {
-    return this.HoverCard.$fenceLanguage;
   }
   protected roleColor(role: Role, palette: Palette): string {
     switch (role) {
@@ -859,7 +834,7 @@ class $HoverCard {
 }
 
 export namespace HoverCard {
-  export const $Class = Static($HoverCard);
+  export const $Class = $HoverCard;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
