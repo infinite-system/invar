@@ -11,7 +11,7 @@ earlier moves.
 ```
 ╰──  ↵  ↕  ⇊  ────────────────────────────────╯   editor bottom border owns the actions
 ─────────────────────────────────────────  ↗  ×    splitter: thin, light, flush; frame fns only
- Terminal ×  Terminal 2 ×       + Plugin  ☰        tabs: padded, reorderable; ☰ = instances toggle
+ Terminal ×  Terminal 2 ×      + Plugin  ☰ 2␣     tabs: padded, reorderable; ☰ = instances toggle+count, 1-space right pad
 ┌────────────────────────┬─────────────────────┐
 │  $ echo hi          ×  │  + Terminal ▾       │
 │                        │                     │
@@ -61,7 +61,11 @@ earlier moves.
    selects which plugin loads into the panel.
 9. (folded into 13.)
 10. INSTANCES TOGGLE `☰` sits AFTER `+ Plugin`, rightmost on the
-    tabs row (user-settled). Tooltip per item 15.
+    tabs row, CLOSE to the right border with exactly ONE space of
+    right padding (`… + Plugin  ☰ ␣` at the edge — not floating
+    inboard). The toggle IS the count indicator: icon always shown,
+    the count number beside it only when instances > 1 (`☰ 2`).
+    Tooltip per item 15. (User-settled placement and padding.)
 11. GENERIC DIALOG SYSTEM. One dialog/prompt component; the
     quit-confirmation dialog becomes an instance of it; terminal
     close (item 5) is the second consumer; input-carrying prompts in
