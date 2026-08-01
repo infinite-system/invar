@@ -1,7 +1,28 @@
 import { expect, test } from 'bun:test';
 import { rmSync } from 'node:fs';
 import { HarnessSmoke } from './HarnessSmoke';
-import { awaitStatusPublication } from './HarnessSmokeSupport';
+import {
+  activeTabHasDirtyMarker,
+  awaitStatusPublication,
+} from './HarnessSmokeSupport';
+
+test('dirty marker lookup skips the same filename in the breadcrumb row', () => {
+  const rows = [
+    ' ❮  ❯   workspace › dirty-marker.txt        ',
+    '  dirty-marker.txt ● ×                       ',
+  ];
+  const snapshot = {
+    rows: rows.length,
+    rowText: (row: number) => rows[row] ?? '',
+    cell: (row: number, column: number) => ({
+      characters: rows[row]?.[column] ?? '',
+    }),
+  } as never;
+
+  expect(activeTabHasDirtyMarker(snapshot, '/workspace/dirty-marker.txt')).toBe(
+    true,
+  );
+});
 
 test('support status timeout names the condition and path', async () => {
   const statusPath = `/tmp/invar-missing-support-status-${crypto.randomUUID()}.json`;
