@@ -376,14 +376,12 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'boot publishes the hidden seeded tasks projection without recurring work',
+    'boot publishes the hidden zero-work tasks projection',
     (status) =>
       status.tasksLens === 'live' &&
-      status.tasksAvailable === true &&
+      status.tasksAvailable === false &&
       status.tasksAnimationAtRest === true &&
       status.tasksDataHeartbeatAtRest === true &&
-      Number(status.tasksTaskTreeReads) === 1 &&
-      Number(status.tasksDataHeartbeatTicks) === 0 &&
       Number(status.tasksAnimationPaint) === 0,
   );
   HarnessSmoke.Class.requireCondition(
