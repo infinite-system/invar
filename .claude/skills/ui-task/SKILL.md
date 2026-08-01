@@ -70,28 +70,48 @@ specifications, not one-bug-one-agent waste.
 - The probe that confirmed the sighting ships with the task (commit
   it or reference it) so the builder starts from the same evidence.
 
-## Refine the driving instrument itself (user addition, 2026-08-01)
+## Refine the driving instrument itself (user addition, 2026-08-01; refined same day)
 
 While driving, the conductor is allowed — encouraged — to refine the
 PTY driving layer so that driving is comfortable, fast, and
-mechanical. The goal is a DETERMINISTIC API: helpers that reduce the
-variance of HOW a drive is performed while increasing its accuracy.
+mechanical. But the refinement direction matters, and the user set it
+precisely: **the API is not `openBottomPanel()` — it is "drive to the
+button and click it" or "press the shortcut", the same path the user
+takes.** The reduction is never an alternative interface that
+bypasses the user's path; it is a more accurate reproduction of that
+path in fewer steps.
 
-- Prefer one named helper over a re-typed idiom: `selectPreset(name,
-  appliedPredicate)`, `openBottomPanel()`, `slotTable(status)` —
-  each encapsulating the correct waits and the correct mouse/key
-  forms, so a drive reads as intent, not as key-and-click plumbing.
-- When a drive step proves fiddly (a click that silently no-ops, a
-  wait that races), fix or wrap the DRIVER, not the one probe — the
-  press/release-vs-down/up gotcha belongs solved in a shared helper,
-  not re-remembered per probe.
-- Promote recurring probe fragments into the harness support layer
-  (HarnessSmokeSupport or a conductor probe library) with the same
-  discipline as any code: named, typed, condition-waited.
-- The same refinements serve the builders: a deterministic drive API
-  the conductor uses to SEE is the API the brief cites for the
-  builder to REPRODUCE — one instrument, two users, zero variance
-  between what each of us observed.
+Two layers, refined differently:
+
+- **Gestures stay real, always.** Mouse moves travel through cells,
+  hover precedes click, the click lands on the visible affordance,
+  shortcuts are the user's chords. This is non-negotiable because a
+  whole defect class lives only on the real path: hover states that
+  never appear, hit targets one cell off, tooltips that flicker
+  mid-travel, affordances nothing highlights. A helper that teleports
+  (calls the command registry, sets state directly) stops seeing what
+  the user sees and forfeits the shared-sight premise of this skill.
+- **The envelope is deterministic.** What gets encoded to reduce
+  variance and increase speed: the one correct byte form of each
+  input event (press/release, never down/up), the condition wait
+  between gestures (the popup IS open before the next click), and the
+  reading of results (slot tables, findText positions). The conductor
+  never fights the instrument — the instrument walks the user's path.
+
+Practical form: named gesture helpers like `clickLayoutSwitcher()`
+(locate the visible control, move there, click, await the popup) or
+`pressPanelShortcut()` — each named for the user action it performs,
+each internally a real gesture with correct waits. When a drive step
+proves fiddly, fix or wrap the DRIVER once, in the shared support
+layer — not per probe. Compression that skips gestures is allowed
+only for uninteresting preamble (opening a workspace before the
+surface under discussion), and the brief must say where the faithful
+path begins.
+
+This also unlocks browsing as an instrument: hover-sweep probes that
+walk the mouse across a row and record what lights up cell-by-cell —
+per-click browsing mechanized, catching tooltip and hit-geometry
+defects nothing else finds.
 
 ## The PTY is the shared entry point (user addition, 2026-08-01)
 
