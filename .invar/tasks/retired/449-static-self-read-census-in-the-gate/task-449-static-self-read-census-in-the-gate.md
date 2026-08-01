@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: ACTIVE
+State: RETIRED — folded into #448 round 3, 2026-08-01
 
 ## In plain words
 
@@ -61,3 +61,20 @@ cannot quietly rot. Annotate the enforcement point.
 
 A new class can land on main reading its own live static through a
 fixed class name without an allowlist entry naming why.
+
+## Retired: folded into #448
+
+USER RULING 2026-08-01: fold. The reason for splitting was that the
+allowlist derives from #448's classification. That is not two tasks —
+it is one task whose last step is locking the count. The census that
+finds the sites IS the census the gate runs, so building it twice in
+two branches adds a drift seam and buys nothing.
+
+The real cost of splitting was the unguarded window: main clean, no
+gate, #449 sitting behind six queued tasks, while the habit that
+produced 61 sites keeps producing. Cleaning without strengthening
+decays, which was the whole point of the user's correction.
+
+Every requirement in this file moved verbatim into
+`.invar/tasks/in-progress/448-static-reads-that-can-block-overrides/brief-448-3-the-gate-holds-the-rule.md`.
+No branch was ever cut for this task.
