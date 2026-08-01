@@ -236,6 +236,44 @@ writeTask(
     }),
   },
 );
+// The building phase is EARNED, not a fallback: fleet facts derive from the
+// workspace root, so the fixture plants a real worktree whose branch carries a
+// committed edit past its merge-base with main — that line delta is what makes
+// the dashboard say building instead of exploring.
+const plantedWorktreePath = join(
+  fixtureRoot,
+  '.invar',
+  'worktrees',
+  '901-planted-building',
+);
+mkdirSync(plantedWorktreePath, { recursive: true });
+const plantedGitEnvironment = {
+  ...process.env,
+  GIT_AUTHOR_NAME: 'fixture',
+  GIT_AUTHOR_EMAIL: 'fixture@invar.local',
+  GIT_COMMITTER_NAME: 'fixture',
+  GIT_COMMITTER_EMAIL: 'fixture@invar.local',
+};
+const plantedGit = (...gitArguments: string[]) => {
+  const result = Bun.spawnSync(['git', ...gitArguments], {
+    cwd: plantedWorktreePath,
+    env: plantedGitEnvironment,
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `fixture git ${gitArguments.join(' ')} failed: ${result.stderr.toString()}`,
+    );
+  }
+};
+plantedGit('init', '--initial-branch=main');
+mkdirSync(join(plantedWorktreePath, 'src'), { recursive: true });
+writeFileSync(join(plantedWorktreePath, 'src', 'planted.ts'), 'base\n');
+plantedGit('add', '-A');
+plantedGit('commit', '-m', 'base');
+plantedGit('checkout', '-b', 'fleet/901-planted-building');
+writeFileSync(join(plantedWorktreePath, 'src', 'planted.ts'), 'base\nedit\n');
+plantedGit('add', '-A');
+plantedGit('commit', '-m', 'edit');
 writeTask(
   tasksRoot,
   'in-progress',
