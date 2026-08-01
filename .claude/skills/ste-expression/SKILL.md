@@ -75,6 +75,27 @@ HOW
 - Say what it means for the reader. "So the panel looked empty" beats "so
   the invariant was violated".
 
+WHY IT WORKS (the generation test)
+
+This is not an appeal to a quote. Two are usually named: an Einstein line
+that has no source in his writings, and the Feynman technique, which is real
+but distilled from how he taught rather than written up by him. The rule
+stands on structure instead.
+
+An invariant is proven by generating every valid instance of its domain. If
+you hold the generator, you can produce ANY expression of it, and the child's
+version is just one more instance. If all you hold is one memorized surface
+expression, you can only replay that expression. Jargon is what a memorized
+surface expression sounds like.
+
+So "I cannot say it simply" is the generation test failing, and it names the
+defect exactly: you have a description, not a generator. The fix is to reduce
+until the generator appears, not to search for easier words.
+
+The guard follows from the same rule. Simplicity here is compression, not
+truncation. Drop the number and you get a shorter expression that generates
+LESS, which is the opposite of reduction.
+
 EXAMPLES from real work
 
 - Jargon: the smoke priced host fleet state into its row counts.
