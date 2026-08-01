@@ -12,8 +12,7 @@ description: >-
 
 # ui-task — see it first, batch it, then brief
 
-The user's request that created this skill (2026-08-01, condensed):
-when discussing a UI task, the conductor drives the PTY and looks at
+When discussing a UI task, the conductor drives the PTY and looks at
 the thing itself, confirms what the user means by using the app, and
 only then briefs an agent — in language grounded in what BOTH the
 user and the conductor have seen. No jumping into development before
@@ -70,13 +69,13 @@ specifications, not one-bug-one-agent waste.
 - The probe that confirmed the sighting ships with the task (commit
   it or reference it) so the builder starts from the same evidence.
 
-## Refine the driving instrument itself (user addition, 2026-08-01; refined same day)
+## Refine the driving instrument itself
 
 While driving, the conductor is allowed — encouraged — to refine the
 PTY driving layer so that driving is comfortable, fast, and
 mechanical. But the refinement direction matters, and the user set it
 precisely: **the API is not `openBottomPanel()` — it is "drive to the
-button and click it" or "press the shortcut", the same path the user
+button and click it" or "press the shortcut" — the same path the user
 takes.** The reduction is never an alternative interface that
 bypasses the user's path; it is a more accurate reproduction of that
 path in fewer steps.
@@ -113,7 +112,7 @@ walk the mouse across a row and record what lights up cell-by-cell —
 per-click browsing mechanized, catching tooltip and hit-geometry
 defects nothing else finds.
 
-## The PTY is the shared entry point (user addition, 2026-08-01)
+## The PTY is the shared entry point
 
 The deterministic driving layer is not conductor tooling — it is THE
 shared entry point into the app for every party: the user (in their
