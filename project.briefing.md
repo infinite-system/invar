@@ -1,3 +1,72 @@
+# RESUME ANCHOR 30 — 2026-08-01 ~18:40 EDT (CHECKPOINT, 85% gauge)
+
+## Lanes
+
+- **#442 + #444** — UNION COMPLETE on `fleet/444-history-is-editor-area-view-states`
+  (merge `9cf3817`). GATING NOW: tree `/tmp/integration-final-444`,
+  log `/tmp/gate-final-444.log`. Read `GATE_EXIT` FROM THE LOG. If 0,
+  land #442 then #444 (serially, land.sh from the MAIN checkout).
+- **#452 pane-identity-collides-by-name** — fix committed `552cf6c7`
+  (opaque `pane-instance-N` ids, duplicate-ownership refusal, old-id
+  migration, `OpenPty` normal-close read restart, #441's status arrays
+  from one live source). Round 2 (union with #444) JUST re-steered — my
+  first filing went into the wrong checkout and the builder no-opped for
+  ~30 min. Its branch tip is still the pre-union commit.
+- **Landed tonight:** #443 `3d9fdca6`, #448 `eec0e5ea`.
+
+## #452's open question — DO NOT let it be closed quietly
+
+The builder REFUTED the conductor's leading candidate (terminal restore
+did not collide on that drive). It confirmed a DIFFERENT real collision
+(extra database ids used the count of LIVE panes: create D2, create D3,
+close D2, create another → `database-3` twice) and, separately, the
+`OpenPty` normal-close defect. It states plainly that neither explains
+the user's original all-terminal incident, because a new terminal owns
+a fresh `OpenPty`. THAT REMAINS UNPROVEN. If the user's terminals die
+again after this lands, the thread is still live with two suspects
+removed.
+
+## Queue
+
+#445 (Ctrl+Alt+B dock) · #446 (Quick Open enumeration) · #447
+(panel-drag flake) · #450 (Ctrl+P blocked by comparison focus — check
+one shared cause with #445) · #451 (Ffmpeg raw anchor).
+
+## Laws delta this session
+
+- **Every brief's verification ends with `bun test` in FULL.** Bought by
+  #442: told not to run merge-gate (correct), it ran only focused tests,
+  so a full-suite red and a gate-only ratchet check reached the gate.
+- **`## In plain words` required on every brief AND report** (enforced by
+  dispatch.sh / round-brief.sh; stated in AGENTS.md).
+- **Task numbers are MINTED, never chosen:**
+  `bun scripts/tasks/tasks-status.ts mint <slug> [--namespace <vendor>]`.
+  Namespaces PARTITION the space: `invar` implicit (bare numbers, zero
+  migration), everyone else prefixes; no digits and no trailing hyphen in
+  a namespace or `acme1234` / `fleet-194` parse wrongly.
+  `tasks-status.ts contribution` reports filed AND landed as a PAIR —
+  filed is cheap and local, landed counts `finished/` tags that only
+  exist after a gated merge, so inflating the cheap half looks worse.
+  Only REGISTERED namespaces (`.invar/vendors.txt`) are ranked.
+  New drift signal: `DUPLICATE-NUMBER`.
+- **Fresh integration worktrees need a real `bun install`** — a symlinked
+  `node_modules` correctly fails merge-gate's dependency preflight.
+
+## HARDENING OWED (checkpoint item, not yet done)
+
+`round-brief.sh` and `dispatch.sh` must REFUSE to run outside the main
+checkout. Tonight a `round-brief` run from inside `/tmp/integration-*`
+filed a brief into that throwaway worktree; the steer pointed at a path
+the builder could not see, and it silently did nothing for ~30 minutes.
+A no-op is worse than an error. Same cwd-drift class that misplaced
+#434's folder and a Drive.ts edit earlier.
+
+## Watcher re-arm
+
+    Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+
+CRONS REMAIN DISARMED BY USER ORDER. Do not re-arm.
+
 # RESUME ANCHOR 29 — 2026-08-01 ~18:00 EDT
 
 ## Fleet state
