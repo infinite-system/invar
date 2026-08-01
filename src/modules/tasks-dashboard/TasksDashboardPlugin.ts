@@ -20,7 +20,10 @@ import type {
   RegisteredDockContent,
 } from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
-import { readTmuxSessionNames } from '../../../scripts/tasks/tasks-status';
+import {
+  fleetRepositoryRootForWorkspace,
+  readTmuxSessionNames,
+} from '../../../scripts/tasks/tasks-status';
 import { TasksDashboardOverview } from './TasksDashboardOverview';
 import { TasksDashboardPaneContent } from './TasksDashboardPaneContent';
 import type { TasksDashboardAction } from './TasksDashboardPaneRenderer';
@@ -126,6 +129,9 @@ class $TasksDashboardPlugin implements ApplicationContributor {
   ): TasksDashboardOverview.Model {
     return new TasksDashboardOverview.Class({
       workspaceRoot: () => context.workspaceSet.active.root,
+      // invariant: Fleet paths derive from the workspace, never the bundle (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+      fleetRepositoryRoot: () =>
+        fleetRepositoryRootForWorkspace(context.workspaceSet.active.root),
       isObserved: () => this.paneIsObserved(),
       requestRender: () => context.requestRender(),
       cycleSeconds,

@@ -209,6 +209,7 @@ already written, amend that rule in place. Do not add a section beside it.
 - **`.claude/skills/conductor/SKILL.md`** — fleet orchestration doctrine (conductor sessions; builders may read the clearance/verification sections to understand the gate protocol they operate under).
 - **`.claude/skills/context-usage/SKILL.md`** — the conductor context speedometer. Load when verifying a context percentage, a CTX or CHECKPOINT event, or the UI gauge calibration.
 - **`.claude/skills/manage-tasks/SKILL.md`** — the task-system protocol: one folder per task under `.invar/tasks/` (active/in-progress/completed/retired), the seven-step lifecycle, number-first file naming, and the tracker (`bun scripts/tasks/tasks-status.ts`). Load when filing, dispatching, landing, or auditing tasks.
+- **`.claude/skills/ui-task/SKILL.md`** — the UI work-session protocol: drive the PTY and SEE before briefing, converse over shared pixels, cell-mockup illustrations as specification, accumulate 10-20 confirmed items into one brief per surface, dispatch only on the user's explicit conclusion. Load when a UI bug/feature/refinement conversation starts.
 - **`.claude/skills/ste-expression/SKILL.md`** — plain prose rules (Simplified Technical English, adapted). Applies to replies, briefs, task files, reports, and script messages — never to code or invariant records. Linter: `python3 .claude/skills/ste-expression/scripts/ste-lint.py <file.md>`.
 
 ## Instruments index — `project.tools.md`
