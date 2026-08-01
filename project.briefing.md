@@ -4,7 +4,31 @@
 
 ### OPERATIVE STATE
 
-RESUME ANCHOR 24 (2026-07-31 ~18:0x EDT — PAUSED BY USER; supersedes 23)
+RESUME ANCHOR 25 (2026-08-01 — CHECKPOINT; supersedes 24. STILL PAUSED)
+
+STATE: PAUSED per the user (resting; refinements coming). Crons
+remain DISARMED — do not re-arm until the user restarts work.
+fleet-watch Monitor stays armed (passive sentinel). No builders, no
+in-progress lanes, checkout clean.
+
+SINCE ANCHOR 24: the user authored a NEW SKILL with the conductor —
+.claude/skills/ui-task/SKILL.md — read it BEFORE handling any UI
+topic. Its core: (1) drive the PTY and SEE before briefing any UI
+work; (2) converse with the user over the same driven pixels; (3)
+accumulate 10-20 confirmed items into ONE brief per surface; (4)
+dispatch only when the user says the brief is concluded; (5) the
+driving layer is refined as REAL GESTURES in a DETERMINISTIC
+ENVELOPE — helpers named for user actions that travel/hover/click
+the visible affordance or press the real chord; never teleporting
+command calls; compression only for preamble; the PTY drive API is
+the SHARED ENTRY POINT for user, conductor, and builders alike.
+
+ON RESUME: user refinements arrive first and go through the ui-task
+loop (see, confirm, accumulate, conclude, brief). Fresh queue: #431.
+12 held user-directed items. Anchor 23's rules (family 13, probe
+press/release gotcha, steer/gate rules) remain true.
+
+RESUME ANCHOR 24 (2026-07-31 ~18:0x EDT — superseded by 25)
 
 STATE: PAUSED. User (verbatim): "ok, disarm crons, and pause all
 tasks for now, gonna go rest, there are refinements coming when i
