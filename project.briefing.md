@@ -1,3 +1,54 @@
+# RESUME ANCHOR 31 — 2026-08-01 ~18:50 EDT (91% gauge)
+
+## Gate verdict, read from the log
+
+`/tmp/gate-final-444.log` → **GATE_EXIT=1**. SIX smokes failed on ONE
+symptom: the active tab no longer paints its dirty dot (editor,
+dirty-marker, scrollbars, agent-pane-ux, agent-cancel,
+behavioral-contracts). A/B PROVEN: `bun scripts/harness/smoke-dirty-marker-harness.ts`
+is ALL-PASS on main, fails on `main + #442 + #444`. Regression from
+#442's TabBar/TabBarRenderer rewrite. NOT pre-existing, NOT flake.
+
+#442 round 11 filed and steered (LANDED in its session record). It is
+told to drive and look first, and to enumerate EVERY per-tab indicator
+because the gate names only what it happens to cover.
+
+## Lanes
+
+- **#442** — round 11, fixing the dirty-dot regression. Its branch also
+  carries the round-10 fixes (tooltip test, coverage declaration).
+- **#444** — union with #442 complete (`9cf3817`), blocked only by
+  #442's regression. Nothing wrong with #444 itself.
+- **#452** — fix committed `552cf6c7`; round 2 (union with #444)
+  re-steered after my misfiled brief. Branch tip still pre-union.
+  ITS OPEN QUESTION STANDS: neither the database-id collision nor the
+  OpenPty normal-close defect explains the user's original
+  all-terminal incident. Do not let that be quietly closed.
+- **Landed:** #443 `3d9fdca6`, #448 `eec0e5ea`.
+
+## Landing order when green
+
+Gate `main + #442 + #444` again → land #442, then #444. Then #452's
+union tree separately.
+
+## Mechanics hardened tonight (done, committed)
+
+- `dispatch.sh` + `round-brief.sh` REFUSE outside the main checkout
+  (`scripts/fleet/require-main-checkout.sh`, both arms self-tested).
+  In dispatch the guard runs before even the brief-exists check.
+- `tasks-status.ts mint <slug> [--namespace <vendor>]` — namespaces
+  partition the number space; `invar` implicit; no digits and no
+  trailing hyphen in a namespace.
+- `tasks-status.ts contribution` — filed AND landed as a pair; only
+  registered namespaces (`.invar/vendors.txt`) ranked.
+- `DUPLICATE-NUMBER` drift signal.
+
+## Watcher re-arm
+
+    Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+
+CRONS REMAIN DISARMED BY USER ORDER.
+
 # RESUME ANCHOR 30 — 2026-08-01 ~18:40 EDT (CHECKPOINT, 85% gauge)
 
 ## Lanes
