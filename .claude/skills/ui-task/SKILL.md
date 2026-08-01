@@ -132,3 +132,28 @@ Consequences:
   through this entry point (status projections, slot tables,
   deterministic gestures) — a surface only a human can reach is a
   surface no agent can verify.
+
+## Illustrations — reproduce the target in cells
+
+Terminal UI has the rare property that a mockup IS the medium: an
+ASCII/box-drawing illustration renders exactly what the screen will
+hold. Use this at two points, as explicit protocol:
+
+- **To the user, when confirming.** After a sighting or a requested
+  change, reproduce the surface in a small cell-mockup — current
+  form and proposed form side by side (`now → want`). The user
+  corrects the drawing, not a paragraph; misunderstandings die in
+  the mockup instead of in a dispatched brief. A confirmed mockup is
+  a design decision recorded.
+- **To the builder, in the brief.** Ship the confirmed mockups as
+  the specification of end state: per item, the `now` drawing (with
+  driven cell evidence) and the `want` drawing. A builder who can
+  diff two pictures against the live grid needs far fewer words —
+  the mockup is simultaneously the spec and the acceptance sketch
+  the smoke assertion is written from.
+
+Rules: mockups show the CELLS (glyphs, spacing, alignment) —
+annotate colors/tones as labels beside the drawing, never invent
+glyphs the theme vocabulary lacks; keep each mockup minimal (the
+rows/columns under discussion, not the whole screen); a mockup the
+user corrected is re-shown corrected before it enters the brief.
