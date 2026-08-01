@@ -31,6 +31,7 @@ import { TextFieldPainter } from './TextFieldPainter';
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 // invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
 // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
+// invariant: Live static reads follow the receiving class (project.invariants.md)
 class $BoundedListPopup {
   protected static get DEFAULT_SEARCH_THRESHOLD(): number {
     return 10;
@@ -63,7 +64,8 @@ class $BoundedListPopup {
     null;
   protected navigationBackwardHandler: (() => void) | null = null;
   protected searchThresholdValue = $BoundedListPopup.DEFAULT_SEARCH_THRESHOLD;
-  protected minimumWidthValue = $BoundedListPopup.MINIMUM_BOX_WIDTH;
+  protected minimumWidthValue = (this.constructor as typeof $BoundedListPopup)
+    .MINIMUM_BOX_WIDTH;
   protected titleValue = '';
   protected anchorValue: BoundedListPopupAnchor = { column: 0, row: 0 };
   protected pointerPressedFilteredIndex = -1;
@@ -253,11 +255,11 @@ class $BoundedListPopup {
     const chromeRows = input.searchVisible ? 1 : 0;
     const naturalListRows = Math.max(1, input.itemCount);
     const naturalHeight =
-      $BoundedListPopup.VERTICAL_FRAME_ROWS + chromeRows + naturalListRows;
+      this.VERTICAL_FRAME_ROWS + chromeRows + naturalListRows;
     const safeBottomExclusive = Math.max(
       1,
       Math.min(
-        screenHeight - $BoundedListPopup.RESERVED_BOTTOM_ROWS,
+        screenHeight - this.RESERVED_BOTTOM_ROWS,
         input.availableBottomExclusive ?? screenHeight,
       ),
     );
@@ -279,7 +281,7 @@ class $BoundedListPopup {
       Math.min(unclampedTop, Math.max(0, safeBottomExclusive - boxHeight)),
     );
     const requestedWidth = Math.max(
-      $BoundedListPopup.MINIMUM_BOX_WIDTH,
+      this.MINIMUM_BOX_WIDTH,
       Math.floor(input.desiredBoxWidth),
     );
     const boxWidth = Math.max(1, Math.min(requestedWidth, screenWidth));
@@ -292,12 +294,12 @@ class $BoundedListPopup {
     );
     const listRows = Math.max(
       0,
-      boxHeight - $BoundedListPopup.VERTICAL_FRAME_ROWS - chromeRows,
+      boxHeight - this.VERTICAL_FRAME_ROWS - chromeRows,
     );
     const verticalOverflow = input.itemCount > listRows;
     const interiorColumns = Math.max(
       1,
-      boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
+      boxWidth - this.HORIZONTAL_FRAME_COLUMNS,
     );
     const listColumns = Math.max(
       1,
@@ -338,12 +340,12 @@ class $BoundedListPopup {
   static desiredBoxWidth(
     maximumItemWidth: number,
     title: string,
-    minimumWidth = $BoundedListPopup.MINIMUM_BOX_WIDTH,
+    minimumWidth = this.MINIMUM_BOX_WIDTH,
   ): number {
     return Math.max(
       minimumWidth,
       TextCoordinates.Class.lineWidth(title) + 4,
-      maximumItemWidth + $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
+      maximumItemWidth + this.HORIZONTAL_FRAME_COLUMNS,
     );
   }
 
@@ -364,7 +366,8 @@ class $BoundedListPopup {
     this.itemsAlreadyFilteredValue = options.itemsAlreadyFiltered ?? false;
     this.availableBottomExclusiveValue = options.availableBottomExclusive;
     this.minimumWidthValue =
-      options.minimumWidth ?? $BoundedListPopup.MINIMUM_BOX_WIDTH;
+      options.minimumWidth ??
+      (this.constructor as typeof $BoundedListPopup).MINIMUM_BOX_WIDTH;
     this.titleValue = options.title ?? '';
     this.navigationBackwardHandler = options.navigateBackwardHandler ?? null;
     this.queryInput.clear();
@@ -530,12 +533,16 @@ class $BoundedListPopup {
       1,
       Math.round(this.dependencies.settings.scrollbarThickness.value),
     );
-    const desiredBoxWidth = $BoundedListPopup.desiredBoxWidth(
+    const desiredBoxWidth = (
+      this.constructor as typeof $BoundedListPopup
+    ).desiredBoxWidth(
       this.maximumItemWidthValue,
       this.titleValue,
       this.minimumWidthValue,
     );
-    this.currentGeometry = $BoundedListPopup.layoutGeometry({
+    this.currentGeometry = (
+      this.constructor as typeof $BoundedListPopup
+    ).layoutGeometry({
       screenWidth: this.dependencies.renderer.width,
       screenHeight: this.dependencies.renderer.height,
       anchor: this.anchorValue,
@@ -572,7 +579,8 @@ class $BoundedListPopup {
     }
     this.searchInput.visible = this.searchEnabled;
     this.searchInput.width =
-      geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS;
+      geometry.boxWidth -
+      (this.constructor as typeof $BoundedListPopup).HORIZONTAL_FRAME_COLUMNS;
     if (this.searchEnabled) {
       // The search row is a single-line text field like every other: its window, caret, and state
       // tone come from the one painter, so it cannot drift into its own two-state highlight or lose
@@ -592,7 +600,10 @@ class $BoundedListPopup {
         selectionTone: TextFieldPainter.Class.selectionToneFor(palette),
         surfaceBackground: palette.panel,
         caretVisible: queryFocused,
-        width: geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
+        width:
+          geometry.boxWidth -
+          (this.constructor as typeof $BoundedListPopup)
+            .HORIZONTAL_FRAME_COLUMNS,
       });
       this.searchInput.content = new StyledText(paintedField.chunks);
       this.queryCaretCellValue = {
@@ -606,7 +617,8 @@ class $BoundedListPopup {
     this.list.visible = true;
     this.list.height = geometry.listRows;
     this.list.width =
-      geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS;
+      geometry.boxWidth -
+      (this.constructor as typeof $BoundedListPopup).HORIZONTAL_FRAME_COLUMNS;
     const visibleMatches = matches.slice(
       geometry.firstVisible,
       geometry.firstVisible + geometry.listRows,
@@ -630,7 +642,10 @@ class $BoundedListPopup {
         const filteredIndex = geometry.firstVisible + visibleRowIndex;
         const label = TextCoordinates.Class.padToDisplayWidth(
           TextCoordinates.Class.displayColumnWindow(
-            $BoundedListPopup.itemRowText(match.item, geometry.listIconColumns),
+            (this.constructor as typeof $BoundedListPopup).itemRowText(
+              match.item,
+              geometry.listIconColumns,
+            ),
             0,
             geometry.listColumns,
           ),
@@ -657,7 +672,9 @@ class $BoundedListPopup {
     this.viewport.updateScrollbars({
       top: this.searchEnabled ? 1 : 0,
       left: 0,
-      width: geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
+      width:
+        geometry.boxWidth -
+        (this.constructor as typeof $BoundedListPopup).HORIZONTAL_FRAME_COLUMNS,
       height: geometry.listRows,
     });
   }
@@ -756,14 +773,12 @@ class $BoundedListPopup {
   }
 
   static itemSetMaximumWidth(items: readonly BoundedListPopupItem[]): number {
-    const iconColumns = $BoundedListPopup.itemSetIconColumns(items);
+    const iconColumns = this.itemSetIconColumns(items);
     let maximumWidth = 1;
     for (const item of items) {
       maximumWidth = Math.max(
         maximumWidth,
-        TextCoordinates.Class.lineWidth(
-          $BoundedListPopup.itemRowText(item, iconColumns),
-        ),
+        TextCoordinates.Class.lineWidth(this.itemRowText(item, iconColumns)),
       );
     }
     return maximumWidth;
@@ -772,7 +787,9 @@ class $BoundedListPopup {
   protected maximumItemWidth(items: readonly BoundedListPopupItem[]): number {
     const cachedMaximumWidth = this.maximumItemWidthByItems.get(items);
     if (cachedMaximumWidth !== undefined) return cachedMaximumWidth;
-    const maximumWidth = $BoundedListPopup.itemSetMaximumWidth(items);
+    const maximumWidth = (
+      this.constructor as typeof $BoundedListPopup
+    ).itemSetMaximumWidth(items);
     this.maximumItemWidthByItems.set(items, maximumWidth);
     return maximumWidth;
   }
@@ -821,7 +838,9 @@ class $BoundedListPopup {
   protected replaceItemSet(items: readonly BoundedListPopupItem[]): void {
     this.items.value = items;
     this.maximumItemWidthValue = this.maximumItemWidth(items);
-    this.iconColumnsValue = $BoundedListPopup.itemSetIconColumns(items);
+    this.iconColumnsValue = (
+      this.constructor as typeof $BoundedListPopup
+    ).itemSetIconColumns(items);
   }
 
   protected revealSelectedIndex(): void {

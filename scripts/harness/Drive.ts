@@ -1162,9 +1162,12 @@ interface DriveClickPosition {
   readonly row: number;
 }
 
+// Click AND hover both resolve a target to a cell before sending — performAction
+// attaches resolvedPosition to either kind, so both must carry it here or the
+// send paths type-error on the hover branch.
 type DriveResolvedAction =
-  | Exclude<DriveAction, { readonly kind: 'click' }>
-  | (Extract<DriveAction, { readonly kind: 'click' }> & {
+  | Exclude<DriveAction, { readonly kind: 'click' | 'hover' }>
+  | (Extract<DriveAction, { readonly kind: 'click' | 'hover' }> & {
       readonly resolvedPosition: DriveClickPosition;
     });
 

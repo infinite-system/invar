@@ -5,6 +5,58 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { BoundedListPopup } from './BoundedListPopup';
 
 describe('BoundedListPopup', () => {
+  test('composite statics follow the subclass that receives the call', () => {
+    class $WideFramePopup extends BoundedListPopup.$Class {
+      protected static override get MINIMUM_BOX_WIDTH(): number {
+        return 31;
+      }
+
+      protected static override get HORIZONTAL_FRAME_COLUMNS(): number {
+        return 5;
+      }
+
+      protected static override get VERTICAL_FRAME_ROWS(): number {
+        return 4;
+      }
+
+      protected static override get RESERVED_BOTTOM_ROWS(): number {
+        return 3;
+      }
+
+      static override itemSetIconColumns(): number {
+        return 3;
+      }
+
+      static override itemRowText(
+        item: { label: string },
+        iconColumns: number,
+      ): string {
+        return `${iconColumns}:${item.label}`;
+      }
+    }
+
+    const geometry = $WideFramePopup.layoutGeometry({
+      screenWidth: 80,
+      screenHeight: 40,
+      anchor: { column: 0, row: 0 },
+      desiredBoxWidth: 1,
+      itemCount: 1,
+      searchVisible: false,
+      iconColumns: 0,
+      scrollbarThickness: 1,
+      firstVisible: 0,
+    });
+    expect(geometry.boxWidth).toBe(31);
+    expect(geometry.boxHeight).toBe(5);
+    expect(geometry.listColumns).toBe(26);
+    expect($WideFramePopup.desiredBoxWidth(10, '', 1)).toBe(15);
+    expect(
+      $WideFramePopup.itemSetMaximumWidth([
+        { identifier: 'receiver', label: 'receiver' },
+      ]),
+    ).toBe(TextCoordinates.Class.lineWidth('3:receiver'));
+  });
+
   test('opens downward near the top and reserves the terminal bottom row', () => {
     const geometry = BoundedListPopup.$Class.layoutGeometry({
       screenWidth: 120,

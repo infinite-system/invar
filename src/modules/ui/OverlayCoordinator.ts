@@ -1,10 +1,5 @@
-import { Static } from 'ivue/extras';
-
 class $OverlayCoordinator {
-  protected get OverlayCoordinator() {
-    return OverlayCoordinator.Class as unknown as typeof $OverlayCoordinator;
-  }
-  protected static get $exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
+  protected get exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
     const exclusiveOverlayNamesValue: readonly ExclusiveOverlayName[] = [
       'findBar',
       'goToLine',
@@ -18,9 +13,6 @@ class $OverlayCoordinator {
       'quitConfirmation',
     ];
     return exclusiveOverlayNamesValue;
-  }
-  protected get exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
-    return this.OverlayCoordinator.$exclusiveOverlayNames;
   }
   constructor(protected readonly closeActions: ExclusiveOverlayCloseActions) {}
   /** Close every sibling before opening the requested overlay. The requested overlay stays mounted,
@@ -38,7 +30,7 @@ class $OverlayCoordinator {
 }
 
 export namespace OverlayCoordinator {
-  export const $Class = Static($OverlayCoordinator);
+  export const $Class = $OverlayCoordinator;
   export let Class = $Class;
   export type Instance = InstanceType<typeof Class>;
 }

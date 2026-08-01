@@ -136,6 +136,39 @@ if ! "$bun_binary" scripts/ast-query.ts text-input-census --require-zero; then
   fail=1
 fi
 
+# 1.51) STATIC SELF-READ CENSUS: a static method receives its actual class as `this`, and an
+#       instance reaches that class through `this.constructor`. Naming the raw class or its mutable
+#       namespace slot pins the base class and can silently bypass a subclass override. Prove both
+#       violating populations are visible before trusting the correct-form fixture and the shrinking
+#       production allowlist. Static-body reads have no allowlist: their required count is zero.
+static_self_read_positive_control_output=''
+if static_self_read_positive_control_output=$(
+  "$bun_binary" scripts/ast-query.ts static-self-read-census \
+    --path scripts/fixtures/static-self-read-census-positive-control \
+    --require-zero 2>&1
+); then
+  echo "CONVENTIONS FAIL: static self-read census accepted its known-bad positive control"
+  fail=1
+elif ! grep -q 'static \$StaticSelfReadPositiveControl.VALUE' \
+  <<<"$static_self_read_positive_control_output" ||
+  ! grep -q 'instance \$StaticSelfReadPositiveControl.VALUE' \
+    <<<"$static_self_read_positive_control_output"; then
+  echo "CONVENTIONS FAIL: static self-read census rejected its positive control for the wrong reason"
+  echo "$static_self_read_positive_control_output"
+  fail=1
+fi
+if ! "$bun_binary" scripts/ast-query.ts static-self-read-census \
+  --path scripts/fixtures/static-self-read-census-negative-control \
+  --require-zero; then
+  echo "CONVENTIONS FAIL: static self-read census rejected this/this.constructor or a cross-class read"
+  fail=1
+fi
+if ! "$bun_binary" scripts/ast-query.ts static-self-read-census \
+  --allowlist scripts/static-self-read-allowlist.txt; then
+  echo "CONVENTIONS FAIL: own-class static read bypasses the receiving class"
+  fail=1
+fi
+
 # 1.52) TEXT-SEAM DIRECTION: `src/modules/text/` holds the shared text primitives every text
 #       surface stands on (coordinates, word edits, the editable field model, the break
 #       generator, the document). The source-text VIEW in `src/modules/editor/` stands on them.

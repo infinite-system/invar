@@ -13,6 +13,7 @@ import type { OverlayCoordinator } from './OverlayCoordinator';
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
 // invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
 // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
+// invariant: Live static reads follow the receiving class (project.invariants.md)
 class $BreadcrumbPicker {
   // The MS-DOS / Norton Commander parent row. Namespaced so it can never be confused with the
   // absolute filesystem paths every real entry uses as its identifier.
@@ -20,8 +21,13 @@ class $BreadcrumbPicker {
     return 'breadcrumb-picker:parent-directory';
   }
 
-  static get PARENT_DIRECTORY_ITEM_LABEL(): string {
+  protected get parentDirectoryItemLabel(): string {
     return '..';
+  }
+
+  protected get parentDirectoryItemIdentifier(): string {
+    return (this.constructor as typeof $BreadcrumbPicker)
+      .PARENT_DIRECTORY_ITEM_IDENTIFIER;
   }
 
   protected workspaceRoot = '';
@@ -79,12 +85,9 @@ class $BreadcrumbPicker {
     if (this.parentDirectoryOf(directoryPath) === null) return entryItems;
     return [
       {
-        identifier: $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_IDENTIFIER,
-        label: $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_LABEL,
-        icon: this.dependencies.theme.icon(
-          $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_LABEL,
-          true,
-        ),
+        identifier: this.parentDirectoryItemIdentifier,
+        label: this.parentDirectoryItemLabel,
+        icon: this.dependencies.theme.icon(this.parentDirectoryItemLabel, true),
         keepOpenOnSelect: true,
         pinnedWhileQueryEmpty: true,
       },
@@ -93,9 +96,7 @@ class $BreadcrumbPicker {
   }
 
   protected activateItem(item: BoundedListPopupItem): void {
-    if (
-      item.identifier === $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_IDENTIFIER
-    ) {
+    if (item.identifier === this.parentDirectoryItemIdentifier) {
       this.navigateBackward();
       return;
     }

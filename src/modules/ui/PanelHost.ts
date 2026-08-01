@@ -15,7 +15,6 @@
 // invariant: A split panel renders every visible cell into its own sub-region (src/modules/ui/ui.invariants.md)
 // invariant: A focused split panel routes keystrokes to the focused cell (src/modules/ui/ui.invariants.md)
 // invariant: Split arrangement follows panel content order (src/modules/layout/layout.invariants.md)
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import type { KeyEvent } from '@opentui/core';
@@ -24,14 +23,8 @@ import type { PanelHostFocusSet } from './PanelHostFocusSet';
 
 // invariant: One panel host owns keyboard focus (src/modules/ui/ui.invariants.md)
 class $PanelHost {
-  protected get PanelHost() {
-    return PanelHost.Class as unknown as typeof $PanelHost;
-  }
-  protected static get MINIMUM_CELL_RATIO() {
-    return 0.12;
-  }
   protected get minimumCellRatio() {
-    return this.PanelHost.MINIMUM_CELL_RATIO;
+    return 0.12;
   }
   protected readonly unregisterFromFocusSet: () => void;
   protected readonly contentSets = new Set<PanelContentSet>();
@@ -1660,7 +1653,7 @@ class $PanelHost {
 }
 
 export namespace PanelHost {
-  export const $Class = Static($PanelHost);
+  export const $Class = $PanelHost;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }

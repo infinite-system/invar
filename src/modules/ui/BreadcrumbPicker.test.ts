@@ -21,6 +21,64 @@ const themeIconStub = {
     ThemeIcons.Class.iconFor('unicode', name, isDirectory, open),
 };
 
+test('the parent-row identifier follows the picker subclass', () => {
+  const workspaceRoot = mkdtempSync(join(tmpdir(), 'breadcrumb-receiver-'));
+  const sourceDirectory = join(workspaceRoot, 'source');
+  mkdirSync(sourceDirectory);
+  writeFileSync(join(sourceDirectory, 'module.ts'), 'export {};\n');
+  let openedItems: readonly BoundedListPopupItem[] = [];
+  const selection = {
+    handler: null as ((item: BoundedListPopupItem) => void) | null,
+  };
+  let replacementCount = 0;
+
+  class $CustomParentIdentifierPicker extends BreadcrumbPicker.$Class {
+    static override get PARENT_DIRECTORY_ITEM_IDENTIFIER(): string {
+      return 'custom-parent-row';
+    }
+  }
+
+  const picker = new $CustomParentIdentifierPicker({
+    popup: {
+      openAt: (items, _anchor, handler) => {
+        openedItems = items;
+        selection.handler = handler;
+      },
+      replaceItems: () => {
+        replacementCount += 1;
+      },
+    },
+    overlayCoordinator: {
+      openExclusiveOverlay: (_identifier, open) => open(),
+    },
+    workspaceSet: {
+      active: {
+        root: workspaceRoot,
+        focus: ref<'editor' | 'files'>('files'),
+        openFileInTab: () => {},
+      },
+    } as never,
+    theme: themeIconStub,
+  });
+
+  try {
+    const segment = Breadcrumb.Class.pathSegments(
+      join(sourceDirectory, 'module.ts'),
+      workspaceRoot,
+    ).find((candidate) => candidate.label === 'source');
+    expect(segment).toBeDefined();
+    if (!segment) return;
+    picker.show(segment, { column: 1, row: 1 });
+    expect(openedItems[0]?.identifier).toBe('custom-parent-row');
+    const select = selection.handler;
+    if (!select) throw new Error('Custom breadcrumb picker did not open');
+    select(openedItems[0]!);
+    expect(replacementCount).toBe(1);
+  } finally {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test('the parent row and Left share one upward generator', () => {
   const workspaceRoot = mkdtempSync(join(tmpdir(), 'breadcrumb-picker-'));
   const sourceDirectory = join(workspaceRoot, 'source');

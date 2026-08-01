@@ -74,18 +74,18 @@ Do not fix the Alt+[ / Alt+] macOS shortcut here. That is #442's row.
 ## Invariants in scope
 
 - `Programmatic history navigation does not record new history`
-  (`src/modules/navigation/navigation.invariants.md`) — the suppression
+  ([src/modules/navigation/navigation.invariants.md](../../../../src/modules/navigation/navigation.invariants.md)) — the suppression
   path must survive generalization. Restoring ANY contributor's state
   must not record. Today only `restoreNavigationLocation` suppresses;
   every contributor restore now needs the same guarantee, and the
   cleanest form puts the suppression in the seam, not in each
   contributor. Report whether the record still holds verbatim or needs
   refinement now that "navigation" means more than a cursor move.
-- `src/modules/editor/editor.invariants.md` and
-  `src/modules/git/git.invariants.md` — read both before adding a
+- [src/modules/editor/editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) and
+  [src/modules/git/git.invariants.md](../../../../src/modules/git/git.invariants.md) — read both before adding a
   contributor to either module; report any record the new seam
   stresses.
-- `project.invariants.md` — `Public classes use the namespace pattern`.
+- [project.invariants.md](../../../../project.invariants.md) — `Public classes use the namespace pattern`.
   Any new class publishes the namespace, and reads its own live
   statics through `this.constructor` (see #443, just landed).
 - Any record this list MISSED is a finding about the conductor's map.
@@ -94,7 +94,7 @@ Do not fix the Alt+[ / Alt+] macOS shortcut here. That is #442's row.
 ## Bycatch expected
 
 Report every defect you SEE, fix only the one you were sent for, per
-AGENTS.md's taxonomy: runtime defects, invariant violations in
+[AGENTS.md](../../../../AGENTS.md)'s taxonomy: runtime defects, invariant violations in
 function, comment drift, distillation possibilities, generator drift
 or introduced variance, plain nonsense. Write the `## Bycatch`
 section even if it reads `None observed`.
