@@ -12,14 +12,11 @@ import { Reactive } from 'ivue';
 import { ref } from 'vue';
 
 class $Tooltip {
-  protected get Tooltip() {
-    return Tooltip.Class as unknown as typeof $Tooltip;
-  }
   public static get TOOLTIP_DWELL_SECONDS() {
     return 0.4;
   }
   protected get tooltipDwellSeconds() {
-    return this.Tooltip.TOOLTIP_DWELL_SECONDS;
+    return (this.constructor as typeof $Tooltip).TOOLTIP_DWELL_SECONDS;
   }
   get visible() {
     return ref(false);

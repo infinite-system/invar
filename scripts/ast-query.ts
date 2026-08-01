@@ -15,8 +15,10 @@
 //   bun scripts/ast-query.ts wrap-index-edit-loop-census # document-sized loops in syncWrapIndex
 //   bun scripts/ast-query.ts wrap-index-array-escape-census # index-array reads outside EditorWrap
 //   bun scripts/ast-query.ts document-change-fact-boundary-census # document wrappers missing lastLineChange
+//   bun scripts/ast-query.ts static-self-read-census # own-class static reads that pin the base class
 // Flags: --tests (include *.test.ts)  --path <glob-root under repo, default src/modules>
 //        --require-zero (exit 1 when structural matches remain)
+//        --allowlist <file> (static-self-read-census only; allow named instance reads to shrink)
 import * as ts from 'typescript';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,13 +33,21 @@ const requireZeroMatches = argumentList.includes('--require-zero');
 
 const pathFlagIndex = argumentList.indexOf('--path');
 
+const allowlistFlagIndex = argumentList.indexOf('--allowlist');
+
+const staticSelfReadAllowlistPath: string | null =
+  allowlistFlagIndex >= 0
+    ? (argumentList[allowlistFlagIndex + 1] ?? null)
+    : null;
+
 const searchRoot =
   pathFlagIndex >= 0 ? argumentList[pathFlagIndex + 1] : 'src/modules';
 
 const positional = argumentList.filter(
   (argument, index) =>
     !argument.startsWith('--') &&
-    (pathFlagIndex < 0 || index !== pathFlagIndex + 1),
+    (pathFlagIndex < 0 || index !== pathFlagIndex + 1) &&
+    (allowlistFlagIndex < 0 || index !== allowlistFlagIndex + 1),
 );
 
 const queryMode = positional[0];
@@ -50,8 +60,8 @@ if (!queryMode) {
       '<calls|named-calls|news|identifiers|members|classes|module-functions|' +
       'private-members|hash-private-members|text-input-census|' +
       'wrap-index-edit-loop-census|wrap-index-array-escape-census|' +
-      'document-change-fact-boundary-census> ' +
-      '[name] [--tests] [--path <root>]',
+      'document-change-fact-boundary-census|static-self-read-census> ' +
+      '[name] [--tests] [--path <root>] [--require-zero] [--allowlist <file>]',
   );
   process.exit(2);
 }
@@ -239,6 +249,109 @@ function documentChangeFactBoundaryCensusLabel(node: ts.Node): string | null {
   } forwards line/lineCount/revision but drops lastLineChange`;
 }
 
+function containingClass(node: ts.Node): ts.ClassDeclaration | null {
+  let ancestor: ts.Node | undefined = node.parent;
+  while (ancestor !== undefined) {
+    if (ts.isClassDeclaration(ancestor)) return ancestor;
+    ancestor = ancestor.parent;
+  }
+  return null;
+}
+
+function containingClassMember(node: ts.Node): ts.ClassElement | null {
+  let ancestor: ts.Node | undefined = node.parent;
+  while (ancestor !== undefined) {
+    if (ts.isClassDeclaration(ancestor.parent)) {
+      return ancestor as ts.ClassElement;
+    }
+    ancestor = ancestor.parent;
+  }
+  return null;
+}
+
+function classMemberIsStatic(member: ts.ClassElement): boolean {
+  return (
+    ts.canHaveModifiers(member) &&
+    (ts
+      .getModifiers(member)
+      ?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword) ??
+      false)
+  );
+}
+
+function unwrapExpression(expression: ts.Expression): ts.Expression {
+  if (
+    ts.isParenthesizedExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isTypeAssertionExpression(expression) ||
+    ts.isNonNullExpression(expression)
+  ) {
+    return unwrapExpression(expression.expression);
+  }
+  return expression;
+}
+
+function expressionNamesClass(
+  expression: ts.Expression,
+  className: string,
+): boolean {
+  const unwrapped = unwrapExpression(expression);
+  if (ts.isIdentifier(unwrapped)) return unwrapped.text === className;
+  if (!ts.isPropertyAccessExpression(unwrapped)) return false;
+  const namespaceName = className.startsWith('$') ? className.slice(1) : '';
+  return (
+    namespaceName.length > 0 &&
+    ts.isIdentifier(unwrapped.expression) &&
+    unwrapped.expression.text === namespaceName &&
+    (unwrapped.name.text === 'Class' || unwrapped.name.text === '$Class')
+  );
+}
+
+function selfClassGetterNames(
+  declaration: ts.ClassDeclaration,
+  className: string,
+): Set<string> {
+  const getterNames = new Set<string>();
+  for (const member of declaration.members) {
+    if (!ts.isGetAccessorDeclaration(member) || member.body === undefined) {
+      continue;
+    }
+    const memberName = declaredMemberName(member);
+    if (memberName === null) continue;
+    for (const statement of member.body.statements) {
+      if (
+        ts.isReturnStatement(statement) &&
+        statement.expression !== undefined &&
+        expressionNamesClass(statement.expression, className)
+      ) {
+        getterNames.add(memberName);
+      }
+    }
+  }
+  return getterNames;
+}
+
+// invariant: Live static reads follow the receiving class (project.invariants.md)
+function staticSelfReadCensusLabel(node: ts.Node): string | null {
+  if (!ts.isPropertyAccessExpression(node)) return null;
+  const declaration = containingClass(node);
+  const className = declaration?.name?.text;
+  if (declaration === null || className === undefined) return null;
+  const member = containingClassMember(node);
+  if (member === null) return null;
+
+  const receiver = unwrapExpression(node.expression);
+  const readsThroughSelfGetter =
+    ts.isPropertyAccessExpression(receiver) &&
+    receiver.expression.kind === ts.SyntaxKind.ThisKeyword &&
+    selfClassGetterNames(declaration, className).has(receiver.name.text);
+  if (!expressionNamesClass(receiver, className) && !readsThroughSelfGetter) {
+    return null;
+  }
+  const population = classMemberIsStatic(member) ? 'static' : 'instance';
+  return `${population} ${className}.${node.name.text}`;
+}
+
 const predicateByMode: Record<string, MatchPredicate> = {
   calls: (node) =>
     ts.isCallExpression(node) &&
@@ -309,6 +422,7 @@ const predicateByMode: Record<string, MatchPredicate> = {
     wrapIndexArrayEscapeCensusLabel(node, sourceFile),
   'document-change-fact-boundary-census': (node) =>
     documentChangeFactBoundaryCensusLabel(node),
+  'static-self-read-census': (node) => staticSelfReadCensusLabel(node),
 };
 
 const predicate = predicateByMode[queryMode];
@@ -328,7 +442,25 @@ if (
   process.exit(2);
 }
 
+if (
+  staticSelfReadAllowlistPath !== null &&
+  queryMode !== 'static-self-read-census'
+) {
+  console.error('--allowlist is only valid with static-self-read-census');
+  process.exit(2);
+}
+
+if (staticSelfReadAllowlistPath !== null && requireZeroMatches) {
+  console.error('--allowlist and --require-zero cannot be combined');
+  process.exit(2);
+}
+
 let matchCount = 0;
+const structuralMatches: Array<{
+  relativePath: string;
+  line: number;
+  label: string;
+}> = [];
 
 for (const relativePath of new Bun.Glob(`${searchRoot}/**/*.ts`).scanSync({
   cwd: repositoryRoot,
@@ -349,6 +481,7 @@ for (const relativePath of new Bun.Glob(`${searchRoot}/**/*.ts`).scanSync({
       );
       console.log(`${relativePath}:${line + 1}  ${label}`);
       matchCount += 1;
+      structuralMatches.push({ relativePath, line: line + 1, label });
     }
     ts.forEachChild(node, visit);
   };
@@ -359,4 +492,90 @@ console.log(
   `ast-query ${queryMode}${queryName ? ' ' + queryName : ''}: ${matchCount} match(es)`,
 );
 
+if (queryMode === 'static-self-read-census') {
+  const instanceMatchCount = structuralMatches.filter((match) =>
+    match.label.startsWith('instance '),
+  ).length;
+  const staticMatchCount = structuralMatches.filter((match) =>
+    match.label.startsWith('static '),
+  ).length;
+  console.log(
+    `static-self-read populations: ${instanceMatchCount} instance, ${staticMatchCount} static`,
+  );
+}
+
+let allowlistViolation = false;
+if (staticSelfReadAllowlistPath !== null) {
+  const allowlistEntries = new Map<
+    string,
+    { maximumCount: number; reason: string }
+  >();
+  const allowlistText = readFileSync(
+    join(repositoryRoot, staticSelfReadAllowlistPath),
+    'utf8',
+  );
+  for (const [lineIndex, rawLine] of allowlistText.split('\n').entries()) {
+    const line = rawLine.trim();
+    if (line.length === 0 || line.startsWith('#')) continue;
+    const columns = line.split('|').map((column) => column.trim());
+    const relativePath = columns[0] ?? '';
+    const label = columns[1] ?? '';
+    const countText = columns[2] ?? '';
+    const reason = columns[3] ?? '';
+    const maximumCount = Number(countText);
+    if (
+      columns.length !== 4 ||
+      relativePath.length === 0 ||
+      !label.startsWith('instance ') ||
+      !Number.isInteger(maximumCount) ||
+      maximumCount < 1 ||
+      reason.length === 0
+    ) {
+      console.error(
+        `${staticSelfReadAllowlistPath}:${lineIndex + 1}: invalid row; expected path | instance Class.member | positive count | reason`,
+      );
+      allowlistViolation = true;
+      continue;
+    }
+    const key = `${relativePath}|${label}`;
+    if (allowlistEntries.has(key)) {
+      console.error(
+        `${staticSelfReadAllowlistPath}:${lineIndex + 1}: duplicate row for ${relativePath} ${label}`,
+      );
+      allowlistViolation = true;
+      continue;
+    }
+    allowlistEntries.set(key, { maximumCount, reason });
+  }
+
+  const actualCounts = new Map<string, number>();
+  for (const match of structuralMatches) {
+    const key = `${match.relativePath}|${match.label}`;
+    actualCounts.set(key, (actualCounts.get(key) ?? 0) + 1);
+  }
+  for (const [key, actualCount] of actualCounts) {
+    const allowed = allowlistEntries.get(key);
+    if (allowed === undefined) {
+      console.error(
+        `static-self-read allowlist violation: ${key.replace('|', ' ')} has ${actualCount} unlisted read(s)`,
+      );
+      allowlistViolation = true;
+    } else if (actualCount > allowed.maximumCount) {
+      console.error(
+        `static-self-read allowlist grew: ${key.replace('|', ' ')} has ${actualCount} read(s), allowed ${allowed.maximumCount}`,
+      );
+      allowlistViolation = true;
+    }
+  }
+  for (const [key, allowed] of allowlistEntries) {
+    const actualCount = actualCounts.get(key) ?? 0;
+    if (actualCount < allowed.maximumCount) {
+      console.log(
+        `static-self-read allowlist slack: ${key.replace('|', ' ')} has ${actualCount} read(s), allowed ${allowed.maximumCount}; remove or tighten this row`,
+      );
+    }
+  }
+}
+
 if (requireZeroMatches && matchCount > 0) process.exit(1);
+if (allowlistViolation) process.exit(1);

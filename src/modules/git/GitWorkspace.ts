@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { spawnSync } from 'node:child_process';
@@ -139,7 +138,7 @@ class $GitWorkspace
     return GitCommands.Class;
   }
 
-  static projectNameForRoot(absoluteRoot: string): string {
+  protected projectNameForRoot(absoluteRoot: string): string {
     const result = spawnSync(
       'git',
       [
@@ -233,7 +232,7 @@ class $GitWorkspace
 
   protected openedWorkspace(root: string): void {
     const absoluteRoot = Files.Class.absolute(root);
-    const projectName = $GitWorkspace.projectNameForRoot(absoluteRoot);
+    const projectName = this.projectNameForRoot(absoluteRoot);
     if (projectName) this.workspace.name.value = projectName;
     const metadataPath = Files.Class.join(absoluteRoot, '.git');
     this.workspace.worktreeName.value =
@@ -900,7 +899,7 @@ class $GitWorkspace
 }
 
 export namespace GitWorkspace {
-  export const $Class = Static($GitWorkspace);
+  export const $Class = $GitWorkspace;
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

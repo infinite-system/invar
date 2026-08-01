@@ -93,6 +93,7 @@ fi
 # that folder BEFORE the brief is filed — the copy then reads a path that no
 # longer exists (bit twice during #268, editor smoke versus auto-open red on
 # main). The snapshot makes the brief's location irrelevant after this line.
+brief_original_basename="$(basename "$brief_file")"
 brief_snapshot="$(mktemp)"
 cp "$brief_file" "$brief_snapshot"
 brief_file="$brief_snapshot"
@@ -376,6 +377,15 @@ mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
 # folder sorts under its task and a directory listing groups by task before it groups by round. The
 # sequence was resolved before DRY_RUN so the dry-run output tests the same pointer target used here.
 cp "$brief_file" "$dispatch_directory/$brief_dated_name"
+# The authored brief usually lives in the task folder already and travels with
+# it through the active/ -> in-progress/ move. Filing then leaves TWO copies,
+# and the round tally counts both, so every later round-brief skips a number
+# (seen on #442). The filed name is the record; drop the authored duplicate.
+if [ "$brief_original_basename" != "$brief_dated_name" ] &&
+   [ -f "$dispatch_directory/$brief_original_basename" ] &&
+   cmp -s "$dispatch_directory/$brief_original_basename" "$dispatch_directory/$brief_dated_name"; then
+  rm "$dispatch_directory/$brief_original_basename"
+fi
 # land.sh REQUIRES task-<name>.md in the dispatch folder (it rewrites the State
 # line at landing). A bundle or renamed-slug dispatch has no matching active/
 # record to move, so WRITE A STUB now — landing #313 and #312 both stalled on
