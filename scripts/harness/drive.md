@@ -27,7 +27,20 @@ common sighting boilerplate into single flags:
   `closePanel` (waits for `panelVisible=false`). Add gestures to
   `gestureActions` in `Drive.ts` as the vocabulary grows.
 - `--cells ROW,C1-C2` (repeatable) prints characters plus bg/fg colors for a
-  cell range with every observation — the color evidence a text grid hides:
+  cell range with every observation — the color evidence a text grid hides.
+- `--home DIR` uses a persistent home directory and keeps it after the run.
+  State (session restore, settings) carries across runs — this is how you
+  drive restart behavior: run twice with the same `--home` and compare.
+- `--env KEY=VALUE` (repeatable) sets an extra app environment variable.
+  Example: `--env INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS=0` re-enables
+  folder-open task launching, which the harness suppresses by default.
+
+```sh
+bun run drive --open ~/dev/realized --home /tmp/drive-home \
+  --env INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS=0
+```
+
+Color-dump example:
 
 ```sh
 bun run drive --geometry 120x40 --gesture openPanel \

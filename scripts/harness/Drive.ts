@@ -12,6 +12,7 @@
 import {
   copyFileSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   realpathSync,
   statSync,
@@ -96,7 +97,11 @@ class $Drive {
     }
 
     const target = await this.prepareTarget(options);
-    const homeDirectory = this.createHomeDirectory();
+    const homeDirectory =
+      options.homeDirectoryOverride ?? this.createHomeDirectory();
+    if (options.homeDirectoryOverride) {
+      mkdirSync(homeDirectory, { recursive: true });
+    }
     const statusPath = join(homeDirectory, 'status.json');
     const driver = new PtyTestDriver.Class({
       workspaceRoot: target.workspaceRoot,
@@ -108,6 +113,7 @@ class $Drive {
         TUI_STATUS_PATH: statusPath,
         // invariant: Harness teardown bypasses product quit confirmation only when declared (scripts/harness/harness.invariants.md)
         INVAR_HARNESS_DIRECT_QUIT: '0',
+        ...options.environmentOverrides,
       },
     });
 
@@ -163,7 +169,9 @@ class $Drive {
       }
     } finally {
       await driver.dispose();
-      await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+      if (!options.homeDirectoryOverride) {
+        await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+      }
       if (target.temporaryWorkspaceRoot) {
         await HarnessSmoke.Class.removeTemporaryDirectory(
           target.temporaryWorkspaceRoot,
@@ -183,6 +191,8 @@ class $Drive {
     let showHelp = false;
     const actions: DriveAction[] = [];
     const cellDumps: CellDumpRequest[] = [];
+    let homeDirectoryOverride: string | null = null;
+    const environmentOverrides: Record<string, string> = {};
 
     for (
       let argumentIndex = 0;
@@ -246,6 +256,18 @@ class $Drive {
         actions.push(...this.gestureActions(value));
       } else if (argument === '--timeout') {
         timeoutMilliseconds = this.parsePositiveInteger(value, '--timeout');
+      } else if (argument === '--home') {
+        homeDirectoryOverride = value;
+      } else if (argument === '--env') {
+        const separatorIndex = value.indexOf('=');
+        if (separatorIndex <= 0) {
+          throw new Error(
+            `Invalid --env ${JSON.stringify(value)}; expected KEY=VALUE`,
+          );
+        }
+        environmentOverrides[value.slice(0, separatorIndex)] = value.slice(
+          separatorIndex + 1,
+        );
       } else {
         throw new Error(`Unknown argument: ${argument}\n\n${this.helpText}`);
       }
@@ -261,6 +283,8 @@ class $Drive {
       timeoutMilliseconds,
       actions,
       cellDumps,
+      homeDirectoryOverride,
+      environmentOverrides,
       showHelp,
     };
   }
@@ -993,6 +1017,8 @@ class $Drive {
       '  --wait-for-text TEXT make the preceding action wait for new visible text',
       '  --wait-for-status FIELD=JSON',
       '  --gesture NAME       a named user gesture with its wait built in (openPanel, closePanel)',
+      '  --home DIR           persistent home directory (kept after the run; state carries across runs)',
+      '  --env KEY=VALUE      extra app environment variable; repeatable',
       '  --cells ROW,C1-C2    print chars + bg/fg for a cell range with every observation',
       '  --timeout MILLISECONDS',
       '  --help',
@@ -1013,6 +1039,8 @@ interface DriveOptions {
   readonly timeoutMilliseconds: number;
   readonly actions: readonly DriveAction[];
   readonly cellDumps: readonly CellDumpRequest[];
+  readonly homeDirectoryOverride: string | null;
+  readonly environmentOverrides: Readonly<Record<string, string>>;
   readonly showHelp: boolean;
 }
 
