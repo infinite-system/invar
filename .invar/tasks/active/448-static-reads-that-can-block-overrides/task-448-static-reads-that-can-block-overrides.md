@@ -31,3 +31,23 @@ delete the static when nothing outside reads it. Rung 2
 `this.constructor` when it is a live knob. Rung 3 name the class
 directly when the fix is deliberate. State the rung per site. The
 census only proves the read SHAPE, not that every site is wrong.
+
+## Load-bearing constraint: convert a static by PAIR, never by site
+
+USER-RAISED 2026-08-01, from `BreadcrumbPicker`:
+
+```ts
+identifier: $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_IDENTIFIER,   // produces
+item.identifier === $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_IDENTIFIER // recognizes
+```
+
+A static is often both PRODUCED at one site and MATCHED at another.
+While every read is pinned to the raw class, a subclass override is
+ineffective but CONSISTENT. Convert one site to `this.constructor` and
+leave its partner pinned, and a subclass produces items it can never
+recognize. That failure carries no type error and no test error unless
+a subclass exists. It is silent.
+
+The rule: for each static, enumerate ALL its reads first. They move to
+the same rung together, or none of them move. Report the read set per
+static, not per line.
