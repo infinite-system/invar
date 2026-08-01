@@ -1,3 +1,51 @@
+# RESUME ANCHOR 32 — 2026-08-01 ~19:15 EDT (97% gauge)
+
+## Stack gate verdict — READ FROM LOG
+
+`/tmp/gate-stack-final.log` → **GATE_EXIT=1**, six reds on
+`main + #442 + #444 + #452` (branch `fleet/452-pane-identity-collides-by-name`
+tip `4222e760`, tree `/tmp/integration-stack`).
+
+**ONE red is a real regression, A/B proven:**
+`smoke-clipboard-frame-boundary-harness.ts` is ALL-PASS on main and
+fails on the stack with `error: Panel geometry unavailable for terminal`
+— a lookup by the OLD kind-based id `terminal` against #452's new
+opaque `pane-instance-N` ids. #452 round 4 filed + steered: enumerate
+EVERY kind-string consumer (geometry, narration, status, harness
+helpers), not just this one.
+
+**Known-unrelated reds, filed as their own tasks:** #453 scrollbars
+diff thumb · #454 agent-pane invalid grid region (`rows 27-2` is
+inverted — suspect the region math) · #455 agent composer never
+activates · #456 structure-filter focus tone. #454/#455 MIGHT share the
+identity cause — #452 is told to check before assuming.
+
+**smoke-keyboard-invariant** appeared red in the gate but there is no
+such file at that path in the main checkout — resolve the real name
+before judging it.
+
+## Landing order when green
+
+Gate the stack again → land #442, then #444, then #452, serially, with
+land.sh from the MAIN checkout, GATE_LOG=<the green log>.
+
+## Corrections I made tonight, do not re-derive
+
+- The tab dirty dot was NEVER lost. The shared `activeTabHasDirtyMarker`
+  helper read the breadcrumb row after the editor-area rewrite moved
+  breadcrumbs above the tabs. I wrongly called it a user-visible
+  regression. Broken checker, working product.
+- My `OpenPty` identity theory for the user's terminal incident was
+  REFUTED by #452. The real confirmed collision was database ids from a
+  live-pane count. #452's OPEN QUESTION STANDS: neither fix explains the
+  user's original all-terminal incident.
+
+## Watcher re-arm
+
+    Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+
+CRONS REMAIN DISARMED BY USER ORDER.
+
 # RESUME ANCHOR 31 — 2026-08-01 ~18:50 EDT (91% gauge)
 
 ## Gate verdict, read from the log
