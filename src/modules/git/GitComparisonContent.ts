@@ -21,8 +21,14 @@ class $GitComparisonContent implements EditorSurfaceContent {
     protected readonly context: EditorSurfaceContentContext,
     protected readonly layoutRevision?: Ref<number>,
   ) {
+    const workspace = this.gitWorkspace.workspace;
+    this.displayedPath =
+      Files.Class.confineToRoot(workspace.root, request.currentVersionPath) ??
+      request.currentVersionPath;
     this.view = this.createComparisonView(request);
   }
+
+  readonly displayedPath: string;
 
   // invariant: Construction goes through overridable seams (project.invariants.md)
   protected createComparisonView(

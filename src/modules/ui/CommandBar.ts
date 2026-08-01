@@ -51,6 +51,7 @@ class $CommandBar {
     width: number,
     folderName: string,
     layoutSwitcherGlyph: string,
+    searchGlyph: string,
   ): CommandBarGeometry {
     const boundedWidth = Math.max(1, Math.floor(width));
     const layoutSwitcherLabel = ` ${layoutSwitcherGlyph} `;
@@ -58,58 +59,40 @@ class $CommandBar {
       0,
       boundedWidth - TextCoordinates.Class.lineWidth(layoutSwitcherLabel),
     );
-    const availableCenterColumns = Math.max(1, layoutSwitcherStartColumn);
-    const fixedNavigationColumns = 6;
+    const availableProjectColumns = Math.max(1, layoutSwitcherStartColumn);
+    const searchLabel = ` ${searchGlyph} `;
+    const searchWidth = Math.min(
+      TextCoordinates.Class.lineWidth(searchLabel),
+      availableProjectColumns,
+    );
     const maximumFolderColumns = Math.max(
-      1,
-      availableCenterColumns - fixedNavigationColumns - 2,
-    );
-    const visibleFolderName =
-      TextCoordinates.Class.displayColumnWindow(
-        folderName || '.',
-        0,
-        maximumFolderColumns,
-      ) || '.';
-    const backLabel = ' ‹ ';
-    const forwardLabel = ' › ';
-    const folderLabel = ` ${visibleFolderName} `;
-    const centerWidth =
-      TextCoordinates.Class.lineWidth(backLabel) +
-      TextCoordinates.Class.lineWidth(forwardLabel) +
-      TextCoordinates.Class.lineWidth(folderLabel);
-    const centeredStartColumn = Math.floor(
-      Math.max(0, boundedWidth - centerWidth) / 2,
-    );
-    const centerStartColumn = Math.max(
       0,
-      Math.min(
-        centeredStartColumn,
-        Math.max(0, layoutSwitcherStartColumn - centerWidth),
-      ),
+      availableProjectColumns - searchWidth,
     );
-    const backEndColumn =
-      centerStartColumn + TextCoordinates.Class.lineWidth(backLabel);
-    const forwardEndColumn =
-      backEndColumn + TextCoordinates.Class.lineWidth(forwardLabel);
+    const visibleFolderName = TextCoordinates.Class.displayColumnWindow(
+      folderName || '.',
+      0,
+      maximumFolderColumns,
+    );
+    const visibleSearchLabel = TextCoordinates.Class.displayColumnWindow(
+      searchLabel,
+      0,
+      searchWidth,
+    );
+    const folderLabel = visibleFolderName;
     const folderEndColumn =
-      forwardEndColumn + TextCoordinates.Class.lineWidth(folderLabel);
+      searchWidth + TextCoordinates.Class.lineWidth(folderLabel);
     const segments: CommandBarSegment[] = [
       {
-        control: 'back',
-        label: backLabel,
-        startColumn: centerStartColumn,
-        endColumn: backEndColumn,
-      },
-      {
-        control: 'forward',
-        label: forwardLabel,
-        startColumn: backEndColumn,
-        endColumn: forwardEndColumn,
+        control: 'search',
+        label: visibleSearchLabel,
+        startColumn: 0,
+        endColumn: searchWidth,
       },
       {
         control: 'folder',
         label: folderLabel,
-        startColumn: forwardEndColumn,
+        startColumn: searchWidth,
         endColumn: folderEndColumn,
       },
     ];
@@ -141,6 +124,7 @@ class $CommandBar {
       width,
       folderName,
       this.dependencies.theme.glyphVocabulary.layoutSwitcher,
+      this.dependencies.theme.findIcons.search,
     );
     this.bar.content = this.renderGeometry(this.currentGeometry);
     this.bar.fg = this.dependencies.theme.palette.fg;
@@ -170,26 +154,28 @@ class $CommandBar {
     for (const segment of geometry.segments) {
       if (segment.startColumn > nextColumn) {
         chunks.push(
-          fg(palette.dim)(' '.repeat(segment.startColumn - nextColumn)),
+          bg(palette.panel)(
+            fg(palette.dim)(' '.repeat(segment.startColumn - nextColumn)),
+          ),
         );
       }
-      const isDisabled =
-        (segment.control === 'back' &&
-          !this.dependencies.workspaceSet.active.navigationHistory.canGoBack) ||
-        (segment.control === 'forward' &&
-          !this.dependencies.workspaceSet.active.navigationHistory
-            .canGoForward);
-      const controlForeground = isDisabled ? palette.dim : palette.fg;
-      const controlText = fg(controlForeground)(segment.label);
+      const controlForeground = palette.fg;
+      const controlText = bg(palette.panel)(
+        fg(controlForeground)(segment.label),
+      );
       chunks.push(
         this.hoveredControl === segment.control
-          ? bg(palette.cursorLine)(controlText)
+          ? bg(palette.cursorLine)(fg(controlForeground)(segment.label))
           : controlText,
       );
       nextColumn = segment.endColumn;
     }
     if (nextColumn < geometry.width) {
-      chunks.push(fg(palette.dim)(' '.repeat(geometry.width - nextColumn)));
+      chunks.push(
+        bg(palette.panel)(
+          fg(palette.dim)(' '.repeat(geometry.width - nextColumn)),
+        ),
+      );
     }
     return new StyledText(chunks);
   }
@@ -201,11 +187,7 @@ class $CommandBar {
   protected hoveredControlValue: CommandBarControl | null = null;
 
   protected runControl(control: CommandBarControl, event: MouseEvent): void {
-    if (control === 'back') {
-      this.dependencies.workspaceSet.active.navigateBack();
-    } else if (control === 'forward') {
-      this.dependencies.workspaceSet.active.navigateForward();
-    } else if (control === 'folder') {
+    if (control === 'search' || control === 'folder') {
       this.dependencies.overlayCoordinator.openExclusiveOverlay(
         'quickOpen',
         () =>
@@ -248,17 +230,7 @@ class $CommandBar {
   }
 
   protected tooltipForControl(control: CommandBarControl): string {
-    if (control === 'back') {
-      return this.tooltipWithBinding('Go Back', 'navigation.back', 'editor');
-    }
-    if (control === 'forward') {
-      return this.tooltipWithBinding(
-        'Go Forward',
-        'navigation.forward',
-        'editor',
-      );
-    }
-    if (control === 'folder') {
+    if (control === 'search' || control === 'folder') {
       return this.tooltipWithBinding('Go to File', 'quickopen.open', 'global');
     }
     return 'Layouts';
@@ -325,7 +297,7 @@ export interface CommandBarDependencies {
   applyLayoutPreset(preset: LayoutPreset): void;
 }
 
-export type CommandBarControl = 'back' | 'forward' | 'folder' | 'layouts';
+export type CommandBarControl = 'search' | 'folder' | 'layouts';
 
 export interface CommandBarSegment {
   control: CommandBarControl;

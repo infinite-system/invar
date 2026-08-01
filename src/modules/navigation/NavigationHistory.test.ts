@@ -1,98 +1,198 @@
-// Unit contract for the pure navigation-history model: record / back / forward, forward-truncation
-// on a new navigation after going back, same-line duplicate collapse, the cap dropping oldest, and
-// the empty / at-end no-ops. Plain values only — no editor, no LSP.
-import { test, expect, describe } from 'bun:test';
-import { NavigationHistory, type Location } from './NavigationHistory';
+import { describe, expect, test } from 'bun:test';
+import {
+  NavigationHistory,
+  type NavigationHistoryContributor,
+} from './NavigationHistory';
 
-const at = (documentPath: string, line: number, column = 0): Location => ({
-  documentPath,
-  line,
-  column,
-});
+interface FakeState {
+  place: string;
+  detail: number;
+}
+
+class FakeContributor implements NavigationHistoryContributor {
+  constructor(readonly identifier: string) {}
+  currentState: FakeState | null = null;
+  readonly restoredPlaces: string[] = [];
+  readonly unrestorablePlaces = new Set<string>();
+
+  captureCurrentState(): FakeState | null {
+    return this.currentState ? { ...this.currentState } : null;
+  }
+
+  restoreState(payload: unknown): boolean {
+    if (!isFakeState(payload) || this.unrestorablePlaces.has(payload.place)) {
+      return false;
+    }
+    this.currentState = { ...payload };
+    this.restoredPlaces.push(payload.place);
+    return true;
+  }
+
+  samePlace(previousPayload: unknown, nextPayload: unknown): boolean {
+    return (
+      isFakeState(previousPayload) &&
+      isFakeState(nextPayload) &&
+      previousPayload.place === nextPayload.place
+    );
+  }
+}
+
+function isFakeState(payload: unknown): payload is FakeState {
+  if (typeof payload !== 'object' || payload === null) return false;
+  const candidate = payload as Partial<FakeState>;
+  return (
+    typeof candidate.place === 'string' && typeof candidate.detail === 'number'
+  );
+}
+
+function record(
+  history: NavigationHistory.Model,
+  contributor: FakeContributor,
+  place: string,
+  detail = 0,
+): void {
+  contributor.currentState = { place, detail };
+  history.recordCurrentState();
+}
+
+function currentPayload(history: NavigationHistory.Model): FakeState | null {
+  return (history.currentEntry?.payload as FakeState | undefined) ?? null;
+}
+
+function registeredHistory(identifier = 'fake.view') {
+  const history = new NavigationHistory.Class();
+  const contributor = new FakeContributor(identifier);
+  const dispose = history.register(contributor);
+  return { history, contributor, dispose };
+}
 
 describe('NavigationHistory', () => {
-  test('starts empty: no current entry, no back/forward', () => {
-    const history = new NavigationHistory.Class();
+  test('starts empty and cannot move', () => {
+    const { history } = registeredHistory();
     expect(history.size).toBe(0);
     expect(history.currentEntry).toBeNull();
     expect(history.canGoBack).toBe(false);
     expect(history.canGoForward).toBe(false);
-    expect(history.back()).toBeNull();
-    expect(history.forward()).toBeNull();
+    expect(history.back()).toBe(false);
+    expect(history.forward()).toBe(false);
   });
 
-  test('record appends and makes the newest current', () => {
-    const history = new NavigationHistory.Class();
-    history.record(at('a.ts', 0));
-    history.record(at('b.ts', 5));
-    expect(history.size).toBe(2);
-    expect(history.currentEntry).toEqual(at('b.ts', 5));
-    expect(history.canGoBack).toBe(true);
-    expect(history.canGoForward).toBe(false);
+  test('captures opaque contributor states and restores them in both directions', () => {
+    const { history, contributor } = registeredHistory();
+    record(history, contributor, 'first', 1);
+    record(history, contributor, 'second', 2);
+    record(history, contributor, 'third', 3);
+
+    expect(history.back()).toBe(true);
+    expect(contributor.currentState).toEqual({ place: 'second', detail: 2 });
+    expect(history.back()).toBe(true);
+    expect(contributor.currentState).toEqual({ place: 'first', detail: 1 });
+    expect(history.back()).toBe(false);
+    expect(history.forward()).toBe(true);
+    expect(history.forward()).toBe(true);
+    expect(history.forward()).toBe(false);
+    expect(contributor.restoredPlaces).toEqual([
+      'second',
+      'first',
+      'second',
+      'third',
+    ]);
   });
 
-  test('back then forward walk between recorded locations', () => {
-    const history = new NavigationHistory.Class();
-    history.record(at('a.ts', 1));
-    history.record(at('b.ts', 2));
-    history.record(at('c.ts', 3));
-    expect(history.back()).toEqual(at('b.ts', 2));
-    expect(history.back()).toEqual(at('a.ts', 1));
-    expect(history.back()).toBeNull(); // at the oldest — no move
-    expect(history.currentEntry).toEqual(at('a.ts', 1));
-    expect(history.forward()).toEqual(at('b.ts', 2));
-    expect(history.forward()).toEqual(at('c.ts', 3));
-    expect(history.forward()).toBeNull(); // at the newest — no move
-  });
+  test('a new capture after going back truncates the forward trail', () => {
+    const { history, contributor } = registeredHistory();
+    record(history, contributor, 'first');
+    record(history, contributor, 'second');
+    record(history, contributor, 'third');
+    expect(history.back()).toBe(true);
 
-  test('a new navigation after going back TRUNCATES the forward history', () => {
-    const history = new NavigationHistory.Class();
-    history.record(at('a.ts', 1));
-    history.record(at('b.ts', 2));
-    history.record(at('c.ts', 3));
-    expect(history.back()).toEqual(at('b.ts', 2)); // now at index 1, [c] is ahead
-    history.record(at('d.ts', 4)); // new branch — [c] must be discarded
+    record(history, contributor, 'branch');
+
     expect(history.size).toBe(3);
+    expect(currentPayload(history)?.place).toBe('branch');
     expect(history.canGoForward).toBe(false);
-    expect(history.currentEntry).toEqual(at('d.ts', 4));
-    expect(history.back()).toEqual(at('b.ts', 2));
-    expect(history.forward()).toEqual(at('d.ts', 4));
   });
 
-  test('same document + same line collapses (drift never spams the stack)', () => {
-    const history = new NavigationHistory.Class();
-    history.record(at('a.ts', 10, 0));
-    history.record(at('a.ts', 10, 4)); // same line, drift right — updates column in place
-    history.record(at('a.ts', 10, 4)); // exact duplicate — nothing changes
+  test('the contributor defines same-place collapse while retaining the newest payload', () => {
+    const { history, contributor } = registeredHistory();
+    record(history, contributor, 'same', 1);
+    record(history, contributor, 'same', 8);
+
     expect(history.size).toBe(1);
-    expect(history.currentEntry).toEqual(at('a.ts', 10, 4));
+    expect(currentPayload(history)).toEqual({ place: 'same', detail: 8 });
   });
 
-  test('a DIFFERENT line in the same document is a real entry (intra-file navigation)', () => {
+  test('states from different contributors never collapse', () => {
     const history = new NavigationHistory.Class();
-    history.record(at('a.ts', 10));
-    history.record(at('a.ts', 500)); // jump to another symbol in the same file
+    const first = new FakeContributor('first.view');
+    const second = new FakeContributor('second.view');
+    history.register(first);
+    history.register(second);
+    record(history, first, 'shared');
+    first.currentState = null;
+    record(history, second, 'shared');
     expect(history.size).toBe(2);
-    expect(history.back()).toEqual(at('a.ts', 10));
   });
 
-  test('the list caps at 100, dropping the oldest', () => {
+  test('replay suppresses recording by every contributor', () => {
     const history = new NavigationHistory.Class();
-    for (let index = 0; index < 150; index += 1)
-      history.record(at(`file${index}.ts`, index));
+    const first = new FakeContributor('first.view');
+    const second = new FakeContributor('second.view');
+    history.register(first);
+    history.register(second);
+    record(history, first, 'first');
+    first.currentState = null;
+    record(history, second, 'second');
+
+    history.runWithoutRecording(() => {
+      second.currentState = { place: 'would-record', detail: 0 };
+      history.recordCurrentState();
+    });
+
+    expect(history.size).toBe(2);
+  });
+
+  test('an unrestorable entry is dropped and navigation continues', () => {
+    const { history, contributor } = registeredHistory();
+    record(history, contributor, 'first');
+    record(history, contributor, 'missing');
+    record(history, contributor, 'third');
+    contributor.unrestorablePlaces.add('missing');
+
+    expect(history.back()).toBe(true);
+    expect(contributor.currentState?.place).toBe('first');
+    expect(history.size).toBe(2);
+    expect(history.currentIndex.value).toBe(0);
+  });
+
+  test('entries for a removed contributor are dropped', () => {
+    const { history, contributor, dispose } = registeredHistory();
+    record(history, contributor, 'first');
+    record(history, contributor, 'second');
+    dispose();
+
+    expect(history.back()).toBe(false);
+    expect(history.size).toBe(1);
+    expect(currentPayload(history)?.place).toBe('second');
+  });
+
+  test('the list caps at 100 and drops the oldest states', () => {
+    const { history, contributor } = registeredHistory();
+    for (let index = 0; index < 150; index += 1) {
+      record(history, contributor, `place-${index}`);
+    }
     expect(history.size).toBe(100);
-    expect(history.currentEntry).toEqual(at('file149.ts', 149));
-    // Walk all the way back: the oldest surviving entry is file50 (the first 50 were dropped).
+    expect(currentPayload(history)?.place).toBe('place-149');
     let steps = 0;
-    while (history.back() !== null) steps += 1;
+    while (history.back()) steps += 1;
     expect(steps).toBe(99);
-    expect(history.currentEntry).toEqual(at('file50.ts', 50));
+    expect(currentPayload(history)?.place).toBe('place-50');
   });
 
-  test('clear resets to empty', () => {
-    const history = new NavigationHistory.Class();
-    history.record(at('a.ts', 1));
-    history.record(at('b.ts', 2));
+  test('clear resets the sequence', () => {
+    const { history, contributor } = registeredHistory();
+    record(history, contributor, 'first');
+    record(history, contributor, 'second');
     history.clear();
     expect(history.size).toBe(0);
     expect(history.currentEntry).toBeNull();

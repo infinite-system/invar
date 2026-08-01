@@ -45,19 +45,22 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
   )?.bottomPanel;
   const headings = status.panelHeadingGeometry;
   const contentIdentifiers = status.panelCellIds;
+  const contentKinds = status.panelCellKinds;
   const cellColumns = status.panelCellColumns;
   if (
     !bottomPanel ||
     !Array.isArray(headings) ||
     !Array.isArray(contentIdentifiers) ||
+    !Array.isArray(contentKinds) ||
     !Array.isArray(cellColumns)
   ) {
     return null;
   }
+  const contentIndex = contentKinds.indexOf('agent');
+  const agentIdentifier = contentIdentifiers[contentIndex];
   const agentHeading = (
     headings as unknown as readonly PanelHeadingGeometryStatus[]
-  ).find((heading) => heading.contentId === 'agent');
-  const contentIndex = contentIdentifiers.indexOf('agent');
+  ).find((heading) => heading.contentId === agentIdentifier);
   const panelViewportRows = Number(status.panelRows);
   const contentColumns = Number(cellColumns[contentIndex]);
   if (

@@ -816,19 +816,22 @@ class $SmokeTerminalFollowHarness {
     )?.bottomPanel;
     const headings = status.panelHeadingGeometry;
     const contentIdentifiers = status.panelCellIds;
+    const contentKinds = status.panelCellKinds;
     const cellColumns = status.panelCellColumns;
     if (
       !bottomPanel ||
       !Array.isArray(headings) ||
       !Array.isArray(contentIdentifiers) ||
+      !Array.isArray(contentKinds) ||
       !Array.isArray(cellColumns)
     ) {
       return null;
     }
+    const contentIndex = contentKinds.indexOf('agent');
+    const agentIdentifier = contentIdentifiers[contentIndex];
     const agentHeading = (
       headings as unknown as readonly PanelHeadingGeometryStatus[]
-    ).find((heading) => heading.contentId === 'agent');
-    const contentIndex = contentIdentifiers.indexOf('agent');
+    ).find((heading) => heading.contentId === agentIdentifier);
     const panelViewportRows = Number(status.terminalRows);
     const contentColumns = Number(cellColumns[contentIndex]);
     if (
@@ -895,7 +898,7 @@ class $SmokeTerminalFollowHarness {
   }
 
   protected static async focusPanelCell(
-    contentIdentifier: 'terminal' | 'agent',
+    contentKind: 'terminal' | 'agent',
     label: string,
   ): Promise<void> {
     const status = await this.awaitStatus(
@@ -905,23 +908,23 @@ class $SmokeTerminalFollowHarness {
           | Record<string, { left: number; top: number; height: number }>
           | undefined;
         return (
-          Array.isArray(candidate.panelCellIds) &&
-          candidate.panelCellIds.includes(contentIdentifier) &&
+          Array.isArray(candidate.panelCellKinds) &&
+          candidate.panelCellKinds.includes(contentKind) &&
           Array.isArray(candidate.panelCellColumns) &&
           candidateLayoutSlots?.bottomPanel !== undefined
         );
       },
     );
-    const contentIdentifiers = status.panelCellIds;
+    const contentKinds = status.panelCellKinds;
     const cellColumns = status.panelCellColumns;
     const layoutSlots = status.layoutSlots as
       Record<string, { left: number; top: number; height: number }> | undefined;
-    if (!Array.isArray(contentIdentifiers) || !Array.isArray(cellColumns)) {
+    if (!Array.isArray(contentKinds) || !Array.isArray(cellColumns)) {
       throw new Error('Panel cell geometry is unavailable from status.');
     }
-    const contentIndex = contentIdentifiers.indexOf(contentIdentifier);
+    const contentIndex = contentKinds.indexOf(contentKind);
     if (contentIndex < 0) {
-      throw new Error(`Panel cell is not visible: ${contentIdentifier}`);
+      throw new Error(`Panel cell is not visible: ${contentKind}`);
     }
     const panel = layoutSlots?.bottomPanel;
     if (!panel)
@@ -950,7 +953,7 @@ class $SmokeTerminalFollowHarness {
     await this.awaitStatus(
       label,
       (candidate) =>
-        candidate.panelActiveContent === contentIdentifier &&
+        candidate.panelActiveContentKind === contentKind &&
         candidate.panelFocusedIndex === contentIndex,
     );
   }

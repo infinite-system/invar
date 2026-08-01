@@ -574,10 +574,10 @@ class $StructureOutline {
     const row = this.rows.value[this.selectedIndex.value];
     if (!row) return false;
     const workspace = this.workspace;
-    workspace.recordCurrentLocation();
+    workspace.recordCurrentViewState();
     workspace.revealSourceLocation(row.line, row.column);
     workspace.focusEditor();
-    workspace.recordCurrentLocation();
+    workspace.recordCurrentViewState();
     return true;
   }
 

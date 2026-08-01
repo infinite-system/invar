@@ -315,11 +315,10 @@ try {
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
-  const agentPanelCellIdentifiers =
-    agentPanelLayoutStatus.panelCellIds as string[];
+  const agentPanelCellKinds = agentPanelLayoutStatus.panelCellKinds as string[];
   const agentPanelCellColumns =
     agentPanelLayoutStatus.panelCellColumns as number[];
-  const pasteAgentCellIndex = agentPanelCellIdentifiers.indexOf('agent');
+  const pasteAgentCellIndex = agentPanelCellKinds.indexOf('agent');
   const agentBottomPanel = (
     agentPanelLayoutStatus.layoutSlots as
       Record<string, { left: number }> | undefined
@@ -385,12 +384,11 @@ try {
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
-  const stagedPanelCellIdentifiers =
-    stagedPanelLayoutStatus.panelCellIds as string[];
+  const stagedPanelCellKinds =
+    stagedPanelLayoutStatus.panelCellKinds as string[];
   const stagedPanelCellColumns =
     stagedPanelLayoutStatus.panelCellColumns as number[];
-  const stagedTerminalCellIndex =
-    stagedPanelCellIdentifiers.indexOf('terminal');
+  const stagedTerminalCellIndex = stagedPanelCellKinds.indexOf('terminal');
   const stagedBottomPanel = (
     stagedPanelLayoutStatus.layoutSlots as
       Record<string, { left: number }> | undefined
@@ -438,9 +436,9 @@ try {
   >;
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
-  const panelCellIdentifiers = panelLayoutStatus.panelCellIds as string[];
+  const panelCellKinds = panelLayoutStatus.panelCellKinds as string[];
   const panelCellColumns = panelLayoutStatus.panelCellColumns as number[];
-  const terminalCellIndex = panelCellIdentifiers.indexOf('terminal');
+  const terminalCellIndex = panelCellKinds.indexOf('terminal');
   if (terminalCellIndex < 0) throw new Error('Terminal panel cell disappeared');
   const terminalPaneLeft =
     bottomPanel.left +

@@ -7,10 +7,12 @@ import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { Workspace } from '../workspace/Workspace';
 import { ref } from 'vue';
+import { NavigationHistory } from '../navigation/NavigationHistory';
 
 function createHostWorkspace(path: string) {
   const workspace = {
     editorSurfaces: new EditorSurfaceClaims.Class(),
+    navigationHistory: new NavigationHistory.Class(),
     providers: new ProviderRegistry.Class(),
     root: '/project',
     activeDocumentHandle: { path },

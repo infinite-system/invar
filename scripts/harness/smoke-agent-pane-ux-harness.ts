@@ -68,6 +68,31 @@ interface ComposerScreenRow {
   readonly content: string;
 }
 
+function findTextInRectangle(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+  rectangle: Rectangle,
+): { row: number; column: number } | null {
+  const endRowExclusive = Math.min(
+    snapshot.rows,
+    rectangle.top + rectangle.height,
+  );
+  const endColumnExclusive = Math.min(
+    snapshot.columns,
+    rectangle.left + rectangle.width,
+  );
+  for (let row = rectangle.top; row < endRowExclusive; row += 1) {
+    const panelRow = snapshot
+      .rowText(row)
+      .slice(rectangle.left, endColumnExclusive);
+    const relativeColumn = panelRow.indexOf(marker);
+    if (relativeColumn >= 0) {
+      return { row, column: rectangle.left + relativeColumn };
+    }
+  }
+  return null;
+}
+
 const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
 
 function bottomPanelSlot(status: StatusSnapshot): Rectangle {
@@ -84,19 +109,22 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
   )?.bottomPanel;
   const headings = status.panelHeadingGeometry;
   const contentIdentifiers = status.panelCellIds;
+  const contentKinds = status.panelCellKinds;
   const cellColumns = status.panelCellColumns;
   if (
     !bottomPanel ||
     !Array.isArray(headings) ||
     !Array.isArray(contentIdentifiers) ||
+    !Array.isArray(contentKinds) ||
     !Array.isArray(cellColumns)
   ) {
     return null;
   }
+  const contentIndex = contentKinds.indexOf('agent');
+  const agentIdentifier = contentIdentifiers[contentIndex];
   const agentHeading = (
     headings as unknown as readonly PanelHeadingGeometryStatus[]
-  ).find((heading) => heading.contentId === 'agent');
-  const contentIndex = contentIdentifiers.indexOf('agent');
+  ).find((heading) => heading.contentId === agentIdentifier);
   const panelViewportRows = Number(status.panelRows);
   const contentColumns = Number(cellColumns[contentIndex]);
   if (
@@ -639,7 +667,17 @@ try {
 
   const newestPosition = snapshot.findText('gamma-newest-prompt');
   if (!newestPosition) throw new Error('Newest prompt disappeared');
-  const scrollingComposerPosition = snapshot.findText('❯ ');
+  const agentContentRectangle = {
+    left: footerRegion.startColumn,
+    top: footerRegion.headingRow + 1,
+    width: footerRegion.endColumnExclusive - footerRegion.startColumn,
+    height: footerRegion.row - footerRegion.headingRow,
+  };
+  const scrollingComposerPosition = findTextInRectangle(
+    snapshot,
+    '❯ ',
+    agentContentRectangle,
+  );
   if (!scrollingComposerPosition)
     throw new Error('Composer prompt disappeared');
   const maximumScrollTop = Number(status.agentScrollTop);

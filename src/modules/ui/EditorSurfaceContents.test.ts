@@ -7,6 +7,7 @@ import {
 
 function createContent(): EditorSurfaceContent {
   return {
+    displayedPath: '/project/test.ts',
     update() {},
     tick: () => false,
     handleKey: () => false,

@@ -27,6 +27,106 @@ The shared interaction and appearance rules for every Invar interface.
 
 **Last refined:** 2026-08-01
 
+### Chrome edges keep one breathing cell
+
+**Invariant:** If a small chrome control meets a border, scrollbar, or line start, then one surface-colored space separates the control ink from that edge without leaving the control's hit target.
+
+**Scope:** Panel instance controls and file-tree header controls beside a visible scrollbar.
+
+**Mechanism:** Each row projection reserves the edge cell before it places control ink and publishes the same control range for pointer input.
+
+**Generates:** A panel toggle with a clickable right pad and a file-tree reveal button that shifts only while the scrollbar occupies its former right pad.
+
+**Evidence:** `src/modules/ui/PanelTabBar.ts`; `src/modules/filetree/FileTreeHeaderRow.ts`; `src/modules/ui/SeparatorAppearance.ts`.
+
+**Impossible if true:** Control ink touching a border or scrollbar; a visual pad that cannot receive the control's pointer action.
+
+**Verification:** `bun scripts/harness/smoke-panel-chrome-harness.ts` and `bun scripts/harness/smoke-tree-scroll-harness.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-08-01
+
+### Explicit tree reveals center their target
+
+**Invariant:** If the user reveals an open file in the tree, then its selected row lands at the vertical middle of the viewport when the tree ends allow it, with start and end clamping otherwise.
+
+**Scope:** Automatic reveal-on-open and the file-tree reveal button. Ordinary keyboard selection movement stays minimally revealing.
+
+**Mechanism:** Both explicit reveal paths call `FileTree.revealPath`, which expands ancestors, selects the target, and derives one centered, clamped scroll top from the live viewport height.
+
+**Generates:** The same centered result for Quick Open, file activation, and the reveal button at small and large tree scale.
+
+**Evidence:** `src/modules/filetree/FileTree.ts`; `src/modules/filetree/FileTreeWorkspace.ts`.
+
+**Impossible if true:** An explicit reveal leaving its target at a viewport edge when middle space exists.
+
+**Verification:** `bun test src/modules/filetree/FileTree.test.ts` and `bun scripts/harness/smoke-tree-scroll-harness.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-08-01
+
+### Navigation chrome precedes file tabs
+
+**Invariant:** If the top editor chrome is visible, then its row order is workspace tabs, project search, breadcrumb and history, file tabs, then content.
+
+**Scope:** The top workspace and editor chrome.
+
+**Mechanism:** `RootView` mounts the rows in that order. `CommandBar` projects padded project search at the left and Layouts at the right. `TabBarRenderer` projects two padded history buttons before the active path and keeps the dim history cluster when no file is open.
+
+**Generates:** Navigation controls grouped above tabs and file tabs adjacent to their content.
+
+**Evidence:** `src/modules/ui/RootView.ts`; `src/modules/ui/CommandBar.ts`; `src/modules/ui/TabBarRenderer.ts`.
+
+**Impossible if true:** Breadcrumbs below file tabs; history disappearing when the last file closes; project navigation centered in the row.
+
+**Verification:** `bun test src/modules/ui/CommandBar.test.ts src/modules/ui/TabBarRenderer.test.ts` and `bun scripts/harness/smoke-navigation-history-harness.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-08-01
+
+### Chrome strips take the panel tone
+
+**Invariant:** Workspace tabs, branch detail, project navigation, breadcrumbs, history, and file tabs sit on the panel tone. The editor canvas alone keeps the content tone, and the active file-tab chip borrows that tone to show which content it touches.
+
+**Scope:** The horizontal top-chrome stack above the editor canvas. Workspace chips keep their own active and inactive tones, and hover or pressed chips keep their interaction tones.
+
+**Mechanism:** RootView gives the application column one `palette.panel` chrome backdrop. Panels and unpainted top strips inherit it, while the editor canvas sets `palette.bg`. `TabBarRenderer` paints the active file-tab segment with that same content tone.
+
+**Generates:** One dark signpost band across all five top rows, one light editor canvas, and one active file tab that joins visually to that canvas.
+
+**Evidence:** `src/modules/ui/RootView.ts`; `src/modules/ui/TabBarRenderer.ts`; `scripts/harness/smoke-navigation-history-harness.ts`.
+
+**Impossible if true:** An empty top-strip cell painted like editor content; a breadcrumb row with a different base tone; an inactive file tab borrowing the editor tone; the active file tab detached from the content below it.
+
+**Verification:** `bun scripts/harness/smoke-navigation-history-harness.ts` and `bun scripts/harness/smoke-breadcrumb-harness.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-08-01
+
+### Small counts state their attachment
+
+**Invariant:** If a chrome count is attached to an icon, then it uses superscript digits; if it stands alone, then it uses subscript digits. ASCII mode uses plain digits. Every count clamps to the three-cell budget at 999.
+
+**Scope:** The panel instances toggle and activity-bar affected-files count.
+
+**Mechanism:** `ThemeIcons.smallDigitCountFor` owns the two digit vocabularies, ASCII fallback, and cap. Consumers choose only the placement role.
+
+**Generates:** `≡ ¹²`, standalone `₁₂`, plain ASCII digits, and stable activity-icon alignment from zero through three count cells.
+
+**Evidence:** `src/modules/theme/ThemeIcons.ts`; `src/modules/ui/PanelTabBar.ts`; `src/modules/ui/ActivityBar.ts`.
+
+**Impossible if true:** A four-cell count, a plus abbreviation, a baseline icon-attached count, or an activity icon that moves as its count grows.
+
+**Verification:** `bun test src/modules/theme/ThemeIcons.test.ts src/modules/ui/PanelTabBar.test.ts` and `bun scripts/harness/smoke-activitybar-harness.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-08-01
+
 ### Secondary controls reveal on hover
 
 **Invariant:** If a row control is secondary to selecting the row, then it stays hidden until the pointer hovers that row and it provides a tooltip when revealed.

@@ -153,7 +153,20 @@ class $TabBarRenderer {
       1,
       context.barWidthValue || context.rendererWidth,
     );
-    const controlsText = ' ‹  ›  + ';
+    const preferredWorkspaceTabWidths = workspaceTabs.map((workspaceTab) =>
+      Math.min(
+        this.WORKSPACE_TAB_MAX_LABEL_WIDTH,
+        Math.max(
+          TextCoordinates.Class.lineWidth(workspaceTab.label),
+          TextCoordinates.Class.lineWidth(workspaceTab.detailLabel ?? ''),
+        ) + 6,
+      ),
+    );
+    const addControlWidth = 3;
+    const showPanControls =
+      preferredWorkspaceTabWidths.reduce((sum, width) => sum + width, 0) >
+      Math.max(1, barWidth - addControlWidth);
+    const controlsText = showPanControls ? ' ‹  ›  + ' : ' + ';
     const controlsWidth = TextCoordinates.Class.lineWidth(controlsText);
     const availableTabsWidth = Math.max(1, barWidth - controlsWidth);
     const measuredWorkspaceTabs = workspaceTabs.map((workspaceTab) => ({
@@ -251,8 +264,12 @@ class $TabBarRenderer {
       kind: 'panBackward' | 'panForward' | 'add';
       text: string;
     }> = [
-      { kind: 'panBackward', text: ' ‹ ' },
-      { kind: 'panForward', text: ' › ' },
+      ...(showPanControls
+        ? ([
+            { kind: 'panBackward', text: ' ‹ ' },
+            { kind: 'panForward', text: ' › ' },
+          ] as const)
+        : []),
       { kind: 'add', text: ' + ' },
     ];
     controls.forEach((control) => {
@@ -322,7 +339,7 @@ class $TabBarRenderer {
     const barWidth = Math.max(1, context.barWidth);
     // Each tab lays out as filename + dirty + close; close has a space BEFORE and AFTER so it is never
     // flush against the tab edge, and the padding is identical regardless of label length. The tab shows
-    // just the FILENAME; the active file's full path renders in the breadcrumb bar BELOW the strip
+    // just the FILENAME; the active file's full path renders in the breadcrumb bar ABOVE the strip
     // (renderBreadcrumbBar), VS Code-style — so tabs stay compact (many fit) while the path is always
     // legible for the file you're editing.
     const measured = tabs.map((tab) => {
@@ -396,7 +413,7 @@ class $TabBarRenderer {
       const isTabHover = hover?.kind === 'tab' && hover.index === index;
       const isCloseHover = hover?.kind === 'close' && hover.index === index;
       const rowBackground = isActive
-        ? palette.selection
+        ? palette.bg
         : isTabHover
           ? palette.cursorLine
           : null;
@@ -503,26 +520,58 @@ class $TabBarRenderer {
   public static renderBreadcrumb(
     context: BreadcrumbBarRenderContext,
   ): BreadcrumbBarRender {
-    const { strip, palette, projectRoot } = context;
-    const activeTab = strip.items.find((tab) => tab.active);
-    if (!activeTab)
-      return {
-        text: new StyledText([fg(palette.dim)('')]),
-        segments: [],
-      };
+    const { displayedPath, palette, projectRoot } = context;
     const barWidth = Math.max(1, context.barWidth);
     const actionCellWidth = 3;
-    const actionsWidth = context.editorTitleActions.length * actionCellWidth;
+    const actionsWidth = displayedPath
+      ? context.editorTitleActions.length * actionCellWidth
+      : 0;
     const pathAreaWidth = Math.max(1, barWidth - actionsWidth);
-    const crumbs = Breadcrumb.Class.fitPathSegments(
-      Breadcrumb.Class.pathSegments(activeTab.identifier, projectRoot),
-      // Reserve the row margin plus the hover pad cell each crumb row end carries.
-      Math.max(1, pathAreaWidth - 2 - Breadcrumb.Class.HOVER_PAD_COLUMNS),
-      3,
-    );
-    const chunks: TextChunk[] = [fg(palette.fg)(' ')];
+    const chunks: TextChunk[] = [];
     const segments: BreadcrumbBarSegment[] = [];
-    let column = 1;
+    let column = 0;
+    const historyControls = [
+      {
+        kind: 'historyBack' as const,
+        glyph: context.navigationBackGlyph,
+        enabled: context.canGoBack,
+      },
+      {
+        kind: 'historyForward' as const,
+        glyph: context.navigationForwardGlyph,
+        enabled: context.canGoForward,
+      },
+    ];
+    for (const control of historyControls) {
+      const label = TextCoordinates.Class.displayColumnWindow(
+        ` ${control.glyph} `,
+        0,
+        Math.max(0, pathAreaWidth - column),
+      );
+      const width = TextCoordinates.Class.lineWidth(label);
+      if (width <= 0) break;
+      const start = column;
+      const end = column + width;
+      const styled = fg(control.enabled ? palette.fg : palette.dim)(label);
+      const hovered = context.hover?.kind === control.kind;
+      chunks.push(hovered ? bg(palette.cursorLine)(styled) : styled);
+      segments.push({ kind: control.kind, start, end });
+      column = end;
+    }
+    if (displayedPath && column < pathAreaWidth) {
+      chunks.push(fg(palette.fg)(' '));
+      column += 1;
+    }
+    const crumbs = displayedPath
+      ? Breadcrumb.Class.fitPathSegments(
+          Breadcrumb.Class.pathSegments(displayedPath, projectRoot),
+          Math.max(
+            1,
+            pathAreaWidth - column - Breadcrumb.Class.HOVER_PAD_COLUMNS * 2,
+          ),
+          3,
+        )
+      : [];
     crumbs.forEach((crumb, index) => {
       const isFilename = index === crumbs.length - 1;
       // ONE crumb geometry. The padded label is what the row shows, what the hover background
@@ -554,7 +603,10 @@ class $TabBarRenderer {
       Math.max(0, pathAreaWidth - column),
     );
     column = pathAreaWidth;
-    for (const [actionIndex, action] of context.editorTitleActions.entries()) {
+    const visibleEditorTitleActions = displayedPath
+      ? context.editorTitleActions
+      : [];
+    for (const [actionIndex, action] of visibleEditorTitleActions.entries()) {
       const start = column;
       const active = action.toggled;
       const hovered =
@@ -684,7 +736,8 @@ export interface BufferTabBarRender {
 }
 
 export interface BreadcrumbBarRenderContext {
-  strip: TabStrip.Instance;
+  /** Path supplied by the content that currently occupies the editor area. */
+  displayedPath: string | null;
   palette: Palette;
   barWidth: number;
   /** Active workspace root — the breadcrumb is the active file's path relative to it. */
@@ -694,6 +747,10 @@ export interface BreadcrumbBarRenderContext {
   pressedTitleActionIndex: number | null;
   /** Contributed editor-title affordances, already filtered by their command guards. */
   editorTitleActions: readonly EditorTitleAction[];
+  navigationBackGlyph: string;
+  navigationForwardGlyph: string;
+  canGoBack: boolean;
+  canGoForward: boolean;
 }
 
 export type BreadcrumbBarSegment =
@@ -707,11 +764,17 @@ export type BreadcrumbBarSegment =
       index: number;
       start: number;
       end: number;
+    }
+  | {
+      kind: 'historyBack' | 'historyForward';
+      start: number;
+      end: number;
     };
 
 export type BreadcrumbBarHover =
   | { kind: 'crumb'; sourceIndex: number }
   | { kind: 'titleAction'; index: number }
+  | { kind: 'historyBack' | 'historyForward' }
   | null;
 
 export interface BreadcrumbBarRender {

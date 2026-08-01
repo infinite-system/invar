@@ -44,6 +44,9 @@ function createFakeSplitView() {
 
 function createContent(viewOnly = false) {
   const view = createFakeSplitView();
+  const workspace = {
+    editor: { document: { path: '/project/README.md' } },
+  } as unknown as Workspace.Model;
   const context = {
     findBar: { engineFor: () => ({ query: { value: 'needle' } }) },
   } as unknown as EditorSurfaceContentContext;
@@ -54,7 +57,7 @@ function createContent(viewOnly = false) {
   }
   return {
     content: new TestContent(
-      {} as unknown as Workspace.Model,
+      workspace,
       context,
       {
         value: ref(0.5),
@@ -70,6 +73,11 @@ function createContent(viewOnly = false) {
 }
 
 describe('MarkdownPreviewContent', () => {
+  it('supplies the source path to the editor-area shell', () => {
+    const { content } = createContent();
+    expect(content.displayedPath).toBe('/project/README.md');
+  });
+
   // The split embeds the real editor, so it must NOT take keys outright — every movement arrives
   // through a rebindable host command instead.
   it('consumes no raw key, so remapped chords still reach the preview', () => {

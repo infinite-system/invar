@@ -18,7 +18,7 @@ function makeWorkspace(document: TextDocument.Instance | null) {
   const editorCalls: EditorCalls = { placeCursor: [], revealCursor: 0 };
   const calls = {
     editorCalls,
-    recordCurrentLocation: 0,
+    recordCurrentViewState: 0,
     focusEditor: 0,
   };
   const workspace = {
@@ -40,8 +40,8 @@ function makeWorkspace(document: TextDocument.Instance | null) {
     focusEditor: () => {
       calls.focusEditor += 1;
     },
-    recordCurrentLocation: () => {
-      calls.recordCurrentLocation += 1;
+    recordCurrentViewState: () => {
+      calls.recordCurrentViewState += 1;
     },
   };
   return {
@@ -504,7 +504,7 @@ test('selection moves clamped, stays visible, and jumps through the view contrac
     ]);
     expect(context.calls.editorCalls.revealCursor).toBe(1);
     expect(context.calls.focusEditor).toBe(1);
-    expect(context.calls.recordCurrentLocation).toBe(2);
+    expect(context.calls.recordCurrentViewState).toBe(2);
     // With no rows there is nothing to activate.
     context.setDocument(null);
     await outline.refresh();

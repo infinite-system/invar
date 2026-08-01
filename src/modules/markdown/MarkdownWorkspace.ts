@@ -5,6 +5,8 @@ import type { RegisteredSetting } from '../settings/SettingContribution.interfac
 import type { Workspace } from '../workspace/Workspace';
 import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
+import type { NavigationHistoryContributor } from '../navigation/NavigationHistory';
+import { Files } from '../system/Files';
 import { MarkdownStructureSource } from './MarkdownStructureSource';
 
 // Markdown's per-workspace contribution: which tabs are showing the source | preview split, and the
@@ -22,7 +24,13 @@ import { MarkdownStructureSource } from './MarkdownStructureSource';
 // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
 // invariant: Markdown view mode persists across Markdown documents (src/modules/markdown/markdown.invariants.md)
 // invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
-class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
+// invariant: Programmatic history navigation does not record new history (src/modules/navigation/navigation.invariants.md)
+class $MarkdownWorkspace
+  implements
+    WorkspaceContribution,
+    EditorSurfaceClaim,
+    NavigationHistoryContributor
+{
   declare $watch: typeof import('vue').watch;
   declare $stopEffects: () => void;
 
@@ -41,6 +49,7 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     },
   ) {
     this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
+    this.disposeNavigationHistory = workspace.navigationHistory.register(this);
     // The table of contents rides the host-carried provider rendezvous: the structure pane
     // resolves it by identifier and neither plugin names the other's concrete class.
     // invariant: Provider rendezvous is host carried (src/modules/plugins/plugins.invariants.md)
@@ -61,6 +70,7 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   }
 
   protected readonly disposeEditorSurfaceClaim: () => void;
+  protected readonly disposeNavigationHistory: () => void;
   protected readonly structureSource: MarkdownStructureSource.Model;
   protected readonly disposeStructureSource: () => void;
 
@@ -148,11 +158,13 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
 
   togglePreview(): void {
     if (!this.previewToggleAvailable) return;
+    this.workspace.navigationHistory.recordCurrentState();
     if (this.viewMode !== 'split') {
       this.viewModeSetting.value.value =
         this.viewMode === 'preview' ? 'editor' : 'preview';
       this.viewModeSetting.save();
       this.workspace.focusEditor();
+      this.workspace.navigationHistory.recordCurrentState();
       return;
     }
     const path = this.activeTabPath();
@@ -171,6 +183,7 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     this.dismissedPreviewPaths.value = nextDismissed;
     this.previewPaths.value = nextPaths;
     this.workspace.focusEditor();
+    this.workspace.navigationHistory.recordCurrentState();
   }
 
   // --- EditorSurfaceClaim -------------------------------------------------------------------------
@@ -201,12 +214,70 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
    *  the host calls this BEFORE the tab actually changes, so it would fire on the outgoing file. */
   release(): void {}
 
+  // --- NavigationHistoryContributor --------------------------------------------------------------
+  captureCurrentState(): MarkdownNavigationHistoryState | null {
+    if (
+      !this.showingPreview ||
+      this.workspace.editorSurfaces.occupyingClaim !== this
+    ) {
+      return null;
+    }
+    const documentPath = this.activeTabPath();
+    const viewMode = this.viewMode;
+    if (documentPath === '' || viewMode === 'editor') return null;
+    return { documentPath, viewMode };
+  }
+
+  restoreState(payload: unknown): boolean {
+    if (!this.isNavigationHistoryState(payload)) return false;
+    if (
+      !Files.Class.exists(payload.documentPath) ||
+      Files.Class.isDir(payload.documentPath) ||
+      !MarkdownStructureSource.Class.isMarkdownPath(payload.documentPath)
+    ) {
+      return false;
+    }
+    this.viewModeSetting.value.value = payload.viewMode;
+    if (payload.viewMode === 'split') {
+      const nextPreviewPaths = new Set(this.previewPaths.value);
+      nextPreviewPaths.add(payload.documentPath);
+      this.previewPaths.value = nextPreviewPaths;
+      const nextDismissedPaths = new Set(this.dismissedPreviewPaths.value);
+      nextDismissedPaths.delete(payload.documentPath);
+      this.dismissedPreviewPaths.value = nextDismissedPaths;
+    }
+    this.workspace.openFileInTab(payload.documentPath);
+    this.workspace.focusEditor();
+    return this.showingPreview;
+  }
+
+  samePlace(previousPayload: unknown, nextPayload: unknown): boolean {
+    return (
+      this.isNavigationHistoryState(previousPayload) &&
+      this.isNavigationHistoryState(nextPayload) &&
+      previousPayload.documentPath === nextPayload.documentPath &&
+      previousPayload.viewMode === nextPayload.viewMode
+    );
+  }
+
+  protected isNavigationHistoryState(
+    payload: unknown,
+  ): payload is MarkdownNavigationHistoryState {
+    if (typeof payload !== 'object' || payload === null) return false;
+    const candidate = payload as Partial<MarkdownNavigationHistoryState>;
+    return (
+      typeof candidate.documentPath === 'string' &&
+      (candidate.viewMode === 'preview' || candidate.viewMode === 'split')
+    );
+  }
+
   // --- WorkspaceContribution ----------------------------------------------------------------------
   opened(): void {}
   settingsAttached(_settings: Settings.Instance): void {}
   suspended(): void {}
   resumed(): void {}
   disposed(): void {
+    this.disposeNavigationHistory();
     this.disposeEditorSurfaceClaim();
     this.disposeStructureSource();
     this.structureSource.dispose();
@@ -221,4 +292,9 @@ export namespace MarkdownWorkspace {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
+}
+
+interface MarkdownNavigationHistoryState {
+  documentPath: string;
+  viewMode: 'preview' | 'split';
 }

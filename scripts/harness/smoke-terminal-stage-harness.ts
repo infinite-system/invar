@@ -241,9 +241,9 @@ async function driveAnimatedTerminalTools(
         status.panelCellKinds.join(',') === 'terminal' &&
         status.panelFocusedIndex === 0,
     );
-    const panelCellIdentifiers = terminalStatus.panelCellIds as string[];
+    const panelCellKinds = terminalStatus.panelCellKinds as string[];
     const panelCellColumns = terminalStatus.panelCellColumns as number[];
-    const terminalCellIndex = panelCellIdentifiers.indexOf('terminal');
+    const terminalCellIndex = panelCellKinds.indexOf('terminal');
     const panelLeft =
       Number(
         (

@@ -71,7 +71,9 @@ describe('FileTreePaneContent', () => {
       },
     } as never);
     expect(pane.tooltipAt(9, 0)).toBe('Reveal open file');
-    expect(pane.tooltipAt(8, 0)).toBeNull();
+    expect(pane.tooltipAt(8, 0)).toBe('Reveal open file');
+    expect(pane.tooltipAt(7, 0)).toBeNull();
+    expect(pane.tooltipAt(11, 0)).toBeNull();
     expect(pane.tooltipAt(9, 1)).toBeNull();
     expect(pane.onPointerDown(0, 2)).toBe(true);
     expect(tree.selectedIndex.value).toBe(1);

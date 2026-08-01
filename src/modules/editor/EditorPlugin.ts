@@ -35,15 +35,29 @@ import {
 import { BracketMatch } from './BracketMatch';
 import type { EditorFrameAttribution } from './EditorFrameAttribution';
 import { SourceTextPaneContent } from './SourceTextPaneContent';
+import type { Workspace } from '../workspace/Workspace';
+import type {
+  WorkspaceContribution,
+  WorkspaceContributor,
+} from '../workspace/WorkspaceContributor.interface';
+import { EditorNavigationHistoryContribution } from './EditorNavigationHistoryContribution';
 
 class $EditorPlugin
-  implements ApplicationContributor, EditorColumnDefaultProvider
+  implements
+    ApplicationContributor,
+    EditorColumnDefaultProvider,
+    WorkspaceContributor
 {
   readonly identifier = 'source-text-editor';
   readonly name = 'Source Text Editor';
+  readonly workspaceContributor: WorkspaceContributor = this;
   protected application: ApplicationContributionContext | null = null;
   protected hostPort: EditorColumnDefaultHostPort | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
+
+  attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
+    return new EditorNavigationHistoryContribution.Class(workspace);
+  }
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;

@@ -2,77 +2,101 @@ import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 
-// Browser-style navigation history (VS Code "Go Back / Go Forward"): an ordered list of visited
-// locations plus a cursor into it. Recording a NEW location truncates any forward history and
-// appends; back()/forward() walk the cursor without recording. Pure model — plain values in, plain
-// values out — so it is unit-testable with no editor, no LSP, and no terminal.
+// Browser-style navigation history (VS Code "Go Back / Go Forward"): an ordered list of opaque
+// view states plus a cursor into it. View contributors own capture, restore, and same-place
+// identity. This class owns only sequence mechanics and replay suppression.
 // invariant: Programmatic history navigation does not record new history (src/modules/navigation/navigation.invariants.md)
+// invariant: Seams are drawn at the shared generator (project.invariants.md)
 class $NavigationHistory {
   /** The largest number of entries retained; recording past it drops the oldest. */
   protected static get MAXIMUM_ENTRY_COUNT(): number {
     return 100;
   }
 
-  // The ordered list of visited locations, oldest first. shallowRef because it is replaced
-  // wholesale on every mutation (never mutated in place), so one signal covers the whole list.
   get entries() {
-    return shallowRef<Location[]>([]);
+    return shallowRef<NavigationHistoryEntry[]>([]);
   }
-  // Index into entries of the location currently shown; -1 while the history is empty. back()/
-  // forward() move ONLY this index — the observable enabled/disabled state derives from it.
   get currentIndex() {
     return ref(-1);
   }
+  protected readonly contributors = new Map<
+    string,
+    NavigationHistoryContributor
+  >();
+  protected recordingSuppressionDepth = 0;
 
-  /** The location currently shown, or null when the history is empty. */
-  get currentEntry(): Location | null {
+  get currentEntry(): NavigationHistoryEntry | null {
     const index = this.currentIndex.value;
     return index >= 0 ? (this.entries.value[index] ?? null) : null;
   }
 
-  /** Whether back() would move (there is an older location to return to). */
   get canGoBack(): boolean {
     return this.currentIndex.value > 0;
   }
-  /** Whether forward() would move (there is a newer location to return to). */
   get canGoForward(): boolean {
     return this.currentIndex.value < this.entries.value.length - 1;
   }
-  /** How many locations are recorded. */
   get size(): number {
     return this.entries.value.length;
   }
 
-  /**
-   * Record a freshly-visited location.
-   *
-   * A move to a NEW location truncates any forward history (standard browser back/forward
-   * semantics: navigating after going back discards what was ahead) and appends the location,
-   * making it current. Consecutive locations on the SAME line of the SAME document collapse — the
-   * tail entry's column is updated in place with no new entry — so tiny cursor drift never spams
-   * the stack. The list is capped at MAXIMUM_ENTRY_COUNT, dropping the oldest entries.
-   */
-  record(location: Location): void {
-    const current = this.currentEntry;
-    if (
-      current &&
-      current.documentPath === location.documentPath &&
-      current.line === location.line
-    ) {
-      // Same document + same line: a no-op or tiny drift. Update the tail's column in place; an
-      // exact duplicate changes nothing and returns without touching the reactive list.
-      if (current.column === location.column) return;
-      const collapsedEntries = this.entries.value.slice();
-      collapsedEntries[this.currentIndex.value] = location;
-      this.entries.value = collapsedEntries;
+  /** Register one view-state owner. Identifiers are unique within a history. */
+  register(contributor: NavigationHistoryContributor): () => void {
+    if (this.contributors.has(contributor.identifier)) {
+      throw new Error(
+        `Navigation history contributor '${contributor.identifier}' is already registered`,
+      );
+    }
+    this.contributors.set(contributor.identifier, contributor);
+    let registered = true;
+    return () => {
+      if (!registered) return;
+      registered = false;
+      if (this.contributors.get(contributor.identifier) === contributor) {
+        this.contributors.delete(contributor.identifier);
+      }
+    };
+  }
+
+  /** Capture the current state from the first contributor that has one. */
+  recordCurrentState(): void {
+    if (this.recordingSuppressionDepth > 0) return;
+    for (const contributor of this.contributors.values()) {
+      const payload = contributor.captureCurrentState();
+      if (payload === null) continue;
+      this.record({ contributorIdentifier: contributor.identifier, payload });
       return;
     }
-    // A genuinely new location: drop any forward history, then append and make it current.
+  }
+
+  /** Suppress every contributor's recording while a programmatic navigation is in progress. */
+  runWithoutRecording<Result>(action: () => Result): Result {
+    this.recordingSuppressionDepth += 1;
+    try {
+      return action();
+    } finally {
+      this.recordingSuppressionDepth -= 1;
+    }
+  }
+
+  protected record(entry: NavigationHistoryEntry): void {
+    const current = this.currentEntry;
+    if (current?.contributorIdentifier === entry.contributorIdentifier) {
+      const contributor = this.contributors.get(entry.contributorIdentifier);
+      if (contributor?.samePlace(current.payload, entry.payload)) {
+        if (current.payload === entry.payload) return;
+        const collapsedEntries = this.entries.value.slice();
+        collapsedEntries[this.currentIndex.value] = entry;
+        this.entries.value = collapsedEntries;
+        return;
+      }
+    }
+
     const retainedEntries = this.entries.value.slice(
       0,
       this.currentIndex.value + 1,
     );
-    retainedEntries.push(location);
+    retainedEntries.push(entry);
     const navigationHistoryClass = this
       .constructor as typeof $NavigationHistory;
     while (
@@ -84,21 +108,48 @@ class $NavigationHistory {
     this.currentIndex.value = retainedEntries.length - 1;
   }
 
-  /** Step BACK one location and return it, or null when already at the oldest entry. */
-  back(): Location | null {
-    if (this.currentIndex.value <= 0) return null;
-    this.currentIndex.value -= 1;
-    return this.entries.value[this.currentIndex.value] ?? null;
+  /** Restore the previous usable entry. Unrestorable entries are removed from the trail. */
+  back(): boolean {
+    return this.navigate(-1);
   }
 
-  /** Step FORWARD one location and return it, or null when already at the newest entry. */
-  forward(): Location | null {
-    if (this.currentIndex.value >= this.entries.value.length - 1) return null;
-    this.currentIndex.value += 1;
-    return this.entries.value[this.currentIndex.value] ?? null;
+  /** Restore the next usable entry. Unrestorable entries are removed from the trail. */
+  forward(): boolean {
+    return this.navigate(1);
   }
 
-  /** Drop all recorded history back to the empty state. */
+  protected navigate(direction: -1 | 1): boolean {
+    while (true) {
+      const candidateIndex = this.currentIndex.value + direction;
+      if (candidateIndex < 0 || candidateIndex >= this.entries.value.length) {
+        return false;
+      }
+      const candidate = this.entries.value[candidateIndex];
+      if (!candidate) return false;
+      const contributor = this.contributors.get(
+        candidate.contributorIdentifier,
+      );
+      const restored =
+        contributor !== undefined &&
+        this.runWithoutRecording(() =>
+          contributor.restoreState(candidate.payload),
+        );
+      if (restored) {
+        this.currentIndex.value = candidateIndex;
+        return true;
+      }
+      this.dropEntry(candidateIndex);
+    }
+  }
+
+  protected dropEntry(entryIndex: number): void {
+    const retainedEntries = this.entries.value.slice();
+    retainedEntries.splice(entryIndex, 1);
+    this.entries.value = retainedEntries;
+    if (entryIndex < this.currentIndex.value) this.currentIndex.value -= 1;
+    if (retainedEntries.length === 0) this.currentIndex.value = -1;
+  }
+
   clear(): void {
     this.entries.value = [];
     this.currentIndex.value = -1;
@@ -112,9 +163,16 @@ export namespace NavigationHistory {
   export type Instance = typeof Class.Instance;
 }
 
-/** One visited location: a document and the cursor's 0-based grapheme position within it. */
-export interface Location {
-  documentPath: string;
-  line: number;
-  column: number;
+/** One view's contribution to the shared history trail. */
+export interface NavigationHistoryContributor {
+  readonly identifier: string;
+  captureCurrentState(): unknown | null;
+  restoreState(payload: unknown): boolean;
+  samePlace(previousPayload: unknown, nextPayload: unknown): boolean;
+}
+
+/** One opaque state captured from its identified contributor. */
+export interface NavigationHistoryEntry {
+  readonly contributorIdentifier: string;
+  readonly payload: unknown;
 }
