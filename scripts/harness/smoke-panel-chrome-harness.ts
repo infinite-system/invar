@@ -40,6 +40,7 @@ interface ControlSegment {
 
 interface TabBarGeometry {
   readonly row: number;
+  readonly editorActionRow: number;
   readonly tabRow: number;
   readonly tabs: readonly WorkspaceTabSegment[];
   readonly spaceAdd: {
@@ -47,6 +48,10 @@ interface TabBarGeometry {
     readonly endColumnExclusive: number;
   } | null;
   readonly editorActions: readonly EditorActionSegment[];
+  readonly instancesToggle: {
+    readonly startColumn: number;
+    readonly endColumnExclusive: number;
+  } | null;
   readonly drag: {
     readonly left: number;
     readonly width: number;
@@ -62,9 +67,7 @@ function tabBar(status: StatusSnapshot): TabBarGeometry {
   return geometry;
 }
 
-// The painted mark run on the separator row. The drag span is addressed through what is ON
-// SCREEN, not through a published rectangle: the pad cell is one cell wide, so an edge test has
-// no slack for a coordinate-space disagreement between a publisher and the emulator grid.
+// The painted mark run on the separator row addresses both drag edges through what is on screen.
 interface MarkRun {
   readonly firstColumn: number;
   readonly lastColumn: number;
@@ -75,8 +78,8 @@ function splitterMarkRun(
   row: number,
 ): MarkRun {
   const text = Array.from(snapshot.rowText(row));
-  const firstColumn = text.indexOf('\u2501');
-  const lastColumn = text.lastIndexOf('\u2501');
+  const firstColumn = text.indexOf('\u2500');
+  const lastColumn = text.lastIndexOf('\u2500');
   if (firstColumn < 0) {
     throw new Error(`No splitter mark painted on row ${row}`);
   }
@@ -91,6 +94,17 @@ function clickSegment(
   const column =
     segment.startColumn +
     Math.floor((segment.endColumnExclusive - segment.startColumn) / 2);
+  driver.sendMouse({ kind: 'move', column, row, button: 'none' });
+  driver.sendMouse({ kind: 'press', column, row, button: 'left' });
+  driver.sendMouse({ kind: 'release', column, row, button: 'left' });
+}
+
+function clickCell(
+  driver: PtyTestDriver.Model,
+  column: number,
+  row: number,
+): void {
+  driver.sendMouse({ kind: 'move', column, row, button: 'none' });
   driver.sendMouse({ kind: 'press', column, row, button: 'left' });
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
@@ -107,7 +121,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
   );
   const statusPath = join(homeDirectory, 'status.json');
   const driver = new PtyTestDriver.Class({
-    workspaceRoot: join(process.cwd(), 'fixtures'),
+    workspaceRoot: process.cwd(),
     columns,
     rows,
     homeDirectory,
@@ -240,7 +254,6 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column panel content starts without a rounded frame`,
     );
     const initialTabBar = tabBar(status);
-    const lastEditorAction = initialTabBar.editorActions.at(-1);
     const firstControl = initialTabBar.controls[0];
     HarnessSmoke.Class.requireCondition(
       initialTabBar.tabs.length === 2 &&
@@ -249,6 +262,14 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         initialTabBar.tabs[1]?.spaceIdentifier.startsWith('database-space-') ===
           true,
       `${columns}-column workspace tabs publish by space identity`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      initialTabBar.tabs.every(
+        (tab) =>
+          initialSnapshot.cell(initialTabBar.tabRow, tab.endColumnExclusive - 1)
+            ?.characters === ' ',
+      ),
+      `${columns}-column every panel tab paints one cell after its close glyph`,
     );
     const expectedEditorActionIdentifiers = [
       'view.toggleWordWrap',
@@ -259,36 +280,29 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       JSON.stringify(
         initialTabBar.editorActions.map((action) => action.commandId),
       ) === JSON.stringify(expectedEditorActionIdentifiers),
-      `${columns}-column editor actions publish on the splitter row independently of tabs`,
+      `${columns}-column editor actions publish on the editor frame independently of tabs`,
     );
     HarnessSmoke.Class.requireCondition(
       initialTabBar.drag.width >= 1,
-      `${columns}-column splitter actions leave a live drag span`,
+      `${columns}-column splitter leaves a live drag span`,
     );
     HarnessSmoke.Class.requireCondition(
       JSON.stringify(
         initialTabBar.controls.map((control) => control.action),
-      ) === JSON.stringify(['pane-add', 'expand', 'close']),
-      `${columns}-column splitter row retains all three right controls`,
+      ) === JSON.stringify(['expand', 'close']),
+      `${columns}-column splitter row keeps only expand and close`,
     );
     HarnessSmoke.Class.requireCondition(
-      (lastEditorAction
-        ? lastEditorAction.endColumnExclusive === initialTabBar.drag.left
-        : true) &&
-        firstControl !== undefined &&
+      firstControl !== undefined &&
+        initialTabBar.drag.left === panelSlot.left &&
         initialTabBar.drag.left + initialTabBar.drag.width ===
           firstControl.startColumn,
-      `${columns}-column splitter row is actions then drag then controls with no gap or overlap`,
+      `${columns}-column splitter starts flush and meets the frame controls`,
     );
-    // The drag span stands off from the leading run by a PAINT pad: the pad cells are blank and
-    // the rest of the published rectangle is the centered mark. The pad count comes from the
-    // published geometry, never a literal, so this reads the app's own composition.
     const padCellCount = initialTabBar.drag.leadingPaintPadCells;
-    const expectedDragCells =
-      ' '.repeat(padCellCount) +
-      '━'.repeat(initialTabBar.drag.width - padCellCount);
+    const expectedDragCells = '─'.repeat(initialTabBar.drag.width);
     const tabRowSnapshot = await driver.awaitGridCondition(
-      `${columns}-column published drag span paints a blank pad then centered heavy-line cells`,
+      `${columns}-column published drag span paints a flush thin line`,
       (snapshot) =>
         snapshot
           .rowText(initialTabBar.row)
@@ -305,27 +319,18 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
             initialTabBar.drag.left,
             initialTabBar.drag.left + initialTabBar.drag.width,
           ) === expectedDragCells,
-      `${columns}-column splitter paints centered marks between tabs and controls`,
+      `${columns}-column splitter paints thin marks between the left edge and controls`,
     );
     HarnessSmoke.Class.requireCondition(
-      padCellCount === (initialTabBar.drag.width > 1 ? 1 : 0),
-      `${columns}-column exactly one blank pad cell precedes the mark whenever the span is wider than one cell`,
+      padCellCount === 0,
+      `${columns}-column splitter has no leading paint gap`,
     );
 
-    // The pad is PAINT, never geometry. Both ENDS of the drag span must still grab: the blank pad
-    // cell at the left, and the last cell at the right. A pad taken out of the hit rectangle
-    // would leave one of them dead. The edges are addressed through the PAINTED mark run, because
-    // a one-cell edge has no slack for a coordinate-space disagreement between a publisher and
-    // the emulator grid. The two drags move in OPPOSITE directions, one row each, so neither is
-    // asked to push the panel past a bound it already sits on; a wait for something that cannot
-    // happen measures nothing. The separator ROW is the resize signal: it moves with the height.
+    // Both ends of the flush drag span must grab. The two drags move in opposite directions so
+    // neither asks the panel to push past a bound it already occupies.
     if (initialTabBar.drag.width > 1) {
       for (const [edgeName, edgeColumnOf, rowDelta] of [
-        [
-          'the blank pad cell',
-          (run: MarkRun) => run.firstColumn - padCellCount,
-          1,
-        ],
+        ['the first painted cell', (run: MarkRun) => run.firstColumn, 1],
         [
           'the last cell of the drag span',
           (run: MarkRun) => run.lastColumn,
@@ -338,7 +343,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         const edgeSnapshot = await driver.awaitGridCondition(
           `${columns}-column splitter mark is painted before the ${edgeName} drag`,
           (snapshot) =>
-            Array.from(snapshot.rowText(rowBeforeEdgeDrag)).indexOf('\u2501') >=
+            Array.from(snapshot.rowText(rowBeforeEdgeDrag)).indexOf('\u2500') >=
             0,
         );
         const edgeColumn = edgeColumnOf(
@@ -376,15 +381,16 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
     }
     if (initialTabBar.editorActions.length === 3) {
       for (const action of initialTabBar.editorActions) {
-        const actionCells = tabRowSnapshot
-          .rowCells(initialTabBar.row)
+        const actionText = tabRowSnapshot
+          .rowText(initialTabBar.editorActionRow)
           .slice(action.startColumn, action.endColumnExclusive);
+        const actionCharacters = Array.from(actionText);
         HarnessSmoke.Class.requireCondition(
-          actionCells.length === 3 &&
-            actionCells[0]?.characters.trim().length === 0 &&
-            (actionCells[1]?.characters.trim().length ?? 0) > 0 &&
-            actionCells[2]?.characters.trim().length === 0,
-          `${columns}-column ${action.commandId} icon has one painted padding cell on each side`,
+          actionCharacters.length === 3 &&
+            actionCharacters[0]?.trim().length === 0 &&
+            (actionCharacters[1]?.trim().length ?? 0) > 0 &&
+            actionCharacters[2]?.trim().length === 0,
+          `${columns}-column ${action.commandId} icon has one painted padding cell on each side (painted ${JSON.stringify(actionText)})`,
         );
       }
       HarnessSmoke.Class.requireCondition(
@@ -406,7 +412,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         driver.sendMouse({
           kind: 'move',
           column: actionColumn,
-          row: initialTabBar.row,
+          row: initialTabBar.editorActionRow,
           button: 'none',
         });
         const tooltipSnapshot = await driver.awaitGridCondition(
@@ -419,21 +425,33 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           `${columns}-column ${action.commandId} tooltip shows its effective chord`,
         );
       }
-      clickSegment(driver, initialTabBar.row, initialTabBar.editorActions[0]!);
+      clickSegment(
+        driver,
+        initialTabBar.editorActionRow,
+        initialTabBar.editorActions[0]!,
+      );
       await HarnessSmoke.Class.awaitStatus(
         driver,
         statusPath,
         `${columns}-column word-wrap button turns wrap on`,
         (candidate) => candidate.wordWrap === true,
       );
-      clickSegment(driver, initialTabBar.row, initialTabBar.editorActions[0]!);
+      clickSegment(
+        driver,
+        initialTabBar.editorActionRow,
+        initialTabBar.editorActions[0]!,
+      );
       await HarnessSmoke.Class.awaitStatus(
         driver,
         statusPath,
         `${columns}-column word-wrap button turns wrap off`,
         (candidate) => candidate.wordWrap === false,
       );
-      clickSegment(driver, initialTabBar.row, initialTabBar.editorActions[1]!);
+      clickSegment(
+        driver,
+        initialTabBar.editorActionRow,
+        initialTabBar.editorActions[1]!,
+      );
       await HarnessSmoke.Class.awaitStatus(
         driver,
         statusPath,
@@ -448,6 +466,48 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         (candidate) => candidate.goToLineOpen === false,
       );
     }
+
+    const firstTab = tabBar(status).tabs[0];
+    const secondTab = tabBar(status).tabs[1];
+    if (!firstTab || !secondTab) throw new Error('Missing reorderable tabs');
+    const firstTabColumn = Math.floor(
+      (firstTab.startColumn + firstTab.endColumnExclusive) / 2,
+    );
+    const secondTabColumn = Math.floor(
+      (secondTab.startColumn + secondTab.endColumnExclusive) / 2,
+    );
+    driver.sendMouse({
+      kind: 'move',
+      column: firstTabColumn,
+      row: tabBar(status).tabRow,
+      button: 'none',
+    });
+    driver.sendMouse({
+      kind: 'press',
+      column: firstTabColumn,
+      row: tabBar(status).tabRow,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'move',
+      column: secondTabColumn,
+      row: tabBar(status).tabRow,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: secondTabColumn,
+      row: tabBar(status).tabRow,
+      button: 'left',
+    });
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column tab drag reorders plugin spaces`,
+      (candidate) =>
+        JSON.stringify(candidate.panelSpaceLabels) ===
+        JSON.stringify(['Database', 'Terminal']),
+    );
 
     const activeTerminalTab = tabBar(status).tabs.find((tab) =>
       tab.spaceIdentifier.startsWith('terminal-space-'),
@@ -477,6 +537,31 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         String(candidate.panelActiveSpace).startsWith('terminal-space-'),
     );
 
+    const instancesToggle = tabBar(status).instancesToggle;
+    if (!instancesToggle) throw new Error('Missing Instances geometry');
+    HarnessSmoke.Class.requireCondition(
+      instancesToggle.endColumnExclusive === columns,
+      `${columns}-column instances button reaches the right edge with its padded hit target`,
+    );
+    clickSegment(driver, tabBar(status).tabRow, instancesToggle);
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column one-instance toggle opens the instances list`,
+      (candidate) => candidate.panelListVisible === true,
+    );
+    clickSegment(
+      driver,
+      tabBar(status).tabRow,
+      tabBar(status).instancesToggle!,
+    );
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column instances toggle closes the instances list`,
+      (candidate) => candidate.panelListVisible === false,
+    );
+
     const add = tabBar(status).spaceAdd;
     if (!add) throw new Error('Missing Add geometry');
     clickSegment(driver, tabBar(status).tabRow, add);
@@ -490,7 +575,6 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         candidate.boundedListPopupItemIdentifiers.includes('terminal') &&
         candidate.boundedListPopupItemIdentifiers.includes('database'),
     );
-    driver.sendKeys('Down');
     driver.sendKeys('Enter');
     status = await HarnessSmoke.Class.awaitStatus(
       driver,
@@ -500,6 +584,63 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         Array.isArray(candidate.panelSpaceLabels) &&
         candidate.panelSpaceLabels.includes('Terminal 2'),
     );
+    if (columns === 120) {
+      const databaseTab = tabBar(status).tabs.find((tab) =>
+        tab.spaceIdentifier.startsWith('database-space-'),
+      );
+      if (!databaseTab) throw new Error('Missing Database tab geometry');
+      clickSegment(driver, tabBar(status).tabRow, databaseTab);
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        '120-column Database plugin becomes active',
+        (candidate) =>
+          String(candidate.panelActiveSpace).startsWith('database-space-'),
+      );
+      clickSegment(
+        driver,
+        tabBar(status).tabRow,
+        tabBar(status).instancesToggle!,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        '120-column Database instances list opens',
+        (candidate) => candidate.panelListVisible === true,
+      );
+      const databaseAddPosition = await driver
+        .awaitGridCondition(
+          '120-column Database instances list paints its contextual add',
+          (snapshot) => snapshot.findText('+ Database') !== null,
+        )
+        .then((snapshot) => snapshot.findText('+ Database'));
+      if (!databaseAddPosition)
+        throw new Error('Missing contextual Database add');
+      clickCell(
+        driver,
+        databaseAddPosition.column + 2,
+        databaseAddPosition.row,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        '120-column Database add offers only another Database instance',
+        (candidate) =>
+          candidate.boundedListPopupOpen === true &&
+          candidate.boundedListPopupTitle === 'Add Database' &&
+          JSON.stringify(candidate.boundedListPopupItemIdentifiers) ===
+            JSON.stringify(['database-instance']),
+      );
+      driver.sendKeys('Enter');
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        '120-column contextual add creates an independent Database instance',
+        (candidate) =>
+          Array.isArray(candidate.panelContentIds) &&
+          candidate.panelContentIds.includes('database-2'),
+      );
+    }
 
     const close = tabBar(status).controls.find(
       (control) => control.action === 'close',
@@ -514,6 +655,15 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         candidate.panelVisible === false &&
         Array.isArray(candidate.panelSpaceLabels) &&
         candidate.panelSpaceLabels.includes('Terminal 2'),
+    );
+    const editorActionCluster = columns < 100 ? 'w  g  b' : '↵  ↕  ⇊';
+    const closedPanelSnapshot = await driver.awaitGridCondition(
+      `${columns}-column editor action cluster repaints after the panel closes`,
+      (snapshot) => snapshot.findText(editorActionCluster) !== null,
+    );
+    HarnessSmoke.Class.requireCondition(
+      closedPanelSnapshot.findText(editorActionCluster) !== null,
+      `${columns}-column editor actions remain painted after the panel closes`,
     );
     driver.sendKeys('Control+j');
     status = await HarnessSmoke.Class.awaitStatus(
@@ -536,6 +686,115 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         Array.isArray(candidate.panelSpaceLabels) &&
         candidate.panelSpaceLabels.includes('Database'),
     );
+    if (columns === 120) {
+      driver.sendKeys('Control+j');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        '120-column panel closes before the Markdown action drive',
+        (candidate) => candidate.panelVisible === false,
+      );
+      driver.sendKeys('Control+p');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown action drive opens Quick Open',
+        (candidate) => candidate.quickOpenOpen === true,
+      );
+      driver.sendText('project.conventions.md');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown action drive finds project.conventions.md',
+        (candidate) => Number(candidate.quickOpenMatches) > 0,
+      );
+      driver.sendKeys('Enter');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown action drive opens project.conventions.md',
+        (candidate) =>
+          String(candidate.activeBuffer).endsWith('/project.conventions.md'),
+      );
+      driver.sendKeys('F1');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown action drive opens the command palette',
+        (candidate) => candidate.paletteOpen === true,
+      );
+      driver.sendText('View: Focus Editor');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown action drive selects editor focus',
+        (candidate) => Number(candidate.paletteMatches) === 1,
+      );
+      driver.sendKeys('Enter');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown action drive gives the editor keyboard ownership',
+        (candidate) => candidate.focus === 'editor',
+      );
+      driver.sendKeys('Control+Shift+v');
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown preview parses before its frame actions run',
+        (candidate) =>
+          candidate.markdownViewMode === 'preview' &&
+          candidate.markdownParsing === false,
+      );
+      const markdownActionMarker = driver.snapshot().findText('↵  ↕  ⇊');
+      if (!markdownActionMarker)
+        throw new Error('Missing Markdown editor-frame actions');
+      clickCell(driver, markdownActionMarker.column, markdownActionMarker.row);
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown frame action disables preview wrapping',
+        (candidate) => candidate.markdownPreviewWordWrap === false,
+      );
+      clickCell(
+        driver,
+        markdownActionMarker.column + 3,
+        markdownActionMarker.row,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown frame action opens the line prompt',
+        (candidate) => candidate.goToLineOpen === true,
+      );
+      driver.sendText('200');
+      driver.sendKeys('Enter');
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown line prompt scrolls the preview',
+        (candidate) =>
+          candidate.goToLineOpen === false &&
+          Number(candidate.markdownPreviewScrollTop) > 0,
+      );
+      clickCell(
+        driver,
+        markdownActionMarker.column + 6,
+        markdownActionMarker.row,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Markdown bottom action reaches the preview end',
+        (candidate) =>
+          Number(candidate.markdownPreviewScrollTop) ===
+          Math.max(
+            0,
+            Number(candidate.markdownPreviewContentRows) -
+              Number(candidate.markdownPreviewViewportRows),
+          ),
+      );
+    }
     HarnessSmoke.Class.pass(
       `${columns}x${rows} tab row keyboard, mouse, Add, expand, and close`,
     );

@@ -12,6 +12,8 @@ class $PanelContentsList {
   protected static readonly MINIMUM_WIDTH = 10;
   protected static readonly MAXIMUM_WIDTH = 40;
   protected draggingRow: PanelContentsListRow | null = null;
+  protected hoveredRowIndex = -1;
+  protected hoveredAction: 'split' | 'close' | null = null;
 
   constructor(
     protected readonly panelHost: PanelHost.Instance,
@@ -19,7 +21,17 @@ class $PanelContentsList {
       targetIdentifier: string,
       anchor: { column: number; row: number },
     ) => void = () => {},
+    protected readonly requestAdd: (anchor: {
+      column: number;
+      row: number;
+    }) => void = () => {},
   ) {}
+
+  protected get headerLabel(): string {
+    return this.panelHost.activeSpace?.kind === 'database'
+      ? 'Database'
+      : 'Terminal';
+  }
 
   get visible(): boolean {
     return this.panelHost.panelListVisible;
@@ -38,7 +50,6 @@ class $PanelContentsList {
                 groupIndex,
                 memberIndex,
                 memberCount: group.contentIds.length,
-                icon: content.icon ?? ' ',
                 title: content.instanceLabel ?? content.title,
                 visible: this.panelHost.isContentVisible(identifier),
                 active: identifier === focusedIdentifier,
@@ -70,27 +81,28 @@ class $PanelContentsList {
     palette: Palette,
     glyphVocabulary: InterfaceGlyphVocabulary,
   ): StyledText {
-    const chunks: TextChunk[] = [];
+    const headerText = `+ ${this.headerLabel} ▾`;
+    const chunks: TextChunk[] = [
+      fg(palette.fg)(
+        `${WrapText.Class.clipToWidth(headerText, this.width, '…')}\n\n`,
+      ),
+    ];
     const rows = this.rows;
     rows.forEach((row, rowIndex) => {
-      const asciiOnly = glyphVocabulary.panelStack === '#';
       const groupMark =
         row.memberCount === 1
           ? ' '
-          : row.memberIndex === row.memberCount - 1
-            ? asciiOnly
-              ? '\\'
-              : '└'
-            : asciiOnly
-              ? '+'
-              : '├';
-      const prefix = `│${groupMark}${row.icon} `;
-      const suffix = ` ${glyphVocabulary.panelStack} ${glyphVocabulary.panelClose}`;
+          : row.memberIndex === 0
+            ? glyphVocabulary.panelConnectorFirst
+            : row.memberIndex === row.memberCount - 1
+              ? glyphVocabulary.panelConnectorLast
+              : glyphVocabulary.panelConnectorMiddle;
+      const prefix = row.memberCount === 1 ? ' ' : `${groupMark} `;
+      const controlsVisible = rowIndex === this.hoveredRowIndex;
+      const controlsWidth = 6;
       const titleColumns = Math.max(
         1,
-        this.width -
-          WrapText.Class.displayWidth(prefix) -
-          WrapText.Class.displayWidth(suffix),
+        this.width - WrapText.Class.displayWidth(prefix) - controlsWidth,
       );
       const clippedTitle = WrapText.Class.clipToWidth(
         row.title,
@@ -100,17 +112,30 @@ class $PanelContentsList {
       const padding = ' '.repeat(
         Math.max(0, titleColumns - WrapText.Class.displayWidth(clippedTitle)),
       );
-      const rowText = `${prefix}${clippedTitle}${padding}${suffix}`;
+      const rowText = `${prefix}${clippedTitle}${padding}`;
       const color = row.active
         ? palette.accent
         : row.visible
           ? palette.fg
           : palette.dim;
-      chunks.push(
-        row.active
-          ? bg(palette.selection)(fg(color)(rowText))
-          : fg(color)(rowText),
-      );
+      const rowChunk = row.active
+        ? bg(palette.selection)(fg(color)(rowText))
+        : fg(color)(rowText);
+      chunks.push(rowChunk);
+      if (controlsVisible) {
+        const splitText = ` ${glyphVocabulary.panelSplit} `;
+        const closeText = ` ${glyphVocabulary.panelClose} `;
+        chunks.push(
+          this.hoveredAction === 'split'
+            ? bg(palette.cursorLine)(fg(palette.accent)(splitText))
+            : fg(color)(splitText),
+          this.hoveredAction === 'close'
+            ? bg(palette.cursorLine)(fg(palette.accent)(closeText))
+            : fg(color)(closeText),
+        );
+      } else {
+        chunks.push(fg(color)(' '.repeat(controlsWidth)));
+      }
       if (rowIndex < rows.length - 1) chunks.push(fg(palette.fg)('\n'));
     });
     return new StyledText(chunks);
@@ -122,15 +147,19 @@ class $PanelContentsList {
     screenColumn = localColumn,
     screenRow = localRow,
   ): boolean {
-    const row = this.rows[localRow];
+    if (localRow === 0) {
+      this.requestAdd({ column: screenColumn, row: screenRow });
+      return true;
+    }
+    const row = this.rows[localRow - 2];
     if (!row) return false;
     this.draggingRow = row;
-    if (localColumn >= this.width - 1) {
+    if (localColumn >= this.width - 3) {
       this.panelHost.closeOpenContent(row.identifier);
       this.draggingRow = null;
       return true;
     }
-    if (localColumn >= this.width - 3) {
+    if (localColumn >= this.width - 6) {
       this.requestSplit(row.identifier, {
         column: screenColumn,
         row: screenRow,
@@ -142,12 +171,45 @@ class $PanelContentsList {
     return true;
   }
 
+  pointerMove(localColumn: number, localRow: number): boolean {
+    const nextRowIndex = this.rows[localRow - 2] ? localRow - 2 : -1;
+    const nextAction =
+      nextRowIndex < 0
+        ? null
+        : localColumn >= this.width - 3
+          ? 'close'
+          : localColumn >= this.width - 6
+            ? 'split'
+            : null;
+    const changed =
+      nextRowIndex !== this.hoveredRowIndex ||
+      nextAction !== this.hoveredAction;
+    this.hoveredRowIndex = nextRowIndex;
+    this.hoveredAction = nextAction;
+    return changed;
+  }
+
+  pointerOut(): void {
+    this.hoveredRowIndex = -1;
+    this.hoveredAction = null;
+  }
+
+  tooltipAt(localColumn: number, localRow: number): string | null {
+    if (localRow === 0) return `Add ${this.headerLabel} instance`;
+    if (!this.rows[localRow - 2]) return null;
+    return localColumn >= this.width - 3
+      ? 'Close instance'
+      : localColumn >= this.width - 6
+        ? 'Split instance'
+        : null;
+  }
+
   pointerDrag(localColumn: number, localRow?: number): boolean {
     const resolvedRow = localRow ?? localColumn;
     const resolvedColumn = localRow === undefined ? this.width : localColumn;
     const source = this.draggingRow;
     const target =
-      this.rows[Math.max(0, Math.min(resolvedRow, this.rows.length - 1))];
+      this.rows[Math.max(0, Math.min(resolvedRow - 2, this.rows.length - 1))];
     if (!source || !target) return false;
     if (source.memberCount > 1 && resolvedColumn <= 2) {
       return this.panelHost.detachGroupMember(
@@ -181,7 +243,6 @@ export interface PanelContentsListRow {
   readonly groupIndex: number;
   readonly memberIndex: number;
   readonly memberCount: number;
-  readonly icon: string;
   readonly title: string;
   readonly visible: boolean;
   readonly active: boolean;

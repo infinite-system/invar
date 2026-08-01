@@ -60,9 +60,34 @@ function project(paneCount: number, width = 80) {
   });
 }
 
-test('one projection places editor actions on the splitter row and containers on the tab row', () => {
+test('the editor frame owns actions while the panel rows own tabs and frame controls', () => {
   const projection = project(2);
-  expect(projection.editorActions.map((action) => action.commandId)).toEqual([
+  const editorFrame = PanelTabBar.Class.projectEditorFrameActions({
+    width: 40,
+    editorActions: [
+      {
+        commandId: 'view.toggleWordWrap',
+        title: 'Wrap',
+        icon: '↵',
+        toggled: false,
+      },
+      {
+        commandId: 'editor.goToLine',
+        title: 'Line',
+        icon: '↕',
+        toggled: false,
+      },
+      {
+        commandId: 'go.bottom',
+        title: 'Bottom',
+        icon: '⇊',
+        toggled: false,
+      },
+    ],
+    hoveredCommandIdentifier: null,
+    palette: ThemePalettes.Class.DARK,
+  });
+  expect(editorFrame.editorActions.map((action) => action.commandId)).toEqual([
     'view.toggleWordWrap',
     'editor.goToLine',
     'go.bottom',
@@ -71,9 +96,10 @@ test('one projection places editor actions on the splitter row and containers on
     'terminal-space',
     'database-space',
   ]);
-  expect(projection.splitterLeadingWidth).toBe(9);
+  expect(projection.editorActions).toEqual([]);
+  expect(projection.splitterLeadingWidth).toBe(0);
   expect(projection.tabs[0]?.startColumn).toBe(0);
-  expect(projection.spaceAdd?.endColumn).toBe(80);
+  expect(projection.instancesToggle?.endColumn).toBe(80);
   expect(
     PanelTabBar.Class.spaceAddAtColumn(
       projection,
@@ -82,7 +108,7 @@ test('one projection places editor actions on the splitter row and containers on
   ).toBeDefined();
 });
 
-test('each container tab paints one blank cell before its close glyph and shares that hit geometry', () => {
+test('each container tab pads both sides of its close glyph and shares that hit geometry', () => {
   const projection = project(2);
   const text = projection.tabText.chunks.map((chunk) => chunk.text).join('');
   expect(text).toContain('Terminal ×');
@@ -90,6 +116,7 @@ test('each container tab paints one blank cell before its close glyph and shares
   const close = projection.tabCloses[0]!;
   expect(text[close.startColumn - 1]).toBe(' ');
   expect(text[close.startColumn]).toBe('×');
+  expect(text[close.endColumn]).toBe(' ');
   expect(
     PanelTabBar.Class.tabCloseAtColumn(projection, close.startColumn)
       ?.identifier,
@@ -97,27 +124,28 @@ test('each container tab paints one blank cell before its close glyph and shares
 });
 
 test('narrow container labels use ellipses without changing painted hit bounds', () => {
-  const projection = project(1, 14);
+  const projection = project(1, 30);
   const text = projection.tabText.chunks.map((chunk) => chunk.text).join('');
-  expect(text).toBe(' T… × Da… ×');
+  expect(text).toBe(' Ter… ×  Data… × ');
   expect(projection.tabs.at(-1)?.endColumn).toBe(text.length);
   expect(projection.spaceAdd?.startColumn).toBe(text.length);
 });
 
-test('the list and pane add controls appear for a multi-window terminal container', () => {
+test('the splitter keeps only frame controls and the tab row always exposes instances', () => {
   const projection = project(2);
   expect(projection.controls.map((control) => control.action)).toEqual([
-    'pane-list',
-    'pane-add',
     'expand',
     'close',
   ]);
+  expect(projection.spaceAdd?.tooltip).toBe('Add Plugin');
+  expect(projection.instancesToggle?.tooltip).toBe('Show Instances');
+  expect(projection.instancesToggle?.endColumn).toBe(80);
 });
 
-test('the drag span keeps its paint pad and exact total width on both rows', () => {
+test('the flush drag span and frame controls consume the exact splitter width', () => {
   const projection = project(2, 26);
   expect(projection.dragWidth).toBeGreaterThan(1);
-  expect(projection.dragLeadingPaintPadCells).toBe(1);
+  expect(projection.dragLeadingPaintPadCells).toBe(0);
   expect(
     projection.splitterLeadingWidth +
       projection.dragWidth +

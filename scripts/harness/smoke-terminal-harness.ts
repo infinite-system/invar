@@ -85,11 +85,8 @@ function panelCellColumns(status: StatusSnapshot): number[] {
     : [];
 }
 
-function bottomPanelRows(status: StatusSnapshot): number {
-  return Number(
-    (status.layoutSlots as Record<string, { height?: number }> | undefined)
-      ?.bottomPanel?.height ?? 0,
-  );
+function panelViewportRows(status: StatusSnapshot): number {
+  return Number(status.panelRows ?? 0);
 }
 
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
@@ -184,7 +181,8 @@ async function driveTaskPaneSizeProbe(): Promise<void> {
     const initialPaneColumns = panelCellColumns(initialStatus).map((columns) =>
       Math.max(1, columns - 4),
     );
-    const initialPaneRows = Math.max(1, bottomPanelRows(initialStatus) - 2);
+    // Split content reserves one first row for its frame-close button before terminal output.
+    const initialPaneRows = Math.max(1, panelViewportRows(initialStatus) - 1);
     const initialSnapshot = await taskDriver.awaitGridCondition(
       'both task guests report and fill their initial visible split grids',
       (snapshot) =>
@@ -222,7 +220,7 @@ async function driveTaskPaneSizeProbe(): Promise<void> {
     const resizedPaneColumns = panelCellColumns(resizedStatus).map((columns) =>
       Math.max(1, columns - 4),
     );
-    const resizedPaneRows = Math.max(1, bottomPanelRows(resizedStatus) - 2);
+    const resizedPaneRows = Math.max(1, panelViewportRows(resizedStatus) - 1);
     await taskDriver.awaitGridCondition(
       'both task guests report and fill their resized visible split grids',
       (snapshot) =>
@@ -830,7 +828,7 @@ try {
   const initialColumns = Number(openedStatus.terminalColumns);
   const initialRows = Number(openedStatus.terminalRows);
   const initialChildColumns = initialColumns - 4;
-  const initialChildRows = initialRows - 2;
+  const initialChildRows = initialRows - 1;
 
   driver.sendText('stty size');
   driver.sendKeys('Enter');
@@ -916,7 +914,7 @@ try {
   driver.sendText('stty size');
   driver.sendKeys('Enter');
   const resizedSizePattern = terminalSizePattern(
-    resizedRows - 2,
+    resizedRows - 1,
     resizedColumns - 4,
   );
   await driver.awaitSnapshot((snapshot) =>
@@ -1184,6 +1182,8 @@ try {
     '== harness terminal: real tasks:watch commits one complete initial frame ==',
   );
   const tasksWatchBaselineMarker = 'TASKS-WATCH-BASELINE';
+  const tasksWatchBaselineObservationStart =
+    driver.completedFrameObservationCount;
   driver.sendText(`printf '${tasksWatchBaselineMarker}\\n'`);
   driver.sendKeys('Enter');
   await driver.awaitSnapshot(
@@ -1191,17 +1191,13 @@ try {
   );
   await driver.awaitOutputCondition(
     'the tasks:watch shell baseline reaches a completed outer frame',
-    () => {
-      const latestObservation = driver
-        .completedFrameObservationsSince(0)
-        .at(-1);
-      return (
-        latestObservation !== undefined &&
-        terminalBodyText(latestObservation.snapshot, panelRectangle).includes(
-          tasksWatchBaselineMarker,
-        )
-      );
-    },
+    () =>
+      driver
+        .completedFrameObservationsSince(tasksWatchBaselineObservationStart)
+        .some(
+          (observation) =>
+            observation.snapshot.findText(tasksWatchBaselineMarker) !== null,
+        ),
     5_000,
   );
   const tasksWatchObservationStart = driver.completedFrameObservationCount;

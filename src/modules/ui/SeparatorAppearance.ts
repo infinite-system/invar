@@ -3,11 +3,8 @@
 // two roles that share this painter want opposite things inside the same cell, on both axes.
 //
 //   centeredLine marks a BOUNDARY BETWEEN two regions, so its ink sits in the middle of the cell
-//     across the separator's thin direction. A pane splitter uses it. Measured in DejaVu Sans
-//     Mono, the horizontal '━' puts its ink centre on the cell centre and fills 0.13 of the cell
-//     height; the vertical '┃' is its axis sibling from the same box-drawing family, so both axes
-//     read at the same slim weight. A filled cell reads far heavier on the vertical axis than
-//     '━' does on the horizontal one, which is why a splitter never fills.
+//     across the separator's thin direction. A pane splitter uses the light box-drawing pair so
+//     the boundary stays subordinate to the content it separates.
 //   bottomAnchoredHalfBlock marks a POSITION ALONG an edge, so its ink hugs the trailing edge of
 //     the cell and leaves the other half open. A scrollbar track and thumb use it. Horizontally
 //     that is '▄', which fills 0.50 of the cell height — the same apparent thickness as the
@@ -93,7 +90,7 @@ class $SeparatorAppearance {
     mark: SeparatorMark,
   ): string {
     if (mark === 'bottomAnchoredHalfBlock') return '▄';
-    return orientation === 'vertical' ? '┃' : '━';
+    return orientation === 'vertical' ? '│' : '─';
   }
 
   protected static get $transparentBackground(): RGBA {

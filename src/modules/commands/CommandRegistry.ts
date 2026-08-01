@@ -201,4 +201,5 @@ export interface Command {
   toggled?: () => boolean;
 }
 
-export type CommandActionSurface = 'editorTitle' | 'panelSeparator';
+export type CommandActionSurface =
+  'editorTitle' | 'editorFrame' | 'panelSeparator';

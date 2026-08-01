@@ -78,6 +78,7 @@ class $AgentPaneContent implements PaneContent {
   readonly id: string;
   readonly kind = 'agent';
   readonly instanceLabel: string;
+  readonly frameHeaderRows = 1;
   readonly icon = '✦';
 
   /** The editable, wrapping, cap-scrolled composer (the second text surface). */
@@ -150,7 +151,7 @@ class $AgentPaneContent implements PaneContent {
 
   constructor(
     protected readonly session: AgentSession.Instance,
-    identity: AgentPaneIdentity = {},
+    protected readonly identity: AgentPaneIdentity = {},
   ) {
     this.id = identity.identifier ?? 'agent';
     this.instanceLabel = identity.label ?? 'Agent';
@@ -725,6 +726,12 @@ class $AgentPaneContent implements PaneContent {
       return true; // swallow everything else while the prompt is up
     }
     if (key.name === 'return') {
+      const submittedText = this.composer.value.trim();
+      if (submittedText === '/exit' || submittedText === '/quit') {
+        this.composer.clear();
+        this.identity.onExit?.(this.id);
+        return true;
+      }
       // Clear the draft ONLY when the session accepted it — Enter while busy must keep the follow-up
       // draft intact (unconditional clearing destroyed it, the reviewed data loss).
       if (this.session.send(this.composer.value)) {
@@ -1019,6 +1026,7 @@ export namespace AgentPaneContent {
 export interface AgentPaneIdentity {
   identifier?: string;
   label?: string;
+  onExit?: (identifier: string) => void;
 }
 
 export interface AgentScrollPort {

@@ -135,6 +135,43 @@ function clickPanelControl(
   status: Record<string, unknown>,
   action: string,
 ): void {
+  if (action === 'pane-list') {
+    const separator = status.panelSeparatorGeometry as
+      | {
+          tabRow: number;
+          instancesToggle: {
+            startColumn: number;
+            endColumnExclusive: number;
+          } | null;
+        }
+      | undefined;
+    const control = separator?.instancesToggle;
+    if (!separator || !control) {
+      throw new Error('the panel tab row paints no instances control');
+    }
+    const column = Math.floor(
+      (control.startColumn + control.endColumnExclusive - 1) / 2,
+    );
+    driver.sendMouse({
+      kind: 'move',
+      column,
+      row: separator.tabRow,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'press',
+      column,
+      row: separator.tabRow,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column,
+      row: separator.tabRow,
+      button: 'left',
+    });
+    return;
+  }
   const headings = status.panelHeadingGeometry as
     readonly HeadingGeometry[] | undefined;
   const heading = headings?.find((entry) => entry.contentId === 'panel');

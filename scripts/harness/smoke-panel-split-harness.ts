@@ -25,6 +25,7 @@ function clickCell(
   column: number,
   row: number,
 ): void {
+  driver.sendMouse({ kind: 'move', column, row, button: 'none' });
   driver.sendMouse({ kind: 'press', column, row, button: 'left' });
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
@@ -113,6 +114,40 @@ async function driveSharedCloseGlyphTier(
         Array.isArray(status.panelCellIds) &&
         status.panelCellIds.includes('terminal'),
     );
+    const terminalFrameSnapshot = await tierDriver.awaitGridCondition(
+      `${glyphLevel} terminal frame close paints before its confirmation drive`,
+      (candidate) => {
+        const tabRow = candidate
+          .textRows()
+          .findIndex((rowText) => rowText.includes(` Terminal ${closeGlyph}`));
+        return (
+          tabRow >= 0 && candidate.rowText(tabRow + 1).includes(closeGlyph)
+        );
+      },
+    );
+    const terminalTabRow = terminalFrameSnapshot
+      .textRows()
+      .findIndex((rowText) => rowText.includes(` Terminal ${closeGlyph}`));
+    const terminalFrameCloseColumn = terminalFrameSnapshot
+      .rowText(terminalTabRow + 1)
+      .lastIndexOf(closeGlyph);
+    if (terminalFrameCloseColumn < 0) {
+      throw new Error(`${glyphLevel} terminal frame close is not painted`);
+    }
+    clickCell(tierDriver, terminalFrameCloseColumn, terminalTabRow + 1);
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} terminal frame close opens the generic confirmation dialog`,
+      (status) => status.quitConfirmationOpen === true,
+    );
+    tierDriver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} Escape dismisses terminal close confirmation`,
+      (status) => status.quitConfirmationOpen === false,
+    );
     snapshot = tierDriver.snapshot();
     clickCell(
       tierDriver,
@@ -148,28 +183,13 @@ async function driveSharedCloseGlyphTier(
     const bufferTabRow = sharedGlyphSnapshot
       .textRows()
       .findIndex((rowText) => /\d+\/\d+/.test(rowText));
-    const headingGeometry = splitStatus.panelHeadingGeometry as Array<{
-      row: number;
-      controls: Array<{
-        action: string;
-        startColumn: number;
-        endColumnExclusive: number;
-      }>;
-    }>;
-    const headingCloseCells = headingGeometry.flatMap((heading) =>
-      heading.controls
-        .filter((control) => control.action === 'close')
-        .map((control) =>
-          sharedGlyphSnapshot.cell(heading.row, control.startColumn + 1),
-        ),
-    );
     HarnessSmoke.Class.requireCondition(
       sharedGlyphSnapshot.rowText(bufferTabRow).includes(closeGlyph),
       `${glyphLevel} buffer tab paints shared ${JSON.stringify(closeGlyph)}`,
     );
     HarnessSmoke.Class.requireCondition(
-      headingCloseCells.some((cell) => cell?.characters === closeGlyph),
-      `${glyphLevel} panel-level close paints shared ${JSON.stringify(closeGlyph)}`,
+      sharedGlyphSnapshot.cell(panelTabRow + 1, 118)?.characters === closeGlyph,
+      `${glyphLevel} subwindow frame paints shared ${JSON.stringify(closeGlyph)} on its first row`,
     );
   } finally {
     await tierDriver.dispose();
@@ -280,19 +300,18 @@ try {
   );
   const paneListControl = (
     openedStatus.panelSeparatorGeometry as {
-      row: number;
-      controls: Array<{
-        action: string;
+      tabRow: number;
+      instancesToggle: {
         startColumn: number;
         endColumnExclusive: number;
-      }>;
+      } | null;
     }
-  ).controls.find((control) => control.action === 'pane-list');
+  ).instancesToggle;
   if (!paneListControl) throw new Error('Missing pane-list control geometry');
   clickCell(
     driver,
     paneListControl.startColumn + 1,
-    Number((openedStatus.panelSeparatorGeometry as { row: number }).row),
+    Number((openedStatus.panelSeparatorGeometry as { tabRow: number }).tabRow),
   );
   openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -307,10 +326,41 @@ try {
     top: number;
     width: number;
   };
+  const unhoveredInstanceRow = driver
+    .snapshot()
+    .rowText(panelListGeometry.top + 2)
+    .slice(
+      panelListGeometry.left,
+      panelListGeometry.left + panelListGeometry.width,
+    );
+  HarnessSmoke.Class.requireCondition(
+    !unhoveredInstanceRow.includes('×'),
+    'instance row hides its close control before hover',
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: panelListGeometry.left + panelListGeometry.width - 2,
+    row: panelListGeometry.top + 3,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'hovered instance close control publishes its tooltip',
+    (snapshot) => snapshot.findText('Close instance') !== null,
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: panelListGeometry.left + panelListGeometry.width - 5,
+    row: panelListGeometry.top + 3,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'hovered instance split control publishes its tooltip',
+    (snapshot) => snapshot.findText('Split instance') !== null,
+  );
   clickCell(
     driver,
-    panelListGeometry.left + panelListGeometry.width - 2,
-    panelListGeometry.top + 1,
+    panelListGeometry.left + panelListGeometry.width - 5,
+    panelListGeometry.top + 3,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -319,18 +369,27 @@ try {
     (status) =>
       status.boundedListPopupOpen === true &&
       Array.isArray(status.boundedListPopupItemIdentifiers) &&
-      status.boundedListPopupItemIdentifiers[0] === 'terminal',
+      JSON.stringify(status.boundedListPopupItemIdentifiers) ===
+        JSON.stringify(['terminal', 'terminal-agent', 'invar-agent']) &&
+      status.boundedListPopupTitle === 'Add Terminal',
   );
   driver.sendKeys('Enter');
   openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'the pane-level chooser closes after adding its selection',
+    (status) => status.boundedListPopupOpen === false,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Array.isArray(openedStatus.panelCellIds) &&
+      openedStatus.panelCellIds.length === 2 &&
+      openedStatus.panelCellIds[0] === 'agent' &&
+      String(openedStatus.panelCellIds[1]).startsWith('terminal') &&
+      Array.isArray(openedStatus.panelCellColumns),
     'explicit split adds a new terminal to the Agent group',
-    (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent,terminal-2' &&
-      status.panelActiveContent === 'terminal-2' &&
-      Array.isArray(status.panelCellColumns),
+  );
+  const splitTerminalIdentifier = String(
+    (openedStatus.panelCellIds as string[])[1],
   );
   HarnessSmoke.Class.pass('two cells render left-to-right');
   HarnessSmoke.Class.requireCondition(
@@ -356,29 +415,15 @@ try {
     initialLeftColumns < fullColumns && initialRightColumns < fullColumns,
     'both split cells are narrower than the full pane',
   );
-  await driver.awaitSnapshot((snapshot) =>
-    snapshot
-      .textRows()
-      .some(
-        (text) =>
-          text.includes('❯') &&
-          text.includes('✦') &&
-          text.indexOf('✦') < text.indexOf('❯'),
-      ),
+  const splitListSnapshot = await driver.awaitGridCondition(
+    'split instance list closes both ends of its connector family',
+    (snapshot) =>
+      snapshot.findText('╭ ') !== null && snapshot.findText('╰ ') !== null,
   );
-  const headingText =
-    driver
-      .snapshot()
-      .textRows()
-      .find(
-        (text) =>
-          text.includes('❯') &&
-          text.includes('✦') &&
-          text.indexOf('✦') < text.indexOf('❯'),
-      ) ?? '';
   HarnessSmoke.Class.requireCondition(
-    headingText.indexOf('✦') < headingText.indexOf('❯'),
-    'agent and terminal render in separate flat pane regions',
+    splitListSnapshot.findText('╭ ') !== null &&
+      splitListSnapshot.findText('╰ ') !== null,
+    'split instance list paints first and last connector closure',
   );
   HarnessSmoke.Class.pass('agent pane shows its own composer');
 
@@ -411,10 +456,10 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.panelFocusedIndex === 1 && status.panelActiveContent === 'terminal-2'",
+    'the split terminal owns focus after its pane click',
     (status) =>
       status.panelFocusedIndex === 1 &&
-      status.panelActiveContent === 'terminal-2',
+      status.panelActiveContent === splitTerminalIdentifier,
   );
   HarnessSmoke.Class.pass('click moved focus to the terminal cell');
   driver.sendText('stty size');
@@ -484,6 +529,31 @@ try {
     resizedLeftColumns < initialLeftColumns &&
       resizedRightColumns > initialRightColumns,
     'the flat split keeps direct divider reflow',
+  );
+  clickCell(driver, panelLeft + 5, panelRow);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Invar agent regains focus before its exit command',
+    (status) => status.panelActiveContent === 'agent',
+  );
+  driver.sendKeys('Control+a');
+  driver.sendKeys('Backspace');
+  driver.sendText('/exit');
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Invar agent exit replaces its exact split slot with a plain terminal',
+    (status) =>
+      Array.isArray(status.panelCellIds) &&
+      status.panelCellIds.length === 2 &&
+      String(status.panelCellIds[0]).startsWith('terminal') &&
+      status.panelCellIds[1] === splitTerminalIdentifier &&
+      !status.panelCellIds.includes('agent'),
+  );
+  HarnessSmoke.Class.pass(
+    'Invar agent /exit replaced the first split slot with a terminal',
   );
   driver.sendKeys('Control+q');
   console.log('smoke-panel-split-harness: ALL-PASS');

@@ -21,7 +21,7 @@ import { Tooltip } from '../ui/Tooltip';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { StatusProjectionContributions } from './StatusProjectionContributions';
 import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
-import type { QuitConfirmation } from '../ui/QuitConfirmation';
+import type { Dialog } from '../ui/Dialog';
 
 class $AppStatusProjection {
   static publish(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
@@ -458,10 +458,7 @@ export interface AppStatusProjectionPorts {
     GoToLinePrompt.Model,
     'open' | 'input' | 'notice'
   >;
-  readonly quitConfirmation: Pick<
-    QuitConfirmation.Model,
-    'open' | 'focusedChoice'
-  >;
+  readonly quitConfirmation: Pick<Dialog.Model, 'open' | 'focusedChoice'>;
   readonly settingsPanel: Pick<
     InstanceType<typeof SettingsPanel.Class>,
     'open' | 'selectedIndex' | 'rows' | 'descriptors'

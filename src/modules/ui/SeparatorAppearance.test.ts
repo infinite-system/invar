@@ -37,10 +37,10 @@ test('the centered-line mark paints a slim glyph on BOTH axes and never fills', 
   });
   expect(vertical.fillRectangles).toEqual([]);
   expect(vertical.paintedCells.map((cell) => cell.slice(0, 4))).toEqual([
-    [2, 3, '┃', color],
-    [2, 4, '┃', color],
-    [2, 5, '┃', color],
-    [2, 6, '┃', color],
+    [2, 3, '│', color],
+    [2, 4, '│', color],
+    [2, 5, '│', color],
+    [2, 6, '│', color],
   ]);
 
   const horizontal = recordingBuffer();
@@ -53,9 +53,9 @@ test('the centered-line mark paints a slim glyph on BOTH axes and never fills', 
   });
   expect(horizontal.fillRectangles).toEqual([]);
   expect(horizontal.paintedCells.map((cell) => cell.slice(0, 4))).toEqual([
-    [5, 7, '━', color],
-    [6, 7, '━', color],
-    [7, 7, '━', color],
+    [5, 7, '─', color],
+    [6, 7, '─', color],
+    [7, 7, '─', color],
   ]);
 });
 
@@ -101,8 +101,8 @@ test('a leading paint pad skips cells at the start of the long axis only', () =>
     leadingPaintPadCells: 1,
   });
   expect(horizontal.paintedCells.map((cell) => cell.slice(0, 4))).toEqual([
-    [6, 7, '━', color],
-    [7, 7, '━', color],
+    [6, 7, '─', color],
+    [7, 7, '─', color],
   ]);
 
   const vertical = recordingBuffer();
@@ -115,17 +115,17 @@ test('a leading paint pad skips cells at the start of the long axis only', () =>
     leadingPaintPadCells: 1,
   });
   expect(vertical.paintedCells.map((cell) => cell.slice(0, 4))).toEqual([
-    [2, 4, '┃', color],
-    [2, 5, '┃', color],
+    [2, 4, '│', color],
+    [2, 5, '│', color],
   ]);
 });
 
 test('the two marks stay distinct glyphs on each axis', () => {
   expect(SeparatorAppearance.Class.glyphFor('horizontal', 'centeredLine')).toBe(
-    '━',
+    '─',
   );
   expect(SeparatorAppearance.Class.glyphFor('vertical', 'centeredLine')).toBe(
-    '┃',
+    '│',
   );
   expect(
     SeparatorAppearance.Class.glyphFor('horizontal', 'bottomAnchoredHalfBlock'),

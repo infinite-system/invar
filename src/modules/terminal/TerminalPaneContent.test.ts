@@ -50,8 +50,8 @@ test('primary-screen wheel input glides through shared momentum without writing 
 
 test('mouse-tracking and alternate-screen wheel input is protocol-forwarded without moving scrollback', async () => {
   for (const [modeSequence, expectedWheelBytes] of [
-    ['\x1b[?1000h', '\x1b[Md#"'],
-    ['\x1b[?1049h', '\x1b[<68;3;2M'],
+    ['\x1b[?1000h', '\x1b[Md##'],
+    ['\x1b[?1049h', '\x1b[<68;3;3M'],
   ] as const) {
     const { backend, instance, pane } = makePane();
     backend.feed(
@@ -96,8 +96,8 @@ test('mouse-tracking gives child cells exact SGR clicks while pane gutters stay 
   pane.onPointerUp(5, 2, pointerContext);
 
   expect(backend.writes.slice(writesBeforePointer)).toEqual([
-    '\x1b[<0;4;2M',
-    '\x1b[<0;4;2m',
+    '\x1b[<0;4;3M',
+    '\x1b[<0;4;3m',
   ]);
   const writesBeforeGutterClick = backend.writes.length;
   pane.onPointerDown(0, 0, pointerContext);

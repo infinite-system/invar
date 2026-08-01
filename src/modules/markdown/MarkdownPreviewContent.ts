@@ -135,6 +135,26 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
     this.view.selectAll();
   }
 
+  get wordWrapEnabled(): boolean {
+    return this.view.wordWrapEnabled;
+  }
+
+  toggleWordWrap(): void {
+    this.view.toggleWordWrap();
+  }
+
+  goToSourceLine(oneBasedLine: number): void {
+    this.view.goToSourceLine(oneBasedLine);
+  }
+
+  goToBottom(): void {
+    this.view.goToBottom();
+  }
+
+  clearPointerHover(): void {
+    this.view.clearPointerHover();
+  }
+
   /** Escape hands the keyboard back to the embedded source editor. It does NOT close the split —
    *  the preview mode is per tab and only its own toggle changes it. */
   yieldKeyboardToSourceEditor(): void {

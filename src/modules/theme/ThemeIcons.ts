@@ -474,6 +474,10 @@ class $ThemeIcons {
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
         panelStack: '\u{f0c9}',
+        panelSplit: '\u{f15c}',
+        panelConnectorFirst: '\u{256d}',
+        panelConnectorMiddle: '\u{251c}',
+        panelConnectorLast: '\u{2570}',
         fileTreeReveal: '\u{f05b}',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
@@ -510,7 +514,11 @@ class $ThemeIcons {
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
-        panelStack: '▦',
+        panelStack: '☰',
+        panelSplit: '◫',
+        panelConnectorFirst: '╭',
+        panelConnectorMiddle: '├',
+        panelConnectorLast: '╰',
         fileTreeReveal: '⊙',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
@@ -535,6 +543,10 @@ class $ThemeIcons {
         panelRestore: '<',
         panelClose: 'x',
         panelStack: '#',
+        panelSplit: 'B',
+        panelConnectorFirst: '/',
+        panelConnectorMiddle: '+',
+        panelConnectorLast: '\\',
         fileTreeReveal: 'o',
         diffPreviousChange: 'U',
         diffNextChange: 'D',
@@ -945,6 +957,10 @@ export interface InterfaceGlyphVocabulary {
   panelRestore: string;
   panelClose: string;
   panelStack: string;
+  panelSplit: string;
+  panelConnectorFirst: string;
+  panelConnectorMiddle: string;
+  panelConnectorLast: string;
   fileTreeReveal: string;
   diffPreviousChange: string;
   diffNextChange: string;

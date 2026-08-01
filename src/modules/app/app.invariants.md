@@ -202,7 +202,7 @@ state intact.
 startup failures, and the PTY harness's declared teardown bypass are outside this product path.
 
 **Mechanism:** `Bootstrap.requestQuit` routes both command execution and reserved bindings through
-one `QuitConfirmation` model in the exclusive overlay slot. The model resets to No each time it
+one generic `Dialog` model in the exclusive overlay slot. The model resets to No each time it
 opens. Left, Right, and Tab move the visible focus; Enter activates it; Escape, No, the shared close
 control, an outside press, and a second quit chord dismiss. Only Yes calls `shutdown`. The prior quit
 path had no dirty-buffer guard: it shut down immediately even with unsaved edits. The confirmation
@@ -214,7 +214,7 @@ buffer.
 keyboard and pointer parity; one affirmative shutdown edge; dirty-buffer preservation on every
 negative edge.
 
-**Evidence:** `src/modules/ui/QuitConfirmation.ts`; `src/modules/ui/QuitConfirmation.test.ts`;
+**Evidence:** `src/modules/ui/Dialog.ts`; `src/modules/ui/Dialog.test.ts`;
 `src/modules/app/Bootstrap.ts`; `src/modules/ui/OverlayLayer.ts`;
 `scripts/harness/smoke-quit-confirmation-harness.ts`.
 
@@ -222,12 +222,12 @@ negative edge.
 second quit chord shutting down; a negative answer clearing a dirty buffer; Yes closing the dialog
 but leaving the process alive; a terminal-style y/N prompt on the quit path.
 
-**Verification:** `bun test src/modules/ui/QuitConfirmation.test.ts && bun
+**Verification:** `bun test src/modules/ui/Dialog.test.ts && bun
 scripts/harness/smoke-quit-confirmation-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-08-01
 
 ### Owned resources release in reverse order
 

@@ -48,9 +48,9 @@ test('click activates and the visible close affordance closes the same row', () 
   const list = new PanelContentsList.Class(host);
 
   expect(list.visible).toBe(true);
-  expect(list.pointerDown(2, 1)).toBe(true);
+  expect(list.pointerDown(2, 3)).toBe(true);
   expect(host.focusedContent?.id).toBe('terminal');
-  expect(list.pointerDown(list.width - 1, 1)).toBe(true);
+  expect(list.pointerDown(list.width - 1, 3)).toBe(true);
   expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
     'agent',
     'output',
@@ -76,8 +76,8 @@ test('dragging a row reorders the live split through the host', () => {
   const list = new PanelContentsList.Class(host);
   persistenceCount = 0;
 
-  list.pointerDown(2, 0);
-  list.pointerDrag(1);
+  list.pointerDown(2, 2);
+  list.pointerDrag(3);
   list.pointerUp();
 
   expect(order.value).toEqual(['agent', 'terminal', 'output']);
@@ -104,7 +104,7 @@ test('a row split button requests a new member for that group and joined members
     splitTargets.push(identifier),
   );
 
-  expect(list.pointerDown(list.width - 3, 0)).toBe(true);
+  expect(list.pointerDown(list.width - 5, 2)).toBe(true);
   expect(splitTargets).toEqual(['terminal']);
   const text = list
     .render(
@@ -113,8 +113,8 @@ test('a row split button requests a new member for that group and joined members
     )
     .chunks.map((chunk) => chunk.text)
     .join('');
-  expect(text).toContain('├');
-  expect(text).toContain('└');
+  expect(text).toContain('╭');
+  expect(text).toContain('╰');
 });
 
 test('the pinned list width can shrink and clamps to its declared bounds', () => {
@@ -144,7 +144,7 @@ test('the list selects visibility among multiple open instances of one kind', ()
     'Terminal 2',
     'Terminal 3',
   ]);
-  list.pointerDown(2, 1);
+  list.pointerDown(2, 3);
   expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
     'terminal-2',
   ]);
@@ -169,6 +169,7 @@ test('tabs and panel rows project one tier-aware close token', () => {
   for (const level of ['nerd', 'unicode', 'ascii'] satisfies GlyphLevel[]) {
     const glyphVocabulary = ThemeIcons.Class.interfaceGlyphVocabularyFor(level);
     const expectedCloseGlyph = glyphVocabulary.panelClose;
+    list.pointerMove(list.width - 1, 2);
     const listText = list
       .render(ThemePalettes.Class.DARK, glyphVocabulary)
       .chunks.map((chunk) => chunk.text)
@@ -189,7 +190,7 @@ test('tabs and panel rows project one tier-aware close token', () => {
       .text.chunks.map((chunk) => chunk.text)
       .join('');
 
-    expect(listText.endsWith(expectedCloseGlyph)).toBe(true);
+    expect(listText.endsWith(`${expectedCloseGlyph} `)).toBe(true);
     expect(tabText.includes(expectedCloseGlyph)).toBe(true);
   }
 });

@@ -45,6 +45,7 @@ class $MarkdownSplitView {
   protected renderedPreviewWidth = -1;
   protected renderedPreviewBorderSignature = '';
   protected pendingSourceRevealLine: number | null = null;
+  protected pendingBottomReveal = false;
   protected lastScrollSyncLeader: MarkdownSplitPane | null = null;
   protected lastSynchronizedSourceScrollTop = -1;
   protected lastSynchronizedPreviewScrollTop = -1;
@@ -331,6 +332,45 @@ class $MarkdownSplitView {
     };
   }
 
+  get wordWrapEnabled(): boolean {
+    return this.preview.wordWrapEnabled.value;
+  }
+
+  toggleWordWrap(): void {
+    this.preview.toggleWordWrap();
+    this.previewViewport.reconcileExtent();
+    this.update();
+  }
+
+  goToSourceLine(oneBasedLine: number): void {
+    this.revealSourceLine(Math.max(0, oneBasedLine - 1));
+  }
+
+  goToBottom(): void {
+    this.previewViewport.haltMomentum();
+    this.pendingBottomReveal = true;
+    this.applyPendingBottomReveal();
+    this.update();
+  }
+
+  protected applyPendingBottomReveal(): boolean {
+    if (
+      !this.pendingBottomReveal ||
+      this.preview.parsedRevision !== this.options.source.revision.value
+    ) {
+      return false;
+    }
+    this.pendingBottomReveal = false;
+    this.previewViewport.scrollToRow(
+      Math.max(
+        0,
+        this.preview.totalRows(this.previewViewportWidth()) -
+          this.previewViewportHeight(),
+      ),
+    );
+    return true;
+  }
+
   previewFindTargetIdentifier(): string {
     return `markdown-preview:${this.options.sourcePath}`;
   }
@@ -348,6 +388,7 @@ class $MarkdownSplitView {
     this.previewViewport.reconcileExtent();
     this.synchronizePreviewPositionFromViewport();
     const explicitSourceRevealApplied = this.applyPendingSourceReveal();
+    this.applyPendingBottomReveal();
     if (!explicitSourceRevealApplied) this.synchronizeScrollFollower();
     const palette = this.theme.palette;
     this.rootRenderable.backgroundColor = palette.bg;
@@ -689,6 +730,10 @@ class $MarkdownSplitView {
     this.previewRenderable.setHoveredReferenceKey(null);
     this.options.clearReferenceTooltip();
     this.renderer.requestRender();
+  }
+
+  clearPointerHover(): void {
+    this.clearHoveredReference();
   }
 
   /** The reference under a cell, resolved where possible. An authored link stays a reference even

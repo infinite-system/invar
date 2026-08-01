@@ -206,6 +206,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
       markdownPreviewSide: this.surface?.previewSide() ?? 'left',
       markdownPreviewScrollSync: this.scrollSyncSetting?.value.value ?? true,
       markdownPreviewScrollTop: previewScroll?.scrollTop ?? 0,
+      markdownPreviewWordWrap: splitView?.wordWrapEnabled ?? true,
       markdownPreviewScrollLeft: previewScroll?.scrollLeft ?? 0,
       markdownPreviewContentRows: previewScroll?.contentRows ?? 0,
       markdownPreviewContentColumns: previewScroll?.contentColumns ?? 0,
