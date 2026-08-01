@@ -4,6 +4,47 @@
 
 ### OPERATIVE STATE
 
+RESUME ANCHOR 27 (2026-08-01 ~06:2x local — pre-compaction refresh; supersedes 26. ACTIVE ui-task session, user present)
+
+STATE: user ACTIVE and directing UI work. Crons DISARMED (user order; never re-arm without their word).
+fleet-watch Monitor armed. Re-arm on restart: Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true) — nothing else.
+
+IMMEDIATE NEXT ACTIONS (in order):
+1. #433 auto-reveal: READY report just landed at
+   .invar/tasks/in-progress/433-tasks-dashboard-auto-reveal-priced-out/report-433-*.md — READ it,
+   convert bycatch, merge main forward, gate combined tree (background, log registered in
+   /tmp/fleet-watch-gates), land via scripts/fleet/land.sh (needs GATE_LOG with GATE_EXIT=0 read
+   from log, BYCATCH_TRIAGED=1, merge-message file). Feed said: activation-seed fix, positive
+   control proven, full dashboard smoke green INCLUDING the 500-task step (the #432 override
+   debt clears with this landing).
+2. LIVE ui-task investigation (user's newest report, NOT yet confirmed): "closing terminals in
+   a right pane shows Database in Terminals plugin; sometimes deleting 1 terminal deletes its
+   split neighbors and shows Database content". Probe in progress:
+   tmp/probe-close-terminal-database-leak.ts — got as far as: panel open, instances list opens
+   via status panelSeparatorGeometry.instancesToggle (click startColumn+1 at tabRow), + Terminal
+   dropdown adds 'Terminal 2' INSTANCE (not a split; panelCellColumns stays length 1), toggle
+   count paints '☰  2'. STUCK: hover on list row 26 shows 'Split instance' tooltip but click at
+   listGeometry.left+width-5 does not produce a 2nd subwindow (panelCellColumns stays 1) — the
+   smoke smoke-panel-split-harness.ts lines ~296-360 has the canonical hover/click geometry
+   (top+3, width-5 for split, width-2 for close); compare hover row offsets. Then: close left
+   subwindow ×, watch status panelSpaceLabels/headings + tabs row for Database leakage.
+3. #434 accumulation (do NOT dispatch until user concludes): (1) splitter first cell col37
+   bg1447454 vs row 1710886; (2) stray │ at col119 rows 20+23 right edge; (3) instances toggle
+   ☰ at col118 with NO trailing space (needs ␣-part-of-button cell); (4) terminal pane scroll
+   anchoring + jump-to-bottom; (+ items from the Database-leak investigation once confirmed).
+
+TOOLS SINCE LAST ANCHOR: bun run drive now has --gesture (openPanel/closePanel, waits built in)
+and --cells ROW,C1-C2 color dumps (commit dad4ba2c); referenced from AGENTS.md primary loop,
+conductor skill verify-by-driving, project.tools.md (own instrument row), project.conventions.md
+verification channels, ui-task skill SEE step. agent-feed.ts = monitoring channel.
+
+GOTCHAS (family 14, cost an hour): awaitGridCondition is (label, predicate, timeout) — never
+catch-all a wait; cell colors are cell.background/.foreground; splitter row = the one WITH
+↗ × controls, row above is editor bottom border with ↵ ↕ ⇊ actions.
+
+QUEUE: #431, import.meta.dir census, teleport-census, 12 held user-directed items.
+Checkout = user's; 309+ commits ahead of origin; do not push unasked.
+
 RESUME ANCHOR 26 (2026-08-01 ~06:1x local — CHECKPOINT; supersedes 25. ACTIVE ui-task session)
 
 STATE: user is BACK and directing. Crons remain DISARMED (user order; do not re-arm).
