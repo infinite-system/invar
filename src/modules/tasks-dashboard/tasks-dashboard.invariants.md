@@ -48,6 +48,41 @@ from anything but the current folder read.
 
 **Last refined:** 2026-07-29
 
+### Fleet paths derive from the workspace, never the bundle
+
+**Invariant:** If the dashboard resolves a fleet artifact path (a task worktree, gate registry
+facts), then the fleet repository root derives from the active workspace root at call time —
+never from `import.meta.dir` or any other build-location constant.
+
+**Scope:** Every fleet path the tasks-dashboard module resolves.
+
+**Renegotiable at:** the build system — a bundler that preserved source-relative paths in
+compiled binaries would remove the forcing fact, but the workspace would still be the truer
+origin, since the app can run against any checkout.
+
+**Mechanism:** In a bun-compiled binary `import.meta.dir` is the bundle's virtual root
+(`/$bunfs/root`), so any path joined from it exists nowhere on disk. Source runs mask the
+defect because `import.meta.dir` then points into the real checkout — which is why probes
+stayed green while the built app failed. The workspace root is real in both forms.
+
+**Generates:** The `fleetRepositoryRoot` dependency wired in
+`TasksDashboardPlugin.createOverview` from `fleetRepositoryRootForWorkspace`; the worktree
+marker strip so a worktree-opened workspace still resolves the main checkout.
+
+**Evidence:** `scripts/tasks/tasks-status.ts` (`fleetRepositoryRootForWorkspace` and the
+warning comment over `INVAR_FLEET_REPOSITORY_ROOT`);
+`src/modules/tasks-dashboard/TasksDashboardPlugin.ts` (`createOverview`).
+
+**Impossible if true:** A "Worktree is missing" miss in the compiled binary while the same
+click succeeds from source on the same checkout; a fleet path containing `$bunfs`.
+
+**Verification:** Compile a probe importing `fleetRepositoryRootForWorkspace` and confirm it
+returns the workspace checkout, not a `$bunfs` path (driven 2026-08-01, worktree-opener fix).
+
+**Status:** provisional
+
+**Last refined:** 2026-08-01
+
 ## Chosen invariants
 
 ### Dashboard motion exists only while observed
