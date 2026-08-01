@@ -282,6 +282,25 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       ) === JSON.stringify(expectedEditorActionIdentifiers),
       `${columns}-column editor actions publish on the editor frame independently of tabs`,
     );
+    const firstEditorAction = initialTabBar.editorActions[0];
+    if (firstEditorAction) {
+      HarnessSmoke.Class.requireCondition(
+        [
+          firstEditorAction.startColumn - 2,
+          firstEditorAction.startColumn - 1,
+        ].every((column) => {
+          const cell = initialSnapshot.cell(
+            initialTabBar.editorActionRow,
+            column,
+          );
+          return (
+            ['-', '─'].includes(cell?.characters ?? '') &&
+            cell?.foreground === Number.parseInt('7aa2f7', 16)
+          );
+        }),
+        `${columns}-column editor action lead dashes use the active frame tone`,
+      );
+    }
     HarnessSmoke.Class.requireCondition(
       initialTabBar.drag.width >= 1,
       `${columns}-column splitter leaves a live drag span`,
@@ -300,9 +319,11 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column splitter starts flush and meets the frame controls`,
     );
     const padCellCount = initialTabBar.drag.leadingPaintPadCells;
-    const expectedDragCells = '─'.repeat(initialTabBar.drag.width);
+    const expectedDragCells = ` ${'─'.repeat(
+      Math.max(0, initialTabBar.drag.width - 1),
+    )}`;
     const tabRowSnapshot = await driver.awaitGridCondition(
-      `${columns}-column published drag span paints a flush thin line`,
+      `${columns}-column published drag span paints one leading gap and a thin line`,
       (snapshot) =>
         snapshot
           .rowText(initialTabBar.row)
@@ -319,12 +340,63 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
             initialTabBar.drag.left,
             initialTabBar.drag.left + initialTabBar.drag.width,
           ) === expectedDragCells,
-      `${columns}-column splitter paints thin marks between the left edge and controls`,
+      `${columns}-column splitter paints its gap and thin marks between the left edge and controls`,
     );
     HarnessSmoke.Class.requireCondition(
-      padCellCount === 0,
-      `${columns}-column splitter has no leading paint gap`,
+      padCellCount === 1 &&
+        tabRowSnapshot.cell(initialTabBar.row, initialTabBar.drag.left)
+          ?.background === Number.parseInt('1a1b26', 16),
+      `${columns}-column splitter reports one leading gap in the row background`,
     );
+
+    if (columns === 120) {
+      driver.sendRawInput('\x1b[98;7u');
+      const rightDockStatus = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        '120-column right dock opens across the panel splitter row',
+        (candidate) => candidate.rightDockVisible === true,
+      );
+      const rightDockSnapshot = await driver.awaitGridCondition(
+        '120-column panel splitter repaints the right-dock crossing',
+        (snapshot) => {
+          const crossingColumn = Number(
+            (
+              rightDockStatus.layoutSlots as {
+                rightDockSplitter?: { left?: number };
+              }
+            ).rightDockSplitter?.left,
+          );
+          const cell = snapshot.cell(
+            tabBar(rightDockStatus).row,
+            crossingColumn,
+          );
+          return (
+            cell?.characters === '─' &&
+            cell.background === Number.parseInt('1a1b26', 16)
+          );
+        },
+      );
+      const crossingColumn = Number(
+        (
+          rightDockStatus.layoutSlots as {
+            rightDockSplitter?: { left?: number };
+          }
+        ).rightDockSplitter?.left,
+      );
+      HarnessSmoke.Class.requireCondition(
+        rightDockSnapshot.cell(tabBar(rightDockStatus).row, crossingColumn)
+          ?.background === Number.parseInt('1a1b26', 16),
+        'the panel row owns the right-dock splitter crossing background',
+      );
+      driver.sendRawInput('\x1b[98;7u');
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        '120-column right dock closes before panel control checks continue',
+        (candidate) => candidate.rightDockVisible === false,
+      );
+    }
 
     // Both ends of the flush drag span must grab. The two drags move in opposite directions so
     // neither asks the panel to push past a bound it already occupies.
@@ -539,9 +611,16 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
 
     const instancesToggle = tabBar(status).instancesToggle;
     if (!instancesToggle) throw new Error('Missing Instances geometry');
+    const instancesToggleSnapshot = await driver.awaitGridCondition(
+      `${columns}-column instances button paints its pad before the panel border`,
+      (snapshot) =>
+        snapshot.cell(tabBar(status).tabRow, columns - 2)?.characters === ' ',
+    );
     HarnessSmoke.Class.requireCondition(
-      instancesToggle.endColumnExclusive === columns,
-      `${columns}-column instances button reaches the right edge with its padded hit target`,
+      instancesToggle.endColumnExclusive === columns - 1 &&
+        instancesToggleSnapshot.cell(tabBar(status).tabRow, columns - 2)
+          ?.characters === ' ',
+      `${columns}-column instances button owns the pad before the panel border`,
     );
     clickSegment(driver, tabBar(status).tabRow, instancesToggle);
     status = await HarnessSmoke.Class.awaitStatus(
@@ -639,6 +718,17 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         (candidate) =>
           Array.isArray(candidate.panelContentIds) &&
           candidate.panelContentIds.includes('database-2'),
+      );
+      const countSnapshot = await driver.awaitGridCondition(
+        '120-column instances toggle paints a superscript count with one separator space',
+        (snapshot) => snapshot.findText('☰ ² ') !== null,
+      );
+      const countPosition = countSnapshot.findText('☰ ² ');
+      HarnessSmoke.Class.requireCondition(
+        countPosition !== null &&
+          countPosition.column + 4 ===
+            tabBar(status).instancesToggle?.endColumnExclusive,
+        'the superscript count and right pad stay inside the instances toggle hit area',
       );
     }
 

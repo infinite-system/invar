@@ -1,10 +1,9 @@
 #!/usr/bin/env bun
 // Drive the breadcrumb at 10 and 100,000 lines. Run with:
 // `COLORTERM=truecolor bun scripts/harness/smoke-breadcrumb-harness.ts`.
-// PASS means the breadcrumb has no history controls, its separator uses the active theme's readable
-// secondary-text token instead of the border token, a live theme switch repaints that cell, and
-// hovering a segment paints the theme hover background over the segment text plus exactly one cell
-// on each side while nothing on the row moves.
+// PASS means the padded history cluster precedes the path, each history target paints all three
+// cells on hover, the separator uses the active theme's readable secondary-text token, a live theme
+// switch repaints that cell, and breadcrumb hover keeps its exact padded bounds without reflow.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -25,6 +24,8 @@ import { PtyTestDriver } from './PtyTestDriver';
 // segment's left pad so hover never reflows the text. Reading the renderer's own constant instead
 // would only prove the code agrees with itself.
 const HOVER_PAD_COLUMNS = 1;
+const HISTORY_CLUSTER_COLUMNS = 6;
+const HISTORY_PATH_GAP_COLUMNS = 1;
 
 function packedColor(color: string): number {
   return Number.parseInt(color.slice(1), 16);
@@ -64,17 +65,13 @@ function requireBreadcrumb(
   const prefix = snapshot
     .rowText(markerPosition.row)
     .slice(editorLeft, markerPosition.column);
+  const expectedPrefix =
+    ' ❮  ❯ ' + ' '.repeat(HISTORY_PATH_GAP_COLUMNS + HOVER_PAD_COLUMNS);
   HarnessSmoke.Class.requireCondition(
-    prefix.trim() === '',
-    `${description} starts with the path and has no breadcrumb history controls`,
-  );
-  // The one-column shift: the row keeps its single margin cell AND the first segment carries its
-  // own left hover pad, so the first glyph sits two columns inside the editor column. The pad is
-  // there whether or not the mouse is on the row, so hover never reflows the text.
-  HarnessSmoke.Class.requireCondition(
-    prefix.length === 1 + HOVER_PAD_COLUMNS,
-    `${description} keeps one margin cell plus the first segment's hover pad ` +
-      `(prefix ${prefix.length} columns)`,
+    prefix === expectedPrefix &&
+      prefix.length ===
+        HISTORY_CLUSTER_COLUMNS + HISTORY_PATH_GAP_COLUMNS + HOVER_PAD_COLUMNS,
+    `${description} keeps the six-cell history cluster, path gap, and first crumb hover pad`,
   );
   const separatorColumn = markerPosition.column + workspaceLabel.length + 1;
   const separatorCell = snapshot.cell(markerPosition.row, separatorColumn);
@@ -148,6 +145,47 @@ async function driveBreadcrumbHover(
   if (!markerPosition) throw new Error(`${description} breadcrumb vanished`);
   const breadcrumbRow = markerPosition.row;
   const restingRowText = restingSnapshot.rowText(breadcrumbRow);
+  const historyPosition = restingSnapshot.findText(' ❮  ❯ ');
+  if (!historyPosition)
+    throw new Error(`${description} history cluster vanished`);
+  for (const buttonStart of [
+    historyPosition.column,
+    historyPosition.column + 3,
+  ]) {
+    driver.sendMouse({
+      kind: 'move',
+      column: buttonStart + 1,
+      row: breadcrumbRow,
+      button: 'none',
+    });
+    const hoveredHistory = await driver.awaitGridCondition(
+      `${description} highlights all three cells of the history button`,
+      (candidate) =>
+        [0, 1, 2].every((offset) =>
+          isHighlighted(
+            candidate,
+            breadcrumbRow,
+            buttonStart + offset,
+            palette,
+          ),
+        ),
+    );
+    HarnessSmoke.Class.requireCondition(
+      !isHighlighted(hoveredHistory, breadcrumbRow, buttonStart - 1, palette) &&
+        !isHighlighted(hoveredHistory, breadcrumbRow, buttonStart + 3, palette),
+      `${description} stops history hover at the padded three-cell target`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      hoveredHistory.rowText(breadcrumbRow) === restingRowText,
+      `${description} keeps the row fixed while history hover paints`,
+    );
+    await awaitNoBreadcrumbHighlight(
+      driver,
+      breadcrumbRow,
+      palette,
+      `${description} after history hover`,
+    );
+  }
   const separatorColumn = markerPosition.column + workspaceLabel.length + 1;
   const labelSpans = [
     { label: workspaceLabel, textStart: markerPosition.column },

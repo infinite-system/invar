@@ -199,6 +199,123 @@ async function driveActivityGlyphTier(
   }
 }
 
+async function driveGitCountStates(): Promise<void> {
+  const countFixtureRoot = mkdtempSync(
+    join(tmpdir(), 'tui-activitybar-counts-'),
+  );
+  const countHomeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-activitybar-counts-home-'),
+  );
+  const countStatusPath = join(countHomeDirectory, 'status.json');
+  mkdirSync(join(countHomeDirectory, '.config', 'invar'), { recursive: true });
+  await Bun.write(
+    join(countHomeDirectory, '.config', 'invar', 'settings.json'),
+    '{"glyphMode":"unicode"}\n',
+  );
+  for (let fileIndex = 1; fileIndex <= 1001; fileIndex += 1) {
+    await Bun.write(
+      join(countFixtureRoot, `count-${String(fileIndex).padStart(4, '0')}.txt`),
+      'clean\n',
+    );
+  }
+  HarnessSmoke.Class.runGit(countFixtureRoot, ['init', '-q']);
+  HarnessSmoke.Class.runGit(countFixtureRoot, ['add', '.']);
+  HarnessSmoke.Class.runGit(countFixtureRoot, [
+    '-c',
+    'user.name=activity-count-smoke',
+    '-c',
+    'user.email=activity-count-smoke@example.test',
+    'commit',
+    '-qm',
+    'base',
+  ]);
+  const countDriver = new PtyTestDriver.Class({
+    workspaceRoot: countFixtureRoot,
+    columns: 100,
+    rows: 36,
+    homeDirectory: countHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: countStatusPath,
+      COLORTERM: 'truecolor',
+    },
+  });
+  const gitGlyph = ThemeIcons.Class.glyphFor(
+    'unicode',
+    'activitySourceControl',
+  );
+  const filesGlyph = ThemeIcons.Class.glyphFor('unicode', 'activityFiles');
+  try {
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      countDriver,
+      countStatusPath,
+      'the clean count fixture settles with no changed files',
+      (status) =>
+        status.ready === true &&
+        status.renderQuiescent === true &&
+        status.gitChangedCount === 0,
+    );
+    let countSnapshot = await countDriver.awaitGridCondition(
+      'the clean count fixture paints aligned Files and Git icons',
+      (snapshot) =>
+        glyphRow(snapshot, filesGlyph) >= 0 &&
+        glyphRow(snapshot, gitGlyph) >= 0,
+    );
+    const filesIconColumn = 2;
+    HarnessSmoke.Class.requireCondition(
+      countSnapshot.cell(glyphRow(countSnapshot, filesGlyph), filesIconColumn)
+        ?.characters === filesGlyph &&
+        countSnapshot.cell(glyphRow(countSnapshot, gitGlyph), filesIconColumn)
+          ?.characters === gitGlyph,
+      'the no-count Git icon aligns with the Files icon at column 2',
+    );
+
+    for (let targetCount = 1; targetCount <= 1001; targetCount += 1) {
+      if (targetCount > 1 && targetCount < 12) continue;
+      if (targetCount > 12 && targetCount < 1001) continue;
+      const firstFile = targetCount === 1 ? 1 : targetCount === 12 ? 2 : 13;
+      for (
+        let fileIndex = firstFile;
+        fileIndex <= targetCount;
+        fileIndex += 1
+      ) {
+        await Bun.write(
+          join(
+            countFixtureRoot,
+            `count-${String(fileIndex).padStart(4, '0')}.txt`,
+          ),
+          'changed\n',
+        );
+      }
+      await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        countDriver,
+        countStatusPath,
+        `the Git watcher publishes ${targetCount} changed files`,
+        (status) => Number(status.gitChangedCount) === targetCount,
+      );
+      const expectedBadge =
+        targetCount === 1 ? '₁' : targetCount === 12 ? '₁₂' : '₉₉₉';
+      countSnapshot = await countDriver.awaitGridCondition(
+        `the Git count row paints ${expectedBadge} after one leading space`,
+        (snapshot) => snapshot.findText(` ${expectedBadge}`) !== null,
+      );
+      const gitRowIndex = glyphRow(countSnapshot, gitGlyph);
+      HarnessSmoke.Class.requireCondition(
+        countSnapshot.cell(gitRowIndex, filesIconColumn)?.characters ===
+          gitGlyph &&
+          countSnapshot
+            .rowText(gitRowIndex - 1)
+            .startsWith(` ${expectedBadge}`),
+        `${targetCount}-file count keeps the Git icon aligned and caps inside three cells`,
+      );
+    }
+    countDriver.sendKeys('Control+q');
+  } finally {
+    await countDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(countFixtureRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(countHomeDirectory);
+  }
+}
+
 async function drivePlantedPanelOrderProfile(
   fixtureRoot: string,
 ): Promise<void> {
@@ -308,6 +425,9 @@ const driver = new PtyTestDriver.Class({
 let restartDriver: PtyTestDriver.Model | null = null;
 
 try {
+  console.log('== harness activitybar: Git small-digit counts stay aligned ==');
+  await driveGitCountStates();
+
   console.log(
     '== harness activitybar: semantic slots resolve at nerd and unicode tiers ==',
   );
@@ -654,7 +774,7 @@ try {
   );
   HarnessSmoke.Class.requireCondition(
     snapshot.cell(gitRow - 1, 1)?.characters === '1',
-    'git badge shows one change in column 1 above the icon',
+    'ASCII git badge shows one plain-digit change in column 1 above the icon',
   );
 
   clickCell(driver, 1, filesRow);

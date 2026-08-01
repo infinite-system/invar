@@ -56,6 +56,7 @@ function project(paneCount: number, width = 80) {
     hoveredCommandIdentifier: null,
     hoveredAction: null,
     glyphVocabulary: ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+    glyphLevel: 'unicode',
     palette: ThemePalettes.Class.DARK,
   });
 }
@@ -86,6 +87,7 @@ test('the editor frame owns actions while the panel rows own tabs and frame cont
     ],
     hoveredCommandIdentifier: null,
     palette: ThemePalettes.Class.DARK,
+    frameBorderColor: ThemePalettes.Class.DARK.borderActive,
   });
   expect(editorFrame.editorActions.map((action) => action.commandId)).toEqual([
     'view.toggleWordWrap',
@@ -99,7 +101,7 @@ test('the editor frame owns actions while the panel rows own tabs and frame cont
   expect(projection.editorActions).toEqual([]);
   expect(projection.splitterLeadingWidth).toBe(0);
   expect(projection.tabs[0]?.startColumn).toBe(0);
-  expect(projection.instancesToggle?.endColumn).toBe(80);
+  expect(projection.instancesToggle?.endColumn).toBe(79);
   expect(
     PanelTabBar.Class.spaceAddAtColumn(
       projection,
@@ -126,7 +128,7 @@ test('each container tab pads both sides of its close glyph and shares that hit 
 test('narrow container labels use ellipses without changing painted hit bounds', () => {
   const projection = project(1, 30);
   const text = projection.tabText.chunks.map((chunk) => chunk.text).join('');
-  expect(text).toBe(' Ter… ×  Data… × ');
+  expect(text).toBe(' Ter… ×  Dat… × ');
   expect(projection.tabs.at(-1)?.endColumn).toBe(text.length);
   expect(projection.spaceAdd?.startColumn).toBe(text.length);
 });
@@ -139,13 +141,13 @@ test('the splitter keeps only frame controls and the tab row always exposes inst
   ]);
   expect(projection.spaceAdd?.tooltip).toBe('Add Plugin');
   expect(projection.instancesToggle?.tooltip).toBe('Show Instances');
-  expect(projection.instancesToggle?.endColumn).toBe(80);
+  expect(projection.instancesToggle?.endColumn).toBe(79);
 });
 
-test('the flush drag span and frame controls consume the exact splitter width', () => {
+test('the drag span keeps a one-cell paint gap inside its full hit width', () => {
   const projection = project(2, 26);
   expect(projection.dragWidth).toBeGreaterThan(1);
-  expect(projection.dragLeadingPaintPadCells).toBe(0);
+  expect(projection.dragLeadingPaintPadCells).toBe(1);
   expect(
     projection.splitterLeadingWidth +
       projection.dragWidth +
@@ -155,4 +157,23 @@ test('the flush drag span and frame controls consume the exact splitter width', 
     (projection.tabs.at(-1)?.endColumn ?? 0) +
       (26 - (projection.tabs.at(-1)?.endColumn ?? 0)),
   ).toBe(26);
+});
+
+test('the instances toggle owns its right pad and uses bounded superscript counts', () => {
+  const projection = project(12);
+  const text = projection.tabControlText.chunks
+    .map((chunk) => chunk.text)
+    .join('');
+
+  expect(text).toContain('☰ ¹² ');
+  expect(projection.instancesToggle?.endColumn).toBe(79);
+  expect(
+    PanelTabBar.Class.instancesToggleAtColumn(projection, 78),
+  ).toBeDefined();
+  expect(PanelTabBar.Class.instancesToggleAtColumn(projection, 79)).toBeNull();
+
+  const capped = project(1000)
+    .tabControlText.chunks.map((chunk) => chunk.text)
+    .join('');
+  expect(capped).toContain('☰ ⁹⁹⁹ ');
 });

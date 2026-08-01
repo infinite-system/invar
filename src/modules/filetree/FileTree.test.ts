@@ -56,7 +56,7 @@ test('selection movement clamps to bounds', () => {
   expect(tree.selectedIndex.value).toBe(tree.rows.length - 1);
 });
 
-test('revealing a path expands ancestors, selects the file, and minimally scrolls', () => {
+test('revealing a path expands ancestors, selects the file, and centers it', () => {
   const tree = new FileTree.Class();
   tree.open(root);
   tree.viewportHeight.value = 1;
@@ -70,6 +70,30 @@ test('revealing a path expands ancestors, selects the file, and minimally scroll
   ]);
   expect(tree.selected?.path).toBe(join(root, 'sub', 'c.ts'));
   expect(tree.scrollTop.value).toBe(1);
+});
+
+test('revealing centers in the viewport and clamps at the tree ends', () => {
+  const centerRoot = mkdtempSync(join(tmpdir(), 'ftree-center-'));
+  try {
+    for (let fileIndex = 0; fileIndex < 12; fileIndex += 1) {
+      writeFileSync(
+        join(centerRoot, `file-${String(fileIndex).padStart(2, '0')}.ts`),
+        `${fileIndex}\n`,
+      );
+    }
+    const tree = new FileTree.Class();
+    tree.open(centerRoot);
+    tree.viewportHeight.value = 5;
+
+    expect(tree.revealPath(join(centerRoot, 'file-07.ts'))).toBe(true);
+    expect(tree.selectedIndex.value).toBe(7);
+    expect(tree.scrollTop.value).toBe(5);
+
+    expect(tree.revealPath(join(centerRoot, 'file-11.ts'))).toBe(true);
+    expect(tree.scrollTop.value).toBe(7);
+  } finally {
+    rmSync(centerRoot, { recursive: true, force: true });
+  }
 });
 
 test('revealing a filtered hidden file is a safe no-op', () => {

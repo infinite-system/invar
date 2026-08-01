@@ -4,6 +4,26 @@ import { Static } from 'ivue/extras';
 import type { GlyphLevel } from './TerminalCapabilities';
 
 class $ThemeIcons {
+  protected static readonly SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+  protected static readonly SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
+
+  /** Render a bounded chrome count through the active glyph tier. */
+  static smallDigitCountFor(
+    level: GlyphLevel,
+    count: number,
+    placement: SmallDigitPlacement,
+  ): string {
+    const boundedCount = Math.min(999, Math.max(0, Math.floor(count)));
+    const digits = String(boundedCount);
+    if (level === 'ascii') return digits;
+    const vocabulary =
+      placement === 'iconBadge'
+        ? this.SUPERSCRIPT_DIGITS
+        : this.SUBSCRIPT_DIGITS;
+    return [...digits]
+      .map((digit) => vocabulary[Number(digit)] ?? digit)
+      .join('');
+  }
   // THE symbol-mark table: one row per capability tier, one column per symbol class. Every surface
   // that marks a classified thing — the file tree, the breadcrumb popup, the completion popup —
   // classifies into a `SymbolClass` and reads its mark here. There is no second table and no second
@@ -213,6 +233,11 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.panelRestore, owner: 'panel restore' },
       { mark: unicodeVocabulary.panelClose, owner: 'panel close' },
       { mark: unicodeVocabulary.panelStack, owner: 'panel pane count' },
+      { mark: unicodeVocabulary.navigationBack, owner: 'navigation back' },
+      {
+        mark: unicodeVocabulary.navigationForward,
+        owner: 'navigation forward',
+      },
       {
         mark: unicodeVocabulary.fileTreeReveal,
         owner: 'file-tree reveal',
@@ -294,10 +319,10 @@ class $ThemeIcons {
       ],
       [
         this.TAB_SEPARATORS.unicode,
-        'KNOWN, 2026-07-26. The buffer-tab separator and the status-bar terminal affordance both ' +
-          'paint the chevron with different meanings. They are in different chrome strips and no ' +
-          'surface composes them into one row, so nothing is ambiguous today; unifying or ' +
-          'splitting the two is a vocabulary decision, not a fix to make while adding a family.',
+        'KNOWN, updated 2026-08-01. The buffer-tab separator, breadcrumb forward control, and ' +
+          'status-bar terminal affordance paint the same chevron with different meanings. They ' +
+          'live in different chrome rows, so nothing is ambiguous today; unifying or splitting ' +
+          'them is a vocabulary decision.',
       ],
     ]);
   }
@@ -475,6 +500,8 @@ class $ThemeIcons {
         panelClose: '\u{f00d}',
         panelStack: '\u{f0c9}',
         panelSplit: '\u{f15c}',
+        navigationBack: '❮',
+        navigationForward: '❯',
         panelConnectorFirst: '\u{256d}',
         panelConnectorMiddle: '\u{251c}',
         panelConnectorLast: '\u{2570}',
@@ -516,6 +543,8 @@ class $ThemeIcons {
         panelClose: '×',
         panelStack: '☰',
         panelSplit: '◫',
+        navigationBack: '❮',
+        navigationForward: '❯',
         panelConnectorFirst: '╭',
         panelConnectorMiddle: '├',
         panelConnectorLast: '╰',
@@ -544,6 +573,8 @@ class $ThemeIcons {
         panelClose: 'x',
         panelStack: '#',
         panelSplit: 'B',
+        navigationBack: '<',
+        navigationForward: '>',
         panelConnectorFirst: '/',
         panelConnectorMiddle: '+',
         panelConnectorLast: '\\',
@@ -958,6 +989,8 @@ export interface InterfaceGlyphVocabulary {
   panelClose: string;
   panelStack: string;
   panelSplit: string;
+  navigationBack: string;
+  navigationForward: string;
   panelConnectorFirst: string;
   panelConnectorMiddle: string;
   panelConnectorLast: string;
@@ -973,6 +1006,8 @@ export interface InterfaceGlyphVocabulary {
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;
+
+export type SmallDigitPlacement = 'iconBadge' | 'standalone';
 
 export interface TableBorderGlyphSet {
   vertical: string;

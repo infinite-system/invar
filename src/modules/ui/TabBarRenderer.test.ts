@@ -34,6 +34,10 @@ test('breadcrumb keeps editor actions right-aligned outside the path area', () =
     hover: null,
     pressedTitleActionIndex: null,
     editorTitleActions,
+    navigationBackGlyph: '❮',
+    navigationForwardGlyph: '❯',
+    canGoBack: false,
+    canGoForward: false,
   });
   const renderedText = projection.text.chunks
     .map((chunk) => chunk.text)
@@ -55,6 +59,30 @@ test('breadcrumb keeps editor actions right-aligned outside the path area', () =
       .filter((segment) => segment.kind === 'crumb')
       .every((segment) => segment.end <= 21),
   ).toBe(true);
+});
+
+test('breadcrumb history owns two padded three-cell targets without an open file', () => {
+  const projection = TabBarRenderer.Class.renderBreadcrumb({
+    strip: new TabStrip.Class('horizontal', () => []),
+    palette: ThemePalettes.Class.DARK,
+    barWidth: 20,
+    projectRoot: '/project',
+    hoveredSourceIndex: null,
+    hover: { kind: 'historyBack' },
+    pressedTitleActionIndex: null,
+    editorTitleActions: [],
+    navigationBackGlyph: '❮',
+    navigationForwardGlyph: '❯',
+    canGoBack: false,
+    canGoForward: false,
+  });
+  const text = projection.text.chunks.map((chunk) => chunk.text).join('');
+
+  expect(text).toBe(' ❮  ❯ '.padEnd(20, ' '));
+  expect(projection.segments).toEqual([
+    { kind: 'historyBack', start: 0, end: 3 },
+    { kind: 'historyForward', start: 3, end: 6 },
+  ]);
 });
 
 test('buffer tab row does not render editor title actions', () => {

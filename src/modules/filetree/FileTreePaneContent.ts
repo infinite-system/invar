@@ -90,6 +90,10 @@ class $FileTreePaneContent implements PaneContent {
       ],
       hoveredAction: this.hoveredHeaderAction.value,
       palette: context.palette,
+      trailingPaddingCells:
+        tree.rows.length > tree.viewportHeight.value
+          ? this.scrollbarThicknessCells
+          : 0,
     });
     const treeText = TreePaneRenderer.Class.render({
       tree,

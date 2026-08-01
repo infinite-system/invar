@@ -222,6 +222,18 @@ class $CommandDefaults {
         run: () => void context.workspaceSet.active.goToDefinition(),
       },
       {
+        id: 'navigation.back',
+        title: 'Go: Back',
+        category: 'Go',
+        run: () => context.workspaceSet.active.navigateBack(),
+      },
+      {
+        id: 'navigation.forward',
+        title: 'Go: Forward',
+        category: 'Go',
+        run: () => context.workspaceSet.active.navigateForward(),
+      },
+      {
         id: 'editor.goToLine',
         title: 'Editor: Go to Line',
         category: 'Editor',

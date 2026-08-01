@@ -88,6 +88,21 @@ test('right dock affordance has one cell at every glyph tier', () => {
   }
 });
 
+test('small chrome counts use placement digits, ASCII fallback, and a three-cell cap', () => {
+  expect(ThemeIcons.Class.smallDigitCountFor('unicode', 12, 'iconBadge')).toBe(
+    '¹²',
+  );
+  expect(ThemeIcons.Class.smallDigitCountFor('unicode', 12, 'standalone')).toBe(
+    '₁₂',
+  );
+  expect(ThemeIcons.Class.smallDigitCountFor('nerd', 1000, 'standalone')).toBe(
+    '₉₉₉',
+  );
+  expect(ThemeIcons.Class.smallDigitCountFor('ascii', 1000, 'iconBadge')).toBe(
+    '999',
+  );
+});
+
 test('status author and agent affordances use tiered one-cell marks', () => {
   expect(ThemeIcons.Class.glyphFor('nerd', 'statusUser')).toBe('\u{f007}');
   expect(ThemeIcons.Class.glyphFor('unicode', 'statusUser')).toBe('♙');

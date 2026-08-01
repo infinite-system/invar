@@ -39,8 +39,18 @@ class $SeparatorAppearance {
       color,
       mark,
       leadingPaintPadCells = 0,
+      surfaceBackgroundColor,
     } = options;
     const padCellCount = Math.max(0, Math.floor(leadingPaintPadCells));
+    if (surfaceBackgroundColor) {
+      buffer.fillRect(
+        rectangle.x,
+        rectangle.y,
+        rectangle.width,
+        rectangle.height,
+        surfaceBackgroundColor,
+      );
+    }
     if (orientation === 'vertical' && mark === 'bottomAnchoredHalfBlock') {
       buffer.fillRect(
         rectangle.x,
@@ -121,4 +131,6 @@ export interface SeparatorPaintOptions {
   readonly color: RGBA;
   readonly mark: SeparatorMark;
   readonly leadingPaintPadCells?: number;
+  /** Optional opaque surface below the mark. Use this when a separator row crosses other paint. */
+  readonly surfaceBackgroundColor?: RGBA;
 }
