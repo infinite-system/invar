@@ -19,8 +19,11 @@ because the gate names only what it happens to cover.
   carries the round-10 fixes (tooltip test, coverage declaration).
 - **#444** — union with #442 complete (`9cf3817`), blocked only by
   #442's regression. Nothing wrong with #444 itself.
-- **#452** — fix committed `552cf6c7`; round 2 (union with #444)
-  re-steered after my misfiled brief. Branch tip still pre-union.
+- **#452** — UNION DONE at merge `e05b7b61` (contains #444's `9cf3817`,
+  which contains #442). The whole stack is now ONE branch:
+  `fleet/452-pane-identity-collides-by-name`. It therefore also carries
+  #442's dirty-dot regression — when #442's round 11 fix lands on its
+  own branch, #452 must merge it, then ONE gate covers all three.
   ITS OPEN QUESTION STANDS: neither the database-id collision nor the
   OpenPty normal-close defect explains the user's original
   all-terminal incident. Do not let that be quietly closed.
