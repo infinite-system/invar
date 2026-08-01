@@ -1,0 +1,15 @@
+{
+  "task": 444,
+  "slug": "history-is-editor-area-view-states",
+  "branch": "fleet/444-history-is-editor-area-view-states",
+  "worktree": ".invar/worktrees/444-history-is-editor-area-view-states",
+  "tmuxSession": "invar/444-history-is-editor-area-view-states",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-444-history-is-editor-area-view-states.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "d8d115421ab80e5f9db70357140368940719c26d",
+  "startedAt": "2026-08-01T16:24:53-04:00"
+}

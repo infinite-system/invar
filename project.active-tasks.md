@@ -6,8 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #443 [static-read-indirection-defeats-override](.invar/tasks/in-progress/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md)  [building]
+## IN-PROGRESS (3)
+- #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [building]
+  `tmux attach -t invar/444-history-is-editor-area-view-states`
+- #443 [static-read-indirection-defeats-override](.invar/tasks/in-progress/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/443-static-read-indirection-defeats-override`
 - #442 [panel-editor-tree-chrome-polish](.invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md)  [building]
   `tmux attach -t invar/442-panel-editor-tree-chrome-polish`
