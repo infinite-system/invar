@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #432 [panel-editor-actions-instances-overhaul](.invar/tasks/in-progress/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/432-panel-editor-actions-instances-overhaul`
-
 ## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -132,7 +128,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 168 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 169 — full log: project.tasks-completed.md)
+- #432 [panel-editor-actions-instances-overhaul](.invar/tasks/completed/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md) — 7d2cc879 — All 21 brief items landed in one round; generic Dialog + DragReorder seams; design.invariants.md seeded; markdown preview actions fixed; landed over documented pre-existing 417084fa red (#433)
 - #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/completed/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md) — 483725e4 — The user's layout complaint is closed at the composition seam with the four-combination proof. Bycatch converted to #431 before landing.
 - #429 [layout-switcher-icon-tooltip](.invar/tasks/completed/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md) — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
 - #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/completed/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md) — d5c4ec0c — The contract that blocked two landings today is now genuinely count-based. No bycatch.
@@ -147,4 +144,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #419 [field-v2-opus-synthesis](.invar/tasks/completed/419-field-v2-opus-synthesis/task-419-field-v2-opus-synthesis.md) — 202d34f1 — Invariable representation instrument: one-viewport synthesis, self-measuring contract, fully green gate
 - #418 [field-v2-code-lens-explorer](.invar/tasks/completed/418-field-v2-code-lens-explorer/task-418-field-v2-code-lens-explorer.md) — 7435c3c8 — Field v2 explorer: navigable record lens + shiki code lenses into real source (read-only, path-confined)
 - #417 [field-v2-3d-field-timeline-playout](.invar/tasks/completed/417-field-v2-3d-field-timeline-playout/task-417-field-v2-3d-field-timeline-playout.md) — 508616e9 — Field v2: exact 2D + constrained 3D + timeline playout (one geometry generator; no ambient loop)
-- #416 [field-v2-design-language-research](.invar/tasks/completed/416-field-v2-design-language-research/task-416-field-v2-design-language-research.md) — ff82192e — Field v2 design language: researched spec + tokens + mockup (dark instrument, game directness)
