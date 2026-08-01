@@ -69,3 +69,26 @@ specifications, not one-bug-one-agent waste.
   decides; record their ruling verbatim in the task file.
 - The probe that confirmed the sighting ships with the task (commit
   it or reference it) so the builder starts from the same evidence.
+
+## Refine the driving instrument itself (user addition, 2026-08-01)
+
+While driving, the conductor is allowed — encouraged — to refine the
+PTY driving layer so that driving is comfortable, fast, and
+mechanical. The goal is a DETERMINISTIC API: helpers that reduce the
+variance of HOW a drive is performed while increasing its accuracy.
+
+- Prefer one named helper over a re-typed idiom: `selectPreset(name,
+  appliedPredicate)`, `openBottomPanel()`, `slotTable(status)` —
+  each encapsulating the correct waits and the correct mouse/key
+  forms, so a drive reads as intent, not as key-and-click plumbing.
+- When a drive step proves fiddly (a click that silently no-ops, a
+  wait that races), fix or wrap the DRIVER, not the one probe — the
+  press/release-vs-down/up gotcha belongs solved in a shared helper,
+  not re-remembered per probe.
+- Promote recurring probe fragments into the harness support layer
+  (HarnessSmokeSupport or a conductor probe library) with the same
+  discipline as any code: named, typed, condition-waited.
+- The same refinements serve the builders: a deterministic drive API
+  the conductor uses to SEE is the API the brief cites for the
+  builder to REPRODUCE — one instrument, two users, zero variance
+  between what each of us observed.
