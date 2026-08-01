@@ -9,6 +9,7 @@
 // Distinct from Bootstrap by generator: Bootstrap COMPOSES the app (renderer, modules, frame loop);
 // AppLoader owns the PROCESS around it (argv, signals, exit, fatal).
 // invariant: Construction goes through overridable seams (project.invariants.md)
+// invariant: Live static reads follow the receiving class (project.invariants.md)
 import { Static } from 'ivue/extras';
 import { Bootstrap, type BootedApp } from './Bootstrap';
 import { Logging } from '../system/Logging';
@@ -26,11 +27,11 @@ class $AppLoader {
   static async main(): Promise<void> {
     try {
       IvueStaticGetterCapability.Class.assertAvailable();
-      if (await AppLoader.Class.handlePluginCommand()) return;
-      const booted = await AppLoader.Class.bootApp();
-      AppLoader.Class.wireSignals(booted);
+      if (await this.handlePluginCommand()) return;
+      const booted = await this.bootApp();
+      this.wireSignals(booted);
     } catch (error) {
-      AppLoader.Class.handleFatal(error);
+      this.handleFatal(error);
     }
   }
 
@@ -41,11 +42,11 @@ class $AppLoader {
     KernelTargets.Class.register();
     const vendorPlugins = await VendorPluginRuntime.Class.load();
     return Bootstrap.Class.boot({
-      root: AppLoader.Class.rootArgument(),
+      root: this.rootArgument(),
       plugins: [...DefaultPlugins.Class.create(), ...vendorPlugins],
       // Give the renderer a tick to restore the terminal, then exit.
-      onQuit: () => setTimeout(() => AppLoader.Class.exitProcess(0), 20),
-      onRestart: () => AppLoader.Class.relaunch(),
+      onQuit: () => setTimeout(() => this.exitProcess(0), 20),
+      onRestart: () => this.relaunch(),
     });
   }
 
@@ -147,7 +148,7 @@ class $AppLoader {
     } catch {
       /* logging unavailable — stderr already carries the message */
     }
-    AppLoader.Class.exitProcess(1);
+    this.exitProcess(1);
   }
 
   /** The one exit point — overridable so tests can assert exit codes without dying. */

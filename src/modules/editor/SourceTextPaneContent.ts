@@ -47,7 +47,7 @@ class $SourceTextPaneContent
   protected readonly controller: EditorPane.Instance;
   protected readonly paintRevision: Ref<string>;
   /** What the pane shows with no document open — the first thing a new user reads. */
-  protected static get emptyState(): string {
+  protected get emptyState(): string {
     return [
       '',
       '   Invar — a terminal code workspace',
@@ -194,7 +194,7 @@ class $SourceTextPaneContent
       } else {
         this.gutterBody.width = 0;
         this.gutterBody.content = '';
-        this.codeBody.content = $SourceTextPaneContent.emptyState;
+        this.codeBody.content = this.emptyState;
       }
     }
     this.codeBody.fg = palette.fg;

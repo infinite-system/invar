@@ -42,14 +42,10 @@ class $MonitoringPlugin implements ApplicationContributor {
   protected readLoggingEnabled: () => boolean = () => false;
 
   /** Where sample lines land, relative to the active workspace root. */
-  protected static get LOG_FILE_RELATIVE_PATH(): string {
-    return '.invar/monitoring-samples.jsonl';
-  }
+  protected readonly logFileRelativePath = '.invar/monitoring-samples.jsonl';
 
   /** An explicit override, so a driven run writes into its own fixture rather than a real project. */
-  protected static get LOG_PATH_ENVIRONMENT_NAME(): string {
-    return 'INVAR_MONITORING_LOG_PATH';
-  }
+  protected readonly logPathEnvironmentName = 'INVAR_MONITORING_LOG_PATH';
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
@@ -162,12 +158,11 @@ class $MonitoringPlugin implements ApplicationContributor {
   protected logFilePath(): string | null {
     const application = this.application;
     if (!application) return null;
-    const override =
-      process.env[$MonitoringPlugin.LOG_PATH_ENVIRONMENT_NAME] ?? '';
+    const override = process.env[this.logPathEnvironmentName] ?? '';
     if (override.length > 0) return override;
     const logPath = join(
       application.workspaceSet.active.root,
-      $MonitoringPlugin.LOG_FILE_RELATIVE_PATH,
+      this.logFileRelativePath,
     );
     mkdirSync(dirname(logPath), { recursive: true });
     return logPath;
