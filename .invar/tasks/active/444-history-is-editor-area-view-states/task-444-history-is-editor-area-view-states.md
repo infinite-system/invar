@@ -37,13 +37,17 @@ registration seam, contributors on both sides. History owns the
 sequence. A contributor owns how to describe and how to restore its
 own state.
 
-## Open design question for the user, answer before implementing
+## Settled: every diff is its own entry
 
-Walking a 40-file changeset would push 40 entries and make back
-useless for escaping the review. Options: coalesce consecutive diffs
-within one changeset, or make the changeset the entry with the file
-as sub-state. The conductor leans to the changeset-as-entry form.
-Do not choose silently.
+USER RULING 2026-08-01: keep it simple. A diff pushes a history entry
+exactly like a file open. No coalescing, no changeset-as-container,
+no special case for review. Walking 40 files pushes 40 entries, and
+that is correct: each one is a place the user was.
+
+The conductor proposed changeset-as-entry and the user rejected it.
+Do not reintroduce it. If back-out-of-a-long-review becomes a real
+complaint later, that is a NEW observation with its own evidence, not
+a reason to add the container now.
 
 ## Depends on
 
