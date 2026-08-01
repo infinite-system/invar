@@ -1,21 +1,19 @@
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
+import { Dialog } from '../ui/Dialog';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
-class $GoToLinePrompt {
+class $GoToLinePrompt extends Dialog.$Class {
   protected readonly inputModel: TextInputModel.Model;
 
   constructor() {
+    super();
     this.inputModel = this.createInput();
   }
 
   protected createInput(): TextInputModel.Model {
     return new TextInputModel.Class();
-  }
-
-  get open() {
-    return ref(false);
   }
 
   get input(): TextInputModel.Model {
@@ -26,14 +24,19 @@ class $GoToLinePrompt {
     return ref('');
   }
 
-  show(): void {
+  override show(): void {
     this.input.clear();
     this.notice.value = '';
-    this.open.value = true;
+    super.show({
+      identifier: 'goToLine',
+      title: 'Go to Line',
+      message: '',
+      onConfirm: () => {},
+    });
   }
 
   close(): void {
-    this.open.value = false;
+    this.dismiss();
     this.input.clear();
     this.notice.value = '';
   }

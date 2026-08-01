@@ -117,10 +117,10 @@ class $CommandDefaults {
         id: 'view.toggleWordWrap',
         title: 'View: Toggle Word Wrap',
         category: 'View',
-        actionIcons: { panelSeparator: 'wordWrap' },
+        actionIcons: { editorFrame: 'wordWrap' },
         when: hasDocument,
-        toggled: () => getEditor().wordWrap.value,
-        run: () => getEditor().toggleWordWrap(),
+        toggled: context.wordWrapEnabled,
+        run: context.toggleWordWrap,
       },
       {
         id: 'editor.fold',
@@ -225,7 +225,7 @@ class $CommandDefaults {
         id: 'editor.goToLine',
         title: 'Editor: Go to Line',
         category: 'Editor',
-        actionIcons: { panelSeparator: 'goToLine' },
+        actionIcons: { editorFrame: 'goToLine' },
         when: hasDocument,
         run: context.openGoToLine,
       },
@@ -240,9 +240,9 @@ class $CommandDefaults {
         id: 'go.bottom',
         title: 'Go: Bottom of File',
         category: 'Go',
-        actionIcons: { panelSeparator: 'goToBottom' },
+        actionIcons: { editorFrame: 'goToBottom' },
         when: hasDocument,
-        run: () => getEditor().gotoBottom(),
+        run: context.goToBottom,
       },
       {
         id: 'help.shortcuts',
@@ -270,6 +270,9 @@ export interface CommandContext {
   theme: Theme.Instance;
   openWorkspaceFolder: () => void;
   openGoToLine: () => void;
+  toggleWordWrap: () => void;
+  wordWrapEnabled: () => boolean;
+  goToBottom: () => void;
   quit: () => void;
   requestRender: () => void;
   toggleActivityBar: () => void;

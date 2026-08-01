@@ -63,6 +63,24 @@ class $MarkdownPreview {
   get scrollLeft() {
     return ref(0);
   }
+  get wordWrapEnabled() {
+    return ref(true);
+  }
+
+  toggleWordWrap(): void {
+    this.wordWrapEnabled.value = !this.wordWrapEnabled.value;
+    this.invalidateRender();
+  }
+
+  protected layoutWidth(viewportWidth: number): number {
+    const normalizedWidth = Math.max(1, Math.floor(viewportWidth));
+    if (this.wordWrapEnabled.value) return normalizedWidth;
+    return this.blocks.reduce(
+      (widestWidth, block) =>
+        Math.max(widestWidth, TextCoordinates.Class.lineWidth(block.text) + 8),
+      normalizedWidth,
+    );
+  }
 
   get blocks(): readonly BlockRecord[] {
     const previewClass = this.constructor as typeof $MarkdownPreview;
@@ -196,7 +214,7 @@ class $MarkdownPreview {
   }
 
   protected sourcePositionMap(width: number): MarkdownSourcePositionMap {
-    const normalizedWidth = Math.max(1, Math.floor(width));
+    const normalizedWidth = this.layoutWidth(width);
     if (
       this.positionMapRevision === this.parsedRevision &&
       this.positionMapWidth === normalizedWidth
@@ -330,7 +348,7 @@ class $MarkdownPreview {
     tableBorders: TableBorderGlyphSet,
   ): PreviewRow[] {
     const document = this.document.value;
-    const rowWidth = Math.max(1, Math.floor(width));
+    const rowWidth = this.layoutWidth(width);
     const rowLimit = Math.max(0, Math.floor(height));
     if (!document || rowLimit === 0) return [];
 
@@ -353,7 +371,7 @@ class $MarkdownPreview {
    * copy selection). Normal painting continues to call visibleRows and stays viewport bounded. */
   allRows(width: number, tableBorders: TableBorderGlyphSet): PreviewRow[] {
     const document = this.document.value;
-    const rowWidth = Math.max(1, Math.floor(width));
+    const rowWidth = this.layoutWidth(width);
     if (!document) return [];
     if (document.error.value)
       return [this.statusRow(`Markdown: ${document.error.value}`)];
@@ -381,13 +399,13 @@ class $MarkdownPreview {
   totalRows(width: number): number {
     const document = this.document.value;
     if (!document) return 0;
-    const rowWidth = Math.max(1, Math.floor(width));
+    const rowWidth = this.layoutWidth(width);
     return this.sourcePositionMap(rowWidth).totalRows;
   }
 
   /** The widest rendered row. Prose and tables stay viewport-bound; fenced code may overflow. */
   totalColumns(width: number): number {
-    const normalizedWidth = Math.max(1, Math.floor(width));
+    const normalizedWidth = this.layoutWidth(width);
     if (
       this.contentWidthRevision === this.parsedRevision &&
       this.contentWidthViewport === normalizedWidth

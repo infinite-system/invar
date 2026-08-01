@@ -87,7 +87,7 @@ class $DatabaseConsumerPlugin
         category: 'Database',
         run: () => {
           this.showDatabase();
-          this.paneContent?.beginConnectionInput();
+          this.focusedPaneContent()?.beginConnectionInput();
         },
       },
       {
@@ -111,17 +111,17 @@ class $DatabaseConsumerPlugin
         id: 'database.submitOrActivate',
         title: 'Database: Open Selected Schema Item',
         category: 'Database',
-        run: () => this.paneContent?.submitOrActivate(),
+        run: () => this.focusedPaneContent()?.submitOrActivate(),
         when: () => this.databaseOwnsFocus(),
       },
       {
         id: 'database.cancelInput',
         title: 'Database: Cancel Path Input',
         category: 'Database',
-        run: () => this.paneContent?.cancelConnectionInput(),
+        run: () => this.focusedPaneContent()?.cancelConnectionInput(),
         when: () =>
           this.databaseOwnsFocus() &&
-          (this.paneContent?.inputActive.value ?? false),
+          (this.focusedPaneContent()?.inputActive.value ?? false),
       },
       {
         id: 'database.previousSchemaItem',
@@ -200,8 +200,15 @@ class $DatabaseConsumerPlugin
     return Boolean(
       application &&
       application.bottomPanelHost.focused.value &&
-      application.bottomPanelHost.focusedContent?.id === 'database',
+      application.bottomPanelHost.focusedContent?.kind === 'database',
     );
+  }
+
+  protected focusedPaneContent(): DatabasePaneContent.Model | null {
+    const content = this.application?.bottomPanelHost.focusedContent;
+    return content instanceof DatabasePaneContent.Class
+      ? (content as DatabasePaneContent.Model)
+      : this.paneContent;
   }
 
   protected activeWorkspace(): DatabaseConsumerWorkspace.Model {
@@ -238,9 +245,10 @@ class $DatabaseConsumerPlugin
       databaseConsumerVersion: workspace.version.value,
       databaseProviderIdentifier: workspace.providerIdentifier.value,
       databaseFilePath: workspace.filePath.value,
-      databasePathInputActive: this.paneContent?.inputActive.value ?? false,
-      databasePathInputValue: this.paneContent?.inputActive.value
-        ? this.paneContent.pathInputValue
+      databasePathInputActive:
+        this.focusedPaneContent()?.inputActive.value ?? false,
+      databasePathInputValue: this.focusedPaneContent()?.inputActive.value
+        ? (this.focusedPaneContent()?.pathInputValue ?? '')
         : '',
       databaseSchemaObjectNames: workspace.descriptions.value.map(
         (row) => row.description.name,

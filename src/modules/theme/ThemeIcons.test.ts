@@ -229,7 +229,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '⚙',
       '▧',
       '+',
-      '▦',
+      '☰',
       '↗',
       '↙',
       '×',

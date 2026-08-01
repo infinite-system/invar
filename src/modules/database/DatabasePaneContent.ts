@@ -20,10 +20,13 @@ import type { DatabaseValue } from './DatabaseProvider.interface';
 // invariant: Database files are user selected (src/modules/database/database.invariants.md)
 class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
   protected readonly pathInput = new TextInputModel.Class();
+  readonly kind = 'database';
 
   constructor(
     protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => DatabaseConsumerWorkspace.Model,
+    protected readonly identifier = 'database',
+    readonly instanceLabel = 'Database',
   ) {}
 
   get inputActive() {
@@ -37,10 +40,10 @@ class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
   }
 
   get id(): string {
-    return 'database';
+    return this.identifier;
   }
   get title(): string {
-    return 'Database';
+    return this.instanceLabel;
   }
   get activityLabel(): string {
     return 'Database';
@@ -56,6 +59,15 @@ class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
   }
   get keybindingContext(): string {
     return 'database';
+  }
+
+  createInstance(identifier: string, label: string): PaneContent {
+    return new DatabasePaneContent.Class(
+      this.application,
+      this.activeWorkspace,
+      identifier,
+      label,
+    );
   }
   get renderRevision() {
     return computed(() => this.readRenderRevision());

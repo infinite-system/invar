@@ -86,6 +86,12 @@ export interface EditorSurfaceContent {
   pageFocusedPane(direction: -1 | 1): void;
   /** Select everything in the focused pane. */
   selectAllInFocusedPane(): void;
+  toggleWordWrap?(): void;
+  readonly wordWrapEnabled?: boolean;
+  goToSourceLine?(oneBasedLine: number): void;
+  goToBottom?(): void;
+  /** Clear transient pointer state when host chrome covers the surface at the pointer cell. */
+  clearPointerHover?(): void;
   /** Give the keyboard back to the source editor — Escape's meaning for a surface that embeds it,
    *  and for one that replaces it, dismissal. */
   yieldKeyboardToSourceEditor(): void;

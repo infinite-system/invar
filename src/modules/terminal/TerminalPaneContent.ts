@@ -44,21 +44,21 @@ import type {
 } from './TerminalCommandController';
 
 class $TerminalPaneContent implements PaneContent {
-  // The terminal pane's gutter: a 2-column left/right margin and a 1-row top/bottom margin around the
-  // emulator, so the shell doesn't hug the panel border. The emulator (and thus the child PTY) sizes to
-  // the VISIBLE region inside the gutter; the caret and rendered cells shift by the same margin. Kept in
-  // ONE place so render(), onResize(), and caret() agree — a mismatch would put the cursor off the text.
+  // The terminal pane keeps a two-column horizontal gutter. Its frame supplies the header row, so the
+  // emulator starts on the next row without another vertical pad. The emulator (and thus the child PTY)
+  // sizes to the VISIBLE region inside this gutter; the caret and rendered cells shift by the same margin.
   protected static get PAD_COLUMNS(): number {
     return 2;
   }
 
   protected static get PAD_ROWS(): number {
-    return 1;
+    return 0;
   }
 
   readonly id: string;
   readonly kind: string;
   readonly instanceLabel: string;
+  readonly frameHeaderRows = 1;
   readonly icon = '❯'; // ❯
   // The pane owns the `terminal` keybinding context while the panel focuses it, so the host resolves
   // its bindings generically instead of testing for this class.

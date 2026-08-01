@@ -495,26 +495,21 @@ try {
     taskIdentifiers(status).length === 4,
     'the positive control rendered all four planted errors',
   );
-  const panelHeading = (
-    status.panelHeadingGeometry as
-      | Array<{
-          row: number;
-          controls: Array<{
-            action: string;
+  const instancesToggle = (
+    status.panelSeparatorGeometry as
+      | {
+          instancesToggle: {
             startColumn: number;
             endColumnExclusive: number;
-          }>;
-        }>
+          } | null;
+        }
       | undefined
-  )?.[0];
-  const paneListControl = panelHeading?.controls.find(
-    (control) => control.action === 'pane-list',
-  );
-  if (!panelHeading || !paneListControl) {
-    throw new Error('The four-pane space did not publish its count chip');
+  )?.instancesToggle;
+  if (!instancesToggle) {
+    throw new Error('The four-pane space did not publish its instances chip');
   }
   HarnessSmoke.Class.pass(
-    'the count chip appears only for the four-pane management case',
+    'the four-pane management case publishes its instances count chip',
   );
   HarnessSmoke.Class.pass(
     'missing file context and refused variable classes were observed RED by users',

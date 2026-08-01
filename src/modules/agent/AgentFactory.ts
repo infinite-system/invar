@@ -91,6 +91,7 @@ class $AgentFactory {
     return new AgentPaneContent.Class(session, {
       identifier: options.identifier,
       label: options.label,
+      onExit: options.onExit,
     });
   }
 }
@@ -103,6 +104,7 @@ export namespace AgentFactory {
 export interface AgentCreateOptions {
   identifier?: string;
   label?: string;
+  onExit?: (identifier: string) => void;
   /** Inject a specific backend (tests pass a MockAgentBackend; a host may pass any implementation). */
   backend?: AgentBackend;
   /** The workspace root — the cwd the real agent CLI runs in, so it operates in the user's project. */

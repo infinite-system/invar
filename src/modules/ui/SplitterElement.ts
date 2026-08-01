@@ -100,9 +100,7 @@ class $SplitterElement {
   }
 
   updateAppearance(palette: Palette): void {
-    this.renderable.backgroundColor = this.active
-      ? palette.accent
-      : palette.border;
+    this.renderable.backgroundColor = this.active ? palette.fg : palette.dim;
   }
 
   protected pointerPosition(event: MouseEvent): number {

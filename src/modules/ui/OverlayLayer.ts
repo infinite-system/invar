@@ -63,10 +63,7 @@ import type { Tooltip } from './Tooltip';
 import type { Theme } from '../theme/Theme';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
-import type {
-  QuitConfirmation,
-  QuitConfirmationChoice,
-} from './QuitConfirmation';
+import type { Dialog, DialogChoice } from './Dialog';
 
 class $OverlayLayer {
   get paintRevision() {
@@ -158,7 +155,7 @@ class $OverlayLayer {
   // app — steppers for numbers, a toggle for booleans, arrows for enums.
   protected settingsWidgetZones: SettingsWidgetZone[] = [];
   protected quitConfirmationButtonZones: QuitConfirmationButtonZone[] = [];
-  protected quitConfirmationHoveredChoice: QuitConfirmationChoice | null = null;
+  protected quitConfirmationHoveredChoice: DialogChoice | null = null;
   protected commandPaletteRowCount = 0;
   protected commandPaletteFirstVisible = 0;
   protected quickOpenRowCount = 0;
@@ -1016,10 +1013,10 @@ class $OverlayLayer {
     palette: Palette,
     interiorWidth: number,
   ): { text: StyledText; buttonZones: QuitConfirmationButtonZone[] } {
-    const question = 'Are you sure you want to quit?';
-    const hint = 'Left/Right or Tab, then Enter';
-    const yesLabel = '  Yes  ';
-    const noLabel = '  No  ';
+    const question = this.dependencies.quitConfirmation.message.value;
+    const hint = this.dependencies.quitConfirmation.hint.value;
+    const yesLabel = `  ${this.dependencies.quitConfirmation.confirmLabel.value}  `;
+    const noLabel = `  ${this.dependencies.quitConfirmation.cancelLabel.value}  `;
     const buttonGap = '    ';
     const buttonRowWidth =
       TextCoordinates.Class.lineWidth(yesLabel) +
@@ -1033,10 +1030,7 @@ class $OverlayLayer {
       `${' '.repeat(Math.max(0, Math.floor((interiorWidth - TextCoordinates.Class.lineWidth(line)) / 2)))}${line}`;
     const focusedChoice =
       this.dependencies.quitConfirmation.focusedChoice.value;
-    const buttonChunk = (
-      choice: QuitConfirmationChoice,
-      label: string,
-    ): TextChunk =>
+    const buttonChunk = (choice: DialogChoice, label: string): TextChunk =>
       focusedChoice === choice
         ? bold(bg(palette.selection)(fg(palette.fg)(label)))
         : this.quitConfirmationHoveredChoice === choice
@@ -1462,9 +1456,9 @@ class $OverlayLayer {
     if (this.dependencies.quitConfirmation.open.value) {
       const desiredWidth = this.contentDerivedDialogWidth(
         [
-          'Are you sure you want to quit?',
-          '  Yes      No  ',
-          'Left/Right or Tab, then Enter',
+          this.dependencies.quitConfirmation.message.value,
+          `  ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value}  `,
+          this.dependencies.quitConfirmation.hint.value,
         ],
         44,
         2,
@@ -1476,7 +1470,7 @@ class $OverlayLayer {
         palette,
         {
           dialogName: 'quitConfirmation',
-          title: 'Invar',
+          title: this.dependencies.quitConfirmation.title.value,
           desiredTop: Math.max(
             1,
             Math.floor((renderer.height - desiredHeight) / 2),
@@ -1849,7 +1843,7 @@ export interface OverlayLayerDependencies {
   findBar: FindBar.Instance;
   quickOpen: QuickOpen.Instance;
   goToLinePrompt: GoToLinePrompt.Instance;
-  quitConfirmation: QuitConfirmation.Model;
+  quitConfirmation: Dialog.Model;
   contextMenu: ContextMenu.Instance;
   boundedListPopup: BoundedListPopup.Instance;
   settingsPanel: SettingsPanel.Instance;
@@ -1868,5 +1862,5 @@ interface QuitConfirmationButtonZone {
   row: number;
   startColumn: number;
   endColumn: number;
-  choice: QuitConfirmationChoice;
+  choice: DialogChoice;
 }

@@ -610,20 +610,18 @@ src/modules/ui/BoundedListPopup.test.ts` and `bun scripts/harness/smoke-completi
 
 **Invariant:** If a pane boundary is resizable, then one `SplitterElement` owns its one-cell
 cross-axis geometry, pointer hit target, hover state, drag capture, and palette state; the cell that
-paints is the cell that receives the pointer. A boundary paints the slim centered heavy line of its
-axis in that hit cell — `━` horizontally, `┃` vertically — through the same appearance source as a
+paints is the cell that receives the pointer. A boundary paints the thin centered line of its
+axis in that hit cell — `─` horizontally, `│` vertically — through the same appearance source as a
 scrollbar. The two glyphs are axis siblings from one box-drawing family, so a boundary reads at the
 same weight whichever way it runs, and no splitter fills its cell. The boundary mark sits in the
 middle of its cell because a splitter divides two regions; the scrollbar mark hugs the trailing edge
 because a scrollbar reports a position along one edge. The painter is shared, the mark is the
 caller's choice, and the hit cell is the whole cell either way.
 
-A splitter may also declare a LEADING PAINT PAD: a count of cells at the start of its long axis that
-stay blank. The pad moves where paint begins and never where the rectangle is, so the drag still
-grabs on the pad cell and across the span's whole former extent. The bottom panel splitter declares
-one pad cell. In the panel splitter row the order is editor actions, pad, drag span, and controls, so
-the pad is the blank cell between the actions and line. The separate row below contains container
-tabs and container Add.
+A splitter may also declare a leading paint pad for consumers that need one. The bottom panel does
+not: its line and panel background start at the panel's left edge, and its drag hit geometry starts
+at that same cell. The editor actions live in the editor's bottom frame instead of consuming any
+part of the panel boundary.
 
 **Scope:** Every pane splitter in `RootView`, `DiffView`, and `MarkdownSplitView`, including the
 sidebar, bottom panel, git regions, split panel cells, diff panes, markdown preview, and right dock.
@@ -631,10 +629,10 @@ sidebar, bottom panel, git regions, split panel cells, diff panes, markdown prev
 **Mechanism:** `SplitterElement` owns one `BoxRenderable` and one `SplitterModel`. Its geometry setter
 writes the renderable rectangle that OpenTUI both paints and stamps into the hit grid; its shared
 pointer lifecycle captures that same renderable, tracks hover plus drag, and resolves appearance
-through `palette.border` at rest and `palette.accent` while hovered or dragged.
+through `palette.dim` at rest and `palette.fg` while hovered or dragged.
 `SeparatorAppearance` supplies the one-cell cross-axis count and takes a `SeparatorMark` from the
 caller. The mark names the ROLE, not an axis, and the painter picks the glyph for the axis it paints:
-`SplitterElement` asks for `centeredLine` and gets `━` or `┃`; `SolidThumbScrollBar` asks for
+`SplitterElement` asks for `centeredLine` and gets `─` or `│`; `SolidThumbScrollBar` asks for
 `bottomAnchoredHalfBlock` and gets `▄` horizontally and a background fill vertically. Neither caller
 writes a glyph of its own. `SplitterElement.leadingPaintPadCells` is passed straight to the same
 painter, which skips that many cells at the rectangle's long-axis start and touches nothing else;
@@ -648,9 +646,9 @@ splitter wire-up instead of another geometry and pointer implementation.
 `src/modules/ui/SeparatorAppearance.test.ts`; `src/modules/ui/SplitterElement.ts`;
 `src/modules/ui/SplitterElement.test.ts`;
 splitter consumers construct `SplitterElement` rather than binding pointer handlers themselves;
-`scripts/harness/smoke-panel-chrome-harness.ts` asserts the published drag span paints one blank pad
-cell and then `━` across the rest of its width at both scales, and that a drag begun on the pad cell
-and on the strip's last cell both still grow the panel. That smoke waits for a NONZERO published
+`scripts/harness/smoke-panel-chrome-harness.ts` asserts the published drag span paints `─` from its
+first cell across the rest of its width at both scales, and that a drag begun on the first cell and
+on the strip's last cell both still grow the panel. That smoke waits for a NONZERO published
 rectangle before slicing it: a zero-width rectangle made the earlier paint assertion compare two
 empty strings, so it could only pass.
 
@@ -665,7 +663,33 @@ plus the splitter-state FrameProbe assertions registered in `scripts/merge-gate.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-08-01
+
+### Panel chrome follows its interaction layers
+
+**Invariant:** If a panel control acts on the panel frame, a plugin, or a plugin instance, then it
+appears only in the row or subpanel for that layer.
+
+**Scope:** The bottom-panel splitter row, plugin tabs row, instances list, and editor bottom frame.
+
+**Mechanism:** `PanelTabBar` projects only expand and close on the splitter row. Its tabs row projects
+plugin tabs, `+ Plugin`, and the instances toggle. `PanelContentsList` projects the contextual
+instance add and instance rows. `RootView` projects editor commands over the editor's bottom border.
+
+**Generates:** A frame-functions row, a plugin row, an instance subpanel, and editor actions whose
+availability does not depend on panel visibility.
+
+**Evidence:** `src/modules/ui/PanelTabBar.ts`; `src/modules/ui/PanelContentsList.ts`;
+`src/modules/ui/RootView.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Impossible if true:** An instance add on the splitter row, an editor action that disappears with
+the panel, or a plugin add inside an instance row.
+
+**Verification:** `bun scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-08-01
 
 ### Visible panel contents own separate headed regions
 

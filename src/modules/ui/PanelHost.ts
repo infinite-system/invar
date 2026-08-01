@@ -99,16 +99,16 @@ class $PanelHost {
   get isSplit(): boolean {
     return this.resolvedCells.length > 1;
   }
-  /** The docked contents list is useful only when there is a choice to make. */
+  /** The docked instances list remains available for the sole open instance. */
   get panelListVisible(): boolean {
     return (
       this.visible.value &&
       this.panelListExpanded.value &&
-      this.activeSpaceContents.length > 1
+      this.activeSpaceContents.length >= 1
     );
   }
   get panelCountChipVisible(): boolean {
-    return this.visible.value && this.activeSpaceContents.length > 1;
+    return this.visible.value && this.activeSpaceContents.length >= 1;
   }
   get activeSpace(): PanelSpace | null {
     const identifier = this.activeSpaceId.value;
@@ -548,6 +548,23 @@ class $PanelHost {
       this.focusedContent?.onFocus();
     }
     this.options.persistWorkspaceState?.();
+  }
+  moveSpace(identifier: string, targetIndex: number): boolean {
+    const sourceIndex = this.spaces.value.findIndex(
+      (space) => space.identifier === identifier,
+    );
+    const clampedTargetIndex = Math.max(
+      0,
+      Math.min(targetIndex, this.spaces.value.length - 1),
+    );
+    if (sourceIndex < 0 || sourceIndex === clampedTargetIndex) return false;
+    const spaces = [...this.spaces.value];
+    const [space] = spaces.splice(sourceIndex, 1);
+    if (!space) return false;
+    spaces.splice(clampedTargetIndex, 0, space);
+    this.spaces.value = spaces;
+    this.options.persistWorkspaceState?.();
+    return true;
   }
   togglePanelList(): void {
     if (!this.panelCountChipVisible) {
@@ -1205,6 +1222,10 @@ class $PanelHost {
   }
   /** Close affordance shared by the dock-list mouse row and keyboard command. */
   closeOpenContent(id: string): void {
+    if (this.options.requestCloseContent) {
+      this.options.requestCloseContent(id);
+      return;
+    }
     this.removeContent(id);
   }
 
@@ -1235,6 +1256,64 @@ class $PanelHost {
 
   /** Close one owned session: remove it from visibility and the contents list, release its resources,
    *  and select a surviving open instance when it was the final visible cell. */
+  replaceContent(identifier: string, replacementIdentifier: string): boolean {
+    const content = this.contents.get(identifier);
+    const replacement = this.contents.get(replacementIdentifier);
+    if (!content || !replacement || identifier === replacementIdentifier) {
+      return false;
+    }
+    const contentOwnedFocus =
+      this.focused.value && this.focusedContent?.id === identifier;
+    if (contentOwnedFocus) content.onBlur();
+    this.order.value = this.order.value
+      .filter((candidate) => candidate !== replacementIdentifier)
+      .map((candidate) =>
+        candidate === identifier ? replacementIdentifier : candidate,
+      );
+    this.spaces.value = this.spaces.value.map((space) => ({
+      ...space,
+      contentIds: space.contentIds
+        .filter((candidate) => candidate !== replacementIdentifier)
+        .map((candidate) =>
+          candidate === identifier ? replacementIdentifier : candidate,
+        ),
+      activeId:
+        space.activeId === identifier
+          ? replacementIdentifier
+          : space.activeId === replacementIdentifier
+            ? null
+            : space.activeId,
+      layout: space.layout
+        .filter((cell) => cell.id !== replacementIdentifier)
+        .map((cell) => ({
+          ...cell,
+          id: cell.id === identifier ? replacementIdentifier : cell.id,
+        })),
+      groups: space.groups
+        ?.map((group) => ({
+          ...group,
+          contentIds: group.contentIds
+            .filter((candidate) => candidate !== replacementIdentifier)
+            .map((candidate) =>
+              candidate === identifier ? replacementIdentifier : candidate,
+            ),
+        }))
+        .filter((group) => group.contentIds.length > 0),
+    }));
+    if (this.activeId.value === identifier) {
+      this.activeId.value = replacementIdentifier;
+    }
+    this.contents.delete(identifier);
+    this.loadActiveSpace();
+    if (contentOwnedFocus) replacement.onFocus();
+    content.dispose();
+    this.options.onContentRemoved?.(content);
+    this.commitActiveSpace();
+    this.options.persistContentOrder?.();
+    this.options.persistWorkspaceState?.();
+    return true;
+  }
+
   removeContent(id: string): void {
     const content = this.detachContent(id);
     if (!content) return;
@@ -1548,7 +1627,10 @@ class $PanelHost {
   /** Converge the slot's region size onto every visible cell — each content sees only its sub-region. */
   setViewportSize(columns: number, rows: number): void {
     for (const span of this.cellSpans(columns))
-      span.content.onResize(span.columns, rows);
+      span.content.onResize(
+        span.columns,
+        Math.max(1, rows - (span.content.frameHeaderRows ?? 0)),
+      );
   }
   dispose(): void {
     this.unregisterFromFocusSet();
@@ -1609,6 +1691,7 @@ export interface PanelHostOptions {
   persistContentOrder?: () => void;
   retainUnregisteredContentOrder?: boolean;
   onContentRemoved?: (content: PaneContent) => void;
+  requestCloseContent?: (identifier: string) => void;
   persistWorkspaceState?: () => void;
 }
 

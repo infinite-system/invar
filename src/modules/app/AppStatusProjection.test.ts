@@ -30,7 +30,7 @@ import {
 } from './AppStatusProjection';
 import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import type { PaneContent } from '../ui/PaneContent.interface';
-import { QuitConfirmation } from '../ui/QuitConfirmation';
+import { Dialog } from '../ui/Dialog';
 
 let temporaryRoot = '';
 
@@ -105,7 +105,7 @@ describe('AppStatusProjection', () => {
     };
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const goToLinePrompt = new GoToLinePrompt.Class();
-    const quitConfirmation = new QuitConfirmation.Class(() => {});
+    const quitConfirmation = new Dialog.Class();
     const tooltip = new Tooltip.Class();
     const panelHost = new PanelHost.Class();
     const primaryDockHost = new PanelHost.Class();
@@ -176,9 +176,11 @@ describe('AppStatusProjection', () => {
         ],
         panelSeparatorGeometry: () => ({
           row: 9,
+          editorActionRow: 9,
           tabRow: 10,
           tabs: [],
           spaceAdd: null,
+          instancesToggle: null,
           editorActions: [
             {
               commandId: 'view.toggleWordWrap',
@@ -273,7 +275,11 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.quickOpenFileEnumerationMessage).toBe('');
     expect(initialSnapshot.quitConfirmationOpen).toBe(false);
     expect(initialSnapshot.quitConfirmationFocusedChoice).toBe('no');
-    quitConfirmation.show();
+    quitConfirmation.show({
+      identifier: 'quit',
+      message: 'Quit?',
+      onConfirm: () => {},
+    });
     quitConfirmation.select('yes');
     const quitSnapshot = AppStatusProjection.Class.snapshot(ports);
     expect(quitSnapshot.quitConfirmationOpen).toBe(true);
@@ -452,9 +458,11 @@ describe('AppStatusProjection', () => {
     ]);
     expect(publishedSnapshot.panelSeparatorGeometry).toEqual({
       row: 9,
+      editorActionRow: 9,
       tabRow: 10,
       tabs: [],
       spaceAdd: null,
+      instancesToggle: null,
       editorActions: [
         {
           commandId: 'view.toggleWordWrap',

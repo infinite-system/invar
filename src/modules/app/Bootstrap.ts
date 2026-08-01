@@ -98,7 +98,7 @@ import { ApplicationContributions } from './ApplicationContributions';
 import { TaskLauncher } from '../tasks/TaskLauncher';
 import { Tasks } from '../tasks/Tasks';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
-import { QuitConfirmation } from '../ui/QuitConfirmation';
+import { Dialog } from '../ui/Dialog';
 
 class $Bootstrap {
   protected static awaitProjectedFrame(
@@ -289,7 +289,7 @@ class $Bootstrap {
     const quickOpen = new QuickOpen.Class();
     const goToLinePrompt = new GoToLinePrompt.Class();
     let confirmQuit = (): void => {};
-    const quitConfirmation = new QuitConfirmation.Class(() => confirmQuit());
+    const quitConfirmation = new Dialog.Class();
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     // The bottom panel slot: a generic, content-agnostic host. Its occupants come from contributed
     // RUNTIMES, built lazily on first toggle so nothing is started until the panel is opened.
@@ -312,6 +312,22 @@ class $Bootstrap {
       persistContentOrder: () => settings.save(),
       persistWorkspaceState: () => persistPanelWorkspaceState(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
+      requestCloseContent: (identifier) => {
+        const content = panelHost.content(identifier);
+        if (content?.kind !== 'terminal' && content?.kind !== 'agent') {
+          panelHost.removeContent(identifier);
+          return;
+        }
+        overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
+          quitConfirmation.show({
+            identifier: 'terminal-close',
+            message: `Close ${content.instanceLabel ?? content.title}?`,
+            confirmLabel: 'Yes',
+            cancelLabel: 'No',
+            onConfirm: () => panelHost.removeContent(identifier),
+          }),
+        );
+      },
     });
     const workspacePanelWorlds = new Map<
       Workspace.Instance,
@@ -527,6 +543,15 @@ class $Bootstrap {
     const submitGoToLine = (): void => {
       const target = goToLinePrompt.parse();
       if (!target) return;
+      const contributedSurface = view.contributedEditorSurface();
+      if (
+        contributedSurface?.goToSourceLine &&
+        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+      ) {
+        contributedSurface.goToSourceLine(target.line);
+        goToLinePrompt.close();
+        return;
+      }
       if (workspaceSet.active.goToLine(target)) goToLinePrompt.close();
     };
 
@@ -886,6 +911,17 @@ class $Bootstrap {
       const agentPane = AgentFactory.Class.create({
         identifier,
         label,
+        onExit: (agentIdentifier) => {
+          const terminalPane = createRuntimePane(
+            'terminal',
+            true,
+            undefined,
+            nextWindowLabel('Terminal'),
+          );
+          if (terminalPane) {
+            panelHost.replaceContent(agentIdentifier, terminalPane.id);
+          }
+        },
         cwd: workspaceSet.active.root,
         provider: settings.agentProvider.value,
         skipPermissions: () => settings.agentSkipPermissions.value, // LIVE getter — Shift+Tab toggle applies next turn
@@ -992,10 +1028,19 @@ class $Bootstrap {
     app.onDispose(disposeTasksStatus);
     app.onDispose(disposeTasksContribution);
 
+    const createDatabaseInstance = (): PaneContent | null => {
+      const databaseContent = panelHost.contentOfKind('database');
+      if (!databaseContent?.createInstance) return databaseContent;
+      const label = nextWindowLabel('Database');
+      const identifier = `database-${panelHost.orderedContents.filter((content) => content.kind === 'database').length + 1}`;
+      const instance = databaseContent.createInstance(identifier, label);
+      panelHost.register(instance);
+      return instance;
+    };
     const addPanelContent = (kind: string): void => {
       const content =
         kind === 'database'
-          ? panelHost.contentOfKind('database')
+          ? createDatabaseInstance()
           : kind === 'agent'
             ? createAgent(true)
             : createRuntimePane(kind, true);
@@ -1009,13 +1054,9 @@ class $Bootstrap {
     panelAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
       overlayCoordinator,
-      // Contributed runtimes first, then the host's own agent pane (not yet a runtime — #122/#35).
       addableKinds: () => [
-        ...paneRuntimes.addableKinds(),
-        { kind: 'agent', label: 'Agent' },
-        ...(panelHost.contentOfKind('database')
-          ? [{ kind: 'database', label: 'Database' }]
-          : []),
+        { kind: 'terminal', label: 'Terminal' },
+        { kind: 'database', label: 'Database' },
       ],
       addContent: addPanelContent,
     });
@@ -1029,15 +1070,17 @@ class $Bootstrap {
     const addPaneWindow = (kind: string): void => {
       const content =
         kind === 'invar-agent'
-          ? createAgent(true, nextWindowLabel('Invar Agent'))
-          : kind === 'claude-agent'
+          ? createAgent(true, nextWindowLabel('Terminal (Invar agent)'))
+          : kind === 'terminal-agent'
             ? createRuntimePane(
                 'terminal',
                 true,
                 { command: 'claude' },
-                nextWindowLabel('AI Agent (Claude)'),
+                nextWindowLabel('Terminal (Agent)'),
               )
-            : createRuntimePane('terminal', true);
+            : kind === 'database-instance'
+              ? createDatabaseInstance()
+              : createRuntimePane('terminal', true);
       if (!content) return;
       const splitTargetIdentifier = pendingPanelSplitTargetIdentifier;
       pendingPanelSplitTargetIdentifier = null;
@@ -1052,12 +1095,18 @@ class $Bootstrap {
     panelPaneAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
       overlayCoordinator,
-      title: 'Add window',
-      addableKinds: () => [
-        { kind: 'terminal', label: 'Terminal' },
-        { kind: 'claude-agent', label: 'AI Agent (Claude)' },
-        { kind: 'invar-agent', label: 'Invar Agent' },
-      ],
+      title: () =>
+        panelHost.activeSpace?.kind === 'database'
+          ? 'Add Database'
+          : 'Add Terminal',
+      addableKinds: () =>
+        panelHost.activeSpace?.kind === 'database'
+          ? [{ kind: 'database-instance', label: 'Database' }]
+          : [
+              { kind: 'terminal', label: 'Terminal' },
+              { kind: 'terminal-agent', label: 'Terminal (Agent)' },
+              { kind: 'invar-agent', label: 'Terminal (Invar agent)' },
+            ],
       addContent: addPaneWindow,
     });
     let restoringPanelWorkspaceState = false;
@@ -1067,8 +1116,8 @@ class $Bootstrap {
         ? 'invar-agent'
         : (content.kind ?? content.id) === 'database'
           ? 'database'
-          : (content.instanceLabel ?? '').startsWith('AI Agent (Claude)')
-            ? 'claude-agent'
+          : (content.instanceLabel ?? '').startsWith('Terminal (Agent)')
+            ? 'terminal-agent'
             : 'terminal';
     persistPanelWorkspaceState = (): void => {
       if (restoringPanelWorkspaceState) return;
@@ -1085,7 +1134,7 @@ class $Bootstrap {
     const restorePane = (kind: string, label: string): PaneContent | null => {
       if (kind === 'database') return panelHost.contentOfKind('database');
       if (kind === 'invar-agent') return createAgent(true, label);
-      if (kind === 'claude-agent') {
+      if (kind === 'terminal-agent') {
         return createRuntimePane(
           'terminal',
           true,
@@ -1668,7 +1717,13 @@ class $Bootstrap {
       if (workspaceSet.active.pendingCloseTabIndex.value >= 0)
         workspaceSet.active.cancelCloseTab();
       overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
-        quitConfirmation.show(),
+        quitConfirmation.show({
+          identifier: 'quit',
+          message: 'Are you sure you want to quit?',
+          confirmLabel: 'Yes',
+          cancelLabel: 'No',
+          onConfirm: () => confirmQuit(),
+        }),
       );
     };
 
@@ -1683,6 +1738,35 @@ class $Bootstrap {
         overlayCoordinator.openExclusiveOverlay('goToLine', () =>
           goToLinePrompt.show(),
         ),
+      toggleWordWrap: () => {
+        const contributedSurface = view.contributedEditorSurface();
+        if (
+          contributedSurface?.toggleWordWrap &&
+          !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+        ) {
+          contributedSurface.toggleWordWrap();
+          return;
+        }
+        workspaceSet.active.editor.toggleWordWrap();
+      },
+      wordWrapEnabled: () => {
+        const contributedSurface = view.contributedEditorSurface();
+        return contributedSurface?.wordWrapEnabled !== undefined &&
+          !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+          ? contributedSurface.wordWrapEnabled
+          : workspaceSet.active.editor.wordWrap.value;
+      },
+      goToBottom: () => {
+        const contributedSurface = view.contributedEditorSurface();
+        if (
+          contributedSurface?.goToBottom &&
+          !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+        ) {
+          contributedSurface.goToBottom();
+          return;
+        }
+        workspaceSet.active.editor.gotoBottom();
+      },
       quit: requestQuit,
       requestRender: () => app.requestRender(),
       toggleActivityBar: () => {

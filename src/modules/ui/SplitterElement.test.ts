@@ -92,19 +92,19 @@ describe('SplitterElement', () => {
     await renderOnce?.();
     splitter.updateAppearance(darkPalette);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(darkPalette.border),
+      RGBA.fromHex(darkPalette.dim),
     );
 
     await mockMouse?.moveTo(17, 3);
     splitter.updateAppearance(darkPalette);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(darkPalette.accent),
+      RGBA.fromHex(darkPalette.fg),
     );
 
     await mockMouse?.moveTo(30, 3);
     splitter.updateAppearance(darkPalette);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(darkPalette.border),
+      RGBA.fromHex(darkPalette.dim),
     );
   });
 
@@ -117,14 +117,14 @@ describe('SplitterElement', () => {
     splitter.updateAppearance(darkPalette);
     expect(splitter.active).toBe(true);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(darkPalette.accent),
+      RGBA.fromHex(darkPalette.fg),
     );
 
     await mockMouse?.release(30, 3);
     splitter.updateAppearance(darkPalette);
     expect(splitter.active).toBe(false);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(darkPalette.border),
+      RGBA.fromHex(darkPalette.dim),
     );
   });
 
@@ -143,7 +143,7 @@ describe('SplitterElement', () => {
     await renderOnce?.();
 
     const row = captureCharFrame?.().split('\n')[10] ?? '';
-    expect(row.slice(5, 25)).toBe('━'.repeat(20));
+    expect(row.slice(5, 25)).toBe('─'.repeat(20));
   });
 
   test('vertical splitters paint the slim axis sibling of the horizontal mark', async () => {
@@ -157,7 +157,7 @@ describe('SplitterElement', () => {
       .slice(4, 10)
       .map((row) => row.slice(7, 8))
       .join('');
-    expect(paintedColumn).toBe('┃'.repeat(6));
+    expect(paintedColumn).toBe('│'.repeat(6));
   });
 
   test('a leading paint pad blanks the first cells and never moves the hit rectangle', async () => {
@@ -168,7 +168,7 @@ describe('SplitterElement', () => {
 
     const row = captureCharFrame?.().split('\n')[10] ?? '';
     expect(row.slice(5, 6)).toBe(' ');
-    expect(row.slice(6, 25)).toBe('━'.repeat(19));
+    expect(row.slice(6, 25)).toBe('─'.repeat(19));
     expect(splitter.renderable.left).toBe(5);
     expect(splitter.renderable.width).toBe(20);
   });
