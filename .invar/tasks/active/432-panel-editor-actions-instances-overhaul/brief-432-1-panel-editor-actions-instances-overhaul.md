@@ -12,8 +12,8 @@ earlier moves.
 ╰──  ↵  ↕  ⇊  ────────────────────────────────╯   editor bottom border owns the actions
 ─────────────────────────────────────────  ↗  ×    splitter: thin, light, flush; frame fns only
  Terminal ×  Terminal 2 ×      + Plugin  ☰ 2␣     tabs: padded, reorderable; ☰ = instances toggle+count, 1-space right pad
-┌────────────────────────┬─────────────────────┐
-│  $ echo hi          ×  │  + Terminal ▾       │
+┌───────────────────── × ┬─────────────────────┐
+│  $ echo hi             │  + Terminal ▾       │
 │                        │                     │
 │                        │  ╭ Terminal         │
 │                        │  ├ Terminal 2   ⬓ × │   (hover-only controls)
@@ -65,9 +65,10 @@ earlier moves.
     right padding (`… + Plugin  ☰ ␣` at the edge — not floating
     inboard). The toggle IS the count indicator: icon always shown,
     the count number beside it only when instances > 1 (`☰ 2`).
-    The trailing padding space is PART OF THE BUTTON — the hit
-    target spans glyph + count + padding cells, one hover tone over
-    all of them. Tooltip per item 15. (User-settled.)
+    ONE trailing space suffices and it is PART OF THE BUTTON — hit
+    target and hover tone span icon + count + that space; the
+    button's trailing space cell touches the right border. Tooltip
+    per item 15. (User-corrected and settled.)
 11. GENERIC DIALOG SYSTEM. One dialog/prompt component; the
     quit-confirmation dialog becomes an instance of it; terminal
     close (item 5) is the second consumer; input-carrying prompts in
@@ -102,8 +103,12 @@ earlier moves.
     and Invar agent alike). Split + close controls appear ONLY on
     hover, with tooltips; close gets one space right padding.
     Driven now: `▦ ×` always visible, flush.
-19. SUBWINDOW CLOSE. Each terminal subwindow gets a single `×` at
-    its top-right corner.
+19. SUBWINDOW CLOSE. Each terminal subwindow gets a single close
+    button on its TOP line, flush to the subwindow's right edge:
+    the button is `␣×␣` (both spaces part of the button, per the
+    small-button standard), its trailing space cell touching the
+    pane's right border — zero extra cells after it. Hover lights
+    the whole 3-cell target.
 20. INVAR AGENT DUALITY. Invar agent appears AS a terminal instance
     (same list, no special icon per 18) but is not a shell: typing
     /exit or /quit hides it and replaces it with a plain terminal
