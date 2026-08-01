@@ -545,3 +545,13 @@ scope truthful and the smoke's planted 'building' phase was revealed as fallback
 A fixture that passes through an accidental out-of-scope fallback is family 5 (the
 fixture is the blind spot) — the repair is planting the REAL condition (a git worktree
 with a committed src edit), never re-widening the fallback.
+- 2026-08-01 (#439): THE PRE-SATISFIED WAIT WEARS A GESTURE FORM TOO. The
+  conductor's probe clicked the instances toggle without checking whether
+  restored state had ALREADY pinned the list open — the click CLOSED it, and
+  every downstream finding (auto-close after 1.5s, inert close control) was
+  the instrument measuring its own damage. Two false defect reports reached
+  a builder brief. Before any toggle gesture, read the state the toggle
+  flips: if already true, the gesture is not a no-op — it INVERTS. The
+  builder's repaired probe conditions the toggle on panelListVisible.
+
+

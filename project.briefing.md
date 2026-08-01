@@ -11,7 +11,14 @@ STATE (all verified on disk at write time):
   INVAR_FLEET_GATE_REGISTRY; my filed diagnosis refuted twice, summary honest) and
   #435 (69886b7e — folderOpen tasks once per root; issues are notice panes; green
   gate 82 OK). Summaries written. Session archives repaired (link by COMMIT grep).
-- #439 READY JUST ARRIVED, UNREAD: .invar/tasks/in-progress/439-notice-persistence-
+- #439 READ (delta 14:3x): builder REFUTED my list-auto-close and inert-close
+  findings — my probe's toggle click on an already-pinned list caused both
+  (pre-satisfied gesture; lesson in conductor family 1). Real cascade cause:
+  folderOpen launch BEFORE panel restore; fixed by ordering. Bycatch converted:
+  #440 (panelListGeometry left:-24 impossible coords), #441 (contentIds/labels
+  pairing drift). REMAINING for landing: micro-round to apply the confirmed
+  displaced-builtins contract wording (report section Invariants), then merge
+  main -> gate -> land. Report (formerly UNREAD): .invar/tasks/in-progress/439-notice-persistence-
   restored-state-defects/report-439-*.md. Task: notices persisted as terminals,
   restored-state list auto-close (~1.5s), close-control unreliability, Displaced
   suppression when config redeclares the label (user-approved), user cascade
