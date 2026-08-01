@@ -66,6 +66,7 @@ const request: GitComparisonRequest = {
 function createContent() {
   const releases: number[] = [];
   const gitWorkspace = {
+    workspace: { root: '/project' },
     release() {
       releases.push(1);
     },
@@ -85,6 +86,11 @@ function createContent() {
 }
 
 describe('GitComparisonContent', () => {
+  it('supplies the compared file path to the editor-area shell', () => {
+    const { content } = createContent();
+    expect(content.displayedPath).toBe('/project/file.ts');
+  });
+
   it('routes vertical, paged, and horizontal keys into the comparison panes', () => {
     const { content, view } = createContent();
     expect(content.handleKey({ name: 'up', ctrl: false, shift: false })).toBe(

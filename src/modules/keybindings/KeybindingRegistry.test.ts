@@ -258,17 +258,21 @@ describe('the canonical floor', () => {
     expect(registry.actionsMissingCanonicalFloor()).toEqual([]);
   });
 
-  test('mac alt word-jumps alias actions the floor also binds', () => {
+  test('mac Option history forms and canonical Ctrl word jumps keep distinct intents', () => {
     const registry = registryWithDefaults();
     expect(
       registry.resolve(chord('left', { option: true }), 'editor', 0).action,
-    ).toBe('editor.wordLeft');
+    ).toBe('navigation.back');
     expect(
       registry.resolve(chord('b', { option: true }), 'editor', 0).action,
-    ).toBe('editor.wordLeft');
+    ).toBe('navigation.back');
     expect(
       registry.resolve(chord('left', { ctrl: true }), 'editor', 0).action,
     ).toBe('editor.wordLeft');
+    expect(
+      registry.resolve(chord('b', { ctrl: true, option: true }), 'editor', 0)
+        .action,
+    ).toBe('view.toggleRightDock');
   });
 
   test('super chords resolve under kitty fidelity', () => {

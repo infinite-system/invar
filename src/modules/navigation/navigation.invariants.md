@@ -35,8 +35,9 @@ every contributor`, truncation, collapse, cap, and rejected-entry tests);
 record new history`); `src/modules/git/GitWorkspace.test.ts` (`forty opened comparisons produce
 forty distinct history entries`); `src/modules/markdown/MarkdownWorkspace.test.ts` (`restores a
 rendered Markdown view between source editor states`);
-`scripts/harness/smoke-navigation-history-harness.ts` (file to comparison to file, then back and
-forward through all three states in the real PTY).
+`scripts/harness/smoke-navigation-history-harness.ts` (Alt+Left/Right and the protocol-safe
+fallbacks drive file to comparison to file, then back and forward through all three states in the
+real PTY).
 
 **Impossible if true:** Back from a source file skips an available Git comparison; a replay adds an
 entry; a new branch keeps its old forward trail; one comparison replaces another comparison's

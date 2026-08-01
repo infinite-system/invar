@@ -1,4 +1,4 @@
-// The Workspace-level navigation-history wiring: opening files records the trail, Alt+[/Alt+]
+// The Workspace-level navigation-history wiring: opening files records the trail, Alt+Left/Right
 // (navigateBack/navigateForward) restore the file AND cursor, a programmatic restore does NOT
 // record new history, and a new navigation after going back truncates the forward trail. Real
 // Editors over real temp files (end-to-end through openFileInTab).

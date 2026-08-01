@@ -122,11 +122,11 @@ class $TabBar {
     this.lastRevealedActiveIndex = result.revealedIndex;
     return result.text;
   }
-  renderBreadcrumb(): StyledText {
-    const { bufferTabStrip, breadcrumbBar, workspaceSet, readPalette } =
+  renderBreadcrumb(displayedPath: string | null): StyledText {
+    const { breadcrumbBar, workspaceSet, theme, readPalette } =
       this.dependencies;
     const result = TabBarRenderer.Class.renderBreadcrumb({
-      strip: bufferTabStrip,
+      displayedPath,
       palette: readPalette(),
       barWidth: breadcrumbBar.width as number,
       projectRoot: workspaceSet.active.root,
@@ -137,6 +137,10 @@ class $TabBar {
       hover: this.breadcrumbHover,
       pressedTitleActionIndex: this.pressedTitleActionIndex,
       editorTitleActions: this.editorTitleActions(),
+      navigationBackGlyph: theme.glyphVocabulary.navigationBack,
+      navigationForwardGlyph: theme.glyphVocabulary.navigationForward,
+      canGoBack: workspaceSet.active.navigationHistory.canGoBack,
+      canGoForward: workspaceSet.active.navigationHistory.canGoForward,
     });
     this.breadcrumbSegments = result.segments;
     return result.text;
@@ -387,19 +391,26 @@ class $TabBar {
       workspaceSet.active.editor.hasDocument.value &&
       workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
     breadcrumbBar.onMouseDown = (event) => {
-      if (!controlsShown()) return;
       tooltip.clear();
       const localColumn = event.x - Number(breadcrumbBar.x);
       const segment = this.breadcrumbSegmentAt(localColumn);
       if (!segment) return;
-      if (segment.kind === 'titleAction') {
+      if (segment.kind === 'historyBack') {
+        workspaceSet.active.navigateBack();
+        renderer.requestRender();
+      } else if (segment.kind === 'historyForward') {
+        workspaceSet.active.navigateForward();
+        renderer.requestRender();
+      } else if (!controlsShown()) {
+        return;
+      } else if (segment.kind === 'titleAction') {
         const action = this.editorTitleActions()[segment.index];
         if (action) {
           this.pressedTitleActionIndex = segment.index;
           commands.run(action.commandId);
           renderer.requestRender();
         }
-      } else {
+      } else if (segment.kind === 'crumb') {
         this.breadcrumbPicker.show(segment, {
           column: Number(breadcrumbBar.x) + segment.start,
           row: Number(breadcrumbBar.y),
@@ -413,16 +424,32 @@ class $TabBar {
       }
     };
     breadcrumbBar.onMouseMove = (event) => {
-      if (!controlsShown()) return;
       const localColumn = event.x - Number(breadcrumbBar.x);
       const segment = this.breadcrumbSegmentAt(localColumn);
       const nextHover: BreadcrumbBarHover =
-        segment?.kind === 'titleAction'
-          ? { kind: 'titleAction', index: segment.index }
-          : segment?.kind === 'crumb'
-            ? { kind: 'crumb', sourceIndex: segment.sourceIndex }
-            : null;
-      if (segment?.kind === 'titleAction') {
+        segment?.kind === 'historyBack' || segment?.kind === 'historyForward'
+          ? { kind: segment.kind }
+          : segment?.kind === 'titleAction'
+            ? { kind: 'titleAction', index: segment.index }
+            : segment?.kind === 'crumb'
+              ? { kind: 'crumb', sourceIndex: segment.sourceIndex }
+              : null;
+      if (
+        segment?.kind === 'historyBack' ||
+        segment?.kind === 'historyForward'
+      ) {
+        const isBack = segment.kind === 'historyBack';
+        const bindingHint = keybindings.bindingHint(
+          isBack ? 'navigation.back' : 'navigation.forward',
+          'editor',
+        );
+        const label = isBack ? 'Go Back' : 'Go Forward';
+        tooltip.point(
+          `${label}${bindingHint ? ` (${bindingHint})` : ''}`,
+          event.x,
+          event.y,
+        );
+      } else if (segment?.kind === 'titleAction') {
         const action = this.editorTitleActions()[segment.index];
         const bindingHint = action
           ? keybindings.bindingHint(action.commandId, 'editor')
@@ -445,8 +472,10 @@ class $TabBar {
           : nextHover.kind === 'titleAction'
             ? this.breadcrumbHover?.kind === 'titleAction' &&
               this.breadcrumbHover.index === nextHover.index
-            : this.breadcrumbHover?.kind === 'crumb' &&
-              this.breadcrumbHover.sourceIndex === nextHover.sourceIndex;
+            : nextHover.kind === 'crumb'
+              ? this.breadcrumbHover?.kind === 'crumb' &&
+                this.breadcrumbHover.sourceIndex === nextHover.sourceIndex
+              : this.breadcrumbHover?.kind === nextHover.kind;
       if (!hoverUnchanged) {
         this.breadcrumbHover = nextHover;
         renderer.requestRender();

@@ -180,11 +180,30 @@ async function openDiff(
     'status condition: status.showingDiff === true',
     (status) => status.showingDiff === true,
   );
-  return driver.awaitSnapshot(
-    (snapshot) =>
-      snapshot.findText('Base (HEAD)') !== null &&
-      snapshot.findText('Current (working)') !== null,
+  const snapshot = await driver.awaitGridCondition(
+    'the editor-area row names the file shown by the comparison',
+    (candidate) => {
+      return (
+        candidate.findText('Base (HEAD)') !== null &&
+        candidate.findText('Current (working)') !== null &&
+        candidate
+          .textRows()
+          .some(
+            (rowText) =>
+              rowText.includes('long.txt') && rowText.includes('❮  ❯'),
+          )
+      );
+    },
   );
+  HarnessSmoke.Class.requireCondition(
+    snapshot
+      .textRows()
+      .some(
+        (rowText) => rowText.includes('long.txt') && rowText.includes('❮  ❯'),
+      ),
+    'the shared editor-area row paints history and the compared file path',
+  );
+  return snapshot;
 }
 
 function selectedText(status: StatusSnapshot, currentText: string): string {

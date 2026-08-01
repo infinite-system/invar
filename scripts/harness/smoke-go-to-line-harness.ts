@@ -192,14 +192,14 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
       );
     }
 
-    driver.sendKeys('Alt+[');
+    driver.sendKeys('Alt+Left');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
       `scale ${lineCount}: Back restores the jump source`,
       (status) => historyRestored(status, 0),
     );
-    driver.sendKeys('Alt+]');
+    driver.sendKeys('Alt+Right');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,

@@ -221,7 +221,7 @@ function findPreviewButton(
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
     if (!/\d+\/\d+/.test(rowText)) continue;
-    const breadcrumbRow = row + 1;
+    const breadcrumbRow = row - 1;
     const previewColumn = snapshot.rowText(breadcrumbRow).indexOf(previewGlyph);
     if (previewColumn >= 0)
       return { row: breadcrumbRow, column: previewColumn };
@@ -1719,11 +1719,23 @@ try {
         Number(openedMarkdownStatus.bufferRevision),
   );
   snapshot = await driver.awaitGridCondition(
-    'the auto-opened preview paints rendered content and the breadcrumb toggle',
-    (candidate) =>
-      candidate.findText('╭─Preview') !== null &&
-      findPreviewButton(candidate) !== null &&
-      previewHasMarker(candidate, 'Rendered row 01'),
+    'the auto-opened preview paints rendered content and the editor-area breadcrumb',
+    (candidate) => {
+      const button = findPreviewButton(candidate);
+      return (
+        candidate.findText('╭─Preview') !== null &&
+        button !== null &&
+        candidate.rowText(button.row).includes('README.md') &&
+        candidate.rowText(button.row).includes('❮  ❯') &&
+        previewHasMarker(candidate, 'Rendered row 01')
+      );
+    },
+  );
+  const previewBreadcrumbButton = previewButton(snapshot);
+  HarnessSmoke.Class.requireCondition(
+    snapshot.rowText(previewBreadcrumbButton.row).includes('README.md') &&
+      snapshot.rowText(previewBreadcrumbButton.row).includes('❮  ❯'),
+    'the shared editor-area row paints history and the preview source path',
   );
   HarnessSmoke.Class.requireCondition(
     previewBorder(snapshot).column < sourceBorderColumn(snapshot),

@@ -849,28 +849,28 @@ try {
   snapshot = await driver.awaitGridCondition(
     'the left-oriented workspace strip stacks the second project in the left column',
     (candidate) => {
-      const firstProjectRow = candidate
+      const firstProjectRows = candidate
         .textRows()
-        .findIndex((rowText) =>
-          rowText.slice(0, 22).includes(firstName.slice(0, 17)),
+        .flatMap((rowText, row) =>
+          rowText.slice(0, 22).includes(firstName.slice(0, 17)) ? [row] : [],
         );
       const secondProjectPosition = candidate.findText(secondName.slice(0, 17));
       return (
-        firstProjectRow >= 0 &&
-        secondProjectPosition?.row === firstProjectRow + 1 &&
+        secondProjectPosition !== null &&
+        firstProjectRows.includes(secondProjectPosition.row - 1) &&
         secondProjectPosition.column < 22
       );
     },
   );
-  const firstProjectRow = snapshot
+  const firstProjectRows = snapshot
     .textRows()
-    .findIndex((rowText) =>
-      rowText.slice(0, 22).includes(firstName.slice(0, 17)),
+    .flatMap((rowText, row) =>
+      rowText.slice(0, 22).includes(firstName.slice(0, 17)) ? [row] : [],
     );
   const secondVerticalPosition = snapshot.findText(secondName.slice(0, 17));
   requireCondition(
-    firstProjectRow >= 0 &&
-      secondVerticalPosition?.row === firstProjectRow + 1 &&
+    secondVerticalPosition !== null &&
+      firstProjectRows.includes(secondVerticalPosition.row - 1) &&
       secondVerticalPosition.column < 22,
     'left-oriented strip stacks the second project in the left column',
   );

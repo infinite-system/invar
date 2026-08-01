@@ -6,8 +6,12 @@ import type { Palette } from '../theme/ThemePalettes';
 class $FileTreeHeaderRow {
   static project(options: FileTreeHeaderRowOptions): FileTreeHeaderProjection {
     const width = Math.max(1, Math.floor(options.width));
+    const trailingPaddingCells = Math.min(
+      width,
+      Math.max(0, Math.floor(options.trailingPaddingCells ?? 0)),
+    );
     const visibleButtons: FileTreeHeaderButtonSegment[] = [];
-    let leadingWidth = width;
+    let leadingWidth = width - trailingPaddingCells;
     for (
       let buttonIndex = options.buttons.length - 1;
       buttonIndex >= 0;
@@ -40,6 +44,9 @@ class $FileTreeHeaderRow {
           : buttonText,
       );
     }
+    if (trailingPaddingCells > 0) {
+      chunks.push(fg(options.palette.dim)(' '.repeat(trailingPaddingCells)));
+    }
     return {
       text: new StyledText(chunks),
       buttons: visibleButtons,
@@ -68,6 +75,7 @@ export interface FileTreeHeaderRowOptions {
   buttons: readonly FileTreeHeaderButton[];
   hoveredAction: string | null;
   palette: Palette;
+  trailingPaddingCells?: number;
 }
 
 export interface FileTreeHeaderButton {

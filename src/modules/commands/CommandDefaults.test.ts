@@ -35,3 +35,42 @@ test('go-to-line is a guarded palette command that opens the shared prompt', () 
   command?.run();
   expect(openCount).toBe(1);
 });
+
+test('navigation history commands remain discoverable and dispatch through the workspace', () => {
+  let registeredCommands: Command[] = [];
+  let backCount = 0;
+  let forwardCount = 0;
+  const registry = {
+    registerAll(commands: Command[]) {
+      registeredCommands = commands;
+      return () => {};
+    },
+  };
+  const context = {
+    workspaceSet: {
+      active: {
+        editor: { hasDocument: { value: false } },
+        navigateBack: () => {
+          backCount += 1;
+        },
+        navigateForward: () => {
+          forwardCount += 1;
+        },
+      },
+      count: 1,
+    },
+  } as unknown as CommandContext;
+
+  CommandDefaults.Class.registerDefaultCommands(registry as never, context);
+  const back = registeredCommands.find(
+    (candidate) => candidate.id === 'navigation.back',
+  );
+  const forward = registeredCommands.find(
+    (candidate) => candidate.id === 'navigation.forward',
+  );
+  expect(back?.title).toBe('Go: Back');
+  expect(forward?.title).toBe('Go: Forward');
+  back?.run();
+  forward?.run();
+  expect([backCount, forwardCount]).toEqual([1, 1]);
+});

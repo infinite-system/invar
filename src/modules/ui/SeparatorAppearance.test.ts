@@ -120,6 +120,30 @@ test('a leading paint pad skips cells at the start of the long axis only', () =>
   ]);
 });
 
+test('an opaque separator surface fills crossings and the leading paint pad', () => {
+  const color = RGBA.fromHex('#abcdef');
+  const surfaceBackgroundColor = RGBA.fromHex('#123456');
+  const horizontal = recordingBuffer();
+
+  SeparatorAppearance.Class.paint({
+    buffer: horizontal.buffer,
+    orientation: 'horizontal',
+    rectangle: { x: 5, y: 7, width: 3, height: 1 },
+    color,
+    mark: 'centeredLine',
+    leadingPaintPadCells: 1,
+    surfaceBackgroundColor,
+  });
+
+  expect(horizontal.fillRectangles).toEqual([
+    [5, 7, 3, 1, surfaceBackgroundColor],
+  ]);
+  expect(horizontal.paintedCells.map((cell) => cell.slice(0, 4))).toEqual([
+    [6, 7, '─', color],
+    [7, 7, '─', color],
+  ]);
+});
+
 test('the two marks stay distinct glyphs on each axis', () => {
   expect(SeparatorAppearance.Class.glyphFor('horizontal', 'centeredLine')).toBe(
     '─',

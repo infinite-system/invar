@@ -41,8 +41,9 @@ class $FileTree {
     return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   // INDEPENDENT scroll offset (first visible row), like the git-changes list — NOT derived from the
-  // selection. Wheel scrolls this; selection moves independently; clicking a visible row leaves it
-  // untouched (so opening a file never snaps the list). RootView sets viewportHeight each frame.
+  // selection. Wheel scrolls this; selection moves independently; selecting a visible row alone
+  // leaves it untouched. Opening that file then uses the active-file reveal path. RootView sets
+  // viewportHeight each frame.
   get scrollTop() {
     return ref(0);
   }
@@ -185,6 +186,19 @@ class $FileTree {
       this.scrollTop.value = index - height + 1;
   }
 
+  /** Center the selection when possible, then clamp at the beginning and end of the tree. */
+  protected centerSelection(): void {
+    const height = this.viewportHeight.value;
+    const maximumScrollTop = Math.max(0, this.rows.length - height);
+    this.scrollTop.value = Math.max(
+      0,
+      Math.min(
+        this.selectedIndex.value - Math.floor(height / 2),
+        maximumScrollTop,
+      ),
+    );
+  }
+
   // invariant: The tree reveal follows the active file (src/modules/filetree/filetree.invariants.md)
   revealPath(path: string): boolean {
     const confinedPath = Files.Class.confineToRoot(this.root, path);
@@ -218,7 +232,7 @@ class $FileTree {
     const rowIndex = this.rows.findIndex((row) => row.path === confinedPath);
     if (rowIndex < 0) return false;
     this.selectedIndex.value = rowIndex;
-    this.revealSelection();
+    this.centerSelection();
     return true;
   }
 
@@ -236,7 +250,7 @@ class $FileTree {
     const rowCount = this.rows.length;
     if (rowCount === 0) return;
     this.selectedIndex.value = Math.max(0, Math.min(index, rowCount - 1));
-    // NOTE: no reveal — clicking a visible row must leave the scroll position exactly where it is.
+    // NOTE: no reveal here. Activation uses the separate centered active-file reveal path.
   }
 
   toggleExpand(path: string): void {

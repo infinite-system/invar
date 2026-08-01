@@ -390,15 +390,25 @@ class $KeybindingDefaults {
       },
       { chord: { key: 'pagedown', ctrl: true }, action: 'buffer.next' },
       { chord: { key: 'pageup', ctrl: true }, action: 'buffer.previous' },
-      // Go Back / Go Forward through the navigation history (VS Code's Alt+Left/Right; here Alt+[ / Alt+]
-      // since the arrows move the cursor). Alt+[ / Alt+] are free — only Ctrl+Shift+[/] are bound above.
+      // Go Back / Go Forward through navigation history. Alt+Left/Right is the primary terminal chord;
+      // Ctrl+Alt+[/] remains the protocol-safe fallback.
       {
-        chord: { key: '[', alt: true },
+        chord: { key: 'left', alt: true, ctrl: false, shift: false },
         action: 'navigation.back',
         context: 'editor',
       },
       {
-        chord: { key: ']', alt: true },
+        chord: { key: 'right', alt: true, ctrl: false, shift: false },
+        action: 'navigation.forward',
+        context: 'editor',
+      },
+      {
+        chord: { key: '[', ctrl: true, alt: true, shift: false },
+        action: 'navigation.back',
+        context: 'editor',
+      },
+      {
+        chord: { key: ']', ctrl: true, alt: true, shift: false },
         action: 'navigation.forward',
         context: 'editor',
       },
