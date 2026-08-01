@@ -201,7 +201,7 @@ try {
     (candidate) =>
       candidate.agentEngine === 'claude' &&
       candidate.agentTitle === 'Claude' &&
-      candidate.panelActiveContent === 'agent' &&
+      candidate.panelActiveContentKind === 'agent' &&
       agentFooterRegion(candidate) !== null,
   );
   let footerRegion = requireAgentFooterRegion(status);
@@ -347,7 +347,7 @@ try {
     (candidate) =>
       candidate.agentEngine === 'codex' &&
       candidate.agentTitle === 'Codex' &&
-      candidate.panelActiveContent === 'agent' &&
+      candidate.panelActiveContentKind === 'agent' &&
       agentFooterRegion(candidate) !== null,
   );
   footerRegion = requireAgentFooterRegion(status);

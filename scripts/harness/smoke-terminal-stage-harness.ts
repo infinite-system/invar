@@ -102,9 +102,9 @@ async function openAgentPane(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.panelActiveContent === 'agent' && status.panelFocused === true",
+    "status condition: status.panelActiveContentKind === 'agent' && status.panelFocused === true",
     (status) =>
-      status.panelActiveContent === 'agent' && status.panelFocused === true,
+      status.panelActiveContentKind === 'agent' && status.panelFocused === true,
   );
 }
 
@@ -153,9 +153,9 @@ async function driveAnimatedTerminalTools(
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true",
+      "status condition: status.panelActiveContentKind === 'terminal' && status.terminalFocused === true",
       (status) =>
-        status.panelActiveContent === 'terminal' &&
+        status.panelActiveContentKind === 'terminal' &&
         status.terminalFocused === true,
     );
     let snapshot = await driver.awaitGridCondition(
@@ -235,10 +235,10 @@ async function driveAnimatedTerminalTools(
     const terminalStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal' && status.panelFocusedIndex === 0",
+      "status condition: Array.isArray(status.panelCellKinds) && status.panelCellKinds.join(',') === 'terminal' && status.panelFocusedIndex === 0",
       (status) =>
-        Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.join(',') === 'terminal' &&
+        Array.isArray(status.panelCellKinds) &&
+        status.panelCellKinds.join(',') === 'terminal' &&
         status.panelFocusedIndex === 0,
     );
     const panelCellIdentifiers = terminalStatus.panelCellIds as string[];
@@ -313,7 +313,7 @@ async function driveAnimatedTerminalTools(
       driver,
       statusPath,
       'the terminal group is active before the staged command is edited',
-      (candidate) => candidate.panelActiveContent === 'terminal',
+      (candidate) => candidate.panelActiveContentKind === 'terminal',
     );
     driver.sendKeys('Left');
     driver.sendText('X');
@@ -377,7 +377,7 @@ async function driveAnimatedTerminalTools(
       driver,
       statusPath,
       'the terminal group is active before the completed transcript repaints',
-      (candidate) => candidate.panelActiveContent === 'terminal',
+      (candidate) => candidate.panelActiveContentKind === 'terminal',
     );
     await openAgentPane(driver, statusPath);
     snapshot = await driver.awaitGridCondition(
@@ -422,7 +422,7 @@ async function driveAnimatedTerminalTools(
       'the replacement finishes typing before the human executes it',
       (candidate) =>
         candidate.agentBusy === false &&
-        candidate.panelActiveContent === 'terminal',
+        candidate.panelActiveContentKind === 'terminal',
     );
     snapshot = await driver.awaitSnapshot((candidate) =>
       terminalText(candidate).includes(`printf REPLACED > ${replacementPath}`),
@@ -478,7 +478,7 @@ async function driveAnimatedTerminalTools(
       statusPath,
       'the busy readline buffer queues the staged agent command',
       (candidate) =>
-        candidate.panelActiveContent === 'terminal' &&
+        candidate.panelActiveContentKind === 'terminal' &&
         String(candidate.agentLastToolResult).includes('Queued until'),
     );
     HarnessSmoke.Class.requireCondition(
@@ -789,9 +789,9 @@ async function driveTerminalCleanPromptDisabled(
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true",
+      "status condition: status.panelActiveContentKind === 'terminal' && status.terminalFocused === true",
       (status) =>
-        status.panelActiveContent === 'terminal' &&
+        status.panelActiveContentKind === 'terminal' &&
         status.terminalFocused === true,
     );
     const snapshot = await driver.awaitGridCondition(

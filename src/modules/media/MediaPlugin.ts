@@ -129,6 +129,11 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
   createPane(request: PaneRuntimeRequest): PaneContent {
     const application = this.application;
     if (!application) throw new Error('The media runtime is not activated');
+    if (this.panes.has(request.identifier)) {
+      throw new Error(
+        `Media pane identifier already belongs to another session: ${request.identifier}`,
+      );
+    }
     const mode: MediaPaneMode = request.identifier.includes('video')
       ? 'video'
       : 'demo';

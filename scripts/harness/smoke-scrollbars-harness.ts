@@ -2484,7 +2484,7 @@ try {
     statusPath,
     'the agent pane opens with its transcript extent published',
     (candidate) =>
-      candidate.panelActiveContent === 'agent' &&
+      candidate.panelActiveContentKind === 'agent' &&
       Number(candidate.agentViewportRows) > 0,
   );
   await clickPanelHeadingAction(overflowDriver, statusPath, 'expand', 'panel');
@@ -2508,7 +2508,7 @@ try {
     statusPath,
     'the expanded agent composer owns focus before the long paste',
     (candidate) =>
-      candidate.panelActiveContent === 'agent' &&
+      candidate.panelActiveContentKind === 'agent' &&
       candidate.panelFocused === true,
   );
   const wrappedTranscriptPrompt = Array.from(
@@ -2531,7 +2531,7 @@ try {
     statusPath,
     'the agent composer owns keyboard focus before submission',
     (candidate) =>
-      candidate.panelActiveContent === 'agent' &&
+      candidate.panelActiveContentKind === 'agent' &&
       candidate.panelFocused === true,
   );
   overflowDriver.sendKeys('Home');

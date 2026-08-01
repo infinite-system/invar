@@ -242,7 +242,7 @@ async function drivePlantedPanelOrderProfile(
       'the planted terminal-first order reaches the first split paint',
       (status) =>
         Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.join(',') === 'terminal,agent',
+        status.panelCellKinds.join(',') === 'terminal,agent',
     );
     HarnessSmoke.Class.pass(
       'a planted terminal-first profile overrides the agent-first default',
@@ -364,7 +364,7 @@ try {
     'the fresh profile paints agent left of terminal on its first split',
     (status) =>
       Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent,terminal',
+      status.panelCellKinds.join(',') === 'agent,terminal',
   );
   HarnessSmoke.Class.pass(
     'fresh profile paints agent left of terminal on first split paint',

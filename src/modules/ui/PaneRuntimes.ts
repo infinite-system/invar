@@ -15,6 +15,8 @@ class $PaneRuntimes {
     string,
     number
   >();
+  protected readonly claimedInstanceIdentifiers = new Set<string>();
+  protected nextInstanceIdentifierNumber = 1;
 
   register(runtime: PaneRuntime): () => void {
     this.runtimesByKind.set(runtime.kind, runtime);
@@ -36,8 +38,7 @@ class $PaneRuntimes {
       .map((runtime) => ({ kind: runtime.kind, label: runtime.instanceLabel }));
   }
 
-  /** Allocate the next workspace-local `<Label>`/`<Label> N` identity for a kind. The first
-   *  workspace keeps the bare kind identifier so persisted order and existing probes stay stable. */
+  /** Allocate one opaque application identity and one workspace-local `<Label>`/`<Label> N`. */
   allocateInstanceIdentity(
     kind: string,
     additionalInstance: boolean,
@@ -53,15 +54,31 @@ class $PaneRuntimes {
       identityScopeAndKind,
       Math.max(allocatedCount, instanceNumber),
     );
-    const scopedKind = identityScope ? `${kind}@${identityScope}` : kind;
     return {
-      identifier:
-        instanceNumber === 1 ? scopedKind : `${scopedKind}-${instanceNumber}`,
+      identifier: this.allocateInstanceIdentifier(),
       label:
         instanceNumber === 1
           ? runtime.instanceLabel
           : `${runtime.instanceLabel} ${instanceNumber}`,
     };
+  }
+
+  /** Mint an opaque identifier that this application generation has never issued or restored. */
+  allocateInstanceIdentifier(): string {
+    while (true) {
+      const identifier = `pane-instance-${this.nextInstanceIdentifierNumber}`;
+      this.nextInstanceIdentifierNumber += 1;
+      if (this.claimedInstanceIdentifiers.has(identifier)) continue;
+      this.claimedInstanceIdentifiers.add(identifier);
+      return identifier;
+    }
+  }
+
+  /** Claim an identifier read from persisted state before rebuilding its pane. */
+  claimPersistedInstanceIdentifier(identifier: string): boolean {
+    if (this.claimedInstanceIdentifiers.has(identifier)) return false;
+    this.claimedInstanceIdentifiers.add(identifier);
+    return true;
   }
 
   createPane(kind: string, request: PaneRuntimeRequest): PaneContent | null {

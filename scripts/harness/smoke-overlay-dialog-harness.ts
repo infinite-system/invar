@@ -1377,7 +1377,7 @@ try {
       candidate.panelVisible === true &&
       candidate.terminalVisible === true &&
       candidate.terminalFocused === true &&
-      candidate.panelActiveContent === 'terminal',
+      candidate.panelActiveContentKind === 'terminal',
   );
   await driver.awaitOutputCondition(
     'the focused terminal leaves the hardware cursor shown',
@@ -1464,7 +1464,7 @@ try {
     'the agent-only panel is visible',
     (candidate) =>
       candidate.panelVisible === true &&
-      candidate.panelActiveContent === 'agent',
+      candidate.panelActiveContentKind === 'agent',
   );
   await focusPanelBeforeOpeningDialog(driver, statusPath, 'agent');
   await openSettingsByMouse(driver, statusPath);

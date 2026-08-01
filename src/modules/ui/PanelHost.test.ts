@@ -56,6 +56,40 @@ test('the first registered content becomes active', () => {
   expect(host.order.value).toEqual(['terminal']);
 });
 
+test('registration rejects a second pane with the same identifier', () => {
+  const host = new PanelHost.Class();
+  const firstTerminal = fakeContent('shared-identifier', 'terminal');
+  const secondTerminal = fakeContent('shared-identifier', 'terminal');
+  host.register(firstTerminal);
+
+  expect(() => host.register(secondTerminal)).toThrow(
+    'Panel content identifier already belongs to another pane: shared-identifier',
+  );
+  expect(host.content('shared-identifier')).toBe(firstTerminal);
+  expect(secondTerminal.disposed).toBe(false);
+  expect(() => host.register(firstTerminal)).not.toThrow();
+});
+
+test('registration migrates a legacy kind order to an opaque pane identifier', () => {
+  const persistedOrder = ref(['agent', 'terminal', 'database']);
+  const host = new PanelHost.Class({ contentOrder: persistedOrder });
+
+  host.register(fakeContent('pane-instance-1', 'agent'));
+  host.register(fakeContent('pane-instance-2', 'terminal'));
+  host.register(fakeContent('database', 'database'));
+
+  expect(persistedOrder.value).toEqual([
+    'pane-instance-1',
+    'pane-instance-2',
+    'database',
+  ]);
+  expect(host.orderedContents.map((content) => content.kind)).toEqual([
+    'agent',
+    'terminal',
+    'database',
+  ]);
+});
+
 test('content sets isolate and restore complete panel worlds', () => {
   const host = new PanelHost.Class();
   const firstTask = fakeContent('first-task', 'task');

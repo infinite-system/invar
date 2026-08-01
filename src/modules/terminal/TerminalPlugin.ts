@@ -48,6 +48,14 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
   createPane(request: PaneRuntimeRequest): PaneContent {
     const context = this.application;
     if (!context) throw new Error('The terminal runtime is not activated');
+    if (
+      (request.kind ?? this.kind) === this.kind &&
+      this.panes.has(request.identifier)
+    ) {
+      throw new Error(
+        `Terminal pane identifier already belongs to another session: ${request.identifier}`,
+      );
+    }
     const { settings, theme } = context;
     const declaredProcess = request.process;
     const content = this.buildTerminalPaneContent({

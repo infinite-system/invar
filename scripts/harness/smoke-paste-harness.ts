@@ -160,7 +160,7 @@ try {
     'the terminal pane is active and focused',
     (status) =>
       status.terminalFocused === true &&
-      status.panelActiveContent === 'terminal',
+      status.panelActiveContentKind === 'terminal',
   );
   pass('active pane is the terminal');
   driver.sendPaste('PASTEDINTERMINAL');
@@ -291,7 +291,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the agent pane is published as active',
-    (status) => status.panelActiveContent === 'agent',
+    (status) => status.panelActiveContentKind === 'agent',
   );
   driver.sendPaste('PASTEDINAGENT');
   await driver.awaitSnapshot(
@@ -351,7 +351,7 @@ try {
     await awaitStatusPublication(
       statusPath,
       `${payloadByteCount}-byte paste remains routed to the agent composer`,
-      (status) => status.panelActiveContent === 'agent',
+      (status) => status.panelActiveContentKind === 'agent',
     );
     pass(
       `${payloadByteCount}-byte paste remained routed to the agent composer`,
@@ -378,7 +378,7 @@ try {
     statusPath,
     'the staged tool selects the terminal group and publishes its geometry',
     (status) =>
-      status.panelActiveContent === 'terminal' &&
+      status.panelActiveContentKind === 'terminal' &&
       Array.isArray(status.panelCellIds) &&
       Array.isArray(status.panelCellColumns) &&
       String(status.agentLastToolResult).includes('Staged without Enter') &&
@@ -451,7 +451,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the Agent shortcut selects its retained full-width group',
-    (status) => status.panelActiveContent === 'agent',
+    (status) => status.panelActiveContentKind === 'agent',
   );
   driver.sendText(`terminal-tools:stage:printf ANIMATING_${'x'.repeat(100)}`);
   driver.sendKeys('Enter');
@@ -473,7 +473,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the Agent shortcut selects the agent group after terminal interruption',
-    (status) => status.panelActiveContent === 'agent',
+    (status) => status.panelActiveContentKind === 'agent',
   );
   driver.sendRawInput('\x1b[27;6;97~');
   await awaitStatusPublication(

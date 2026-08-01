@@ -62,7 +62,7 @@ async function runPaletteCommand(commandTitle: string): Promise<void> {
       driver,
       statusPath,
       `Terminal receives focus before opening ${commandTitle}`,
-      (status) => status.panelActiveContent === 'terminal',
+      (status) => status.panelActiveContentKind === 'terminal',
     );
     const editorCenter = (
       HarnessSmoke.Class.readStatus(statusPath).layoutSlots as Record<

@@ -60,8 +60,8 @@ class $SmokeTerminalFollowHarness {
         'Ctrl+Shift+S opens the terminal and agent side by side',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal' &&
-          status.panelActiveContent === 'agent',
+          status.panelCellKinds.join(',') === 'agent,terminal' &&
+          status.panelActiveContentKind === 'agent',
       );
 
       console.log(
@@ -336,7 +336,7 @@ class $SmokeTerminalFollowHarness {
         'plain Bash and echo agent open side by side',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
       await this.runTerminalCommand(
         "printf 'HEURISTIC_FAIL\\n'; false",
@@ -392,7 +392,7 @@ class $SmokeTerminalFollowHarness {
         'the delayed echo spinner scenario opens both panes',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
 
       await this.startObservedCommand(
@@ -553,7 +553,7 @@ class $SmokeTerminalFollowHarness {
         `the injected backend ${expectedEndReason} scenario opens both panes`,
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
       await this.startObservedCommand(
         `printf 'INJECTED_BACKEND_${expectedEndReason.toUpperCase()}\\n'`,
@@ -607,7 +607,7 @@ class $SmokeTerminalFollowHarness {
         'the exited-terminal scenario opens both panes',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
       const baselineStatus = await this.awaitStatus(
         'terminal and agent state are published before immediate exit',

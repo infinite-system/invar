@@ -325,6 +325,8 @@ test('dispose withdraws the projection and commands; a reinstall rebuilds from t
   const recording = makeContext(workspaceRoot);
   plugin.activateApplication(recording.context);
   plugin.disposeApplication();
+  // The real contribution manager runs its registration disposer after the plugin hook.
+  recording.rightDockHost.removeContent('tasks');
   expect(recording.statusDisposals).toBe(1);
   expect(recording.commandDisposals).toBe(1);
   expect(recording.snapshot()).toEqual({});

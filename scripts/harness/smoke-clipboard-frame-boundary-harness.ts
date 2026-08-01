@@ -395,12 +395,12 @@ try {
   const terminalLayoutStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true && status.panelCellIds.includes('terminal') && status.panelCellColumns.length === status.panelCellIds.length",
+    "status condition: status.panelActiveContentKind === 'terminal' && status.terminalFocused === true && status.panelCellKinds.includes('terminal') && status.panelCellColumns.length === status.panelCellIds.length",
     (status) =>
-      status.panelActiveContent === 'terminal' &&
+      status.panelActiveContentKind === 'terminal' &&
       status.terminalFocused === true &&
       Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.includes('terminal') &&
+      status.panelCellKinds.includes('terminal') &&
       Array.isArray(status.panelCellColumns) &&
       status.panelCellColumns.length === status.panelCellIds.length &&
       typeof status.layoutSlots === 'object' &&

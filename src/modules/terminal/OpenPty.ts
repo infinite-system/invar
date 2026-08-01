@@ -160,16 +160,21 @@ class $OpenPty {
       fd: this.duplicateMasterFileDescriptor(),
       autoClose: true,
     });
+    let restartAfterClose = true;
     this.readStream = readStream;
     readStream.on('data', (chunk: Buffer) => callback(new Uint8Array(chunk)));
     readStream.on('error', (error: NodeJS.ErrnoException) => {
       if (this.readStream === readStream) this.readStream = null;
-      if (this.closed || error.code === 'EIO') return;
+      if (this.closed || error.code === 'EIO') {
+        restartAfterClose = false;
+        return;
+      }
       if (error.code === 'EAGAIN' || error.code === 'EWOULDBLOCK') {
         this.establishBlockingReadState();
         this.scheduleMasterReadRestart(callback);
         return;
       }
+      restartAfterClose = false;
       setTimeout(() => {
         throw error;
       }, 0);
@@ -177,6 +182,10 @@ class $OpenPty {
     readStream.on('close', () => {
       if (this.readStream === readStream) {
         this.readStream = null;
+      }
+      if (restartAfterClose && !this.closed) {
+        this.establishBlockingReadState();
+        this.scheduleMasterReadRestart(callback);
       }
     });
   }

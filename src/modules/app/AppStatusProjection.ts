@@ -38,9 +38,10 @@ class $AppStatusProjection {
     const panelViewportColumns = ports.view.panelViewportColumns();
     const panelViewportRows = ports.view.panelViewportRows();
     const terminalCellIndex = ports.panelHost.resolvedCells.findIndex(
-      (cell) => cell.content.id === 'terminal',
+      (cell) => cell.content.kind === 'terminal',
     );
     const panelCellSpans = ports.panelHost.cellSpans(panelViewportColumns);
+    const orderedPanelContents = ports.panelHost.orderedContents;
     const terminalIsPainted =
       ports.panelHost.visible.value && terminalCellIndex >= 0;
     const openInputOverlays = [
@@ -262,15 +263,16 @@ class $AppStatusProjection {
       terminalFocused:
         terminalIsPainted &&
         ports.panelHost.focused.value &&
-        ports.panelHost.focusedContent?.id === 'terminal',
+        ports.panelHost.focusedContent?.kind === 'terminal',
       panelActiveContent:
         ports.panelHost.focusedContent?.id ?? ports.panelHost.activeId.value,
-      panelContentIds: ports.panelHost.order.value,
+      panelActiveContentKind: ports.panelHost.focusedContent?.kind ?? null,
+      panelContentIds: orderedPanelContents.map((content) => content.id),
       panelContentOrder: ports.panelHost.order.value,
-      panelContentLabels: ports.panelHost.orderedContents.map(
+      panelContentLabels: orderedPanelContents.map(
         (content) => content.instanceLabel ?? content.title,
       ),
-      panelContentKinds: ports.panelHost.orderedContents.map(
+      panelContentKinds: orderedPanelContents.map(
         (content) => content.kind ?? content.id,
       ),
       panelSpaceIds: ports.panelHost.spaces.value.map(
@@ -301,6 +303,9 @@ class $AppStatusProjection {
       // column width — the driving smoke reads this to prove 2-up render, focus routing, and re-flow.
       panelCellIds: ports.panelHost.resolvedCells.map(
         (cell) => cell.content.id,
+      ),
+      panelCellKinds: ports.panelHost.resolvedCells.map(
+        (cell) => cell.content.kind ?? cell.content.id,
       ),
       panelFocusedIndex: ports.panelHost.focusedIndex.value,
       panelCellColumns: ports.panelHost

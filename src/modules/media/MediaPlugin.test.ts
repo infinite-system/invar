@@ -38,14 +38,7 @@ function activatedMediaPlugin(currentPane: () => PaneContent | null) {
     currentPaneOfKind: () => currentPane(),
     releasePane: (identifier: string) => {
       releasedPaneIdentifiers.push(identifier);
-      const pane = paneRuntimes.createPane('media', {
-        identifier,
-        label: identifier,
-        columns: 20,
-        rows: 8,
-        workingDirectory: '/tmp',
-      });
-      if (pane) paneRuntimes.paneRemoved(pane);
+      paneRuntimes.paneRemoved({ id: identifier, kind: 'media' } as never);
     },
     renderer: {
       width: 100,
@@ -108,6 +101,17 @@ test('media runtime, commands, keys, and status withdraw together', () => {
   });
   expect(context.statusProjectionContributions.snapshot().mediaMode).toBe(
     'demo',
+  );
+  expect(() =>
+    context.paneRuntimes.createPane('media', {
+      identifier: 'media-demo',
+      label: 'Another Demo',
+      columns: 20,
+      rows: 8,
+      workingDirectory: '/tmp',
+    }),
+  ).toThrow(
+    'Media pane identifier already belongs to another session: media-demo',
   );
 
   context.manager.setEnabled('media', false);

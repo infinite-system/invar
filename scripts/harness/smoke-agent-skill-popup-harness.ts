@@ -79,7 +79,7 @@ try {
     statusPath,
     'the agent pane is focused',
     (status) =>
-      status.panelActiveContent === 'agent' && status.panelFocused === true,
+      status.panelActiveContentKind === 'agent' && status.panelFocused === true,
   );
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('Ask Claude') !== null,

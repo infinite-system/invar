@@ -44,6 +44,8 @@ class $StatusChannel {
       subprocessPids: [],
       lifecycleTier: 'boot',
       overlay: null,
+      panelActiveContentKind: null,
+      panelCellKinds: [],
     };
     return state;
   }
@@ -111,6 +113,8 @@ export interface StatusSnapshot {
   subprocessPids: number[];
   lifecycleTier: string;
   overlay: string | null;
+  panelActiveContentKind: string | null;
+  panelCellKinds: string[];
   completionOpen?: boolean;
   completionSelectedLabel?: string;
   completionItemCount?: number;

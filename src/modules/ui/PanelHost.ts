@@ -659,9 +659,15 @@ class $PanelHost {
       this.options.onContentRemoved?.(content);
     }
   }
-  /** Register a content. The first one registered becomes active. Idempotent per id. */
+  /** Register a content. The first one registered becomes active. Idempotent per object. */
   register(content: PaneContent): void {
-    if (this.contents.has(content.id)) return;
+    const contentWithIdentifier = this.contents.get(content.id);
+    if (contentWithIdentifier === content) return;
+    if (contentWithIdentifier) {
+      throw new Error(
+        `Panel content identifier already belongs to another pane: ${content.id}`,
+      );
+    }
     for (const contentSet of this.contentSets) {
       if (contentSet === this.selectedContentSet) continue;
       if (contentSet.contents.has(content.id)) {
@@ -675,7 +681,22 @@ class $PanelHost {
     }
     this.contents.set(content.id, content);
     if (!this.order.value.includes(content.id)) {
-      this.setOrder([...this.order.value, content.id]);
+      const legacyKindIdentifier = content.kind;
+      const legacyKindPosition = legacyKindIdentifier
+        ? this.order.value.indexOf(legacyKindIdentifier)
+        : -1;
+      if (
+        legacyKindPosition >= 0 &&
+        legacyKindIdentifier !== undefined &&
+        legacyKindIdentifier !== content.id &&
+        !this.contents.has(legacyKindIdentifier)
+      ) {
+        const migratedOrder = [...this.order.value];
+        migratedOrder[legacyKindPosition] = content.id;
+        this.setOrder(migratedOrder);
+      } else {
+        this.setOrder([...this.order.value, content.id]);
+      }
       this.options.persistContentOrder?.();
     }
     if (this.activeId.value === null) this.activeId.value = content.id;

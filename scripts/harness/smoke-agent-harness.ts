@@ -102,7 +102,7 @@ try {
     (status) =>
       status.panelVisible === true &&
       status.terminalVisible === false &&
-      status.panelActiveContent === 'agent' &&
+      status.panelActiveContentKind === 'agent' &&
       typeof status.height === 'number',
   );
   HarnessSmoke.Class.pass('status-bar agent button opens the agent pane');
@@ -142,8 +142,9 @@ try {
       status.panelFocused === true &&
       status.terminalVisible === false &&
       status.terminalFocused === false &&
-      status.panelActiveContent === 'agent' &&
-      String(status.panelContentIds).includes('agent'),
+      status.panelActiveContentKind === 'agent' &&
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.includes('agent'),
   );
   HarnessSmoke.Class.pass('agent chord opens and focuses the pane');
   HarnessSmoke.Class.pass('agent is registered in the shared panel host');

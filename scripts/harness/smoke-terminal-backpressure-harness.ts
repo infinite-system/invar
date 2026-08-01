@@ -57,7 +57,7 @@ try {
     (status) =>
       status.terminalVisible === true &&
       status.terminalFocused === true &&
-      status.panelActiveContent === 'terminal',
+      status.panelActiveContentKind === 'terminal',
   );
   driver.sendText('echo BACKPRESSURE_READY');
   driver.sendKeys('Enter');

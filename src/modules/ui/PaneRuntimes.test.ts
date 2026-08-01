@@ -82,21 +82,20 @@ test('instance identity numbering is shared by every kind', () => {
   paneRuntimes.register(fakeRuntime('terminal'));
 
   expect(paneRuntimes.allocateInstanceIdentity('terminal', false)).toEqual({
-    identifier: 'terminal',
+    identifier: 'pane-instance-1',
     label: 'Terminal',
   });
   expect(paneRuntimes.allocateInstanceIdentity('terminal', true)).toEqual({
-    identifier: 'terminal-2',
+    identifier: 'pane-instance-2',
     label: 'Terminal 2',
   });
   expect(paneRuntimes.allocateInstanceIdentity('terminal', true)).toEqual({
-    identifier: 'terminal-3',
+    identifier: 'pane-instance-3',
     label: 'Terminal 3',
   });
-  // A first instance re-created after every instance closed reclaims the bare identifier, so the
-  // persisted panel content order stays stable.
+  // A display name can restart after every instance closes, but an identifier cannot be reused.
   expect(paneRuntimes.allocateInstanceIdentity('terminal', false)).toEqual({
-    identifier: 'terminal',
+    identifier: 'pane-instance-4',
     label: 'Terminal',
   });
   expect(paneRuntimes.allocateInstanceIdentity('output', false)).toBeNull();
@@ -108,20 +107,39 @@ test('instance labels restart in each workspace scope while identifiers stay uni
 
   expect(paneRuntimes.allocateInstanceIdentity('terminal', false, '2')).toEqual(
     {
-      identifier: 'terminal@2',
+      identifier: 'pane-instance-1',
       label: 'Terminal',
     },
   );
   expect(paneRuntimes.allocateInstanceIdentity('terminal', true, '2')).toEqual({
-    identifier: 'terminal@2-2',
+    identifier: 'pane-instance-2',
     label: 'Terminal 2',
   });
   expect(paneRuntimes.allocateInstanceIdentity('terminal', false, '3')).toEqual(
     {
-      identifier: 'terminal@3',
+      identifier: 'pane-instance-3',
       label: 'Terminal',
     },
   );
+});
+
+test('persisted identifiers are kept and claimed before new panes are minted', () => {
+  const paneRuntimes = new PaneRuntimes.Class();
+  paneRuntimes.register(fakeRuntime('terminal'));
+
+  expect(paneRuntimes.claimPersistedInstanceIdentifier('terminal')).toBe(true);
+  expect(paneRuntimes.claimPersistedInstanceIdentifier('terminal')).toBe(false);
+  expect(paneRuntimes.claimPersistedInstanceIdentifier('pane-instance-1')).toBe(
+    true,
+  );
+  expect(paneRuntimes.allocateInstanceIdentity('terminal', false)).toEqual({
+    identifier: 'pane-instance-2',
+    label: 'Terminal',
+  });
+  expect(paneRuntimes.allocateInstanceIdentity('terminal', false)).toEqual({
+    identifier: 'pane-instance-3',
+    label: 'Terminal',
+  });
 });
 
 test('the add menu offers only the kinds that ask to be offered', () => {

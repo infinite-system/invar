@@ -824,8 +824,8 @@ try {
     'the native agent pane opens as a full-width group while the task stays live',
     (candidate) =>
       Array.isArray(candidate.panelCellIds) &&
-      candidate.panelCellIds.join(',') === 'agent' &&
-      candidate.panelActiveContent === 'agent',
+      candidate.panelCellKinds.join(',') === 'agent' &&
+      candidate.panelActiveContentKind === 'agent',
   );
   await driven.driver.awaitGridCondition(
     'the native agent composer remains visible and usable',

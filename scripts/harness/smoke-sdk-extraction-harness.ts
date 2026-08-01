@@ -70,7 +70,8 @@ try {
     driver,
     statusPath,
     'the default app boot reaches ready without opening the agent pane',
-    (status) => status.ready === true && status.panelActiveContent !== 'agent',
+    (status) =>
+      status.ready === true && status.panelActiveContentKind !== 'agent',
   );
   const afterBootDirectories = extractionDirectoryNames();
   HarnessSmoke.Class.requireCondition(

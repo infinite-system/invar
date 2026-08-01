@@ -141,6 +141,7 @@ class $HarnessSmoke {
     driver: PtyTestDriver.Model,
     statusPath: string,
     visibleTitle: string,
+    expectedRemainingCount = 0,
   ): Promise<void> {
     await this.awaitStatus(
       driver,
@@ -230,18 +231,24 @@ class $HarnessSmoke {
     await this.awaitStatus(
       driver,
       statusPath,
-      `${visibleTitle} is absent after its row close`,
+      `${visibleTitle} has ${expectedRemainingCount} rows after one row close`,
       (candidate) =>
         Array.isArray(candidate.panelContentLabels) &&
-        !candidate.panelContentLabels.some(
-          (label) =>
-            typeof label === 'string' && label.startsWith(visibleTitle),
-        ),
+        candidate.panelContentLabels.filter(
+          (label) => typeof label === 'string' && label === visibleTitle,
+        ).length === expectedRemainingCount,
     );
-    await driver.awaitGridCondition(
-      `${visibleTitle} is no longer painted after its row close`,
-      (candidate) => candidate.findText(visibleTitle) === null,
-    );
+    if (expectedRemainingCount === 0) {
+      await driver.awaitGridCondition(
+        `${visibleTitle} is no longer painted after its row close`,
+        (candidate) => candidate.findText(visibleTitle) === null,
+      );
+    } else {
+      await driver.awaitGridCondition(
+        `${visibleTitle} remains painted after one matching row closes`,
+        (candidate) => candidate.findText(visibleTitle) !== null,
+      );
+    }
   }
 
   static async awaitScrollPosition(

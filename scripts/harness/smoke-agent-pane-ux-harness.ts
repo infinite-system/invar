@@ -378,7 +378,7 @@ try {
     'the agent pane opens focused with its panel geometry published',
     (status) =>
       status.panelFocused === true &&
-      status.panelActiveContent === 'agent' &&
+      status.panelActiveContentKind === 'agent' &&
       status.agentEngine === 'claude' &&
       status.agentSkipPermissions === true &&
       agentFooterRegion(status) !== null,

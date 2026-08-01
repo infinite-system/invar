@@ -182,6 +182,17 @@ test('the runtime builds panes and publishes the active workspace pane as curren
   });
   expect(first?.kind).toBe('terminal');
   expect(second?.id).toBe('terminal-2');
+  expect(() =>
+    context.paneRuntimes.createPane('terminal', {
+      identifier: 'terminal-2',
+      label: 'Another Terminal',
+      columns: 80,
+      rows: 24,
+      workingDirectory: '/tmp',
+    }),
+  ).toThrow(
+    'Terminal pane identifier already belongs to another session: terminal-2',
+  );
 
   const runtime = context.paneRuntimes.runtime(
     'terminal',

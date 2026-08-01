@@ -816,11 +816,11 @@ try {
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.terminalVisible === true && status.terminalFocused === true && status.panelActiveContent === 'terminal' && Number(status.terminalColumns) > 0 && Number(status.terminalRows) > 0",
+    "status condition: status.terminalVisible === true && status.terminalFocused === true && status.panelActiveContentKind === 'terminal' && Number(status.terminalColumns) > 0 && Number(status.terminalRows) > 0",
     (status) =>
       status.terminalVisible === true &&
       status.terminalFocused === true &&
-      status.panelActiveContent === 'terminal' &&
+      status.panelActiveContentKind === 'terminal' &&
       Number(status.terminalColumns) > 0 &&
       Number(status.terminalRows) > 0,
   );
