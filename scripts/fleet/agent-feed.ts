@@ -85,7 +85,7 @@ function findRollout(worktreeName: string): string | null {
       cwd !== null && (cwd.endsWith(`/${worktreeName}`) || cwd === worktreeName)
     );
   });
-  return matches.length > 0 ? matches[matches.length - 1] : null;
+  return matches.length > 0 ? (matches[matches.length - 1] ?? null) : null;
 }
 
 type FeedLine = { stamp: string; text: string; compact?: boolean };
@@ -117,7 +117,7 @@ function renderEvent(rawLine: string): FeedLine | null {
         .filter((match) => match !== null)
         .map(
           (match) =>
-            `${match![1]} ${match![2].replace(/^.*\/\.invar\/worktrees\/[^/]+\//, '')}`,
+            `${match![1]} ${match![2]!.replace(/^.*\/\.invar\/worktrees\/[^/]+\//, '')}`,
         );
       const summary = files.length > 0 ? files.join('  ·  ') : 'applied';
       return {

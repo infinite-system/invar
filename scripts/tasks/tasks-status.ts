@@ -160,6 +160,20 @@ const fleetWorktreeMarkerIndex = CHECKOUT_REPOSITORY_ROOT.indexOf(
   FLEET_WORKTREE_MARKER,
 );
 
+/**
+ * The main Invar checkout that owns `.invar/worktrees/`, derived from a workspace path at
+ * runtime. The module-level constant below derives from import.meta.dir, which is correct
+ * when running from source but resolves to the bundle's virtual root (`/$bunfs/root`) in a
+ * compiled binary — callers inside the app must use THIS function with the live workspace
+ * root instead. The INVAR_FLEET_REPOSITORY_ROOT env override wins in both forms.
+ */
+export function fleetRepositoryRootForWorkspace(workspaceRoot: string): string {
+  const environmentOverride = process.env.INVAR_FLEET_REPOSITORY_ROOT?.trim();
+  if (environmentOverride) return environmentOverride;
+  const markerIndex = workspaceRoot.indexOf(FLEET_WORKTREE_MARKER);
+  return markerIndex < 0 ? workspaceRoot : workspaceRoot.slice(0, markerIndex);
+}
+
 /** The main Invar checkout that owns `.invar/worktrees/`, even when this script runs in a worktree. */
 export const INVAR_FLEET_REPOSITORY_ROOT =
   process.env.INVAR_FLEET_REPOSITORY_ROOT?.trim() ||
