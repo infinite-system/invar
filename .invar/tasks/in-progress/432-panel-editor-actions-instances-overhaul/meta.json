@@ -1,0 +1,15 @@
+{
+  "task": 432,
+  "slug": "panel-editor-actions-instances-overhaul",
+  "branch": "fleet/432-panel-editor-actions-instances-overhaul",
+  "worktree": ".invar/worktrees/432-panel-editor-actions-instances-overhaul",
+  "tmuxSession": "invar/432-panel-editor-actions-instances-overhaul",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-432-panel-editor-actions-instances-overhaul.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "d21a15bcae007871223a21ef407a6d9077bd06f3",
+  "startedAt": "2026-08-01T03:05:11-04:00"
+}

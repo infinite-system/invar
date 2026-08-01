@@ -1,7 +1,7 @@
 # Task 432 — panel, editor actions, and instances overhaul (20 items)
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol
