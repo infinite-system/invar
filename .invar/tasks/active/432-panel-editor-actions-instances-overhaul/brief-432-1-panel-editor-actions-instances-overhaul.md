@@ -65,7 +65,9 @@ earlier moves.
     right padding (`… + Plugin  ☰ ␣` at the edge — not floating
     inboard). The toggle IS the count indicator: icon always shown,
     the count number beside it only when instances > 1 (`☰ 2`).
-    Tooltip per item 15. (User-settled placement and padding.)
+    The trailing padding space is PART OF THE BUTTON — the hit
+    target spans glyph + count + padding cells, one hover tone over
+    all of them. Tooltip per item 15. (User-settled.)
 11. GENERIC DIALOG SYSTEM. One dialog/prompt component; the
     quit-confirmation dialog becomes an instance of it; terminal
     close (item 5) is the second consumer; input-carrying prompts in
@@ -106,6 +108,27 @@ earlier moves.
     (same list, no special icon per 18) but is not a shell: typing
     /exit or /quit hides it and replaces it with a plain terminal
     in the same window slot.
+
+21. DESIGN CONTRACT. Create `design.invariants.md` at the repo root:
+    the design-system contract for consistent UIs, handed to every
+    agent doing UI work. Seed it from the rules this brief settles —
+    each as a proper record with Mechanism/Evidence from the items
+    that implement them:
+    - A control's padding is part of the control (hit target =
+      glyph + padding cells; one hover tone over the whole target —
+      items 4, 10, 18).
+    - Secondary controls reveal on hover and carry tooltips
+      (item 18).
+    - One generic dialog component serves every confirm/prompt
+      (item 11).
+    - Splitters are thin, subtle at rest, highlighted on hover
+      (item 6).
+    - Adds are labeled with the layer they operate on (`+ Plugin`,
+      `+ Terminal` — items 8, 13).
+    - Controls live in the frame of the thing they control (editor
+      actions in the editor border; instance controls in the
+      instances panel — items 2, 7, 13).
+    Every later UI task lists design.invariants.md in its scope.
 
 ## Ratchets
 
