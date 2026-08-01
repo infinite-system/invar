@@ -116,7 +116,7 @@ earlier moves.
     /exit or /quit hides it and replaces it with a plain terminal
     in the same window slot.
 
-21. DESIGN CONTRACT. Create `design.invariants.md` at the repo root:
+21. DESIGN CONTRACT. Create the repo-root design contract file (name: `design.invariants` + the `.md` extension; it does not exist yet — this item creates it):
     the design-system contract for consistent UIs, handed to every
     agent doing UI work. Seed it from the rules this brief settles —
     each as a proper record with Mechanism/Evidence from the items
@@ -137,7 +137,7 @@ earlier moves.
     - Controls live in the frame of the thing they control (editor
       actions in the editor border; instance controls in the
       instances panel — items 2, 7, 13).
-    Every later UI task lists design.invariants.md in its scope.
+    Every later UI task lists that design contract file in its scope.
 
 ## Ratchets
 
