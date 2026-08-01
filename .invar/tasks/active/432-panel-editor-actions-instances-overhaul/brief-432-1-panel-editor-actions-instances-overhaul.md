@@ -12,9 +12,9 @@ earlier moves.
 ╰──  ↵  ↕  ⇊  ────────────────────────────────╯   editor bottom border owns the actions
 ─────────────────────────────────────────  ↗  ×    splitter: thin, light, flush; frame fns only
  Terminal ×  Terminal 2 ×      + Plugin  ☰ 2␣     tabs: padded, reorderable; ☰ = instances toggle+count, 1-space right pad
-┌───────────────────── × ┬─────────────────────┐
-│  $ echo hi             │  + Terminal ▾       │
-│                        │                     │
+┌────────────────────────┬─────────────────────┐
+│                     ×  │  + Terminal ▾       │
+│  $ echo hi             │                     │
 │                        │  ╭ Terminal         │
 │                        │  ├ Terminal 2   ⬓ × │   (hover-only controls)
 │                        │  ╰ Terminal (Agent) │
@@ -104,11 +104,13 @@ earlier moves.
     hover, with tooltips; close gets one space right padding.
     Driven now: `▦ ×` always visible, flush.
 19. SUBWINDOW CLOSE. Each terminal subwindow gets a single close
-    button on its TOP line, flush to the subwindow's right edge:
-    the button is `␣×␣` (both spaces part of the button, per the
-    small-button standard), its trailing space cell touching the
-    pane's right border — zero extra cells after it. Hover lights
-    the whole 3-cell target.
+    button on its FIRST CONTENT ROW (the row just below the top
+    border line), flush to the subwindow's right edge: the button
+    is `␣×␣` (both spaces part of the button, per the small-button
+    standard), its trailing space cell touching the pane's right
+    border — zero extra cells after it. Hover lights the whole
+    3-cell target. Content (the shell line, e.g. `$ echo hi`)
+    starts on the NEXT row, never sharing the close-button row.
 20. INVAR AGENT DUALITY. Invar agent appears AS a terminal instance
     (same list, no special icon per 18) but is not a shell: typing
     /exit or /quit hides it and replaces it with a plain terminal
