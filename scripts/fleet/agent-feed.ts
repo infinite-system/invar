@@ -229,7 +229,34 @@ if (!rollout) {
   process.exit(2);
 }
 
+function briefEvents(worktreeDirectory: string): string[] {
+  const tasksRoot = join(import.meta.dir, '..', '..', '.invar', 'tasks');
+  const lines: string[] = [];
+  for (const state of ['in-progress', 'active', 'completed']) {
+    const folder = join(tasksRoot, state, worktreeDirectory);
+    if (!existsSync(folder)) continue;
+    for (const entry of readdirSync(folder).sort()) {
+      if (!entry.startsWith('brief-') || !entry.endsWith('.md')) continue;
+      const full = join(folder, entry);
+      const stamp = new Date(statSync(full).mtimeMs)
+        .toISOString()
+        .slice(11, 19);
+      const heading =
+        readFileSync(full, 'utf8')
+          .split('\n')
+          .find((briefLine) => briefLine.startsWith('#')) ?? '';
+      lines.push(
+        `${stamp} brief │ ${entry} — ${heading.replace(/^#+\s*/, '')}\n        (full text: ${full})`,
+      );
+    }
+    break;
+  }
+  return lines;
+}
+
 console.log(`# feed for ${worktreeName}\n# source: ${rollout}\n`);
+for (const briefLine of briefEvents(worktreeName))
+  console.log(briefLine + '\n');
 let cursor = 0;
 const first = renderFeed(rollout, cursor);
 if (first.output) console.log(first.output);
