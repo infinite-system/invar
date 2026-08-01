@@ -92,3 +92,25 @@ variance of HOW a drive is performed while increasing its accuracy.
   the conductor uses to SEE is the API the brief cites for the
   builder to REPRODUCE — one instrument, two users, zero variance
   between what each of us observed.
+
+## The PTY is the shared entry point (user addition, 2026-08-01)
+
+The deterministic driving layer is not conductor tooling — it is THE
+shared entry point into the app for every party: the user (in their
+real terminal), the conductor (probing), and every builder agent
+(reproducing and verifying). One instrument, all eyes.
+
+Consequences:
+- Briefs point builders at the SAME helpers and probes the conductor
+  drove — a builder's first act on a UI task is to run the named
+  drive and see what the conductor and user saw.
+- The quality of seeing IS the quality of everything downstream:
+  debugging (the mechanism is visible, not guessed), coding (the
+  change is checked against the same view), and being on one page
+  with the user (three parties, one picture). Improving the driving
+  API is therefore never yak-shaving — it compounds across every
+  future task and every agent.
+- New app surfaces should land with their drive path reachable
+  through this entry point (status projections, slot tables,
+  deterministic gestures) — a surface only a human can reach is a
+  surface no agent can verify.
