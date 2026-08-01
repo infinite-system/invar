@@ -6,12 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
+- #448 [static-reads-that-can-block-overrides](.invar/tasks/in-progress/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md)  [building]
+  `tmux attach -t invar/448-static-reads-that-can-block-overrides`
 - #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [building]
   `tmux attach -t invar/444-history-is-editor-area-view-states`
 - #443 [static-read-indirection-defeats-override](.invar/tasks/in-progress/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/443-static-read-indirection-defeats-override`
-- #442 [panel-editor-tree-chrome-polish](.invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md)  [building]
+- #442 [panel-editor-tree-chrome-polish](.invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/442-panel-editor-tree-chrome-polish`
 
 ## USER-DIRECTED (13)
@@ -59,7 +61,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (24)
+## FLAKE-EVIDENCE (26)
+- #447 [panel-drag-smoke-timed-out-once](.invar/tasks/active/447-panel-drag-smoke-timed-out-once/task-447-panel-drag-smoke-timed-out-once.md)
+- #446 [quick-open-enumeration-stuck-loading](.invar/tasks/active/446-quick-open-enumeration-stuck-loading/task-446-quick-open-enumeration-stuck-loading.md)
 - #436 [tasks-watch-partial-frame-under-load](.invar/tasks/active/436-tasks-watch-partial-frame-under-load/task-436-tasks-watch-partial-frame-under-load.md)
 - #374 [word-delete-harness-alt-delete-timeout](.invar/tasks/active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md)
 - #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
