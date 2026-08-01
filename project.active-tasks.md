@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (3)
 - #448 [static-reads-that-can-block-overrides](.invar/tasks/in-progress/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/448-static-reads-that-can-block-overrides`
 - #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/444-history-is-editor-area-view-states`
-- #443 [static-read-indirection-defeats-override](.invar/tasks/in-progress/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/443-static-read-indirection-defeats-override`
 - #442 [panel-editor-tree-chrome-polish](.invar/tasks/in-progress/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/442-panel-editor-tree-chrome-polish`
 
@@ -146,7 +144,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 172 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 173 — full log: project.tasks-completed.md)
+- #443 [static-read-indirection-defeats-override](.invar/tasks/completed/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md) — 3d9fdca6 — Six classes cleaned; five deleted their statics outright. Bycatch became #448 (55-site census) and the Drive.ts type error the conductor had introduced.
 - #439 [notice-persistence-restored-state-defects](.invar/tasks/completed/439-notice-persistence-restored-state-defects/task-439-notice-persistence-restored-state-defects.md) — ed401644 — Cascade cause found: folderOpen before restore; fixed by ordering. Notices non-persistent + legacy sanitization; Displaced suppressed for redeclared labels; my two probe findings refuted (pre-satisfied toggle). Landed over pre-existing #436 red.
 - #435 [folder-open-task-launch-hygiene](.invar/tasks/completed/435-folder-open-task-launch-hygiene/task-435-folder-open-task-launch-hygiene.md) — 69886b7e — Once-per-root launch memory + restored-identity adoption; issues are notice panes, not pseudo-terminals; Terminal space restores with contents. Contracts refined in-branch. Bycatch converted: #437, #438; drive --home stale-status fix landed mid-task.
 - #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/completed/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md) — 7a33c34b — Filed diagnosis refuted by driving: red was a stale predicate + host-registry coupling. Glance and smoke isolated via INVAR_FLEET_GATE_REGISTRY; three registry states driven; new invariant record. Landed over pre-existing #436 red.
@@ -161,4 +160,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #423 [panelheading-rot-remainder-sweep](.invar/tasks/completed/423-panelheading-rot-remainder-sweep/task-423-panelheading-rot-remainder-sweep.md) — e92011c0 — Sweep grep to zero; four records repointed; the chain of bycatch pairs is closed. Punctuation notes are known legacy tolerance (no action); glyph breach converted to #426 before landing.
 - #422 [verification-field-panelheading-rot](.invar/tasks/completed/422-verification-field-panelheading-rot/task-422-verification-field-panelheading-rot.md) — ea808dcb — Repointed the three PanelHeading-rotted records to PanelTabBar-era artifacts; UI geometry record re-derived. Contract-only; checker green. Bycatch converted to #423 (class-closing sweep) before landing.
 - #421 [field-scanner-mixed-snapshot-sources](.invar/tasks/completed/421-field-scanner-mixed-snapshot-sources/task-421-field-scanner-mixed-snapshot-sources.md) — b327cc93 — Mixed-source snapshot reproduced by driving, fixed to one-commit-per-snapshot, locked by tests and a new established record. Full repo gate green — first field test of #424's condition waits, passed. No bycatch.
-- #420 [terminal-stage-stale-expanded-result](.invar/tasks/completed/420-terminal-stage-stale-expanded-result/task-420-terminal-stage-stale-expanded-result.md) — 02da948e — terminal-stage smoke: bottommost-row locator fixes wrong-row click (app was never wrong)
