@@ -73,8 +73,7 @@ specifications, not one-bug-one-agent waste.
 
 While driving, the conductor is allowed — encouraged — to refine the
 PTY driving layer so that driving is comfortable, fast, and
-mechanical. But the refinement direction matters, and the user set it
-precisely: **the API is not `openBottomPanel()` — it is "drive to the
+mechanical. But the refinement direction matters: **the API is not `openBottomPanel()` — it is "drive to the
 button and click it" or "press the shortcut" — the same path the user
 takes.** The reduction is never an alternative interface that
 bypasses the user's path; it is a more accurate reproduction of that
