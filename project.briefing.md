@@ -1,3 +1,69 @@
+# RESUME ANCHOR 41 — 2026-08-02 ~18:40 EDT (85% gauge) — DO THIS FIRST
+
+## USER-DIRECTED UI TASK, stated verbatim (do not paraphrase away)
+"Add Terminal thing is not just a text, it's a button... but that's not
+fucking clear, also my point was, it SHOULD not be like that, it should
+LEAVE the right pane to exist with the existing btn on top, not switch me to
+use Add Terminal in the left pane which doesn't look like a button, the left
+Pane should have nice description like Database left pane when no database is
+connected, or should have proper spacing and Add Terminal should clearly look
+like a button, but I also want to show right pane still, if no one closed the
+right pane via the toggle, it should still be there with 0 instances but a
++ Terminal button should give me the choices and be able to add new terminal"
+
+### The three requirements
+1. At 0 instances the INSTANCES LIST (the "right pane") must REMAIN, with its
+   `+ Terminal ▾` button on top. It disappears ONLY via its own toggle.
+2. The CONTENT area (the "left pane") shows a real empty state: description +
+   proper spacing, modelled on the DATABASE pane's not-connected state.
+   GO LOOK AT THAT FIRST — it is the reference the user named.
+3. The add affordance must LOOK like a button. Today the list header silently
+   degrades from `+ Terminal ▾` to the bare text `Add Terminal`, which reads
+   as a label. Conductor wrongly reported "Add Terminal paints: yes" as if
+   that closed the question.
+
+### ui-task skill governs: SEE, CONFIRM, ACCUMULATE, ask before dispatch.
+Do NOT dispatch on the three items above alone — batch 10-20 items for the
+panel-chrome surface, each with driven before/after values.
+
+## LANDED THIS SESSION
+- #457 gate determinism -> 687dc80f. Five identical verdicts on one commit,
+  unchanged at 3 and 6 workers, planted defect red 5/5.
+- #459 panel reachability -> bc367e17.
+- #465 An emptied space survives its last instance -> ecc13a44 (ON MAIN).
+  PanelHost.detachContent: (a) keep a space that is active even when emptied,
+  (b) last-cell fallback searches only the ACTIVE SPACE. Both load-bearing,
+  proven by deletion. Record in ui.invariants.md. dist/iv rebuilt 17:59.
+- #466 Drive panel roles + gestures -> f7212535 (ON MAIN).
+  Roles: instances-toggle, instance-add, instance-row, instance-row-close,
+  popup-entry. Gestures: openInstances, addInstance[=KIND], closeInstance=LABEL.
+  New completion: status-excludes. USE THESE. Do not hand-write probes.
+  Whole scenario:
+    bun run drive --open <ws> --gesture openPanel --gesture openInstances \
+      --gesture addInstance=Terminal --gesture closeInstance=Terminal
+  Proven: panelContentLabels=[] with panelVisible=true, list still open.
+
+## THE USER'S OWN STATE IS DAMAGED (not a live bug)
+~/.config/invar/settings.json panelWorkspaceStates["/home/parallels/dev/invar"]
+has ONLY a database space — the terminal space was destroyed and PERSISTED by
+the pre-fix binary. Ctrl+J restores it (verified against a copy). NEVER write
+to their real config.
+
+## OPEN, MINE TO CHASE
+- Gate on main /tmp/gate-main-465.log GATE_EXIT=1 while printing "blocking
+  verdict unchanged". The failing check is contention panel-chrome (#464),
+  pre-existing. So #457's report-only tier did NOT hold the exit code on that
+  run though it did on gate-457 and gate-459e. Hole in what I just landed.
+- #464 panel surfaces under contention · #460 contention evidence asymmetry
+  (git-watch moved on one unreproduced retry; bounded-list popup refused on
+  identical evidence) · #461 scrollbar deep-wheel · #462 empty slowest row ·
+  #463 panelListGeometry publishes left=-24.
+- #451 READY at a80c75c0, never gated.
+
+## STANDING
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor only.
+The user is ACTIVELY PRESENT and directing: their direction IS the backlog.
+
 # RESUME ANCHOR 40 — 2026-08-02 ~15:50 EDT (100.5% gauge) — DO THIS FIRST
 
 ## #457 IS READY AND IT DELIVERED. Gate and land it FIRST.
