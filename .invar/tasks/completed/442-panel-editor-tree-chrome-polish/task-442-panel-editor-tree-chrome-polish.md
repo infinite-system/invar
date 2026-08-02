@@ -5,7 +5,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 334add87 — Panel editor chrome polish landed as part of the stack.
 
 ## What
 
