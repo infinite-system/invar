@@ -1,3 +1,90 @@
+# RESUME ANCHOR 44 — 2026-08-02 ~19:53 EDT — START HERE
+
+## STATE: #469 is DONE and landed. Main is f1dd6a31, tree clean.
+
+The user is PRESENT and directing. Crons stay DISARMED (standing order).
+fleet-watch Monitor is the only watcher; re-arm with
+`Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+
+## THE NEXT ACTION: a census report is IN FLIGHT — wait for it, then report.
+
+A background subagent is auditing every `scripts/harness/smoke-*.ts` for
+flake-prone waits. The user asked, verbatim: "scout the app harness
+smokes/tests for where we can implement the same to reduce tests,smokes
+flakiness and give me a report before we do the fixes".
+
+**REPORT FIRST. FIX NOTHING until the user approves.** If the agent's result
+was lost to compaction, re-run the census (the brief is reproduced below).
+
+### The census brief, to re-run if lost
+Defect classes, priority order:
+1. PRE-SATISFIED WAIT — a wait already true when issued, so it returns a
+   stale frame. This caused the real gate red (#464). Signature: an
+   awaitGridCondition/findText wait on text painted BOTH before and after the
+   change. Ask of every wait: "is this FALSE right now?"
+2. PROXY WAIT — waiting on a repaint or row-text diff when a model condition
+   exists.
+3. SLEEP used as synchronization rather than as a deadline.
+4. STALE NEEDLE — literal screen text the app no longer paints.
+5. TRANSIENT/BLINK — needs awaitTransition, not awaitValue.
+Scope: all scripts/harness/smoke-*.ts + PTY-waiting scripts/smoke-*.sh (~70
+registered jobs); note which are on the CONTENTION tier (grep
+`contention_smoke` in scripts/merge-gate.sh) since contention widens the
+model-to-paint window. Output: file:line, class, the wait as written, why,
+and a proposed graph path WITH EVIDENCE it exists (cite the defining
+file:line) or "no model path". Then counts per class and the top 5 fixes.
+
+## What shipped today (all on main, all gated by hand — see each commit)
+
+- **#469 the graph channel.** `src/modules/system/GraphChannel.ts` answers
+  path queries against the LIVE ivue graph; root is the existing
+  `statusProjectionPorts` object in Bootstrap (~line 1402), so the path
+  namespace is `panelHost`, `workspaceSet`, `view`, `settings`, `quickOpen`,
+  `layoutSlotSizes`, `mouse`, … (25 roots). Same enablement as StatusChannel
+  (`TUI_OBSERVE=1` or `TUI_STATUS_PATH`), so a shipped binary exposes nothing.
+  Driver side: `scripts/harness/GraphClient.ts` (shared by DriveSession AND
+  the smokes — one protocol, do not fork it).
+  - `get(path)` — mode 'now'.
+  - `waitFor/awaitValue(path, value)` — mode 'await': the condition is PARKED
+    IN THE APP and evaluated in the frame-settle hook. One request buys every
+    sample. The app owns the deadline and answers with the last settled value.
+  - `set(path, value)` — EXPERIMENT only, user decision 2026-08-02. Never in
+    verification: it bypasses the user's input path.
+  - `awaitTransition(path, value)` — mode 'transition': subscribes (Vue watch,
+    sync flush) for BLINKS only. Reports mid-update states and adds an edge to
+    the reactive graph. Limits are documented at the definition.
+  - Record: `Graph observation reads and never mutates` in
+    src/modules/system/system.invariants.md.
+- **Panel tab bar**: trailing pad after the instances toggle removed (user
+  request); the toggle now ends the row flush and its hit target reaches the
+  edge. `src/modules/ui/PanelTabBar.ts` + geometry contracts (endColumn 78→80
+  at width 80).
+- **panel-chrome smoke migrated** (97c89a44): the #464 contention red was a
+  PRE-SATISFIED WAIT, not load — see the census brief above. Also repaired
+  three stale needles left by #465/#467.
+
+## Open threads, honestly stated
+
+- **A drag flake, NOT diagnosed.** In one contention round: "88-column a drag
+  begun on the last cell of the drag span still resizes the panel" timed out.
+  It appeared once in 12 runs of the parked-condition build and never in the
+  12 runs before it. It is a DIFFERENT scenario from anything changed today
+  and there is no parked condition live during it, so causation by today's
+  work is unlikely but NOT ruled out from one observation. Do not assert
+  either way without a repro.
+- **The gate has not been run** on any of today's commits (all landed with
+  SKIP_GATE=1 after hand-running: full unit suite, conventions, invariant
+  checker --all/--refs, and the panel-chrome smoke). A real merge-gate run is
+  owed.
+- #451 READY at a80c75c0, never gated. #460-#464 filed from bycatch. The
+  #466 `--gesture`/panel-role layer in Drive.ts should be DELETED (superseded
+  by DriveSession; the user rejected that direction).
+
+## Lessons captured today (already written to project.conductor.md family 16)
+
+
+---
+
 # RESUME ANCHOR 43 — 2026-08-02 ~19:10 EDT — START HERE, DO #469 DIRECTLY
 
 ## THE NEXT ACTION: implement #469 YOURSELF. Do NOT dispatch.

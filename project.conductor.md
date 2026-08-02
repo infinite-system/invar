@@ -655,3 +655,44 @@ reported `paints "Add Terminal": yes` as though it settled the question. The
 user's answer: *"Add Terminal thing is not just a text, it's a button... but
 that's not clear."* Presence of text proves nothing about whether a user can
 tell it is a target. Drive the GESTURE, not the glyph.
+
+## Family 16 — the pre-satisfied wait is the flake generator (2026-08-02)
+
+**The account.** The panel-chrome smoke was red on the contention tier (#464)
+and read as a load problem for days. It was not. After closing a list row, the
+smoke located its next click target by waiting for `findText('+ Database')` —
+text painted BOTH BEFORE AND AFTER the relayout. The wait was already true, so
+it returned the STALE frame; the click landed on pre-close geometry, the popup
+never opened, and an unrelated status wait timed out 15 seconds later. Load
+never caused it. Load widened the model-to-paint window, so the stale frame was
+staler.
+
+**The rule, operative.** Before writing any wait, ask: *is this condition FALSE
+right now?* If it is already true, the wait is a no-op that hands back whatever
+frame happens to be current. This is the inverse of family 1's unreachable
+wait, and it is worse, because it goes GREEN most of the time.
+
+**The tell in review.** A wait whose needle is chrome — a header, a button
+label, a title bar — is almost always pre-satisfied. Chrome by definition
+survives the transition. Wait on the thing that CHANGED.
+
+**Why it resisted diagnosis.** Every symptom pointed at timing: it only failed
+under load, it failed at a different place each time, and rerunning cleared it.
+Those three together read as "flaky machine" and stop the investigation. The
+actual evidence needed was one instrumented reproduction printing what the app
+believed at the moment of failure — popup closed, correct space, click at a
+plausible cell. That triple says "the click missed", which is a geometry
+question, not a timing one.
+
+**Corollary — a threshold you invent is one you get wrong.** My first fix waited
+on `orderedContents.length === 2`, reasoned from the scenario. The real count
+was 4 (the collection spans all spaces). It failed all six rounds
+deterministically. The repair is to MEASURE the value first and express the
+expectation relatively (one fewer than now). Convenient access to model state
+invites asserting a state you never read — the tool removes friction from
+reading truth and from skipping the read, equally.
+
+**Corollary — an easy instrument invites model-only assertions.** Graph reads
+cannot see paint. A smoke that waits AND asserts on the graph goes green while
+the screen is broken. The standing split: **graph to sequence, screen to
+assert.**
