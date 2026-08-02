@@ -23,39 +23,6 @@ import { isRef, type Ref } from 'vue';
 import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { StatusChannel } from './StatusChannel';
 
-/** One inbound question: walk `path` from the named roots. `mode: 'now'`
- *  answers from the next event-loop poll (a consistent single-task read, but
- *  possibly a between-frames transient). `mode: 'settle'` answers only at the
- *  next frame settle — the same boundary the status projection publishes at —
- *  so condition waits never observe a state that no completed frame had. */
-export interface GraphRequest {
-  readonly id: number;
-  readonly path: string;
-  readonly mode: 'now' | 'settle';
-  /** Present = this is a WRITE experiment, not an observation. The wrapper
-   *  object distinguishes "set to undefined" from "no set requested". */
-  readonly set?: { readonly value: unknown };
-}
-
-export interface GraphResponse {
-  readonly id: number;
-  readonly resolved: boolean;
-  readonly value?: unknown;
-  /** On a miss: the path prefix that still resolved (the node the walk died AT). */
-  readonly diedAt?: string;
-  /** On a miss: what WAS addressable at the dead node. */
-  readonly available?: string[];
-  /** On a resolver throw: the getter's own error, attributed to its segment. */
-  readonly error?: string;
-  readonly frame: number;
-  /** True when this answer was produced at a frame-settle boundary. */
-  readonly settled: boolean;
-  /** On a set: true when the write went through a reactive Ref (the app will
-   *  repaint), false when it hit a plain field (nothing observes plain-field
-   *  writes — the agent must know why the screen did not move). */
-  readonly reactive?: boolean;
-}
-
 class $GraphChannel {
   protected static roots: Record<string, unknown> | null = null;
   protected static requestRender: (() => void) | null = null;
@@ -409,4 +376,37 @@ class $GraphChannel {
 export namespace GraphChannel {
   export const $Class = Static($GraphChannel);
   export let Class = $Class;
+}
+
+/** One inbound question: walk `path` from the named roots. `mode: 'now'`
+ *  answers from the next event-loop poll (a consistent single-task read, but
+ *  possibly a between-frames transient). `mode: 'settle'` answers only at the
+ *  next frame settle — the same boundary the status projection publishes at —
+ *  so condition waits never observe a state that no completed frame had. */
+export interface GraphRequest {
+  readonly id: number;
+  readonly path: string;
+  readonly mode: 'now' | 'settle';
+  /** Present = this is a WRITE experiment, not an observation. The wrapper
+   *  object distinguishes "set to undefined" from "no set requested". */
+  readonly set?: { readonly value: unknown };
+}
+
+export interface GraphResponse {
+  readonly id: number;
+  readonly resolved: boolean;
+  readonly value?: unknown;
+  /** On a miss: the path prefix that still resolved (the node the walk died AT). */
+  readonly diedAt?: string;
+  /** On a miss: what WAS addressable at the dead node. */
+  readonly available?: string[];
+  /** On a resolver throw: the getter's own error, attributed to its segment. */
+  readonly error?: string;
+  readonly frame: number;
+  /** True when this answer was produced at a frame-settle boundary. */
+  readonly settled: boolean;
+  /** On a set: true when the write went through a reactive Ref (the app will
+   *  repaint), false when it hit a plain field (nothing observes plain-field
+   *  writes — the agent must know why the screen did not move). */
+  readonly reactive?: boolean;
 }
