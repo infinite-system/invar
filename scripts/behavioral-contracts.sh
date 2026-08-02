@@ -1293,7 +1293,9 @@ else
 fi
 
 echo "== CONTRACT plugin-manifest: contributions install and uninstall symmetrically =="
-if bash "$DIR/smoke-plugin-manifest.sh"; then
+if [ "${INVAR_SKIP_PLUGIN_MANIFEST_CONTRACT:-0}" = "1" ]; then
+  skip "plugin manifest runs as a loaded report-only gate job"
+elif bash "$DIR/smoke-plugin-manifest.sh"; then
   pass "plugin settings, keybindings, and Extensions lifecycle drive"
 else
   bad "plugin manifest drive failed"
