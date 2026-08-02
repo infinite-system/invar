@@ -129,6 +129,26 @@ test('the pinned list width can shrink and clamps to its declared bounds', () =>
   expect(list.width).toBe(40);
 });
 
+test('the empty list paints Add Terminal only while no instance remains', () => {
+  const host = new PanelHost.Class();
+  host.visible.value = true;
+  const list = new PanelContentsList.Class(host);
+  const palette = ThemePalettes.Class.DARK;
+  const glyphs = ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
+  const renderText = (): string =>
+    list
+      .render(palette, glyphs)
+      .chunks.map((chunk) => chunk.text)
+      .join('');
+
+  expect(list.visible).toBe(true);
+  expect(renderText()).toContain('Add Terminal');
+
+  host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
+  expect(renderText()).not.toContain('Add Terminal');
+  expect(renderText()).toContain('+ Terminal');
+});
+
 test('the list selects visibility among multiple open instances of one kind', () => {
   const host = new PanelHost.Class();
   host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));

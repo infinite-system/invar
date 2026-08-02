@@ -565,7 +565,7 @@ test('showContent selects the owning space and group before it focuses content',
   host.register(agent);
   host.split(['terminal', 'agent']);
   host.show();
-  host.registerShared(database);
+  host.register(database);
 
   host.showContent('database');
 
@@ -635,6 +635,62 @@ test('closing an instance disposes it and selects a surviving open session', () 
   ]);
 });
 
+test('closing the last instance keeps the panel open with its list visible', () => {
+  const host = new PanelHost.Class();
+  host.register(fakeContent('terminal', 'terminal'));
+  host.showContent('terminal');
+  host.panelListExpanded.value = false;
+
+  host.removeContent('terminal');
+
+  expect(host.orderedContents).toEqual([]);
+  expect(host.resolvedCells).toEqual([]);
+  expect(host.visible.value).toBe(true);
+  expect(host.panelListVisible).toBe(true);
+});
+
+test('workspace restore rejects registered content with no reachable row', () => {
+  const host = new PanelHost.Class();
+  host.register(fakeContent('terminal', 'terminal'));
+
+  expect(() =>
+    host.restoreWorkspaceState({
+      spaces: [],
+      activeSpaceIndex: 0,
+      panelListExpanded: true,
+      panelListWidth: 20,
+      visible: true,
+    }),
+  ).toThrow('Registered panel content has no reachable row: terminal');
+
+  expect(() =>
+    host.restoreWorkspaceState({
+      spaces: host.spaces.value,
+      activeSpaceIndex: 0,
+      panelListExpanded: true,
+      panelListWidth: 20,
+      visible: true,
+    }),
+  ).not.toThrow();
+});
+
+test('container close requests confirmation with its live instance count', () => {
+  const requests: { identifier: string; instanceCount: number }[] = [];
+  const host = new PanelHost.Class({
+    requestCloseSpace: (identifier, instanceCount) =>
+      requests.push({ identifier, instanceCount }),
+  });
+  host.register(fakeContent('terminal', 'terminal'));
+  host.register(fakeContent('terminal-2', 'terminal'));
+  const identifier = host.activeSpace?.identifier;
+  if (!identifier) throw new Error('The test has no panel container');
+
+  host.closeOpenSpace(identifier);
+
+  expect(requests).toEqual([{ identifier, instanceCount: 2 }]);
+  expect(host.orderedContents).toHaveLength(2);
+});
+
 test('expanded state toggles only while visible and resets when the panel hides', () => {
   const host = new PanelHost.Class();
   host.register(fakeContent('terminal'));
@@ -656,7 +712,7 @@ test('each workspace restores its active space and retained split independently'
   host.register(firstTerminal);
   host.split(['agent', 'terminal']);
   const database = fakeContent('database', 'database');
-  host.registerShared(database);
+  host.register(database);
   const databaseSpace = host.spaces.value.find(
     (space) => space.kind === 'database',
   );

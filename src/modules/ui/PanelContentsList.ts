@@ -80,13 +80,14 @@ class $PanelContentsList {
     palette: Palette,
     glyphVocabulary: InterfaceGlyphVocabulary,
   ): StyledText {
-    const headerText = `+ ${this.headerLabel} ▾`;
+    const rows = this.rows;
+    const headerText =
+      rows.length === 0 ? `Add ${this.headerLabel}` : `+ ${this.headerLabel} ▾`;
     const chunks: TextChunk[] = [
       fg(palette.fg)(
         `${WrapText.Class.clipToWidth(headerText, this.width, '…')}\n\n`,
       ),
     ];
-    const rows = this.rows;
     rows.forEach((row, rowIndex) => {
       const groupMark =
         row.memberCount === 1

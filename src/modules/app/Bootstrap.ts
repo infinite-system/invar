@@ -64,6 +64,7 @@ import type {
   PaneTextSelectionPort,
 } from '../ui/PaneContent.interface';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
+import { PanelContentFactories } from '../ui/PanelContentFactories';
 import type { PaneRuntimeRequest } from '../ui/PaneRuntime.interface';
 import { AgentFactory } from '../agent/AgentFactory';
 import { SdkBinaryExtraction } from '../agent/SdkBinaryExtraction';
@@ -297,6 +298,8 @@ class $Bootstrap {
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
     // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
     const paneRuntimes = new PaneRuntimes.Class();
+    const panelContentFactories = new PanelContentFactories.Class();
+    let openPanelContent = (_kind: string): boolean => false;
     let openRuntimePane = (
       _runtimeKind: string,
       _request: PaneRuntimeRequest,
@@ -313,19 +316,23 @@ class $Bootstrap {
       persistContentOrder: () => settings.save(),
       persistWorkspaceState: () => persistPanelWorkspaceState(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
-      requestCloseContent: (identifier) => {
-        const content = panelHost.content(identifier);
-        if (content?.kind !== 'terminal' && content?.kind !== 'agent') {
-          panelHost.removeContent(identifier);
+      requestCloseSpace: (identifier, instanceCount) => {
+        const space = panelHost.spaces.value.find(
+          (candidate) => candidate.identifier === identifier,
+        );
+        if (!space || instanceCount === 0) {
+          panelHost.closeSpace(identifier);
           return;
         }
         overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
           quitConfirmation.show({
-            identifier: 'terminal-close',
-            message: `Close ${content.instanceLabel ?? content.title}?`,
+            identifier: 'panel-container-close',
+            message:
+              `Close ${space.label} and its ${instanceCount} ` +
+              `${instanceCount === 1 ? 'instance' : 'instances'}?`,
             confirmLabel: 'Yes',
             cancelLabel: 'No',
-            onConfirm: () => panelHost.removeContent(identifier),
+            onConfirm: () => panelHost.closeSpace(identifier),
           }),
         );
       },
@@ -454,6 +461,8 @@ class $Bootstrap {
         editorSurfaceContents,
         editorColumnDefault,
         paneRuntimes,
+        panelContentFactories,
+        openPanelContent: (kind) => openPanelContent(kind),
         openRuntimePane: (runtimeKind, request) =>
           openRuntimePane(runtimeKind, request),
         currentPaneOfKind,
@@ -1011,31 +1020,28 @@ class $Bootstrap {
       connectTerminalFollow();
     };
 
-    const databasePaneFactory = (): PaneContent | null =>
-      panelHost
-        .contentsOfKind('database')
-        .find((content) => content.createInstance !== undefined) ?? null;
-    const createDatabaseInstance = (
+    const createContributedPaneInstance = (
+      kind: string,
       labelOverride?: string,
       persistedIdentifier?: string,
     ): PaneContent | null => {
-      const databaseContent = databasePaneFactory();
-      if (!databaseContent?.createInstance) return databaseContent;
-      const label = labelOverride ?? nextWindowLabel('Database');
+      const factory = panelContentFactories.factory(kind);
+      if (!factory) return null;
+      const label = labelOverride ?? nextWindowLabel(factory.instanceLabel);
       const identifier = persistedIdentifier
         ? paneRuntimes.claimPersistedInstanceIdentifier(persistedIdentifier)
           ? persistedIdentifier
           : null
         : paneRuntimes.allocateInstanceIdentifier();
       if (!identifier) return null;
-      const instance = databaseContent.createInstance(identifier, label);
+      const instance = factory.createPane(identifier, label);
       panelHost.register(instance);
       return instance;
     };
     const addPanelContent = (kind: string): void => {
       const content =
         kind === 'database'
-          ? createDatabaseInstance()
+          ? createContributedPaneInstance(kind)
           : kind === 'agent'
             ? createAgent(true)
             : createRuntimePane(kind, true);
@@ -1045,6 +1051,13 @@ class $Bootstrap {
           kind === 'database' ? 'database' : 'terminal',
         );
       }
+    };
+    openPanelContent = (kind: string): boolean => {
+      const content =
+        createContributedPaneInstance(kind) ?? createRuntimePane(kind, true);
+      if (!content) return false;
+      panelHost.createSpaceForContent(content.id, kind);
+      return true;
     };
     panelAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
@@ -1074,7 +1087,7 @@ class $Bootstrap {
                 nextWindowLabel('Terminal (Agent)'),
               )
             : kind === 'database-instance'
-              ? createDatabaseInstance()
+              ? createContributedPaneInstance('database')
               : createRuntimePane('terminal', true);
       if (!content) return;
       const splitTargetIdentifier = pendingPanelSplitTargetIdentifier;
@@ -1148,9 +1161,11 @@ class $Bootstrap {
         }
       }
       if (pane.kind === 'database') {
-        const databaseContent = databasePaneFactory();
-        if (pane.identifier === databaseContent?.id) return databaseContent;
-        return createDatabaseInstance(pane.label, pane.identifier);
+        return createContributedPaneInstance(
+          pane.kind,
+          pane.label,
+          pane.identifier,
+        );
       }
       if (pane.kind === 'invar-agent') {
         return createAgent(true, pane.label, pane.identifier);

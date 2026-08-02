@@ -205,6 +205,8 @@ class $HarnessSmoke {
         ),
     );
     const geometry = this.readStatus(statusPath).panelListGeometry as {
+      left: number;
+      top: number;
       width: number;
     };
     const snapshot = await driver.awaitGridCondition(
@@ -227,20 +229,16 @@ class $HarnessSmoke {
       throw new Error('The pinned panel list did not paint its Add header');
     }
     const targetRow = snapshot.textRows().findIndex((rowText, row) => {
-      if (row <= headerPosition.row) return false;
+      if (row < geometry.top + 2) return false;
       return rowText
-        .slice(headerPosition.column, headerPosition.column + geometry.width)
+        .slice(geometry.left, geometry.left + geometry.width)
         .includes(visibleTitle);
     });
     if (targetRow < 0) {
       throw new Error(`The pinned panel list did not paint ${visibleTitle}`);
     }
-    const targetColumn = headerPosition.column + geometry.width - 2;
-    for (
-      let column = headerPosition.column + 1;
-      column <= targetColumn;
-      column += 1
-    ) {
+    const targetColumn = geometry.left + geometry.width - 2;
+    for (let column = geometry.left + 1; column <= targetColumn; column += 1) {
       driver.sendMouseWithoutFrameExpectation({
         kind: 'move',
         column,
@@ -287,9 +285,15 @@ class $HarnessSmoke {
         ).length === expectedRemainingCount,
     );
     if (expectedRemainingCount === 0) {
-      await driver.awaitGridCondition(
+      const closedSnapshot = await driver.awaitGridCondition(
         `${visibleTitle} is no longer painted after its row close`,
-        (candidate) => candidate.findText(visibleTitle) === null,
+        (candidate) =>
+          candidate.findText(visibleTitle) === null &&
+          candidate.findText(`Close ${visibleTitle}?`) === null,
+      );
+      this.requireCondition(
+        closedSnapshot.findText(`Close ${visibleTitle}?`) === null,
+        `${visibleTitle} closes without a confirmation dialog`,
       );
     } else {
       await driver.awaitGridCondition(
@@ -297,6 +301,54 @@ class $HarnessSmoke {
         (candidate) => candidate.findText(visibleTitle) !== null,
       );
     }
+  }
+
+  static async requestPanelContainerClose(
+    driver: PtyTestDriver.Model,
+    visibleLabel: string,
+    instanceCount: number,
+  ): Promise<HarnessSnapshot.Model> {
+    const marker = `${visibleLabel} ×`;
+    const snapshot = await driver.awaitGridCondition(
+      `the ${visibleLabel} container paints its close control`,
+      (candidate) => candidate.findText(marker) !== null,
+    );
+    const markerPosition = snapshot.findText(marker);
+    if (!markerPosition) {
+      throw new Error(`${visibleLabel} did not paint its container close`);
+    }
+    const closeColumn = markerPosition.column + Array.from(marker).length - 1;
+    for (
+      let column = markerPosition.column;
+      column <= closeColumn;
+      column += 1
+    ) {
+      driver.sendMouseWithoutFrameExpectation({
+        kind: 'move',
+        column,
+        row: markerPosition.row,
+        button: 'none',
+      });
+    }
+    driver.sendMouse({
+      kind: 'press',
+      column: closeColumn,
+      row: markerPosition.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: closeColumn,
+      row: markerPosition.row,
+      button: 'left',
+    });
+    const message =
+      `Close ${visibleLabel} and its ${instanceCount} ` +
+      `${instanceCount === 1 ? 'instance' : 'instances'}?`;
+    return driver.awaitGridCondition(
+      `${visibleLabel} container close confirms its ${instanceCount} instances`,
+      (candidate) => candidate.findText(message) !== null,
+    );
   }
 
   static async awaitScrollPosition(

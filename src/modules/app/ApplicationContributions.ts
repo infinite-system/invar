@@ -5,6 +5,7 @@ import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Settings } from '../settings/Settings';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import type { PaneRuntimes } from '../ui/PaneRuntimes';
+import type { PanelContentFactories } from '../ui/PanelContentFactories';
 import type { PanelHost } from '../ui/PanelHost';
 import type { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import type {
@@ -164,10 +165,9 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
           this.options.rightDockHost.removeContent(content.id),
         );
       },
-      registerPanelContent: (content) => {
-        this.options.bottomPanelHost.registerShared(content);
-        registrationDisposers.push(() =>
-          this.options.bottomPanelHost.removeSharedContent(content.id),
+      registerPanelContentFactory: (factory) => {
+        registrationDisposers.push(
+          this.options.panelContentFactories.register(factory),
         );
       },
       registerEditorColumnDefault: (provider) => {
@@ -270,7 +270,7 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerDockContent'
   | 'registerPrimaryDockContent'
   | 'registerRightDockContent'
-  | 'registerPanelContent'
+  | 'registerPanelContentFactory'
   | 'registerPaneRuntime'
   | 'registerEditorColumnDefault'
 > & {
@@ -280,6 +280,8 @@ export type ApplicationContributionsOptions = Omit<
   editorColumnDefault: EditorColumnDefault.Model;
   /** The host's registry of contributed pane runtimes. */
   paneRuntimes: PaneRuntimes.Model;
+  /** The host's registry of contributed non-runtime pane factories. */
+  panelContentFactories: PanelContentFactories.Model;
   /** The active workspace's current pane for a kind, whether its projection is visible or hidden. */
   currentPaneOfKind: (kind: string) => PaneContent | null;
   /** Take a runtime-owned pane out of the panel, so uninstall leaves no orphan behind. */
