@@ -1,3 +1,64 @@
+# RESUME ANCHOR 35 — 2026-08-02 ~13:45 EDT (85% gauge, CHECKPOINT)
+
+## #459 — gated RED, NOT landed. Round 4 filed and steered.
+
+`/tmp/gate-459.log` on `/tmp/integration-459b` (branch tip `b428610e`
+merged as `2a604c63`): SIX failures.
+
+```
+workspace tabs · workspace layout isolation · panel-split ·
+tasks · settings-applied · shortcut-help
+```
+Logs: `/tmp/merge-gate-failures.90a0c83739b4887b.859565/`.
+
+**Two are CONSUMERS of behaviour the user deliberately removed:**
+- `panel-split` waits for "terminal frame close opens the generic
+  confirmation dialog" — the dialog is gone by user ruling.
+- `settings-applied` expects
+  `panelContentKinds==='agent,terminal,database'` with one cell — that
+  IS the phantom registration the new record forbids.
+**Two need an A/B** (workspace-tabs, tasks). **shortcut-help is the
+known #457 flake** (1-2 of 5 on unchanged commits).
+
+Round 4 orders a mechanical CONSUMER CENSUS, not six patches — same
+shape as #452 two days ago.
+
+## Contract records ACCEPTED by the user and COMMITTED to main
+
+- `Every registered panel content is reachable` (src/modules/ui/ui.invariants.md)
+  — new; Impossible-if-true names a registration absent from every
+  space. Evidence cites probe-459-empty-dock.ts.
+- `One dialog component serves confirms and prompts` (design.invariants.md)
+  — Scope refined `terminal-instance close` -> `panel-container close`,
+  plus the blast-radius rule.
+Both PASS the checker. NOT yet gated (added after the gate started).
+
+## Flake verification — ANSWERED
+
+Baseline `9f158472`: 1 green / 5. After the #436 convergence fix,
+`c5dc3057`: **4 green / 5**. `terminal harness` **2/5 -> 0/5**.
+`shortcut-help` 2/5 -> 1/5 (untouched, real, #457).
+Measured with a builder live, so the bias ran AGAINST the fix.
+
+## Open
+
+- #459 round 4 in flight (builder live, session invar/459-...).
+- #457 rewritten; HOLD until the machine is quiet — its job is
+  measuring contention. `shortcut-help` is its open defect.
+- #458 all-terminals-dead-after-idle: still unexplained, do not close.
+- Queue safe to run beside #459: #445, #446, #451.
+  Do NOT run beside it: #453-456, #447 (same surfaces).
+
+## Standing
+
+- Crons DISARMED by user order. Never re-arm.
+- One watcher: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+- Docs commits need `SKIP_GATE=1`.
+- Never dispatch a builder into a running measurement sweep.
+- A 1-in-5 green looks exactly like a fixed tree.
+
+---
+
 # RESUME ANCHOR 34 — 2026-08-02 ~13:15 EDT (81% gauge)
 
 ## Landed
