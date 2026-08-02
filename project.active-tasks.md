@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #452 [pane-identity-collides-by-name](.invar/tasks/in-progress/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/452-pane-identity-collides-by-name`
-- #444 [history-is-editor-area-view-states](.invar/tasks/in-progress/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/444-history-is-editor-area-view-states`
 
 ## USER-DIRECTED (13)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -146,8 +144,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 175 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 176 — full log: project.tasks-completed.md)
 - #448 [static-reads-that-can-block-overrides](.invar/tasks/completed/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md) — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.
+- #444 [history-is-editor-area-view-states](.invar/tasks/completed/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md) — 61fd213e — History as editor-area view states landed as part of the stack.
 - #443 [static-read-indirection-defeats-override](.invar/tasks/completed/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md) — 3d9fdca6 — Six classes cleaned; five deleted their statics outright. Bycatch became #448 (55-site census) and the Drive.ts type error the conductor had introduced.
 - #442 [panel-editor-tree-chrome-polish](.invar/tasks/completed/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md) — 334add87 — Panel editor chrome polish landed as part of the stack.
 - #439 [notice-persistence-restored-state-defects](.invar/tasks/completed/439-notice-persistence-restored-state-defects/task-439-notice-persistence-restored-state-defects.md) — ed401644 — Cascade cause found: folderOpen before restore; fixed by ordering. Notices non-persistent + legacy sanitization; Displaced suppressed for redeclared labels; my two probe findings refuted (pre-satisfied toggle). Landed over pre-existing #436 red.
@@ -161,4 +160,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #426 [tabbar-hardcoded-glyph-breach](.invar/tasks/completed/426-tabbar-hardcoded-glyph-breach/task-426-tabbar-hardcoded-glyph-breach.md) — 5b761903 — Theme contract's one known breach closed; vocabulary slot at three tiers, driven at each; no visual change at the default tier. Bycatch: none actionable (single unreproduced keystroke drop; known checker notes).
 - #425 [monitoring-lsp-contract-records](.invar/tasks/completed/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md) — db19dec4 — Two proven disciplines now recorded with annotations at enforcement points; scope refine applied. Bycatch (stale drive-command paths) fixed as follow-up doc commit on main.
 - #424 [quit-smoke-theme-tone-wait](.invar/tasks/completed/424-quit-smoke-theme-tone-wait/task-424-quit-smoke-theme-tone-wait.md) — 41715591 — Ten assert-after-switch sites converted to condition waits across four smokes; census committed; both arms proven by plants; gate green on the exact tip. Bycatch: brief's invariants-in-scope was wrong (conductor error, acknowledged); hook-vs-brief tooling conflict noted, no task needed.
-- #423 [panelheading-rot-remainder-sweep](.invar/tasks/completed/423-panelheading-rot-remainder-sweep/task-423-panelheading-rot-remainder-sweep.md) — e92011c0 — Sweep grep to zero; four records repointed; the chain of bycatch pairs is closed. Punctuation notes are known legacy tolerance (no action); glyph breach converted to #426 before landing.

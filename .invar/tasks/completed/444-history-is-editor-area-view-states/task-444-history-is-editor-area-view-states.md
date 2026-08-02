@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 61fd213e — History as editor-area view states landed as part of the stack.
 
 ## In plain words
 
