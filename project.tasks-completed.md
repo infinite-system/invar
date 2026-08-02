@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #452 [pane-identity-collides-by-name](.invar/tasks/completed/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md) — da584da4 — Pane identity separated from presentation; original all-terminal incident remains unexplained.
 - #448 [static-reads-that-can-block-overrides](.invar/tasks/completed/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md) — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.
 - #444 [history-is-editor-area-view-states](.invar/tasks/completed/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md) — 61fd213e — History as editor-area view states landed as part of the stack.
 - #443 [static-read-indirection-defeats-override](.invar/tasks/completed/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md) — 3d9fdca6 — Six classes cleaned; five deleted their statics outright. Bycatch became #448 (55-site census) and the Drive.ts type error the conductor had introduced.
