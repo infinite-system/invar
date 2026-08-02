@@ -173,7 +173,7 @@ await_field_change cursorLineIndex "$cursor_line_before_jump" \
 
 echo "== Ctrl+Shift+S (was F9) splits the bottom panel =="
 "$HARNESS" chord "$SESSION" Control+Shift+s >/dev/null
-await_field panelCellIds 'agent,terminal' 'Ctrl+Shift+S split the panel' \
+await_field panelCellLabels 'Agent,Terminal' 'Ctrl+Shift+S split the panel' \
   && pass "Ctrl+Shift+S arrived and split the panel into agent | terminal"
 
 echo "== Ctrl+Shift+M (was F6) cycles the agent's terminal-follow mode =="
@@ -192,7 +192,7 @@ echo "== Ctrl+Shift+A closes the focused agent pane and leaves the terminal =="
 # Alt+PageDown now cycles workspace content spaces. The agent's own toggle is the direct keyboard
 # path that closes its pane before the terminal pass-through sweep.
 "$HARNESS" chord "$SESSION" Control+Shift+a >/dev/null
-await_field panelCellIds 'terminal' 'Ctrl+Shift+A closed the agent pane' \
+await_field panelCellLabels 'Terminal' 'Ctrl+Shift+A closed the agent pane' \
   && pass "Ctrl+Shift+A left one terminal pane"
 await_field terminalFocused 'true' 'the remaining terminal pane took focus' || true
 echo "  note: Ctrl+] (was F12) arrival is driven by scripts/smoke-goto-definition.sh against a real LSP"
@@ -208,7 +208,7 @@ if [ "$(field terminalVisible)" != "true" ]; then
   await_field terminalVisible 'true' 'Ctrl+J showed the panel' || true
 fi
 await_field terminalFocused 'true' 'the terminal cell holds focus' || true
-check "the focused panel content is the terminal" "$(field panelActiveContent)" "terminal"
+check "the focused panel content is the terminal" "$(field panelActiveContentLabel)" "Terminal"
 # ABSOLUTE path: the integrated terminal's cwd is the WORKSPACE, not the repository.
 tmux send-keys -t "$SESSION" -l \
   "bun '$REPOSITORY_ROOT/scripts/harness/report-received-key-bytes.ts' '$RECEIVED_BYTES_PATH'" 2>/dev/null

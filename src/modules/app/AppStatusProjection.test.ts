@@ -399,7 +399,9 @@ describe('AppStatusProjection', () => {
       'Media preview',
     ]);
     expect(terminalSnapshot.panelContentKinds).toEqual(['terminal', 'media']);
+    expect(terminalSnapshot.panelActiveContentLabel).toBe('Terminal');
     expect(terminalSnapshot.panelActiveContentKind).toBe('terminal');
+    expect(terminalSnapshot.panelCellLabels).toEqual(['Terminal']);
     expect(terminalSnapshot.panelCellKinds).toEqual(['terminal']);
     expect(terminalSnapshot.panelContentOrder).toEqual([
       'saved-missing',
@@ -409,6 +411,7 @@ describe('AppStatusProjection', () => {
     panelHost.activate('media-demo');
     const mediaSnapshot = AppStatusProjection.Class.snapshot(ports);
     expect(mediaSnapshot.panelActiveContent).toBe('media-demo');
+    expect(mediaSnapshot.panelActiveContentLabel).toBe('Media preview');
     expect(mediaSnapshot.terminalVisible).toBe(false);
     expect(mediaSnapshot.terminalFocused).toBe(false);
     expect(mediaSnapshot.terminalColumns).toBe(0);

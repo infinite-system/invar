@@ -9,6 +9,29 @@ test('terminal pane content publishes its plain construction seam', () => {
   expect(TerminalPaneContent.Class).toBe(TerminalPaneContent.$Class);
 });
 
+test('terminal titles use their presentation label instead of their opaque identity', () => {
+  const legacyInstance = new TerminalInstance.Class(
+    new MockBackend.Class(),
+    new TerminalEmulator.Class(20, 5),
+  );
+  const opaqueInstance = new TerminalInstance.Class(
+    new MockBackend.Class(),
+    new TerminalEmulator.Class(20, 5),
+  );
+  const legacyPane = new TerminalPaneContent.Class(legacyInstance, {
+    identifier: 'terminal',
+    label: 'Terminal',
+  });
+  const opaquePane = new TerminalPaneContent.Class(opaqueInstance, {
+    identifier: 'pane-instance-37',
+    label: 'Terminal',
+  });
+
+  expect(opaquePane.title).toBe(legacyPane.title);
+  legacyPane.dispose();
+  opaquePane.dispose();
+});
+
 function makePane() {
   const backend = new MockBackend.Class();
   const emulator = new TerminalEmulator.Class(20, 5);

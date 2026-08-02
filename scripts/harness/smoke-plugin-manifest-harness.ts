@@ -1044,12 +1044,21 @@ try {
       status.structureShowLineNumbers === false &&
       Number(status.structureRows) > 0,
   );
+  const structureRectangle = HarnessSmoke.Class.layoutSlotRectangle(
+    outlineReadyStatus,
+    'rightDock',
+  );
+  if (!structureRectangle) {
+    throw new Error('Structure dock geometry disappeared');
+  }
   await driver.awaitGridCondition(
     'the structure pane paints the outline rows',
     (snapshot) =>
-      snapshot.findText('Structure') !== null &&
-      snapshot.findText('languageProbe') !== null &&
-      snapshot.findText('languageProbe :') === null,
+      snapshot.findTextInRectangle('Structure', structureRectangle) !== null &&
+      snapshot.findTextInRectangle('languageProbe', structureRectangle) !==
+        null &&
+      snapshot.findTextInRectangle('languageProbe :', structureRectangle) ===
+        null,
   );
   HarnessSmoke.Class.pass(
     'the structure pane shows itself at the right and lists the real documentSymbol outline',
@@ -1194,7 +1203,10 @@ try {
   await driver.awaitGridCondition(
     'the focused structure filter has one leading cell in the shared active tone',
     (snapshot) => {
-      const searchPosition = snapshot.findText(structureSearchGlyph);
+      const searchPosition = snapshot.findTextInRectangle(
+        structureSearchGlyph,
+        structureRectangle,
+      );
       if (!searchPosition || searchPosition.column === 0) return false;
       const leadingCell = snapshot.cell(
         searchPosition.row,

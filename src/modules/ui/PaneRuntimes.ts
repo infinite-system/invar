@@ -6,6 +6,7 @@
 //
 // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
 // invariant: Each panel instance owns one independent session (src/modules/ui/ui.invariants.md)
+// invariant: Pane identity is separate from presentation (src/modules/ui/ui.invariants.md)
 import type { PaneContent } from './PaneContent.interface';
 import type { PaneRuntime, PaneRuntimeRequest } from './PaneRuntime.interface';
 

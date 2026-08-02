@@ -831,7 +831,7 @@ try {
     '== harness tasks: the native power-user agent pane still coexists ==',
   );
   driven.driver.sendRawInput('\x1b[27;6;97~');
-  await awaitTaskStatus(
+  const nativeAgentStatus = await awaitTaskStatus(
     driven.driver,
     driven.homeDirectory,
     'the native agent pane opens as a full-width group while the task stays live',
@@ -840,11 +840,17 @@ try {
       candidate.panelCellKinds.join(',') === 'agent' &&
       candidate.panelActiveContentKind === 'agent',
   );
+  const nativeAgentRectangle =
+    HarnessSmoke.Class.activePanelCellRectangle(nativeAgentStatus);
+  if (!nativeAgentRectangle) {
+    throw new Error('Native agent geometry disappeared');
+  }
   await driven.driver.awaitGridCondition(
     'the native agent composer remains visible and usable',
     (snapshot) =>
-      snapshot.findText('Ask Claude') !== null &&
-      snapshot.findText('❯') !== null,
+      snapshot.findTextInRectangle('Ask Claude', nativeAgentRectangle) !==
+        null &&
+      snapshot.findTextInRectangle('❯', nativeAgentRectangle) !== null,
   );
   HarnessSmoke.Class.pass(
     'the native agent pane remains independent of terminal tasks',

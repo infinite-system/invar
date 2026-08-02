@@ -1,11 +1,14 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { Static } from 'ivue/extras';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
-import type { HarnessSnapshot } from './HarnessSnapshot';
+import type { HarnessRectangle, HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 import {
   activePanelCell,
+  activePanelCellRectangle,
+  layoutSlotRectangle,
   panelCellsOfKind,
+  panelCellRectangle,
   panelContentIdentifiersOfKind,
   type HarnessStatus,
   type PublishedPanelCell,
@@ -69,6 +72,26 @@ class $HarnessSmoke {
 
   static activePanelCell(status: HarnessStatus): PublishedPanelCell | null {
     return activePanelCell(status);
+  }
+
+  static activePanelCellRectangle(
+    status: HarnessStatus,
+  ): HarnessRectangle | null {
+    return activePanelCellRectangle(status);
+  }
+
+  static panelCellRectangle(
+    status: HarnessStatus,
+    identifier: string,
+  ): HarnessRectangle | null {
+    return panelCellRectangle(status, identifier);
+  }
+
+  static layoutSlotRectangle(
+    status: HarnessStatus,
+    slotName: string,
+  ): HarnessRectangle | null {
+    return layoutSlotRectangle(status, slotName);
   }
 
   static panelCellsOfKind(
@@ -314,6 +337,25 @@ class $HarnessSmoke {
       column,
       row: position.row,
       button: 'left',
+    });
+  }
+
+  static clickTextInRectangle(
+    driver: PtyTestDriver.Model,
+    snapshot: HarnessSnapshot.Model,
+    marker: string,
+    rectangle: HarnessRectangle,
+    columnOffset = 0,
+  ): void {
+    const position = snapshot.findTextInRectangle(marker, rectangle);
+    if (!position) {
+      throw new Error(
+        `Marker is not visible in the requested rectangle: ${marker}\n${snapshot.text()}`,
+      );
+    }
+    driver.sendMouseClick({
+      column: position.column + columnOffset,
+      row: position.row,
     });
   }
 }

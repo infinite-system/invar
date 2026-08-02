@@ -68,40 +68,7 @@ interface ComposerScreenRow {
   readonly content: string;
 }
 
-function findTextInRectangle(
-  snapshot: HarnessSnapshot.Model,
-  marker: string,
-  rectangle: Rectangle,
-): { row: number; column: number } | null {
-  const endRowExclusive = Math.min(
-    snapshot.rows,
-    rectangle.top + rectangle.height,
-  );
-  const endColumnExclusive = Math.min(
-    snapshot.columns,
-    rectangle.left + rectangle.width,
-  );
-  for (let row = rectangle.top; row < endRowExclusive; row += 1) {
-    const panelRow = snapshot
-      .rowText(row)
-      .slice(rectangle.left, endColumnExclusive);
-    const relativeColumn = panelRow.indexOf(marker);
-    if (relativeColumn >= 0) {
-      return { row, column: rectangle.left + relativeColumn };
-    }
-  }
-  return null;
-}
-
 const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
-
-function bottomPanelSlot(status: StatusSnapshot): Rectangle {
-  const layoutSlots = status.layoutSlots as
-    Record<string, Rectangle> | undefined;
-  const bottomPanel = layoutSlots?.bottomPanel;
-  if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
-  return bottomPanel;
-}
 
 function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
   const bottomPanel = (
@@ -192,7 +159,7 @@ function composerScreenRows(
   snapshot: HarnessSnapshot.Model,
   panelRectangle: Rectangle,
 ): ComposerScreenRow[] {
-  const promptPosition = snapshot.findText('❯ ');
+  const promptPosition = snapshot.findTextInRectangle('❯ ', panelRectangle);
   if (!promptPosition) throw new Error('Composer prompt disappeared');
   const rows: ComposerScreenRow[] = [];
   const contentStartColumn = promptPosition.column + 2;
@@ -402,6 +369,11 @@ try {
       status.agentSkipPermissions === true &&
       agentFooterRegion(status) !== null,
   );
+  const panelRectangle =
+    HarnessSmoke.Class.activePanelCellRectangle(focusedPaneStatus);
+  if (!panelRectangle) {
+    throw new Error('Active agent panel geometry disappeared');
+  }
   const footerRegion = agentFooterRegion(focusedPaneStatus);
   if (!footerRegion) throw new Error('Agent footer geometry disappeared');
   let snapshot = await driver.awaitGridCondition(
@@ -409,13 +381,12 @@ try {
     (candidate) =>
       agentFooterSignature(candidate, footerRegion) !== null &&
       candidate.findText('──────────') !== null &&
-      candidate.findText('❯') !== null &&
+      candidate.findTextInRectangle('❯', panelRectangle) !== null &&
       candidate.findText('  Ask Claude') !== null,
   );
   HarnessSmoke.Class.pass(
     'agent pane opens focused with framed composer chrome',
   );
-  const panelRectangle = bottomPanelSlot(focusedPaneStatus);
   HarnessSmoke.Class.requireCondition(
     !snapshot
       .rowText(footerRegion.headingRow)
@@ -664,8 +635,7 @@ try {
     width: footerRegion.endColumnExclusive - footerRegion.startColumn,
     height: footerRegion.row - footerRegion.headingRow,
   };
-  const scrollingComposerPosition = findTextInRectangle(
-    snapshot,
+  const scrollingComposerPosition = snapshot.findTextInRectangle(
     '❯ ',
     agentContentRectangle,
   );

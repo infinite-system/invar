@@ -364,20 +364,26 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           (geometry: { contentId?: string }) => geometry.contentId === 'panel',
         ),
     );
+    const panelSlot = HarnessSmoke.Class.layoutSlotRectangle(
+      status,
+      'bottomPanel',
+    );
+    if (!panelSlot) throw new Error('Missing bottom-panel slot');
+    const panelTabsSlot = HarnessSmoke.Class.layoutSlotRectangle(
+      status,
+      'bottomPanelTabs',
+    );
+    if (!panelTabsSlot) throw new Error('Missing bottom-panel tabs slot');
     const initialSnapshot = await driver.awaitGridCondition(
       `${columns}-column tab row paints both space tabs without pane headings`,
       (snapshot) =>
-        snapshot.findText('Terminal') !== null &&
-        snapshot.findText(columns === 120 ? 'Database' : 'Datab') !== null &&
+        snapshot.findTextInRectangle('Terminal', panelTabsSlot) !== null &&
+        snapshot.findTextInRectangle(
+          columns === 120 ? 'Database' : 'Datab',
+          panelTabsSlot,
+        ) !== null &&
         snapshot.findText('Claude ×') === null,
     );
-    const panelSlot = (
-      status.layoutSlots as Record<
-        string,
-        { left: number; top: number; width: number; height: number }
-      >
-    ).bottomPanel;
-    if (!panelSlot) throw new Error('Missing bottom-panel slot');
     const topLeft = initialSnapshot.cell(panelSlot.top, panelSlot.left);
     const bottomLeft = initialSnapshot.cell(
       panelSlot.top + panelSlot.height - 1,

@@ -148,13 +148,20 @@ async function openLanguageFixture(
       status.structureStatus === 'ready' &&
       Number(status.structureRows) > 0,
   );
+  const structureRectangle = HarnessSmoke.Class.layoutSlotRectangle(
+    readyStatus,
+    'rightDock',
+  );
+  if (!structureRectangle) {
+    throw new Error('Structure dock geometry disappeared');
+  }
   let snapshot = await driver.awaitGridCondition(
     `${fileName} paints its editor text and structure row`,
     (candidate) =>
-      candidate.findText(`${valueName};`) !== null &&
-      candidate.findText('Structure') !== null,
+      candidate.findEditorText(`${valueName};`) !== null &&
+      candidate.findTextInRectangle('Structure', structureRectangle) !== null,
   );
-  const target = snapshot.findText(`${valueName};`);
+  const target = snapshot.findEditorText(`${valueName};`);
   requireCondition(target !== null, `${fileName} hover target is visible`);
   if (!target) throw new Error(`${fileName} hover target disappeared`);
   driver.sendMouse({

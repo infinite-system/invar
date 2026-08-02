@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
-import type { HarnessSnapshot } from './HarnessSnapshot';
+import type { HarnessRectangle, HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 
 // invariant: Async-published state is always awaited (scripts/harness/harness.invariants.md)
@@ -59,6 +59,76 @@ export function activePanelCell(
       (cell) => cell.identifier === activeIdentifier,
     ) ?? null
   );
+}
+
+/** Convert one layout-canvas slot to terminal-grid coordinates. The status layout starts below the
+ *  workspace and breadcrumb chrome, so its row is not a screen row by itself. */
+export function layoutSlotRectangle(
+  status: HarnessStatus,
+  slotName: string,
+): HarnessRectangle | null {
+  const layoutSlots = status.layoutSlots;
+  const screenRows = Number(status.height);
+  if (
+    typeof layoutSlots !== 'object' ||
+    layoutSlots === null ||
+    !Number.isFinite(screenRows)
+  ) {
+    return null;
+  }
+  const rectangles = Object.values(layoutSlots).filter(
+    (candidate): candidate is HarnessRectangle =>
+      typeof candidate === 'object' &&
+      candidate !== null &&
+      Number.isFinite(Number((candidate as HarnessRectangle).left)) &&
+      Number.isFinite(Number((candidate as HarnessRectangle).top)) &&
+      Number.isFinite(Number((candidate as HarnessRectangle).width)) &&
+      Number.isFinite(Number((candidate as HarnessRectangle).height)),
+  );
+  const slot = (layoutSlots as Record<string, unknown>)[slotName];
+  if (!rectangles.includes(slot as HarnessRectangle)) return null;
+  const rectangle = slot as HarnessRectangle;
+  const layoutCanvasRows = rectangles.reduce(
+    (maximumBottom, candidate) =>
+      Math.max(maximumBottom, Number(candidate.top) + Number(candidate.height)),
+    0,
+  );
+  const layoutCanvasTop = screenRows - 1 - layoutCanvasRows;
+  return {
+    left: Number(rectangle.left),
+    top: layoutCanvasTop + Number(rectangle.top),
+    width: Number(rectangle.width),
+    height: Number(rectangle.height),
+  };
+}
+
+/** Resolve one visible panel cell to its exact screen rectangle through its opaque identifier. */
+// invariant: Pane identity is separate from presentation (src/modules/ui/ui.invariants.md)
+export function panelCellRectangle(
+  status: HarnessStatus,
+  identifier: string,
+): HarnessRectangle | null {
+  const cells = publishedPanelCells(status);
+  const cell = cells.find((candidate) => candidate.identifier === identifier);
+  const panelRectangle = layoutSlotRectangle(status, 'bottomPanel');
+  if (!cell || !panelRectangle) return null;
+  const precedingColumns = cells
+    .slice(0, cell.index)
+    .reduce((totalColumns, candidate) => totalColumns + candidate.columns, 0);
+  return {
+    left: panelRectangle.left + precedingColumns + cell.index,
+    top: panelRectangle.top,
+    width: cell.columns,
+    height: panelRectangle.height,
+  };
+}
+
+/** Resolve the active opaque pane identifier to its screen rectangle. */
+export function activePanelCellRectangle(
+  status: HarnessStatus,
+): HarnessRectangle | null {
+  const cell = activePanelCell(status);
+  return cell ? panelCellRectangle(status, cell.identifier) : null;
 }
 
 /** Return every registered pane id of a kind from the aligned content status arrays. */

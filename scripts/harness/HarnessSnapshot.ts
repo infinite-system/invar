@@ -14,6 +14,13 @@ export interface HarnessTextPosition {
   column: number;
 }
 
+export interface HarnessRectangle {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 class $HarnessSnapshot {
   constructor(
     readonly columns: number,
@@ -55,6 +62,34 @@ class $HarnessSnapshot {
     for (let row = 0; row < this.rows; row++) {
       const column = this.rowText(row).indexOf(marker);
       if (column >= 0) return { row, column };
+    }
+    return null;
+  }
+
+  /** Find text only inside the published surface that owns it. Repeated labels and glyphs on other
+   *  panes cannot satisfy this lookup. */
+  findTextInRectangle(
+    marker: string,
+    rectangle: HarnessRectangle,
+  ): HarnessTextPosition | null {
+    const startRow = Math.max(0, Math.floor(rectangle.top));
+    const endRowExclusive = Math.min(
+      this.rows,
+      Math.ceil(rectangle.top + rectangle.height),
+    );
+    const startColumn = Math.max(0, Math.floor(rectangle.left));
+    const endColumnExclusive = Math.min(
+      this.columns,
+      Math.ceil(rectangle.left + rectangle.width),
+    );
+    for (let row = startRow; row < endRowExclusive; row += 1) {
+      const column = this.rowText(row).indexOf(marker, startColumn);
+      if (
+        column >= startColumn &&
+        column + marker.length <= endColumnExclusive
+      ) {
+        return { row, column };
+      }
     }
     return null;
   }

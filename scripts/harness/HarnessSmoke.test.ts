@@ -1,10 +1,13 @@
 import { expect, test } from 'bun:test';
 import { rmSync } from 'node:fs';
+import { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import {
   activePanelCell,
+  activePanelCellRectangle,
   activeTabHasDirtyMarker,
   awaitStatusPublication,
+  layoutSlotRectangle,
   panelCellsOfKind,
   panelContentIdentifiersOfKind,
 } from './HarnessSmokeSupport';
@@ -29,12 +32,17 @@ test('dirty marker lookup skips the same filename in the breadcrumb row', () => 
 
 test('panel status keeps kind plural and resolves the active opaque identifier', () => {
   const status = {
+    height: 50,
     panelActiveContent: 'pane-instance-9',
     panelCellIds: ['pane-instance-4', 'pane-instance-9', 'database'],
     panelCellKinds: ['terminal', 'terminal', 'database'],
     panelCellColumns: [30, 40, 20],
     panelContentIds: ['pane-instance-4', 'pane-instance-9', 'database'],
     panelContentKinds: ['terminal', 'terminal', 'database'],
+    layoutSlots: {
+      editorCenter: { left: 10, top: 0, width: 90, height: 27 },
+      bottomPanel: { left: 10, top: 27, width: 90, height: 20 },
+    },
   };
 
   expect(
@@ -50,6 +58,47 @@ test('panel status keeps kind plural and resolves the active opaque identifier',
     'pane-instance-4',
     'pane-instance-9',
   ]);
+  expect(layoutSlotRectangle(status, 'bottomPanel')).toEqual({
+    left: 10,
+    top: 29,
+    width: 90,
+    height: 20,
+  });
+  expect(activePanelCellRectangle(status)).toEqual({
+    left: 41,
+    top: 29,
+    width: 40,
+    height: 20,
+  });
+});
+
+test('rectangle text lookup ignores the same marker on another surface', () => {
+  const rowTexts = ['  ❯ breadcrumb ', '  pane ❯ prompt'];
+  const columns = Math.max(...rowTexts.map((rowText) => rowText.length));
+  const cells = rowTexts.flatMap((rowText, row) =>
+    Array.from({ length: columns }, (_unusedValue, column) => ({
+      row,
+      column,
+      characters: rowText[column] ?? ' ',
+    })),
+  );
+  const snapshot = new HarnessSnapshot.Class(
+    columns,
+    rowTexts.length,
+    0,
+    0,
+    cells as never,
+  );
+
+  expect(snapshot.findText('❯')?.row).toBe(0);
+  expect(
+    snapshot.findTextInRectangle('❯', {
+      left: 0,
+      top: 1,
+      width: columns,
+      height: 1,
+    }),
+  ).toEqual({ row: 1, column: 7 });
 });
 
 test('support status timeout names the condition and path', async () => {

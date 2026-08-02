@@ -978,13 +978,33 @@ function verticalScrollBarProofAtKnownGeometry(
 function verticalDiffScrollBarProof(
   snapshot: HarnessSnapshot.Model,
 ): VerticalScrollBarProof | null {
-  const startRow = 1;
+  const baseTitlePosition = snapshot.findText('Base (HEAD)');
+  const currentTitlePosition = snapshot.findText('Current (working)');
+  if (!baseTitlePosition || !currentTitlePosition) return null;
+  // The diff scrollbar track starts on the title row. The thumb can occupy that first row, so
+  // starting at the first code row silently drops half of a two-cell thumb at the top clamp.
+  const startRow = baseTitlePosition.row;
   const endRowExclusive = snapshot.rows - 2;
-  const rightEdgeBackground = snapshot.cell(
-    startRow,
-    snapshot.columns - 1,
-  )?.background;
-  if (rightEdgeBackground === undefined) return null;
+  const diffBackgroundCounts = new Map<number, number>();
+  for (let row = startRow; row < endRowExclusive; row += 1) {
+    for (
+      let column = Math.max(0, baseTitlePosition.column - 1);
+      column < snapshot.columns - 5;
+      column += 1
+    ) {
+      const cell = snapshot.cell(row, column);
+      if (!cell?.isBackgroundRgb) continue;
+      diffBackgroundCounts.set(
+        cell.background,
+        (diffBackgroundCounts.get(cell.background) ?? 0) + 1,
+      );
+    }
+  }
+  const diffBackground = [...diffBackgroundCounts.entries()].sort(
+    (firstBackground, secondBackground) =>
+      secondBackground[1] - firstBackground[1],
+  )[0]?.[0];
+  if (diffBackground === undefined) return null;
   let bestColumn = -1;
   let bestPaintedRows: Array<{ row: number; background: number }> = [];
   for (
@@ -998,7 +1018,7 @@ function verticalDiffScrollBarProof(
       if (
         cell?.characters === ' ' &&
         cell.isBackgroundRgb &&
-        cell.background !== rightEdgeBackground
+        cell.background !== diffBackground
       ) {
         paintedRows.push({ row, background: cell.background });
       }

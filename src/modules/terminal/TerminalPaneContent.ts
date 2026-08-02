@@ -7,6 +7,7 @@
 //
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
 // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/ui/ui.invariants.md)
+// invariant: Pane identity is separate from presentation (src/modules/ui/ui.invariants.md)
 // invariant: Pane chrome and child cells keep separate authority (src/modules/terminal/terminal.invariants.md)
 // invariant: Child terminal modes own wheel input (src/modules/terminal/terminal.invariants.md)
 // invariant: Terminal follow obeys the live user mode (src/modules/agent/agent.invariants.md)
@@ -95,7 +96,7 @@ class $TerminalPaneContent implements PaneContent {
   get title(): string {
     const liveTitle =
       this.heading ??
-      (this.id === 'terminal'
+      (this.instanceLabel === 'Terminal'
         ? this.instance.title
         : `${this.instanceLabel} · ${this.instance.title}`);
     return this.instance.exited.value ? `${liveTitle} (exited)` : liveTitle;

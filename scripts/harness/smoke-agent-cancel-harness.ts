@@ -265,17 +265,26 @@ try {
     20_000,
   );
   driver.sendRawInput('\x1b[27;6;97~');
-  await HarnessSmoke.Class.awaitStatus(
+  const openedAgentStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'agent pane opens focused',
-    (status) => status.panelFocused === true,
+    (status) =>
+      status.panelFocused === true && status.panelActiveContentKind === 'agent',
   );
+  const agentRectangle =
+    HarnessSmoke.Class.activePanelCellRectangle(openedAgentStatus);
+  if (!agentRectangle) throw new Error('Active agent geometry disappeared');
   const initialAgentSnapshot = await driver.awaitGridCondition(
     'agent composer prompt is visible before slash submission',
-    (candidate) => candidate.findText('❯ ') !== null,
+    (candidate) => candidate.findTextInRectangle('❯ ', agentRectangle) !== null,
   );
-  HarnessSmoke.Class.clickText(driver, initialAgentSnapshot, '❯ ');
+  HarnessSmoke.Class.clickTextInRectangle(
+    driver,
+    initialAgentSnapshot,
+    '❯ ',
+    agentRectangle,
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -392,7 +401,7 @@ try {
     'the transcript visibly marks cancellation',
     (candidate) =>
       candidate.findText('canceled') !== null &&
-      candidate.findText('❯') !== null,
+      candidate.findTextInRectangle('❯', agentRectangle) !== null,
   );
   driver.sendText('composer-usable');
   await driver.awaitGridCondition(
