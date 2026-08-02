@@ -1,3 +1,49 @@
+# RESUME ANCHOR 42 — 2026-08-02 ~18:25 EDT (85% gauge) — DO THIS FIRST
+
+## LANDED ON MAIN THIS SESSION (all verified by driving, not by reading)
+- #457 gate determinism -> 687dc80f
+- #459 panel reachability -> bc367e17
+- #465 An emptied space survives its last instance -> ecc13a44
+- #466 Drive panel roles + gestures -> f7212535
+- #467 The add control keeps one button appearance -> 72a6f7f3
+dist/iv rebuilt at 18:18 from 72a6f7f3. The user tests the BINARY: rebuild
+after every user-facing change or they test stale code (cost one round tonight).
+
+## USE THE INSTRUMENT, NEVER HAND-WRITE A PROBE (user-directed, 2026-08-02)
+"drive.ts should be sophisticated enough that you can drive the terminal app
+without hand coding the probes each time."
+  bun run drive --open <ws> --gesture openPanel --gesture openInstances \
+    --gesture addInstance=Terminal --gesture closeInstance="Terminal 2"
+Roles: instances-toggle · instance-add · instance-row · instance-row-close ·
+popup-entry. Completion status-excludes waits for a label to LEAVE a list.
+When a drive is fiddly, FIX THE INSTRUMENT ONCE — do not write probe #5.
+
+## OPEN — mine, in priority order
+1. closeInstance's close-control fallback uses `snapshot.columns - 2`. That
+   assumes the list ends at the screen edge; it broke the moment the layout
+   shifted. It needs the list's REAL width (status panelListGeometry.width is
+   the natural source but publishes left=-24, see #463). Reproduce:
+   ... --gesture closeInstance=Terminal --gesture closeInstance="Terminal 2"
+   with the #467 header — the second close resolves a column off.
+2. Gate on main red: /tmp/gate-main-465.log GATE_EXIT=1 while printing
+   "blocking verdict unchanged". Failing check is contention panel-chrome
+   (#464), pre-existing. #457's report-only tier did NOT hold the exit code
+   here though it did on gate-457 and gate-459e. Hole in what I landed.
+3. #451 READY at a80c75c0, never gated.
+4. #460 contention evidence asymmetry · #461 scrollbar deep-wheel · #462 empty
+   slowest row · #463 panelListGeometry left=-24 · #464 panel contention.
+
+## THE USER'S OWN CONFIG IS DAMAGED (not a live bug)
+~/.config/invar/settings.json panelWorkspaceStates["/home/parallels/dev/invar"]
+holds ONLY a database space; the terminal space was destroyed and persisted by
+the pre-fix binary. Ctrl+J restores it. NEVER write to their real config.
+
+## STANDING
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor only.
+The user is ACTIVELY PRESENT: their direction IS the backlog. ui-task skill
+governs UI work — SEE by driving before speaking, batch items, confirm before
+dispatch.
+
 # RESUME ANCHOR 41 — 2026-08-02 ~18:40 EDT (85% gauge) — DO THIS FIRST
 
 ## USER-DIRECTED UI TASK, stated verbatim (do not paraphrase away)

@@ -602,3 +602,56 @@ The loop worked — every one was caught, because briefs demand bycatch
 and record-by-record invariant answers. But it spends BUILDER attention
 correcting the conductor, which is the most expensive way to find a
 typo.
+
+---
+
+## Family 15 — a hand-written probe is a second system, and it fails first
+
+**2026-08-02, user-directed.** Fixing one panel bug, the conductor hand-wrote
+four probes in one evening. Every one failed for a PROBE reason, and each
+failure was briefly mistaken for app behaviour:
+
+- clicked the tab's `×` instead of the list row's, because both paint the word
+  "Terminal" — read as "the product ignored my close";
+- clicked a popup entry at column 41 (worked) and at column 109 (did not) —
+  read as a right-side hit-testing defect;
+- carried a stale label list across a close — read as "closing the last
+  instance fails";
+- waited for a repaint after hovering the ALREADY-ACTIVE row, which repaints
+  nothing — read as "the last instance cannot be closed".
+
+The user named it: *"the problem is you still write probes by hand, drive.ts
+should be sophisticated enough that you can drive the terminal app without hand
+coding the probes each time."*
+
+**The rule.** When a drive is fiddly, fix the INSTRUMENT once. Never write the
+next probe. A probe is a second implementation of the user's path, with none of
+the review, none of the tests, and none of the reuse — so its defects arrive
+disguised as product defects, at the exact moment you are least able to tell
+the difference.
+
+**What "fix the instrument" means concretely** (all landed as #466):
+- name controls by ROLE, resolved from what is painted, never from a column
+  the caller computed;
+- anchor list rows relative to their list header, because chrome elsewhere
+  paints the same words;
+- give each gesture its own completion condition, and make the condition the
+  thing that actually changed (`status-excludes`: the label LEFT the list);
+- declare a step frame-silent when it genuinely repaints nothing, rather than
+  demanding a repaint that only happens in the cases you were not debugging;
+- resolve a control by geometry when its glyph is hover-revealed — the hit
+  target exists whether or not the decoration is drawn.
+
+**The tell that you are in this failure mode:** you are reading a grid dump to
+work out where to click. That is the instrument's job, and every minute spent
+on it is a minute not spent on the defect.
+
+**Corollary — the user tests the BINARY.** After any user-facing change, run
+`bun run build`. Tonight the user tested a `dist/iv` built three minutes before
+the fix landed and reported the bug as unfixed. Source-green is not user-green.
+
+**Corollary — "the text is painted" is not "the control works".** The conductor
+reported `paints "Add Terminal": yes` as though it settled the question. The
+user's answer: *"Add Terminal thing is not just a text, it's a button... but
+that's not clear."* Presence of text proves nothing about whether a user can
+tell it is a target. Drive the GESTURE, not the glyph.
