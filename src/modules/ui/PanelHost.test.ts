@@ -793,7 +793,7 @@ test('emptying a space keeps the space and never promotes another space content'
   host.closeOpenContent('pane-instance-2');
 
   // The space the user emptied is still here and still active.
-  expect(host.activeSpaceId.value).toBe(terminalSpaceIdentifier);
+  expect(host.activeSpaceId.value).toBe(terminalSpaceIdentifier as string);
   expect(
     host.spaces.value.some(
       (space) => space.identifier === terminalSpaceIdentifier,
