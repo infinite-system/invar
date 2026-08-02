@@ -2576,17 +2576,20 @@ after a user has already seen a pane they cannot close. Rendering registered-but
 as a cell — that invents membership the persisted state never expressed, and is how a Database pane
 nobody added became visible.
 
-**Evidence:** `src/modules/ui/PanelContentFactories.ts` and its test; `PanelHost.test.ts` restore
-cases; `.invar/tasks/active/459-empty-right-pane-has-no-add-affordance/probe-459-empty-dock.ts`,
-which printed the defect before the repair: `panelContentIds` held `database` while `panelCellIds`
+**Evidence:** `src/modules/ui/PanelContentFactories.ts` and
+`src/modules/ui/PanelContentFactories.test.ts`; `src/modules/ui/PanelHost.test.ts` restore
+cases; `scripts/harness/smoke-panel-split-harness.ts`, which drives the empty panel and the
+registered-but-unreachable guard. The probe that printed the defect before the repair is
+`probe-459-empty-dock.ts` in this task's folder: `panelContentIds` held `database` while `panelCellIds`
 and the list rows did not, and it survived closing every terminal.
 
 **Impossible if true:** No registered content identifier may be absent from every panel space and
 group. A user can never observe a pane with no row and no way to close it.
 
 **Verification:** Restore a workspace whose persisted panel state names a content belonging to no
-space; the registration must be rejected rather than surfaced. Then drive
-`probe-459-empty-dock.ts`: `panelContentIds` and the projected rows must name the same set.
+space; the registration must be rejected rather than surfaced. Then run
+`bun scripts/harness/smoke-panel-split-harness.ts`: `panelContentIds` and the projected rows
+must name the same set, and an emptied panel must keep its Add row.
 
 **Status:** provisional
 
