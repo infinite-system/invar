@@ -1,4 +1,4 @@
-# #457 — the gate's serial tail has no quiet retry, so load-induced timeouts block landings
+# #457 — the gate's verdict is not a function of its input
 
 Priority: verification-integrity
 State: ACTIVE
@@ -9,132 +9,133 @@ Effort: high
 
 ## In plain words
 
-The gate gives a smoke that times out under load one quiet second
-chance. Jobs in the final serial stage do not get that chance. So a
-timeout caused by the machine being busy reads as a real failure and
-blocks the merge, and the only way past it is to run the whole gate
-again.
+Run the gate five times on the exact same commit and it answers
+differently: four reds and one green, with a different smoke failing
+each time. A gate that disagrees with itself cannot certify anything,
+and it teaches everyone to re-run reds until one passes.
 
-## The evidence
+## This task was filed on a false premise. Read this part first.
 
-Gate 3 on the #452 stack (`/tmp/gate-stack3.log`, commit `4d540c01`)
-returned `GATE_EXIT=1` with exactly one red:
-
-```text
-FAIL  behavioral-contracts (felt invariants)
-error: Timed out waiting for grid condition:
-       the structure scrollbar publishes its settled dock-height geometry
-```
-
-Run alone on the SAME commit, quiet, it is `ALL-PASS`. Its inner smoke
-`smoke-plugin-manifest-harness` also passes alone on the stack AND on
-main. So the failure is starvation-class, not a defect in the product.
-
-The parallel pool already knows how to handle this. From the same log:
+The original title was "the serial tail lacks a quiet retry" and the
+whole task argued for adding one. **That premise is false.** The serial
+tail already retries:
 
 ```text
-RETRY smoke: editor harness — timeout-class failure; one quiet retry
-OK    smoke: editor harness (clean on retry; first attempt was
-      starvation-class)
+RETRY behavioral-contracts (felt invariants) — timeout-class failure;
+      one quiet retry (attempt 1 log preserved)
 ```
 
-`serial_smoke` (scripts/merge-gate.sh, the `behavioral-contracts` line
-near 1067) has no equivalent path.
+The conductor inferred "no retry exists" from a single gate where no
+RETRY line appeared — which actually meant the retry had run and failed
+too. Implementing the task as originally written would have added a
+second retry to a step that already has one, and the "census load-bound
+assertions" half would have been aimed by an author who had not
+measured. The rewrite below keeps only what five repeated gate runs
+actually established.
 
-## Why this matters more than one lost gate run
+## The measurement
 
-A red that a re-run clears trains the reader to re-run reds. That is
-the habit the whole gate exists to prevent, and doctrine names it
-explicitly as never acceptable. The instrument should not be the thing
-teaching it. Right now the only honest options for a starvation-class
-serial red are a full re-gate (about ten minutes) or a written
-override, and the override wording is reserved for PRE-EXISTING reds,
-which this is not. So the gate has a failure mode with no honest cheap
-answer.
+Five gates, one unchanged commit (`9f158472`), 6 workers, nothing else
+on the machine (load average 1.77 on 16 cores):
 
-## What to build
+| run | verdict | failure |
+|---|---|---|
+| 1 | GATE_EXIT=1 | terminal harness |
+| 2 | GATE_EXIT=1 | shortcut-help, behavioral-contracts |
+| 3 | GATE_EXIT=0 | — |
+| 4 | GATE_EXIT=1 | terminal harness |
+| 5 | GATE_EXIT=1 | shortcut-help |
 
-Give the serial tail the same one-quiet-retry the parallel pool has,
-with the same discipline:
+Frequency: `terminal harness` 2/5, `shortcut-help` 2/5,
+`behavioral-contracts` 1/5, plus retry-cleared timeouts in `git-watch`
+and `panel-chrome`.
 
-- Retry ONLY timeout-class failures. An assertion failure must never
-  be retried — it is a verdict, not a stall.
-- Preserve the first attempt's log, exactly as the pool does.
-- Say in the output that a retry happened and that the first attempt
-  was starvation-class, so a reader can never mistake a retried pass
-  for a clean one.
+Three gates on the PRE-landing commit gave `terminal harness` 1/3, so
+these are long-standing and not introduced by the #442/#444/#452
+landing.
+
+## What this establishes, and what it does not
+
+**Established:** the failures CONCENTRATE in a few smokes rather than
+scattering thinly across many. The conductor predicted scattering,
+which would have pointed at one shared observation defect. That
+prediction is falsified. There is no single generator.
+
+**Established:** the two repeat offenders are ASSERTION failures, not
+timeouts. Retry logic structurally cannot help them and must never be
+extended to try — retrying an assertion failure is how a gate launders
+a real defect into a green.
+
+**Not established:** why `shortcut-help` fails. That one is open.
+
+## Already resolved, do not redo
+
+`terminal harness` (2/5) is FIXED, separately, under #436: the
+assertion demanded that a foreign process's repaint never appear
+incomplete, which Invar cannot guarantee. It now asserts convergence.
+The new record is
+[Atomicity is claimed only for self-generated output](../../../../scripts/harness/harness.invariants.md).
+A verification sweep is measuring whether that moved the rate.
+
+## The work
+
+### 1. `shortcut-help`, 2 of 5 runs — the open defect
+
+```text
+FAIL shortcut sheet reached its final row without showing Toggle Word Wrap
+```
+
+The sheet scrolled to its last row and the entry was absent. This is
+Invar's own list in Invar's own sheet — SELF-GENERATED output, so the
+#436 convergence argument gives it no cover. Under load a row goes
+missing or the scroll terminates early. Find which. Drive it under
+deliberate contention; that is the reproduction instrument.
+
+### 2. The timing-classification matcher has a blind spot
+
+The gate runs a `smoke timing classification` step that inspects
+sources for duration and frame-silence assertions, and it passed 69
+sources — including the `tasks:watch` assertion that was load-bound all
+along. Whatever the matcher looks for, it did not look for "a claim
+whose truth changes with machine speed". Widen it, and prove the new
+matcher fires on the pre-#436 form of that assertion as a positive
+control.
+
+### 3. Publish the disagreement rate
+
+Nothing today records that the gate answers differently on identical
+input, so no one can tell a real red from a draw. Emit a durable line
+per gate run — commit, worker count, verdict, failing steps — that can
+be counted later. This replaces the conductor's ad-hoc `/tmp` sweeps.
+Keep it small; a full flake ledger was considered and is more machinery
+than the finding justifies.
 
 ## Both arms
 
-- Positive: force a timeout-class failure in a serial job and prove
-  the retry fires and reports itself.
-- Negative: force an ASSERTION failure in a serial job and prove the
-  retry does NOT fire and the gate stays red.
+Any matcher or classifier added here must be proven in both
+directions: it fires on a planted load-bound assertion, and stays
+silent on a count- or ordering-based one. A classifier that flags
+everything is as useless as one that flags nothing.
 
-A retry that also rescues real failures is worse than no retry.
+## Standing evidence for the next conductor
+
+A gate returning a different single red each run, each quiet-green on
+the same commit, is reporting its own contention — not the product.
+Do not re-run for a green. Diagnose, then change the causal condition
+so the next run is an experiment rather than a lottery. And when the
+verdict comes from lowering concurrency, remember that a 1-in-5 green
+looks exactly like a fixed tree: the conductor landed on one and
+reported it as a confirmed diagnosis.
 
 ## Invariants in scope
 
 - [The harness contract](../../../../scripts/harness/harness.invariants.md)
-  — `Harness waits observe conditions not frame ordinals`. Do not
-  widen any wait to fix this. The wait is correct; the machine was
-  busy.
+  — `Harness waits observe conditions not frame ordinals`, and the new
+  `Atomicity is claimed only for self-generated output`. Do not widen a
+  wait or a budget to clear anything here.
 - Any record this list MISSED is a finding about the conductor's map.
 
 ## Bycatch expected
 
 Report per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. Write the
 `## Bycatch` section even if it reads `None observed`.
-
-## Second data point, same evening — this is wider than the serial tail
-
-Gate 4, same commit `4d540c01`, again exactly one red — a DIFFERENT
-one, and this time from the parallel pool, with no RETRY line:
-
-```text
-FAIL  smoke: terminal harness
-error: FAIL real tasks:watch produced no blank or partial
-       completed frame (16 outer frames)
-```
-
-Run alone on the same commit, twice: PASS both times.
-
-So across two consecutive gates on one unchanged tree:
-
-| gate | single red | quiet re-run, same commit |
-|---|---|---|
-| 3 | behavioral-contracts (serial tail) | ALL-PASS |
-| 4 | terminal harness (parallel pool) | PASS twice |
-
-The machine was NOT loaded: load average 1.77 on 16 cores. So the
-contention is INSIDE the gate — six concurrent PTY app instances — not
-from other work on the box.
-
-Two consequences the original task did not capture:
-
-1. **The parallel pool's retry did not fire here.** It is scoped to
-   timeout-class failures, and this red is an ASSERTION failure whose
-   assertion happens to be load-bound. So the retry cannot help, and
-   should not be widened to help — retrying assertion failures is the
-   thing that must never happen.
-
-2. **The real defect is the load-bound assertion itself.**
-   `no blank or partial completed frame (16 outer frames)` is a verdict
-   about frames observed in a window, so a busy gate changes the
-   answer. Doctrine is explicit: replace load-bound verdicts, block on
-   ordering or work counts, keep durations report-only. Widening the
-   frame budget converts the defect into a slower version of itself.
-
-So the work splits in two: give the serial tail the same
-timeout-class-only retry (the original task), AND census the blocking
-smokes for assertions whose verdict can change with machine load,
-converting them to count- or ordering-based claims. The gate already
-has a `smoke timing classification` step that inspects sources for
-duration and frame-silence assertions and passed 69 sources — it did
-not catch this one, so that matcher has a blind spot worth naming.
-
-**Standing evidence for the next conductor:** a gate that returns a
-different single red each run, each quiet-green on the same commit, is
-reporting its own contention, not the product. Do not re-run for a
-green — diagnose, then change the causal condition (worker count) so
-the next run is an experiment rather than a lottery.
