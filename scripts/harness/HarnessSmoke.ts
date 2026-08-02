@@ -235,10 +235,25 @@ class $HarnessSmoke {
     if (targetRow < 0) {
       throw new Error(`The pinned panel list did not paint ${visibleTitle}`);
     }
-    const targetColumn = headerPosition.column + geometry.width - 2;
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'move',
+      column: headerPosition.column + 1,
+      row: targetRow,
+      button: 'none',
+    });
+    const rowControlsSnapshot = await driver.awaitGridCondition(
+      `${visibleTitle} reveals its row controls on hover`,
+      (candidate) => candidate.rowText(targetRow).includes('×'),
+    );
+    const revealedCloseColumn = rowControlsSnapshot
+      .rowText(targetRow)
+      .lastIndexOf('×');
+    if (revealedCloseColumn < 0) {
+      throw new Error(`${visibleTitle} did not paint its close glyph`);
+    }
     for (
       let column = headerPosition.column + 1;
-      column <= targetColumn;
+      column <= revealedCloseColumn;
       column += 1
     ) {
       driver.sendMouseWithoutFrameExpectation({
@@ -252,10 +267,7 @@ class $HarnessSmoke {
       `${visibleTitle} reveals its close control on hover`,
       (candidate) => candidate.findText('Close instance') !== null,
     );
-    const revealedCloseColumn = hoveredSnapshot
-      .rowText(targetRow)
-      .lastIndexOf('×');
-    if (revealedCloseColumn < 0) {
+    if (hoveredSnapshot.rowText(targetRow).lastIndexOf('×') < 0) {
       throw new Error(`${visibleTitle} did not paint its close glyph`);
     }
     driver.sendMouseWithoutFrameExpectation({
@@ -287,9 +299,15 @@ class $HarnessSmoke {
         ).length === expectedRemainingCount,
     );
     if (expectedRemainingCount === 0) {
-      await driver.awaitGridCondition(
+      const closedSnapshot = await driver.awaitGridCondition(
         `${visibleTitle} is no longer painted after its row close`,
-        (candidate) => candidate.findText(visibleTitle) === null,
+        (candidate) =>
+          candidate.findText(visibleTitle) === null &&
+          candidate.findText(`Close ${visibleTitle}?`) === null,
+      );
+      this.requireCondition(
+        closedSnapshot.findText(`Close ${visibleTitle}?`) === null,
+        `${visibleTitle} closes without a confirmation dialog`,
       );
     } else {
       await driver.awaitGridCondition(
@@ -297,6 +315,55 @@ class $HarnessSmoke {
         (candidate) => candidate.findText(visibleTitle) !== null,
       );
     }
+  }
+
+  static async requestPanelContainerClose(
+    driver: PtyTestDriver.Model,
+    visibleLabel: string,
+    instanceCount: number,
+    closeGlyph = '×',
+  ): Promise<HarnessSnapshot.Model> {
+    const marker = `${visibleLabel} ${closeGlyph}`;
+    const snapshot = await driver.awaitGridCondition(
+      `the ${visibleLabel} container paints its close control`,
+      (candidate) => candidate.findText(marker) !== null,
+    );
+    const markerPosition = snapshot.findText(marker);
+    if (!markerPosition) {
+      throw new Error(`${visibleLabel} did not paint its container close`);
+    }
+    const closeColumn = markerPosition.column + Array.from(marker).length - 1;
+    for (
+      let column = markerPosition.column;
+      column <= closeColumn;
+      column += 1
+    ) {
+      driver.sendMouseWithoutFrameExpectation({
+        kind: 'move',
+        column,
+        row: markerPosition.row,
+        button: 'none',
+      });
+    }
+    driver.sendMouse({
+      kind: 'press',
+      column: closeColumn,
+      row: markerPosition.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: closeColumn,
+      row: markerPosition.row,
+      button: 'left',
+    });
+    const message =
+      `Close ${visibleLabel} and its ${instanceCount} ` +
+      `${instanceCount === 1 ? 'instance' : 'instances'}?`;
+    return driver.awaitGridCondition(
+      `${visibleLabel} container close confirms its ${instanceCount} instances`,
+      (candidate) => candidate.findText(message) !== null,
+    );
   }
 
   static async awaitScrollPosition(

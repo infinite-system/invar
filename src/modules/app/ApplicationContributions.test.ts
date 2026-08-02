@@ -4,6 +4,8 @@ import { ref } from 'vue';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { Settings } from '../settings/Settings';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import { PanelContentFactories } from '../ui/PanelContentFactories';
+import type { PanelContentFactory } from '../ui/PanelContentFactory.interface';
 import { PanelHost } from '../ui/PanelHost';
 import { ActivitySurface } from '../ui/ActivitySurface';
 import type {
@@ -66,6 +68,23 @@ class DockContributor implements ApplicationContributor {
       section: this.name,
       suggestedSide: 'right',
     });
+  }
+}
+
+class PanelFactoryContributor
+  implements ApplicationContributor, PanelContentFactory
+{
+  readonly identifier = 'panel-factory';
+  readonly name = 'Panel Factory';
+  readonly kind = 'database';
+  readonly instanceLabel = 'Database';
+
+  activateApplication(context: ApplicationContributionContext): void {
+    context.registerPanelContentFactory(this);
+  }
+
+  createPane(): PaneContent {
+    throw new Error('The contribution lifecycle test does not create a pane');
   }
 }
 
@@ -313,5 +332,35 @@ describe('ApplicationContributions', () => {
     expect(rightDockHost.has('outline')).toBe(false);
     expect(contributor.content.disposed).toBe(true);
     expect(activitySurface.orderedContents).toEqual([]);
+  });
+
+  test('disable withdraws a panel factory and every pane it created', () => {
+    const settings = new Settings.Class();
+    const bottomPanelHost = new PanelHost.Class();
+    const panelContentFactories = new PanelContentFactories.Class();
+    const contributor = new PanelFactoryContributor();
+    const database = {
+      ...new DockContributor().content,
+      id: 'pane-instance-1',
+      kind: 'database',
+    };
+    const manager = new ApplicationContributions.Class([contributor], {
+      settings,
+      keybindings: new KeybindingRegistry.Class(),
+      workspaceSet: { registerContributor: () => () => {} },
+      bottomPanelHost,
+      panelContentFactories,
+      requestRender: () => {},
+    } as unknown as ApplicationContributionsOptions);
+
+    manager.activateAll();
+    bottomPanelHost.register(database);
+    expect(panelContentFactories.factory('database')).toBe(contributor);
+
+    manager.setEnabled('panel-factory', false);
+
+    expect(panelContentFactories.factory('database')).toBeNull();
+    expect(bottomPanelHost.contentsOfKind('database')).toEqual([]);
+    expect(database.disposed).toBe(true);
   });
 });

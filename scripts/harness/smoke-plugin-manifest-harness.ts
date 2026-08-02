@@ -1881,7 +1881,7 @@ try {
     statusPath,
     'uninstall removes the database pane and all consumer projections',
     (status) =>
-      !(status.panelContentIds as string[]).includes('database') &&
+      !(status.panelContentKinds as string[]).includes('database') &&
       status.databaseConsumerStatus === undefined &&
       status.databaseConsumerVersion === undefined &&
       status.databaseProviderIdentifier === undefined &&
@@ -1908,7 +1908,7 @@ try {
     'the removed database chord cannot switch away before Settings opens',
     (status) =>
       status.settingsOpen === true &&
-      !(status.panelContentIds as string[]).includes('database'),
+      !(status.panelContentKinds as string[]).includes('database'),
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
@@ -1921,8 +1921,10 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'reinstall restores the database pane registration',
-    (status) => (status.panelContentIds as string[]).includes('database'),
+    'reinstall restores the database factory without creating a pane',
+    (status) =>
+      status.databaseConsumerStatus === 'idle' &&
+      !(status.panelContentKinds as string[]).includes('database'),
   );
   driver.sendKeys('Control+Shift+y');
   const finalDatabaseStatus = await HarnessSmoke.Class.awaitStatus(

@@ -3,16 +3,19 @@
 //
 // The user reports: removing all terminals from the right pane instances
 // list still leaves one terminal running underneath, with no row left to
-// close it from. Wanted instead: an empty list offering "Add terminal".
+// close it from. Wanted instead: an empty list offering "Add Terminal".
 //
 // This probe does not assert a cause. It drives the real path and prints
 // what is actually on the screen and in the published status afterwards.
+// Run: bun .invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/probe-459-empty-dock.ts
+// Read each status block as the registry, visible rows, list state, and panel
+// state after that gesture. The final search says which recovery text paints.
 
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PtyTestDriver } from '../scripts/harness/PtyTestDriver';
-import { HarnessSmoke } from '../scripts/harness/HarnessSmoke';
+import { PtyTestDriver } from '../../../../scripts/harness/PtyTestDriver';
+import { HarnessSmoke } from '../../../../scripts/harness/HarnessSmoke';
 
 const workspaceRoot = mkdtempSync(join(tmpdir(), 'probe-empty-dock-work-'));
 await Bun.write(join(workspaceRoot, 'alpha.ts'), 'export const alpha = 1;\n');
@@ -77,9 +80,7 @@ const report = (moment: string): void => {
   console.log('  panelActiveContent:', status.panelActiveContent);
 };
 
-/** Close one contents-list row that belongs to a TERMINAL, which asks first.
- *  The shared helper cannot: it awaits the row count immediately, and a
- *  terminal row opens a "Close <label>?" dialog that blocks that wait. */
+/** Close one contents-list row that belongs to a terminal. */
 const closeTerminalRow = async (visibleTitle: string): Promise<void> => {
   const listSnapshot = await driver.awaitGridCondition(
     `the pinned list paints ${visibleTitle}`,
@@ -119,17 +120,10 @@ const closeTerminalRow = async (visibleTitle: string): Promise<void> => {
     button: 'left',
   });
   await driver.awaitGridCondition(
-    `closing ${visibleTitle} asks for confirmation`,
-    (candidate) => candidate.findText(`Close ${visibleTitle}?`) !== null,
-  );
-  // The dialog defaults to No (destructive action). Move to Yes first —
-  // pressing Enter straight away silently DECLINES the close, and the drive
-  // then reads "nothing was removed" as if the product had failed.
-  driver.sendKeys('Left');
-  driver.sendKeys('Enter');
-  await driver.awaitGridCondition(
-    `the ${visibleTitle} confirmation closes`,
-    (candidate) => candidate.findText(`Close ${visibleTitle}?`) === null,
+    `${visibleTitle} closes without a confirmation`,
+    (candidate) =>
+      candidate.findText(visibleTitle) === null &&
+      candidate.findText(`Close ${visibleTitle}?`) === null,
   );
 };
 
@@ -149,7 +143,6 @@ try {
   report('AFTER closing Terminal One');
 
   await closeTerminalRow('Terminal Two');
-  await new Promise((resolve) => setTimeout(resolve, 1500));
   report('AFTER closing Terminal Two — the list is now empty');
 
   // The question the user actually asked: what is on the screen now?
@@ -168,7 +161,7 @@ try {
   console.log('\n===== LOOKING FOR =====');
   for (const needle of [
     'Add Terminal instance',
-    'Add terminal',
+    'Add Terminal',
     '+ Terminal',
     '$',
   ]) {

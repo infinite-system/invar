@@ -1070,10 +1070,10 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       panelContentOrderDriver.driver,
       panelContentOrderDriver.statusPath,
-      "status condition: status.panelContentKinds.join(',') === 'agent,terminal,database' && status.panelCellKinds.join(',') === 'terminal' && status.panelActiveContentKind === 'terminal'",
+      "status condition: status.panelContentKinds.join(',') === 'agent,terminal' && status.panelCellKinds.join(',') === 'terminal' && status.panelActiveContentKind === 'terminal'",
       (status) =>
         Array.isArray(status.panelContentKinds) &&
-        status.panelContentKinds.join(',') === 'agent,terminal,database' &&
+        status.panelContentKinds.join(',') === 'agent,terminal' &&
         Array.isArray(status.panelCellIds) &&
         status.panelCellKinds.join(',') === 'terminal' &&
         status.panelActiveContentKind === 'terminal',
@@ -1082,10 +1082,10 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       panelContentOrderDriver.driver,
       panelContentOrderDriver.statusPath,
-      "status condition: status.panelContentKinds.join(',') === 'terminal,agent,database' && status.panelCellKinds.join(',') === 'terminal'",
+      "status condition: status.panelContentKinds.join(',') === 'terminal,agent' && status.panelCellKinds.join(',') === 'terminal'",
       (status) =>
         Array.isArray(status.panelContentKinds) &&
-        status.panelContentKinds.join(',') === 'terminal,agent,database' &&
+        status.panelContentKinds.join(',') === 'terminal,agent' &&
         Array.isArray(status.panelCellIds) &&
         status.panelCellKinds.join(',') === 'terminal',
     );

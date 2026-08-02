@@ -1286,7 +1286,7 @@ class $RootView {
       const tab = panelTabBarProjection
         ? PanelTabBar.Class.tabAtColumn(panelTabBarProjection, column)
         : null;
-      if (close) panelHost.closeSpace(close.identifier);
+      if (close) panelHost.closeOpenSpace(close.identifier);
       else if (tab) {
         const renderableWithContext = panelTabBarRenderable as unknown as {
           _ctx?: { setCapturedRenderable?: (renderable: unknown) => void };

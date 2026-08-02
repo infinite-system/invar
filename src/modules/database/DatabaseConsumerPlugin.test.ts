@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { ref } from 'vue';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
-import type { PaneContent } from '../ui/PaneContent.interface';
+import type { PanelContentFactory } from '../ui/PanelContentFactory.interface';
 import { Workspace } from '../workspace/Workspace';
 import { DatabaseConsumerPlugin } from './DatabaseConsumerPlugin';
 
@@ -9,7 +9,7 @@ test('the consumer plugin registers and withdraws its pane and status projection
   const workspace = new Workspace.Class();
   const plugin = new DatabaseConsumerPlugin.Class();
   const contribution = plugin.attachWorkspace(workspace);
-  const panes: PaneContent[] = [];
+  const factories: PanelContentFactory[] = [];
   const commandIdentifiers: string[] = [];
   let commandDisposals = 0;
   let statusDisposals = 0;
@@ -31,7 +31,9 @@ test('the consumer plugin registers and withdraws its pane and status projection
     },
     theme: { glyphLevel: ref('unicode') },
     registerKeybindings() {},
-    registerPanelContent: (pane: PaneContent) => panes.push(pane),
+    registerPanelContentFactory: (factory: PanelContentFactory) =>
+      factories.push(factory),
+    openPanelContent: () => true,
     commands: {
       registerAll: (commands: readonly { id: string }[]) => {
         commandIdentifiers.push(...commands.map((command) => command.id));
@@ -54,7 +56,10 @@ test('the consumer plugin registers and withdraws its pane and status projection
   plugin.activateApplication(context);
 
   expect(plugin.primaryDockContentIdentifiers).toEqual([]);
-  expect(panes.map((pane) => pane.id)).toEqual(['database']);
+  expect(factories.map((factory) => factory.kind)).toEqual(['database']);
+  const pane = factories[0]?.createPane('pane-instance-1', 'Database');
+  expect(pane?.id).toBe('pane-instance-1');
+  expect(pane?.kind).toBe('database');
   expect(commandIdentifiers).toContain('view.showDatabase');
   expect(commandIdentifiers).toContain('database.connect');
   expect(commandIdentifiers).toContain('database.disconnect');
