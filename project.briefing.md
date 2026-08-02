@@ -1,3 +1,73 @@
+# RESUME ANCHOR 40 — 2026-08-02 ~15:50 EDT (100.5% gauge) — DO THIS FIRST
+
+## #457 IS READY AND IT DELIVERED. Gate and land it FIRST.
+
+Branch `fleet/457-serial-tail-lacks-quiet-retry`, tip `246405c3`.
+Report: `.invar/tasks/in-progress/457-serial-tail-lacks-quiet-retry/report-457-serial-tail-lacks-quiet-retry.md`
+(READ IN FULL — this anchor is a summary, not a substitute).
+
+The three-part acceptance criterion was MET, with the runs reported:
+
+| Run | Workers | Blocking verdict | Contention | Load |
+| 1 | 3 | all-pass | 4/4 | 0.77 |
+| 2 | 6 | all-pass | 4/4 | 1.40 |
+| 3 | 3 | all-pass (one retry) | 4/4 | 1.23 |
+| 4 | 6 | all-pass | panel-chrome failed | 1.07 |
+| 5 | 3 | all-pass | panel-chrome failed | 0.88 |
+
+Five identical blocking verdicts on one unchanged commit. Verdict unchanged
+at 3 and 6 workers. Planted defect (the real pre-fix form) went red 5/5.
+
+### What it actually found — the mechanism
+NOT a missing retry. The founding premise stayed false. `PtyTestDriver`
+already retained every completed frame; `scrollUntilVisible` in
+`smoke-shortcut-help-harness.ts` read the LIVE emulator via `snapshot()`,
+which can hold the start of the next synchronized frame. It removed the
+three-delivery chord retry and the fixed 200 ms sleep. Shortcut contention
+went 3/6 fail -> 6/6 pass.
+
+### Four checks moved to the report-only contention tier
+`panel-chrome`, `scrollbars`, `git-watch`, `plugin-manifest lifecycle`.
+70 jobs registered, 67 pooled, 3 serial tail. No coverage deleted. It
+explicitly did NOT move `shortcut-help` (deterministic consumer error) or
+`bounded-list popup` (one unreproduced retry).
+
+### CONDUCTOR CHECK BEFORE LANDING — do not skip
+1. The moved-to-contention list is a DOWNGRADE class. Four blocking checks
+   stopped being able to block. Each has a named reason in the report; read
+   them and say whether you accept each one. This is the exact place a gate
+   goes quiet.
+2. `panel-chrome` moving to contention DIRECTLY BEARS ON #459's one red
+   (anchor 39). If #457 lands first, #459's blocker may cease to block.
+   Land #457, THEN re-gate #459 on the new gate. Anchor 39's A/B may be moot.
+3. Proposed invariant: it found `Blocking gate verdicts use ordering and
+   counts` ALREADY EXISTS in `scripts/harness/harness.invariants.md` and
+   proposes REFINING it rather than adding a record. My brief said the
+   invariant was written nowhere — that is a Family 14 repeat (conductor
+   asserts repo facts from memory). Accept the refinement; record the miss.
+
+### Bycatch to convert BEFORE merging (six items, all in the report)
+panel-chrome load defect (-> #459) · plugin-manifest panel geometry (-> #459)
+· scrollbar deep-wheel · git-watch timeout · bounded-list popup timeout
+· FAST slowest-table empty row `1. 0m00.000s —`.
+
+### Landing recipe
+Cut a clean integration tree (NOT /tmp/integration-459b, it held an
+unresolved conflict), merge main forward, gate, READ `GATE_EXIT` from the
+log, then `land.sh` from the MAIN checkout with `GATE_LOG=` and
+`BYCATCH_TRIAGED=1`. Docs commits use `SKIP_GATE=1`.
+
+## Then, in order
+- #459 — re-gate after #457 lands (see check 2 above).
+- #451 — READY at `a80c75c0`, was HELD for #457's measurements. Unblocked now.
+- #458 — all-terminals-dead-after-idle, unexplained, must not close quietly.
+- Queue: #445, #446, #447, #450, #453–#456.
+
+## Standing
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor is the
+only watcher: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+Goal: make gate solid, deterministic, hard to flake.
+
 # RESUME ANCHOR 39 — 2026-08-02 ~15:20 EDT (99% gauge) — DO THIS FIRST
 
 ## #459 clean-tree gate: GATE_EXIT=1, ONE red
