@@ -9,9 +9,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 ## IN-PROGRESS (3)
 - #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/459-empty-right-pane-has-no-add-affordance`
-- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/in-progress/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md)  [building]
+- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/in-progress/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/457-serial-tail-lacks-quiet-retry`
-- #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [building]
+- #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
 ## USER-DIRECTED (14)
@@ -30,7 +30,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (28)
+## VERIFICATION-INTEGRITY (29)
+- #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)
@@ -60,7 +61,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (30)
+## FLAKE-EVIDENCE (31)
+- #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
 - #455 [agent-composer-never-activates](.invar/tasks/active/455-agent-composer-never-activates/task-455-agent-composer-never-activates.md)
 - #454 [agent-pane-invalid-grid-region](.invar/tasks/active/454-agent-pane-invalid-grid-region/task-454-agent-pane-invalid-grid-region.md)
@@ -105,7 +107,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (36)
+## ARCHITECTURE-HYGIENE (37)
+- #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
 - #434 [gate-glance-null-render-branch-dead](.invar/tasks/active/434-gate-glance-null-render-branch-dead/task-434-gate-glance-null-render-branch-dead.md)
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
