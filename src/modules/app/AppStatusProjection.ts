@@ -1,5 +1,6 @@
 // Deterministic observability projection: read the live application ports and assemble the one
 // StatusChannel snapshot consumed by the driven verification harness.
+// invariant: Pane identity is separate from presentation (src/modules/ui/ui.invariants.md)
 import { Static } from 'ivue/extras';
 import { AgentPaneContent } from '../agent/AgentPaneContent';
 import type { AgentSkillPopup } from '../agent/AgentSkillPopup';
@@ -15,6 +16,7 @@ import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { CompletionPopup } from '../ui/CompletionPopup';
 import type { LayoutSlots } from '../layout/LayoutSlots';
 import { PanelHost } from '../ui/PanelHost';
+import type { PaneContent } from '../ui/PaneContent.interface';
 import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
@@ -37,10 +39,18 @@ class $AppStatusProjection {
       ports.view.editorColumnContentIdentifier();
     const panelViewportColumns = ports.view.panelViewportColumns();
     const panelViewportRows = ports.view.panelViewportRows();
-    const terminalCellIndex = ports.panelHost.resolvedCells.findIndex(
-      (cell) => cell.content.id === 'terminal',
-    );
+    const terminalCellIndex = ports.terminalPaneContent
+      ? ports.panelHost.resolvedCells.findIndex(
+          (cell) => cell.content.id === ports.terminalPaneContent?.id,
+        )
+      : -1;
     const panelCellSpans = ports.panelHost.cellSpans(panelViewportColumns);
+    const orderedPanelContents = ports.panelHost.orderedContents;
+    const activePanelContent =
+      ports.panelHost.focusedContent ??
+      (ports.panelHost.activeId.value
+        ? ports.panelHost.content(ports.panelHost.activeId.value)
+        : null);
     const terminalIsPainted =
       ports.panelHost.visible.value && terminalCellIndex >= 0;
     const openInputOverlays = [
@@ -262,15 +272,20 @@ class $AppStatusProjection {
       terminalFocused:
         terminalIsPainted &&
         ports.panelHost.focused.value &&
-        ports.panelHost.focusedContent?.id === 'terminal',
+        ports.panelHost.focusedContent?.kind === 'terminal',
       panelActiveContent:
-        ports.panelHost.focusedContent?.id ?? ports.panelHost.activeId.value,
-      panelContentIds: ports.panelHost.order.value,
+        activePanelContent?.id ?? ports.panelHost.activeId.value,
+      panelActiveContentLabel: activePanelContent
+        ? (activePanelContent.instanceLabel ?? activePanelContent.title)
+        : null,
+      panelActiveContentKind:
+        activePanelContent?.kind ?? activePanelContent?.id ?? null,
+      panelContentIds: orderedPanelContents.map((content) => content.id),
       panelContentOrder: ports.panelHost.order.value,
-      panelContentLabels: ports.panelHost.orderedContents.map(
+      panelContentLabels: orderedPanelContents.map(
         (content) => content.instanceLabel ?? content.title,
       ),
-      panelContentKinds: ports.panelHost.orderedContents.map(
+      panelContentKinds: orderedPanelContents.map(
         (content) => content.kind ?? content.id,
       ),
       panelSpaceIds: ports.panelHost.spaces.value.map(
@@ -301,6 +316,12 @@ class $AppStatusProjection {
       // column width — the driving smoke reads this to prove 2-up render, focus routing, and re-flow.
       panelCellIds: ports.panelHost.resolvedCells.map(
         (cell) => cell.content.id,
+      ),
+      panelCellLabels: ports.panelHost.resolvedCells.map(
+        (cell) => cell.content.instanceLabel ?? cell.content.title,
+      ),
+      panelCellKinds: ports.panelHost.resolvedCells.map(
+        (cell) => cell.content.kind ?? cell.content.id,
       ),
       panelFocusedIndex: ports.panelHost.focusedIndex.value,
       panelCellColumns: ports.panelHost
@@ -500,6 +521,7 @@ export interface AppStatusProjectionPorts {
     | 'resolvedCells'
     | 'focusedContent'
     | 'focusedIndex'
+    | 'content'
     | 'cellSpans'
     | 'panelListVisible'
     | 'panelListExpanded'
@@ -566,4 +588,5 @@ export interface AppStatusProjectionPorts {
     | 'currentEngine'
     | 'title'
   > | null;
+  readonly terminalPaneContent: Pick<PaneContent, 'id'> | null;
 }

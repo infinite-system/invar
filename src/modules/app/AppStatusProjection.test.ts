@@ -107,7 +107,12 @@ describe('AppStatusProjection', () => {
     const goToLinePrompt = new GoToLinePrompt.Class();
     const quitConfirmation = new Dialog.Class();
     const tooltip = new Tooltip.Class();
-    const panelHost = new PanelHost.Class();
+    const panelContentOrder = ref([
+      'saved-missing',
+      'pane-instance-19',
+      'media-demo',
+    ]);
+    const panelHost = new PanelHost.Class({ contentOrder: panelContentOrder });
     const primaryDockHost = new PanelHost.Class();
     const rightDockHost = new PanelHost.Class();
     const layoutSlots = new LayoutSlots.Class();
@@ -120,6 +125,7 @@ describe('AppStatusProjection', () => {
     let mouse: AppStatusMouseEvent | null = null;
     let narration: InstanceType<typeof NarrationProjection.Class> | null = null;
     let agentPaneContent: AgentPaneContent.Model | null = null;
+    let terminalPaneContent: PaneContent | null = null;
     const ports: AppStatusProjectionPorts = {
       workspaceSet,
       settings,
@@ -248,6 +254,9 @@ describe('AppStatusProjection', () => {
       get agentPaneContent() {
         return agentPaneContent;
       },
+      get terminalPaneContent() {
+        return terminalPaneContent;
+      },
     };
 
     workspaceSet.active.editor.document.loadFromText(
@@ -343,9 +352,15 @@ describe('AppStatusProjection', () => {
     );
     unregisterPreviewClaim();
 
-    const createPanelContent = (id: string): PaneContent =>
+    const createPanelContent = (
+      id: string,
+      kind: string,
+      label: string,
+    ): PaneContent =>
       ({
         id,
+        kind,
+        instanceLabel: label,
         title: id,
         renderRevision: ref(0),
         handleKey: () => false,
@@ -354,11 +369,18 @@ describe('AppStatusProjection', () => {
         onBlur: () => {},
         dispose: () => {},
       }) as PaneContent;
-    panelHost.register(createPanelContent('terminal'));
-    panelHost.register(createPanelContent('media-demo'));
+    terminalPaneContent = createPanelContent(
+      'pane-instance-19',
+      'terminal',
+      'Terminal',
+    );
+    panelHost.register(terminalPaneContent);
+    panelHost.register(
+      createPanelContent('media-demo', 'media', 'Media preview'),
+    );
     panelHost.visible.value = true;
     panelHost.focused.value = true;
-    panelHost.activate('terminal');
+    panelHost.activate('pane-instance-19');
     const terminalSnapshot = AppStatusProjection.Class.snapshot(ports);
     expect(terminalSnapshot.panelVisible).toBe(true);
     expect(terminalSnapshot.panelFocused).toBe(true);
@@ -368,14 +390,33 @@ describe('AppStatusProjection', () => {
     expect(terminalSnapshot.terminalFocused).toBe(true);
     expect(terminalSnapshot.terminalColumns).toBe(80);
     expect(terminalSnapshot.terminalRows).toBe(24);
+    expect(terminalSnapshot.panelContentIds).toEqual([
+      'pane-instance-19',
+      'media-demo',
+    ]);
+    expect(terminalSnapshot.panelContentLabels).toEqual([
+      'Terminal',
+      'Media preview',
+    ]);
+    expect(terminalSnapshot.panelContentKinds).toEqual(['terminal', 'media']);
+    expect(terminalSnapshot.panelActiveContentLabel).toBe('Terminal');
+    expect(terminalSnapshot.panelActiveContentKind).toBe('terminal');
+    expect(terminalSnapshot.panelCellLabels).toEqual(['Terminal']);
+    expect(terminalSnapshot.panelCellKinds).toEqual(['terminal']);
+    expect(terminalSnapshot.panelContentOrder).toEqual([
+      'saved-missing',
+      'pane-instance-19',
+      'media-demo',
+    ]);
     panelHost.activate('media-demo');
     const mediaSnapshot = AppStatusProjection.Class.snapshot(ports);
     expect(mediaSnapshot.panelActiveContent).toBe('media-demo');
+    expect(mediaSnapshot.panelActiveContentLabel).toBe('Media preview');
     expect(mediaSnapshot.terminalVisible).toBe(false);
     expect(mediaSnapshot.terminalFocused).toBe(false);
     expect(mediaSnapshot.terminalColumns).toBe(0);
     expect(mediaSnapshot.terminalRows).toBe(0);
-    panelHost.activate('terminal');
+    panelHost.activate('pane-instance-19');
     expect(AppStatusProjection.Class.snapshot(ports).terminalVisible).toBe(
       true,
     );

@@ -102,7 +102,7 @@ try {
     (status) =>
       status.panelVisible === true &&
       status.terminalVisible === false &&
-      status.panelActiveContent === 'agent' &&
+      status.panelActiveContentKind === 'agent' &&
       typeof status.height === 'number',
   );
   HarnessSmoke.Class.pass('status-bar agent button opens the agent pane');
@@ -128,12 +128,7 @@ try {
 
   console.log('== harness agent: chord, composer, and echo round trip ==');
   driver.sendRawInput('\x1b[27;6;97~');
-  let snapshot = await driver.awaitSnapshot(
-    (candidate) =>
-      candidate.findText('Ask Claude') !== null &&
-      candidate.findText('❯') !== null,
-  );
-  await HarnessSmoke.Class.awaitStatus(
+  const openedAgentStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the agent chord opens and focuses the registered agent pane',
@@ -142,8 +137,17 @@ try {
       status.panelFocused === true &&
       status.terminalVisible === false &&
       status.terminalFocused === false &&
-      status.panelActiveContent === 'agent' &&
-      String(status.panelContentIds).includes('agent'),
+      status.panelActiveContentKind === 'agent' &&
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.includes('agent'),
+  );
+  const agentRectangle =
+    HarnessSmoke.Class.activePanelCellRectangle(openedAgentStatus);
+  if (!agentRectangle) throw new Error('Active agent geometry disappeared');
+  let snapshot = await driver.awaitSnapshot(
+    (candidate) =>
+      candidate.findTextInRectangle('Ask Claude', agentRectangle) !== null &&
+      candidate.findTextInRectangle('❯', agentRectangle) !== null,
   );
   HarnessSmoke.Class.pass('agent chord opens and focuses the pane');
   HarnessSmoke.Class.pass('agent is registered in the shared panel host');

@@ -109,6 +109,78 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
+async function driveLegacyPersistedPaneRestore(): Promise<void> {
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'invar-panel-legacy-identity-'),
+  );
+  const settingsDirectory = join(homeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    `${JSON.stringify({
+      glyphMode: 'unicode',
+      panelContentOrder: ['terminal', 'agent'],
+      panelWorkspaceStates: {
+        [process.cwd()]: {
+          spaces: [
+            {
+              kind: 'terminal',
+              label: 'Terminal',
+              groups: [
+                [
+                  {
+                    kind: 'terminal',
+                    label: 'Terminal',
+                    identifier: 'terminal',
+                  },
+                ],
+              ],
+              activeGroupIndex: 0,
+            },
+          ],
+          activeSpaceIndex: 0,
+          panelListExpanded: false,
+          panelListWidth: 20,
+          visible: true,
+        },
+      },
+    })}\n`,
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: process.cwd(),
+    columns: 120,
+    rows: 40,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'an old saved terminal identifier restores unchanged',
+      (status) =>
+        status.ready === true &&
+        status.panelActiveContent === 'terminal' &&
+        Array.isArray(status.panelContentIds) &&
+        status.panelContentIds.includes('terminal') &&
+        Array.isArray(status.panelContentKinds) &&
+        status.panelContentIds.length === status.panelContentKinds.length &&
+        Array.isArray(status.panelContentLabels) &&
+        status.panelContentIds.length === status.panelContentLabels.length,
+      15_000,
+    );
+    HarnessSmoke.Class.pass('old saved pane identifiers restore unchanged');
+  } finally {
+    driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
 async function driveRightDockCrossing(): Promise<void> {
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'invar-panel-right-dock-crossing-'),
@@ -292,20 +364,26 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           (geometry: { contentId?: string }) => geometry.contentId === 'panel',
         ),
     );
+    const panelSlot = HarnessSmoke.Class.layoutSlotRectangle(
+      status,
+      'bottomPanel',
+    );
+    if (!panelSlot) throw new Error('Missing bottom-panel slot');
+    const panelTabsSlot = HarnessSmoke.Class.layoutSlotRectangle(
+      status,
+      'bottomPanelTabs',
+    );
+    if (!panelTabsSlot) throw new Error('Missing bottom-panel tabs slot');
     const initialSnapshot = await driver.awaitGridCondition(
       `${columns}-column tab row paints both space tabs without pane headings`,
       (snapshot) =>
-        snapshot.findText('Terminal') !== null &&
-        snapshot.findText(columns === 120 ? 'Database' : 'Datab') !== null &&
+        snapshot.findTextInRectangle('Terminal', panelTabsSlot) !== null &&
+        snapshot.findTextInRectangle(
+          columns === 120 ? 'Database' : 'Datab',
+          panelTabsSlot,
+        ) !== null &&
         snapshot.findText('Claude ×') === null,
     );
-    const panelSlot = (
-      status.layoutSlots as Record<
-        string,
-        { left: number; top: number; width: number; height: number }
-      >
-    ).bottomPanel;
-    if (!panelSlot) throw new Error('Missing bottom-panel slot');
     const topLeft = initialSnapshot.cell(panelSlot.top, panelSlot.left);
     const bottomLeft = initialSnapshot.cell(
       panelSlot.top + panelSlot.height - 1,
@@ -611,7 +689,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column keyboard cycle selects Database`,
       (candidate) =>
         candidate.panelActiveSpace === 'database-space-1' &&
-        JSON.stringify(candidate.panelCellIds) === JSON.stringify(['database']),
+        JSON.stringify(candidate.panelCellKinds) ===
+          JSON.stringify(['database']),
     );
     const terminalTab = tabBar(status).tabs.find((tab) =>
       tab.spaceIdentifier.startsWith('terminal-space-'),
@@ -704,37 +783,83 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
         '120-column Database instances list opens',
         (candidate) => candidate.panelListVisible === true,
       );
-      const databaseAddPosition = await driver
-        .awaitGridCondition(
-          '120-column Database instances list paints its contextual add',
-          (snapshot) => snapshot.findText('+ Database') !== null,
-        )
-        .then((snapshot) => snapshot.findText('+ Database'));
-      if (!databaseAddPosition)
-        throw new Error('Missing contextual Database add');
-      clickCell(
-        driver,
-        databaseAddPosition.column + 2,
-        databaseAddPosition.row,
-      );
-      await HarnessSmoke.Class.awaitStatus(
+      const addDatabaseInstance = async (
+        expectedLabel: string,
+        expectedLabelCount = 1,
+      ): Promise<StatusSnapshot> => {
+        const databaseAddPosition = await driver
+          .awaitGridCondition(
+            `120-column Database instances list paints its contextual add before ${expectedLabel}`,
+            (snapshot) => snapshot.findText('+ Database') !== null,
+          )
+          .then((snapshot) => snapshot.findText('+ Database'));
+        if (!databaseAddPosition)
+          throw new Error('Missing contextual Database add');
+        clickCell(
+          driver,
+          databaseAddPosition.column + 2,
+          databaseAddPosition.row,
+        );
+        await HarnessSmoke.Class.awaitStatus(
+          driver,
+          statusPath,
+          `120-column Database add offers only another Database instance before ${expectedLabel}`,
+          (candidate) =>
+            candidate.boundedListPopupOpen === true &&
+            candidate.boundedListPopupTitle === 'Add Database' &&
+            JSON.stringify(candidate.boundedListPopupItemIdentifiers) ===
+              JSON.stringify(['database-instance']),
+        );
+        driver.sendKeys('Enter');
+        return HarnessSmoke.Class.awaitStatus(
+          driver,
+          statusPath,
+          `120-column contextual add creates ${expectedLabel}`,
+          (candidate) =>
+            Array.isArray(candidate.panelContentLabels) &&
+            candidate.panelContentLabels.filter(
+              (label) => label === expectedLabel,
+            ).length === expectedLabelCount,
+        );
+      };
+      status = await addDatabaseInstance('Database 2');
+      status = await addDatabaseInstance('Database 3');
+      await HarnessSmoke.Class.closePanelContentsListRow(
         driver,
         statusPath,
-        '120-column Database add offers only another Database instance',
-        (candidate) =>
-          candidate.boundedListPopupOpen === true &&
-          candidate.boundedListPopupTitle === 'Add Database' &&
-          JSON.stringify(candidate.boundedListPopupItemIdentifiers) ===
-            JSON.stringify(['database-instance']),
+        'Database 2',
       );
-      driver.sendKeys('Enter');
-      status = await HarnessSmoke.Class.awaitStatus(
+      status = await addDatabaseInstance('Database 3', 2);
+      const duplicateLabelIdentifiers = (
+        status.panelContentIds as string[]
+      ).filter(
+        (_identifier, index) =>
+          (status.panelContentLabels as string[])[index] === 'Database 3',
+      );
+      HarnessSmoke.Class.requireCondition(
+        duplicateLabelIdentifiers.length === 2 &&
+          new Set(duplicateLabelIdentifiers).size === 2,
+        'two Database 3 panes keep separate identifiers',
+      );
+      await HarnessSmoke.Class.closePanelContentsListRow(
         driver,
         statusPath,
-        '120-column contextual add creates an independent Database instance',
-        (candidate) =>
-          Array.isArray(candidate.panelContentIds) &&
-          candidate.panelContentIds.includes('database-2'),
+        'Database 3',
+        1,
+      );
+      status = HarnessSmoke.Class.readStatus(statusPath);
+      const survivingDuplicateLabelIdentifiers = (
+        status.panelContentIds as string[]
+      ).filter(
+        (_identifier, index) =>
+          (status.panelContentLabels as string[])[index] === 'Database 3',
+      );
+      HarnessSmoke.Class.requireCondition(
+        survivingDuplicateLabelIdentifiers.length === 1 &&
+          duplicateLabelIdentifiers.includes(
+            survivingDuplicateLabelIdentifiers[0]!,
+          ),
+        'closing one Database 3 pane leaves the other Database 3 pane alive',
       );
       const countSnapshot = await driver.awaitGridCondition(
         '120-column instances toggle paints a superscript count with one separator space',
@@ -924,6 +1049,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
   }
 }
 
+await driveLegacyPersistedPaneRestore();
 await driveRightDockCrossing();
 await driveAtSize(120, 40);
 await driveAtSize(88, 24);

@@ -330,6 +330,17 @@ class $Bootstrap {
         );
       },
     });
+    /** Resolve a visible kind through an explicit selection policy. Kind is never used as an id. */
+    const visiblePaneOfKind = (kind: string): PaneContent | null => {
+      const focusedContent = panelHost.focusedContent;
+      if ((focusedContent?.kind ?? focusedContent?.id) === kind) {
+        return focusedContent;
+      }
+      return panelHost.visibleContentsOfKind(kind)[0] ?? null;
+    };
+    /** Resolve a requested kind through an explicit focused, visible, then registered policy. */
+    const currentPaneOfKind = (kind: string): PaneContent | null =>
+      visiblePaneOfKind(kind) ?? panelHost.contentsOfKind(kind)[0] ?? null;
     const workspacePanelWorlds = new Map<
       Workspace.Instance,
       WorkspacePanelWorld
@@ -445,8 +456,7 @@ class $Bootstrap {
         paneRuntimes,
         openRuntimePane: (runtimeKind, request) =>
           openRuntimePane(runtimeKind, request),
-        currentPaneOfKind: (kind) =>
-          panelHost.visibleContentOfKind(kind) ?? panelHost.contentOfKind(kind),
+        currentPaneOfKind,
         releasePane: (identifier) =>
           panelHost.removeContentFromAnySet(identifier),
         editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
@@ -487,7 +497,7 @@ class $Bootstrap {
     // visible split; closing it leaves the agent region intact.
     const toggleTerminal = (): void => {
       agentSkillPopup.close();
-      const visibleTerminal = panelHost.visibleContentOfKind('terminal');
+      const visibleTerminal = visiblePaneOfKind('terminal');
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
       else {
         // No runtime for this kind (its plugin is disabled) — the affordance degrades to nothing
@@ -501,9 +511,12 @@ class $Bootstrap {
     // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
     const toggleAgent = (): void => {
       agentSkillPopup.close();
-      const visibleAgent = panelHost.visibleContentOfKind('agent');
+      const visibleAgent = visiblePaneOfKind('agent');
       if (visibleAgent) panelHost.toggleContent(visibleAgent.id);
-      else panelHost.showContent(ensureAgent().id);
+      else {
+        const agent = ensureAgent();
+        if (agent) panelHost.showContent(agent.id);
+      }
     };
     const toggleRightDock = (): void => {
       agentSkillPopup.close();
@@ -653,12 +666,6 @@ class $Bootstrap {
     // true size. The host names no runtime: it passes a KIND to the registry and registers whatever
     // comes back.
     const runtimePanes = new Map<string, PaneContent>();
-    /** The pane an outside consumer means by a kind in the active workspace world. */
-    const currentPaneOfKind = (kind: string): PaneContent | null => {
-      return (
-        panelHost.visibleContentOfKind(kind) ?? panelHost.contentOfKind(kind)
-      );
-    };
     const currentAgentPane = (): AgentPaneContent.Model | null => {
       const content = currentPaneOfKind('agent');
       return content instanceof AgentPaneContent.Class ? content : null;
@@ -729,14 +736,30 @@ class $Bootstrap {
       additionalInstance = false,
       process?: PaneRuntimeRequest['process'],
       labelOverride?: string,
+      persistedIdentifier?: string,
     ): PaneContent | null => {
-      const anyExisting = panelHost.contentOfKind(kind) !== null;
-      const identity = paneRuntimes.allocateInstanceIdentity(
-        kind,
-        additionalInstance || anyExisting,
-        activeWorkspacePanelWorld.identityScope,
-      );
+      const anyExisting = panelHost.contentsOfKind(kind).length > 0;
+      const identity = persistedIdentifier
+        ? paneRuntimes.claimPersistedInstanceIdentifier(persistedIdentifier)
+          ? {
+              identifier: persistedIdentifier,
+              label:
+                labelOverride ??
+                paneRuntimes.runtime(kind)?.instanceLabel ??
+                kind,
+            }
+          : null
+        : paneRuntimes.allocateInstanceIdentity(
+            kind,
+            additionalInstance || anyExisting,
+            activeWorkspacePanelWorld.identityScope,
+          );
       if (!identity) return null;
+      if (runtimePanes.has(identity.identifier)) {
+        throw new Error(
+          `Runtime pane identifier already belongs to another pane: ${identity.identifier}`,
+        );
+      }
       const content = paneRuntimes.createPane(kind, {
         identifier: identity.identifier,
         label: labelOverride ?? identity.label,
@@ -766,6 +789,11 @@ class $Bootstrap {
       if (existingContent) {
         panelHost.showContent(existingContent.id);
         return true;
+      }
+      if (runtimePanes.has(request.identifier)) {
+        throw new Error(
+          `Runtime pane identifier already belongs to another pane: ${request.identifier}`,
+        );
       }
       const content = paneRuntimes.createPane(runtimeKind, request);
       if (!content) return false;
@@ -890,8 +918,9 @@ class $Bootstrap {
     const createAgent = (
       additionalInstance = false,
       labelOverride?: string,
-    ): AgentPaneContent.Model => {
-      const anyExisting = panelHost.contentOfKind('agent') !== null;
+      persistedIdentifier?: string,
+    ): AgentPaneContent.Model | null => {
+      const anyExisting = panelHost.contentsOfKind('agent').length > 0;
       const instanceNumber =
         additionalInstance || anyExisting
           ? activeWorkspacePanelWorld.agentInstanceCount + 1
@@ -900,11 +929,12 @@ class $Bootstrap {
         activeWorkspacePanelWorld.agentInstanceCount,
         instanceNumber,
       );
-      const scopedKind = activeWorkspacePanelWorld.identityScope
-        ? `agent@${activeWorkspacePanelWorld.identityScope}`
-        : 'agent';
-      const identifier =
-        instanceNumber === 1 ? scopedKind : `${scopedKind}-${instanceNumber}`;
+      const identifier = persistedIdentifier
+        ? paneRuntimes.claimPersistedInstanceIdentifier(persistedIdentifier)
+          ? persistedIdentifier
+          : null
+        : paneRuntimes.allocateInstanceIdentifier();
+      if (!identifier) return null;
       const label =
         labelOverride ??
         (instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`);
@@ -929,6 +959,14 @@ class $Bootstrap {
         model: settings.agentModel.value,
         terminalTools: terminalToolPort,
       });
+      if (
+        agentPane instanceof AgentPaneContent.Class &&
+        narrationsByAgentIdentifier.has(agentPane.id)
+      ) {
+        throw new Error(
+          `Agent pane identifier already owns narration: ${agentPane.id}`,
+        );
+      }
       panelHost.register(agentPane);
       if (agentPane instanceof AgentPaneContent.Class) {
         agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
@@ -959,7 +997,7 @@ class $Bootstrap {
       }
       return agentPane;
     };
-    const ensureAgent = (): AgentPaneContent.Model =>
+    const ensureAgent = (): AgentPaneContent.Model | null =>
       currentAgentPane() ?? createAgent();
     handlePanelContentRemoved = (content): void => {
       if (runtimePanes.delete(content.id)) paneRuntimes.paneRemoved(content);
@@ -973,11 +1011,23 @@ class $Bootstrap {
       connectTerminalFollow();
     };
 
-    const createDatabaseInstance = (): PaneContent | null => {
-      const databaseContent = panelHost.contentOfKind('database');
+    const databasePaneFactory = (): PaneContent | null =>
+      panelHost
+        .contentsOfKind('database')
+        .find((content) => content.createInstance !== undefined) ?? null;
+    const createDatabaseInstance = (
+      labelOverride?: string,
+      persistedIdentifier?: string,
+    ): PaneContent | null => {
+      const databaseContent = databasePaneFactory();
       if (!databaseContent?.createInstance) return databaseContent;
-      const label = nextWindowLabel('Database');
-      const identifier = `database-${panelHost.orderedContents.filter((content) => content.kind === 'database').length + 1}`;
+      const label = labelOverride ?? nextWindowLabel('Database');
+      const identifier = persistedIdentifier
+        ? paneRuntimes.claimPersistedInstanceIdentifier(persistedIdentifier)
+          ? persistedIdentifier
+          : null
+        : paneRuntimes.allocateInstanceIdentifier();
+      if (!identifier) return null;
       const instance = databaseContent.createInstance(identifier, label);
       panelHost.register(instance);
       return instance;
@@ -1098,19 +1148,30 @@ class $Bootstrap {
         }
       }
       if (pane.kind === 'database') {
-        return panelHost.contentOfKind('database');
+        const databaseContent = databasePaneFactory();
+        if (pane.identifier === databaseContent?.id) return databaseContent;
+        return createDatabaseInstance(pane.label, pane.identifier);
       }
-      if (pane.kind === 'invar-agent') return createAgent(true, pane.label);
+      if (pane.kind === 'invar-agent') {
+        return createAgent(true, pane.label, pane.identifier);
+      }
       if (pane.kind === 'terminal-agent') {
         return createRuntimePane(
           'terminal',
           true,
           { command: 'claude' },
           pane.label,
+          pane.identifier,
         );
       }
       if (pane.kind === 'task-notice') return null;
-      return createRuntimePane('terminal', true, undefined, pane.label);
+      return createRuntimePane(
+        'terminal',
+        true,
+        undefined,
+        pane.label,
+        pane.identifier,
+      );
     };
     restorePanelWorkspaceState = (workspace): void => {
       if (restoredPanelWorkspaceState.has(workspace)) return;
@@ -1204,6 +1265,7 @@ class $Bootstrap {
         panelHost.unsplit();
         return;
       }
+      if (!agent) return;
       if (!panelHost.visible.value) panelHost.show();
       panelHost.split(terminal ? [agent.id, terminal.id] : [agent.id]);
     };
@@ -1352,6 +1414,9 @@ class $Bootstrap {
       },
       get agentPaneContent() {
         return currentAgentPane();
+      },
+      get terminalPaneContent() {
+        return currentPaneOfKind('terminal');
       },
     };
 

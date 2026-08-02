@@ -148,13 +148,20 @@ async function openLanguageFixture(
       status.structureStatus === 'ready' &&
       Number(status.structureRows) > 0,
   );
+  const structureRectangle = HarnessSmoke.Class.layoutSlotRectangle(
+    readyStatus,
+    'rightDock',
+  );
+  if (!structureRectangle) {
+    throw new Error('Structure dock geometry disappeared');
+  }
   let snapshot = await driver.awaitGridCondition(
     `${fileName} paints its editor text and structure row`,
     (candidate) =>
-      candidate.findText(`${valueName};`) !== null &&
-      candidate.findText('Structure') !== null,
+      candidate.findEditorText(`${valueName};`) !== null &&
+      candidate.findTextInRectangle('Structure', structureRectangle) !== null,
   );
-  const target = snapshot.findText(`${valueName};`);
+  const target = snapshot.findEditorText(`${valueName};`);
   requireCondition(target !== null, `${fileName} hover target is visible`);
   if (!target) throw new Error(`${fileName} hover target disappeared`);
   driver.sendMouse({
@@ -364,10 +371,13 @@ try {
     statusPath,
     'the first workspace owns its interactive terminal',
     (status) =>
-      status.panelActiveContent === 'terminal' &&
+      status.panelActiveContentKind === 'terminal' &&
       Array.isArray(status.panelContentKinds) &&
       status.panelContentKinds.includes(firstTaskIdentifier) &&
       status.panelContentKinds.includes('terminal'),
+  );
+  const firstTerminalIdentifier = String(
+    firstPanelWorldStatus.panelActiveContent,
   );
   driver.sendText(`printf '${firstTerminalMarker}\\n'`);
   driver.sendKeys('Enter');
@@ -546,17 +556,20 @@ try {
     'the second workspace does not paint the first terminal scrollback',
   );
   driver.sendKeys('Control+j');
-  await awaitStatus(
+  const secondTerminalStatus = await awaitStatus(
     driver,
     statusPath,
     'a new terminal belongs only to the second workspace',
     (status) =>
-      status.panelActiveContent === 'terminal@2' &&
+      status.panelActiveContentKind === 'terminal' &&
       Array.isArray(status.panelContentKinds) &&
       status.panelContentKinds.includes(secondTaskIdentifier) &&
       status.panelContentKinds.includes('terminal') &&
       Array.isArray(status.panelContentLabels) &&
       status.panelContentLabels.includes('Terminal'),
+  );
+  const secondTerminalIdentifier = String(
+    secondTerminalStatus.panelActiveContent,
   );
   driver.sendText(`printf '${secondTerminalMarker}\\n'`);
   driver.sendKeys('Enter');
@@ -570,9 +583,12 @@ try {
     statusPath,
     'a new agent belongs only to the second workspace',
     (status) =>
-      status.panelActiveContent === 'agent@2' &&
+      status.panelActiveContentKind === 'agent' &&
       Array.isArray(status.panelContentKinds) &&
       status.panelContentKinds.includes('agent'),
+  );
+  const secondAgentIdentifier = String(
+    secondPanelWorldStatus.panelActiveContent,
   );
   snapshot = driver.snapshot();
   clickMarker(driver, snapshot, firstName.slice(0, 17));
@@ -594,8 +610,12 @@ try {
       !restoredFirstPanelWorldStatus.panelContentIds.includes(
         secondTaskIdentifier,
       ) &&
-      !restoredFirstPanelWorldStatus.panelContentIds.includes('terminal@2') &&
-      !restoredFirstPanelWorldStatus.panelContentIds.includes('agent@2'),
+      !restoredFirstPanelWorldStatus.panelContentIds.includes(
+        secondTerminalIdentifier,
+      ) &&
+      !restoredFirstPanelWorldStatus.panelContentIds.includes(
+        secondAgentIdentifier,
+      ),
     'the first workspace excludes every second-workspace pane identifier',
   );
   await driver.awaitGridCondition(
@@ -628,8 +648,15 @@ try {
   );
   requireCondition(
     Array.isArray(secondPanelWorldInitialStatus.panelContentIds) &&
-      !secondPanelWorldInitialStatus.panelContentIds.includes('terminal@2') &&
-      !secondPanelWorldInitialStatus.panelContentIds.includes('agent@2'),
+      !secondPanelWorldInitialStatus.panelContentIds.includes(
+        firstTerminalIdentifier,
+      ) &&
+      !secondPanelWorldInitialStatus.panelContentIds.includes(
+        secondTerminalIdentifier,
+      ) &&
+      !secondPanelWorldInitialStatus.panelContentIds.includes(
+        secondAgentIdentifier,
+      ),
     'new terminal and agent instances were absent before their second-workspace gestures',
   );
   driver.sendKeys('Control+j');
@@ -640,7 +667,7 @@ try {
     (status) =>
       status.activeWorkspaceRoot === secondRoot &&
       Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.includes('terminal@2'),
+      status.panelCellIds.includes(secondTerminalIdentifier),
   );
   await driver.awaitGridCondition(
     'the second terminal scrollback returns after a workspace round trip',

@@ -110,8 +110,8 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     disabledStatusPath,
-    "status condition: status.panelActiveContent === 'agent'",
-    (status) => status.panelActiveContent === 'agent',
+    "status condition: status.panelActiveContentKind === 'agent'",
+    (status) => status.panelActiveContentKind === 'agent',
   );
   await driveTurn(driver, disabledStatusPath, 'hello narration');
   await HarnessSmoke.Class.awaitStatus(
@@ -146,8 +146,8 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     enabledStatusPath,
-    "status condition: status.panelActiveContent === 'agent'",
-    (status) => status.panelActiveContent === 'agent',
+    "status condition: status.panelActiveContentKind === 'agent'",
+    (status) => status.panelActiveContentKind === 'agent',
   );
   const inlineCodePrompt =
     '**`alpha``beta`** and [`linkCode`](https://example.com) then `INLINE_CODE_PLACEHOLDER_0`';

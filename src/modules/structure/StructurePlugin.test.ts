@@ -298,6 +298,8 @@ test('uninstall withdraws everything it registered and a reinstall rebuilds it',
 
   plugin.activateApplication(recording.context);
   plugin.disposeApplication();
+  // The real contribution manager runs its registration disposer after the plugin hook.
+  recording.rightDockHost.removeContent('structure');
 
   expect(recording.commandDisposals).toBe(1);
   expect(recording.statusDisposals).toBe(1);

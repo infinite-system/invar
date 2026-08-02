@@ -1,8 +1,18 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { Static } from 'ivue/extras';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
-import type { HarnessSnapshot } from './HarnessSnapshot';
+import type { HarnessRectangle, HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
+import {
+  activePanelCell,
+  activePanelCellRectangle,
+  layoutSlotRectangle,
+  panelCellsOfKind,
+  panelCellRectangle,
+  panelContentIdentifiersOfKind,
+  type HarnessStatus,
+  type PublishedPanelCell,
+} from './HarnessSmokeSupport';
 
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
@@ -58,6 +68,44 @@ class $HarnessSmoke {
 
   static readStatus(statusPath: string): StatusSnapshot {
     return JSON.parse(readFileSync(statusPath, 'utf8')) as StatusSnapshot;
+  }
+
+  static activePanelCell(status: HarnessStatus): PublishedPanelCell | null {
+    return activePanelCell(status);
+  }
+
+  static activePanelCellRectangle(
+    status: HarnessStatus,
+  ): HarnessRectangle | null {
+    return activePanelCellRectangle(status);
+  }
+
+  static panelCellRectangle(
+    status: HarnessStatus,
+    identifier: string,
+  ): HarnessRectangle | null {
+    return panelCellRectangle(status, identifier);
+  }
+
+  static layoutSlotRectangle(
+    status: HarnessStatus,
+    slotName: string,
+  ): HarnessRectangle | null {
+    return layoutSlotRectangle(status, slotName);
+  }
+
+  static panelCellsOfKind(
+    status: HarnessStatus,
+    kind: string,
+  ): readonly PublishedPanelCell[] {
+    return panelCellsOfKind(status, kind);
+  }
+
+  static panelContentIdentifiersOfKind(
+    status: HarnessStatus,
+    kind: string,
+  ): readonly string[] {
+    return panelContentIdentifiersOfKind(status, kind);
   }
 
   static async removeTemporaryDirectory(directoryPath: string): Promise<void> {
@@ -141,6 +189,7 @@ class $HarnessSmoke {
     driver: PtyTestDriver.Model,
     statusPath: string,
     visibleTitle: string,
+    expectedRemainingCount = 0,
   ): Promise<void> {
     await this.awaitStatus(
       driver,
@@ -230,18 +279,24 @@ class $HarnessSmoke {
     await this.awaitStatus(
       driver,
       statusPath,
-      `${visibleTitle} is absent after its row close`,
+      `${visibleTitle} has ${expectedRemainingCount} rows after one row close`,
       (candidate) =>
         Array.isArray(candidate.panelContentLabels) &&
-        !candidate.panelContentLabels.some(
-          (label) =>
-            typeof label === 'string' && label.startsWith(visibleTitle),
-        ),
+        candidate.panelContentLabels.filter(
+          (label) => typeof label === 'string' && label === visibleTitle,
+        ).length === expectedRemainingCount,
     );
-    await driver.awaitGridCondition(
-      `${visibleTitle} is no longer painted after its row close`,
-      (candidate) => candidate.findText(visibleTitle) === null,
-    );
+    if (expectedRemainingCount === 0) {
+      await driver.awaitGridCondition(
+        `${visibleTitle} is no longer painted after its row close`,
+        (candidate) => candidate.findText(visibleTitle) === null,
+      );
+    } else {
+      await driver.awaitGridCondition(
+        `${visibleTitle} remains painted after one matching row closes`,
+        (candidate) => candidate.findText(visibleTitle) !== null,
+      );
+    }
   }
 
   static async awaitScrollPosition(
@@ -282,6 +337,25 @@ class $HarnessSmoke {
       column,
       row: position.row,
       button: 'left',
+    });
+  }
+
+  static clickTextInRectangle(
+    driver: PtyTestDriver.Model,
+    snapshot: HarnessSnapshot.Model,
+    marker: string,
+    rectangle: HarnessRectangle,
+    columnOffset = 0,
+  ): void {
+    const position = snapshot.findTextInRectangle(marker, rectangle);
+    if (!position) {
+      throw new Error(
+        `Marker is not visible in the requested rectangle: ${marker}\n${snapshot.text()}`,
+      );
+    }
+    driver.sendMouseClick({
+      column: position.column + columnOffset,
+      row: position.row,
     });
   }
 }

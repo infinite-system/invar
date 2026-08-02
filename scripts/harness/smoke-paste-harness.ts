@@ -160,7 +160,7 @@ try {
     'the terminal pane is active and focused',
     (status) =>
       status.terminalFocused === true &&
-      status.panelActiveContent === 'terminal',
+      status.panelActiveContentKind === 'terminal',
   );
   pass('active pane is the terminal');
   driver.sendPaste('PASTEDINTERMINAL');
@@ -291,7 +291,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the agent pane is published as active',
-    (status) => status.panelActiveContent === 'agent',
+    (status) => status.panelActiveContentKind === 'agent',
   );
   driver.sendPaste('PASTEDINAGENT');
   await driver.awaitSnapshot(
@@ -315,11 +315,15 @@ try {
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
-  const agentPanelCellIdentifiers =
-    agentPanelLayoutStatus.panelCellIds as string[];
+  const activeAgentCell = HarnessSmoke.Class.activePanelCell(
+    agentPanelLayoutStatus,
+  );
   const agentPanelCellColumns =
     agentPanelLayoutStatus.panelCellColumns as number[];
-  const pasteAgentCellIndex = agentPanelCellIdentifiers.indexOf('agent');
+  if (activeAgentCell?.kind !== 'agent') {
+    throw new Error('The active agent panel cell geometry disappeared');
+  }
+  const pasteAgentCellIndex = activeAgentCell.index;
   const agentBottomPanel = (
     agentPanelLayoutStatus.layoutSlots as
       Record<string, { left: number }> | undefined
@@ -351,7 +355,7 @@ try {
     await awaitStatusPublication(
       statusPath,
       `${payloadByteCount}-byte paste remains routed to the agent composer`,
-      (status) => status.panelActiveContent === 'agent',
+      (status) => status.panelActiveContentKind === 'agent',
     );
     pass(
       `${payloadByteCount}-byte paste remained routed to the agent composer`,
@@ -378,19 +382,22 @@ try {
     statusPath,
     'the staged tool selects the terminal group and publishes its geometry',
     (status) =>
-      status.panelActiveContent === 'terminal' &&
+      status.panelActiveContentKind === 'terminal' &&
       Array.isArray(status.panelCellIds) &&
       Array.isArray(status.panelCellColumns) &&
       String(status.agentLastToolResult).includes('Staged without Enter') &&
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
-  const stagedPanelCellIdentifiers =
-    stagedPanelLayoutStatus.panelCellIds as string[];
+  const activeStagedTerminalCell = HarnessSmoke.Class.activePanelCell(
+    stagedPanelLayoutStatus,
+  );
   const stagedPanelCellColumns =
     stagedPanelLayoutStatus.panelCellColumns as number[];
-  const stagedTerminalCellIndex =
-    stagedPanelCellIdentifiers.indexOf('terminal');
+  if (activeStagedTerminalCell?.kind !== 'terminal') {
+    throw new Error('The active staged terminal geometry disappeared');
+  }
+  const stagedTerminalCellIndex = activeStagedTerminalCell.index;
   const stagedBottomPanel = (
     stagedPanelLayoutStatus.layoutSlots as
       Record<string, { left: number }> | undefined
@@ -438,10 +445,13 @@ try {
   >;
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
-  const panelCellIdentifiers = panelLayoutStatus.panelCellIds as string[];
+  const activeTerminalCell =
+    HarnessSmoke.Class.activePanelCell(panelLayoutStatus);
   const panelCellColumns = panelLayoutStatus.panelCellColumns as number[];
-  const terminalCellIndex = panelCellIdentifiers.indexOf('terminal');
-  if (terminalCellIndex < 0) throw new Error('Terminal panel cell disappeared');
+  if (activeTerminalCell?.kind !== 'terminal') {
+    throw new Error('The active terminal panel cell disappeared');
+  }
+  const terminalCellIndex = activeTerminalCell.index;
   const terminalPaneLeft =
     bottomPanel.left +
     1 +
@@ -451,7 +461,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the Agent shortcut selects its retained full-width group',
-    (status) => status.panelActiveContent === 'agent',
+    (status) => status.panelActiveContentKind === 'agent',
   );
   driver.sendText(`terminal-tools:stage:printf ANIMATING_${'x'.repeat(100)}`);
   driver.sendKeys('Enter');
@@ -473,7 +483,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the Agent shortcut selects the agent group after terminal interruption',
-    (status) => status.panelActiveContent === 'agent',
+    (status) => status.panelActiveContentKind === 'agent',
   );
   driver.sendRawInput('\x1b[27;6;97~');
   await awaitStatusPublication(

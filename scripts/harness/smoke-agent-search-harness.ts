@@ -41,10 +41,17 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
     status.layoutSlots as Record<string, Rectangle> | undefined
   )?.bottomPanel;
   const headings = status.panelHeadingGeometry;
-  if (!bottomPanel || !Array.isArray(headings)) return null;
+  const activeCell = HarnessSmoke.Class.activePanelCell(status);
+  if (
+    !bottomPanel ||
+    !Array.isArray(headings) ||
+    activeCell?.kind !== 'agent'
+  ) {
+    return null;
+  }
   const agentHeading = (
     headings as unknown as readonly PanelHeadingGeometryStatus[]
-  ).find((heading) => heading.contentId === 'agent');
+  ).find((heading) => heading.contentId === activeCell.identifier);
   const panelViewportRows = Number(status.panelRows);
   if (!agentHeading || panelViewportRows <= 0) return null;
   return {

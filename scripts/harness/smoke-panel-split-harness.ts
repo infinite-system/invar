@@ -111,8 +111,8 @@ async function driveSharedCloseGlyphTier(
       tierStatusPath,
       `${glyphLevel} terminal opens in the panel`,
       (status) =>
-        Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.includes('terminal'),
+        Array.isArray(status.panelCellKinds) &&
+        status.panelCellKinds.includes('terminal'),
     );
     const terminalFrameSnapshot = await tierDriver.awaitGridCondition(
       `${glyphLevel} terminal frame close paints before its confirmation drive`,
@@ -159,8 +159,8 @@ async function driveSharedCloseGlyphTier(
       tierStatusPath,
       `${glyphLevel} second window becomes a separate full-width group`,
       (status) =>
-        Array.isArray(status.panelCellIds) &&
-        status.panelCellIds.join(',') === 'agent' &&
+        Array.isArray(status.panelCellKinds) &&
+        status.panelCellKinds.join(',') === 'agent' &&
         Array.isArray(status.panelGroups) &&
         status.panelGroups.length === 2 &&
         status.panelListVisible === false,
@@ -256,11 +256,11 @@ try {
   let openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.terminalVisible === true && Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal' && Array.isArray(status.panelCellColumns) && Number(status.panelCellColumns[0]) > 1",
+    "status condition: status.terminalVisible === true && Array.isArray(status.panelCellKinds) && status.panelCellKinds.join(',') === 'terminal' && Array.isArray(status.panelCellColumns) && Number(status.panelCellColumns[0]) > 1",
     (status) =>
       status.terminalVisible === true &&
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'terminal' &&
+      Array.isArray(status.panelCellKinds) &&
+      status.panelCellKinds.join(',') === 'terminal' &&
       Array.isArray(status.panelCellColumns) &&
       Number(status.panelCellColumns[0]) > 1,
   );
@@ -287,11 +287,11 @@ try {
   openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'agent' && status.panelActiveContent === 'agent'",
+    "status condition: Array.isArray(status.panelCellKinds) && status.panelCellKinds.join(',') === 'agent' && status.panelActiveContentKind === 'agent'",
     (status) =>
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.join(',') === 'agent' &&
-      status.panelActiveContent === 'agent' &&
+      Array.isArray(status.panelCellKinds) &&
+      status.panelCellKinds.join(',') === 'agent' &&
+      status.panelActiveContentKind === 'agent' &&
       Array.isArray(status.panelCellColumns),
   );
   HarnessSmoke.Class.requireCondition(
@@ -381,10 +381,8 @@ try {
     (status) => status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.requireCondition(
-    Array.isArray(openedStatus.panelCellIds) &&
-      openedStatus.panelCellIds.length === 2 &&
-      openedStatus.panelCellIds[0] === 'agent' &&
-      String(openedStatus.panelCellIds[1]).startsWith('terminal') &&
+    Array.isArray(openedStatus.panelCellKinds) &&
+      openedStatus.panelCellKinds.join(',') === 'agent,terminal' &&
       Array.isArray(openedStatus.panelCellColumns),
     'explicit split adds a new terminal to the Agent group',
   );
@@ -440,7 +438,8 @@ try {
     statusPath,
     'the explicit split keeps independent member focus',
     (status) =>
-      status.panelFocusedIndex === 0 && status.panelActiveContent === 'agent',
+      status.panelFocusedIndex === 0 &&
+      status.panelActiveContentKind === 'agent',
   );
   driver.sendText('AGENTKEY');
   await driver.awaitSnapshot(
@@ -535,7 +534,7 @@ try {
     driver,
     statusPath,
     'the Invar agent regains focus before its exit command',
-    (status) => status.panelActiveContent === 'agent',
+    (status) => status.panelActiveContentKind === 'agent',
   );
   driver.sendKeys('Control+a');
   driver.sendKeys('Backspace');
@@ -548,9 +547,9 @@ try {
     (status) =>
       Array.isArray(status.panelCellIds) &&
       status.panelCellIds.length === 2 &&
-      String(status.panelCellIds[0]).startsWith('terminal') &&
       status.panelCellIds[1] === splitTerminalIdentifier &&
-      !status.panelCellIds.includes('agent'),
+      Array.isArray(status.panelCellKinds) &&
+      status.panelCellKinds.join(',') === 'terminal,terminal',
   );
   HarnessSmoke.Class.pass(
     'Invar agent /exit replaced the first split slot with a terminal',

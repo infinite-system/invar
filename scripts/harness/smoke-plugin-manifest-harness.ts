@@ -727,10 +727,10 @@ try {
   await driver.awaitGridCondition(
     'the uninstalled runtime leaves no pane in the panel',
     () =>
-      !(
-        HarnessSmoke.Class.readStatus(statusPath).panelCellIds as
-          string[] | undefined
-      )?.includes('terminal'),
+      HarnessSmoke.Class.panelCellsOfKind(
+        HarnessSmoke.Class.readStatus(statusPath),
+        'terminal',
+      ).length === 0,
   );
   HarnessSmoke.Class.pass(
     'the Terminal runtime uninstalls, releasing its pane and its status projection',
@@ -1044,12 +1044,21 @@ try {
       status.structureShowLineNumbers === false &&
       Number(status.structureRows) > 0,
   );
+  const structureRectangle = HarnessSmoke.Class.layoutSlotRectangle(
+    outlineReadyStatus,
+    'rightDock',
+  );
+  if (!structureRectangle) {
+    throw new Error('Structure dock geometry disappeared');
+  }
   await driver.awaitGridCondition(
     'the structure pane paints the outline rows',
     (snapshot) =>
-      snapshot.findText('Structure') !== null &&
-      snapshot.findText('languageProbe') !== null &&
-      snapshot.findText('languageProbe :') === null,
+      snapshot.findTextInRectangle('Structure', structureRectangle) !== null &&
+      snapshot.findTextInRectangle('languageProbe', structureRectangle) !==
+        null &&
+      snapshot.findTextInRectangle('languageProbe :', structureRectangle) ===
+        null,
   );
   HarnessSmoke.Class.pass(
     'the structure pane shows itself at the right and lists the real documentSymbol outline',
@@ -1194,7 +1203,10 @@ try {
   await driver.awaitGridCondition(
     'the focused structure filter has one leading cell in the shared active tone',
     (snapshot) => {
-      const searchPosition = snapshot.findText(structureSearchGlyph);
+      const searchPosition = snapshot.findTextInRectangle(
+        structureSearchGlyph,
+        structureRectangle,
+      );
       if (!searchPosition || searchPosition.column === 0) return false;
       const leadingCell = snapshot.cell(
         searchPosition.row,
@@ -1807,7 +1819,7 @@ try {
     statusPath,
     'the database consumer resolves the installed SQLite provider',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.panelVisible === true &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite',
@@ -1832,7 +1844,7 @@ try {
     statusPath,
     'the database consumer states that no provider remains',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.databaseConsumerStatus === 'unavailable' &&
       status.databaseProviderIdentifier === null &&
       status.databaseProviderPluginActive === undefined,
@@ -1855,7 +1867,7 @@ try {
     statusPath,
     'the database consumer resolves the reinstalled provider',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite' &&
       status.databaseProviderPluginActive === true,
@@ -1918,7 +1930,7 @@ try {
     statusPath,
     'the reinstalled database consumer resolves SQLite again',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite',
   );

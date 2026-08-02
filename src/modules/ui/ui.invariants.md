@@ -2300,6 +2300,53 @@ another content's region.
 
 **Last refined:** 2026-07-25
 
+### Pane identity is separate from presentation
+
+**Invariant:** If a panel pane is created, restored, projected, addressed, or named, then its
+immutable identifier selects only that instance, its kind classifies compatible behavior, and its
+label supplies presentation.
+
+**Scope:** `PaneRuntimes`, `PaneContent`, every `PanelHost`, panel status projection, terminal pane
+titles, and driven harness consumers of panel state. Workspace identifiers, task runtime kinds,
+and stable plugin contribution identifiers are outside this instance-identity rule.
+
+**Mechanism:** `PaneRuntimes` allocates or claims an application-unique opaque identifier and
+publishes the kind and workspace-local label as separate fields. `PanelHost` selects one pane by
+exact identifier and finds compatible panes through plural kind queries. `AppStatusProjection`
+publishes aligned identifier, kind, and label fields. Harness geometry resolves an exact published
+identifier before searching its owning rectangle. `TerminalPaneContent` derives its title shape
+from the presentation label, never from the identifier spelling.
+
+**Generates:** Two same-kind panes that remain independently addressable; stable restored identity;
+kind-based capability queries that may return several panes; labels and status text that do not
+change when identifiers become opaque; repeated glyphs that resolve inside the owning pane.
+
+**Rejected alternatives:** Spell the kind or label into the identifier — presentation changes then
+change identity and same-name panes collide. Treat a kind as an exact identifier — the second pane
+then overwrites or redirects the first.
+
+**Evidence:** `src/modules/ui/PaneRuntimes.ts`; `src/modules/app/AppStatusProjection.ts`;
+`src/modules/terminal/TerminalPaneContent.ts`; `scripts/harness/HarnessSmokeSupport.ts`;
+`src/modules/ui/PaneRuntimes.test.ts`; `src/modules/app/AppStatusProjection.test.ts`;
+`src/modules/terminal/TerminalPaneContent.test.ts`; `scripts/harness/HarnessSmoke.test.ts`;
+`scripts/smoke-keyboard-invariant.sh`; `scripts/harness/smoke-agent-pane-ux-harness.ts`;
+`scripts/harness/smoke-agent-cancel-harness.ts`.
+
+**Impossible if true:** Two panes sharing an identifier because their labels or kinds match; a
+consumer comparing an instance identifier with `terminal` or `agent` to decide presentation; a
+consumer treating one kind as the exact pane when several exist; a status identifier field standing
+in for a label; a whole-grid repeated marker driving a different pane than the exact active one.
+
+**Verification:** `bun test src/modules/ui/PaneRuntimes.test.ts
+src/modules/app/AppStatusProjection.test.ts src/modules/terminal/TerminalPaneContent.test.ts
+scripts/harness/HarnessSmoke.test.ts && bash scripts/smoke-keyboard-invariant.sh && bun
+scripts/harness/smoke-agent-pane-ux-harness.ts && bun
+scripts/harness/smoke-agent-cancel-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-08-01
+
 ### Each panel instance owns one independent session
 
 **Invariant:** If Add creates another Terminal, AI Agent (Claude), or Invar Agent instance, then it receives an

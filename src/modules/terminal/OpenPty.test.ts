@@ -102,6 +102,73 @@ test('a saturated PTY write leaves the event loop responsive', async () => {
   expect(standardOutput).toContain('EVENT_LOOP_RESPONSIVE');
 }, 5_000);
 
+test('a normal master read-stream close resumes bytes from the live PTY', async () => {
+  const childSource = String.raw`
+    import { OpenPty } from './src/modules/terminal/OpenPty';
+
+    class InterruptibleOpenPty extends OpenPty.$Class {
+      readStartCount = 0;
+
+      protected override startMasterRead(callback: (bytes: Uint8Array) => void): void {
+        this.readStartCount += 1;
+        super.startMasterRead(callback);
+      }
+
+      interruptMasterRead(): void {
+        this.readStream?.destroy();
+      }
+    }
+
+    const openPty = new InterruptibleOpenPty();
+    let receivedText = '';
+    let resolveAfterRestart: (() => void) | null = null;
+    const afterRestart = new Promise<void>((resolve) => {
+      resolveAfterRestart = resolve;
+    });
+    openPty.onData((bytes) => {
+      receivedText += new TextDecoder().decode(bytes);
+      if (receivedText.includes('AFTER_RESTART')) resolveAfterRestart?.();
+    });
+    const echoChild = Bun.spawn(['bash', '-c', 'stty raw -echo; cat'], {
+      stdio: [
+        openPty.slaveFileDescriptor,
+        openPty.slaveFileDescriptor,
+        openPty.slaveFileDescriptor,
+      ],
+    });
+    openPty.releaseSlaveFileDescriptor();
+    openPty.interruptMasterRead();
+    while (openPty.readStartCount < 2) await Bun.sleep(1);
+    openPty.write('AFTER_RESTART');
+    await afterRestart;
+    console.log('READ_RESTARTED=' + openPty.readStartCount);
+    echoChild.kill();
+    openPty.close();
+    await echoChild.exited;
+  `;
+  const child = Bun.spawn([process.execPath, '--eval', childSource], {
+    cwd: process.cwd(),
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const completionResult = await Promise.race([
+    child.exited.then((exitCode) => ({ kind: 'exit' as const, exitCode })),
+    Bun.sleep(3_000).then(() => ({ kind: 'timeout' as const })),
+  ]);
+  if (completionResult.kind === 'timeout') {
+    child.kill();
+    await child.exited;
+  }
+  const standardOutput = await new Response(child.stdout).text();
+  const standardError = await new Response(child.stderr).text();
+
+  expect(completionResult.kind, standardError).toBe('exit');
+  if (completionResult.kind === 'exit') {
+    expect(completionResult.exitCode, standardError).toBe(0);
+  }
+  expect(standardOutput).toContain('READ_RESTARTED=2');
+}, 5_000);
+
 test('a genuine asynchronous PTY write failure names its errno', async () => {
   const childSource = String.raw`
     import { closeSync } from 'node:fs';

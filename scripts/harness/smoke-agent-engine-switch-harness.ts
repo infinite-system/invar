@@ -44,34 +44,28 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
     status.layoutSlots as Record<string, Rectangle> | undefined
   )?.bottomPanel;
   const headings = status.panelHeadingGeometry;
-  const contentIdentifiers = status.panelCellIds;
+  const activeCell = HarnessSmoke.Class.activePanelCell(status);
   const cellColumns = status.panelCellColumns;
   if (
     !bottomPanel ||
     !Array.isArray(headings) ||
-    !Array.isArray(contentIdentifiers) ||
+    activeCell?.kind !== 'agent' ||
     !Array.isArray(cellColumns)
   ) {
     return null;
   }
   const agentHeading = (
     headings as unknown as readonly PanelHeadingGeometryStatus[]
-  ).find((heading) => heading.contentId === 'agent');
-  const contentIndex = contentIdentifiers.indexOf('agent');
+  ).find((heading) => heading.contentId === activeCell.identifier);
   const panelViewportRows = Number(status.panelRows);
-  const contentColumns = Number(cellColumns[contentIndex]);
-  if (
-    !agentHeading ||
-    contentIndex < 0 ||
-    panelViewportRows <= 0 ||
-    contentColumns <= 0
-  ) {
+  const contentColumns = activeCell.columns;
+  if (!agentHeading || panelViewportRows <= 0 || contentColumns <= 0) {
     return null;
   }
   let startColumn = bottomPanel.left + 1;
   for (
     let precedingIndex = 0;
-    precedingIndex < contentIndex;
+    precedingIndex < activeCell.index;
     precedingIndex += 1
   ) {
     startColumn += Number(cellColumns[precedingIndex]) + 1;
@@ -201,7 +195,7 @@ try {
     (candidate) =>
       candidate.agentEngine === 'claude' &&
       candidate.agentTitle === 'Claude' &&
-      candidate.panelActiveContent === 'agent' &&
+      candidate.panelActiveContentKind === 'agent' &&
       agentFooterRegion(candidate) !== null,
   );
   let footerRegion = requireAgentFooterRegion(status);
@@ -347,7 +341,7 @@ try {
     (candidate) =>
       candidate.agentEngine === 'codex' &&
       candidate.agentTitle === 'Codex' &&
-      candidate.panelActiveContent === 'agent' &&
+      candidate.panelActiveContentKind === 'agent' &&
       agentFooterRegion(candidate) !== null,
   );
   footerRegion = requireAgentFooterRegion(status);

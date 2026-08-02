@@ -659,9 +659,15 @@ class $PanelHost {
       this.options.onContentRemoved?.(content);
     }
   }
-  /** Register a content. The first one registered becomes active. Idempotent per id. */
+  /** Register a content. The first one registered becomes active. Idempotent per object. */
   register(content: PaneContent): void {
-    if (this.contents.has(content.id)) return;
+    const contentWithIdentifier = this.contents.get(content.id);
+    if (contentWithIdentifier === content) return;
+    if (contentWithIdentifier) {
+      throw new Error(
+        `Panel content identifier already belongs to another pane: ${content.id}`,
+      );
+    }
     for (const contentSet of this.contentSets) {
       if (contentSet === this.selectedContentSet) continue;
       if (contentSet.contents.has(content.id)) {
@@ -675,7 +681,22 @@ class $PanelHost {
     }
     this.contents.set(content.id, content);
     if (!this.order.value.includes(content.id)) {
-      this.setOrder([...this.order.value, content.id]);
+      const legacyKindIdentifier = content.kind;
+      const legacyKindPosition = legacyKindIdentifier
+        ? this.order.value.indexOf(legacyKindIdentifier)
+        : -1;
+      if (
+        legacyKindPosition >= 0 &&
+        legacyKindIdentifier !== undefined &&
+        legacyKindIdentifier !== content.id &&
+        !this.contents.has(legacyKindIdentifier)
+      ) {
+        const migratedOrder = [...this.order.value];
+        migratedOrder[legacyKindPosition] = content.id;
+        this.setOrder(migratedOrder);
+      } else {
+        this.setOrder([...this.order.value, content.id]);
+      }
       this.options.persistContentOrder?.();
     }
     if (this.activeId.value === null) this.activeId.value = content.id;
@@ -789,21 +810,25 @@ class $PanelHost {
   content(id: string): PaneContent | null {
     return this.contents.get(id) ?? null;
   }
+  /** Every registered instance of a shared content kind, in persisted panel order. */
+  contentsOfKind(kind: string): readonly PaneContent[] {
+    return this.orderedContents.filter(
+      (content) => (content.kind ?? content.id) === kind,
+    );
+  }
   /** First registered instance of a shared content kind, in persisted panel order. */
   contentOfKind(kind: string): PaneContent | null {
-    return (
-      this.orderedContents.find(
-        (content) => (content.kind ?? content.id) === kind,
-      ) ?? null
+    return this.contentsOfKind(kind)[0] ?? null;
+  }
+  /** Every currently visible instance of a shared content kind, in cell order. */
+  visibleContentsOfKind(kind: string): readonly PaneContent[] {
+    return this.resolvedCells.flatMap((cell) =>
+      (cell.content.kind ?? cell.content.id) === kind ? [cell.content] : [],
     );
   }
   /** The currently visible instance of a shared content kind. */
   visibleContentOfKind(kind: string): PaneContent | null {
-    return (
-      this.resolvedCells.find(
-        (cell) => (cell.content.kind ?? cell.content.id) === kind,
-      )?.content ?? null
-    );
+    return this.visibleContentsOfKind(kind)[0] ?? null;
   }
   /** The active content, or null. */
   get activeContent(): PaneContent | null {

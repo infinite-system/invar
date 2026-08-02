@@ -584,20 +584,29 @@ try {
     driven.driver,
     driven.homeDirectory,
     'both reported-shape tasks own separate visible split cells',
-    (candidate) =>
-      taskSource(candidate) === '.invar/tasks.json' &&
-      Array.isArray(candidate.taskLaunchedLabels) &&
-      candidate.taskLaunchedLabels.includes('Claude') &&
-      candidate.taskLaunchedLabels.includes('Terminal') &&
-      taskIdentifiers(candidate).length === 2 &&
-      taskNoticeIdentifiers(candidate).length === 0 &&
-      !taskLabels(candidate).includes('Displaced: Claude') &&
-      taskLabels(candidate).includes('Claude') &&
-      taskLabels(candidate).includes('Terminal') &&
-      Array.isArray(candidate.panelActiveSpacePaneIds) &&
-      !candidate.panelActiveSpacePaneIds.includes('database') &&
-      Array.isArray(candidate.panelCellColumns) &&
-      candidate.panelCellColumns.length === 2,
+    (candidate) => {
+      const activeSpacePaneIdentifiers = candidate.panelActiveSpacePaneIds;
+      return (
+        taskSource(candidate) === '.invar/tasks.json' &&
+        Array.isArray(candidate.taskLaunchedLabels) &&
+        candidate.taskLaunchedLabels.includes('Claude') &&
+        candidate.taskLaunchedLabels.includes('Terminal') &&
+        taskIdentifiers(candidate).length === 2 &&
+        taskNoticeIdentifiers(candidate).length === 0 &&
+        !taskLabels(candidate).includes('Displaced: Claude') &&
+        taskLabels(candidate).includes('Claude') &&
+        taskLabels(candidate).includes('Terminal') &&
+        Array.isArray(activeSpacePaneIdentifiers) &&
+        !HarnessSmoke.Class.panelContentIdentifiersOfKind(
+          candidate,
+          'database',
+        ).some((identifier) =>
+          activeSpacePaneIdentifiers.includes(identifier),
+        ) &&
+        Array.isArray(candidate.panelCellColumns) &&
+        candidate.panelCellColumns.length === 2
+      );
+    },
   );
   await driven.driver.awaitGridCondition(
     'both nested interactive shells print inside their own panes',
@@ -605,6 +614,7 @@ try {
       snapshot.findText('EXACT_CLAUDE_INNER') !== null &&
       snapshot.findText('EXACT_TERMINAL_INNER') !== null,
   );
+  const activeSpacePaneIdentifiers = status.panelActiveSpacePaneIds;
   HarnessSmoke.Class.requireCondition(
     new Set(taskIdentifiers(status)).size === 2,
     'the nested login-shell tasks own two unique terminal panes',
@@ -622,8 +632,11 @@ try {
       taskNoticeIdentifiers(status).length === 0 &&
       taskLabels(status).includes('Claude') &&
       taskLabels(status).includes('Terminal') &&
-      Array.isArray(status.panelActiveSpacePaneIds) &&
-      !status.panelActiveSpacePaneIds.includes('database'),
+      Array.isArray(activeSpacePaneIdentifiers) &&
+      !HarnessSmoke.Class.panelContentIdentifiersOfKind(
+        status,
+        'database',
+      ).some((identifier) => activeSpacePaneIdentifiers.includes(identifier)),
     'a planted notice and mismatched Database pane do not restore beside the explicit Claude override',
   );
   HarnessSmoke.Class.requireCondition(
@@ -818,20 +831,26 @@ try {
     '== harness tasks: the native power-user agent pane still coexists ==',
   );
   driven.driver.sendRawInput('\x1b[27;6;97~');
-  await awaitTaskStatus(
+  const nativeAgentStatus = await awaitTaskStatus(
     driven.driver,
     driven.homeDirectory,
     'the native agent pane opens as a full-width group while the task stays live',
     (candidate) =>
       Array.isArray(candidate.panelCellIds) &&
-      candidate.panelCellIds.join(',') === 'agent' &&
-      candidate.panelActiveContent === 'agent',
+      candidate.panelCellKinds.join(',') === 'agent' &&
+      candidate.panelActiveContentKind === 'agent',
   );
+  const nativeAgentRectangle =
+    HarnessSmoke.Class.activePanelCellRectangle(nativeAgentStatus);
+  if (!nativeAgentRectangle) {
+    throw new Error('Native agent geometry disappeared');
+  }
   await driven.driver.awaitGridCondition(
     'the native agent composer remains visible and usable',
     (snapshot) =>
-      snapshot.findText('Ask Claude') !== null &&
-      snapshot.findText('❯') !== null,
+      snapshot.findTextInRectangle('Ask Claude', nativeAgentRectangle) !==
+        null &&
+      snapshot.findTextInRectangle('❯', nativeAgentRectangle) !== null,
   );
   HarnessSmoke.Class.pass(
     'the native agent pane remains independent of terminal tasks',

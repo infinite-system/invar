@@ -113,7 +113,7 @@ async function openSettingsByMouse(
 async function focusPanelBeforeOpeningDialog(
   driver: PtyTestDriver.Model,
   statusPath: string,
-  expectedContentIdentifier: string,
+  expectedContentKind: string,
 ): Promise<void> {
   // Focus the panel BEFORE the dialog opens. This used to click the panel while
   // Settings was already open, which stopped working the moment outside-press
@@ -123,12 +123,12 @@ async function focusPanelBeforeOpeningDialog(
   // actually reaches it — working in the terminal, then opening Settings over it.
   const status = await awaitStatusPublication(
     statusPath,
-    `the ${expectedContentIdentifier} panel geometry is available`,
+    `the ${expectedContentKind} panel geometry is available`,
     (candidate) => {
       const layoutSlots = candidate.layoutSlots as
         Record<string, DialogBounds> | undefined;
       return (
-        candidate.panelActiveContent === expectedContentIdentifier &&
+        candidate.panelActiveContentKind === expectedContentKind &&
         layoutSlots?.bottomPanel !== undefined
       );
     },
@@ -137,7 +137,7 @@ async function focusPanelBeforeOpeningDialog(
     .bottomPanel;
   requireCondition(
     bottomPanel !== undefined,
-    `${expectedContentIdentifier} bottom-panel bounds are published`,
+    `${expectedContentKind} bottom-panel bounds are published`,
   );
   clickCell(
     driver,
@@ -146,10 +146,10 @@ async function focusPanelBeforeOpeningDialog(
   );
   await awaitStatusPublication(
     statusPath,
-    `${expectedContentIdentifier} is focused before the dialog opens`,
+    `${expectedContentKind} is focused before the dialog opens`,
     (candidate) =>
       candidate.panelFocused === true &&
-      candidate.panelActiveContent === expectedContentIdentifier,
+      candidate.panelActiveContentKind === expectedContentKind,
   );
 }
 
@@ -1377,7 +1377,7 @@ try {
       candidate.panelVisible === true &&
       candidate.terminalVisible === true &&
       candidate.terminalFocused === true &&
-      candidate.panelActiveContent === 'terminal',
+      candidate.panelActiveContentKind === 'terminal',
   );
   await driver.awaitOutputCondition(
     'the focused terminal leaves the hardware cursor shown',
@@ -1464,7 +1464,7 @@ try {
     'the agent-only panel is visible',
     (candidate) =>
       candidate.panelVisible === true &&
-      candidate.panelActiveContent === 'agent',
+      candidate.panelActiveContentKind === 'agent',
   );
   await focusPanelBeforeOpeningDialog(driver, statusPath, 'agent');
   await openSettingsByMouse(driver, statusPath);

@@ -60,8 +60,8 @@ class $SmokeTerminalFollowHarness {
         'Ctrl+Shift+S opens the terminal and agent side by side',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal' &&
-          status.panelActiveContent === 'agent',
+          status.panelCellKinds.join(',') === 'agent,terminal' &&
+          status.panelActiveContentKind === 'agent',
       );
 
       console.log(
@@ -336,7 +336,7 @@ class $SmokeTerminalFollowHarness {
         'plain Bash and echo agent open side by side',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
       await this.runTerminalCommand(
         "printf 'HEURISTIC_FAIL\\n'; false",
@@ -392,7 +392,7 @@ class $SmokeTerminalFollowHarness {
         'the delayed echo spinner scenario opens both panes',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
 
       await this.startObservedCommand(
@@ -553,7 +553,7 @@ class $SmokeTerminalFollowHarness {
         `the injected backend ${expectedEndReason} scenario opens both panes`,
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
       await this.startObservedCommand(
         `printf 'INJECTED_BACKEND_${expectedEndReason.toUpperCase()}\\n'`,
@@ -607,7 +607,7 @@ class $SmokeTerminalFollowHarness {
         'the exited-terminal scenario opens both panes',
         (status) =>
           Array.isArray(status.panelCellIds) &&
-          status.panelCellIds.join(',') === 'agent,terminal',
+          status.panelCellKinds.join(',') === 'agent,terminal',
       );
       const baselineStatus = await this.awaitStatus(
         'terminal and agent state are published before immediate exit',
@@ -815,34 +815,28 @@ class $SmokeTerminalFollowHarness {
       status.layoutSlots as Record<string, Rectangle> | undefined
     )?.bottomPanel;
     const headings = status.panelHeadingGeometry;
-    const contentIdentifiers = status.panelCellIds;
+    const activeCell = HarnessSmoke.Class.activePanelCell(status);
     const cellColumns = status.panelCellColumns;
     if (
       !bottomPanel ||
       !Array.isArray(headings) ||
-      !Array.isArray(contentIdentifiers) ||
+      activeCell?.kind !== 'agent' ||
       !Array.isArray(cellColumns)
     ) {
       return null;
     }
     const agentHeading = (
       headings as unknown as readonly PanelHeadingGeometryStatus[]
-    ).find((heading) => heading.contentId === 'agent');
-    const contentIndex = contentIdentifiers.indexOf('agent');
+    ).find((heading) => heading.contentId === activeCell.identifier);
     const panelViewportRows = Number(status.terminalRows);
-    const contentColumns = Number(cellColumns[contentIndex]);
-    if (
-      !agentHeading ||
-      contentIndex < 0 ||
-      panelViewportRows <= 0 ||
-      contentColumns <= 0
-    ) {
+    const contentColumns = activeCell.columns;
+    if (!agentHeading || panelViewportRows <= 0 || contentColumns <= 0) {
       return null;
     }
     let startColumn = bottomPanel.left + 1;
     for (
       let precedingIndex = 0;
-      precedingIndex < contentIndex;
+      precedingIndex < activeCell.index;
       precedingIndex += 1
     ) {
       startColumn += Number(cellColumns[precedingIndex]) + 1;
@@ -895,7 +889,7 @@ class $SmokeTerminalFollowHarness {
   }
 
   protected static async focusPanelCell(
-    contentIdentifier: 'terminal' | 'agent',
+    contentKind: 'terminal' | 'agent',
     label: string,
   ): Promise<void> {
     const status = await this.awaitStatus(
@@ -905,23 +899,21 @@ class $SmokeTerminalFollowHarness {
           | Record<string, { left: number; top: number; height: number }>
           | undefined;
         return (
-          Array.isArray(candidate.panelCellIds) &&
-          candidate.panelCellIds.includes(contentIdentifier) &&
-          Array.isArray(candidate.panelCellColumns) &&
-          candidateLayoutSlots?.bottomPanel !== undefined
+          HarnessSmoke.Class.panelCellsOfKind(candidate, contentKind).length ===
+            1 && candidateLayoutSlots?.bottomPanel !== undefined
         );
       },
     );
-    const contentIdentifiers = status.panelCellIds;
+    const matchingCells = HarnessSmoke.Class.panelCellsOfKind(
+      status,
+      contentKind,
+    );
+    const targetCell = matchingCells[0];
     const cellColumns = status.panelCellColumns;
     const layoutSlots = status.layoutSlots as
       Record<string, { left: number; top: number; height: number }> | undefined;
-    if (!Array.isArray(contentIdentifiers) || !Array.isArray(cellColumns)) {
+    if (!targetCell || !Array.isArray(cellColumns)) {
       throw new Error('Panel cell geometry is unavailable from status.');
-    }
-    const contentIndex = contentIdentifiers.indexOf(contentIdentifier);
-    if (contentIndex < 0) {
-      throw new Error(`Panel cell is not visible: ${contentIdentifier}`);
     }
     const panel = layoutSlots?.bottomPanel;
     if (!panel)
@@ -929,7 +921,7 @@ class $SmokeTerminalFollowHarness {
     let column = panel.left + 2;
     for (
       let precedingIndex = 0;
-      precedingIndex < contentIndex;
+      precedingIndex < targetCell.index;
       precedingIndex += 1
     ) {
       column += Number(cellColumns[precedingIndex]) + 1;
@@ -950,8 +942,9 @@ class $SmokeTerminalFollowHarness {
     await this.awaitStatus(
       label,
       (candidate) =>
-        candidate.panelActiveContent === contentIdentifier &&
-        candidate.panelFocusedIndex === contentIndex,
+        candidate.panelActiveContent === targetCell.identifier &&
+        candidate.panelActiveContentKind === contentKind &&
+        candidate.panelFocusedIndex === targetCell.index,
     );
   }
 
