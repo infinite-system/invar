@@ -59,7 +59,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (31)
+## FLAKE-EVIDENCE (32)
+- #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
 - #455 [agent-composer-never-activates](.invar/tasks/active/455-agent-composer-never-activates/task-455-agent-composer-never-activates.md)
