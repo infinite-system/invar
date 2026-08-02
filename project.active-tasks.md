@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/459-empty-right-pane-has-no-add-affordance`
+- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/in-progress/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md)  [building]
+  `tmux attach -t invar/457-serial-tail-lacks-quiet-retry`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [building]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -28,8 +30,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (29)
-- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/active/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md)
+## VERIFICATION-INTEGRITY (28)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)

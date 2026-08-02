@@ -1,0 +1,15 @@
+{
+  "task": 457,
+  "slug": "serial-tail-lacks-quiet-retry",
+  "branch": "fleet/457-serial-tail-lacks-quiet-retry",
+  "worktree": ".invar/worktrees/457-serial-tail-lacks-quiet-retry",
+  "tmuxSession": "invar/457-serial-tail-lacks-quiet-retry",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-457-serial-tail-lacks-quiet-retry.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e811a7ad3f43896ac99becf65a68d881c21220df",
+  "startedAt": "2026-08-02T13:32:32-04:00"
+}

@@ -1,7 +1,7 @@
 # #457 — the gate's verdict is not a function of its input
 
 Priority: verification-integrity
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol
