@@ -40,9 +40,15 @@ So the defect does not exist on main. It arrives with #452's opaque
 `pane-instance-N` identities, and it belongs to that task's remaining
 kind-string consumer sweep.
 
-Folded into #452 round 5. This folder stays for the record and for the
-number, but do not dispatch it as separate work unless round 5 proves
-the cause is genuinely elsewhere.
+Folded into #452 round 5, which fixed it. Verified ALL-PASS at tip
+`4b0a97bc`.
+
+**Second correction, same day:** I first wrote that this was a "#452
+regression". The evidence only supported "STACK regression" — the
+branch carries #442 and #444 as well, and the builder's own A/B pointed
+at #442's chrome work rather than the identity change. Not pre-existing
+on main is proven; blaming #452 specifically was not. Attribution needs
+its own measurement, and I skipped it twice in one evening.
 
 **The lesson is mine:** a red seen only on a branch is not evidence
 about main. "Unrelated" is a measurement, not an impression, and I
