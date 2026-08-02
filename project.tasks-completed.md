@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/completed/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md) — 687dc80f — Gate verdict is now a function of the commit: 5 identical verdicts on one commit, unchanged at 3 and 6 workers, planted defect red 5/5. Real defect was a live-emulator read in the shortcut sheet, not a missing retry.
 - #452 [pane-identity-collides-by-name](.invar/tasks/completed/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md) — da584da4 — Pane identity separated from presentation; original all-terminal incident remains unexplained.
 - #448 [static-reads-that-can-block-overrides](.invar/tasks/completed/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md) — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.
 - #444 [history-is-editor-area-view-states](.invar/tasks/completed/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md) — 61fd213e — History as editor-area view states landed as part of the stack.

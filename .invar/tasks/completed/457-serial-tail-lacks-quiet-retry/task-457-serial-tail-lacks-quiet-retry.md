@@ -1,7 +1,7 @@
 # #457 — the gate's verdict is not a function of its input
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — 687dc80f — Gate verdict is now a function of the commit: 5 identical verdicts on one commit, unchanged at 3 and 6 workers, planted defect red 5/5. Real defect was a live-emulator read in the shortcut sheet, not a missing retry.
 Engine: codex
 Environment: any
 Model: 5.6-sol
