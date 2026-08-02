@@ -56,6 +56,12 @@ class $StatusChannel {
     return this.statusPath;
   }
 
+  /** The one observability enablement, shared by every side channel (the
+   *  graph channel keys off this too — one flag arms or disarms the family). */
+  static get observing(): boolean {
+    return this.observingEnabled;
+  }
+
   static get snapshot(): StatusSnapshot {
     return this.$state;
   }

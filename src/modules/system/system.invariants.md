@@ -163,6 +163,41 @@ status channel or logger.
 
 **Last refined:** 2026-07-21
 
+### Graph observation reads and never mutates
+
+**Invariant:** If the harness observes the app through the graph channel, then no observed state
+changes as a consequence — the channel exposes no write path, and resolving a path never calls
+behavior, only reads state.
+
+**Scope:** `GraphChannel` (`src/modules/system/GraphChannel.ts`): the resolver walk, the
+discovery list on a miss, and the serializer. Applies equally to every future observation
+surface: an observation that mutates is an input, and inputs travel through the real PTY only.
+
+**Mechanism:** the request protocol carries only `{id, path, mode}` — there is no `set` shape to
+parse, so a write cannot be requested. The walk performs property reads only (ivue getters
+evaluate on read by design); `availableKeys` classifies by descriptor without evaluating;
+class instances serialize as name-plus-keys instead of mass-evaluating their getters, so only
+the getters a path names ever run. The channel is inert unless `StatusChannel.observing`.
+
+**Generates:** the read side of the harness split — graph reads for asking, real PTY input for
+acting; the READ-ONLY boundary in task #469; `DriveSession.get`/`waitFor` staying primitive.
+
+**Rejected alternatives:** `app.set(path, value)` — bypasses the user's own input path, which is
+the premise of the harness; rejected in task #469's brief before implementation.
+
+**Evidence:** `GraphChannel.ts` — no set handling in `readRequest`/`respond`; `availableKeys`
+descriptor-only; serializer's instance guard. `GraphChannel.test.ts` covers both arms.
+
+**Impossible if true:** a drive script changing app state through `app.get`/`app.waitFor`; a
+graph request file that causes any observable state transition beyond answering the question.
+
+**Verification:** `bun test src/modules/system/GraphChannel.test.ts`; grep `GraphChannel.ts` for
+any request field beyond id/path/mode.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-02
+
 ### Copy reaches the host terminal
 
 **Invariant:** If the user copies selected text from Settings, a `TextInputModel` field, the terminal

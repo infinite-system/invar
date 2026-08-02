@@ -38,6 +38,7 @@ import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
 import { Files } from '../system/Files';
 import { StatusChannel } from '../system/StatusChannel';
+import { GraphChannel } from '../system/GraphChannel';
 import { FrameProbe } from '../system/FrameProbe';
 import { ScrollPhysics } from '../ui/ScrollPhysics';
 import { Clipboard } from '../system/Clipboard';
@@ -1435,6 +1436,15 @@ class $Bootstrap {
       },
     };
 
+    // Live graph reads for the harness (task #469): the ports object above already
+    // names every root the projection reads, so it IS the graph's namespace — one
+    // object, no second registry. Inert unless observing is enabled.
+    GraphChannel.Class.arm({
+      roots: statusProjectionPorts as unknown as Record<string, unknown>,
+      requestRender: () => renderer.requestRender(),
+    });
+    app.onDispose(() => GraphChannel.Class.disarm());
+
     // Pull current state into the renderables and request a frame. READ-ONLY over model state
     // (no ref writes), so it is safe to run inside the reactive effect with no feedback loop.
     const paint = (): void => {
@@ -1760,6 +1770,10 @@ class $Bootstrap {
         }
       }
       StatusChannel.Class.settle(frame);
+      // Settle-mode graph answers fire HERE — the same boundary the status
+      // projection publishes at, so a graph wait never observes a state no
+      // completed frame had.
+      GraphChannel.Class.settle();
       // Exact per-cell visual snapshot for tests (env-gated; no-op otherwise).
       FrameProbe.Class.dump(renderer, framePath);
     };

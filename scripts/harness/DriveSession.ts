@@ -20,7 +20,13 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
@@ -214,6 +220,41 @@ class $DriveSession {
     });
   }
 
+  /** Wait until a LIVE GRAPH path reaches a value (task #469). The app answers
+   *  these only at a frame-settle boundary — the same point the status
+   *  projection publishes at — so this wait never observes a state no
+   *  completed frame had. The path walks the app's ports object
+   *  (panelHost.spaces[0].kind, workspaceSet.active.editor.…); Refs unwrap in
+   *  the app's resolver, so a path never contains `.value`. */
+  waitFor(
+    path: string,
+    expectedValue: unknown,
+    timeoutMilliseconds = 15_000,
+  ): this {
+    return this.step(
+      `wait graph ${path}=${JSON.stringify(expectedValue)}`,
+      async () => {
+        const deadline = Date.now() + timeoutMilliseconds;
+        let lastValue: unknown = '<never answered>';
+        while (Date.now() < deadline) {
+          const response = await this.graphQuery(path, 'settle', deadline);
+          lastValue = response.value;
+          if (
+            JSON.stringify(response.value) === JSON.stringify(expectedValue)
+          ) {
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        throw new Error(
+          `waitFor(${JSON.stringify(path)}) timed out after ` +
+            `${timeoutMilliseconds}ms: wanted ${JSON.stringify(expectedValue)}, ` +
+            `last settled value was ${JSON.stringify(lastValue)}`,
+        );
+      },
+    );
+  }
+
   /** Wait for any completed repaint. Use when the change is visual and the
    *  script does not care WHAT changed. */
   waitForRepaint(timeoutMilliseconds = 5_000): this {
@@ -317,6 +358,98 @@ class $DriveSession {
     return this.step(`note ${message}`, async () => {
       console.log(`\n== ${message} ==`);
     });
+  }
+
+  /** Ask the LIVE app graph for a value by path — the question nobody
+   *  pre-published into the status projection. Answered from the app's next
+   *  event-loop poll: one consistent single-threaded read, but possibly a
+   *  between-frames transient. For CONDITIONS use waitFor, which samples only
+   *  at frame-settle. Flushes the chain first, so it observes the state the
+   *  chain actually produced. */
+  async get(path: string): Promise<unknown> {
+    await this.flush();
+    const response = await this.graphQuery(path, 'now', Date.now() + 10_000);
+    return response.value;
+  }
+
+  // ---- the graph bridge (task #469) ----
+
+  protected graphRequestId = 0;
+
+  protected async graphQuery(
+    path: string,
+    mode: 'now' | 'settle',
+    deadline: number,
+  ): Promise<{ value: unknown; frame: number; settled: boolean }> {
+    // Time-based ids: monotone across app restarts sharing one --home, so a
+    // stale request file from a previous run can never shadow a fresh one.
+    this.graphRequestId = Math.max(this.graphRequestId + 1, Date.now());
+    const id = this.graphRequestId;
+    const requestPath = `${this.statusPath}.graph-request.json`;
+    const responsePath = `${this.statusPath}.graph-response.json`;
+    const temporaryPath = `${requestPath}.tmp`;
+    writeFileSync(temporaryPath, JSON.stringify({ id, path, mode }));
+    renameSync(temporaryPath, requestPath);
+    while (Date.now() < deadline) {
+      const response = this.readGraphResponse(responsePath);
+      if (response && response.id === id) {
+        if (response.resolved !== true) {
+          throw this.graphMiss(path, response);
+        }
+        return {
+          value: response.value,
+          frame: Number(response.frame ?? -1),
+          settled: response.settled === true,
+        };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+    throw new Error(
+      `the app never answered graph request ${JSON.stringify(path)} ` +
+        `(mode ${mode}). Is TUI_STATUS_PATH set and the app past boot?`,
+    );
+  }
+
+  protected readGraphResponse(
+    responsePath: string,
+  ): Record<string, unknown> | null {
+    try {
+      return JSON.parse(readFileSync(responsePath, 'utf8')) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      return null;
+    }
+  }
+
+  /** A path that does not resolve is NOT a value of undefined — name the node
+   *  the walk died at and what WAS addressable there. */
+  protected graphMiss(path: string, response: Record<string, unknown>): Error {
+    const diedAt = String(response.diedAt ?? '<unknown>');
+    const available = Array.isArray(response.available)
+      ? (response.available as string[])
+      : [];
+    const lastSegment = path.split('.').pop() ?? path;
+    const needle = lastSegment.replace(/[^a-z]/gi, '').toLowerCase();
+    const near = available.filter((candidate) =>
+      candidate.toLowerCase().includes(needle.slice(0, 6)),
+    );
+    return new Error(
+      [
+        `graph path ${JSON.stringify(path)} did not resolve.`,
+        `  walk died at: ${diedAt}`,
+        response.error ? `  error: ${String(response.error)}` : '',
+        near.length > 0
+          ? `  did you mean: ${near.slice(0, 6).join(', ')}?`
+          : '',
+        available.length > 0
+          ? `  addressable there: ${available.slice(0, 40).join(', ')}${available.length > 40 ? ', …' : ''}`
+          : '',
+      ]
+        .filter((line) => line !== '')
+        .join('\n'),
+    );
   }
 
   /** Escape hatches for the cases a chain cannot express. Both flush first, so
@@ -484,6 +617,12 @@ class $DriveScriptRunner {
       "  app.key('Control+j').waitForStatus('panelVisible', true)",
       "     .clickText('+ Plugin').waitForRepaint()",
       "     .show('panelContentLabels')",
+      '',
+      'Live graph reads (any app state, no publish tax; read-only):',
+      '',
+      "  await app.get('panelHost.panelListWidth')      // ask now",
+      "  app.waitFor('panelHost.visible', true)         // condition, frame-settled",
+
       '',
     ].join('\n');
   }
