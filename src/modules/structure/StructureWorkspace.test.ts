@@ -23,7 +23,7 @@ function makeWorkspaceStub() {
       placedCursors.push({ line, column });
     },
     focusEditor: () => {},
-    recordCurrentLocation: () => {},
+    recordCurrentViewState: () => {},
   } as unknown as Workspace.Model;
   return { workspace, placedCursors };
 }

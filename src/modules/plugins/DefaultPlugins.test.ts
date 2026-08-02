@@ -44,7 +44,7 @@ test('the shipped application registers its built in contributions', () => {
     false,
     false,
     true,
-    false,
+    true,
     true,
     false,
     true,

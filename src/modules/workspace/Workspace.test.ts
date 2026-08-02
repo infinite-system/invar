@@ -203,9 +203,9 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.buffers.liveCount).toBe(2);
     expect(disposedViewCount.value).toBe(2);
 
-    // Four buffer views plus the one empty view the first tab open built.
+    // The four buffer views are the only views requested without an editor contributor.
     workspace.dispose();
-    expect(disposedViewCount.value).toBe(5);
+    expect(disposedViewCount.value).toBe(4);
   });
 
   // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
@@ -232,20 +232,20 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     });
     workspace.openFileInTab(filePaths[0]!);
     workspace.openFileInTab(filePaths[1]!);
-    // Two buffer views plus the empty view the first open built; nothing evicted at two tabs.
-    expect(builtViewCount).toBe(3);
+    // Two buffer views; no editor contributor asks for an empty view during capture.
+    expect(builtViewCount).toBe(2);
     expect(disposedViewCount.value).toBe(0);
 
     workspace.releaseSourceTextViews();
 
     // Every live view is gone — the withdrawn pane leaves none behind.
-    expect(disposedViewCount.value).toBe(3);
+    expect(disposedViewCount.value).toBe(2);
     // The DOCUMENTS stay: the tabs are still open and the handle still names the file.
     expect(workspace.buffers.count).toBe(2);
     expect(workspace.activeDocumentHandle?.path).toBe(filePaths[1]!);
     // The next read builds a fresh view through the provider, so the pane can come back.
     expect(workspace.editor).toBeDefined();
-    expect(builtViewCount).toBe(4);
+    expect(builtViewCount).toBe(3);
     // And the count of views bound to OPEN buffers is zero — the load-invariant observable a drive
     // reads to see that a release really released.
     expect(workspace.sourceTextViewsForOpenBuffers).toBe(0);

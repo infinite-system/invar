@@ -2,7 +2,7 @@
 // Navigation history through real PTY bytes and breadcrumb clicks. Run with:
 // `bun scripts/harness/smoke-navigation-history-harness.ts`.
 // PASS means xterm Alt+arrow, macOS readline Option+arrow, the fallback chords, and both padded
-// breadcrumb buttons all drive one navigation history without changing cursor restoration.
+// breadcrumb buttons drive one file-to-comparison-to-file trail without changing cursor restoration.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -29,12 +29,28 @@ const betaPath = join(fixtureRoot, 'beta.ts');
 
 await Bun.write(
   alphaPath,
-  'alpha one\nalpha two\nalpha three\nalpha four\nalpha five\n',
+  'alpha before\nalpha two\nalpha three\nalpha four\nalpha five\n',
 );
 
 await Bun.write(
   betaPath,
   'beta one\nbeta two\nbeta three\nbeta four\nbeta five\n',
+);
+
+HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+HarnessSmoke.Class.runGit(fixtureRoot, [
+  '-c',
+  'user.email=history@example.test',
+  '-c',
+  'user.name=History Smoke',
+  'commit',
+  '-qm',
+  'initial files',
+]);
+await Bun.write(
+  alphaPath,
+  'alpha after\nalpha two\nalpha three\nalpha four\nalpha five\n',
 );
 
 const driver = new PtyTestDriver.Class({
@@ -103,6 +119,13 @@ try {
     'Quick Open closes before the history drive',
     (status) => status.quickOpenOpen === false,
   );
+  driver.sendKeys('Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.treeSelected === 1',
+    (status) => status.treeSelected === 1,
+  );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -112,7 +135,7 @@ try {
   );
   await driver.awaitGridCondition(
     'alpha.ts content is visible after opening the file',
-    (snapshot) => snapshot.findText('alpha one') !== null,
+    (snapshot) => snapshot.findText('alpha after') !== null,
   );
   const orderedChromeSnapshot = driver.snapshot();
   const historyRow = orderedChromeSnapshot.findText(' ❮  ❯ ')?.row ?? -1;
@@ -136,7 +159,7 @@ try {
     );
   }
   const activeFileTab = orderedChromeSnapshot.findText(' alpha.ts ');
-  const alphaContent = orderedChromeSnapshot.findText('alpha one');
+  const alphaContent = orderedChromeSnapshot.findText('alpha after');
   HarnessSmoke.Class.requireCondition(
     activeFileTab !== null &&
       orderedChromeSnapshot.cell(activeFileTab.row, activeFileTab.column + 1)
@@ -157,19 +180,44 @@ try {
   HarnessSmoke.Class.pass('cursor moved to alpha.ts line 3 (3,0)');
   await driver.awaitScreenChange();
 
-  driver.sendKeys('Escape');
+  console.log(
+    '== harness navigation history: open a Git comparison between source files ==',
+  );
+  driver.sendKeys('Control+g');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.focus === 'files'",
-    (status) => status.focus === 'files',
+    "status condition: status.focus === 'git' && status.gitChangedCount === 1",
+    (status) => status.focus === 'git' && status.gitChangedCount === 1,
+  );
+  driver.sendKeys('o');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.showingDiff === true',
+    (status) => status.showingDiff === true,
+  );
+  await driver.awaitGridCondition(
+    'the Git comparison shows both alpha revisions',
+    (snapshot) =>
+      snapshot.findText('alpha before') !== null &&
+      snapshot.findText('alpha after') !== null,
+  );
+  HarnessSmoke.Class.pass('the Git comparison opened between source files');
+
+  driver.sendKeys('Control+Shift+e');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: status.sidebarView === 'files' && status.treeSelected === 1",
+    (status) => status.sidebarView === 'files' && status.treeSelected === 1,
   );
   driver.sendKeys('Down');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.treeSelected === 1',
-    (status) => status.treeSelected === 1,
+    'status condition: status.treeSelected === 2',
+    (status) => status.treeSelected === 2,
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
@@ -214,49 +262,97 @@ try {
     '== harness navigation history: terminal Alt+arrow byte forms replay both directions ==',
   );
   driver.sendRawInput('\x1b[1;3D');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the first xterm Alt+Left restores the Git comparison',
+    (status) => status.showingDiff === true,
+  );
+  await driver.awaitGridCondition(
+    'the Git comparison is visible after navigating back once',
+    (snapshot) =>
+      snapshot.findText('alpha before') !== null &&
+      snapshot.findText('alpha after') !== null,
+  );
+  driver.sendRawInput('\x1bb');
   const backStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.activeBuffer === alphaPath && status.cursor?.line === 3',
-    (status) => status.activeBuffer === alphaPath && status.cursor?.line === 3,
+    'macOS ESC-b leaves the comparison and activates alpha.ts',
+    (status) =>
+      status.activeBuffer === alphaPath && status.showingDiff === false,
   );
   HarnessSmoke.Class.pass(
-    'xterm Alt+Left restored alpha.ts as the active buffer',
+    'xterm Alt+Left and macOS ESC-b restored alpha.ts through the comparison',
   );
   HarnessSmoke.Class.requireCondition(
     backStatus.cursor?.line === 3 && backStatus.cursor.col === 0,
-    'xterm Alt+Left restored the cursor to where it was left (3,0)',
+    'cross-byte Back restored the cursor to where it was left (3,0)',
   );
   await driver.awaitGridCondition(
     'alpha.ts content is visible after navigating back',
-    (snapshot) => snapshot.findText('alpha one') !== null,
+    (snapshot) => snapshot.findText('alpha after') !== null,
   );
   driver.sendRawInput('\x1b[1;3C');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.activeBuffer === betaPath',
-    (status) => status.activeBuffer === betaPath,
+    'status condition: status.showingDiff === true',
+    (status) => status.showingDiff === true,
   );
   await driver.awaitGridCondition(
-    'beta.ts content is visible after navigating forward',
-    (snapshot) => snapshot.findText('beta one') !== null,
-  );
-  HarnessSmoke.Class.pass('xterm Alt+Right returned forward to beta.ts');
-
-  driver.sendRawInput('\x1bb');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'macOS ESC-b activates alpha.ts',
-    (status) => status.activeBuffer === alphaPath,
+    'the Git comparison is visible after navigating forward once',
+    (snapshot) => snapshot.findText('alpha before') !== null,
   );
   driver.sendRawInput('\x1bf');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'macOS ESC-f activates beta.ts',
-    (status) => status.activeBuffer === betaPath,
+    'status condition: status.activeBuffer === betaPath',
+    (status) =>
+      status.activeBuffer === betaPath && status.showingDiff === false,
+  );
+  await driver.awaitGridCondition(
+    'beta.ts content is visible after navigating forward',
+    (snapshot) => snapshot.findText('beta one') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'xterm Alt+Right and macOS ESC-f returned through the comparison to beta.ts',
+  );
+
+  driver.sendRawInput('\x1bb');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the first macOS ESC-b restores the Git comparison',
+    (status) => status.showingDiff === true,
+  );
+  await driver.awaitGridCondition(
+    'the Git comparison is visible after the first macOS ESC-b',
+    (snapshot) => snapshot.findText('alpha before') !== null,
+  );
+  driver.sendRawInput('\x1bb');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the second macOS ESC-b activates alpha.ts',
+    (status) =>
+      status.activeBuffer === alphaPath && status.showingDiff === false,
+  );
+  driver.sendRawInput('\x1bf');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the first macOS ESC-f restores the Git comparison',
+    (status) => status.showingDiff === true,
+  );
+  driver.sendRawInput('\x1bf');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the second macOS ESC-f activates beta.ts',
+    (status) =>
+      status.activeBuffer === betaPath && status.showingDiff === false,
   );
   HarnessSmoke.Class.pass(
     'macOS readline Option+arrow byte forms replay both directions',
@@ -266,22 +362,38 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Ctrl+Alt+[ fallback activates alpha.ts',
-    (status) => status.activeBuffer === alphaPath,
+    'the first Ctrl+Alt+[ fallback restores the Git comparison',
+    (status) => status.showingDiff === true,
+  );
+  driver.sendRawInput('\x1b[91;7u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the second Ctrl+Alt+[ fallback activates alpha.ts',
+    (status) =>
+      status.activeBuffer === alphaPath && status.showingDiff === false,
   );
   driver.sendRawInput('\x1b[93;7u');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Ctrl+Alt+] fallback activates beta.ts',
-    (status) => status.activeBuffer === betaPath,
+    'the first Ctrl+Alt+] fallback restores the Git comparison',
+    (status) => status.showingDiff === true,
+  );
+  driver.sendRawInput('\x1b[93;7u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the second Ctrl+Alt+] fallback activates beta.ts',
+    (status) =>
+      status.activeBuffer === betaPath && status.showingDiff === false,
   );
   HarnessSmoke.Class.pass('Ctrl+Alt+bracket fallbacks replay both directions');
 
   console.log(
     '== harness navigation history: padded breadcrumb buttons drive the same history ==',
   );
-  let snapshot = await driver.awaitGridCondition(
+  const snapshot = await driver.awaitGridCondition(
     'the breadcrumb row renders both fat history controls',
     (candidate) => candidate.findText(' ❮  ❯ ') !== null,
   );
@@ -307,32 +419,40 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'clicking breadcrumb back activates alpha.ts',
-    (status) => status.activeBuffer === alphaPath,
+    'clicking breadcrumb back restores the Git comparison',
+    (status) => status.showingDiff === true,
   );
   await driver.awaitGridCondition(
-    'alpha.ts content is visible after clicking the back breadcrumb',
-    (candidate) => candidate.findText('alpha one') !== null,
+    'the Git comparison is visible after clicking the back breadcrumb',
+    (candidate) => candidate.findText('alpha before') !== null,
   );
-  HarnessSmoke.Class.pass('clicking padded breadcrumb ❮ went back to alpha.ts');
-  snapshot = driver.snapshot();
+  HarnessSmoke.Class.pass(
+    'clicking padded breadcrumb ❮ went back to the Git comparison',
+  );
+  const restoredComparisonSnapshot = driver.snapshot();
+  const restoredHistoryPosition = restoredComparisonSnapshot.findText(' ❮  ❯ ');
+  if (!restoredHistoryPosition) {
+    throw new Error('The padded history controls vanished on the comparison');
+  }
+  const forwardColumn = restoredHistoryPosition.column + 4;
   driver.sendMouse({
     kind: 'press',
-    column: backColumn + 3,
-    row: breadcrumbRow,
+    column: forwardColumn,
+    row: restoredHistoryPosition.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: backColumn + 3,
-    row: breadcrumbRow,
+    column: forwardColumn,
+    row: restoredHistoryPosition.row,
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'status condition: status.activeBuffer === betaPath',
-    (status) => status.activeBuffer === betaPath,
+    (status) =>
+      status.activeBuffer === betaPath && status.showingDiff === false,
   );
   await driver.awaitGridCondition(
     'beta.ts content is visible after clicking the forward breadcrumb',

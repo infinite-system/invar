@@ -391,7 +391,6 @@ class $TabBar {
       workspaceSet.active.editor.hasDocument.value &&
       workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
     breadcrumbBar.onMouseDown = (event) => {
-      if (!controlsShown()) return;
       tooltip.clear();
       const localColumn = event.x - Number(breadcrumbBar.x);
       const segment = this.breadcrumbSegmentAt(localColumn);

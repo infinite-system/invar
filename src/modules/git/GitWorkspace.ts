@@ -10,6 +10,7 @@ import type { DocumentHandle } from '../workspace/DocumentHandle';
 import type { DocumentLifecycleContribution } from '../workspace/DocumentLifecycle';
 import type { GutterDecorationContribution } from '../workspace/GutterDecorations';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
+import type { NavigationHistoryContributor } from '../navigation/NavigationHistory';
 import { GitRepository } from './GitRepository';
 import { GitWatcher } from './GitWatcher';
 import { GitBlameCache } from './GitBlameCache';
@@ -28,11 +29,13 @@ import { GitDocumentState } from './GitDocumentState';
 // invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 // invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
 // invariant: Commit selection previews without focus transfer (src/modules/git/git.invariants.md)
+// invariant: Programmatic history navigation does not record new history (src/modules/navigation/navigation.invariants.md)
 class $GitWorkspace
   implements
     DocumentLifecycleContribution,
     GutterDecorationContribution,
-    EditorSurfaceClaim
+    EditorSurfaceClaim,
+    NavigationHistoryContributor
 {
   constructor(
     readonly workspace: Workspace.Model,
@@ -46,6 +49,7 @@ class $GitWorkspace
     this.disposeDocumentLifecycle = workspace.documentLifecycle.register(this);
     this.disposeGutterDecorations = workspace.gutterDecorations.register(this);
     this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
+    this.disposeNavigationHistory = workspace.navigationHistory.register(this);
   }
 
   readonly splitRatioSetting: RegisteredSetting<number>;
@@ -62,6 +66,7 @@ class $GitWorkspace
   protected readonly disposeDocumentLifecycle: () => void;
   protected readonly disposeGutterDecorations: () => void;
   protected readonly disposeEditorSurfaceClaim: () => void;
+  protected readonly disposeNavigationHistory: () => void;
   protected readonly documentStates = new Map<
     DocumentHandle.Model,
     GitDocumentState.Model
@@ -95,12 +100,14 @@ class $GitWorkspace
     request: Omit<GitComparisonRequest, 'token'>,
     transferFocus: boolean,
   ): void {
+    this.workspace.navigationHistory.recordCurrentState();
     this.comparisonRequest.value = {
       token: ++this.comparisonRequestToken,
       ...request,
     };
     this.showingComparison.value = true;
     if (transferFocus) this.workspace.focusEditor();
+    this.workspace.navigationHistory.recordCurrentState();
   }
 
   // --- EditorSurfaceClaim -----------------------------------------------------------------------
@@ -116,6 +123,53 @@ class $GitWorkspace
   release(): void {
     this.showingComparison.value = false;
     this.comparisonRequest.value = null;
+  }
+
+  // --- NavigationHistoryContributor --------------------------------------------------------------
+  captureCurrentState(): GitComparisonRequest | null {
+    const request = this.comparisonRequest.value;
+    if (
+      !this.showingComparison.value ||
+      !request ||
+      this.workspace.editorSurfaces.occupyingClaim !== this
+    ) {
+      return null;
+    }
+    return { ...request };
+  }
+
+  restoreState(payload: unknown): boolean {
+    if (!this.isComparisonRequest(payload)) return false;
+    this.comparisonRequestToken = Math.max(
+      this.comparisonRequestToken,
+      payload.token,
+    );
+    this.comparisonRequest.value = { ...payload };
+    this.showingComparison.value = true;
+    this.workspace.focusEditor();
+    return true;
+  }
+
+  samePlace(previousPayload: unknown, nextPayload: unknown): boolean {
+    return (
+      this.isComparisonRequest(previousPayload) &&
+      this.isComparisonRequest(nextPayload) &&
+      previousPayload.token === nextPayload.token
+    );
+  }
+
+  protected isComparisonRequest(
+    payload: unknown,
+  ): payload is GitComparisonRequest {
+    if (typeof payload !== 'object' || payload === null) return false;
+    const candidate = payload as Partial<GitComparisonRequest>;
+    return (
+      typeof candidate.token === 'number' &&
+      typeof candidate.previousVersionText === 'string' &&
+      typeof candidate.currentVersionText === 'string' &&
+      typeof candidate.previousVersionPath === 'string' &&
+      typeof candidate.currentVersionPath === 'string'
+    );
   }
 
   get repository() {
@@ -182,6 +236,7 @@ class $GitWorkspace
 
   disposed(): void {
     this.suspended();
+    this.disposeNavigationHistory();
     this.disposeDocumentLifecycle();
     this.disposeGutterDecorations();
     this.disposeEditorSurfaceClaim();
