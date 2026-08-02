@@ -2,8 +2,11 @@ import { expect, test } from 'bun:test';
 import { rmSync } from 'node:fs';
 import { HarnessSmoke } from './HarnessSmoke';
 import {
+  activePanelCell,
   activeTabHasDirtyMarker,
   awaitStatusPublication,
+  panelCellsOfKind,
+  panelContentIdentifiersOfKind,
 } from './HarnessSmokeSupport';
 
 test('dirty marker lookup skips the same filename in the breadcrumb row', () => {
@@ -22,6 +25,31 @@ test('dirty marker lookup skips the same filename in the breadcrumb row', () => 
   expect(activeTabHasDirtyMarker(snapshot, '/workspace/dirty-marker.txt')).toBe(
     true,
   );
+});
+
+test('panel status keeps kind plural and resolves the active opaque identifier', () => {
+  const status = {
+    panelActiveContent: 'pane-instance-9',
+    panelCellIds: ['pane-instance-4', 'pane-instance-9', 'database'],
+    panelCellKinds: ['terminal', 'terminal', 'database'],
+    panelCellColumns: [30, 40, 20],
+    panelContentIds: ['pane-instance-4', 'pane-instance-9', 'database'],
+    panelContentKinds: ['terminal', 'terminal', 'database'],
+  };
+
+  expect(
+    panelCellsOfKind(status, 'terminal').map((cell) => cell.identifier),
+  ).toEqual(['pane-instance-4', 'pane-instance-9']);
+  expect(activePanelCell(status)).toEqual({
+    identifier: 'pane-instance-9',
+    kind: 'terminal',
+    columns: 40,
+    index: 1,
+  });
+  expect(panelContentIdentifiersOfKind(status, 'terminal')).toEqual([
+    'pane-instance-4',
+    'pane-instance-9',
+  ]);
 });
 
 test('support status timeout names the condition and path', async () => {

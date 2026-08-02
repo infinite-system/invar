@@ -55,7 +55,7 @@ async function runPaletteCommand(commandTitle: string): Promise<void> {
   const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
   if (
     currentStatus.panelVisible === true &&
-    currentStatus.panelActiveContent === 'database'
+    currentStatus.panelActiveContentKind === 'database'
   ) {
     driver.sendKeys('Control+j');
     await HarnessSmoke.Class.awaitStatus(
@@ -116,14 +116,23 @@ async function revealDatabasePathInputThroughUserGesture(): Promise<void> {
     driver,
     statusPath,
     'Database Connect reveals and focuses the path field in its owning content space',
-    (status) =>
-      status.databasePathInputActive === true &&
-      status.panelActiveContent === 'database' &&
-      status.panelFocused === true &&
-      Array.isArray(status.panelActiveSpacePaneIds) &&
-      status.panelActiveSpacePaneIds.includes('database') &&
-      Array.isArray(status.panelCellIds) &&
-      status.panelCellIds.includes('database'),
+    (status) => {
+      const activeSpacePaneIdentifiers = status.panelActiveSpacePaneIds;
+      return (
+        status.databasePathInputActive === true &&
+        status.panelActiveContentKind === 'database' &&
+        status.panelFocused === true &&
+        Array.isArray(activeSpacePaneIdentifiers) &&
+        HarnessSmoke.Class.panelContentIdentifiersOfKind(
+          status,
+          'database',
+        ).some((identifier) =>
+          activeSpacePaneIdentifiers.includes(identifier),
+        ) &&
+        Array.isArray(status.panelCellKinds) &&
+        status.panelCellKinds.includes('database')
+      );
+    },
   );
   await driver.awaitGridCondition(
     'the focused database path field is visible in the active content space',
@@ -334,7 +343,7 @@ try {
     driver,
     statusPath,
     'the Database content space is active after disconnect',
-    (status) => status.panelActiveContent === 'database',
+    (status) => status.panelActiveContentKind === 'database',
   );
   await driver.awaitGridCondition(
     'the disconnected pane states how to connect again',

@@ -727,10 +727,10 @@ try {
   await driver.awaitGridCondition(
     'the uninstalled runtime leaves no pane in the panel',
     () =>
-      !(
-        HarnessSmoke.Class.readStatus(statusPath).panelCellIds as
-          string[] | undefined
-      )?.includes('terminal'),
+      HarnessSmoke.Class.panelCellsOfKind(
+        HarnessSmoke.Class.readStatus(statusPath),
+        'terminal',
+      ).length === 0,
   );
   HarnessSmoke.Class.pass(
     'the Terminal runtime uninstalls, releasing its pane and its status projection',
@@ -1807,7 +1807,7 @@ try {
     statusPath,
     'the database consumer resolves the installed SQLite provider',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.panelVisible === true &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite',
@@ -1832,7 +1832,7 @@ try {
     statusPath,
     'the database consumer states that no provider remains',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.databaseConsumerStatus === 'unavailable' &&
       status.databaseProviderIdentifier === null &&
       status.databaseProviderPluginActive === undefined,
@@ -1855,7 +1855,7 @@ try {
     statusPath,
     'the database consumer resolves the reinstalled provider',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite' &&
       status.databaseProviderPluginActive === true,
@@ -1918,7 +1918,7 @@ try {
     statusPath,
     'the reinstalled database consumer resolves SQLite again',
     (status) =>
-      status.panelActiveContent === 'database' &&
+      status.panelActiveContentKind === 'database' &&
       status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite',
   );

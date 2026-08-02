@@ -44,37 +44,28 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
     status.layoutSlots as Record<string, Rectangle> | undefined
   )?.bottomPanel;
   const headings = status.panelHeadingGeometry;
-  const contentIdentifiers = status.panelCellIds;
-  const contentKinds = status.panelCellKinds;
+  const activeCell = HarnessSmoke.Class.activePanelCell(status);
   const cellColumns = status.panelCellColumns;
   if (
     !bottomPanel ||
     !Array.isArray(headings) ||
-    !Array.isArray(contentIdentifiers) ||
-    !Array.isArray(contentKinds) ||
+    activeCell?.kind !== 'agent' ||
     !Array.isArray(cellColumns)
   ) {
     return null;
   }
-  const contentIndex = contentKinds.indexOf('agent');
-  const agentIdentifier = contentIdentifiers[contentIndex];
   const agentHeading = (
     headings as unknown as readonly PanelHeadingGeometryStatus[]
-  ).find((heading) => heading.contentId === agentIdentifier);
+  ).find((heading) => heading.contentId === activeCell.identifier);
   const panelViewportRows = Number(status.panelRows);
-  const contentColumns = Number(cellColumns[contentIndex]);
-  if (
-    !agentHeading ||
-    contentIndex < 0 ||
-    panelViewportRows <= 0 ||
-    contentColumns <= 0
-  ) {
+  const contentColumns = activeCell.columns;
+  if (!agentHeading || panelViewportRows <= 0 || contentColumns <= 0) {
     return null;
   }
   let startColumn = bottomPanel.left + 1;
   for (
     let precedingIndex = 0;
-    precedingIndex < contentIndex;
+    precedingIndex < activeCell.index;
     precedingIndex += 1
   ) {
     startColumn += Number(cellColumns[precedingIndex]) + 1;

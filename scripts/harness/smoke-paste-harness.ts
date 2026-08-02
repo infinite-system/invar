@@ -315,10 +315,15 @@ try {
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
-  const agentPanelCellKinds = agentPanelLayoutStatus.panelCellKinds as string[];
+  const activeAgentCell = HarnessSmoke.Class.activePanelCell(
+    agentPanelLayoutStatus,
+  );
   const agentPanelCellColumns =
     agentPanelLayoutStatus.panelCellColumns as number[];
-  const pasteAgentCellIndex = agentPanelCellKinds.indexOf('agent');
+  if (activeAgentCell?.kind !== 'agent') {
+    throw new Error('The active agent panel cell geometry disappeared');
+  }
+  const pasteAgentCellIndex = activeAgentCell.index;
   const agentBottomPanel = (
     agentPanelLayoutStatus.layoutSlots as
       Record<string, { left: number }> | undefined
@@ -384,11 +389,15 @@ try {
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
-  const stagedPanelCellKinds =
-    stagedPanelLayoutStatus.panelCellKinds as string[];
+  const activeStagedTerminalCell = HarnessSmoke.Class.activePanelCell(
+    stagedPanelLayoutStatus,
+  );
   const stagedPanelCellColumns =
     stagedPanelLayoutStatus.panelCellColumns as number[];
-  const stagedTerminalCellIndex = stagedPanelCellKinds.indexOf('terminal');
+  if (activeStagedTerminalCell?.kind !== 'terminal') {
+    throw new Error('The active staged terminal geometry disappeared');
+  }
+  const stagedTerminalCellIndex = activeStagedTerminalCell.index;
   const stagedBottomPanel = (
     stagedPanelLayoutStatus.layoutSlots as
       Record<string, { left: number }> | undefined
@@ -436,10 +445,13 @@ try {
   >;
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
-  const panelCellKinds = panelLayoutStatus.panelCellKinds as string[];
+  const activeTerminalCell =
+    HarnessSmoke.Class.activePanelCell(panelLayoutStatus);
   const panelCellColumns = panelLayoutStatus.panelCellColumns as number[];
-  const terminalCellIndex = panelCellKinds.indexOf('terminal');
-  if (terminalCellIndex < 0) throw new Error('Terminal panel cell disappeared');
+  if (activeTerminalCell?.kind !== 'terminal') {
+    throw new Error('The active terminal panel cell disappeared');
+  }
+  const terminalCellIndex = activeTerminalCell.index;
   const terminalPaneLeft =
     bottomPanel.left +
     1 +

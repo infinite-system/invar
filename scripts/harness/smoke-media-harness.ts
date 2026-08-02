@@ -65,20 +65,14 @@ interface MediaCellGeometry {
   readonly rows: number;
 }
 
-function mediaCellGeometry(
-  status: StatusSnapshot,
-  contentIdentifier: string,
-): MediaCellGeometry {
-  const contentIdentifiers = status.panelCellIds as
-    readonly string[] | undefined;
-  const cellColumns = status.panelCellColumns as readonly number[] | undefined;
-  const contentIndex = contentIdentifiers?.indexOf(contentIdentifier) ?? -1;
-  const columns = Number(cellColumns?.[contentIndex]);
+function mediaCellGeometry(status: StatusSnapshot): MediaCellGeometry {
+  const activeCell = HarnessSmoke.Class.activePanelCell(status);
+  const columns = Number(activeCell?.columns);
   const rows = Number(status.panelRows);
-  if (contentIndex < 0 || columns < 1 || rows < 1) {
+  if (!activeCell || columns < 1 || rows < 1) {
     throw new Error(
-      `media cell geometry is unavailable for ${contentIdentifier}: ` +
-        `index=${contentIndex}, columns=${columns}, rows=${rows}`,
+      `media cell geometry is unavailable for the active pane: ` +
+        `identifier=${activeCell?.identifier ?? 'none'}, columns=${columns}, rows=${rows}`,
     );
   }
   return { columns, rows };
@@ -392,7 +386,7 @@ async function driveHalfBlockAnimation(): Promise<void> {
     );
     const initialWorkingSetBytes = Number(initialStatus.mediaWorkingSetBytes);
     const initialBufferGeneration = Number(initialStatus.mediaBufferGeneration);
-    const initialCellGeometry = mediaCellGeometry(initialStatus, 'media-demo');
+    const initialCellGeometry = mediaCellGeometry(initialStatus);
     const expectedHalfBlockWorkingSetBytes =
       initialCellGeometry.columns * initialCellGeometry.rows * 2 * 8;
     HarnessSmoke.Class.requireCondition(
@@ -667,7 +661,7 @@ async function driveKittyAndAsciiChrome(): Promise<void> {
         status.panelCellIds.includes('media-demo') &&
         Number(status.panelRows) > 0,
     );
-    const demoCellGeometry = mediaCellGeometry(demoStatus, 'media-demo');
+    const demoCellGeometry = mediaCellGeometry(demoStatus);
     const graphicsSupersamplingScale = 8;
     const expectedPixelWidth =
       demoCellGeometry.columns * graphicsSupersamplingScale;
@@ -719,10 +713,7 @@ async function driveKittyAndAsciiChrome(): Promise<void> {
           (columnCount) => Number(columnCount) > demoCellGeometry.columns,
         ),
     );
-    const largeDemoCellGeometry = mediaCellGeometry(
-      largeDemoStatus,
-      'media-demo',
-    );
+    const largeDemoCellGeometry = mediaCellGeometry(largeDemoStatus);
     const expectedLargePixelWidth =
       largeDemoCellGeometry.columns * graphicsSupersamplingScale;
     const expectedLargePixelHeight =

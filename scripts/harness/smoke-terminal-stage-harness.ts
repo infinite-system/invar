@@ -241,9 +241,13 @@ async function driveAnimatedTerminalTools(
         status.panelCellKinds.join(',') === 'terminal' &&
         status.panelFocusedIndex === 0,
     );
-    const panelCellKinds = terminalStatus.panelCellKinds as string[];
+    const activeTerminalCell =
+      HarnessSmoke.Class.activePanelCell(terminalStatus);
     const panelCellColumns = terminalStatus.panelCellColumns as number[];
-    const terminalCellIndex = panelCellKinds.indexOf('terminal');
+    if (activeTerminalCell?.kind !== 'terminal') {
+      throw new Error('The active terminal cell geometry disappeared');
+    }
+    const terminalCellIndex = activeTerminalCell.index;
     const panelLeft =
       Number(
         (

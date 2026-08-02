@@ -9,6 +9,77 @@ import type { PtyTestDriver } from './PtyTestDriver';
 
 export type HarnessStatus = Record<string, unknown>;
 
+export interface PublishedPanelCell {
+  readonly identifier: string;
+  readonly kind: string;
+  readonly columns: number;
+  readonly index: number;
+}
+
+/** Read the aligned panel-cell status arrays without treating a pane kind as its identity. */
+export function publishedPanelCells(
+  status: HarnessStatus,
+): readonly PublishedPanelCell[] {
+  const identifiers = status.panelCellIds;
+  const kinds = status.panelCellKinds;
+  const columns = status.panelCellColumns;
+  if (
+    !Array.isArray(identifiers) ||
+    !Array.isArray(kinds) ||
+    !Array.isArray(columns) ||
+    identifiers.length !== kinds.length ||
+    identifiers.length !== columns.length
+  ) {
+    return [];
+  }
+  return identifiers.map((identifier, index) => ({
+    identifier: String(identifier),
+    kind: String(kinds[index]),
+    columns: Number(columns[index]),
+    index,
+  }));
+}
+
+/** Return every visible cell of a kind. A kind can name many panes, so this result stays plural. */
+export function panelCellsOfKind(
+  status: HarnessStatus,
+  kind: string,
+): readonly PublishedPanelCell[] {
+  return publishedPanelCells(status).filter((cell) => cell.kind === kind);
+}
+
+/** Resolve active-cell geometry through the exact opaque id published by panelActiveContent. */
+export function activePanelCell(
+  status: HarnessStatus,
+): PublishedPanelCell | null {
+  const activeIdentifier = status.panelActiveContent;
+  if (typeof activeIdentifier !== 'string') return null;
+  return (
+    publishedPanelCells(status).find(
+      (cell) => cell.identifier === activeIdentifier,
+    ) ?? null
+  );
+}
+
+/** Return every registered pane id of a kind from the aligned content status arrays. */
+export function panelContentIdentifiersOfKind(
+  status: HarnessStatus,
+  kind: string,
+): readonly string[] {
+  const identifiers = status.panelContentIds;
+  const kinds = status.panelContentKinds;
+  if (
+    !Array.isArray(identifiers) ||
+    !Array.isArray(kinds) ||
+    identifiers.length !== kinds.length
+  ) {
+    return [];
+  }
+  return identifiers.flatMap((identifier, index) =>
+    String(kinds[index]) === kind ? [String(identifier)] : [],
+  );
+}
+
 export function pass(label: string): void {
   console.log(`  PASS  ${label}`);
 }

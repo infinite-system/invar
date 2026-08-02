@@ -683,7 +683,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       `${columns}-column keyboard cycle selects Database`,
       (candidate) =>
         candidate.panelActiveSpace === 'database-space-1' &&
-        JSON.stringify(candidate.panelCellIds) === JSON.stringify(['database']),
+        JSON.stringify(candidate.panelCellKinds) ===
+          JSON.stringify(['database']),
     );
     const terminalTab = tabBar(status).tabs.find((tab) =>
       tab.spaceIdentifier.startsWith('terminal-space-'),

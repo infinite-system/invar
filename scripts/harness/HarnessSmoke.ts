@@ -3,6 +3,13 @@ import { Static } from 'ivue/extras';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
+import {
+  activePanelCell,
+  panelCellsOfKind,
+  panelContentIdentifiersOfKind,
+  type HarnessStatus,
+  type PublishedPanelCell,
+} from './HarnessSmokeSupport';
 
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
@@ -58,6 +65,24 @@ class $HarnessSmoke {
 
   static readStatus(statusPath: string): StatusSnapshot {
     return JSON.parse(readFileSync(statusPath, 'utf8')) as StatusSnapshot;
+  }
+
+  static activePanelCell(status: HarnessStatus): PublishedPanelCell | null {
+    return activePanelCell(status);
+  }
+
+  static panelCellsOfKind(
+    status: HarnessStatus,
+    kind: string,
+  ): readonly PublishedPanelCell[] {
+    return panelCellsOfKind(status, kind);
+  }
+
+  static panelContentIdentifiersOfKind(
+    status: HarnessStatus,
+    kind: string,
+  ): readonly string[] {
+    return panelContentIdentifiersOfKind(status, kind);
   }
 
   static async removeTemporaryDirectory(directoryPath: string): Promise<void> {

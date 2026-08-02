@@ -15,6 +15,7 @@ import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { CompletionPopup } from '../ui/CompletionPopup';
 import type { LayoutSlots } from '../layout/LayoutSlots';
 import { PanelHost } from '../ui/PanelHost';
+import type { PaneContent } from '../ui/PaneContent.interface';
 import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
@@ -37,9 +38,11 @@ class $AppStatusProjection {
       ports.view.editorColumnContentIdentifier();
     const panelViewportColumns = ports.view.panelViewportColumns();
     const panelViewportRows = ports.view.panelViewportRows();
-    const terminalCellIndex = ports.panelHost.resolvedCells.findIndex(
-      (cell) => cell.content.kind === 'terminal',
-    );
+    const terminalCellIndex = ports.terminalPaneContent
+      ? ports.panelHost.resolvedCells.findIndex(
+          (cell) => cell.content.id === ports.terminalPaneContent?.id,
+        )
+      : -1;
     const panelCellSpans = ports.panelHost.cellSpans(panelViewportColumns);
     const orderedPanelContents = ports.panelHost.orderedContents;
     const terminalIsPainted =
@@ -571,4 +574,5 @@ export interface AppStatusProjectionPorts {
     | 'currentEngine'
     | 'title'
   > | null;
+  readonly terminalPaneContent: Pick<PaneContent, 'id'> | null;
 }

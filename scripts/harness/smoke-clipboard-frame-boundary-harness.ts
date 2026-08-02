@@ -148,17 +148,14 @@ function activeTerminalOutputPosition(
   return null;
 }
 
-function panelCellBodyPoint(
-  status: StatusSnapshot,
-  contentIdentifier: string,
-): { column: number; row: number } {
-  const panelCellIdentifiers = Array.isArray(status.panelCellIds)
-    ? status.panelCellIds.map(String)
-    : [];
+function panelCellBodyPoint(status: StatusSnapshot): {
+  column: number;
+  row: number;
+} {
+  const activeCell = HarnessSmoke.Class.activePanelCell(status);
   const panelCellColumns = Array.isArray(status.panelCellColumns)
     ? status.panelCellColumns.map(Number)
     : [];
-  const contentIndex = panelCellIdentifiers.indexOf(contentIdentifier);
   const layoutSlots = status.layoutSlots as
     | Record<
         string,
@@ -166,21 +163,17 @@ function panelCellBodyPoint(
       >
     | undefined;
   const bottomPanel = layoutSlots?.bottomPanel;
-  if (
-    contentIndex < 0 ||
-    panelCellColumns.length !== panelCellIdentifiers.length ||
-    !bottomPanel
-  ) {
-    throw new Error(`Panel geometry unavailable for ${contentIdentifier}`);
+  if (!activeCell || !bottomPanel) {
+    throw new Error('Panel geometry unavailable for the active pane');
   }
   const precedingCellColumns = panelCellColumns
-    .slice(0, contentIndex)
+    .slice(0, activeCell.index)
     .reduce((columnTotal, cellColumnCount) => columnTotal + cellColumnCount, 0);
   const screenRows = Number(status.height);
   const layoutCanvasTop =
     screenRows - 1 - (bottomPanel.top + bottomPanel.height);
   return {
-    column: bottomPanel.left + 2 + precedingCellColumns + contentIndex,
+    column: bottomPanel.left + 2 + precedingCellColumns + activeCell.index,
     row: layoutCanvasTop + bottomPanel.top + Math.floor(bottomPanel.height / 2),
   };
 }
@@ -406,10 +399,7 @@ try {
       typeof status.layoutSlots === 'object' &&
       status.layoutSlots !== null,
   );
-  const terminalCellBodyPoint = panelCellBodyPoint(
-    terminalLayoutStatus,
-    'terminal',
-  );
+  const terminalCellBodyPoint = panelCellBodyPoint(terminalLayoutStatus);
   driver.sendText('printf IDLE-TERMINAL');
   await driver.awaitScreenChange();
   driver.sendKeys('Enter');

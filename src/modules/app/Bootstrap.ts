@@ -330,6 +330,17 @@ class $Bootstrap {
         );
       },
     });
+    /** Resolve a visible kind through an explicit selection policy. Kind is never used as an id. */
+    const visiblePaneOfKind = (kind: string): PaneContent | null => {
+      const focusedContent = panelHost.focusedContent;
+      if ((focusedContent?.kind ?? focusedContent?.id) === kind) {
+        return focusedContent;
+      }
+      return panelHost.visibleContentsOfKind(kind)[0] ?? null;
+    };
+    /** Resolve a requested kind through an explicit focused, visible, then registered policy. */
+    const currentPaneOfKind = (kind: string): PaneContent | null =>
+      visiblePaneOfKind(kind) ?? panelHost.contentsOfKind(kind)[0] ?? null;
     const workspacePanelWorlds = new Map<
       Workspace.Instance,
       WorkspacePanelWorld
@@ -445,8 +456,7 @@ class $Bootstrap {
         paneRuntimes,
         openRuntimePane: (runtimeKind, request) =>
           openRuntimePane(runtimeKind, request),
-        currentPaneOfKind: (kind) =>
-          panelHost.visibleContentOfKind(kind) ?? panelHost.contentOfKind(kind),
+        currentPaneOfKind,
         releasePane: (identifier) =>
           panelHost.removeContentFromAnySet(identifier),
         editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
@@ -487,7 +497,7 @@ class $Bootstrap {
     // visible split; closing it leaves the agent region intact.
     const toggleTerminal = (): void => {
       agentSkillPopup.close();
-      const visibleTerminal = panelHost.visibleContentOfKind('terminal');
+      const visibleTerminal = visiblePaneOfKind('terminal');
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
       else {
         // No runtime for this kind (its plugin is disabled) — the affordance degrades to nothing
@@ -501,7 +511,7 @@ class $Bootstrap {
     // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
     const toggleAgent = (): void => {
       agentSkillPopup.close();
-      const visibleAgent = panelHost.visibleContentOfKind('agent');
+      const visibleAgent = visiblePaneOfKind('agent');
       if (visibleAgent) panelHost.toggleContent(visibleAgent.id);
       else {
         const agent = ensureAgent();
@@ -656,12 +666,6 @@ class $Bootstrap {
     // true size. The host names no runtime: it passes a KIND to the registry and registers whatever
     // comes back.
     const runtimePanes = new Map<string, PaneContent>();
-    /** The pane an outside consumer means by a kind in the active workspace world. */
-    const currentPaneOfKind = (kind: string): PaneContent | null => {
-      return (
-        panelHost.visibleContentOfKind(kind) ?? panelHost.contentOfKind(kind)
-      );
-    };
     const currentAgentPane = (): AgentPaneContent.Model | null => {
       const content = currentPaneOfKind('agent');
       return content instanceof AgentPaneContent.Class ? content : null;
@@ -734,7 +738,7 @@ class $Bootstrap {
       labelOverride?: string,
       persistedIdentifier?: string,
     ): PaneContent | null => {
-      const anyExisting = panelHost.contentOfKind(kind) !== null;
+      const anyExisting = panelHost.contentsOfKind(kind).length > 0;
       const identity = persistedIdentifier
         ? paneRuntimes.claimPersistedInstanceIdentifier(persistedIdentifier)
           ? {
@@ -916,7 +920,7 @@ class $Bootstrap {
       labelOverride?: string,
       persistedIdentifier?: string,
     ): AgentPaneContent.Model | null => {
-      const anyExisting = panelHost.contentOfKind('agent') !== null;
+      const anyExisting = panelHost.contentsOfKind('agent').length > 0;
       const instanceNumber =
         additionalInstance || anyExisting
           ? activeWorkspacePanelWorld.agentInstanceCount + 1
@@ -1007,11 +1011,15 @@ class $Bootstrap {
       connectTerminalFollow();
     };
 
+    const databasePaneFactory = (): PaneContent | null =>
+      panelHost
+        .contentsOfKind('database')
+        .find((content) => content.createInstance !== undefined) ?? null;
     const createDatabaseInstance = (
       labelOverride?: string,
       persistedIdentifier?: string,
     ): PaneContent | null => {
-      const databaseContent = panelHost.contentOfKind('database');
+      const databaseContent = databasePaneFactory();
       if (!databaseContent?.createInstance) return databaseContent;
       const label = labelOverride ?? nextWindowLabel('Database');
       const identifier = persistedIdentifier
@@ -1140,7 +1148,7 @@ class $Bootstrap {
         }
       }
       if (pane.kind === 'database') {
-        const databaseContent = panelHost.contentOfKind('database');
+        const databaseContent = databasePaneFactory();
         if (pane.identifier === databaseContent?.id) return databaseContent;
         return createDatabaseInstance(pane.label, pane.identifier);
       }
@@ -1406,6 +1414,9 @@ class $Bootstrap {
       },
       get agentPaneContent() {
         return currentAgentPane();
+      },
+      get terminalPaneContent() {
+        return currentPaneOfKind('terminal');
       },
     };
 

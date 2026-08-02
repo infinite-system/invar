@@ -815,37 +815,28 @@ class $SmokeTerminalFollowHarness {
       status.layoutSlots as Record<string, Rectangle> | undefined
     )?.bottomPanel;
     const headings = status.panelHeadingGeometry;
-    const contentIdentifiers = status.panelCellIds;
-    const contentKinds = status.panelCellKinds;
+    const activeCell = HarnessSmoke.Class.activePanelCell(status);
     const cellColumns = status.panelCellColumns;
     if (
       !bottomPanel ||
       !Array.isArray(headings) ||
-      !Array.isArray(contentIdentifiers) ||
-      !Array.isArray(contentKinds) ||
+      activeCell?.kind !== 'agent' ||
       !Array.isArray(cellColumns)
     ) {
       return null;
     }
-    const contentIndex = contentKinds.indexOf('agent');
-    const agentIdentifier = contentIdentifiers[contentIndex];
     const agentHeading = (
       headings as unknown as readonly PanelHeadingGeometryStatus[]
-    ).find((heading) => heading.contentId === agentIdentifier);
+    ).find((heading) => heading.contentId === activeCell.identifier);
     const panelViewportRows = Number(status.terminalRows);
-    const contentColumns = Number(cellColumns[contentIndex]);
-    if (
-      !agentHeading ||
-      contentIndex < 0 ||
-      panelViewportRows <= 0 ||
-      contentColumns <= 0
-    ) {
+    const contentColumns = activeCell.columns;
+    if (!agentHeading || panelViewportRows <= 0 || contentColumns <= 0) {
       return null;
     }
     let startColumn = bottomPanel.left + 1;
     for (
       let precedingIndex = 0;
-      precedingIndex < contentIndex;
+      precedingIndex < activeCell.index;
       precedingIndex += 1
     ) {
       startColumn += Number(cellColumns[precedingIndex]) + 1;
@@ -908,23 +899,21 @@ class $SmokeTerminalFollowHarness {
           | Record<string, { left: number; top: number; height: number }>
           | undefined;
         return (
-          Array.isArray(candidate.panelCellKinds) &&
-          candidate.panelCellKinds.includes(contentKind) &&
-          Array.isArray(candidate.panelCellColumns) &&
-          candidateLayoutSlots?.bottomPanel !== undefined
+          HarnessSmoke.Class.panelCellsOfKind(candidate, contentKind).length ===
+            1 && candidateLayoutSlots?.bottomPanel !== undefined
         );
       },
     );
-    const contentKinds = status.panelCellKinds;
+    const matchingCells = HarnessSmoke.Class.panelCellsOfKind(
+      status,
+      contentKind,
+    );
+    const targetCell = matchingCells[0];
     const cellColumns = status.panelCellColumns;
     const layoutSlots = status.layoutSlots as
       Record<string, { left: number; top: number; height: number }> | undefined;
-    if (!Array.isArray(contentKinds) || !Array.isArray(cellColumns)) {
+    if (!targetCell || !Array.isArray(cellColumns)) {
       throw new Error('Panel cell geometry is unavailable from status.');
-    }
-    const contentIndex = contentKinds.indexOf(contentKind);
-    if (contentIndex < 0) {
-      throw new Error(`Panel cell is not visible: ${contentKind}`);
     }
     const panel = layoutSlots?.bottomPanel;
     if (!panel)
@@ -932,7 +921,7 @@ class $SmokeTerminalFollowHarness {
     let column = panel.left + 2;
     for (
       let precedingIndex = 0;
-      precedingIndex < contentIndex;
+      precedingIndex < targetCell.index;
       precedingIndex += 1
     ) {
       column += Number(cellColumns[precedingIndex]) + 1;
@@ -953,8 +942,9 @@ class $SmokeTerminalFollowHarness {
     await this.awaitStatus(
       label,
       (candidate) =>
+        candidate.panelActiveContent === targetCell.identifier &&
         candidate.panelActiveContentKind === contentKind &&
-        candidate.panelFocusedIndex === contentIndex,
+        candidate.panelFocusedIndex === targetCell.index,
     );
   }
 

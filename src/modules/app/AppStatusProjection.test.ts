@@ -125,6 +125,7 @@ describe('AppStatusProjection', () => {
     let mouse: AppStatusMouseEvent | null = null;
     let narration: InstanceType<typeof NarrationProjection.Class> | null = null;
     let agentPaneContent: AgentPaneContent.Model | null = null;
+    let terminalPaneContent: PaneContent | null = null;
     const ports: AppStatusProjectionPorts = {
       workspaceSet,
       settings,
@@ -253,6 +254,9 @@ describe('AppStatusProjection', () => {
       get agentPaneContent() {
         return agentPaneContent;
       },
+      get terminalPaneContent() {
+        return terminalPaneContent;
+      },
     };
 
     workspaceSet.active.editor.document.loadFromText(
@@ -365,9 +369,12 @@ describe('AppStatusProjection', () => {
         onBlur: () => {},
         dispose: () => {},
       }) as PaneContent;
-    panelHost.register(
-      createPanelContent('pane-instance-19', 'terminal', 'Terminal'),
+    terminalPaneContent = createPanelContent(
+      'pane-instance-19',
+      'terminal',
+      'Terminal',
     );
+    panelHost.register(terminalPaneContent);
     panelHost.register(
       createPanelContent('media-demo', 'media', 'Media preview'),
     );

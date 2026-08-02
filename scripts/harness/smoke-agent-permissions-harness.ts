@@ -37,21 +37,17 @@ function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
     status.layoutSlots as Record<string, Rectangle> | undefined
   )?.bottomPanel;
   const headings = status.panelHeadingGeometry;
-  const contentIdentifiers = status.panelCellIds;
-  const contentKinds = status.panelCellKinds;
+  const activeCell = HarnessSmoke.Class.activePanelCell(status);
   if (
     !bottomPanel ||
     !Array.isArray(headings) ||
-    !Array.isArray(contentIdentifiers) ||
-    !Array.isArray(contentKinds)
+    activeCell?.kind !== 'agent'
   ) {
     return null;
   }
-  const contentIndex = contentKinds.indexOf('agent');
-  const agentIdentifier = contentIdentifiers[contentIndex];
   const agentHeading = (
     headings as unknown as readonly PanelHeadingGeometryStatus[]
-  ).find((heading) => heading.contentId === agentIdentifier);
+  ).find((heading) => heading.contentId === activeCell.identifier);
   const panelViewportRows = Number(status.panelRows);
   if (!agentHeading || panelViewportRows <= 0) return null;
   return {

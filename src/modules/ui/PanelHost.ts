@@ -810,21 +810,25 @@ class $PanelHost {
   content(id: string): PaneContent | null {
     return this.contents.get(id) ?? null;
   }
+  /** Every registered instance of a shared content kind, in persisted panel order. */
+  contentsOfKind(kind: string): readonly PaneContent[] {
+    return this.orderedContents.filter(
+      (content) => (content.kind ?? content.id) === kind,
+    );
+  }
   /** First registered instance of a shared content kind, in persisted panel order. */
   contentOfKind(kind: string): PaneContent | null {
-    return (
-      this.orderedContents.find(
-        (content) => (content.kind ?? content.id) === kind,
-      ) ?? null
+    return this.contentsOfKind(kind)[0] ?? null;
+  }
+  /** Every currently visible instance of a shared content kind, in cell order. */
+  visibleContentsOfKind(kind: string): readonly PaneContent[] {
+    return this.resolvedCells.flatMap((cell) =>
+      (cell.content.kind ?? cell.content.id) === kind ? [cell.content] : [],
     );
   }
   /** The currently visible instance of a shared content kind. */
   visibleContentOfKind(kind: string): PaneContent | null {
-    return (
-      this.resolvedCells.find(
-        (cell) => (cell.content.kind ?? cell.content.id) === kind,
-      )?.content ?? null
-    );
+    return this.visibleContentsOfKind(kind)[0] ?? null;
   }
   /** The active content, or null. */
   get activeContent(): PaneContent | null {

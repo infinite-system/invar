@@ -70,6 +70,26 @@ test('registration rejects a second pane with the same identifier', () => {
   expect(() => host.register(firstTerminal)).not.toThrow();
 });
 
+test('kind lookup preserves every distinct pane identifier', () => {
+  const host = new PanelHost.Class();
+  const firstTerminal = fakeContent('pane-instance-1', 'terminal');
+  const secondTerminal = fakeContent('pane-instance-2', 'terminal');
+  host.register(firstTerminal);
+  host.register(secondTerminal);
+  host.split([firstTerminal.id, secondTerminal.id]);
+
+  expect(host.contentsOfKind('terminal')).toEqual([
+    firstTerminal,
+    secondTerminal,
+  ]);
+  expect(host.visibleContentsOfKind('terminal')).toEqual([
+    firstTerminal,
+    secondTerminal,
+  ]);
+  expect(host.contentOfKind('terminal')).toBe(firstTerminal);
+  expect(host.visibleContentOfKind('terminal')).toBe(firstTerminal);
+});
+
 test('registration migrates a legacy kind order to an opaque pane identifier', () => {
   const persistedOrder = ref(['agent', 'terminal', 'database']);
   const host = new PanelHost.Class({ contentOrder: persistedOrder });
