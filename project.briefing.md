@@ -1,3 +1,53 @@
+# RESUME ANCHOR 39 — 2026-08-02 ~15:20 EDT (99% gauge) — DO THIS FIRST
+
+## #459 clean-tree gate: GATE_EXIT=1, ONE red
+Tree `/tmp/integration-459d` (`080231be`), log `/tmp/gate-459d.log`:
+
+```
+FAIL smoke: panel-chrome harness
+error: Timed out waiting for
+  120-column Database add offers only another Database instance before Database 3
+```
+
+**NEXT ACTION — A/B this before blaming anything.** It is a TIMEOUT, not
+an assertion failure, and this exact wait has a history: #452's builder
+reported it timing out on an UNCHANGED tree (`4222e760`) and called it
+pre-existing. So the live hypotheses are (a) known contention flake, or
+(b) #459's factory seam genuinely changed contextual Database add.
+Run it quiet on `/tmp/integration-459d` AND on plain `main`, twice each.
+- passes quiet on both -> contention; land #459 with a WRITTEN
+  GATE_OVERRIDE naming this red and its A/B evidence.
+- fails quiet on the 459 tree only -> real; round 6 to the builder.
+Do NOT re-run the gate hoping for green.
+
+## Landing command once cleared
+`GATE_LOG=/tmp/gate-459d.log BYCATCH_TRIAGED=1 bash scripts/fleet/land.sh 459 empty-right-pane-has-no-add-affordance <msg-file> "<summary>"`
+Run from the MAIN checkout. Bycatch already triaged (two contract items,
+both ACCEPTED and already committed to main).
+
+## ABANDONED: `/tmp/integration-459b` — unresolved merge conflict made it
+hold a stale coverage declaration; two gates judged a tree that did not
+match the branch. Verify a merge SUCCEEDED before gating.
+
+## Fleet
+- **#457 gate determinism — THE PRIORITY** (user hook goal: solid,
+  deterministic, hard to flake). Rounds 1+2 filed, no commits yet.
+  Acceptance: 5 identical verdicts on one commit · unchanged at 3 and 6
+  workers · planted defect red all 5 times. Design: deterministic
+  BLOCKING tier + reported CONTENTION tier.
+- **#451** READY `a80c75c0`, HELD from gating until #457 measurements
+  finish.
+- **#459** one red from landing, see above.
+
+## Standing
+- Crons DISARMED. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`. File the brief BEFORE the steer.
+- A gate names a COMMIT, not a branch.
+- shortcut-help passes 10/10 quiet on main, fails only in loaded gates.
+- project.conductor.md family 14: derive brief facts mechanically.
+
+---
+
 # RESUME ANCHOR 38 — 2026-08-02 ~15:00 EDT (98% gauge)
 
 ## #459 — gating on a CLEAN tree, `/tmp/integration-459d` (`080231be`)
