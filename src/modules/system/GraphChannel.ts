@@ -6,9 +6,13 @@ import { isRef, type Ref } from 'vue';
 // channel walks a path over that live graph on request, so a drive can ask
 // questions nobody anticipated — without a publish tax per surface.
 //
-// READ ONLY BY CONSTRUCTION. There is no set path and none may be added here:
-// a write into the graph bypasses the user's own input path, which is the
-// premise of the whole harness (every gesture travels through the real PTY).
+// READS NEVER MUTATE. get/waitFor cannot change app state — resolving a path
+// only reads, discovery lists never evaluate. Mutation exists ONLY as the
+// separate explicit `set` request shape (user decision 2026-08-02: agents may
+// set a graph value to quickly confirm a hypothesis). A set is an EXPERIMENT
+// primitive: it bypasses the user's input path, so verification smokes keep
+// using real PTY gestures — a set proves "the state can cause the symptom",
+// never "the app behaves".
 // invariant: Graph observation reads and never mutates (src/modules/system/system.invariants.md)
 //
 // Enablement is StatusChannel's: inert in a shipped binary, alive only when
@@ -28,6 +32,9 @@ export interface GraphRequest {
   readonly id: number;
   readonly path: string;
   readonly mode: 'now' | 'settle';
+  /** Present = this is a WRITE experiment, not an observation. The wrapper
+   *  object distinguishes "set to undefined" from "no set requested". */
+  readonly set?: { readonly value: unknown };
 }
 
 export interface GraphResponse {
@@ -43,6 +50,10 @@ export interface GraphResponse {
   readonly frame: number;
   /** True when this answer was produced at a frame-settle boundary. */
   readonly settled: boolean;
+  /** On a set: true when the write went through a reactive Ref (the app will
+   *  repaint), false when it hit a plain field (nothing observes plain-field
+   *  writes — the agent must know why the screen did not move). */
+  readonly reactive?: boolean;
 }
 
 class $GraphChannel {
@@ -121,6 +132,9 @@ class $GraphChannel {
         id: parsed.id,
         path: parsed.path,
         mode: parsed.mode === 'settle' ? 'settle' : 'now',
+        ...(parsed.set && typeof parsed.set === 'object'
+          ? { set: { value: (parsed.set as { value: unknown }).value } }
+          : {}),
       };
     } catch {
       // No request file, or a half-written one: both mean "nothing to do".
@@ -133,7 +147,9 @@ class $GraphChannel {
     let response: GraphResponse;
     try {
       response = {
-        ...this.resolve(request.path),
+        ...(request.set
+          ? this.write(request.path, request.set.value)
+          : this.resolve(request.path)),
         id: request.id,
         frame,
         settled,
@@ -181,41 +197,137 @@ class $GraphChannel {
         error: 'empty path',
       };
     }
-    let current: unknown = this.roots;
+    const outcome = this.walk(this.roots, segments);
+    if (!outcome.ok) return outcome.miss;
+    return {
+      resolved: true,
+      value: this.serialize(this.unwrap(outcome.node), 4, new WeakSet()),
+    };
+  }
+
+  /** The EXPERIMENT primitive (user decision 2026-08-02): assign a value into
+   *  the live graph so an agent can quickly confirm a hypothesis. Writes
+   *  through a Ref when the target is one (reactive — the app repaints);
+   *  plain fields assign silently and the response says so. Never part of
+   *  verification: a set bypasses the user's own input path. */
+  static write(
+    path: string,
+    value: unknown,
+  ): Pick<
+    GraphResponse,
+    'resolved' | 'value' | 'diedAt' | 'available' | 'error' | 'reactive'
+  > {
+    if (!this.roots) {
+      return { resolved: false, error: 'graph channel is not armed' };
+    }
+    const segments = path
+      .replace(/\[(\d+)\]/g, '.$1')
+      .split('.')
+      .filter((segment) => segment !== '');
+    if (segments.length === 0) {
+      return { resolved: false, diedAt: '<root>', error: 'empty path' };
+    }
+    const targetSegment = segments[segments.length - 1]!;
+    const outcome = this.walk(this.roots, segments.slice(0, -1));
+    if (!outcome.ok) return outcome.miss;
+    const parent = this.unwrap(outcome.node);
+    if (parent === null || typeof parent !== 'object') {
+      return {
+        resolved: false,
+        diedAt: segments.slice(0, -1).join('.') || '<root>',
+        error: `the set target's parent is a ${parent === null ? 'null' : typeof parent}`,
+      };
+    }
+    const container = parent as Record<string, unknown>;
+    if (!(targetSegment in container)) {
+      return {
+        resolved: false,
+        diedAt: segments.slice(0, -1).join('.') || '<root>',
+        available: this.availableKeys(container),
+        error: `no property ${JSON.stringify(targetSegment)} to set`,
+      };
+    }
+    try {
+      const existing = container[targetSegment];
+      if (isRef(existing)) {
+        (existing as Ref<unknown>).value = value;
+        return {
+          resolved: true,
+          reactive: true,
+          value: this.serialize(this.unwrap(existing), 4, new WeakSet()),
+        };
+      }
+      container[targetSegment] = value;
+      return {
+        resolved: true,
+        reactive: false,
+        value: this.serialize(container[targetSegment], 4, new WeakSet()),
+      };
+    } catch (thrown) {
+      // A readonly accessor, a frozen object, a setter that throws: all answer
+      // as a loud error, never as a crash or a silent no-op.
+      return {
+        resolved: false,
+        diedAt: segments.join('.'),
+        error: thrown instanceof Error ? thrown.message : String(thrown),
+      };
+    }
+  }
+
+  /** One walk for reads and writes — the two cannot drift apart. */
+  protected static walk(
+    root: Record<string, unknown>,
+    segments: readonly string[],
+  ):
+    | { ok: true; node: unknown }
+    | {
+        ok: false;
+        miss: Pick<
+          GraphResponse,
+          'resolved' | 'diedAt' | 'available' | 'error'
+        >;
+      } {
+    let current: unknown = root;
     const walked: string[] = [];
     for (const segment of segments) {
       current = this.unwrap(current);
       if (current === null || typeof current !== 'object') {
         return {
-          resolved: false,
-          diedAt: walked.length > 0 ? walked.join('.') : '<root>',
-          available: [],
-          error: `the walk reached a ${current === null ? 'null' : typeof current} before segment ${JSON.stringify(segment)}`,
+          ok: false,
+          miss: {
+            resolved: false,
+            diedAt: walked.length > 0 ? walked.join('.') : '<root>',
+            available: [],
+            error: `the walk reached a ${current === null ? 'null' : typeof current} before segment ${JSON.stringify(segment)}`,
+          },
         };
       }
       const container = current as Record<string, unknown>;
       if (!(segment in container)) {
         return {
-          resolved: false,
-          diedAt: walked.length > 0 ? walked.join('.') : '<root>',
-          available: this.availableKeys(container),
+          ok: false,
+          miss: {
+            resolved: false,
+            diedAt: walked.length > 0 ? walked.join('.') : '<root>',
+            available: this.availableKeys(container),
+          },
         };
       }
       try {
         current = container[segment];
       } catch (thrown) {
         return {
-          resolved: false,
-          diedAt: [...walked, segment].join('.'),
-          error: thrown instanceof Error ? thrown.message : String(thrown),
+          ok: false,
+          miss: {
+            resolved: false,
+            diedAt: [...walked, segment].join('.'),
+            error: thrown instanceof Error ? thrown.message : String(thrown),
+          },
         };
       }
       walked.push(segment);
     }
-    return {
-      resolved: true,
-      value: this.serialize(this.unwrap(current), 4, new WeakSet()),
-    };
+    return { ok: true, node: current };
   }
 
   protected static unwrap(value: unknown): unknown {

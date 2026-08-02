@@ -175,3 +175,77 @@ test('disarmed or unobserved, the channel is inert', () => {
   expect(result.error).toContain('not armed');
   expect(StatusChannel.Class.observing).toBe(false);
 });
+
+// ---- the set experiment primitive (user decision 2026-08-02) ----
+
+test('set present arm: writing through a Ref changes the live value reactively', () => {
+  const written = GraphChannel.Class.write('panelHost.width', 7);
+  expect(written.resolved).toBe(true);
+  expect(written.reactive).toBe(true);
+  expect(written.value).toBe(7);
+  // The read side observes the write, and deriveds recompute.
+  expect(GraphChannel.Class.resolve('panelHost.width').value).toBe(7);
+  expect(GraphChannel.Class.resolve('panelHost.doubled').value).toBe(14);
+});
+
+test('set on a plain field succeeds but reports reactive false', () => {
+  GraphChannel.Class.arm({
+    roots: { config: { limit: 10 } },
+  });
+  const written = GraphChannel.Class.write('config.limit', 99);
+  expect(written.resolved).toBe(true);
+  expect(written.reactive).toBe(false);
+  expect(GraphChannel.Class.resolve('config.limit').value).toBe(99);
+});
+
+test('set absent arm: a missing target names the parent and its keys', () => {
+  const written = GraphChannel.Class.write('panelHost.wdith', 7);
+  expect(written.resolved).toBe(false);
+  expect(written.diedAt).toBe('panelHost');
+  expect(written.available).toContain('width');
+  expect(written.error).toContain('no property');
+  // The miss changed nothing.
+  expect(GraphChannel.Class.resolve('panelHost.width').value).toBe(42);
+});
+
+test('set absent arm: a throwing or readonly target answers as an error, never a crash', () => {
+  const frozen = Object.freeze({ locked: 1 });
+  GraphChannel.Class.arm({ roots: { frozen } });
+  const written = GraphChannel.Class.write('frozen.locked', 2);
+  expect(written.resolved).toBe(false);
+  expect(typeof written.error).toBe('string');
+  expect(frozen.locked).toBe(1);
+});
+
+test('file protocol: a set request round-trips and a read request cannot write', () => {
+  const requestPath = `${statusPath}.graph-request.json`;
+  writeFileSync(
+    `${requestPath}.tmp`,
+    JSON.stringify({
+      id: 10,
+      path: 'panelHost.width',
+      mode: 'now',
+      set: { value: 5 },
+    }),
+  );
+  renameSync(`${requestPath}.tmp`, requestPath);
+  GraphChannel.Class.poll();
+  const setResponse = JSON.parse(
+    readFileSync(`${statusPath}.graph-response.json`, 'utf8'),
+  );
+  expect(setResponse.resolved).toBe(true);
+  expect(setResponse.reactive).toBe(true);
+  expect(GraphChannel.Class.resolve('panelHost.width').value).toBe(5);
+  // A read of the same path carries no set shape — it cannot assign.
+  writeFileSync(
+    `${requestPath}.tmp`,
+    JSON.stringify({ id: 11, path: 'panelHost.width', mode: 'now' }),
+  );
+  renameSync(`${requestPath}.tmp`, requestPath);
+  GraphChannel.Class.poll();
+  const readResponse = JSON.parse(
+    readFileSync(`${statusPath}.graph-response.json`, 'utf8'),
+  );
+  expect(readResponse.value).toBe(5);
+  expect(readResponse.reactive).toBeUndefined();
+});

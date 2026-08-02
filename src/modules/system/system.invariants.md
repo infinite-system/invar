@@ -165,34 +165,44 @@ status channel or logger.
 
 ### Graph observation reads and never mutates
 
-**Invariant:** If the harness observes the app through the graph channel, then no observed state
-changes as a consequence — the channel exposes no write path, and resolving a path never calls
-behavior, only reads state.
+**Invariant:** If the harness OBSERVES the app through the graph channel (get, waitFor, a miss's
+discovery list), then no observed state changes as a consequence — resolving a path never calls
+behavior, only reads state. Mutation exists only as the separate explicit `set` request shape,
+never as a side effect of a read.
 
 **Scope:** `GraphChannel` (`src/modules/system/GraphChannel.ts`): the resolver walk, the
 discovery list on a miss, and the serializer. Applies equally to every future observation
-surface: an observation that mutates is an input, and inputs travel through the real PTY only.
+surface: an observation that mutates is an input in disguise. The `set` shape is OUT of this
+record's scope by design — it is an experiment primitive (user decision 2026-08-02), and it is
+excluded from verification: smokes and gates drive real PTY gestures only.
 
-**Mechanism:** the request protocol carries only `{id, path, mode}` — there is no `set` shape to
-parse, so a write cannot be requested. The walk performs property reads only (ivue getters
-evaluate on read by design); `availableKeys` classifies by descriptor without evaluating;
-class instances serialize as name-plus-keys instead of mass-evaluating their getters, so only
-the getters a path names ever run. The channel is inert unless `StatusChannel.observing`.
+**Mechanism:** a read request carries `{id, path, mode}` and its handling path (`resolve`)
+performs property reads only (ivue getters evaluate on read by design); `availableKeys`
+classifies by descriptor without evaluating; class instances serialize as name-plus-keys
+instead of mass-evaluating their getters, so only the getters a path names ever run. A write
+requires the distinct `set: {value}` field — absent that field, no code path can assign. All
+write outcomes (readonly accessor, frozen object, throwing setter) answer as loud errors, never
+crashes. The channel is inert unless `StatusChannel.observing`.
 
-**Generates:** the read side of the harness split — graph reads for asking, real PTY input for
-acting; the READ-ONLY boundary in task #469; `DriveSession.get`/`waitFor` staying primitive.
+**Generates:** the harness split — graph reads for asking, graph set for hypothesis experiments,
+real PTY input for acting and verifying; `DriveSession.get`/`waitFor`/`set` staying primitive.
 
-**Rejected alternatives:** `app.set(path, value)` — bypasses the user's own input path, which is
-the premise of the harness; rejected in task #469's brief before implementation.
+**Rejected alternatives:** mutation implied by the read protocol (a path that assigns on
+resolve) — makes every read a potential write and kills the observation guarantee. Full
+read-only (no set at all) — rejected by the user 2026-08-02: agents need quick hypothesis
+confirmation; the boundary moved from "no writes" to "no writes through reads, no writes in
+verification".
 
-**Evidence:** `GraphChannel.ts` — no set handling in `readRequest`/`respond`; `availableKeys`
-descriptor-only; serializer's instance guard. `GraphChannel.test.ts` covers both arms.
+**Evidence:** `GraphChannel.ts` — `respond` branches on `request.set`; `resolve`/`walk` assign
+nothing; `availableKeys` descriptor-only; serializer's instance guard; `write` wraps assignment
+in try/catch. `GraphChannel.test.ts` covers both arms of read and write.
 
 **Impossible if true:** a drive script changing app state through `app.get`/`app.waitFor`; a
-graph request file that causes any observable state transition beyond answering the question.
+graph request WITHOUT a `set` field that causes any state transition beyond answering; a failed
+set crashing the app instead of answering with an error.
 
-**Verification:** `bun test src/modules/system/GraphChannel.test.ts`; grep `GraphChannel.ts` for
-any request field beyond id/path/mode.
+**Verification:** `bun test src/modules/system/GraphChannel.test.ts`; inspect `resolve`/`walk`
+in `GraphChannel.ts` for any assignment into walked nodes.
 
 **Status:** provisional
 

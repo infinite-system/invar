@@ -372,6 +372,27 @@ class $DriveSession {
     return response.value;
   }
 
+  /** EXPERIMENT primitive: assign a value into the live graph to quickly
+   *  confirm a hypothesis ("would width 7 cause the symptom?"). Returns the
+   *  value read back after the write. `reactive: false` in the app's answer
+   *  becomes a warning here — a plain-field write triggers no repaint, so
+   *  the screen not moving is the write's nature, not a defect. NEVER used
+   *  for verification: a set bypasses the user's own input path; smokes and
+   *  gates keep driving real gestures. */
+  async set(path: string, value: unknown): Promise<unknown> {
+    await this.flush();
+    const response = await this.graphQuery(path, 'now', Date.now() + 10_000, {
+      value,
+    });
+    if (response.reactive === false) {
+      console.log(
+        `  set ${path}: wrote a PLAIN field — nothing reactive observes it, ` +
+          `expect no repaint`,
+      );
+    }
+    return response.value;
+  }
+
   // ---- the graph bridge (task #469) ----
 
   protected graphRequestId = 0;
@@ -380,7 +401,13 @@ class $DriveSession {
     path: string,
     mode: 'now' | 'settle',
     deadline: number,
-  ): Promise<{ value: unknown; frame: number; settled: boolean }> {
+    set?: { value: unknown },
+  ): Promise<{
+    value: unknown;
+    frame: number;
+    settled: boolean;
+    reactive?: boolean;
+  }> {
     // Time-based ids: monotone across app restarts sharing one --home, so a
     // stale request file from a previous run can never shadow a fresh one.
     this.graphRequestId = Math.max(this.graphRequestId + 1, Date.now());
@@ -388,7 +415,7 @@ class $DriveSession {
     const requestPath = `${this.statusPath}.graph-request.json`;
     const responsePath = `${this.statusPath}.graph-response.json`;
     const temporaryPath = `${requestPath}.tmp`;
-    writeFileSync(temporaryPath, JSON.stringify({ id, path, mode }));
+    writeFileSync(temporaryPath, JSON.stringify({ id, path, mode, set }));
     renameSync(temporaryPath, requestPath);
     while (Date.now() < deadline) {
       const response = this.readGraphResponse(responsePath);
@@ -400,6 +427,9 @@ class $DriveSession {
           value: response.value,
           frame: Number(response.frame ?? -1),
           settled: response.settled === true,
+          ...(typeof response.reactive === 'boolean'
+            ? { reactive: response.reactive }
+            : {}),
         };
       }
       await new Promise((resolve) => setTimeout(resolve, 15));
@@ -618,10 +648,11 @@ class $DriveScriptRunner {
       "     .clickText('+ Plugin').waitForRepaint()",
       "     .show('panelContentLabels')",
       '',
-      'Live graph reads (any app state, no publish tax; read-only):',
+      'Live graph access (any app state, no publish tax):',
       '',
       "  await app.get('panelHost.panelListWidth')      // ask now",
       "  app.waitFor('panelHost.visible', true)         // condition, frame-settled",
+      "  await app.set('panelHost.panelListWidth', 30)  // EXPERIMENT only — never verification",
 
       '',
     ].join('\n');
