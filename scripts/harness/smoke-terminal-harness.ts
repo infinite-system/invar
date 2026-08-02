@@ -1266,21 +1266,79 @@ try {
   const tasksWatchObservations = driver.completedFrameObservationsSince(
     tasksWatchObservationStart,
   );
-  const unsafeTasksWatchFrames = tasksWatchObservations.filter(
-    (observation) => {
-      const bodyText = terminalBodyText(observation.snapshot, panelRectangle);
-      return (
-        !bodyText.includes(tasksWatchBaselineMarker) &&
-        !bodyText.includes('tasks-status.ts') &&
-        !bodyText.includes('INVAR TASKS') &&
-        !bodyText.includes('active ·')
-      );
-    },
-  );
+  // invariant: Atomicity is claimed only for self-generated output (scripts/harness/harness.invariants.md)
+  //
+  // This body belongs to `tasks:watch`, a real child process that repaints by
+  // clearing and redrawing WITHOUT synchronized-frame markers. Between its
+  // clear and its redraw the child has genuinely sent an empty screen, so a
+  // completed frame painted there shows the truth of what arrived. Invar
+  // cannot make a foreign repaint atomic, and no terminal emulator can.
+  //
+  // So the honest claim is CONVERGENCE, not absence: a blank frame is fine
+  // when a later frame repaints content; a blank that never resolves is the
+  // defect — and that persistent case is the real user symptom (#458: a
+  // terminal showing a cursor and nothing else). The old absence claim fired
+  // on the harmless transient roughly 40% of gate runs (#436) while being no
+  // better at catching the dangerous one.
+  //
+  // No invented threshold lives here. "Converged" means the observed frames do
+  // not END blank, which needs no tolerance to be chosen and therefore cannot
+  // be tuned to hide a regression. The longest transient run is reported, not
+  // gated.
+  const tasksWatchFrameBearsContent = (
+    observation: (typeof tasksWatchObservations)[number],
+  ): boolean => {
+    const bodyText = terminalBodyText(observation.snapshot, panelRectangle);
+    return (
+      bodyText.includes(tasksWatchBaselineMarker) ||
+      bodyText.includes('tasks-status.ts') ||
+      bodyText.includes('INVAR TASKS') ||
+      bodyText.includes('active ·')
+    );
+  };
+
+  // PRESENT arm: the matcher must find content in at least one frame. Without
+  // this, a matcher that can never match would report a converged, painted
+  // terminal — silence read as success.
   HarnessSmoke.Class.requireCondition(
-    unsafeTasksWatchFrames.length === 0,
-    `real tasks:watch produced no blank or partial completed frame ` +
-      `(${tasksWatchObservations.length} outer frames)`,
+    tasksWatchObservations.some(tasksWatchFrameBearsContent),
+    `real tasks:watch painted its content in at least one completed frame ` +
+      `(${tasksWatchObservations.length} outer frames) — the content matcher can see`,
+  );
+
+  let trailingBlankFrameCount = 0;
+  for (let index = tasksWatchObservations.length - 1; index >= 0; index -= 1) {
+    const observation = tasksWatchObservations[index];
+    if (observation === undefined || tasksWatchFrameBearsContent(observation)) {
+      break;
+    }
+    trailingBlankFrameCount += 1;
+  }
+
+  let longestTransientBlankRun = 0;
+  let currentBlankRun = 0;
+  for (const observation of tasksWatchObservations) {
+    if (tasksWatchFrameBearsContent(observation)) {
+      longestTransientBlankRun = Math.max(
+        longestTransientBlankRun,
+        currentBlankRun,
+      );
+      currentBlankRun = 0;
+      continue;
+    }
+    currentBlankRun += 1;
+  }
+
+  // ABSENT arm: a terminal that ends blank must fail. Plant it by inverting
+  // `tasksWatchFrameBearsContent` to `false` — every frame then reads blank,
+  // the PRESENT arm above goes red first, and inverting only the final frame
+  // reddens this one.
+  HarnessSmoke.Class.requireCondition(
+    trailingBlankFrameCount === 0,
+    `real tasks:watch converges to painted content ` +
+      `(${tasksWatchObservations.length} outer frames, ` +
+      `${trailingBlankFrameCount} trailing blank, ` +
+      `longest transient blank run ${longestTransientBlankRun} — transient runs are reported, not gated)`,
   );
   driver.sendKeys('Control+c');
   await driver.awaitSnapshot(

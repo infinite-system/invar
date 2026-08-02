@@ -36,3 +36,39 @@ contention is the reproduction instrument, per doctrine: never widen a
 threshold to clear it. If the product commits partial frames, fix the
 frame commit path. If the instrument mis-reads, fix the instrument and
 plant a true partial frame as the positive control.
+
+## ANSWERED 2026-08-02 — instrument, not product; fixed in place
+
+The "Wanted" question above is settled: **the instrument overclaimed.**
+
+`tasks:watch` repaints by clearing and redrawing and emits no
+synchronized-frame markers. Between its clear and its redraw the child
+has genuinely sent an empty screen, so a completed frame painted there
+reports the truth of what arrived. Invar cannot make a foreign repaint
+atomic, and no terminal emulator can. The old assertion demanded a
+guarantee the app is structurally unable to give, so its verdict
+tracked machine load rather than correctness.
+
+Decisive detail: a QUIET run of the new assertion reports
+`longest transient blank run 1`. The transient happens unloaded too, so
+the old claim was false on an idle machine as well — load only raised
+the odds of observing it.
+
+The assertion is now convergence-shaped: trailing blank frames must be
+zero, the longest transient run is reported and never gated, and no
+threshold was invented. Both arms proven: the PRESENT arm requires the
+content matcher to match at least one frame; a planted trailing blank
+turned the convergence arm red with
+`(15 outer frames, 1 trailing blank, ...)`.
+
+New record: [Atomicity is claimed only for self-generated output](../../../../scripts/harness/harness.invariants.md).
+Invar's own chrome keeps the strict absence claim — the distinction is
+AUTHORSHIP, not severity.
+
+**This task existed before tonight and I did not read it.** I
+re-derived its conclusion from scratch — five gate runs and a
+pre-landing sweep — to reach the finding already written here on
+2026-08-01, with the same numbers (one green in four full-pool runs;
+I measured one in five). Thirty flake tasks are filed and the backlog
+is not consulted before investigating. That is the process defect worth
+more than this fix.
