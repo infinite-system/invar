@@ -85,3 +85,56 @@ A retry that also rescues real failures is worse than no retry.
 
 Report per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. Write the
 `## Bycatch` section even if it reads `None observed`.
+
+## Second data point, same evening — this is wider than the serial tail
+
+Gate 4, same commit `4d540c01`, again exactly one red — a DIFFERENT
+one, and this time from the parallel pool, with no RETRY line:
+
+```text
+FAIL  smoke: terminal harness
+error: FAIL real tasks:watch produced no blank or partial
+       completed frame (16 outer frames)
+```
+
+Run alone on the same commit, twice: PASS both times.
+
+So across two consecutive gates on one unchanged tree:
+
+| gate | single red | quiet re-run, same commit |
+|---|---|---|
+| 3 | behavioral-contracts (serial tail) | ALL-PASS |
+| 4 | terminal harness (parallel pool) | PASS twice |
+
+The machine was NOT loaded: load average 1.77 on 16 cores. So the
+contention is INSIDE the gate — six concurrent PTY app instances — not
+from other work on the box.
+
+Two consequences the original task did not capture:
+
+1. **The parallel pool's retry did not fire here.** It is scoped to
+   timeout-class failures, and this red is an ASSERTION failure whose
+   assertion happens to be load-bound. So the retry cannot help, and
+   should not be widened to help — retrying assertion failures is the
+   thing that must never happen.
+
+2. **The real defect is the load-bound assertion itself.**
+   `no blank or partial completed frame (16 outer frames)` is a verdict
+   about frames observed in a window, so a busy gate changes the
+   answer. Doctrine is explicit: replace load-bound verdicts, block on
+   ordering or work counts, keep durations report-only. Widening the
+   frame budget converts the defect into a slower version of itself.
+
+So the work splits in two: give the serial tail the same
+timeout-class-only retry (the original task), AND census the blocking
+smokes for assertions whose verdict can change with machine load,
+converting them to count- or ordering-based claims. The gate already
+has a `smoke timing classification` step that inspects sources for
+duration and frame-silence assertions and passed 69 sources — it did
+not catch this one, so that matcher has a blind spot worth naming.
+
+**Standing evidence for the next conductor:** a gate that returns a
+different single red each run, each quiet-green on the same commit, is
+reporting its own contention, not the product. Do not re-run for a
+green — diagnose, then change the causal condition (worker count) so
+the next run is an experiment rather than a lottery.
