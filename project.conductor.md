@@ -555,3 +555,50 @@ with a committed src edit), never re-widening the fallback.
   builder's repaired probe conditions the toggle on panelListVisible.
 
 
+
+## Family 14 — the conductor asserts repo facts from memory, in the document whose job is to be authoritative (2026-08-02)
+
+Three briefs in one session carried a false claim about the repo, each
+caught by the builder it was sent to:
+
+1. **#451** — verification ordered `bun scripts/harness/smoke-animated-media-harness.ts`.
+   No such file. The real one is `smoke-media-harness.ts`. The name was
+   derived from the GATE'S OWN LABEL, which is
+   `smoke: animated-media harness` at `merge-gate.sh:1231` — the label
+   does not match the script it runs. So the trap is structural, not
+   only carelessness: any reader reproducing a failure from gate output
+   hits it.
+2. **#451** — the invariants list omitted
+   `src/modules/media/media.invariants.md` while the task changed
+   `src/modules/media/`. PATH-IMPLICATION would have found it
+   mechanically; I listed contracts from memory instead.
+3. **#459 round 5** — the brief asserted "no record governs the
+   declaration file". `Coverage may fall but never silently` governs it
+   explicitly, and requires exact before/after counts.
+
+**The generator:** a brief is the document a builder treats as
+authoritative, and it is precisely where I stop checking and start
+recalling. An instruction is an assertion (family 8) — this is that
+rule applied to the brief itself, which is the highest-leverage place
+to break it.
+
+**Operative rules:**
+
+- **Derive the invariants list mechanically before writing it.** For
+  every path the task will touch, walk up for `*.invariants.md` and
+  list what you find. Then add content-implicated records. Memory is
+  the last step, not the first.
+- **Never name a script you have not `ls`-ed**, and never derive a
+  filename from a gate label — labels and scripts drift, proven above.
+- **Before claiming no record governs X, grep for X** across
+  `*.invariants.md`. A negative claim about the contract layer needs a
+  search, not a recollection.
+- The mechanical half of this belongs in `dispatch.sh`: it already
+  refuses dead links; it should also refuse a brief whose invariants
+  list omits a contract path-implicated by the task's own folder.
+  Until that exists, the check is manual and I keep failing it.
+
+The loop worked — every one was caught, because briefs demand bycatch
+and record-by-record invariant answers. But it spends BUILDER attention
+correcting the conductor, which is the most expensive way to find a
+typo.
