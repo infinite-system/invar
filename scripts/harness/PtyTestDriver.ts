@@ -209,6 +209,9 @@ class $PtyTestDriver {
       // One event-loop turn is enough for pending PTY reads to land.
       await new Promise((resolveDrain) => setTimeout(resolveDrain, 0));
       if (this.disposed) return;
+      await this.emulatorObservationChain;
+      await this.emulator.flush();
+      this.completedSnapshotValue = this.captureEmulatorSnapshot();
       // The child's stdout AND STDERR are the PTY slave, so an uncaught exception's dump is already
       // in the RETAINED tail — the old message threw that evidence away and reported only the exit
       // code, which is how an app crash inside a full gate run (2026-07-25) produced no diagnosable

@@ -429,6 +429,36 @@ describe('PtyTestDriver completed-frame observations', () => {
       await driver.dispose();
     }
   });
+
+  test('process exit publishes the final terminal state after trailing reset bytes', async () => {
+    const recordedStreamProgram = `
+      process.stdout.write(${JSON.stringify(recordedFrame('VISIBLE APP FRAME'))});
+      await Bun.sleep(80);
+      process.stdout.write(${JSON.stringify('\x1b[2J\x1b[H')});
+      process.exit(0);
+    `;
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: process.cwd(),
+      repositoryRoot: process.cwd(),
+      columns: 40,
+      rows: 4,
+      command: [process.execPath, '-e', recordedStreamProgram],
+    });
+    try {
+      await driver.awaitGridCondition(
+        'the recorded app frame becomes visible',
+        (snapshot) => snapshot.findText('VISIBLE APP FRAME') !== null,
+      );
+      expect(await driver.exitCode()).toBe(0);
+      const exitedSnapshot = await driver.awaitGridCondition(
+        'the process exit publishes its trailing terminal reset',
+        (snapshot) => snapshot.findText('VISIBLE APP FRAME') === null,
+      );
+      expect(exitedSnapshot.findText('VISIBLE APP FRAME')).toBeNull();
+    } finally {
+      await driver.dispose();
+    }
+  });
 });
 
 describe('PtyTestDriver.sendKeysAndAwaitGridConditionByteArrival', () => {
