@@ -1,7 +1,7 @@
 # #459 — an emptied panel keeps its space, hides its list, and offers no way back
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — bc367e17 — Unreachable panel registration made impossible at the factory seam; empty panel keeps its Add row; instance close no longer confirms. Phantom pane had been silently satisfying a layout-isolation wait.
 Engine: codex
 Environment: any
 Model: 5.6-sol

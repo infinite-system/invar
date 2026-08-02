@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/459-empty-right-pane-has-no-add-affordance`
+## IN-PROGRESS (1)
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -150,7 +148,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 178 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 179 — full log: project.tasks-completed.md)
+- #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/completed/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md) — bc367e17 — Unreachable panel registration made impossible at the factory seam; empty panel keeps its Add row; instance close no longer confirms. Phantom pane had been silently satisfying a layout-isolation wait.
 - #457 [serial-tail-lacks-quiet-retry](.invar/tasks/completed/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md) — 687dc80f — Gate verdict is now a function of the commit: 5 identical verdicts on one commit, unchanged at 3 and 6 workers, planted defect red 5/5. Real defect was a live-emulator read in the shortcut sheet, not a missing retry.
 - #452 [pane-identity-collides-by-name](.invar/tasks/completed/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md) — da584da4 — Pane identity separated from presentation; original all-terminal incident remains unexplained.
 - #448 [static-reads-that-can-block-overrides](.invar/tasks/completed/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md) — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.
@@ -165,4 +164,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #429 [layout-switcher-icon-tooltip](.invar/tasks/completed/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md) — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
 - #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/completed/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md) — d5c4ec0c — The contract that blocked two landings today is now genuinely count-based. No bycatch.
 - #427 [quickopen-ranking-contract-record](.invar/tasks/completed/427-quickopen-ranking-contract-record/task-427-quickopen-ranking-contract-record.md) — dbe86131 — Ranking tiers now contract-recorded with annotation. Bycatch: only known punctuation notes.
-- #426 [tabbar-hardcoded-glyph-breach](.invar/tasks/completed/426-tabbar-hardcoded-glyph-breach/task-426-tabbar-hardcoded-glyph-breach.md) — 5b761903 — Theme contract's one known breach closed; vocabulary slot at three tiers, driven at each; no visual change at the default tier. Bycatch: none actionable (single unreproduced keystroke drop; known checker notes).
