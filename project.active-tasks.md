@@ -6,7 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (14)
+## USER-DIRECTED (15)
+- #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/active/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md)
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
