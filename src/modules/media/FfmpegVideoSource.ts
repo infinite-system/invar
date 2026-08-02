@@ -8,6 +8,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Static } from 'ivue/extras';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 import type { VideoFrameSource } from './VideoFrameSource.interface';
 
@@ -156,7 +157,7 @@ class $FfmpegVideoSource implements VideoFrameSource {
 }
 
 export namespace FfmpegVideoSource {
-  export const $Class = $FfmpegVideoSource;
+  export const $Class = Static($FfmpegVideoSource);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
