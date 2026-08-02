@@ -249,3 +249,213 @@ test('file protocol: a set request round-trips and a read request cannot write',
   expect(readResponse.value).toBe(5);
   expect(readResponse.reactive).toBeUndefined();
 });
+
+// ---- parked conditions ('await' mode) ----
+
+function fileRequest(path: string, body: Record<string, unknown>): void {
+  const requestPath = `${path}.graph-request.json`;
+  writeFileSync(`${requestPath}.tmp`, JSON.stringify(body));
+  renameSync(`${requestPath}.tmp`, requestPath);
+}
+
+function readResponseOrNull(path: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(readFileSync(`${path}.graph-response.json`, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+test('await parks: no answer until the value matches, then one answer at settle', () => {
+  fileRequest(statusPath, {
+    id: 20,
+    path: 'panelHost.width',
+    mode: 'await',
+    expect: { value: 7 },
+    expiresAtMilliseconds: Date.now() + 60_000,
+  });
+  GraphChannel.Class.poll();
+  // Parked, not answered: the value is 42.
+  GraphChannel.Class.settle();
+  expect(readResponseOrNull(statusPath)).toBeNull();
+  GraphChannel.Class.settle();
+  expect(readResponseOrNull(statusPath)).toBeNull();
+  // The app changes; the very next settle answers.
+  host.setWidth(7);
+  GraphChannel.Class.settle();
+  const response = readResponseOrNull(statusPath)!;
+  expect(response.id).toBe(20);
+  expect(response.resolved).toBe(true);
+  expect(response.value).toBe(7);
+  expect(response.settled).toBe(true);
+});
+
+test('await costs ONE request for many samples — the poll storm is gone', () => {
+  // A root that counts its own reads: the resolver must touch it only at
+  // settle boundaries, never on the request poll.
+  let reads = 0;
+  const countingRoot = {
+    get width() {
+      reads += 1;
+      return 42;
+    },
+  };
+  GraphChannel.Class.arm({ roots: { counted: countingRoot } });
+  fileRequest(statusPath, {
+    id: 21,
+    path: 'counted.width',
+    mode: 'await',
+    expect: { value: 7 },
+    expiresAtMilliseconds: Date.now() + 60_000,
+  });
+  GraphChannel.Class.poll();
+  // Many polls (the driver is NOT re-requesting) resolve nothing off-frame.
+  for (let tick = 0; tick < 20; tick += 1) GraphChannel.Class.poll();
+  expect(reads).toBe(0);
+  // Only settles sample.
+  GraphChannel.Class.settle();
+  GraphChannel.Class.settle();
+  expect(reads).toBe(2);
+});
+
+test('await tolerates a path that does not resolve YET — late mounts are not failures', () => {
+  GraphChannel.Class.arm({ roots: { late: {} as Record<string, unknown> } });
+  fileRequest(statusPath, {
+    id: 22,
+    path: 'late.child.ready',
+    mode: 'await',
+    expect: { value: true },
+    expiresAtMilliseconds: Date.now() + 60_000,
+  });
+  GraphChannel.Class.poll();
+  GraphChannel.Class.settle();
+  expect(readResponseOrNull(statusPath)).toBeNull(); // a miss is not fatal
+  GraphChannel.Class.arm({
+    roots: { late: { child: { ready: true } } },
+  });
+  GraphChannel.Class.settle();
+  const response = readResponseOrNull(statusPath)!;
+  expect(response.resolved).toBe(true);
+  expect(response.value).toBe(true);
+});
+
+test('await answers loudly at its deadline, naming the last settled value', () => {
+  fileRequest(statusPath, {
+    id: 23,
+    path: 'panelHost.width',
+    mode: 'await',
+    expect: { value: 999 },
+    expiresAtMilliseconds: Date.now() - 1,
+  });
+  GraphChannel.Class.poll();
+  GraphChannel.Class.settle();
+  const response = readResponseOrNull(statusPath)!;
+  expect(response.id).toBe(23);
+  expect(response.resolved).toBe(false);
+  expect(String(response.error)).toContain('999');
+  expect(String(response.error)).toContain('42');
+});
+
+test('a parked condition nudges a quiet renderer instead of spinning it', () => {
+  let renderRequests = 0;
+  GraphChannel.Class.arm({
+    roots: { panelHost: host },
+    requestRender: () => {
+      renderRequests += 1;
+    },
+  });
+  fileRequest(statusPath, {
+    id: 24,
+    path: 'panelHost.width',
+    mode: 'await',
+    expect: { value: 7 },
+    expiresAtMilliseconds: Date.now() + 60_000,
+  });
+  GraphChannel.Class.poll();
+  expect(renderRequests).toBe(1); // parked -> one frame requested
+  GraphChannel.Class.settle(); // stamps the settle clock
+  for (let tick = 0; tick < 10; tick += 1) GraphChannel.Class.poll();
+  expect(renderRequests).toBe(1); // quiet interval not elapsed: no spinning
+});
+
+// ---- 'transition': the subscribing verb ----
+
+test('transition sees a blink that frame sampling CANNOT see', () => {
+  fileRequest(statusPath, {
+    id: 30,
+    path: 'panelHost.width',
+    mode: 'transition',
+    expect: { value: 7 },
+    expiresAtMilliseconds: Date.now() + 60_000,
+  });
+  GraphChannel.Class.poll();
+  // Rise and fall with no settle in between — the value never survives to a
+  // frame, so an 'await' would sample 42 both sides and never answer.
+  host.setWidth(7);
+  host.setWidth(42);
+  const response = readResponseOrNull(statusPath)!;
+  expect(response.id).toBe(30);
+  expect(response.resolved).toBe(true);
+  // FALSE by design: no completed frame is claimed to have shown this.
+  expect(response.settled).toBe(false);
+});
+
+test('the same blink is invisible to await — the two verbs are not interchangeable', () => {
+  fileRequest(statusPath, {
+    id: 31,
+    path: 'panelHost.width',
+    mode: 'await',
+    expect: { value: 7 },
+    expiresAtMilliseconds: Date.now() + 60_000,
+  });
+  GraphChannel.Class.poll();
+  GraphChannel.Class.settle(); // sees 42
+  host.setWidth(7);
+  host.setWidth(42); // rose and fell between samples
+  GraphChannel.Class.settle(); // sees 42 again
+  expect(readResponseOrNull(statusPath)).toBeNull();
+});
+
+test('transition never fires on the value the path already holds', () => {
+  fileRequest(statusPath, {
+    id: 32,
+    path: 'panelHost.width',
+    mode: 'transition',
+    expect: { value: 42 }, // already 42
+    expiresAtMilliseconds: Date.now() + 60_000,
+  });
+  GraphChannel.Class.poll();
+  expect(readResponseOrNull(statusPath)).toBeNull();
+  // It fires only on the BECOMING.
+  host.setWidth(1);
+  host.setWidth(42);
+  expect(readResponseOrNull(statusPath)!.id).toBe(32);
+});
+
+test('transition stops its watcher on answer, expiry, supersede, and disarm', () => {
+  let reads = 0;
+  const countingRoot = {
+    get width() {
+      reads += 1;
+      return 42;
+    },
+  };
+  GraphChannel.Class.arm({ roots: { counted: countingRoot } });
+  fileRequest(statusPath, {
+    id: 33,
+    path: 'counted.width',
+    mode: 'transition',
+    expect: { value: -1 },
+    expiresAtMilliseconds: Date.now() - 1,
+  });
+  GraphChannel.Class.poll(); // parks, then expires in the same tick
+  const expired = readResponseOrNull(statusPath)!;
+  expect(expired.id).toBe(33);
+  expect(expired.resolved).toBe(false);
+  expect(String(expired.error)).toContain('never became');
+  // The watcher is gone: further polls do not resubscribe or re-answer.
+  const readsAfterExpiry = reads;
+  for (let tick = 0; tick < 5; tick += 1) GraphChannel.Class.poll();
+  expect(reads).toBe(readsAfterExpiry);
+  GraphChannel.Class.disarm();
+});

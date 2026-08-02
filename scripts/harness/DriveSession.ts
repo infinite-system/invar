@@ -229,22 +229,11 @@ class $DriveSession {
     return this.step(
       `wait graph ${path}=${JSON.stringify(expectedValue)}`,
       async () => {
-        const deadline = Date.now() + timeoutMilliseconds;
-        let lastValue: unknown = '<never answered>';
-        while (Date.now() < deadline) {
-          const response = await this.graphQuery(path, 'settle', deadline);
-          lastValue = response.value;
-          if (
-            JSON.stringify(response.value) === JSON.stringify(expectedValue)
-          ) {
-            return;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 25));
-        }
-        throw new Error(
-          `waitFor(${JSON.stringify(path)}) timed out after ` +
-            `${timeoutMilliseconds}ms: wanted ${JSON.stringify(expectedValue)}, ` +
-            `last settled value was ${JSON.stringify(lastValue)}`,
+        await GraphClient.Class.awaitValue(
+          this.statusPath,
+          path,
+          expectedValue,
+          timeoutMilliseconds,
         );
       },
     );

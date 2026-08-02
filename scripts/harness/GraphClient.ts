@@ -19,8 +19,13 @@ class $GraphClient {
   static async query(
     statusPath: string,
     path: string,
-    mode: 'now' | 'settle',
-    options: { deadline?: number; set?: { value: unknown } } = {},
+    mode: 'now' | 'settle' | 'await' | 'transition',
+    options: {
+      deadline?: number;
+      set?: { value: unknown };
+      expect?: { value: unknown };
+      expiresAtMilliseconds?: number;
+    } = {},
   ): Promise<{
     value: unknown;
     frame: number;
@@ -37,7 +42,14 @@ class $GraphClient {
     const temporaryPath = `${requestPath}.tmp`;
     writeFileSync(
       temporaryPath,
-      JSON.stringify({ id, path, mode, set: options.set }),
+      JSON.stringify({
+        id,
+        path,
+        mode,
+        set: options.set,
+        expect: options.expect,
+        expiresAtMilliseconds: options.expiresAtMilliseconds,
+      }),
     );
     renameSync(temporaryPath, requestPath);
     while (Date.now() < deadline) {
@@ -62,30 +74,69 @@ class $GraphClient {
   }
 
   /** Wait until a graph path reaches a value, sampled ONLY at frame-settle
-   *  boundaries — a condition with a deadline, never a sleep. */
+   *  boundaries — a condition with a deadline, never a sleep.
+   *
+   *  The condition is PARKED IN THE APP: one request buys every sample, so a
+   *  long wait costs no repeated request traffic and no off-frame path
+   *  resolution. That matters most on the contention tier, where the
+   *  instrument's own load would otherwise perturb what it measures. */
   static async awaitValue(
     statusPath: string,
     path: string,
     expectedValue: unknown,
     timeoutMilliseconds = 15_000,
   ): Promise<void> {
-    const deadline = Date.now() + timeoutMilliseconds;
-    let lastValue: unknown = '<never answered>';
-    while (Date.now() < deadline) {
-      const response = await this.query(statusPath, path, 'settle', {
-        deadline,
+    const expiresAtMilliseconds = Date.now() + timeoutMilliseconds;
+    try {
+      await this.query(statusPath, path, 'await', {
+        expect: { value: expectedValue },
+        expiresAtMilliseconds,
+        // Outlive the app's own deadline, so the app's answer (which names the
+        // last settled value) wins over a bare client-side timeout.
+        deadline: expiresAtMilliseconds + 2_000,
       });
-      lastValue = response.value;
-      if (JSON.stringify(response.value) === JSON.stringify(expectedValue)) {
-        return;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 25));
+    } catch (thrown) {
+      throw new Error(
+        `graph wait ${JSON.stringify(path)} did not reach ` +
+          `${JSON.stringify(expectedValue)} within ${timeoutMilliseconds}ms.\n` +
+          (thrown instanceof Error ? thrown.message : String(thrown)),
+      );
     }
-    throw new Error(
-      `graph wait ${JSON.stringify(path)} timed out after ` +
-        `${timeoutMilliseconds}ms: wanted ${JSON.stringify(expectedValue)}, ` +
-        `last settled value was ${JSON.stringify(lastValue)}`,
-    );
+  }
+
+  /** Wait for a value the app only PASSES THROUGH — a blink no completed frame
+   *  necessarily shows: a self-dismissing toast, a transient error, an
+   *  intermediate lifecycle tier.
+   *
+   *  Reach for `awaitValue` first, always. This verb subscribes inside the app
+   *  (a real edge in its reactive graph) and reports states mid-update, so a
+   *  gesture sequenced on it can act on geometry the user never saw. Its whole
+   *  and only advantage is that sampling at frame boundaries CANNOT see a
+   *  value that rises and falls between two samples.
+   *
+   *  It never fires on the value the path already holds: "is X" and "became X"
+   *  are different questions, and answering the first here would be the
+   *  pre-satisfied wait this instrument exists to kill. */
+  static async awaitTransition(
+    statusPath: string,
+    path: string,
+    expectedValue: unknown,
+    timeoutMilliseconds = 15_000,
+  ): Promise<void> {
+    const expiresAtMilliseconds = Date.now() + timeoutMilliseconds;
+    try {
+      await this.query(statusPath, path, 'transition', {
+        expect: { value: expectedValue },
+        expiresAtMilliseconds,
+        deadline: expiresAtMilliseconds + 2_000,
+      });
+    } catch (thrown) {
+      throw new Error(
+        `graph transition ${JSON.stringify(path)} never became ` +
+          `${JSON.stringify(expectedValue)} within ${timeoutMilliseconds}ms.\n` +
+          (thrown instanceof Error ? thrown.message : String(thrown)),
+      );
+    }
   }
 
   protected static readResponse(
