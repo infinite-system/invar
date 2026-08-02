@@ -6,9 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md)  [building]
+## IN-PROGRESS (3)
+- #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/459-empty-right-pane-has-no-add-affordance`
+- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/in-progress/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md)  [building]
+  `tmux attach -t invar/457-serial-tail-lacks-quiet-retry`
+- #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [building]
+  `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
 ## USER-DIRECTED (14)
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
@@ -26,8 +30,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (29)
-- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/active/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md)
+## VERIFICATION-INTEGRITY (28)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)
@@ -102,8 +105,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (37)
-- #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/active/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)
+## ARCHITECTURE-HYGIENE (36)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
 - #434 [gate-glance-null-render-branch-dead](.invar/tasks/active/434-gate-glance-null-render-branch-dead/task-434-gate-glance-null-render-branch-dead.md)
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)

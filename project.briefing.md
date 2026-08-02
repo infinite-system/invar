@@ -1,3 +1,123 @@
+# RESUME ANCHOR 35 — 2026-08-02 ~13:45 EDT (85% gauge, CHECKPOINT)
+
+## #459 — gated RED, NOT landed. Round 4 filed and steered.
+
+`/tmp/gate-459.log` on `/tmp/integration-459b` (branch tip `b428610e`
+merged as `2a604c63`): SIX failures.
+
+```
+workspace tabs · workspace layout isolation · panel-split ·
+tasks · settings-applied · shortcut-help
+```
+Logs: `/tmp/merge-gate-failures.90a0c83739b4887b.859565/`.
+
+**Two are CONSUMERS of behaviour the user deliberately removed:**
+- `panel-split` waits for "terminal frame close opens the generic
+  confirmation dialog" — the dialog is gone by user ruling.
+- `settings-applied` expects
+  `panelContentKinds==='agent,terminal,database'` with one cell — that
+  IS the phantom registration the new record forbids.
+**Two need an A/B** (workspace-tabs, tasks). **shortcut-help is the
+known #457 flake** (1-2 of 5 on unchanged commits).
+
+Round 4 orders a mechanical CONSUMER CENSUS, not six patches — same
+shape as #452 two days ago.
+
+## Contract records ACCEPTED by the user and COMMITTED to main
+
+- `Every registered panel content is reachable` (src/modules/ui/ui.invariants.md)
+  — new; Impossible-if-true names a registration absent from every
+  space. Evidence cites probe-459-empty-dock.ts.
+- `One dialog component serves confirms and prompts` (design.invariants.md)
+  — Scope refined `terminal-instance close` -> `panel-container close`,
+  plus the blast-radius rule.
+Both PASS the checker. NOT yet gated (added after the gate started).
+
+## Flake verification — ANSWERED
+
+Baseline `9f158472`: 1 green / 5. After the #436 convergence fix,
+`c5dc3057`: **4 green / 5**. `terminal harness` **2/5 -> 0/5**.
+`shortcut-help` 2/5 -> 1/5 (untouched, real, #457).
+Measured with a builder live, so the bias ran AGAINST the fix.
+
+## Open
+
+- #459 round 4 in flight (builder live, session invar/459-...).
+- #457 rewritten; HOLD until the machine is quiet — its job is
+  measuring contention. `shortcut-help` is its open defect.
+- #458 all-terminals-dead-after-idle: still unexplained, do not close.
+- Queue safe to run beside #459: #445, #446, #451.
+  Do NOT run beside it: #453-456, #447 (same surfaces).
+
+## Standing
+
+- Crons DISARMED by user order. Never re-arm.
+- One watcher: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+- Docs commits need `SKIP_GATE=1`.
+- Never dispatch a builder into a running measurement sweep.
+- A 1-in-5 green looks exactly like a fixed tree.
+
+---
+
+# RESUME ANCHOR 34 — 2026-08-02 ~13:15 EDT (81% gauge)
+
+## Landed
+`334add87` #442 · `61fd213e` #444 · `da584da4` #452 — gated on
+`/tmp/gate-stack5.log` GATE_EXIT=0. NOTE: that green was a 1-in-5 draw,
+not a fixed tree. Landing stands (pre-landing sweep proved the reds
+were inherited), but never cite it as proof of a clean tree.
+
+## The flake measurement — the session's main result
+
+Five gates, ONE unchanged commit, 6 workers. Baseline `9f158472`:
+**4 red / 1 green**; `terminal harness` 2/5, `shortcut-help` 2/5.
+Pre-landing `eadbae0d`, 3 gates: `terminal` 1/3 — so INHERITED, not
+shipped by the landing.
+
+**After the #436 fix, commit `c5dc3057`: 4 green / 1 red.**
+`terminal harness` **2/5 -> 0/5**. `shortcut-help` 2/5 -> 1/5 (untouched,
+still real). Measured WITH #459's builder live, so the load bias runs
+AGAINST the fix — the improvement is conservative.
+
+## What was fixed and why (#436)
+
+The `tasks:watch` assertion demanded a foreign process's repaint never
+appear incomplete. `tasks:watch` clears then redraws without
+synchronized markers, so Invar cannot make it atomic. Now asserts
+CONVERGENCE: trailing blank frames must be zero; longest transient run
+is reported, never gated. Both arms proven by plant.
+New record: `Atomicity is claimed only for self-generated output`
+(scripts/harness/harness.invariants.md). It also predicts which of the
+remaining flake tasks are overclaims — any whose failure is an
+incomplete intermediate state in FOREIGN output.
+
+## Open
+
+- **#459** — READY, branch `b428610e`, NOT gated, NOT landed. Report has
+  9 sections incl. Bycatch. User rulings: Database pane is user-visible
+  and outranks the rest; empty state shows "Add terminal"; **no confirm
+  on instance close, EVER** (incl. foreground process); containers keep
+  a dialog carrying the instance count.
+- **#457** — rewritten; its original premise (serial tail lacks retry)
+  was FALSE — the tail does retry. Remaining: `shortcut-help` (self-
+  generated output, no convergence cover), the timing-classification
+  matcher blind spot, per-run verdict recording. HOLD until the machine
+  is quiet; its whole job is measuring contention.
+- **#458** — the all-terminals-dead-after-idle incident. Still
+  unexplained. Do not close quietly.
+- Queue, non-conflicting with panels/gate: #445, #446, #451.
+  Same-surface, do NOT run beside #459/#457: #453-456, #447.
+
+## Standing
+
+- Crons DISARMED by user order. Never re-arm.
+- One watcher: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+- Docs commits need `SKIP_GATE=1` — a plain commit launches a gate.
+- Never dispatch a builder into a running measurement sweep; I
+  contaminated my own verification once today by doing exactly that.
+
+---
+
 # RESUME ANCHOR 33 — 2026-08-01 ~20:30 EDT (100% gauge)
 
 ## Stack gate 2 — READ FROM LOG (`/tmp/gate-stack2.log`)

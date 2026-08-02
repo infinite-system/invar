@@ -2550,6 +2550,48 @@ scripts/harness/smoke-paste-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### Every registered panel content is reachable
+
+**Invariant:** If a panel content identifier is registered in a workspace, then it belongs to
+exactly one panel space group that can project it as a selectable and closable row or cell. A
+registration that belongs to no space is not a hidden pane; it is unreachable.
+
+**Scope:** `PanelHost` registration and restore, `PanelContentFactories`, and the contents list
+projection, for every workspace-local content regardless of kind. It does not govern content
+deliberately held in a non-selected content set, which belongs to a space and becomes reachable when
+that space is selected.
+
+**Mechanism:** A user can only act on a pane through a row in the contents list or a cell in the
+panel. Both project from space and group membership, so an identifier outside every space has no
+gesture that reaches it: it cannot be selected, cannot be closed, and survives closing everything
+else. The factory seam assigns membership at construction and restore rejects an identifier it
+cannot place, so the unreachable state has no way to enter.
+
+**Generates:** The empty-panel behaviour — a visible panel with no cells keeps one Add row rather
+than painting a void, because reachability is a property of the panel, not of its occupants. It also
+generates the restore-time rejection of a registration with no space.
+
+**Rejected alternatives:** Sweeping unreachable registrations at teardown — it repairs the symptom
+after a user has already seen a pane they cannot close. Rendering registered-but-space-less content
+as a cell — that invents membership the persisted state never expressed, and is how a Database pane
+nobody added became visible.
+
+**Evidence:** `src/modules/ui/PanelContentFactories.ts` and its test; `PanelHost.test.ts` restore
+cases; `.invar/tasks/active/459-empty-right-pane-has-no-add-affordance/probe-459-empty-dock.ts`,
+which printed the defect before the repair: `panelContentIds` held `database` while `panelCellIds`
+and the list rows did not, and it survived closing every terminal.
+
+**Impossible if true:** No registered content identifier may be absent from every panel space and
+group. A user can never observe a pane with no row and no way to close it.
+
+**Verification:** Restore a workspace whose persisted panel state names a content belonging to no
+space; the registration must be rejected rather than surfaced. Then drive
+`probe-459-empty-dock.ts`: `panelContentIds` and the projected rows must name the same set.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-02
+
 ### A pane runtime owns its processes
 
 **Invariant:** If a pane kind is backed by a process, then a contributed `PaneRuntime` owns that

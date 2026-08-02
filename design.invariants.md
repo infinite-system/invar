@@ -151,7 +151,9 @@ The shared interaction and appearance rules for every Invar interface.
 
 **Invariant:** If an interaction needs a modal confirmation or prompt, then it is an instance of the generic dialog component.
 
-**Scope:** Quit, terminal-instance close, and input-carrying prompts.
+**Scope:** Quit, panel-container close, and input-carrying prompts. Instance close carries no modal
+interaction: confirmation is warranted by blast radius, not by action kind, so closing one instance
+asks nothing while closing a container that owns several asks once and states the count.
 
 **Mechanism:** `Dialog` owns modal state, labels, focus movement, dismissal, and activation; the overlay projects its current configuration.
 
