@@ -595,6 +595,19 @@ class $RootView {
       title: '',
       backgroundColor: readPalette().panel,
     });
+    // The panel's content area gets a STATED affordance when it holds no
+    // instances, exactly as the editor column does when no editor is installed.
+    // A panel that empties must never read as a blank region the user has to
+    // guess about; the instances list keeps its + button and this says what to do.
+    const panelEmptyNotice = new TextRenderable(renderer, {
+      id: 'panel-empty-notice',
+      content: '',
+      flexGrow: 1,
+      height: '100%',
+      wrapMode: 'none',
+      selectable: false,
+    });
+    let panelEmptyNoticeMounted = false;
     const primaryDockRemainder = new BoxRenderable(renderer, {
       id: 'primary-dock-remainder',
       position: 'absolute',
@@ -1110,6 +1123,14 @@ class $RootView {
       }
       panelBox.remove(panelContentsListRenderable);
       panelBox.remove(panelContentsListSplitter.renderable);
+      if (panelEmptyNoticeMounted) {
+        panelBox.remove(panelEmptyNotice);
+        panelEmptyNoticeMounted = false;
+      }
+      if (count === 0) {
+        panelBox.add(panelEmptyNotice);
+        panelEmptyNoticeMounted = true;
+      }
       for (let index = 0; index < count; index += 1) {
         const view = ensurePanelCellView(index);
         if (view.splitterElement) panelBox.add(view.splitterElement.renderable);
@@ -1879,6 +1900,18 @@ class $RootView {
       // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
       // invariant: The editor column's default occupant is a contribution (src/modules/ui/ui.invariants.md)
       synchronizeEmptyColumnNotice(editorColumnContent, palette);
+      if (panelEmptyNoticeMounted) {
+        const instanceLabel = panelHost.activeSpace?.label ?? 'instance';
+        panelEmptyNotice.fg = palette.dim;
+        panelEmptyNotice.content = [
+          '',
+          `   No ${instanceLabel} instances are open.`,
+          '',
+          `   Choose + ${instanceLabel} in the list to start one.`,
+          '   The panel stays open until you close it yourself.',
+          '',
+        ].join('\n');
+      }
       if (editorColumnContent) {
         PaneProjection.Class.paint(editorColumnContent, {
           width: editorViewportWidth(),

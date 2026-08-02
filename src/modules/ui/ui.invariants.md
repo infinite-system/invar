@@ -2550,6 +2550,43 @@ scripts/harness/smoke-paste-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### The add control keeps one button appearance
+
+**Invariant:** If a panel instances list is visible, then its add control paints in one button
+form, whether or not the list holds rows, and the content area beside it states what to do when
+it holds none.
+
+**Scope:** `PanelContentsList` header projection and the panel content area's empty notice.
+
+**Mechanism:** The header renders `+ <label> ▾` on a full-width accent bar at the list's own
+first column, with no leading pad, so the control reads as a target AND every row control below
+it keeps its column arithmetic. When the panel resolves no cells, `RootView` mounts a dim notice
+in the content area rather than leaving a void, in the same shape the editor column uses when no
+editor is installed.
+
+**Generates:** An emptied panel a user can recover from without guessing: the button is where it
+always was, and the empty area names the gesture.
+
+**Rejected alternatives:** Swapping the button for the bare words `Add Terminal` when the list
+empties — the user reported this exact behaviour as the defect: the only way back looked like a
+label. Padding the button on its left — a one-cell leading pad shifts the anchor every row
+control resolves from, which silently moved the close target one column off.
+
+**Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/RootView.ts`
+(`panelEmptyNotice`); `src/modules/ui/PanelContentsList.test.ts`, whose assertion was inverted
+when this contract changed.
+
+**Impossible if true:** An instances list showing no add control, or showing it as plain text; a
+panel with zero instances painting an unexplained empty region.
+
+**Verification:** `bun test src/modules/ui/PanelContentsList.test.ts`, and drive it:
+`bun run drive --open <workspace> --gesture openPanel --gesture openInstances
+--gesture addInstance=Terminal --gesture closeInstance=Terminal`.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-02
+
 ### An emptied space survives its last instance
 
 **Invariant:** If the last instance of a panel space closes, then the space itself remains, stays
