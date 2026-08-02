@@ -1,0 +1,15 @@
+{
+  "task": 469,
+  "slug": "drive-reads-the-app-class-graph",
+  "branch": "fleet/469-drive-reads-the-app-class-graph",
+  "worktree": ".invar/worktrees/469-drive-reads-the-app-class-graph",
+  "tmuxSession": "invar/469-drive-reads-the-app-class-graph",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-high-469-drive-reads-the-app-class-graph.md",
+  "engine": "claude",
+  "environment": "any",
+  "model": "fable-5",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "6d9f4cbf569df3cd7cbb4599f88022fa13f350c5",
+  "startedAt": "2026-08-02T18:30:30-04:00"
+}

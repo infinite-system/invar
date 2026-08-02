@@ -1,7 +1,7 @@
 # Task 469 — drive reads the app class graph
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: any
 Model: fable-5
