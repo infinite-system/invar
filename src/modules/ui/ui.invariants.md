@@ -2550,6 +2550,44 @@ scripts/harness/smoke-paste-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### An emptied space survives its last instance
+
+**Invariant:** If the last instance of a panel space closes, then the space itself remains, stays
+active, and offers to add another instance. Only the space's own close gesture removes it.
+
+**Scope:** `PanelHost.detachContent` pruning and last-cell fallback, for every workspace-local
+space regardless of kind. `closeSpace` is the deliberate container-close path and is unaffected.
+
+**Mechanism:** Closing an instance and closing a container are different gestures with different
+blast radius. Two seams enforce it. The space list keeps a space that is active even when its
+content list empties, so the panel cannot silently adopt another plugin's space. The last-cell
+fallback searches only the ACTIVE SPACE's content identifiers, so it can never promote a pane
+belonging to another space into the space the user is looking at.
+
+**Generates:** The empty-panel Add row — an emptied terminal space still knows it is a terminal
+space, so its Add control offers terminals. It also generates the rule that a plugin's pane can
+never appear under another plugin's tab.
+
+**Rejected alternatives:** Pruning an emptied space and letting the panel fall back to the first
+remaining space — that is the defect this record forbids: closing the last terminal surfaced a
+Database pane the user never opened, in the tab they opened for terminals. Promoting
+`orderedContents[0]` on the last close — the registry spans every space, so the fallback reached
+outside the space that owned the gesture.
+
+**Evidence:** `src/modules/ui/PanelHost.ts` (`detachContent` space retention and space-scoped
+fallback); `src/modules/ui/PanelHost.test.ts`, whose two arms both fail when either half is
+reverted: the space must survive AND a same-space survivor must still be promoted.
+
+**Impossible if true:** A user closing the last instance of one space can never be shown content
+belonging to a different space, and can never lose the tab they opened.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts`. Delete either half of the fix in
+`detachContent`; the suite must go red.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-02
+
 ### Every registered panel content is reachable
 
 **Invariant:** If a panel content identifier is registered in a workspace, then it belongs to

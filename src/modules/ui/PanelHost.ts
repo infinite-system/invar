@@ -1306,7 +1306,21 @@ class $PanelHost {
           (candidate): candidate is PaneContent => candidate !== undefined,
         );
       if (remainingVisibleCells.length === 0) {
-        const fallback = this.orderedContents[0] ?? null;
+        // invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
+        // The fallback may only promote content the ACTIVE SPACE owns. Promoting
+        // orderedContents[0] reaches across the whole registry, so closing the last
+        // terminal surfaced the Database plugin's pane inside the terminal space.
+        const activeSpaceContentIdentifiers = new Set(
+          this.spaces.value.find(
+            (space) => space.identifier === this.activeSpaceId.value,
+          )?.contentIds ?? [],
+        );
+        const fallback =
+          this.orderedContents.find(
+            (candidate) =>
+              candidate.id !== id &&
+              activeSpaceContentIdentifiers.has(candidate.id),
+          ) ?? null;
         this.layout.value = [];
         this.activeId.value = fallback?.id ?? null;
         this.focusedIndex.value = 0;
@@ -1351,7 +1365,16 @@ class $PanelHost {
           .filter((group) => group.contentIds.length > 0),
         activeId: space.activeId === id ? null : space.activeId,
       }))
-      .filter((space) => space.contentIds.length > 0);
+      // invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
+      // Closing the last INSTANCE of a space must not close the space. A space is a
+      // container the user opened; only closeSpace, the tab's own gesture, removes it.
+      // Pruning the emptied space here made the panel adopt the next plugin's space, so
+      // closing the last terminal surfaced a Database pane the user never opened.
+      .filter(
+        (space) =>
+          space.contentIds.length > 0 ||
+          space.identifier === this.activeSpaceId.value,
+      );
     this.spaces.value = nextSpaces;
     if (
       !nextSpaces.some((space) => space.identifier === this.activeSpaceId.value)
