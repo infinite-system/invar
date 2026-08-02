@@ -209,9 +209,6 @@ class $PtyTestDriver {
       // One event-loop turn is enough for pending PTY reads to land.
       await new Promise((resolveDrain) => setTimeout(resolveDrain, 0));
       if (this.disposed) return;
-      await this.emulatorObservationChain;
-      await this.emulator.flush();
-      this.completedSnapshotValue = this.captureEmulatorSnapshot();
       // The child's stdout AND STDERR are the PTY slave, so an uncaught exception's dump is already
       // in the RETAINED tail — the old message threw that evidence away and reported only the exit
       // code, which is how an app crash inside a full gate run (2026-07-25) produced no diagnosable
@@ -441,6 +438,30 @@ class $PtyTestDriver {
     }
   }
 
+  async awaitCompletedGridCondition(
+    predicateDescription: string,
+    predicate: (snapshot: HarnessSnapshot.Model) => boolean,
+    timeoutMilliseconds = 30_000,
+  ): Promise<HarnessSnapshot.Model> {
+    const deadline = performance.now() + timeoutMilliseconds;
+    await this.flushObservedOutput();
+    while (true) {
+      const snapshot = this.completedSnapshotValue;
+      if (predicate(snapshot)) {
+        this.expectedScreenChangeBaseline = undefined;
+        return snapshot;
+      }
+      const remainingMilliseconds = deadline - performance.now();
+      if (remainingMilliseconds <= 0) {
+        this.expectedScreenChangeBaseline = undefined;
+        throw this.gridConditionTimeoutError(predicateDescription, snapshot);
+      }
+      this.quiescence.throwIfFailed();
+      await Bun.sleep(Math.min(10, remainingMilliseconds));
+      await this.flushObservedOutput();
+    }
+  }
+
   /**
    * Await a predicate over OBSERVED RAW OUTPUT rather than the grid. Terminal graphics
    * protocols (kitty, sixel) are byte streams that are not necessarily bounded by a
@@ -554,7 +575,7 @@ class $PtyTestDriver {
   }
 
   snapshot(): HarnessSnapshot.Model {
-    return this.completedSnapshotValue;
+    return this.captureEmulatorSnapshot();
   }
 
   private captureEmulatorSnapshot(): HarnessSnapshot.Model {

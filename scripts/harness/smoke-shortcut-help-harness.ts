@@ -71,8 +71,11 @@ async function scrollUntilVisible(
   driver: PtyTestDriver.Model,
   marker: string,
 ): Promise<HarnessSnapshot.Model> {
+  let snapshot = await driver.awaitCompletedGridCondition(
+    `the completed shortcut sheet is visible while seeking ${marker}`,
+    (candidate) => shortcutSheetVisibleRange(candidate) !== null,
+  );
   for (let scrollAttempt = 0; scrollAttempt < 8; scrollAttempt++) {
-    const snapshot = driver.snapshot();
     if (snapshot.findText(marker)) return snapshot;
     const visibleRangeBeforeScroll = shortcutSheetVisibleRange(snapshot);
     if (!visibleRangeBeforeScroll) {
@@ -87,8 +90,8 @@ async function scrollUntilVisible(
         `FAIL shortcut sheet reached its final row without showing ${marker}`,
       );
     }
-    driver.sendKeys('PageDown');
-    await driver.awaitGridCondition(
+    const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+      ['PageDown'],
       `PageDown advances the shortcut sheet beyond row ` +
         `${visibleRangeBeforeScroll.firstRow} while seeking ${marker}`,
       (candidate) => {
@@ -99,6 +102,7 @@ async function scrollUntilVisible(
         );
       },
     );
+    snapshot = measurement.snapshot;
   }
   throw new Error(`FAIL shortcut sheet never showed ${marker}`);
 }
