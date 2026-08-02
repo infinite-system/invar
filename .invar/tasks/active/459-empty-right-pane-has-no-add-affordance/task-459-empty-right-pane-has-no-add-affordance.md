@@ -124,3 +124,18 @@ Report per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. Write the
 - `bun test` in FULL, `bunx tsc --noEmit`,
   `bash scripts/conventions-gate.sh`, invariant checker `--all --refs`.
 - Do NOT run `scripts/merge-gate.sh`. Commit with `SKIP_GATE=1`.
+
+## User rulings 2026-08-02
+
+- **The orphaned terminal is FIXED.** The user rebuilt and confirms it
+  no longer reproduces. That was #452's stranded-pane defect. Do not
+  re-investigate it.
+- **But the Database pane DOES show, and that is wrong.** The phantom
+  registered content is not merely a status-field oddity — it is
+  visible to the user in the right pane. Defect 3 is therefore
+  USER-VISIBLE and outranks the empty-state work. The user never added
+  a Database instance; it arrives from boot with no row to close it.
+- **Empty state: keep the panel open and show the message.** The user
+  chose the "Add terminal" affordance over closing the space. Quote:
+  "If there are 0 instances in right pane, there should be a message,
+  Add terminal". Implement that; do not close the panel instead.
