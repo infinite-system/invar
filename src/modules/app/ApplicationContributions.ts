@@ -166,9 +166,14 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         );
       },
       registerPanelContentFactory: (factory) => {
-        registrationDisposers.push(
-          this.options.panelContentFactories.register(factory),
-        );
+        const unregisterFactory =
+          this.options.panelContentFactories.register(factory);
+        registrationDisposers.push(() => {
+          this.options.bottomPanelHost.removeContentsOfKindFromEverySet(
+            factory.kind,
+          );
+          unregisterFactory();
+        });
       },
       registerEditorColumnDefault: (provider) => {
         const port = this.options.editorColumnDefault.register(provider);

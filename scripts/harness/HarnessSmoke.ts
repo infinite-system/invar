@@ -205,8 +205,6 @@ class $HarnessSmoke {
         ),
     );
     const geometry = this.readStatus(statusPath).panelListGeometry as {
-      left: number;
-      top: number;
       width: number;
     };
     const snapshot = await driver.awaitGridCondition(
@@ -229,16 +227,35 @@ class $HarnessSmoke {
       throw new Error('The pinned panel list did not paint its Add header');
     }
     const targetRow = snapshot.textRows().findIndex((rowText, row) => {
-      if (row < geometry.top + 2) return false;
+      if (row <= headerPosition.row) return false;
       return rowText
-        .slice(geometry.left, geometry.left + geometry.width)
+        .slice(headerPosition.column, headerPosition.column + geometry.width)
         .includes(visibleTitle);
     });
     if (targetRow < 0) {
       throw new Error(`The pinned panel list did not paint ${visibleTitle}`);
     }
-    const targetColumn = geometry.left + geometry.width - 2;
-    for (let column = geometry.left + 1; column <= targetColumn; column += 1) {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'move',
+      column: headerPosition.column + 1,
+      row: targetRow,
+      button: 'none',
+    });
+    const rowControlsSnapshot = await driver.awaitGridCondition(
+      `${visibleTitle} reveals its row controls on hover`,
+      (candidate) => candidate.rowText(targetRow).includes('×'),
+    );
+    const revealedCloseColumn = rowControlsSnapshot
+      .rowText(targetRow)
+      .lastIndexOf('×');
+    if (revealedCloseColumn < 0) {
+      throw new Error(`${visibleTitle} did not paint its close glyph`);
+    }
+    for (
+      let column = headerPosition.column + 1;
+      column <= revealedCloseColumn;
+      column += 1
+    ) {
       driver.sendMouseWithoutFrameExpectation({
         kind: 'move',
         column,
@@ -250,10 +267,7 @@ class $HarnessSmoke {
       `${visibleTitle} reveals its close control on hover`,
       (candidate) => candidate.findText('Close instance') !== null,
     );
-    const revealedCloseColumn = hoveredSnapshot
-      .rowText(targetRow)
-      .lastIndexOf('×');
-    if (revealedCloseColumn < 0) {
+    if (hoveredSnapshot.rowText(targetRow).lastIndexOf('×') < 0) {
       throw new Error(`${visibleTitle} did not paint its close glyph`);
     }
     driver.sendMouseWithoutFrameExpectation({
@@ -307,8 +321,9 @@ class $HarnessSmoke {
     driver: PtyTestDriver.Model,
     visibleLabel: string,
     instanceCount: number,
+    closeGlyph = '×',
   ): Promise<HarnessSnapshot.Model> {
-    const marker = `${visibleLabel} ×`;
+    const marker = `${visibleLabel} ${closeGlyph}`;
     const snapshot = await driver.awaitGridCondition(
       `the ${visibleLabel} container paints its close control`,
       (candidate) => candidate.findText(marker) !== null,

@@ -15,6 +15,7 @@
 // invariant: A split panel renders every visible cell into its own sub-region (src/modules/ui/ui.invariants.md)
 // invariant: A focused split panel routes keystrokes to the focused cell (src/modules/ui/ui.invariants.md)
 // invariant: The panel contents list mirrors open content (src/modules/ui/ui.invariants.md)
+// invariant: Every registered panel content is reachable (src/modules/ui/ui.invariants.md)
 // invariant: Split arrangement follows panel content order (src/modules/layout/layout.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
@@ -211,6 +212,17 @@ class $PanelHost {
         this.removeContentFromHiddenSet(contentSet, identifier);
       }
       return;
+    }
+  }
+  /** Remove every pane of one kind from every workspace panel world. */
+  removeContentsOfKindFromEverySet(kind: string): void {
+    const identifiers = [...this.contentSets].flatMap((contentSet) =>
+      [...contentSet.contents.values()]
+        .filter((content) => (content.kind ?? content.id) === kind)
+        .map((content) => content.id),
+    );
+    for (const identifier of identifiers) {
+      this.removeContentFromAnySet(identifier);
     }
   }
   protected synchronizeSelectedContentSet(): void {

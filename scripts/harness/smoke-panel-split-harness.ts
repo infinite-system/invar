@@ -115,7 +115,7 @@ async function driveSharedCloseGlyphTier(
         status.panelCellKinds.includes('terminal'),
     );
     const terminalFrameSnapshot = await tierDriver.awaitGridCondition(
-      `${glyphLevel} terminal frame close paints before its confirmation drive`,
+      `${glyphLevel} terminal frame close paints before its direct close drive`,
       (candidate) => {
         const tabRow = candidate
           .textRows()
@@ -135,18 +135,57 @@ async function driveSharedCloseGlyphTier(
       throw new Error(`${glyphLevel} terminal frame close is not painted`);
     }
     clickCell(tierDriver, terminalFrameCloseColumn, terminalTabRow + 1);
-    await HarnessSmoke.Class.awaitStatus(
+    const closedTerminalStatus = await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
-      `${glyphLevel} terminal frame close opens the generic confirmation dialog`,
-      (status) => status.quitConfirmationOpen === true,
+      `${glyphLevel} terminal frame close removes one instance without a dialog`,
+      (status) =>
+        status.quitConfirmationOpen === false &&
+        Array.isArray(status.panelContentKinds) &&
+        !status.panelContentKinds.includes('terminal'),
     );
-    tierDriver.sendKeys('Escape');
+    HarnessSmoke.Class.requireCondition(
+      closedTerminalStatus.quitConfirmationOpen === false &&
+        tierDriver.snapshot().findText('Close Terminal?') === null,
+      `${glyphLevel} instance close paints no confirmation dialog`,
+    );
+    snapshot = tierDriver.snapshot();
+    clickCell(
+      tierDriver,
+      statusButtonColumn(snapshot, ` ${terminalIcon} `),
+      snapshot.rows - 1,
+    );
     await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
-      `${glyphLevel} Escape dismisses terminal close confirmation`,
-      (status) => status.quitConfirmationOpen === false,
+      `${glyphLevel} terminal reopens before the container arm`,
+      (status) =>
+        Array.isArray(status.panelContentKinds) &&
+        status.panelContentKinds.includes('terminal'),
+    );
+    await HarnessSmoke.Class.requestPanelContainerClose(
+      tierDriver,
+      'Terminal',
+      1,
+      closeGlyph,
+    );
+    tierDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} container confirmation states one instance and defaults to No`,
+      (status) =>
+        status.quitConfirmationOpen === false &&
+        Array.isArray(status.panelContentKinds) &&
+        status.panelContentKinds.includes('terminal'),
+    );
+    await tierDriver.awaitGridCondition(
+      `${glyphLevel} declined container confirmation leaves the painted grid`,
+      (candidate) =>
+        candidate.findText('Close Terminal and its 1 instance?') === null,
+    );
+    HarnessSmoke.Class.pass(
+      `${glyphLevel} container close states one instance and defaults to No`,
     );
     snapshot = tierDriver.snapshot();
     clickCell(

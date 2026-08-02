@@ -738,3 +738,29 @@ test('each workspace restores its active space and retained split independently'
     'database',
   ]);
 });
+
+test('kind removal reaches every workspace panel world', () => {
+  const host = new PanelHost.Class();
+  const firstWorld = host.activeContentSet;
+  const firstDatabase = fakeContent('database@1', 'database');
+  const firstTerminal = fakeContent('terminal@1', 'terminal');
+  host.register(firstDatabase);
+  host.register(firstTerminal);
+
+  const secondWorld = host.createContentSet();
+  host.selectContentSet(secondWorld);
+  const secondDatabase = fakeContent('database@2', 'database');
+  const secondTerminal = fakeContent('terminal@2', 'terminal');
+  host.register(secondDatabase);
+  host.register(secondTerminal);
+
+  host.removeContentsOfKindFromEverySet('database');
+
+  expect(secondDatabase.disposed).toBe(true);
+  expect(secondTerminal.disposed).toBe(false);
+  expect(host.contentsOfKind('database')).toEqual([]);
+  host.selectContentSet(firstWorld);
+  expect(firstDatabase.disposed).toBe(true);
+  expect(firstTerminal.disposed).toBe(false);
+  expect(host.contentsOfKind('database')).toEqual([]);
+});
