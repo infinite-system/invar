@@ -1,6 +1,7 @@
 import { Static } from 'ivue/extras';
 import {
   BoxRenderable,
+  RGBA,
   type CliRenderer,
   type MouseEvent,
   type OptimizedBuffer,
@@ -15,6 +16,7 @@ class $SplitterElement {
   readonly model: SplitterModel.Instance;
   protected hovered = false;
   protected dragActive = false;
+  protected surfaceBackgroundColor: RGBA | undefined;
 
   constructor(readonly options: SplitterElementOptions) {
     this.model = this.createSplitterModel();
@@ -58,6 +60,7 @@ class $SplitterElement {
         color: renderable.backgroundColor,
         mark: 'centeredLine',
         leadingPaintPadCells: this.leadingPaintPadCells,
+        surfaceBackgroundColor: this.surfaceBackgroundColor,
       });
     };
     return renderable;
@@ -99,8 +102,11 @@ class $SplitterElement {
     }
   }
 
-  updateAppearance(palette: Palette): void {
+  updateAppearance(palette: Palette, surfaceBackgroundColor?: string): void {
     this.renderable.backgroundColor = this.active ? palette.fg : palette.dim;
+    this.surfaceBackgroundColor = surfaceBackgroundColor
+      ? RGBA.fromHex(surfaceBackgroundColor)
+      : undefined;
   }
 
   protected pointerPosition(event: MouseEvent): number {

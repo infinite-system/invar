@@ -23,6 +23,10 @@ import type { RegisteredSetting } from '../settings/SettingContribution.interfac
 // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
 // invariant: Markdown preview selection reuses shared drag behavior (src/modules/markdown/markdown.invariants.md)
 class $MarkdownPreviewContent implements EditorSurfaceContent {
+  get displayedPath(): string {
+    return this.workspace.editor.document.path;
+  }
+
   constructor(
     protected readonly workspace: Workspace.Model,
     protected readonly context: EditorSurfaceContentContext,

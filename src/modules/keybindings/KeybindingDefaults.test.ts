@@ -92,6 +92,30 @@ test('fold chord bytes arrive through both OpenTUI parsers', () => {
   }
 });
 
+test('navigation history binds Alt arrows and the Ctrl Alt bracket fallback', () => {
+  const registry = registryWithCanonicalLayer();
+  const altEvent = {
+    ctrl: false,
+    shift: false,
+    option: true,
+    super: false,
+  };
+  expect(
+    registry.resolve({ ...altEvent, name: 'left' }, 'editor', 0).action,
+  ).toBe('navigation.back');
+  expect(
+    registry.resolve({ ...altEvent, name: 'right' }, 'editor', 0).action,
+  ).toBe('navigation.forward');
+  expect(
+    registry.resolve({ ...altEvent, name: '[', ctrl: true }, 'editor', 0)
+      .action,
+  ).toBe('navigation.back');
+  expect(
+    registry.resolve({ ...altEvent, name: ']', ctrl: true }, 'editor', 0)
+      .action,
+  ).toBe('navigation.forward');
+});
+
 // --- focus owns the keystroke -------------------------------------------------------------------
 // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 

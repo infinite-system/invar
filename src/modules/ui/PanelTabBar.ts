@@ -1,6 +1,8 @@
 import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { InterfaceGlyphVocabulary } from '../theme/ThemeIcons';
+import { ThemeIcons } from '../theme/ThemeIcons';
+import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import type { Palette } from '../theme/ThemePalettes';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { PanelSpace } from './PanelHost';
@@ -124,7 +126,7 @@ class $PanelTabBar {
     );
     const chunks: TextChunk[] = [
       bg(options.palette.bg)(
-        fg(options.palette.border)(
+        fg(options.frameBorderColor)(
           '─'.repeat(this.EDITOR_FRAME_LEFT_PADDING_CELLS),
         ),
       ),
@@ -172,10 +174,20 @@ class $PanelTabBar {
     spaceAdd: PanelTabBarSpaceAddSegment | null;
     instancesToggle: PanelTabBarInstancesToggleSegment | null;
   } {
-    const countText = options.paneCount > 1 ? ` ${options.paneCount}` : '';
+    const panelStackGlyph = options.glyphVocabulary.panelStack;
+    const countSeparator = ' ';
+    const countText =
+      options.paneCount > 1
+        ? `${countSeparator}${ThemeIcons.Class.smallDigitCountFor(
+            options.glyphLevel,
+            options.paneCount,
+            'iconBadge',
+          )}`
+        : '';
     const addText = ` ${options.glyphVocabulary.panelAdd} Plugin `;
-    const instancesText = ` ${options.glyphVocabulary.panelStack}${countText} `;
-    const preferredControlText = `${addText}${instancesText}`;
+    const instancesText = ` ${panelStackGlyph}${countText} `;
+    const trailingPaddingText = '  ';
+    const preferredControlText = `${addText}${instancesText}${trailingPaddingText}`;
     const controlWidth = Math.min(
       TextCoordinates.Class.lineWidth(preferredControlText),
       width,
@@ -242,7 +254,14 @@ class $PanelTabBar {
       TextCoordinates.Class.lineWidth(addText),
       controlWidth,
     );
-    const instancesWidth = Math.max(0, controlWidth - addWidth);
+    const trailingPaddingWidth = Math.min(
+      TextCoordinates.Class.lineWidth(trailingPaddingText),
+      Math.max(0, controlWidth - addWidth),
+    );
+    const instancesWidth = Math.max(
+      0,
+      controlWidth - addWidth - trailingPaddingWidth,
+    );
     const addVisibleText = TextCoordinates.Class.displayColumnWindow(
       addText,
       0,
@@ -267,7 +286,7 @@ class $PanelTabBar {
           ? bg(options.palette.cursorLine)(
               fg(options.palette.accent)(addVisibleText),
             )
-          : fg(options.palette.fg)(addVisibleText),
+          : bg(options.palette.bg)(fg(options.palette.fg)(addVisibleText)),
         options.paneListExpanded
           ? bg(options.palette.selection)(
               fg(options.palette.accent)(instancesVisibleText),
@@ -276,7 +295,10 @@ class $PanelTabBar {
             ? bg(options.palette.cursorLine)(
                 fg(options.palette.accent)(instancesVisibleText),
               )
-            : fg(options.palette.fg)(instancesVisibleText),
+            : bg(options.palette.bg)(
+                fg(options.palette.fg)(instancesVisibleText),
+              ),
+        bg(options.palette.bg)(trailingPaddingText),
       ]),
       tabsWidth: column,
       controlWidth,
@@ -294,7 +316,7 @@ class $PanelTabBar {
         instancesWidth > 0
           ? {
               startColumn: instancesStartColumn,
-              endColumn: width,
+              endColumn: width - trailingPaddingWidth,
               tooltip: options.paneListExpanded
                 ? 'Hide Instances'
                 : 'Show Instances',
@@ -390,6 +412,7 @@ export interface PanelTabBarOptions {
   readonly hoveredCommandIdentifier?: string | null;
   readonly hoveredAction: PanelTabBarAction | null;
   readonly glyphVocabulary: InterfaceGlyphVocabulary;
+  readonly glyphLevel: GlyphLevel;
   readonly palette: Palette;
 }
 
@@ -421,6 +444,7 @@ export interface PanelTabBarEditorFrameOptions {
   readonly editorActions: readonly PanelTabBarEditorAction[];
   readonly hoveredCommandIdentifier: string | null;
   readonly palette: Palette;
+  readonly frameBorderColor: string;
 }
 
 export interface PanelTabBarEditorFrameProjection {

@@ -2,13 +2,15 @@ import { describe, expect, test } from 'bun:test';
 import { CommandBar } from './CommandBar';
 
 describe('CommandBar', () => {
-  test('centers navigation and folder controls while pinning layouts to the right edge', () => {
-    const geometry = CommandBar.Class.layoutGeometry(80, 'wt-layout2', 'L');
-    const back = geometry.segments.find(
-      (segment) => segment.control === 'back',
+  test('starts with padded search and folder controls while pinning layouts right', () => {
+    const geometry = CommandBar.Class.layoutGeometry(
+      80,
+      'wt-layout2',
+      'L',
+      '/',
     );
-    const forward = geometry.segments.find(
-      (segment) => segment.control === 'forward',
+    const search = geometry.segments.find(
+      (segment) => segment.control === 'search',
     );
     const folder = geometry.segments.find(
       (segment) => segment.control === 'folder',
@@ -17,15 +19,16 @@ describe('CommandBar', () => {
       (segment) => segment.control === 'layouts',
     );
 
-    expect(back?.endColumn).toBe(forward?.startColumn);
-    expect(forward?.endColumn).toBe(folder?.startColumn);
+    expect(search).toMatchObject({
+      label: ' / ',
+      startColumn: 0,
+      endColumn: 3,
+    });
+    expect(search?.endColumn).toBe(folder?.startColumn);
+    expect(folder?.label).toBe('wt-layout2');
     expect(layouts?.label).toBe(' L ');
     expect(layouts?.startColumn).toBe(77);
     expect(layouts?.endColumn).toBe(80);
-    expect((back?.startColumn ?? 0) + (folder?.endColumn ?? 0)).toBeCloseTo(
-      80,
-      0,
-    );
   });
 
   test('keeps every hit segment inside compact widths without overlap', () => {
@@ -33,6 +36,7 @@ describe('CommandBar', () => {
       18,
       'a-very-long-folder-name',
       'L',
+      '/',
     );
 
     expect(geometry.segments[0]?.startColumn).toBeGreaterThanOrEqual(0);

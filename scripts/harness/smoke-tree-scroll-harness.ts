@@ -67,6 +67,71 @@ for (let fileNumber = 1; fileNumber <= 60; fileNumber++) {
   );
 }
 
+const shortFixtureRoot = mkdtempSync(
+  join(tmpdir(), 'tui-tree-scroll-short-harness-'),
+);
+const shortHomeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-tree-scroll-short-home-'),
+);
+const shortStatusPath = join(shortHomeDirectory, 'status.json');
+await Bun.write(
+  join(shortFixtureRoot, 'short.ts'),
+  'export const short = true;\n',
+);
+const shortDriver = new PtyTestDriver.Class({
+  workspaceRoot: shortFixtureRoot,
+  columns: 120,
+  rows: 40,
+  homeDirectory: shortHomeDirectory,
+  environment: { TUI_STATUS_PATH: shortStatusPath },
+});
+try {
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    shortDriver,
+    shortStatusPath,
+    'the short tree settles without a scrollbar',
+    (status) =>
+      status.ready === true &&
+      status.renderQuiescent === true &&
+      status.treeRows === 1,
+  );
+  const revealGlyph = ThemeIcons.Class.glyphFor('unicode', 'fileTreeReveal');
+  const shortSnapshot = await shortDriver.awaitGridCondition(
+    'the short tree paints its reveal button',
+    (snapshot) => snapshot.findText(revealGlyph) !== null,
+  );
+  const shortRevealPosition = shortSnapshot.findText(revealGlyph);
+  HarnessSmoke.Class.requireCondition(
+    shortRevealPosition?.column === 33 &&
+      shortSnapshot.cell(shortRevealPosition.row, 32)?.characters ===
+        '\u00a0' &&
+      shortSnapshot.cell(shortRevealPosition.row, 34)?.characters === '\u00a0',
+    'the short tree keeps the padded reveal button at columns 32 through 34',
+  );
+  if (!shortRevealPosition)
+    throw new Error('The short-tree reveal button vanished');
+  shortDriver.sendMouse({
+    kind: 'move',
+    column: shortRevealPosition.column,
+    row: shortRevealPosition.row,
+    button: 'none',
+  });
+  await shortDriver.awaitGridCondition(
+    'the short-tree reveal hover paints both pads and its glyph',
+    (snapshot) =>
+      [32, 33, 34].every(
+        (column) =>
+          snapshot.cell(shortRevealPosition.row, column)?.background ===
+          Number.parseInt('#1e202e'.slice(1), 16),
+      ),
+  );
+  shortDriver.sendKeys('Control+q');
+} finally {
+  await shortDriver.dispose();
+  await HarnessSmoke.Class.removeTemporaryDirectory(shortFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(shortHomeDirectory);
+}
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,
@@ -101,6 +166,37 @@ try {
     15_000,
   );
   HarnessSmoke.Class.pass('the settled boot paints the populated file tree');
+  const revealGlyph = ThemeIcons.Class.glyphFor('unicode', 'fileTreeReveal');
+  const tallRevealPosition = openingSnapshot.findText(revealGlyph);
+  HarnessSmoke.Class.requireCondition(
+    tallRevealPosition?.column === 32 &&
+      openingSnapshot.cell(tallRevealPosition.row, 31)?.characters ===
+        '\u00a0' &&
+      openingSnapshot.cell(tallRevealPosition.row, 33)?.characters === '\u00a0',
+    'the overflowing tree shifts the whole padded reveal button left of the scrollbar',
+  );
+  if (!tallRevealPosition)
+    throw new Error('The tall-tree reveal button vanished');
+  driver.sendMouse({
+    kind: 'move',
+    column: tallRevealPosition.column,
+    row: tallRevealPosition.row,
+    button: 'none',
+  });
+  const tallRevealHover = await driver.awaitGridCondition(
+    'the tall-tree reveal hover paints both pads and its glyph',
+    (snapshot) =>
+      [31, 32, 33].every(
+        (column) =>
+          snapshot.cell(tallRevealPosition.row, column)?.background ===
+          Number.parseInt('#1e202e'.slice(1), 16),
+      ),
+  );
+  HarnessSmoke.Class.requireCondition(
+    tallRevealHover.cell(tallRevealPosition.row, 34)?.background !==
+      Number.parseInt('#1e202e'.slice(1), 16),
+    'the tall-tree reveal hover stops before the scrollbar column',
+  );
 
   console.log(
     '== harness tree-scroll: wheel moves the window without swimming selection ==',
@@ -151,7 +247,7 @@ try {
   );
 
   console.log(
-    '== harness tree-scroll: clicking a visible lower row keeps the offset ==',
+    '== harness tree-scroll: opening a visible lower row centers it ==',
   );
   driver.sendMouse({
     kind: 'press',
@@ -172,9 +268,18 @@ try {
     (status) =>
       typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0,
   );
+  const clickedSidebarHeight = Number(
+    (
+      clickedStatus.layoutSlots as {
+        sidebar?: { height?: number };
+      }
+    ).sidebar?.height,
+  );
+  const clickedTreeViewportRows = clickedSidebarHeight - 3;
   HarnessSmoke.Class.requireCondition(
-    clickedStatus.treeScrollTop === scrolledOffset,
-    `scroll stayed put on click (${scrolledOffset})`,
+    Number(clickedStatus.treeSelected) - Number(clickedStatus.treeScrollTop) ===
+      Math.floor(clickedTreeViewportRows / 2),
+    'opening a clicked file centers its selected tree row',
   );
   HarnessSmoke.Class.requireCondition(
     typeof clickedStatus.activeBuffer === 'string',
@@ -232,6 +337,20 @@ try {
   HarnessSmoke.Class.requireCondition(
     revealedStatus.treeRows === scaleBranchCount + 62,
     `reveal materializes only the ${scaleBranchCount} branch rows and the target`,
+  );
+  const sidebarHeight = Number(
+    (
+      revealedStatus.layoutSlots as {
+        sidebar?: { height?: number };
+      }
+    ).sidebar?.height,
+  );
+  const treeViewportRows = sidebarHeight - 3;
+  HarnessSmoke.Class.requireCondition(
+    Number(revealedStatus.treeSelected) -
+      Number(revealedStatus.treeScrollTop) ===
+      Math.floor(treeViewportRows / 2),
+    'automatic reveal centers the selected file in the tree viewport',
   );
 
   driver.sendKeys('Control+q');

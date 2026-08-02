@@ -14,8 +14,9 @@ import type { Tooltip } from './Tooltip';
 // The member set is derived from the sites that previously reached a concrete view BY NAME
 // (`activeDiffView()`, `activeMarkdownSplitView()`), not invented: the frame loop's two named ticks,
 // the 45-line inline key switch in Bootstrap, the find-target chain in RootView, and the copy chain.
-// It is deliberately a SUBSET of the established `PaneContent` vocabulary — same words, same
-// meanings — because the editor column is the same shape of slot as a dock, not a new one.
+// Its interaction members deliberately reuse the established `PaneContent` vocabulary — same words,
+// same meanings — because the editor column is the same shape of slot as a dock. `displayedPath` is
+// the one editor-area presentation input: the shell uses it to paint shared path chrome.
 //
 // Providers activate BEFORE the view exists (plugins are activated before buildRootView), so a
 // provider is registered early and its content is CREATED LAZILY at mount time with a
@@ -71,6 +72,9 @@ export interface EditorSurfaceContentProvider {
 
 /** A mounted occupant of the editor column. */
 export interface EditorSurfaceContent {
+  /** The path named by the editor-area breadcrumb row. Every occupant supplies this through the
+   *  shared surface contract, so the area shell never needs to identify a concrete view. */
+  readonly displayedPath: string;
   /** Repaint. Called after the container reaches its real laid-out height and on model changes. */
   update(): void;
   /** Advance owned animations and settle-repaints for one frame; true keeps the frame loop live. */

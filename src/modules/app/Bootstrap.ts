@@ -2159,7 +2159,7 @@ class $Bootstrap {
       'buffer.previous': () => workspaceSet.active.cycleTab(-1),
       // Ctrl+] parity with Ctrl/Cmd+click: definition of the symbol AT THE CURSOR.
       'go.definition': () => void workspaceSet.active.goToDefinition(),
-      // Browser-style Go Back / Go Forward through the navigation trail (Alt+[ / Alt+]). Safe no-ops
+      // Browser-style Go Back / Go Forward through the navigation trail (Alt+Left / Alt+Right). Safe no-ops
       // at the ends of the history.
       'navigation.back': () => workspaceSet.active.navigateBack(),
       'navigation.forward': () => workspaceSet.active.navigateForward(),

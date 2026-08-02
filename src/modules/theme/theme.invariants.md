@@ -131,6 +131,8 @@ mark table on read. Its
 `glyphVocabulary`/`glyph` surfaces resolve stable semantic slots through
 `INTERFACE_GLYPH_VOCABULARIES`; because the data is reactive selection, a palette, vocabulary, or
 capability change reaches every consumer without changing behavior or copying appearance.
+`ThemeIcons.smallDigitCountFor` resolves icon-attached superscript digits, standalone subscript
+digits, and plain ASCII fallback through the same glyph level while enforcing the three-cell cap.
 
 **Generates:** *The palette ladder quantizes color without leaving the palette*; *The glyph ladder
 degrades icons single-cell and legible*; *One table resolves every symbol mark*; theme/icon-set
@@ -143,7 +145,8 @@ literals live only in `ThemePalettes.ts` and the glyph literals only in `ThemeIc
 and `src/modules/ui/CompletionPopup.ts` both resolve their row marks through the theme rather than
 restating a table; `src/modules/ui/TabBar.ts` supplies the tiered dirty/active tab marker to
 `TabBarRenderer`; `ThemeIcons.test.ts` and `TabBarRenderer.test.ts` verify the semantic slot ladder
-and all three marker consumers.
+and all three marker consumers; `ActivityBar` and `PanelTabBar` ask the shared small-digit resolver
+for their distinct count placements.
 
 **Impossible if true:** A host rendering component outside `src/modules/theme` naming a `#rrggbb`
 color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a

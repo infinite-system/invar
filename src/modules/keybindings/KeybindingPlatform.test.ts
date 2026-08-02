@@ -82,8 +82,8 @@ test('the hand-written mac residue is only what no substitution can derive', () 
     (binding) =>
       !generatedSignatures.has(JSON.stringify([binding.action, binding.chord])),
   );
-  // Option word/paragraph jumps and the four Cmd+arrow document motions — meanings the Ctrl forms do
-  // NOT carry, so they can only be hand-written.
+  // Readline history aliases, Option paragraph jumps, and the four Cmd+arrow document motions carry
+  // meanings no primary-modifier substitution can derive.
   expect(residue.map((binding) => binding.action).sort()).toEqual([
     'editor.documentEnd',
     'editor.documentStart',
@@ -91,9 +91,7 @@ test('the hand-written mac residue is only what no substitution can derive', () 
     'editor.jumpUp',
     'editor.lineEnd',
     'editor.lineStart',
-    'editor.wordLeft',
-    'editor.wordLeft',
-    'editor.wordRight',
-    'editor.wordRight',
+    'navigation.back',
+    'navigation.forward',
   ]);
 });

@@ -22,27 +22,17 @@ class $KeybindingMac {
    */
   protected static get MAC_NATIVE_BINDINGS(): Keybinding[] {
     return [
-      // Option word-jumps. Terminals encode Option+arrow either as alt+arrow, or as the readline
-      // forms ESC-b / ESC-f (Terminal.app default profile) — both patterns, one intent. The floor
-      // spells this Ctrl+Left/Right, so this is a MODIFIER difference, not a substitution.
+      // Terminal.app can encode Option+Left/Right as readline ESC-b / ESC-f. The canonical
+      // Alt+Left/Right bindings handle modifier-aware events; these aliases preserve the same history
+      // intent when the terminal sends the readline byte forms.
       {
-        chord: { key: 'left', alt: true },
-        action: 'editor.wordLeft',
+        chord: { key: 'b', alt: true, ctrl: false, shift: false },
+        action: 'navigation.back',
         context: 'editor',
       },
       {
-        chord: { key: 'right', alt: true },
-        action: 'editor.wordRight',
-        context: 'editor',
-      },
-      {
-        chord: { key: 'b', alt: true },
-        action: 'editor.wordLeft',
-        context: 'editor',
-      },
-      {
-        chord: { key: 'f', alt: true },
-        action: 'editor.wordRight',
+        chord: { key: 'f', alt: true, ctrl: false, shift: false },
+        action: 'navigation.forward',
         context: 'editor',
       },
       // Option+Up/Down: paragraph-ish jumps map to the warp jumps.

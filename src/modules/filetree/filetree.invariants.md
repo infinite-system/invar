@@ -44,7 +44,8 @@ src/modules/filetree/FileTreePaneContent.test.ts`.
 
 **Invariant:** If a visible workspace file becomes active while `fileTreeRevealOpenFile` is enabled,
 or the user invokes the reveal button, then the file tree expands its ancestors, selects its row,
-and minimally scrolls that row into view without changing editor focus.
+and centers that row in the live tree viewport when the tree ends permit it, without changing editor
+focus.
 
 **Scope:** Files inside the active workspace root. A path hidden by `fileTreeShowHiddenFiles` is
 outside the visible-row promise. Its reveal is a safe no-op.
@@ -52,8 +53,8 @@ outside the visible-row promise. Its reveal is a safe no-op.
 **Mechanism:** `Workspace` publishes one `documentBecameActive` contribution event from
 `OpenBufferSet.becameActive`. `FileTreeWorkspace` gates automatic reveal on its contributed setting,
 halts vertical momentum, and delegates both automatic and button actions to `FileTree.revealPath`.
-That method expands only ancestor paths, recomputes once, selects by absolute path, and uses the
-tree's existing minimum-scroll authority.
+That method expands only ancestor paths, recomputes once, selects by absolute path, and derives one
+centered, clamped scroll top from the live viewport height.
 
 **Generates:** One reveal path for tree clicks, Quick Open, goto-definition, palette opens, tab
 activation, and the on-demand header button; one default-on contributed setting; safe hidden-file

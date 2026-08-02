@@ -362,7 +362,7 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Invariant:** If the bottom panel paints an editor action, pane Add, container Add, Expand/Restore,
 or Close, then one two-row projection determines the displayed segments and the screen columns that
-activate them. The upper splitter row contains editor actions, a padded draggable span, and panel
+activate them. The upper splitter row contains editor actions, a draggable span, and panel
 controls. The lower row contains closable container tabs and container Add.
 
 **Scope:** `PanelTabBar`, the bottom-panel splitter and content-container tab rows in `RootView`,
@@ -619,10 +619,10 @@ middle of its cell because a splitter divides two regions; the scrollbar mark hu
 because a scrollbar reports a position along one edge. The painter is shared, the mark is the
 caller's choice, and the hit cell is the whole cell either way.
 
-A splitter may also declare a leading paint pad for consumers that need one. The bottom panel does
-not: its line and panel background start at the panel's left edge, and its drag hit geometry starts
-at that same cell. The editor actions live in the editor's bottom frame instead of consuming any
-part of the panel boundary.
+A splitter may also declare a leading paint pad for consumers that need one. The panel separator
+uses none: it paints its opaque row surface before its line so crossings cannot retain a vertical
+splitter's background, then starts the line at the first drag cell. The editor actions live in the
+editor's bottom frame instead of consuming any part of the panel boundary.
 
 **Scope:** Every pane splitter in `RootView`, `DiffView`, and `MarkdownSplitView`, including the
 sidebar, bottom panel, git regions, split panel cells, diff panes, markdown preview, and right dock.
@@ -636,9 +636,7 @@ caller. The mark names the ROLE, not an axis, and the painter picks the glyph fo
 `SplitterElement` asks for `centeredLine` and gets `─` or `│`; `SolidThumbScrollBar` asks for
 `bottomAnchoredHalfBlock` and gets `▄` horizontally and a background fill vertically. Neither caller
 writes a glyph of its own. `SplitterElement.leadingPaintPadCells` is passed straight to the same
-painter, which skips that many cells at the rectangle's long-axis start and touches nothing else;
-the panel splitter reads its pad from `PanelTabBar.project`, the same projection that places the
-drag span in the splitter row.
+painter, which skips that many cells at the rectangle's long-axis start and touches nothing else.
 
 **Generates:** One-cell splitter hit zones; rest-muted, hover-lit, drag-lit behavior; one future
 splitter wire-up instead of another geometry and pointer implementation.
@@ -648,8 +646,8 @@ splitter wire-up instead of another geometry and pointer implementation.
 `src/modules/ui/SplitterElement.test.ts`;
 splitter consumers construct `SplitterElement` rather than binding pointer handlers themselves;
 `scripts/harness/smoke-panel-chrome-harness.ts` asserts the published drag span paints `─` from its
-first cell across the rest of its width at both scales, and that a drag begun on the first cell and
-on the strip's last cell both still grow the panel. That smoke waits for a NONZERO published
+first cell across its full width at both scales, and that the splitter remains
+draggable at both ends. That smoke waits for a NONZERO published
 rectangle before slicing it: a zero-width rectangle made the earlier paint assertion compare two
 empty strings, so it could only pass.
 
@@ -2009,7 +2007,8 @@ keyboard focus to the editor, but that does not clear the list selection.
 `palette.selection` while each region owns keyboard focus and `palette.cursorLine` otherwise;
 `GitPanel.setChangesSelection`/`setLogSelection` leave scroll untouched while keyboard movement
 minimally reveals through the pane's live viewport height. `FileTree.revealPath` expands only the
-active file's ancestors, selects its row, and minimally reveals it.
+active file's ancestors, selects its row, and centers it through the live viewport height with end
+clamping.
 
 **Generates:** click → set selection (+ open/focus-editor for a file); ↑/↓ while focused → move
 selection + reveal; active workspace file → select and reveal its tree row; wheel/scrollbar → move
@@ -2205,20 +2204,20 @@ scripts/harness/smoke-activitybar-harness.ts`
 
 ### Command bar paint and hit geometry are identical
 
-**Invariant:** If the workspace command bar paints Back, Forward, the current folder, or Layouts,
+**Invariant:** If the workspace command bar paints project Search, the current folder, or Layouts,
 then the same `CommandBarGeometry` segment that places the control receives its mouse click.
 
 **Scope:** `CommandBar`, the one-row bar below the workspace tabs, the QuickOpen file surface, the
 navigation history, and the `BoundedListPopup` layouts adapter.
 
-**Mechanism:** `CommandBar.layoutGeometry` returns the centered navigation and folder segments plus
+**Mechanism:** `CommandBar.layoutGeometry` returns left-aligned Search and folder segments plus
 the right-pinned Layouts segment. `CommandBar.update` paints those segments, and
 `controlAtColumn` resolves pointer input from the stored geometry before routing to
-`Workspace.navigateBack`, `Workspace.navigateForward`, `QuickOpen.show`, or the layouts popup. The
+`QuickOpen.show` or the layouts popup. The
 layouts adapter reads the four named `LayoutModel.presets()` entries and applies the selected preset
 through the injected root-layout action; it does not generate or label axis permutations.
 
-**Generates:** Centered Back and Forward buttons; a clickable current-folder label; a right-edge
+**Generates:** Left-aligned padded Search and current-folder text on the panel tone; a right-edge
 Layouts button; a bounded named-presets menu; pointer and paint positions that cannot drift apart.
 
 **Evidence:** `src/modules/ui/CommandBar.ts`; `src/modules/ui/CommandBar.test.ts`;
@@ -2677,6 +2676,43 @@ src/modules/editor/SourceTextPaneContent.test.ts && bash scripts/conventions-gat
 **Status:** provisional
 
 **Last refined:** 2026-07-29
+
+### The editor area owns one presented path row
+
+**Invariant:** If content occupies the editor area, then the area shell paints one breadcrumb and
+history row above it. The occupant supplies the path through the editor-surface contract. The shell
+does not identify the source editor, a comparison, or a Markdown preview.
+
+**Scope:** The breadcrumb row in `RootView`, `EditorContentMount`, `EditorSurfaceContent`, source
+text, source-control comparisons, and Markdown preview splits. Whether a comparison enters
+navigation history is outside this rule.
+
+**Mechanism:** `EditorContentMount.displayedPath` resolves the default source document or reads the
+mounted occupant's `EditorSurfaceContent.displayedPath`. `RootView` passes that one value to
+`TabBar.renderBreadcrumb`. `TabBarRenderer` builds history controls and path crumbs from the value.
+
+**Generates:** The same row position, history cluster, path fitting, hover targets, and panel-tone
+background for source text, a diffed file, and a Markdown preview.
+
+**Rejected alternatives:** Branch in `RootView` for each view type, or let each view paint another
+breadcrumb. Both forms duplicate the row and make its position and controls drift.
+
+**Evidence:** `src/modules/ui/EditorSurfaceContents.ts`; `src/modules/ui/EditorContentMount.ts`;
+`src/modules/ui/RootView.ts`; `src/modules/git/GitComparisonContent.ts`;
+`src/modules/markdown/MarkdownPreviewContent.ts`; `scripts/harness/smoke-diff-overview-harness.ts`;
+`scripts/harness/smoke-markdown-harness.ts`.
+
+**Impossible if true:** A comparison with an empty row above it; a Markdown preview that loses its
+source path; a host branch that names a contributed editor-area view.
+
+**Verification:** `bun test src/modules/ui/TabBarRenderer.test.ts
+src/modules/git/GitComparisonContent.test.ts src/modules/markdown/MarkdownPreviewContent.test.ts &&
+bun scripts/harness/smoke-diff-overview-harness.ts && bun
+scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-08-01
 
 ### The source text editor is a pane content citizen
 

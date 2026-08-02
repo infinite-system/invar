@@ -31,6 +31,15 @@ class $EditorContentMount {
   get contributedSurface(): EditorSurfaceContent | null {
     return this.surface;
   }
+  /** The path presented by the current editor-area occupant. The source editor is the default
+   *  occupant; contributed occupants answer through the same content contract. */
+  get displayedPath(): string | null {
+    if (this.surface) return this.surface.displayedPath;
+    const editor = this.deps.workspaceSet.active.editor;
+    return editor.hasDocument.value && editor.document.path
+      ? editor.document.path
+      : null;
+  }
   protected unmount(): void {
     const { editorColumn, editorArea, surfaceContainer } = this.deps;
     if (this.mounted === 'editor') editorColumn.remove(editorArea);

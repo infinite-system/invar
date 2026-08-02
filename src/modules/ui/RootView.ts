@@ -246,7 +246,7 @@ class $RootView {
       content: '',
     });
     sidebar.add(sidebarBody);
-    // The editor column stacks a 1-row TAB BAR above the bordered editor area. Wrapping (rather than
+    // The editor column stacks a breadcrumb row and a 1-row TAB BAR above the bordered editor area. Wrapping (rather than
     // adding the tab bar INSIDE editorArea) leaves editorArea's border, gutter/code layout, scrollbar
     // geometry, and layout-anchored caret coords (codeBody.x/y) completely unchanged.
     const editorColumn = new BoxRenderable(renderer, {
@@ -261,9 +261,8 @@ class $RootView {
       height: 1,
       width: '100%',
     });
-    // The path breadcrumb row (VS Code parity): sits directly UNDER the buffer-tab strip and shows the
-    // active file's `project › dir › file` path. Always 1 row (blank when no file is open) so the editor
-    // never jumps as files open/close.
+    // The breadcrumb row sits above the buffer-tab strip. It always shows history controls and adds
+    // the current editor-area occupant's `project › dir › file` path when one exists.
     const breadcrumbBar = new TextRenderable(renderer, {
       id: 'editor-breadcrumb-bar',
       content: '',
@@ -312,8 +311,8 @@ class $RootView {
         '',
       ].join('\n');
     }
-    editorColumn.add(tabBar);
     editorColumn.add(breadcrumbBar);
+    editorColumn.add(tabBar);
     editorColumn.add(editorArea);
     const editorFrameActionRenderable = new TextRenderable(renderer, {
       id: 'editor-frame-action-bar',
@@ -398,6 +397,7 @@ class $RootView {
       keybindings,
       commands,
       activityAccent: () => theme.glyph('activityAccentBar'),
+      glyphLevel: () => theme.glyphLevel.value,
     });
     const rightActivityBar = new ActivityBar.Class({
       renderer,
@@ -407,6 +407,7 @@ class $RootView {
       keybindings,
       commands,
       activityAccent: () => theme.glyph('activityAccentBar'),
+      glyphLevel: () => theme.glyphLevel.value,
     });
     const mountedPrimaryDockSplitters = new Set<SplitterElement.Model>();
     const synchronizePrimaryDockSplitters = (palette: Palette): void => {
@@ -1121,6 +1122,7 @@ class $RootView {
       mountedPanelCellCount = count;
       mountedPanelContentsListVisible = panelContentsList.visible;
     };
+    let panelTabBarProjection: PanelTabBarProjection | null = null;
     // Draggable panel height: a HORIZONTAL SplitterModel in cells. The grab strip sits ABOVE the panel,
     // so dragging UP must GROW the panel — the pointer Y is negated before it reaches the model (up =
     // smaller Y = larger negated position = larger height). Reuses the shared splitter (min 3 rows).
@@ -1135,7 +1137,9 @@ class $RootView {
         LayoutModel.Class.maximumUnexpandedBottomPanelRows(currentLayoutRows),
       pointerDirection: -1,
       currentSize: () => layoutSlots.bottomPanelRows.value,
-      // The panel splitter starts at the panel edge. Its paint and hit geometry share that origin.
+      // The one-cell leading paint gap remains inside the splitter's drag hit geometry.
+      leadingPaintPadCells: () =>
+        panelTabBarProjection?.dragLeadingPaintPadCells ?? 0,
       onDragStart: () => panelHost.focus(),
       onSizeChange: (height) => {
         layoutSlots.bottomPanelRows.value = Math.round(height);
@@ -1173,7 +1177,6 @@ class $RootView {
       selectable: false,
       zIndex: 60,
     });
-    let panelTabBarProjection: PanelTabBarProjection | null = null;
     let editorFrameActionProjection: PanelTabBarEditorFrameProjection | null =
       null;
     let hoveredPanelTabIdentifier: string | null = null;
@@ -1555,6 +1558,7 @@ class $RootView {
           hoveredTabIdentifier: hoveredPanelTabIdentifier,
           hoveredAction: hoveredPanelControlBarAction,
           glyphVocabulary: theme.glyphVocabulary,
+          glyphLevel: theme.glyphLevel.value,
           palette: readPalette(),
         });
         const separatorLeft = layoutSlotGeometry.bottomPanelSplitter.left;
@@ -1619,6 +1623,7 @@ class $RootView {
           editorActions,
           hoveredCommandIdentifier: hoveredPanelEditorCommandIdentifier,
           palette: readPalette(),
+          frameBorderColor: readPalette().borderActive,
         },
       );
       editorFrameActionRenderable.left =
@@ -1791,7 +1796,7 @@ class $RootView {
       synchronizeWorkspaceTabMount();
       synchronizePanelMount();
       editorContentMount.sync();
-      column.backgroundColor = palette.bg;
+      column.backgroundColor = palette.panel;
       activityBar.setVisible(settings.showActivityBar.value);
       rightActivityBar.setVisible(settings.showRightActivityBar.value);
       synchronizeLayoutGeometry();
@@ -1806,7 +1811,7 @@ class $RootView {
         : palette.border;
       // Divider: brighten while hovered or dragging so it reads as a grab handle.
       paneSplitters.updateAppearance(palette);
-      panelSplitter.updateAppearance(palette);
+      panelSplitter.updateAppearance(palette, palette.bg);
       panelContentsListSplitter.updateAppearance(palette);
       rightDockSplitter.updateAppearance(palette);
       sidebar.titleColor = sidebarViewFocused ? palette.accent : palette.dim;
@@ -1836,13 +1841,11 @@ class $RootView {
       tabBar.content = activeDocumentIsPresented
         ? tabBarController.renderBuffer()
         : '';
-      // Breadcrumb row: the active file's path, blank when another surface presents the column or
-      // when no file is open.
-      breadcrumbBar.content =
-        !activeDocumentIsPresented ||
-        !workspaceSet.active.editor.hasDocument.value
-          ? ''
-          : tabBarController.renderBreadcrumb();
+      // History belongs to the editor AREA. Its current occupant supplies the path through the one
+      // editor-surface contract; the shell never branches on comparison, preview, or source view.
+      breadcrumbBar.content = tabBarController.renderBreadcrumb(
+        editorContentMount.displayedPath,
+      );
       workspaceTabBar.content = tabBarController.renderWorkspace();
       workspaceTabBar.fg = palette.fg;
       const primaryDockContent = primaryDockHost.activeContent;
@@ -2535,7 +2538,7 @@ class $RootView {
           width: panelTabBarProjection.dragWidth,
           height: 1,
           visible: panelSplitter.renderable.visible,
-          leadingPaintPadCells: 0,
+          leadingPaintPadCells: panelTabBarProjection.dragLeadingPaintPadCells,
         },
         controls: panelTabBarProjection.controls.map((control) => ({
           action: control.action,

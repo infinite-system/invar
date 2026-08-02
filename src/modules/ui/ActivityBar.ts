@@ -10,6 +10,8 @@ import { Reactive } from 'ivue';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Palette } from '../theme/ThemePalettes';
+import { ThemeIcons } from '../theme/ThemeIcons';
+import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import type { ActivitySurface } from './ActivitySurface';
 import { ContentOrderDrag } from './ContentOrderDrag';
 import type { Tooltip } from './Tooltip';
@@ -130,15 +132,20 @@ class $ActivityBar {
       (content, index) => {
         const isActive = activeIdentifier === content.id;
         const isHovered = this.hoveredItemIndex === index;
+        const badgeCount = content.activityBadge ?? 0;
         const badge =
-          (content.activityBadge ?? 0) > 0
-            ? (content.activityBadge ?? 0) > 9
-              ? '+'
-              : String(content.activityBadge)
+          badgeCount > 0
+            ? ThemeIcons.Class.smallDigitCountFor(
+                this.dependencies.glyphLevel(),
+                badgeCount,
+                'standalone',
+              )
             : ' ';
         chunks.push(fg(palette.fg)(' '));
         chunks.push(fg(palette.accent)(badge));
-        chunks.push(fg(palette.fg)('  \n'));
+        chunks.push(
+          fg(palette.fg)(`${' '.repeat(Math.max(0, 3 - badge.length))}\n`),
+        );
         chunks.push(
           fg(palette.accent)(
             isActive ? this.dependencies.activityAccent() : ' ',
@@ -186,4 +193,5 @@ export interface ActivityBarDependencies {
   keybindings: KeybindingRegistry.Instance;
   commands: CommandRegistry.Instance;
   activityAccent: () => string;
+  glyphLevel: () => GlyphLevel;
 }
