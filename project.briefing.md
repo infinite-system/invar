@@ -1,3 +1,76 @@
+# RESUME ANCHOR 43 — 2026-08-02 ~19:10 EDT — START HERE, DO #469 DIRECTLY
+
+## THE NEXT ACTION: implement #469 YOURSELF. Do NOT dispatch.
+The user was explicit: "no, don't dispatch" then "i will compact you and we
+start". A builder WAS dispatched and stopped; branch tagged
+retired/fleet/469-drive-reads-the-app-class-graph, worktree removed, task
+folder moved back to .invar/tasks/active/469-drive-reads-the-app-class-graph/
+with brief-469-1 already written. READ THAT BRIEF AND THE TASK FILE FIRST —
+they are complete and were reviewed; do not re-derive them.
+
+### The user's direction, verbatim
+"also maybe you should be able to access the whole app graph, since our whole
+app is just a class graph, do not rely on status projection"
+and earlier: "you can use lodash.get/set" (lodash.get is NOT a dependency;
+only lodash.throttle is — a local resolver was chosen and already exists).
+
+### What is already known — do not spend context rediscovering
+- The seam is `src/modules/system/StatusChannel.ts` (130 lines). It already
+  owns the observation channel, enabled by `TUI_OBSERVE=1` OR the presence of
+  `TUI_STATUS_PATH`, and it writes the atomic status file. The graph bridge
+  belongs beside it under the SAME enablement, so a shipped binary never
+  exposes its object graph. Do not invent a second channel concept.
+- The app runs in a SEPARATE PROCESS (the PTY child), so the driver cannot
+  touch the objects in memory. A request/response channel is required.
+- `scripts/harness/DriveSession.ts` is the surface to extend (landed today,
+  #468). Its `resolvePath` is the segment walk to mirror over live objects; it
+  already handles `a.b[0]` and returns a PATH_MISS symbol so "absent" and
+  "published as undefined" stay distinguishable. `show()` already fails loudly
+  with near-match suggestions — hold that same discipline for `get`.
+- ivue getters evaluate on read, so a walk returns live values. Unwrap
+  Ref/Computed IN THE RESOLVER, never at the call site.
+
+### The one question to settle BY DRIVING, not by argument
+Conductor's claim: keep the status projection alongside graph reads, because
+it is published atomically at a frame boundary so a wait on it cannot observe
+a half-updated app, whereas a live graph read can catch the app mid-update and
+return a value that never existed (the torn-frame class #457 removed from the
+gate). Therefore graph reads for ASKING, projection for WAITING.
+TEST IT. If a graph read can tear, `waitFor` on a graph path is a flake
+generator and must sample only at a safe point — name the point. If it cannot
+tear, say what makes it safe and the caution was wrong.
+
+### Boundaries
+READ ONLY. A `set` bypasses the user's own input path, which is the premise of
+the whole harness. If setting seems needed, argue it separately; do not ship
+it. Bridge inert unless the harness enables it.
+
+## LANDED ON MAIN TODAY
+#457 gate determinism 687dc80f · #459 panel reachability bc367e17 ·
+#465 emptied space survives ecc13a44 · #466 Drive roles/gestures f7212535 ·
+#467 add control keeps one button appearance 72a6f7f3 ·
+#468 DriveSession fluent + loud show + paths 4326e2cc, 50a79127, ee80a561.
+dist/iv rebuilt 18:18 (from 72a6f7f3 — REBUILD after any user-facing change;
+the user tests the BINARY and tested stale code once tonight).
+The user CONFIRMED the panel work: "finally fuck, tested it works".
+
+## ALSO OPEN (lower priority than #469)
+- DELETE the `--gesture`/panel-role layer in Drive.ts (#466). The user
+  rejected that direction as too app-specific; DriveSession supersedes it.
+  Leaving both is drift. Keep the generic `status-excludes` completion.
+- Gate on main RED: /tmp/gate-main-465.log GATE_EXIT=1 while printing
+  "blocking verdict unchanged"; failing check is contention panel-chrome
+  (#464), pre-existing. #457's report-only tier did not hold the exit code
+  there though it did on gate-457 and gate-459e.
+- #451 READY at a80c75c0, never gated. #460-#464 filed from bycatch.
+
+## STANDING
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor only.
+NEVER write to ~/.config/invar (the user's real config; theirs is damaged —
+its terminal space was persisted away by the pre-fix binary; Ctrl+J restores).
+ui-task skill governs UI work. project.conductor.md family 15: never write the
+second probe — fix the instrument.
+
 # RESUME ANCHOR 42 — 2026-08-02 ~18:25 EDT (85% gauge) — DO THIS FIRST
 
 ## LANDED ON MAIN THIS SESSION (all verified by driving, not by reading)
