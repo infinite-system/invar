@@ -229,6 +229,34 @@ class $DriveSession {
 
   // ---- reading ----
 
+  /** Resolve a dotted/indexed PATH against the published status.
+   *  `panelListGeometry.width`, `panelCellLabels[0]`. Returns a miss marker
+   *  rather than undefined, because "absent" and "published as undefined" are
+   *  different answers and the caller must be able to tell them apart.
+   *  (lodash.get would do this; it is not a dependency here and one small
+   *  resolver beats a new runtime dep for a test instrument.) */
+  protected static readonly PATH_MISS: unique symbol = Symbol('path-miss');
+
+  protected resolvePath(
+    source: Record<string, unknown>,
+    path: string,
+  ): unknown {
+    const segments = path
+      .replace(/\[(\d+)\]/g, '.$1')
+      .split('.')
+      .filter((segment) => segment !== '');
+    let current: unknown = source;
+    for (const segment of segments) {
+      if (current === null || typeof current !== 'object') {
+        return $DriveSession.PATH_MISS;
+      }
+      const container = current as Record<string, unknown>;
+      if (!(segment in container)) return $DriveSession.PATH_MISS;
+      current = container[segment];
+    }
+    return current;
+  }
+
   /** Print named status fields at this point in the flow. */
   show(...fieldNames: string[]): this {
     return this.step(`show ${fieldNames.join(', ')}`, async () => {
@@ -239,14 +267,18 @@ class $DriveSession {
         // Printing it as one makes a typo, an unpublished field, and a genuinely
         // absent value indistinguishable — a reading that can only fail toward
         // "looks fine". Say which it is.
-        if (!(fieldName in status)) {
+        const resolved = this.resolvePath(
+          status as Record<string, unknown>,
+          fieldName,
+        );
+        if (resolved === $DriveSession.PATH_MISS) {
           missing.push(fieldName);
           console.log(
             `  ${fieldName} = <NOT PUBLISHED by the status projection>`,
           );
           continue;
         }
-        console.log(`  ${fieldName} = ${JSON.stringify(status[fieldName])}`);
+        console.log(`  ${fieldName} = ${JSON.stringify(resolved)}`);
       }
       if (missing.length > 0) {
         const published = Object.keys(status).sort();
@@ -259,8 +291,9 @@ class $DriveSession {
         });
         throw new Error(
           `show() named ${missing.length} field(s) the status projection does ` +
-            `not publish. The projection is a FLAT key space, not the app ` +
-            `hierarchy, so dotted paths never resolve.\n  ` +
+            `not publish. Paths resolve INTO published values ` +
+            `(panelListGeometry.width, panelCellLabels[0]) but the top level ` +
+            `is the status projection, not the app hierarchy.\n  ` +
             suggestions.join('\n  '),
         );
       }
