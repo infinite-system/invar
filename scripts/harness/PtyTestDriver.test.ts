@@ -388,6 +388,47 @@ describe('PtyTestDriver completed-frame observations', () => {
       await driver.dispose();
     }
   });
+
+  test('public snapshots do not expose an incomplete synchronized frame', async () => {
+    const incompleteFrameText = 'INCOMPLETE NEXT FRAME';
+    const recordedStreamProgram = `
+      process.stdin.setRawMode?.(true);
+      process.stdin.resume();
+      process.stdout.write(${JSON.stringify(recordedFrame('COMPLETE FRAME'))});
+      await Bun.sleep(80);
+      process.stdout.write(
+        ${JSON.stringify(beginSynchronizedOutput + '\x1b[2J\x1b[H' + incompleteFrameText)},
+      );
+      await Bun.sleep(1_000);
+    `;
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: process.cwd(),
+      repositoryRoot: process.cwd(),
+      columns: 40,
+      rows: 4,
+      command: [process.execPath, '-e', recordedStreamProgram],
+    });
+    try {
+      expect(driver.outputSequenceCount(incompleteFrameText)).toBe(0);
+      await driver.awaitGridCondition(
+        'the recorded stream reaches its complete frame',
+        (snapshot) => snapshot.findText('COMPLETE FRAME') !== null,
+      );
+      await driver.awaitOutputCondition(
+        'the incomplete next frame bytes reach the harness',
+        () => driver.outputSequenceCount(incompleteFrameText) === 1,
+      );
+      const snapshot = await driver.awaitGridCondition(
+        'the public grid remains at the last completed synchronized frame',
+        (candidate) => candidate.findText('COMPLETE FRAME') !== null,
+        100,
+      );
+      expect(snapshot.findText(incompleteFrameText)).toBeNull();
+      expect(driver.completedFrameObservationCount).toBe(1);
+    } finally {
+      await driver.dispose();
+    }
+  });
 });
 
 describe('PtyTestDriver.sendKeysAndAwaitGridConditionByteArrival', () => {

@@ -626,6 +626,7 @@ fi
 live_test_app_instance_count="$(pgrep -cf 'src/main\.ts /tmp/tui-' 2>/dev/null || true)"
 echo "merge-gate: starting with ${live_test_app_instance_count:-0} test app instance(s) live"
 fail=0
+declare -a failed_step_names=()
 # Failing steps keep their FULL output here — tail-25 destroyed the failing condition three times
 # on 2026-07-25 (the evidence a red exists to provide). Wiped per gate run, never mid-run.
 # PER-RUN failure directory: two concurrent gates sharing one path would wipe each other's evidence
@@ -670,6 +671,7 @@ step() {
   echo "  FAIL  $name (full log: $failure_log_directory/$failure_slug.log)"
   tail -25 "$step_log" | sed 's/^/    | /'
   fail=1
+  failed_step_names+=("$name")
   rm -f "$step_log"
 }
 # A reporting hard step: unlike step(), successful measurement output is part of the gate log.
@@ -686,6 +688,7 @@ reporting_step() {
     echo "  FAIL  $name"
     tail -40 /tmp/merge-gate-reporting.$$.log | sed 's/^/    | /'
     fail=1
+    failed_step_names+=("$name")
   fi
   rm -f /tmp/merge-gate-reporting.$$.log
   step_finished_milliseconds="$(date +%s%3N)"
@@ -738,15 +741,30 @@ registered_smoke_source() {
   printf '%s' "$smoke_source"
 }
 
+registered_smoke_name() {
+  local requested_smoke_name="$1"; shift
+  local smoke_source
+  smoke_source="$(registered_smoke_source "$@")"
+  if [ -z "$smoke_source" ]; then
+    echo "merge-gate: registered smoke has no runnable source: $requested_smoke_name" >&2
+    return 1
+  fi
+  printf '%s — %s' "$requested_smoke_name" "$smoke_source"
+}
+
 parallel_safe_smoke() {
-  local smoke_name="$1"; shift
+  local requested_smoke_name="$1"; shift
+  local smoke_name
+  smoke_name="$(registered_smoke_name "$requested_smoke_name" "$@")" || exit 2
   parallel_smoke_names+=("$smoke_name")
   parallel_smoke_commands+=("$(quoted_command "$@")")
   parallel_smoke_sources+=("$(registered_smoke_source "$@")")
 }
 
 serial_smoke() {
-  local smoke_name="$1"; shift
+  local requested_smoke_name="$1"; shift
+  local smoke_name
+  smoke_name="$(registered_smoke_name "$requested_smoke_name" "$@")" || exit 2
   serial_smoke_names+=("$smoke_name")
   serial_smoke_commands+=("$(quoted_command "$@")")
   serial_smoke_sources+=("$(registered_smoke_source "$@")")
@@ -841,7 +859,10 @@ collect_registered_smoke_job() {
   if [ -f "$duration_file" ]; then
     job_duration_milliseconds="$(cat "$duration_file")"
   fi
-  if [ "$job_result" -ne 0 ]; then fail=1; fi
+  if [ "$job_result" -ne 0 ]; then
+    fail=1
+    failed_step_names+=("$smoke_name")
+  fi
   if [ "$retry_outcome" = passed ]; then retried_pass_smoke_names+=("$smoke_name"); fi
   if [ "$retry_outcome" = failed ]; then retried_fail_smoke_names+=("$smoke_name"); fi
   if [ "$phase_name" = "serial" ]; then
@@ -933,13 +954,11 @@ report_slowest_parallel_smoke_jobs() {
   )
 }
 
-validate_smoke_classification() {
-  local source_number
-  local smoke_source
-  local classification_failure_count=0
-  local inspected_source_count=0
-  local timing_pattern
-  timing_pattern='assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)[[:space:]]*-|Date\.now\(\)[[:space:]]*-'
+validate_smoke_registration_labels() {
+  local registration_number
+  local registered_name
+  local registered_source
+  local registration_failure_count=0
   local all_smoke_sources=(
     "${parallel_smoke_sources[@]}"
     "${serial_smoke_sources[@]}"
@@ -948,53 +967,48 @@ validate_smoke_classification() {
     "${parallel_smoke_names[@]}"
     "${serial_smoke_names[@]}"
   )
-  for source_number in "${!all_smoke_sources[@]}"; do
-    smoke_source="${all_smoke_sources[$source_number]}"
-    [ -n "$smoke_source" ] || continue
-    # Two structural tells, deliberately NOT domain vocabulary. Naming the
-    # feature ("momentum", "glide") misses any smoke that measures time while
-    # talking about something else — smoke-terminal-stage-harness said
-    # "animation" and "reducedMotion" and slipped through the vocabulary form of
-    # this check, which is the harmful direction: a false negative loses
-    # coverage under load while still reporting green.
-    #
-    #   1. A frame-silence assertion is an absence claim, and a loaded machine
-    #      changes what it observes in BOTH directions — it passes when nothing
-    #      was rendering, and fails when an awaited repaint lands late.
-    #   2. Deriving an ELAPSED DURATION means subtracting two clock readings. A
-    #      wait deadline only ever ADDS to a clock reading and compares against
-    #      it, and is load-robust because it simply waits longer. Subtraction is
-    #      therefore the discriminator between measuring and waiting.
-    if grep -Eq "$timing_pattern" "$smoke_source"; then
-      echo "  FAIL  blocking-smoke classification: ${all_smoke_names[$source_number]} contains a timing-sensitive assertion in $smoke_source"
-      classification_failure_count=$((classification_failure_count + 1))
-    fi
-    inspected_source_count=$((inspected_source_count + 1))
+  if [ "${#all_smoke_names[@]}" -eq 0 ]; then
+    echo "  FAIL  smoke registration label census found no registered jobs"
+    return 1
+  fi
+  for registration_number in "${!all_smoke_names[@]}"; do
+    registered_name="${all_smoke_names[$registration_number]}"
+    registered_source="${all_smoke_sources[$registration_number]}"
+    case "$registered_name" in
+      *" — $registered_source")
+        if [ -n "$registered_source" ]; then continue; fi
+        ;;
+    esac
+    echo "  FAIL  smoke registration label does not resolve: $registered_name"
+    registration_failure_count=$((registration_failure_count + 1))
   done
-  # POSITIVE CONTROL. This guard can only fail toward "pass": if its matcher does not
-  # work, it finds no violations and reports OK. That is not hypothetical — it used
-  # `rg`, which is NOT INSTALLED on this machine, so for 14 gate runs it printed
-  # "every registered blocking smoke is clock-free" while inspecting
-  # nothing, and the error text sat two lines above the OK in every one of those logs.
-  #
-  # Prove the matcher against a synthetic known-positive before trusting its
-  # silence about production sources. It also refuses to pass having inspected
-  # nothing.
-  if [ "$inspected_source_count" -eq 0 ]; then
-    echo "  FAIL  classification guard inspected NO parallel-safe sources — the registry is empty or unreadable"
-    return 1
-  fi
-  if ! grep -Eq "$timing_pattern" \
-    <<< 'const elapsedMilliseconds = performance.now() - startedMilliseconds;'
+
+  # POSITIVE CONTROL. A deliberately wrong friendly name cannot hide the
+  # runnable script because registered_smoke_name appends the command-derived
+  # source path. This is the mismatch that used to print a nonexistent media
+  # harness name.
+  local mismatched_label_control
+  mismatched_label_control="$(
+    registered_smoke_name \
+      "smoke: deliberately wrong harness" \
+      bun scripts/harness/smoke-media-harness.ts
+  )" || return 1
+  if [ "$mismatched_label_control" != \
+    "smoke: deliberately wrong harness — scripts/harness/smoke-media-harness.ts" ]
   then
-    echo "  FAIL  classification guard SELF-TEST failed: the timing-sensitivity pattern rejected its synthetic clock-subtraction positive control"
+    echo "  FAIL  smoke registration label positive control lost its command-derived source path"
     return 1
   fi
-  if [ "$classification_failure_count" -eq 0 ]; then
-    echo "  OK    every registered blocking smoke is free of duration and frame-silence assertions ($inspected_source_count sources inspected; matcher positive control RED)"
-    return 0
-  fi
-  return 1
+  if [ "$registration_failure_count" -ne 0 ]; then return 1; fi
+  echo "  OK    all ${#all_smoke_names[@]} registered job labels include their runnable source path (mismatched friendly-name control still resolves)"
+}
+
+validate_smoke_classification() {
+  local all_smoke_sources=(
+    "${parallel_smoke_sources[@]}"
+    "${serial_smoke_sources[@]}"
+  )
+  bun scripts/check-smoke-timing-classification.ts "${all_smoke_sources[@]}"
 }
 
 # 0) FAILURE-LOG PROVENANCE. Two fake reds prove that the stable path replaces
@@ -1228,7 +1242,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: terminal"    bash scripts/smoke-terminal.sh
   parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   parallel_safe_smoke "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
-  parallel_safe_smoke "smoke: animated-media harness" bun scripts/harness/smoke-media-harness.ts
+  parallel_safe_smoke "smoke: media harness" bun scripts/harness/smoke-media-harness.ts
   parallel_safe_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
   parallel_safe_smoke "smoke: markdown view-mode harness" bun scripts/harness/smoke-markdown-view-mode-harness.ts
   parallel_safe_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
@@ -1240,8 +1254,17 @@ else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="
 fi
 
+echo "== merge-gate: smoke registration labels =="
+if ! validate_smoke_registration_labels; then
+  fail=1
+  failed_step_names+=("smoke registration labels")
+fi
+
 echo "== merge-gate: smoke timing classification =="
-if ! validate_smoke_classification; then fail=1; fi
+if ! validate_smoke_classification; then
+  fail=1
+  failed_step_names+=("smoke timing classification")
+fi
 
 parallel_phase_started_seconds="$(date +%s)"
 echo "== merge-gate: parallel-safe smoke pool (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers) =="
@@ -1316,10 +1339,14 @@ retry_history_pass_list="$(printf '%s\n' "${retried_pass_smoke_names[@]+"${retri
   | sed '/^$/d' | sed 's/"/\\"/g' | sed 's/^/"/; s/$/"/' | paste -sd, -)"
 retry_history_fail_list="$(printf '%s\n' "${retried_fail_smoke_names[@]+"${retried_fail_smoke_names[@]}"}" \
   | sed '/^$/d' | sed 's/"/\\"/g' | sed 's/^/"/; s/$/"/' | paste -sd, -)"
-printf '{"timestamp":"%s","commit":"%s","gateOutcome":"%s","retriedPassCount":%s,"retriedFailCount":%s,"retriedPassSmokes":[%s],"retriedFailSmokes":[%s],"totalSeconds":%s,"loadAverage":"%s"}\n' \
+failed_step_list="$(printf '%s\n' "${failed_step_names[@]+"${failed_step_names[@]}"}" \
+  | sed '/^$/d' | sed 's/"/\\"/g' | sed 's/^/"/; s/$/"/' | paste -sd, -)"
+printf '{"timestamp":"%s","commit":"%s","workerCount":%s,"gateOutcome":"%s","failingSteps":[%s],"retriedPassCount":%s,"retriedFailCount":%s,"retriedPassSmokes":[%s],"retriedFailSmokes":[%s],"totalSeconds":%s,"loadAverage":"%s"}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+  "$gate_worker_count" \
   "$([ "$fail" = 0 ] && echo all-pass || echo failures)" \
+  "$failed_step_list" \
   "${#retried_pass_smoke_names[@]}" \
   "${#retried_fail_smoke_names[@]}" \
   "$retry_history_pass_list" \

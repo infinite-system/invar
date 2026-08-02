@@ -122,6 +122,7 @@ class $PtyTestDriver {
   private outputOverflowed = false;
   private expectedScreenChangeBaseline: ScreenChangeBaseline | undefined;
   private emulatorObservationChain: Promise<void> = Promise.resolve();
+  private completedSnapshotValue: HarnessSnapshot.Model;
   private readonly completedFrameObservationsValue: CompletedFrameObservation[] =
     [];
   private readonly completedFrameObservers = new Set<
@@ -152,6 +153,7 @@ class $PtyTestDriver {
     const repositoryRoot = options.repositoryRoot ?? process.cwd();
     this.openPty = new OpenPty.Class(columns, rows);
     this.emulator = new TerminalEmulator.Class(columns, rows);
+    this.completedSnapshotValue = this.captureEmulatorSnapshot();
     this.emulator.onReply((data) => this.openPty.write(data));
     this.openPty.onData((bytes) => {
       this.recordOutput(this.outputDecoder.decode(bytes, { stream: true }));
@@ -549,6 +551,10 @@ class $PtyTestDriver {
   }
 
   snapshot(): HarnessSnapshot.Model {
+    return this.completedSnapshotValue;
+  }
+
+  private captureEmulatorSnapshot(): HarnessSnapshot.Model {
     const copiedCells: HarnessSnapshotCell[] = [];
     for (let row = 0; row < this.emulator.rows; row++) {
       for (let column = 0; column < this.emulator.columns; column++) {
@@ -718,9 +724,11 @@ class $PtyTestDriver {
         this.emulator.write(bytes);
         await this.emulator.flush();
         if (completedFrame) {
+          const completedSnapshot = this.captureEmulatorSnapshot();
+          this.completedSnapshotValue = completedSnapshot;
           const observation = {
             completedFrame,
-            snapshot: this.snapshot(),
+            snapshot: completedSnapshot,
           };
           this.completedFrameObservationsValue.push(observation);
           for (const observer of this.completedFrameObservers) {

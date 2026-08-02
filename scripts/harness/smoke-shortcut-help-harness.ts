@@ -126,26 +126,15 @@ async function openWithHelpChord(
   driver: PtyTestDriver.Model,
   statusPath: string,
 ): Promise<void> {
-  for (let deliveryAttempt = 0; deliveryAttempt < 3; deliveryAttempt++) {
-    driver.sendKeysWithoutFrameExpectation('Control+Shift+h');
-    try {
-      await HarnessSmoke.Class.awaitStatusWithoutFrame(
-        driver,
-        statusPath,
-        'status condition: status.shortcutHelpOpen === true',
-        (status) => status.shortcutHelpOpen === true,
-        750,
-      );
-      await driver.awaitSnapshot(
-        (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
-      );
-      return;
-    } catch {
-      await Bun.sleep(200);
-    }
-  }
-  throw new Error(
-    'FAIL Ctrl+Shift+H did not open the shortcut sheet after three PTY deliveries',
+  driver.sendKeys('Control+Shift+h');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.shortcutHelpOpen === true',
+    (status) => status.shortcutHelpOpen === true,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
   );
 }
 
