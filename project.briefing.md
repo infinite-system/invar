@@ -1,3 +1,50 @@
+# RESUME ANCHOR 36 — 2026-08-02 ~14:10 EDT (90% gauge)
+
+## USER GOAL (session hook): make the gate SOLID, DETERMINISTIC, hard to flake.
+Gate work outranks feature work. The user said gate fixes affect
+everything downstream.
+
+## Fleet — 3 builders live
+
+- **#457 GATE DETERMINISM — THE PRIORITY.** Dispatched with a rewritten
+  brief. Deliverable is a PROPERTY: the gate's verdict is a function of
+  the commit alone. Acceptance = (1) five consecutive runs on one commit
+  give five identical verdicts; (2) verdict unchanged at 3 AND 6
+  workers; (3) a planted defect goes red all five times (guards against
+  determinism-by-deleting-coverage). Key design call in the brief:
+  a deterministic BLOCKING tier plus a deliberately-loaded CONTENTION
+  tier that is reported, never blocking. `shortcut-help` is its open
+  defect (self-generated output, no convergence cover).
+  Its task FILE NAME is stale (`serial-tail-lacks-quiet-retry`) — the
+  original premise was FALSE, the tail does retry. Body is rewritten.
+- **#459** panels — gated RED (`/tmp/gate-459.log`, GATE_EXIT=1, six
+  failures). Round 4 filed+steered: mechanical CONSUMER CENSUS, not six
+  patches. Two reds are consumers of removed behaviour (panel-split
+  wants the deleted confirm dialog; settings-applied expects the
+  phantom `agent,terminal,database` registration). Two need A/B
+  (workspace-tabs, tasks). shortcut-help is the #457 flake.
+- **#451** ffmpeg statics — READY, unread, ungated.
+
+## Contract records ACCEPTED + committed to main (not yet gated)
+`Every registered panel content is reachable` (ui.invariants.md) and
+`One dialog component serves confirms and prompts` Scope refined to
+`panel-container close` (design.invariants.md).
+
+## Flake numbers (measured, do not re-derive)
+Baseline `9f158472`: 1 green/5. After #436 convergence fix `c5dc3057`:
+**4 green/5**; `terminal harness` 2/5 -> **0/5**; `shortcut-help`
+2/5 -> 1/5. Pre-landing sweep proved both INHERITED.
+
+## Standing
+- Crons DISARMED. Never re-arm. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`.
+- Never dispatch a builder into a running measurement sweep.
+- A 1-in-5 green looks exactly like a fixed tree.
+- Sweep consumers when behaviour changes — missed twice in two days
+  (#452, #459).
+
+---
+
 # RESUME ANCHOR 35 — 2026-08-02 ~13:45 EDT (85% gauge, CHECKPOINT)
 
 ## #459 — gated RED, NOT landed. Round 4 filed and steered.
