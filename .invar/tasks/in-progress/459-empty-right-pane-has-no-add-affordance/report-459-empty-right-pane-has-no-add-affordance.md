@@ -6,7 +6,7 @@ Invar made a Database pane before the user asked for one, then left it behind wi
 
 Empty right pane has no add affordance (#459) is complete through code commit `90f10a2b7c6458a0b54229173c8931689111836c`. The worktree is clean.
 
-I implemented the [round 1 brief](brief-459-1-empty-right-pane-has-no-add-affordance.md), [round 2 brief](brief-459-2-2-confirm-scales-with-blast-radius.md), [round 3 brief](brief-459-3-3-no-confirm-at-all.md), and [round 4 brief](brief-459-4-4-sweep-the-consumers.md).
+I implemented the [round 1 brief](brief-459-1-empty-right-pane-has-no-add-affordance.md), [round 2 brief](brief-459-2-2-confirm-scales-with-blast-radius.md), [round 3 brief](brief-459-3-3-no-confirm-at-all.md), [round 4 brief](brief-459-4-4-sweep-the-consumers.md), and [round 5 brief](brief-459-5-tmp-brief-459-5.md).
 
 ## Cause and repair
 
@@ -88,6 +88,7 @@ Earlier rounds ran the committed probe, the panel-chrome smoke, focused tests, f
 - `bunx tsc --noEmit`: passed.
 - `bash scripts/conventions-gate.sh`: passed.
 - Invariant checker with `--all --refs`: 1,345 annotations and 266 lattice links resolved, with 0 problems. The accepted reachability record now has a code annotation at the host seam.
+- Coverage ratchet: its positive control counted 2 assertions and 2 waits, then it inspected 392 files and passed against base `a9700d9`. I re-measured every declaration from this panel work after the final edit: panel chrome is assertions 25 → 29 and waits 46 → 67; panel split is assertions 35 → 29 and waits 33 → 31; the removed quit-confirmation test remains assertions 11 → 0 and waits 3 → 0.
 - `bun scripts/harness/smoke-panel-chrome-harness.ts`: `ALL-PASS` at 120 by 40 and 88 by 24.
 - All six round 4 smokes passed in direct serial branch runs: workspace tabs, workspace layout isolation, panel split, tasks, settings applied, and shortcut help.
 - The broader plugin-manifest smoke passed its Database disable, reinstall-without-pane, and explicit-open arms. Its first run stopped earlier on the Bycatch item below; its immediate rerun passed the complete smoke.
@@ -99,3 +100,4 @@ Earlier rounds ran the committed probe, the panel-chrome smoke, focused tests, f
 - Contract comment drift: the accepted [reachability record](../../../../src/modules/ui/ui.invariants.md#every-registered-panel-content-is-reachable) cites `.invar/tasks/active/459-empty-right-pane-has-no-add-affordance/probe-459-empty-dock.ts`, but the task and probe are under `.invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/`. Its Evidence also cites `PanelHost.test.ts` without the `src/modules/ui/` path used by the repository. I did not edit the accepted record in this consumer task.
 - Published list geometry is wrong in one expanded-panel state. A diagnostic tasks drive published `panelListGeometry` as `left=-24, top=0, width=24`, while `+ Terminal` painted at screen column 108 and the `Displaced: Claude` row painted at screen row 30. The shared close gesture now follows painted cells, so it no longer consumes the wrong origin. I did not change the status geometry seam.
 - Suspect structure-scrollbar settlement flake, seen once: the first plugin-manifest run timed out at `the structure scrollbar publishes its settled dock-height geometry` while the grid painted the Structure pane and its scrollbar. The immediate complete rerun passed, including the later Database lifecycle arms. I did not change Structure scrolling.
+- Contract-map drift in the [round 5 brief](brief-459-5-tmp-brief-459-5.md): it says no record governs the declaration file, but [Coverage may fall but never silently](../../../../project.invariants.md#coverage-may-fall-but-never-silently) explicitly requires the newest [project.coverage-deltas.md](../../../../project.coverage-deltas.md) row to contain exact before and after counts. I did not change the accepted record.
