@@ -1,7 +1,7 @@
 # #459 — an emptied panel keeps its space, hides its list, and offers no way back
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol

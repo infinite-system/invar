@@ -1,0 +1,15 @@
+{
+  "task": 459,
+  "slug": "empty-right-pane-has-no-add-affordance",
+  "branch": "fleet/459-empty-right-pane-has-no-add-affordance",
+  "worktree": ".invar/worktrees/459-empty-right-pane-has-no-add-affordance",
+  "tmuxSession": "invar/459-empty-right-pane-has-no-add-affordance",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-459-empty-right-pane-has-no-add-affordance.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "5211d0d528c0d69f6c7505a488c6dc3aff7476b0",
+  "startedAt": "2026-08-02T12:31:40-04:00"
+}
