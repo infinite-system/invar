@@ -20,18 +20,13 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import type { HarnessSnapshot } from './HarnessSnapshot';
+import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -393,9 +388,7 @@ class $DriveSession {
     return response.value;
   }
 
-  // ---- the graph bridge (task #469) ----
-
-  protected graphRequestId = 0;
+  // ---- the graph bridge (task #469; protocol lives in GraphClient) ----
 
   protected async graphQuery(
     path: string,
@@ -408,78 +401,10 @@ class $DriveSession {
     settled: boolean;
     reactive?: boolean;
   }> {
-    // Time-based ids: monotone across app restarts sharing one --home, so a
-    // stale request file from a previous run can never shadow a fresh one.
-    this.graphRequestId = Math.max(this.graphRequestId + 1, Date.now());
-    const id = this.graphRequestId;
-    const requestPath = `${this.statusPath}.graph-request.json`;
-    const responsePath = `${this.statusPath}.graph-response.json`;
-    const temporaryPath = `${requestPath}.tmp`;
-    writeFileSync(temporaryPath, JSON.stringify({ id, path, mode, set }));
-    renameSync(temporaryPath, requestPath);
-    while (Date.now() < deadline) {
-      const response = this.readGraphResponse(responsePath);
-      if (response && response.id === id) {
-        if (response.resolved !== true) {
-          throw this.graphMiss(path, response);
-        }
-        return {
-          value: response.value,
-          frame: Number(response.frame ?? -1),
-          settled: response.settled === true,
-          ...(typeof response.reactive === 'boolean'
-            ? { reactive: response.reactive }
-            : {}),
-        };
-      }
-      await new Promise((resolve) => setTimeout(resolve, 15));
-    }
-    throw new Error(
-      `the app never answered graph request ${JSON.stringify(path)} ` +
-        `(mode ${mode}). Is TUI_STATUS_PATH set and the app past boot?`,
-    );
-  }
-
-  protected readGraphResponse(
-    responsePath: string,
-  ): Record<string, unknown> | null {
-    try {
-      return JSON.parse(readFileSync(responsePath, 'utf8')) as Record<
-        string,
-        unknown
-      >;
-    } catch {
-      return null;
-    }
-  }
-
-  /** A path that does not resolve is NOT a value of undefined — name the node
-   *  the walk died at and what WAS addressable there. */
-  protected graphMiss(path: string, response: Record<string, unknown>): Error {
-    const diedAt = String(response.diedAt ?? '<unknown>');
-    const available = Array.isArray(response.available)
-      ? (response.available as string[])
-      : [];
-    const lastSegment = path.split('.').pop() ?? path;
-    const needle = lastSegment.replace(/[^a-z]/gi, '').toLowerCase();
-    const near = available.filter((candidate) =>
-      candidate.toLowerCase().includes(needle.slice(0, 6)),
-    );
-    return new Error(
-      [
-        `graph path ${JSON.stringify(path)} did not resolve.`,
-        `  walk died at: ${diedAt}`,
-        response.error ? `  error: ${String(response.error)}` : '',
-        near.length > 0
-          ? `  did you mean: ${near.slice(0, 6).join(', ')}?`
-          : '',
-        available.length > 0
-          ? `  addressable there: ${available.slice(0, 40).join(', ')}${available.length > 40 ? ', …' : ''}`
-          : '',
-      ]
-        .filter((line) => line !== '')
-        .join('\n'),
-    );
+    return GraphClient.Class.query(this.statusPath, path, mode, {
+      deadline,
+      set,
+    });
   }
 
   /** Escape hatches for the cases a chain cannot express. Both flush first, so

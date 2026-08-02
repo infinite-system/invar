@@ -16,6 +16,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -245,8 +246,8 @@ async function driveEmptyPanelRecovery(
     );
     HarnessSmoke.Class.requireCondition(
       !(initialStatus.panelContentKinds as string[]).includes('database') &&
-        driver.snapshot().findText('Add Terminal') === null,
-      'a nonempty restored panel has no phantom Database pane or empty message',
+        driver.snapshot().findText('No Terminal instances') === null,
+      'a nonempty restored panel has no phantom Database pane or empty notice',
     );
 
     await HarnessSmoke.Class.requestPanelContainerClose(driver, 'Terminal', 2);
@@ -281,15 +282,23 @@ async function driveEmptyPanelRecovery(
       statusPath,
       'Terminal One',
     );
+    // Graph wait for the MODEL condition (registry down to one), then a
+    // screen assertion for what the user sees — graph sequences, screen
+    // asserts (task #469).
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.orderedContents.length',
+      1,
+    );
     const oneRemainingSnapshot = await driver.awaitGridCondition(
-      'one remaining terminal keeps the empty message absent',
+      'one remaining terminal keeps the empty notice absent',
       (candidate) =>
         candidate.findText('Terminal Two') !== null &&
-        candidate.findText('Add Terminal') === null,
+        candidate.findText('No Terminal instances') === null,
     );
     HarnessSmoke.Class.requireCondition(
-      oneRemainingSnapshot.findText('Add Terminal') === null,
-      'the empty message does not paint while one terminal remains',
+      oneRemainingSnapshot.findText('No Terminal instances') === null,
+      'the empty notice does not paint while one terminal remains',
     );
 
     await HarnessSmoke.Class.closePanelContentsListRow(
@@ -309,18 +318,35 @@ async function driveEmptyPanelRecovery(
         Array.isArray(candidate.panelCellIds) &&
         candidate.panelCellIds.length === 0,
     );
+    // The #465 invariant, observable only through the graph: the emptied
+    // SPACE survives its last instance — the container is not destroyed.
+    // invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.spaces.length',
+      1,
+    );
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.activeSpace.contentIds.length',
+      0,
+    );
+    // Screen contract: the empty panel offers the one-form add button and
+    // the notice (the #467 shape).
     const emptySnapshot = await driver.awaitGridCondition(
-      'the empty panel paints Add Terminal',
-      (candidate) => candidate.findText('Add Terminal') !== null,
+      'the empty panel paints the add button and the notice',
+      (candidate) =>
+        candidate.findText('+ Terminal ▾') !== null &&
+        candidate.findText('No Terminal instances') !== null,
     );
     HarnessSmoke.Class.requireCondition(
       emptyStatus.panelVisible === true &&
         emptyStatus.panelListVisible === true &&
-        emptySnapshot.findText('Add Terminal') !== null,
-      'the empty panel stays open and paints Add Terminal',
+        emptySnapshot.findText('+ Terminal ▾') !== null,
+      'the empty panel stays open and offers the + Terminal button',
     );
     HarnessSmoke.Class.pass(
-      `${columns}-column instance rows close without dialogs and the empty panel offers Add Terminal`,
+      `${columns}-column instance rows close without dialogs and the empty panel offers + Terminal`,
     );
   } finally {
     await driver.dispose();
@@ -883,16 +909,19 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
 
     const instancesToggle = tabBar(status).instancesToggle;
     if (!instancesToggle) throw new Error('Missing Instances geometry');
+    // The toggle ends the row flush (trailing pad removed, user request
+    // 2026-08-02): its hit target reaches the row edge, and its own one-space
+    // margin is the last painted cell.
     const instancesToggleSnapshot = await driver.awaitGridCondition(
-      `${columns}-column instances button paints its pad before the panel border`,
+      `${columns}-column instances toggle margin is the last cell of the row`,
       (snapshot) =>
-        snapshot.cell(tabBar(status).tabRow, columns - 3)?.characters === ' ',
+        snapshot.cell(tabBar(status).tabRow, columns - 1)?.characters === ' ',
     );
     HarnessSmoke.Class.requireCondition(
-      instancesToggle.endColumnExclusive === columns - 2 &&
-        instancesToggleSnapshot.cell(tabBar(status).tabRow, columns - 3)
+      instancesToggle.endColumnExclusive === columns &&
+        instancesToggleSnapshot.cell(tabBar(status).tabRow, columns - 1)
           ?.characters === ' ',
-      `${columns}-column instances button owns the pad before the panel border`,
+      `${columns}-column instances toggle ends the row flush`,
     );
     clickSegment(driver, tabBar(status).tabRow, instancesToggle);
     status = await HarnessSmoke.Class.awaitStatus(
@@ -1000,10 +1029,35 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       };
       status = await addDatabaseInstance('Database 2');
       status = await addDatabaseInstance('Database 3');
+      // The close removes a list row, so every geometry below it MOVES. The
+      // next add locates its control by findText, and "+ Database" is painted
+      // both before and after the relayout — a wait on it is pre-satisfied and
+      // hands back the stale frame, so the click lands on the old row. Wait for
+      // the relayout itself: the model count at a settled frame, then the
+      // screen actually dropping the row. Under load this was the #464 flake.
+      // The expected count is MEASURED, never invented: one fewer than now.
+      const contentsBeforeClose = Number(
+        (
+          await GraphClient.Class.query(
+            statusPath,
+            'panelHost.orderedContents.length',
+            'settle',
+          )
+        ).value,
+      );
       await HarnessSmoke.Class.closePanelContentsListRow(
         driver,
         statusPath,
         'Database 2',
+      );
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'panelHost.orderedContents.length',
+        contentsBeforeClose - 1,
+      );
+      await driver.awaitGridCondition(
+        'the closed Database 2 row leaves the instances list',
+        (candidate) => candidate.findText('Database 2') === null,
       );
       status = await addDatabaseInstance('Database 3', 2);
       const duplicateLabelIdentifiers = (
