@@ -185,9 +185,10 @@ class $PanelTabBar {
           )}`
         : '';
     const addText = ` ${options.glyphVocabulary.panelAdd} Plugin `;
+    // The toggle's own one-space margin is the whole right inset — no extra
+    // trailing pad (user request 2026-08-02: the toggle ends the row).
     const instancesText = ` ${panelStackGlyph}${countText} `;
-    const trailingPaddingText = '  ';
-    const preferredControlText = `${addText}${instancesText}${trailingPaddingText}`;
+    const preferredControlText = `${addText}${instancesText}`;
     const controlWidth = Math.min(
       TextCoordinates.Class.lineWidth(preferredControlText),
       width,
@@ -254,14 +255,7 @@ class $PanelTabBar {
       TextCoordinates.Class.lineWidth(addText),
       controlWidth,
     );
-    const trailingPaddingWidth = Math.min(
-      TextCoordinates.Class.lineWidth(trailingPaddingText),
-      Math.max(0, controlWidth - addWidth),
-    );
-    const instancesWidth = Math.max(
-      0,
-      controlWidth - addWidth - trailingPaddingWidth,
-    );
+    const instancesWidth = Math.max(0, controlWidth - addWidth);
     const addVisibleText = TextCoordinates.Class.displayColumnWindow(
       addText,
       0,
@@ -298,7 +292,6 @@ class $PanelTabBar {
             : bg(options.palette.bg)(
                 fg(options.palette.fg)(instancesVisibleText),
               ),
-        bg(options.palette.bg)(trailingPaddingText),
       ]),
       tabsWidth: column,
       controlWidth,
@@ -316,7 +309,7 @@ class $PanelTabBar {
         instancesWidth > 0
           ? {
               startColumn: instancesStartColumn,
-              endColumn: width - trailingPaddingWidth,
+              endColumn: width,
               tooltip: options.paneListExpanded
                 ? 'Hide Instances'
                 : 'Show Instances',
