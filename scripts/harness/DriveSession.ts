@@ -233,8 +233,36 @@ class $DriveSession {
   show(...fieldNames: string[]): this {
     return this.step(`show ${fieldNames.join(', ')}`, async () => {
       const status = HarnessSmoke.Class.readStatus(this.statusPath);
+      const missing: string[] = [];
       for (const fieldName of fieldNames) {
+        // A field the projection does not publish is NOT a value of undefined.
+        // Printing it as one makes a typo, an unpublished field, and a genuinely
+        // absent value indistinguishable — a reading that can only fail toward
+        // "looks fine". Say which it is.
+        if (!(fieldName in status)) {
+          missing.push(fieldName);
+          console.log(
+            `  ${fieldName} = <NOT PUBLISHED by the status projection>`,
+          );
+          continue;
+        }
         console.log(`  ${fieldName} = ${JSON.stringify(status[fieldName])}`);
+      }
+      if (missing.length > 0) {
+        const published = Object.keys(status).sort();
+        const suggestions = missing.map((fieldName) => {
+          const needle = fieldName.replace(/[^a-z]/gi, '').toLowerCase();
+          const near = published.filter((candidate) =>
+            candidate.toLowerCase().includes(needle.slice(0, 6)),
+          );
+          return `${fieldName}${near.length > 0 ? ` — did you mean ${near.slice(0, 4).join(', ')}?` : ''}`;
+        });
+        throw new Error(
+          `show() named ${missing.length} field(s) the status projection does ` +
+            `not publish. The projection is a FLAT key space, not the app ` +
+            `hierarchy, so dotted paths never resolve.\n  ` +
+            suggestions.join('\n  '),
+        );
       }
     });
   }
