@@ -1,3 +1,55 @@
+# RESUME ANCHOR 33 — 2026-08-01 ~20:30 EDT (100% gauge)
+
+## Stack gate 2 — READ FROM LOG (`/tmp/gate-stack2.log`)
+
+Tree `/tmp/integration-stack2` = main + `fleet/452-pane-identity-collides-by-name`
+tip **`a94eb89f Fix pane identity consumers`** (the ROUND 4 fix; the
+branch carries #442 and #444 too). Merge commit `619bfa21`.
+Gate was still in the serial tail when this was written; no
+`GATE_EXIT=` line yet. **Re-read the sentinel from the log before any
+landing — never infer it from a wrapper's exit code.**
+
+**The real regression from gate 1 is GONE.** `smoke-clipboard-frame-boundary`
+no longer fails, so #452 round 4's kind-string consumer sweep worked.
+
+**Four reds present, all suspected pre-existing/unrelated — each MUST be
+A/B'd against main before blame is assigned:**
+
+| red | filed as |
+|---|---|
+| `smoke: scrollbars harness` | #453 diff scrollbar thumb |
+| `smoke: agent-pane-ux harness` | #454 / #455 (agent pane) |
+| `smoke: agent-cancel harness` | NOT YET A/B'd — may be new |
+| `smoke: keyboard invariant` | NOT YET A/B'd — may be new |
+
+Failure logs: `/tmp/merge-gate-failures.e9f209f2f8469ed2.3934161/`.
+
+## Next actions, in order
+
+1. Wait for `GATE_EXIT=` in `/tmp/gate-stack2.log`.
+2. A/B **agent-cancel** and **keyboard invariant** on plain main. If
+   they fail on main too, they are pre-existing; file them and land
+   with a WRITTEN `GATE_OVERRIDE` naming all four. If either passes on
+   main, it is stack-caused — brief #452 round 5, do NOT land.
+3. #452's READY report (round 4) is delivered and unread — read
+   `## Bycatch` and convert BEFORE merging.
+4. Land serially from the MAIN checkout: #442 → #444 → #452, each with
+   `GATE_LOG=/tmp/gate-stack2.log BYCATCH_TRIAGED=1`.
+5. #452's open question STANDS: neither fix explains the user's
+   original all-terminals-dead incident. Do not close it quietly.
+
+## Standing state
+
+- Crons DISARMED by user order. Never re-arm.
+- The one watcher: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+- Queue after the stack lands: #445, #446, #447, #450, #451, #453, #454, #455, #456.
+- Two corrections I owe the record: the tab dirty dot was NEVER lost
+  (broken checker, working product); my OpenPty identity theory was
+  REFUTED by measurement.
+- Tasks stay markdown. User ruled against SQLite.
+
+---
+
 # RESUME ANCHOR 32 — 2026-08-01 ~19:15 EDT (97% gauge)
 
 ## Stack gate verdict — READ FROM LOG

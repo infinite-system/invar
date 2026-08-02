@@ -1,14 +1,14 @@
 ## In plain words
 
-Two panes could get the same hidden ID after one pane closed, so the new pane could disappear behind the old one. Invar now gives every new pane its own ID, keeps old saved IDs, rejects duplicate ownership, and restarts a terminal read stream if it closes while the PTY is still open. The merged tests keep every editor-history and chrome check, and the dirty dot check now reads the tab row instead of the breadcrumb row.
+Two panes could get the same hidden ID after one pane closed, so the new pane could disappear behind the old one. Invar now gives every pane its own ID, keeps old saved IDs, and uses the exact active pane when it needs geometry. Copying from a terminal works again, all 2,306 tests pass, and the cause of the original all-terminal incident stays open.
 
 ## Result
 
-READY at merge commit `4222e760a9e63d06d58d043edb0e15540f0b30db`. The round 1 implementation is commit `552cf6c79181e0c129f930ec9bbc0a42f85b6b2e`. The round 2 union is commit `e05b7b61f7e3e3f39f7139588333afe319329ef9`. The round 3 merge includes `93e2488d088d3673487417a5ac9bda7d3b788ed1` from `fleet/442-panel-editor-tree-chrome-polish`.
+READY at commit `a94eb89fae1b1122ea7cf8ff55f3baa09f5888c9`. The round 1 implementation is commit `552cf6c79181e0c129f930ec9bbc0a42f85b6b2e`. The round 2 union is commit `e05b7b61f7e3e3f39f7139588333afe319329ef9`. The round 3 merge is commit `4222e760a9e63d06d58d043edb0e15540f0b30db` and includes `93e2488d088d3673487417a5ac9bda7d3b788ed1` from `fleet/442-panel-editor-tree-chrome-polish`. The round 4 consumer migration is commit `a94eb89fae1b1122ea7cf8ff55f3baa09f5888c9`.
 
-The worktree is clean. I did not run the merge gate, push, or land the work. I committed with `SKIP_GATE=1`, as the [round 2 union brief](brief-452-2-union-444.md) requires.
+The worktree is clean. I did not run the merge gate, push, or land the work. I committed with `SKIP_GATE=1`, as the [round 2 union brief](brief-452-2-union-444.md) and [round 4 consumer brief](brief-452-4-geometry-consumers.md) require.
 
-The implementation follows the [round 1 task brief](brief-452-1-pane-identity-collides-by-name.md) and the [round 2 union brief](brief-452-2-union-444.md). It makes these changes:
+The implementation follows the [round 1 task brief](brief-452-1-pane-identity-collides-by-name.md), the [round 2 union brief](brief-452-2-union-444.md), and the [round 4 consumer brief](brief-452-4-geometry-consumers.md). It makes these changes:
 
 - [PaneRuntimes.ts](../../../../src/modules/ui/PaneRuntimes.ts) now mints one opaque `pane-instance-N` ID from a monotonic application allocator. Labels keep their existing workspace-local numbering. Restored IDs are claimed before construction and cannot be claimed twice.
 - [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) uses that allocator for terminal, agent, and extra database panes. Restore passes each saved ID back into the constructor. The runtime and narration maps reject duplicate ownership before insertion.
@@ -37,7 +37,36 @@ The second merge from `fleet/442-panel-editor-tree-chrome-polish` completed with
 
 The dirty dot was not lost. The shared `activeTabHasDirtyMarker` test helper still read the old breadcrumb row after the editor-area rewrite moved breadcrumbs above the tabs. The merged helper locates the tab row from the published editor geometry and verifies the dirty marker there. Its focused unit coverage, the full dirty-marker smoke, and the editor smoke all pass.
 
-I did not change the four unrelated red checks reported by #442 (panel, editor, and tree chrome polish): the diff scrollbar thumb, agent-pane grid region, agent composer activation, and structure-filter focus tone.
+I did not change the four unrelated red checks reported by panel, editor, and tree chrome polish (#442): the diff scrollbar thumb, agent-pane grid region, agent composer activation, and structure-filter focus tone.
+
+## Round 4 identity-consumer migration
+
+The stack failure was a stale harness lookup. [smoke-clipboard-frame-boundary-harness.ts](../../../../scripts/harness/smoke-clipboard-frame-boundary-harness.ts) passed the kind `terminal` to a helper that indexed `panelCellIds`. Opaque pane IDs made that lookup honest enough to fail. The smoke now gets the exact active cell before it selects terminal text.
+
+I used the structural query tool and then inspected each match. These production consumers existed:
+
+- [PanelHost.ts](../../../../src/modules/ui/PanelHost.ts) had singular `contentOfKind` and `visibleContentOfKind` seams. It now exposes plural `contentsOfKind` and `visibleContentsOfKind`. The old singular calls remain as explicit first-result compatibility methods.
+- [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) selected current terminal, agent, and database content in several places. One policy now chooses the focused matching pane, then the first visible matching pane, then the first registered matching pane. Toggle commands use the visible part of that policy. The database factory explicitly chooses the first database provider that can create an instance.
+- [AppStatusProjection.ts](../../../../src/modules/app/AppStatusProjection.ts) found terminal geometry by taking the first cell whose kind was `terminal`. It now receives the selected terminal pane and matches its exact ID. The aligned `panelCellIds` and `panelCellKinds` fields remain separate.
+- Agent narration maps in [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) were already exact. Every get, set, and delete uses `agentPane.id`, and current narration starts with the selected agent pane. I made no narration change.
+- The status projection was already honest about identity and presentation. `panelActiveContent` is an exact ID, `panelActiveContentKind` is a kind, and the ID and kind arrays are aligned. I preserved that split.
+
+[HarnessSmokeSupport.ts](../../../../scripts/harness/HarnessSmokeSupport.ts) and [HarnessSmoke.ts](../../../../scripts/harness/HarnessSmoke.ts) now publish three shared lookup shapes: all cells of a kind, the exact active cell, and all content IDs of a kind. The cell helper also rejects misaligned ID, kind, and column arrays.
+
+I migrated every stale or ambiguous harness consumer that the census found:
+
+- [smoke-clipboard-frame-boundary-harness.ts](../../../../scripts/harness/smoke-clipboard-frame-boundary-harness.ts), [smoke-media-harness.ts](../../../../scripts/harness/smoke-media-harness.ts), [smoke-paste-harness.ts](../../../../scripts/harness/smoke-paste-harness.ts), and [smoke-terminal-stage-harness.ts](../../../../scripts/harness/smoke-terminal-stage-harness.ts) use the exact active cell for geometry.
+- [smoke-agent-engine-switch-harness.ts](../../../../scripts/harness/smoke-agent-engine-switch-harness.ts), [smoke-agent-pane-ux-harness.ts](../../../../scripts/harness/smoke-agent-pane-ux-harness.ts), [smoke-agent-permissions-harness.ts](../../../../scripts/harness/smoke-agent-permissions-harness.ts), and [smoke-agent-search-harness.ts](../../../../scripts/harness/smoke-agent-search-harness.ts) use the exact active agent cell for footer geometry.
+- [smoke-terminal-follow-harness.ts](../../../../scripts/harness/smoke-terminal-follow-harness.ts) uses the active exact cell for footer geometry. Its kind selection requires exactly one matching terminal and then follows that exact ID.
+- [smoke-overlay-dialog-harness.ts](../../../../scripts/harness/smoke-overlay-dialog-harness.ts) compares `panelActiveContentKind` with `terminal` or `agent` instead of comparing the active ID with a kind.
+- [smoke-plugin-manifest-harness.ts](../../../../scripts/harness/smoke-plugin-manifest-harness.ts) uses a plural kind lookup for terminal removal and the active kind for database focus.
+- [smoke-database-harness.ts](../../../../scripts/harness/smoke-database-harness.ts) uses active and cell kinds for presentation checks. It maps database kinds to their aligned exact IDs when it checks active spaces.
+- [smoke-tasks-harness.ts](../../../../scripts/harness/smoke-tasks-harness.ts) maps the database kind to its aligned exact IDs before excluding database spaces.
+- [smoke-panel-chrome-harness.ts](../../../../scripts/harness/smoke-panel-chrome-harness.ts) finds a normal database cell through `panelCellKinds`.
+
+I preserved intentional exact IDs. These include the old persisted `terminal` restore fixture, plugin-owned `database` and `media-demo` IDs, captured panel-split and terminal-follow targets, workspace-tab pane IDs, task-session IDs, and the aggregate `panel` heading ID. They name one known object. They do not turn a kind into an identity.
+
+After the migration, no runtime or harness geometry consumer compares a pane kind with `panelCellIds` or `panelActiveContent`. The compatibility singular host methods have no production callers outside their explicit policy seam.
 
 ## Candidate verdicts
 
@@ -59,7 +88,7 @@ The exact idle event that closed the user’s streams is still unknown. A newly 
 
 ## Driven evidence
 
-- The default baseline published `panelContentIds=["agent","terminal","database"]` while only the database was live. Its label and kind arrays contained one item. This reproduced the status-order mismatch folded in from #441 (align panel status arrays).
+- The default baseline published `panelContentIds=["agent","terminal","database"]` while only the database was live. Its label and kind arrays contained one item. This reproduced the status-order mismatch folded in from align panel status arrays (#441).
 - A saved settings file restored the old `terminal` ID unchanged after the fix.
 - The exact equal-name gesture passed at 120×40: two `Database 3` panes had two IDs, and one remained after the first row closed.
 - The panel chrome smoke also passed at 88×24.
@@ -80,6 +109,8 @@ I planted the old behaviors before trusting the new checks. The focused run prod
 
 I removed the plants. The same focused run then passed 46 tests with 309 expectations. The equal-name panel gesture also failed when I restored the old database live-count ID and silent host collision, then passed again with the committed code.
 
+For round 4, I planted the stale first-terminal lookup in the new `activePanelCell` helper. Its focused test expected active `pane-instance-9`, cell index 1, and 40 columns. The plant returned `pane-instance-4`, cell index 0, and 30 columns. The run went red with 4 passes, 1 failure, and 7 expectations. I removed the plant. The focused helper, host, and status tests then passed 36 tests with 233 expectations.
+
 ## Contract reconciliation
 
 - [Each panel instance owns one independent session](../../../../src/modules/ui/ui.invariants.md#each-panel-instance-owns-one-independent-session): strengthened. Equal labels no longer alias one ID. Host and runtime registries reject a second owner.
@@ -99,8 +130,8 @@ No existing record says that pane IDs are independent from labels, names, and li
 
 - Invariant: Every pane instance owns one immutable application ID. The ID does not derive from its name, label, kind, list position, workspace position, or number of live panes.
 - Scope: panel panes, runtime registries, workspace persistence, status projection, and pane removal.
-- Mechanism: one allocator mints and claims IDs before construction; restore reclaims the saved ID; every ID-keyed owner rejects a different object with an occupied ID.
-- Impossible if true: two live panes alias one map entry because they have the same label; removing one removes another; restoring a pane changes its saved ID.
+- Mechanism: one allocator mints and claims IDs before construction; restore reclaims the saved ID; every ID-keyed owner rejects a different object with an occupied ID. Consumers use an exact ID when they need one pane and a plural kind lookup when they need a class of panes.
+- Impossible if true: two live panes alias one map entry because they have the same label; removing one removes another; restoring a pane changes its saved ID; a consumer resolves one pane by its kind when several panes share that kind.
 - Verification: allocator claim tests, host and plugin collision tests, old-settings restore, and the equal-name close gesture.
 - Status: proposed on 2026-08-01.
 
@@ -115,12 +146,14 @@ No existing record says that pane IDs are independent from labels, names, and li
 
 ## Verification
 
-- `bun test`: PASS in full after the round 3 merge. 2,304 tests, 0 failures, 71,909 expectations, 349 files.
+- `bun test`: PASS in full after the round 4 commit. 2,306 tests, 0 failures, 71,916 expectations, 349 files.
 - `bunx tsc --noEmit`: PASS.
 - `bash scripts/conventions-gate.sh`: PASS.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`: PASS. 1,334 annotations, 266 lattice links, 0 problems.
-- `bun scripts/check-coverage-ratchet.ts`: PASS. The panel chrome smoke measures 22 assertions and 56 waits; 392 files have no undeclared decrease against `a9700d9`.
-- `bun scripts/harness/smoke-panel-chrome-harness.ts`: PASS at 120×40 and 88×24. Both branches' named assertions are present and green.
+- `bun scripts/check-coverage-ratchet.ts`: PASS. It inspected 392 files and found no undeclared decrease against `a9700d9`. The panel chrome declaration remains accurate at 22 assertions and 56 waits. Round 4 needs no coverage declaration.
+- `bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts`: ALL-PASS after the commit. Settings, active and idle agent copying, and active and idle terminal copying all pass. Each active or idle copy repeated 5 of 5 times.
+- The round 4 database, paste, terminal-stage, agent-engine-switch, agent-permissions, agent-search, terminal-follow, overlay-dialog, media, tasks, and audio-narration drives pass their migrated identity lookups.
+- The round 3 `bun scripts/harness/smoke-panel-chrome-harness.ts` run passed at 120×40 and 88×24. Both branches' named assertions were present and green. The round 4 run reached a separate contextual Database Add wait and failed the same way on unchanged commit `4222e760a9e63d06d58d043edb0e15540f0b30db`; see Bycatch.
 - `bun scripts/harness/smoke-dirty-marker-harness.ts`: PASS. The clean, edit, backspace, rewrite, save, and saved-baseline marker checks are green.
 - `bun scripts/harness/smoke-editor-harness.ts`: PASS. Its dirty flag and rendered dirty-dot checks are green.
 - `bun scripts/harness/smoke-workspace-tabs-harness.ts`: PASS.
@@ -128,11 +161,16 @@ No existing record says that pane IDs are independent from labels, names, and li
 - `bun scripts/harness/smoke-terminal-harness.ts`, `smoke-terminal-backpressure-harness.ts`, and `smoke-terminal-stage-harness.ts`: PASS.
 - `bun scripts/harness/smoke-paste-harness.ts`, `smoke-agent-engine-switch-harness.ts`, `smoke-terminal-follow-harness.ts`, `smoke-agent-permissions-harness.ts`, and `smoke-agent-search-harness.ts`: PASS.
 - Focused `PaneRuntimes`, `PanelHost`, `TerminalPlugin`, `MediaPlugin`, `AppStatusProjection`, and `OpenPty` tests: PASS. 46 tests and 309 expectations.
+- Focused round 4 `HarnessSmoke`, `PanelHost`, and `AppStatusProjection` tests: PASS. 36 tests and 233 expectations.
 
 The merge surfaced no new evidence about why all old and new terminals in the original incident appeared blank together. The original incident remains unproven, and the open question about its shared cause stays open.
 
-One panel-chrome run timed out while it ran concurrently with two other PTY applications. The same complete smoke passed when run alone, including both sizes and all identity and chrome assertions. No round 3 product failure reproduced.
-
 ## Bycatch
 
-The agent-pane UX smoke fails after the merged chrome changes at 110×50. The exact sequence is `bun scripts/harness/smoke-agent-pane-ux-harness.ts`, then the “composer word wrap, right gap, and idle teardown” section. The assertion reports `FAIL composer keeps composeralpha whole on one row`. It reproduced on a second full drive. All earlier identity-dependent focus, footer geometry, transcript, scroll, selection, and composer-edit checks passed. I did not change the word-wrap behavior because it is outside #452 (pane identity collides by name).
+The agent-pane UX smoke fails after the merged chrome changes at 110×50. The exact sequence is `bun scripts/harness/smoke-agent-pane-ux-harness.ts`, then the “composer word wrap, right gap, and idle teardown” section. The assertion reports `FAIL composer keeps composeralpha whole on one row`. It reproduced on a second full drive. All earlier identity-dependent focus, footer geometry, transcript, scroll, selection, and composer-edit checks passed. I did not change the word-wrap behavior because it is outside pane identity collides by name (#452).
+
+The agent-cancel smoke fails before it types `/resolver-smoke ARGUMENTANCHOR`. Its whole-grid search clicks the first `❯` glyph, which is in editor history, instead of the composer glyph. The file has no pane ID or pane-kind lookup. This is agent composer activation (#455), not an identity failure. I did not change it.
+
+The panel-chrome smoke times out at `120-column Database add offers only another Database instance before Database 3`. It reproduced twice on the round 4 tree and once in a detached worktree at unchanged round 3 commit `4222e760a9e63d06d58d043edb0e15540f0b30db`. That A/B result rules out the round 4 consumer migration. I removed the detached worktree and did not change this separate contextual-add behavior.
+
+The plugin-manifest smoke passes the migrated terminal-uninstall identity section, then fails later at `the structure scrollbar publishes its settled dock-height geometry`. That assertion does not read pane identity. I did not change the separate structure scrollbar behavior.
