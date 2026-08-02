@@ -1,3 +1,57 @@
+# RESUME ANCHOR 37 — 2026-08-02 ~14:30 EDT (95% gauge)
+
+## USER GOAL (hook): make the gate SOLID, DETERMINISTIC, hard to flake.
+Gate work outranks feature work.
+
+## #459 — ONE failure left, fix in flight
+`/tmp/gate-459b.log` GATE_EXIT=1 with exactly ONE red:
+coverage ratchet. All six round-4 smokes now PASS.
+```
+coverage declaration: scripts/harness/smoke-panel-split-harness.ts
+project.coverage-deltas.md:41 declares 35->27 / 33->29
+actual                                  35->29 / 33->31
+```
+Round 5 filed (`brief-459-5-tmp-brief-459-5.md`) + steered: correct it
+and RE-MEASURE every declaration after the final edit (the ratchet
+names only the first mismatch). When the report lands: re-gate
+`/tmp/integration-459b` (merge branch + main first), then land.
+
+### #459 root cause — my hypothesis was WRONG
+Not `detachContent` promotion. The DATABASE PLUGIN registered a live
+pane during boot while restore replaced spaces. Repair = a factory
+seam: `PanelContentFactories` owns one factory per kind; a pane is
+created only on a user Add or a saved-pane restore; restore THROWS on a
+registered id with no space row. Round-4 census: 84 status-field reads,
+7 stale reachability assumptions across 4 smokes.
+One prized find: the phantom had been SILENTLY SATISFYING a wait in
+`workspace layout isolation` — a pre-satisfied wait exposed by removal.
+
+## Fleet
+- **#457 gate determinism — PRIORITY.** Rounds 1+2 filed, no commits
+  yet. Acceptance: 5 identical verdicts on one commit · verdict
+  unchanged at 3 and 6 workers · planted defect red all 5 times.
+  Design call: deterministic BLOCKING tier + reported CONTENTION tier.
+  Round 2: gate labels must resolve (merge-gate.sh:1231 labels
+  `smoke-media-harness.ts` as `animated-media harness`).
+- **#451** READY at `a80c75c0`, HELD from gating on purpose so it does
+  not perturb #457's measurements. Land after #457 reports.
+- **#459** round 5 in flight.
+
+## shortcut-help — sharpest evidence yet it is contention, not a bug
+#459's builder ran it on plain main 10 of 10 times: PASS. It fails only
+inside a loaded gate. That is #457's territory.
+
+## Standing
+- Crons DISARMED. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`.
+- File the brief BEFORE the steer — I inverted that once today; the
+  round-brief was refused for a dead link while the steer landed.
+- Never dispatch a builder into a running measurement sweep.
+- Sweep consumers when behaviour changes (missed on #452 AND #459).
+- A 1-in-5 green looks exactly like a fixed tree.
+
+---
+
 # RESUME ANCHOR 36 — 2026-08-02 ~14:10 EDT (90% gauge)
 
 ## USER GOAL (session hook): make the gate SOLID, DETERMINISTIC, hard to flake.
