@@ -1,3 +1,46 @@
+# RESUME ANCHOR 38 — 2026-08-02 ~15:00 EDT (98% gauge)
+
+## #459 — gating on a CLEAN tree, `/tmp/integration-459d` (`080231be`)
+Log: `/tmp/gate-459d.log`. If GATE_EXIT=0 -> land #459 from the MAIN
+checkout with `GATE_LOG=/tmp/gate-459d.log BYCATCH_TRIAGED=1`.
+
+**Why the earlier gates kept failing identically:** `/tmp/integration-459b`
+had an UNRESOLVED CONFLICT from a `git merge main`, so it held the OLD
+coverage declaration (35->27/33->29) while the branch had the corrected
+one (35->29/33->31). Two gate runs judged a tree that did not match the
+branch. ABANDON `/tmp/integration-459b`. Lesson: after any merge into an
+integration tree, verify the merge SUCCEEDED before gating — a gate on a
+conflicted tree reports a stale verdict that looks like a real red.
+
+Round 5 is otherwise complete: every declaration re-measured, all six
+round-4 smokes pass, only the ratchet was outstanding.
+
+## Fleet
+- **#457 gate determinism — THE PRIORITY** (user hook goal). Rounds 1+2
+  filed. Acceptance: 5 identical verdicts on one commit · unchanged at
+  3 and 6 workers · planted defect red all 5 times. Blocking tier
+  deterministic + contention tier reported.
+- **#451** READY `a80c75c0`, HELD from gating until #457's measurements
+  are done.
+- **#459** gating now.
+
+## New doctrine committed
+`project.conductor.md` family 14 — briefs assert repo facts from
+memory; derive the invariants list mechanically, never name an un-ls-ed
+script, never derive a filename from a gate label, grep before claiming
+no record governs X.
+
+## Standing
+- Crons DISARMED. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`.
+- File the brief BEFORE the steer.
+- A gate names a COMMIT, not a branch — re-merge and re-gate if the
+  branch moved.
+- shortcut-help passes 10/10 on plain main; fails only in a loaded
+  gate. Contention, not a product defect. #457 owns it.
+
+---
+
 # RESUME ANCHOR 37 — 2026-08-02 ~14:30 EDT (95% gauge)
 
 ## USER GOAL (hook): make the gate SOLID, DETERMINISTIC, hard to flake.
