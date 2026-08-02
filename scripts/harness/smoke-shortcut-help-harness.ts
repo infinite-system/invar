@@ -140,6 +140,14 @@ async function openWithHelpChord(
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
   );
+  await driver.awaitCompletedGridCondition(
+    'the reopened shortcut sheet reaches a complete synchronized frame',
+    (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
+  );
+  await driver.awaitGridCondition(
+    'the reopened shortcut sheet publishes its visible row range',
+    (snapshot) => shortcutSheetVisibleRange(snapshot) !== null,
+  );
 }
 
 async function assertSheetStatus(
