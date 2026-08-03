@@ -566,6 +566,7 @@ class $DriveScriptRunner {
     rows?: number;
     homeDirectory?: string;
     serverDirectory?: string;
+    mirror?: boolean;
   }): Promise<void> {
     const serverDirectory =
       options.serverDirectory ?? this.DEFAULT_SERVER_DIRECTORY;
@@ -576,16 +577,30 @@ class $DriveScriptRunner {
       options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
     mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
     const statusPath = join(homeDirectory, 'status.json');
+    // Mirroring means a human is WATCHING in a real terminal (often an Invar
+    // terminal pane — the app inside the app), so the inner app inherits the
+    // hosting terminal's geometry and the mirror fills the pane exactly.
+    const hostColumns =
+      options.mirror && process.stdout.columns ? process.stdout.columns : null;
+    const hostRows =
+      options.mirror && process.stdout.rows ? process.stdout.rows : null;
     const driver = new PtyTestDriver.Class({
       workspaceRoot,
-      columns: options.columns ?? 120,
-      rows: options.rows ?? 40,
+      columns: options.columns ?? hostColumns ?? 120,
+      rows: options.rows ?? hostRows ?? 40,
       homeDirectory,
       environment: {
         TUI_STATUS_PATH: statusPath,
         INVAR_AGENT_BACKEND: 'echo',
       },
     });
+    if (options.mirror) {
+      // The WATCH feed: every byte the app writes, relayed verbatim. The
+      // human sees exactly what the agent's gestures cause, live — dropdowns
+      // opening, state changing — because this IS the app's own output, not
+      // a reconstruction.
+      driver.tapOutput((bytes) => process.stdout.write(bytes));
+    }
     const session = new DriveSession.Class(driver, statusPath);
     const requestPath = join(serverDirectory, 'snippet-request.json');
     const responsePath = join(serverDirectory, 'snippet-response.json');
@@ -759,9 +774,11 @@ class $DriveScriptRunner {
     let source: string | undefined;
     let columns = 120;
     let rows = 40;
+    let columnsExplicit = false;
     let homeDirectory: string | undefined;
     let serverDirectory: string | undefined;
     let serve = false;
+    let mirror = false;
     let attachSource: string | undefined;
     let stop = false;
     for (let index = 0; index < argumentsList.length; index += 1) {
@@ -781,6 +798,8 @@ class $DriveScriptRunner {
         index += 1;
       } else if (argument === '--serve') {
         serve = true;
+      } else if (argument === '--mirror') {
+        mirror = true;
       } else if (argument === '--attach') {
         attachSource = value;
         index += 1;
@@ -796,6 +815,7 @@ class $DriveScriptRunner {
         const [columnText, rowText] = value.split('x');
         columns = Number(columnText) || columns;
         rows = Number(rowText) || rows;
+        columnsExplicit = true;
         index += 1;
       } else if (argument === '--help') {
         console.log(this.helpText);
@@ -805,10 +825,11 @@ class $DriveScriptRunner {
     if (serve) {
       await this.serve({
         workspaceRoot,
-        columns,
-        rows,
+        columns: columnsExplicit ? columns : undefined,
+        rows: columnsExplicit ? rows : undefined,
         homeDirectory,
         serverDirectory,
+        mirror,
       });
       return;
     }
@@ -841,6 +862,9 @@ class $DriveScriptRunner {
       'Warm-app server (one boot, many probes; state survives between them):',
       '',
       '  --serve              boot once, then execute attached snippets forever',
+      '  --mirror             relay the served app to THIS terminal, live —',
+      '                       run it inside an Invar terminal pane and WATCH',
+      '                       an attached agent drive the app inside the app',
       "  --attach CODE        run a snippet against the RUNNING server's session",
       '  --attach-script FILE the same, from a file',
       '  --stop               shut the server down',

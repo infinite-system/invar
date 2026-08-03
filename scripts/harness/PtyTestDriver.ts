@@ -109,6 +109,16 @@ class $PtyTestDriver {
   private readonly terminalOutputAudit = new TerminalOutputAudit.Class();
   private readonly child: ReturnType<typeof Bun.spawn>;
   private readonly outputDecoder = new TextDecoder();
+  private readonly outputTaps: Array<(bytes: Uint8Array) => void> = [];
+
+  /** Observe the RAW byte stream the app writes, before any harness
+   *  processing — the mirror feed. A tap is a pure observer: the emulator,
+   *  quiescence accounting, and frame attribution behave identically with
+   *  zero or many taps (the drive server's --mirror relays these bytes to its
+   *  own stdout so a human can WATCH the driven app live). */
+  tapOutput(listener: (bytes: Uint8Array) => void): void {
+    this.outputTaps.push(listener);
+  }
   private readonly outputSequenceCounters = new Map<
     string,
     {
@@ -156,6 +166,7 @@ class $PtyTestDriver {
     this.completedSnapshotValue = this.captureEmulatorSnapshot();
     this.emulator.onReply((data) => this.openPty.write(data));
     this.openPty.onData((bytes) => {
+      for (const outputTap of this.outputTaps) outputTap(bytes);
       this.recordOutput(this.outputDecoder.decode(bytes, { stream: true }));
       const observedByteCountBeforeChunk = this.quiescence.observedByteCount;
       const completedFrames = this.quiescence.observe(bytes);
