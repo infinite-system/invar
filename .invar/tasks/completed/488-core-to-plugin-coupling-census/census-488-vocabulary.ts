@@ -23,11 +23,12 @@
 // seam removes it) is the report's job, not this script's.
 //
 // How to run it (from the repo root):
-//   bun .invar/tasks/in-progress/488-core-to-plugin-coupling-census/census-488-vocabulary.ts
+//   bun .invar/tasks/completed/488-core-to-plugin-coupling-census/census-488-vocabulary.ts
 //
 // Both arms are proven inside the run:
-//   POSITIVE control — 'git.togglePanel' must still be found in ShortcutHelp.ts, and the agent
-//     command family must be harvested from its plugin while producing no core hit.
+//   POSITIVE control — the out-of-scope 'Terminal' settings label must still be found in
+//     SettingsPanel.ts, and the agent command family must be harvested from its plugin while
+//     producing no core hit.
 //   NEGATIVE control — 'media.showTorus' is registered by the media plugin and used by no core
 //     file; it must be harvested yet produce zero core hits. A fabricated term
 //     'no-such-plugin-term-488' must also produce zero hits. Either firing exits 1.
@@ -267,15 +268,15 @@ console.log(`terms in the dictionary: ${termOwners.size}`);
 // ---- controls -------------------------------------------------------------
 const positiveOne = hits.some(
   (hit) =>
-    hit.file.endsWith('ui/ShortcutHelp.ts') &&
-    hit.literal === 'git.togglePanel',
+    hit.file.endsWith('settings/SettingsPanel.ts') &&
+    hit.literal === 'Terminal',
 );
 const positiveTwo =
   termOwners.has('panel.toggleAgent') &&
   !hits.some((hit) => hit.literal === 'panel.toggleAgent');
 if (!positiveOne || !positiveTwo) {
   console.error(
-    `POSITIVE CONTROL FAILED: ShortcutHelp git.togglePanel=${positiveOne}, agent command harvested and core-quiet=${positiveTwo}.`,
+    `POSITIVE CONTROL FAILED: SettingsPanel Terminal label=${positiveOne}, agent command harvested and core-quiet=${positiveTwo}.`,
   );
   process.exit(1);
 }

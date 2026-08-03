@@ -9,6 +9,7 @@ import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
 
 function buildSheet(): {
   keybindings: KeybindingRegistry.Instance;
+  commands: CommandRegistry.Instance;
   sheet: InstanceType<typeof ShortcutHelp.Class>;
 } {
   const keybindings = new KeybindingRegistry.Class();
@@ -30,7 +31,7 @@ function buildSheet(): {
     run: () => {},
   });
   const sheet = new ShortcutHelp.Class(keybindings, commands);
-  return { keybindings, sheet };
+  return { keybindings, commands, sheet };
 }
 
 function bindingRowFor(
@@ -94,6 +95,35 @@ describe('ShortcutHelp', () => {
       .filter((row) => row.actionIdentifier === 'quickopen.open')
       .map((row) => row.chordLabel);
     expect(chordLabels).not.toContain('Ctrl+P');
+  });
+
+  test('contributed contexts and labels come from the live registries', () => {
+    const { keybindings, commands, sheet } = buildSheet();
+    keybindings.registerPluginLayer('plugin:sample', [
+      {
+        chord: { key: 'r' },
+        action: 'sample.refresh',
+        context: 'sample-surface',
+      },
+    ]);
+    commands.register({
+      id: 'sample.refresh',
+      title: 'Sample: Refresh',
+      category: 'Sample',
+      run: () => {},
+    });
+
+    const row = bindingRowFor(sheet.rows(), 'sample.refresh');
+    expect(row?.label).toBe('Sample: Refresh');
+    expect(row?.chordLabel).toBe('R');
+    expect(
+      sheet
+        .rows()
+        .some(
+          (candidate) =>
+            candidate.kind === 'category' && candidate.label === 'Sample',
+        ),
+    ).toBe(true);
   });
 
   test('show resets scroll and open/close toggle the modal flag', () => {

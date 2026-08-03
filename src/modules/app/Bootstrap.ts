@@ -1727,6 +1727,7 @@ class $Bootstrap {
         app.requestRender();
       },
       toggleRightDock,
+      toggleFocus: () => workspaceSet.active.toggleFocus(),
       toggleTerminal,
       togglePanelSplit,
       focusPreviousPanelContent: () => focusPanelContent(-1),

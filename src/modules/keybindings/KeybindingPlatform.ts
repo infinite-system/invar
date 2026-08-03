@@ -31,7 +31,6 @@ class $KeybindingPlatform {
       'editor.undo',
       'palette.open',
       'quickopen.open',
-      'terminal.copy',
       'textInput.copy',
       'textInput.selectAll',
       'workspace.next',

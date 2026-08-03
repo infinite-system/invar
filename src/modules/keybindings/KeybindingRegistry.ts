@@ -393,6 +393,18 @@ class $KeybindingRegistry {
       .join(' then ');
   }
 
+  /** Every context named by the live binding layers. The global context stays first so a shared
+   *  action keeps its application-wide binding when a surface also contributes a local chord. */
+  contexts(): string[] {
+    const contexts = new Set<string>(['global']);
+    for (const layer of this.layers) {
+      for (const binding of layer.bindings) {
+        contexts.add(binding.context ?? 'global');
+      }
+    }
+    return [...contexts];
+  }
+
   /**
    * The reserved-set audit: every binding the host claims AWAY from the focused surface, with the
    * problems that disqualify it. A reserved binding must carry a `reservedBecause` warrant and must

@@ -95,3 +95,9 @@ test('the hand-written mac residue is only what no substitution can derive', () 
     'navigation.forward',
   ]);
 });
+
+test('the platform overlay does not name plugin-owned actions', () => {
+  expect(
+    KeybindingPlatform.Class.primaryModifierActions.has('terminal.copy'),
+  ).toBe(false);
+});

@@ -606,8 +606,10 @@ byte, emulator, and observation contracts above are unchanged by the extraction.
 **Components:**
 - Registered as a runtime — `activateApplication` calls `registerPaneRuntime(this)` and nothing
   else registers the `terminal` kind.
-- Contributed keybindings — the six `terminal` context bindings ship in the plugin's manifest, not
-  in the host's canonical keybinding layer.
+- Contributed keybindings — the `terminal` context bindings and their macOS copy alias ship in the
+  plugin's manifest, not in the host's canonical or platform keybinding layers.
+- Contributed commands — terminal action titles and palette handlers register from the plugin and
+  withdraw when the plugin withdraws.
 - Contributed status — terminal status keys reach probes through `StatusProjectionContributions`;
   the host holds no terminal status default.
 - Capability-resolved ports — `terminal-commands`, `terminal-observation`, and `text-selection` are
@@ -633,13 +635,13 @@ host concept.
 `scripts/harness/smoke-panel-split-harness.ts`;
 `scripts/harness/smoke-plugin-manifest-harness.ts`.
 
-**Impossible if true:** a host file importing `../terminal/…`; a terminal keybinding resolving with
-the plugin uninstalled; terminal status keys surviving uninstall; the host reading a terminal
-command event.
+**Impossible if true:** a host file importing `../terminal/…`; a terminal keybinding or command
+surviving with the plugin uninstalled; terminal status keys surviving uninstall; the host reading a
+terminal command event.
 
 **Verification:** `bun test src/modules/terminal/TerminalPlugin.test.ts && grep -rln
 "modules/terminal/" --include='*.ts' src/modules/app src/modules/workspace src/modules/ui`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-08-03
