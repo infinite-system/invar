@@ -749,3 +749,16 @@ form. When a change decouples/moves a whole SURFACE, the round brief
 enumerates that surface's full smoke inventory up front and demands
 one sweep, not the gate's latest sample. The gate is the sieve, not
 the work list.
+
+## 2026-08-03 — never commit while a backgrounded commit holds the stage
+
+A background git-commit (waiting on its pre-commit gate) and a
+foreground SKIP_GATE commit shared one index; the foreground commit
+swallowed the background one's staged file under the wrong message
+(bc212e81 carries the coupling ratchet mislabeled as "356 summary";
+the follow-up background run then ran the FULL gate GREEN on that
+exact tree — /tmp/ratchet-commit-r2.log GATE_EXIT=0 — so the ratchet
+is gate-verified on main). Rule: while a backgrounded commit is
+pending, the conductor makes NO other commit in that checkout. Same
+generator as the round-brief/steer race: two acts sharing mutable
+state must be strictly sequenced.
