@@ -79,3 +79,13 @@ pre-satisfaction. This is a real gap in what #469 shipped.
 Both arms per fix: the migrated wait must still FAIL when the app genuinely
 does not reach the state (plant it), and PASS when it does. A pre-satisfied
 wait replaced by another pre-satisfied wait is invisible to a green suite.
+
+## User direction, verbatim (2026-08-02, after batch 3)
+
+"yes, everything should be in the graph, and even things like
+workspaceSet.active.editor.blabla, should be converted to shortcuts like
+workspaceSet.activeEditor, to reduce the chains between things"
+
+This RESOLVES the contributor-gap question in principle: the graph must reach
+everything, and the chain-shortening happens as real getters. Design
+discussion in the session transcript; implementation not yet started.
