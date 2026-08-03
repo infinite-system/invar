@@ -638,8 +638,11 @@ class $DriveScriptRunner {
     const statusPath = join(homeDirectory, 'status.json');
     const driver = new PtyTestDriver.Class({
       workspaceRoot,
-      columns: options.columns ?? 120,
-      rows: options.rows ?? 40,
+      // A DRIVE session models a real user, and real users run big terminals
+      // (the reference screen this was tuned on is 295x65). The smoke suite
+      // keeps its own calibrated 120x40 through PtyTestDriver directly.
+      columns: options.columns ?? 220,
+      rows: options.rows ?? 60,
       homeDirectory,
       environment: {
         TUI_STATUS_PATH: statusPath,
@@ -788,8 +791,8 @@ class $DriveScriptRunner {
     }
     const driver = new PtyTestDriver.Class({
       workspaceRoot,
-      columns: options.columns ?? hostColumns ?? 120,
-      rows: options.rows ?? hostRows ?? 40,
+      columns: options.columns ?? hostColumns ?? 220,
+      rows: options.rows ?? hostRows ?? 60,
       homeDirectory,
       // Mirroring: negotiate as the LEAST capable link in the chain. The
       // emulator swallows OSC 66 whole, so the inner app's text-sizing probe
@@ -1015,8 +1018,8 @@ class $DriveScriptRunner {
   static async main(argumentsList: readonly string[]): Promise<void> {
     let workspaceRoot: string | undefined;
     let source: string | undefined;
-    let columns = 120;
-    let rows = 40;
+    let columns = 220;
+    let rows = 60;
     let columnsExplicit = false;
     let homeDirectory: string | undefined;
     let serverDirectory: string | undefined;
@@ -1099,7 +1102,7 @@ class $DriveScriptRunner {
       '  --open DIR           workspace to open (default: a temp workspace)',
       '  --script FILE        a snippet: NO imports, NO setup. `app` is live.',
       '  --eval CODE          the same, inline',
-      '  --geometry CxR       terminal size (default 120x40)',
+      '  --geometry CxR       terminal size (default 220x60, a real user scale)',
       '  --home DIR           persistent home, so state carries across runs',
       '',
       'Warm-app server (one boot, many probes; state survives between them):',
