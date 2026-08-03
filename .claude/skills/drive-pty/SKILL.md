@@ -113,11 +113,15 @@ bun scripts/harness/DriveSession.ts --stop
 
 Attaches run against the SAME live session (~100ms each vs ~400ms cold, and
 navigated state persists — the real win: never re-drive to where you were).
-Rendezvous dir `/tmp/invar-drive-server` (`--server-dir` to change): manifest
-with pid (dead-pid detected), request/response files, `server.log`. A failed
-snippet answers loudly, abandons its queued steps, and the server keeps
-serving. Stale requests from a previous session never replay. One attach at a
-time. Kill orphans by /proc env evidence, never by name-pattern.
+Rendezvous dir: KEYED TO YOUR CHECKOUT by default —
+`/tmp/invar-drive-server-<slug-of-git-toplevel>` — so an agent in a worktree
+gets its own server and its attaches find it; two agents can only share a
+server by BOTH passing the same explicit `--server-dir`, never by accident.
+Inside it: manifest with pid (dead-pid detected), request/response files,
+`server.log`. A failed snippet answers loudly, abandons its queued steps,
+and the server keeps serving. Stale requests from a previous session never
+replay. One attach at a time per server. Kill orphans by /proc env evidence,
+never by name-pattern.
 
 ## The MCP doorway — Claude controls the same warm server
 
