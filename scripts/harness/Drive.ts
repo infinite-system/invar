@@ -269,8 +269,6 @@ class $Drive {
         );
       } else if (argument === '--cells') {
         cellDumps.push(this.parseCellDump(value));
-      } else if (argument === '--gesture') {
-        actions.push(...this.gestureActions(value));
       } else if (argument === '--timeout') {
         timeoutMilliseconds = this.parsePositiveInteger(value, '--timeout');
       } else if (argument === '--home') {
@@ -320,112 +318,6 @@ class $Drive {
     if (to < from)
       throw new Error(`Invalid --cells ${value}: COLUMN_TO < COLUMN_FROM`);
     return { row, from, to };
-  }
-
-  /** Named user gestures with their condition waits built in — the fluent verbs. */
-  protected static gestureActions(specification: string): DriveAction[] {
-    const separatorIndex = specification.indexOf('=');
-    const name =
-      separatorIndex < 0
-        ? specification
-        : specification.slice(0, separatorIndex);
-    const label =
-      separatorIndex < 0 ? '' : specification.slice(separatorIndex + 1);
-    const gestures: Record<string, DriveAction[]> = {
-      openPanel: [
-        {
-          kind: 'key',
-          keyName: 'Control+j',
-          completion: {
-            kind: 'status',
-            fieldName: 'panelVisible',
-            expectedValue: true,
-          },
-        },
-      ],
-      closePanel: [
-        {
-          kind: 'key',
-          keyName: 'Control+j',
-          completion: {
-            kind: 'status',
-            fieldName: 'panelVisible',
-            expectedValue: false,
-          },
-        },
-      ],
-      // Open the instances list from the panel's own toggle.
-      openInstances: [
-        {
-          kind: 'click',
-          target: { kind: 'panel-role', role: 'instances-toggle', label: '' },
-          completion: {
-            kind: 'status',
-            fieldName: 'panelListVisible',
-            expectedValue: true,
-          },
-        },
-      ],
-      // Add an instance: the add control, then the kind entry in its popup.
-      // --gesture addInstance=Terminal picks that entry by name.
-      addInstance: [
-        {
-          kind: 'click',
-          target: { kind: 'panel-role', role: 'instance-add', label: '' },
-          completion: {
-            kind: 'status',
-            fieldName: 'boundedListPopupOpen',
-            expectedValue: true,
-          },
-        },
-        {
-          kind: 'click',
-          target: {
-            kind: 'panel-role',
-            role: 'popup-entry',
-            label: label || 'Terminal',
-          },
-          completion: {
-            kind: 'status',
-            fieldName: 'boundedListPopupOpen',
-            expectedValue: false,
-          },
-        },
-      ],
-      // Close ONE instance by its visible label. The hover is part of the
-      // gesture because the close control only exists while the row is hovered.
-      closeInstance: [
-        {
-          kind: 'hover',
-          // Frame-silent by declaration: hovering the row that is ALREADY active
-          // changes nothing on screen, so demanding a repaint here would time out
-          // on exactly the case this gesture exists for — closing the last
-          // instance. The click that follows still proves the control is painted,
-          // because instance-row-close cannot resolve without it.
-          target: { kind: 'panel-role', role: 'instance-row', label },
-          completion: {
-            kind: 'frame-silent',
-            reason: 'hovering an already-active row repaints nothing',
-          },
-        },
-        {
-          kind: 'click',
-          target: { kind: 'panel-role', role: 'instance-row-close', label },
-          completion: {
-            kind: 'status-excludes',
-            fieldName: 'panelContentLabels',
-            value: label,
-          },
-        },
-      ],
-    };
-    const actionsForGesture = gestures[name];
-    if (!actionsForGesture) {
-      throw new Error(
-        `Unknown --gesture ${JSON.stringify(name)}; known: ${Object.keys(gestures).join(', ')}`,
-      );
-    }
-    return actionsForGesture;
   }
 
   protected static defaultKeyCompletion(
@@ -557,19 +449,6 @@ class $Drive {
     const separatorIndex = target.indexOf('=');
     const role = target.slice(0, separatorIndex);
     const text = target.slice(separatorIndex + 1);
-    const panelRoles: readonly string[] = [
-      'instances-toggle',
-      'instance-add',
-      'instance-row',
-      'instance-row-close',
-      'popup-entry',
-    ];
-    if (separatorIndex > 0 && panelRoles.includes(role)) {
-      return { kind: 'panel-role', role: role as DrivePanelRole, label: text };
-    }
-    if (separatorIndex <= 0 && panelRoles.includes(target)) {
-      return { kind: 'panel-role', role: target as DrivePanelRole, label: '' };
-    }
     if (
       separatorIndex <= 0 ||
       !text ||
@@ -883,9 +762,6 @@ class $Drive {
       }
       return { column: target.column, row: target.row };
     }
-    if (target.kind === 'panel-role') {
-      return this.resolvePanelRole(snapshot, target.role, target.label);
-    }
     const textPosition = snapshot.findText(target.text);
     if (!textPosition) {
       throw new Error(
@@ -911,109 +787,12 @@ class $Drive {
     );
   }
 
-  /** Resolve a PANEL role from the painted grid. Every role here is a control a
-   *  user can see and point at; none of them takes a computed coordinate. This is
-   *  the seam that stops each probe from re-deriving glyph columns by hand. */
-
   /** One name for a click target, whatever kind it is — used in logs and waits. */
   protected static clickTargetDescription(target: DriveClickTarget): string {
     if (target.kind === 'coordinates') {
       return `${target.column},${target.row}`;
     }
-    if (target.kind === 'panel-role') {
-      return target.label
-        ? `${target.role}=${JSON.stringify(target.label)}`
-        : target.role;
-    }
     return `${target.kind}=${JSON.stringify(target.text)}`;
-  }
-
-  protected static resolvePanelRole(
-    snapshot: HarnessSnapshot.Model,
-    role: DrivePanelRole,
-    label: string,
-  ): DriveClickPosition {
-    const listHeader =
-      snapshot.findText('+ Terminal') ??
-      snapshot.findText('+ Database') ??
-      snapshot.findText('Add Terminal') ??
-      snapshot.findText('Add Database');
-    if (role === 'instances-toggle') {
-      const chrome = snapshot.findText('+ Plugin');
-      if (!chrome) {
-        throw new Error(
-          `No panel chrome row is painted, so there is no instances toggle\n${snapshot.text()}`,
-        );
-      }
-      const chromeRow = snapshot.rowText(chrome.row);
-      const toggleColumn = chromeRow.lastIndexOf('\u2261');
-      if (toggleColumn < 0) {
-        throw new Error(
-          `The panel chrome row paints no instances toggle\n${chromeRow}`,
-        );
-      }
-      return { column: toggleColumn, row: chrome.row };
-    }
-    if (role === 'instance-add') {
-      if (!listHeader) {
-        throw new Error(
-          `No instances-list add control is painted\n${snapshot.text()}`,
-        );
-      }
-      return { column: listHeader.column + 1, row: listHeader.row };
-    }
-    if (role === 'popup-entry') {
-      const pattern = new RegExp(`\\u2502 ${label}\\s+\\u2502`);
-      const rows = snapshot.textRows();
-      for (let row = 0; row < rows.length; row += 1) {
-        const match = pattern.exec(rows[row] ?? '');
-        if (match && match.index !== undefined) {
-          return { column: match.index + 2, row };
-        }
-      }
-      throw new Error(
-        `No popup entry named ${JSON.stringify(label)} is painted\n${snapshot.text()}`,
-      );
-    }
-    // instance-row and instance-row-close: rows live BELOW the list header, and
-    // the tab bar paints the same words, so anchor on the header column.
-    if (!listHeader) {
-      throw new Error(
-        `The instances list is not open, so it has no rows\n${snapshot.text()}`,
-      );
-    }
-    const rows = snapshot.textRows();
-    let targetRow = -1;
-    for (let row = listHeader.row + 1; row < rows.length; row += 1) {
-      if ((rows[row] ?? '').slice(listHeader.column).includes(label)) {
-        targetRow = row;
-        break;
-      }
-    }
-    if (targetRow < 0) {
-      throw new Error(
-        `The instances list paints no row for ${JSON.stringify(label)}\n${snapshot.text()}`,
-      );
-    }
-    if (role === 'instance-row') {
-      return { column: listHeader.column + 1, row: targetRow };
-    }
-    const rowTail = (rows[targetRow] ?? '').slice(listHeader.column);
-    const closeOffset = rowTail.lastIndexOf('\u00d7');
-    if (closeOffset >= 0) {
-      return { column: listHeader.column + closeOffset, row: targetRow };
-    }
-    // The glyph is revealed on hover, but the HIT TARGET exists either way: the
-    // list gives its last cells to close (the row projection reserves them). So a
-    // drive that has not yet repainted the hover still has somewhere correct to
-    // click, instead of failing on a decoration.
-    const closeColumn = snapshot.columns - 2;
-    if (closeColumn <= listHeader.column) {
-      throw new Error(
-        `The row for ${JSON.stringify(label)} has no room for a close control\n${rowTail}`,
-      );
-    }
-    return { column: closeColumn, row: targetRow };
   }
 
   protected static editorClampTarget(
@@ -1206,9 +985,6 @@ class $Drive {
       '  --frame-silent      declare the preceding action needs no repaint',
       '  --wait-for-text TEXT make the preceding action wait for new visible text',
       '  --wait-for-status FIELD=JSON',
-      '  --gesture NAME       a named user gesture with its wait built in:',
-      '                       openPanel, closePanel, openInstances,',
-      '                       addInstance[=KIND], closeInstance=LABEL',
       '  --home DIR           persistent home directory (kept after the run; state carries across runs)',
       '  --env KEY=VALUE      extra app environment variable; repeatable',
       '  --cells ROW,C1-C2    print chars + bg/fg for a cell range with every observation',
@@ -1301,22 +1077,7 @@ type DriveClickTarget =
   | {
       readonly kind: 'text' | 'fold-control';
       readonly text: string;
-    }
-  | {
-      // A PANEL role: resolved from what is painted, never from coordinates the
-      // caller computed. This is what keeps a drive from re-deriving glyph
-      // columns in every probe.
-      readonly kind: 'panel-role';
-      readonly role: DrivePanelRole;
-      readonly label: string;
     };
-
-type DrivePanelRole =
-  | 'instances-toggle'
-  | 'instance-add'
-  | 'instance-row'
-  | 'instance-row-close'
-  | 'popup-entry';
 
 interface DriveClickPosition {
   readonly column: number;

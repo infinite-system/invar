@@ -2579,13 +2579,12 @@ when this contract changed.
 **Impossible if true:** An instances list showing no add control, or showing it as plain text; a
 panel with zero instances painting an unexplained empty region.
 
-**Verification:** `bun test src/modules/ui/PanelContentsList.test.ts`, and drive it:
-`bun run drive --open <workspace> --gesture openPanel --gesture openInstances
---gesture addInstance=Terminal --gesture closeInstance=Terminal`.
+**Verification:** `bun test src/modules/ui/PanelContentsList.test.ts` and
+`bun scripts/harness/smoke-panel-chrome-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-08-02
+**Last refined:** 2026-08-03
 
 ### An emptied space survives its last instance
 
