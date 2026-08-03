@@ -78,3 +78,31 @@ Drive the demo loop end to end in the harness (outer Invar in a PtyTestDriver,
 inner via the mirrored server) and assert: the mirror pane repaints on agent
 gestures; the trail cells appear on pointer moves; an MCP tool call round-trips
 a graph read.
+
+## PTY usability feedback from builders (the user's tracked question)
+
+From #470's builder (codex, 2026-08-03, first overnight PTY use):
+- EASY: the warm server ("made the render transition easy to see without
+  rebooting between samples"); `--size` fixtures; `app.show` for compact
+  evidence. The primary loop works for builders as designed.
+- GAP 1: `renderQuiescent` is status-projection-only, so `app.get`/`waitFor`
+  cannot address it — the fluent loop needs EITHER a condition wait on
+  status fields OR a renderer-lifecycle graph root. (Do not double-expose;
+  pick one and document the status-versus-graph split in the drive help.)
+- GAP 2: `app.show` has no label argument — a label is treated as another
+  status path. Small ergonomics fix.
+- Add both to this task's implementation round alongside the MCP doorway.
+
+From #471's builder (codex, 2026-08-03):
+- EASY: warm server fast loop; clickText/waitFor/get in one probe; loud
+  misses made contributor discovery immediate.
+- GAP 3: `bun run drive` and DriveSession have DIFFERENT stop commands —
+  unify or document in the skill.
+- GAP 4: DriveSession has no generated `--size` fixture option (builder fell
+  back to the scale smoke for the large arm).
+- BUG: a failed `--attach` snippet prints the failure but can exit 0
+  (observed once with a wrong-path probe) — a script can overlook a failed
+  positive control. Verify and fix the exit-code path.
+- PROPOSED RECORD (needs the user): a reach-completeness record in
+  system.invariants.md — "the composition graph reaches every installed
+  contributor" — the behavior now promises it, no record states it.
