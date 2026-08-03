@@ -1,7 +1,7 @@
 # Task 484 — per-file smoke reuse: the churn experiment
 
 Priority: user-directed
-State: ACTIVE — dispatch AFTER #483 lands (same smoke-file surface)
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

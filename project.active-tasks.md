@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (16)
-- #484 [per-file-smoke-reuse-experiment](.invar/tasks/active/484-per-file-smoke-reuse-experiment/task-484-per-file-smoke-reuse-experiment.md)  [ACTIVE — dispatch AFTER #483 lands (same smoke-file surface)]
+## IN-PROGRESS (1)
+- #484 [per-file-smoke-reuse-experiment](.invar/tasks/in-progress/484-per-file-smoke-reuse-experiment/task-484-per-file-smoke-reuse-experiment.md)  [building]
+  `tmux attach -t invar/484-per-file-smoke-reuse-experiment`
+
+## USER-DIRECTED (15)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
