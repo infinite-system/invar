@@ -1085,6 +1085,11 @@ class $DriveScriptRunner {
               app: DriveSession.Model,
               driver: PtyTestDriver.Model,
             ) => Promise<void>;
+            // A MIRRORED server has a human watching, so every snippet
+            // starts at human pace BY DEFAULT — an agent cannot forget what
+            // it never has to remember. A snippet that genuinely wants
+            // machine speed opts out explicitly with app.humanPace(0).
+            if (options.mirror) active.session.humanPace();
             await snippet(active.session, active.driver);
             await active.session.flush();
             this.writeServerFile(responsePath, {

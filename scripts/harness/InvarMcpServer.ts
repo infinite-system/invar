@@ -28,7 +28,10 @@ class $InvarMcpServer {
       {
         description:
           'Run a DriveSession snippet against the live checkout server. ' +
-          'Actions use the existing real-PTY input verbs.',
+          'Actions use the existing real-PTY input verbs. On a MIRRORED ' +
+          'server (a human is watching) every snippet starts at human pace ' +
+          'automatically; call app.humanPace(0) only when machine speed is ' +
+          'deliberately wanted.',
         inputSchema: {
           snippet: z.string().min(1).describe('DriveSession snippet source'),
         },
