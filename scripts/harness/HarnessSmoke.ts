@@ -1,6 +1,7 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { Static } from 'ivue/extras';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { GraphClient } from './GraphClient';
 import type { HarnessRectangle, HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 import {
@@ -270,6 +271,18 @@ class $HarnessSmoke {
     if (hoveredSnapshot.rowText(targetRow).lastIndexOf('×') < 0) {
       throw new Error(`${visibleTitle} did not paint its close glyph`);
     }
+    const panelContentsCountBeforeClose =
+      expectedRemainingCount > 0
+        ? Number(
+            (
+              await GraphClient.Class.query(
+                statusPath,
+                'panelHost.orderedContents.length',
+                'settle',
+              )
+            ).value,
+          )
+        : null;
     driver.sendMouseWithoutFrameExpectation({
       kind: 'move',
       column: revealedCloseColumn,
@@ -310,9 +323,15 @@ class $HarnessSmoke {
         `${visibleTitle} closes without a confirmation dialog`,
       );
     } else {
-      await driver.awaitGridCondition(
-        `${visibleTitle} remains painted after one matching row closes`,
-        (candidate) => candidate.findText(visibleTitle) !== null,
+      if (panelContentsCountBeforeClose === null) {
+        throw new Error(
+          'The panel contents count was not measured before close',
+        );
+      }
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'panelHost.orderedContents.length',
+        panelContentsCountBeforeClose - 1,
       );
     }
   }

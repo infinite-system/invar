@@ -200,6 +200,27 @@ describe('PtyTestDriver.awaitGridCondition', () => {
     }
   });
 
+  test('refuses a pre-satisfied condition when the caller requires false now', async () => {
+    const driver = createRecordedStreamDriver(['ALREADY READY']);
+    try {
+      await driver.awaitScreenChange();
+      await expect(
+        driver.awaitGridCondition(
+          'the recorded grid changes to READY',
+          (candidateSnapshot) => candidateSnapshot.findText('READY') !== null,
+          100,
+          undefined,
+          true,
+        ),
+      ).rejects.toThrow(
+        'Cannot await grid condition already satisfied before the wait: ' +
+          'the recorded grid changes to READY',
+      );
+    } finally {
+      await driver.dispose();
+    }
+  });
+
   test('checks each completed recorded frame until the condition is satisfied', async () => {
     const driver = createRecordedStreamDriver([
       'FIRST',

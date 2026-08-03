@@ -201,6 +201,11 @@ class $Bootstrap {
       useKittyKeyboard: {},
       postProcessFns: pointerTrailEnabled ? [paintPointerTrail] : [],
     });
+    const requestRendererFrame = renderer.requestRender.bind(renderer);
+    renderer.requestRender = () => {
+      StatusChannel.Class.markRenderRequested();
+      requestRendererFrame();
+    };
     pointerTrailRenderer = renderer;
 
     // Ctrl+click routing guard. OpenTUI treats Ctrl+left-down as "extend the current native

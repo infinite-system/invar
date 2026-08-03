@@ -929,7 +929,11 @@ class $Drive {
           ),
         timeoutMilliseconds,
       );
-      await driver.awaitScreenChange(timeoutMilliseconds);
+      await this.awaitSettledObservation(
+        driver,
+        statusPath,
+        timeoutMilliseconds,
+      );
       return;
     }
     this.sendAction(driver, resolvedAction, columns, rows);

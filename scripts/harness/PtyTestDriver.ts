@@ -431,9 +431,16 @@ class $PtyTestDriver {
     predicate: (snapshot: HarnessSnapshot.Model) => boolean,
     timeoutMilliseconds = 30_000,
     diagnosticRegion?: Partial<HarnessGridRegion>,
+    mustBeFalseNow = false,
   ): Promise<HarnessSnapshot.Model> {
     const deadline = performance.now() + timeoutMilliseconds;
     await this.flushObservedOutput();
+    if (mustBeFalseNow && predicate(this.snapshot())) {
+      throw new Error(
+        `Cannot await grid condition already satisfied before the wait: ` +
+          predicateDescription,
+      );
+    }
     while (true) {
       const snapshot = this.snapshot();
       if (predicate(snapshot)) {
