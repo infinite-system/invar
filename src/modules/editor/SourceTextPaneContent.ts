@@ -141,7 +141,7 @@ class $SourceTextPaneContent
    *  effect tracks these same signals directly through the paint — but the seam promises an async
    *  producer can repaint through it, and this is that signal for source text. */
   protected readPaintRevision(): string {
-    const editor = this.deps.workspaceSet.active.editor;
+    const editor = this.deps.workspaceSet.activeEditor;
     return [
       editor.document.revision.value,
       editor.cursor.line.value,
@@ -205,7 +205,7 @@ class $SourceTextPaneContent
   /** Gutter width in cells for the current document: "NN " (line number + space) + 1 marker cell. */
   protected gutterWidth(): number {
     return (
-      String(this.deps.workspaceSet.active.editor.document.lineCount).length +
+      String(this.deps.workspaceSet.activeEditor.document.lineCount).length +
       1 +
       2
     );
@@ -215,9 +215,10 @@ class $SourceTextPaneContent
    *  ladder — the same one that ranks a modal overlay over the right dock over the bottom panel.
    *  invariant: The caret renders at the cursor display column (src/modules/ui/ui.invariants.md) */
   caretAnchor(): { column: number; row: number } | null {
-    const editor = this.deps.workspaceSet.active.editor;
+    const workspace = this.deps.workspaceSet.active;
+    const editor = workspace.editor;
     if (!editor.hasDocument.value) return null;
-    if (this.deps.workspaceSet.active.activeFileIsImage) return null;
+    if (workspace.activeFileIsImage) return null;
     const position = this.controller.visualPosition(
       editor.cursor.line.value,
       editor.cursor.col.value,
@@ -246,11 +247,11 @@ class $SourceTextPaneContent
   // --- the shared copy surface --------------------------------------------
 
   hasSelection(): boolean {
-    return this.deps.workspaceSet.active.editor.hasSelection;
+    return this.deps.workspaceSet.activeEditor.hasSelection;
   }
 
   copySelection(): Promise<number> {
-    return this.deps.workspaceSet.active.editor.copySelection();
+    return this.deps.workspaceSet.activeEditor.copySelection();
   }
 
   // --- host callbacks ------------------------------------------------------

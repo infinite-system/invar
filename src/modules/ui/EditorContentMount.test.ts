@@ -14,6 +14,9 @@ test('the default editor supplies its document path to the editor-area shell', (
           document: { path: '/project/source.ts' },
         },
       },
+      get activeEditor() {
+        return this.active.editor;
+      },
     },
   } as ConstructorParameters<typeof EditorContentMount.$Class>[0]);
 

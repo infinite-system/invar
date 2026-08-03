@@ -35,7 +35,7 @@ class $EditorContentMount {
    *  occupant; contributed occupants answer through the same content contract. */
   get displayedPath(): string | null {
     if (this.surface) return this.surface.displayedPath;
-    const editor = this.deps.workspaceSet.active.editor;
+    const editor = this.deps.workspaceSet.activeEditor;
     return editor.hasDocument.value && editor.document.path
       ? editor.document.path
       : null;

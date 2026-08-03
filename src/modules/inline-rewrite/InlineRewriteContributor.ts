@@ -58,7 +58,7 @@ class $InlineRewriteContributor
         category: this.name,
         run: () => {
           context.dismissEditorSuggestions();
-          this.activeWorkspace()?.request(context.workspaceSet.active.editor);
+          this.activeWorkspace()?.request(context.workspaceSet.activeEditor);
         },
       },
       {
@@ -66,28 +66,28 @@ class $InlineRewriteContributor
         title: 'Inline Rewrite: Accept',
         category: this.name,
         run: () =>
-          this.activeWorkspace()?.accept(context.workspaceSet.active.editor),
+          this.activeWorkspace()?.accept(context.workspaceSet.activeEditor),
       },
       {
         id: 'inlineRewrite.reject',
         title: 'Inline Rewrite: Reject',
         category: this.name,
         run: () =>
-          this.activeWorkspace()?.reject(context.workspaceSet.active.editor),
+          this.activeWorkspace()?.reject(context.workspaceSet.activeEditor),
       },
       {
         id: 'inlineRewrite.next',
         title: 'Inline Rewrite: Next Candidate',
         category: this.name,
         run: () =>
-          this.activeWorkspace()?.cycle(context.workspaceSet.active.editor, 1),
+          this.activeWorkspace()?.cycle(context.workspaceSet.activeEditor, 1),
       },
       {
         id: 'inlineRewrite.previous',
         title: 'Inline Rewrite: Previous Candidate',
         category: this.name,
         run: () =>
-          this.activeWorkspace()?.cycle(context.workspaceSet.active.editor, -1),
+          this.activeWorkspace()?.cycle(context.workspaceSet.activeEditor, -1),
       },
     ]);
     this.disposeStatusProjection =
@@ -152,7 +152,7 @@ class $InlineRewriteContributor
     if (!context) return null;
     return (
       this.activeWorkspace()?.controllerFor(
-        context.workspaceSet.active.editor,
+        context.workspaceSet.activeEditor,
       ) ?? null
     );
   }

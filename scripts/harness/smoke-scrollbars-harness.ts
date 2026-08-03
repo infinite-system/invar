@@ -608,7 +608,7 @@ async function proveContinuousScrollbarThumbDrag(
     driver.sendKeys('Control+Home');
     await GraphClient.Class.awaitValue(
       statusPath,
-      'workspaceSet.active.editor.viewport.scrollTop',
+      'workspaceSet.activeEditor.viewport.scrollTop',
       0,
     );
     const horizontalPositions = await dragScrollbarThumb(

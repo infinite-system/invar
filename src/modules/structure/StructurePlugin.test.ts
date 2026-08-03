@@ -65,6 +65,9 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
       workspaceSet: {
         active: workspace,
         activeWorkspaceIndex: ref(0),
+        get activeDocument() {
+          return workspace.activeDocumentHandle?.document ?? null;
+        },
       },
       rightDockHost,
       settings: {

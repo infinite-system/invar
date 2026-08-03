@@ -92,6 +92,9 @@ function createWorkspaceSet(overrides: {
         copySelection: async () => copiedCharacterCount,
       },
     },
+    get activeEditor() {
+      return this.active.editor;
+    },
   };
   return { workspaceSet, focusEditorCalls, copiedCharacterCount };
 }

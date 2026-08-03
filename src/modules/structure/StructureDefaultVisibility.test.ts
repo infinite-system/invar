@@ -55,7 +55,13 @@ function makeFixture(options: { showByDefault?: boolean } = {}) {
   const showByDefault = ref(options.showByDefault ?? true);
   const policy = new StructureDefaultVisibility.Class({
     dockContent,
-    workspaceSet: { active: workspace, activeWorkspaceIndex: ref(0) },
+    workspaceSet: {
+      active: workspace,
+      activeWorkspaceIndex: ref(0),
+      get activeDocument() {
+        return activeDocumentHandle.document;
+      },
+    },
     showByDefault: () => showByDefault.value,
     requestRender: () => {},
   });

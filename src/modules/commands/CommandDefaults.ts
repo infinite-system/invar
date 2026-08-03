@@ -11,9 +11,8 @@ class $CommandDefaults {
     registry: CommandRegistry.Instance,
     context: CommandContext,
   ): void {
-    const getEditor = () => context.workspaceSet.active.editor;
-    const hasDocument = () =>
-      context.workspaceSet.active.editor.hasDocument.value;
+    const getEditor = () => context.workspaceSet.activeEditor;
+    const hasDocument = () => getEditor().hasDocument.value;
 
     registry.registerAll([
       {
