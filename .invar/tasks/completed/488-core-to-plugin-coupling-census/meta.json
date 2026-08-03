@@ -1,0 +1,18 @@
+{
+  "task": 488,
+  "slug": "core-to-plugin-coupling-census",
+  "branch": "fleet/488-core-to-plugin-coupling-census",
+  "worktree": ".invar/worktrees/488-core-to-plugin-coupling-census",
+  "tmuxSession": "invar/488-core-to-plugin-coupling-census",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-488-core-to-plugin-coupling-census.md",
+  "engine": "claude",
+  "environment": "any",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "b5afc1072cc955ad8bed551142db224ef1e7648f",
+  "startedAt": "2026-08-03T12:04:57-04:00",
+  "landedAt": "2026-08-03T12:23:44-04:00",
+  "durationMinutes": 18,
+  "mergeCommit": "c9cafd4f"
+}

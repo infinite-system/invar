@@ -871,6 +871,56 @@ try {
   HarnessSmoke.Class.pass('shell output completed the nested PTY round trip');
 
   console.log(
+    '== harness terminal: idle terminal reads do not exhaust the shared worker pool ==',
+  );
+  let newestTerminalStatus = openedStatus;
+  for (let terminalNumber = 2; terminalNumber <= 6; terminalNumber += 1) {
+    HarnessSmoke.Class.clickText(driver, driver.snapshot(), '+ Plugin');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `terminal ${terminalNumber} Add popup opens from the visible panel control`,
+      (status) =>
+        status.boundedListPopupOpen === true &&
+        Array.isArray(status.boundedListPopupItemIdentifiers) &&
+        JSON.stringify(status.boundedListPopupItemIdentifiers) ===
+          JSON.stringify(['terminal', 'database']),
+    );
+    driver.sendKeys('Enter');
+    newestTerminalStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `terminal ${terminalNumber} becomes the active panel content`,
+      (status) =>
+        status.boundedListPopupOpen === false &&
+        Array.isArray(status.panelContentKinds) &&
+        status.panelContentKinds.filter((kind) => kind === 'terminal')
+          .length === terminalNumber &&
+        status.panelActiveContentKind === 'terminal' &&
+        status.panelActiveContentLabel === `Terminal ${terminalNumber}`,
+    );
+    const terminalPanelRectangle = bottomPanelSlot(newestTerminalStatus);
+    await driver.awaitGridCondition(
+      `idle terminal ${terminalNumber} paints its prompt without another terminal producing output`,
+      (candidate) =>
+        terminalBodyText(candidate, terminalPanelRectangle).includes('$'),
+    );
+  }
+  const newestTerminalPanelRectangle = bottomPanelSlot(newestTerminalStatus);
+  driver.sendText("printf '\\114\\111\\126\\105\\055\\066\\n'");
+  driver.sendKeys('Enter');
+  await driver.awaitGridCondition(
+    'terminal 6 reads its own command result without another input advancing the shared read queue',
+    (candidate) =>
+      terminalBodyText(candidate, newestTerminalPanelRectangle).includes(
+        'LIVE-6',
+      ),
+  );
+  HarnessSmoke.Class.pass(
+    'six idle terminal read paths remain live in the default process worker pool',
+  );
+
+  console.log(
     '== harness terminal: divider drag resizes the nested child PTY ==',
   );
   const splitterRegions = openedStatus.splitterRegions as

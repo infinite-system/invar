@@ -8,7 +8,8 @@
 // invariant: Shared PTY writes never block the event loop (src/modules/terminal/terminal.invariants.md)
 import { Static } from 'ivue/extras';
 import { dlopen, FFIType, ptr, read } from 'bun:ffi';
-import { closeSync, createReadStream, type ReadStream } from 'node:fs';
+import { closeSync } from 'node:fs';
+import { ReadStream as TtyReadStream } from 'node:tty';
 
 class $OpenPty {
   protected static get TERMINAL_WINDOW_SIZE_REQUEST(): bigint {
@@ -95,8 +96,8 @@ class $OpenPty {
   protected readonly masterFileDescriptor: number;
   protected slaveFileDescriptorValue: number;
   protected fileStatusFlagsWithoutNonBlocking = 0;
-  protected readStream: ReadStream | null = null;
-  protected readStreamRestartTimer: ReturnType<typeof setTimeout> | null = null;
+  protected masterReadStream: TtyReadStream | null = null;
+  protected masterReadRestartTimer: ReturnType<typeof setTimeout> | null = null;
   protected dataCallbackRegistered = false;
   protected readonly writeQueue: QueuedPtyWrite[] = [];
   protected writeDrainTimer: ReturnType<typeof setTimeout> | null = null;
@@ -145,33 +146,35 @@ class $OpenPty {
     this.startMasterRead(callback);
   }
 
-  /** Give the read stream a duplicate, never the master. The stream closes the descriptor it holds
-   *  when it is destroyed or reaches end-of-file, and it does that close from an I/O thread rather
-   *  than from the turn that called `destroy()` — `autoClose: false` does not prevent it (measured
-   *  on Bun 1.3.14, Linux arm64). Handing it the master gave the master two closers: the stream and
-   *  `close()`. Whichever ran first freed the number, and the other one then closed whatever the
-   *  process had allocated in the gap — a pty a second `OpenPty` had just opened, a file, a socket.
+  /** Give the read stream a duplicate, never the master. Handing it the master gave the master two
+   *  closers: the stream consumer and `close()`. Whichever ran first freed the number. The other one
+   *  then closed whatever the process had allocated in the gap — a pty a second `OpenPty` had just
+   *  opened, a file, or a socket.
    *  The victim saw `EBADF` from a descriptor that had been valid one statement earlier, because the
    *  thief was not JavaScript. A private duplicate gives every descriptor exactly one closer. The
-   *  duplicate shares the master's open file, so the status flags this class steers still govern it. */
+   *  duplicate shares the master's open file. The TTY stream owns a libuv readiness handle, so it
+   *  does not occupy one process-wide file worker while the blocking PTY is idle. */
   protected startMasterRead(callback: (bytes: Uint8Array) => void): void {
     if (this.closed) return;
-    const readStream = createReadStream('', {
-      fd: this.duplicateMasterFileDescriptor(),
-      autoClose: true,
+    const masterReadFileDescriptor = this.duplicateMasterFileDescriptor();
+    const masterReadStream = new TtyReadStream(masterReadFileDescriptor, {
+      readable: true,
+      writable: false,
     });
     let restartAfterClose = true;
-    this.readStream = readStream;
-    readStream.on('data', (chunk: Buffer) => callback(new Uint8Array(chunk)));
-    readStream.on('error', (error: NodeJS.ErrnoException) => {
-      if (this.readStream === readStream) this.readStream = null;
+    this.masterReadStream = masterReadStream;
+    masterReadStream.on('data', (chunk: Buffer) =>
+      callback(new Uint8Array(chunk)),
+    );
+    masterReadStream.on('error', (error: NodeJS.ErrnoException) => {
+      if (this.masterReadStream === masterReadStream) {
+        this.masterReadStream = null;
+      }
       if (this.closed || error.code === 'EIO') {
         restartAfterClose = false;
         return;
       }
       if (error.code === 'EAGAIN' || error.code === 'EWOULDBLOCK') {
-        this.establishBlockingReadState();
-        this.scheduleMasterReadRestart(callback);
         return;
       }
       restartAfterClose = false;
@@ -179,12 +182,11 @@ class $OpenPty {
         throw error;
       }, 0);
     });
-    readStream.on('close', () => {
-      if (this.readStream === readStream) {
-        this.readStream = null;
+    masterReadStream.on('close', () => {
+      if (this.masterReadStream === masterReadStream) {
+        this.masterReadStream = null;
       }
       if (restartAfterClose && !this.closed) {
-        this.establishBlockingReadState();
         this.scheduleMasterReadRestart(callback);
       }
     });
@@ -206,9 +208,9 @@ class $OpenPty {
   protected scheduleMasterReadRestart(
     callback: (bytes: Uint8Array) => void,
   ): void {
-    if (this.closed || this.readStreamRestartTimer) return;
-    this.readStreamRestartTimer = setTimeout(() => {
-      this.readStreamRestartTimer = null;
+    if (this.closed || this.masterReadRestartTimer) return;
+    this.masterReadRestartTimer = setTimeout(() => {
+      this.masterReadRestartTimer = null;
       this.startMasterRead(callback);
     }, 0);
   }
@@ -471,16 +473,16 @@ class $OpenPty {
     if (this.writeDrainTimer) clearTimeout(this.writeDrainTimer);
     this.writeDrainTimer = null;
     this.writeQueue.length = 0;
-    if (this.readStreamRestartTimer) {
-      clearTimeout(this.readStreamRestartTimer);
+    if (this.masterReadRestartTimer) {
+      clearTimeout(this.masterReadRestartTimer);
     }
-    this.readStreamRestartTimer = null;
+    this.masterReadRestartTimer = null;
     try {
-      this.readStream?.destroy();
+      this.masterReadStream?.destroy();
     } catch {
       // The stream is already gone.
     }
-    this.readStream = null;
+    this.masterReadStream = null;
     this.releaseSlaveFileDescriptor();
     // The master has exactly one closer, so this must succeed. Swallowing its failure is what let
     // the double close live: the losing close returned EBADF and nobody heard it, while the winning
