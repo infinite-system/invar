@@ -43,6 +43,15 @@ bun scripts/harness/DriveSession.ts --stop             # done: kill your server
 - Mirror, trail, and humanPace exist for HUMAN-WATCHED sessions only — skip
   them headless; they cost time and change nothing you can assert.
 
+**You are part of this instrument's feedback loop.** If your brief carries
+an `## Instrument feedback` (or `## PTY usability`) section, answer it in
+your report: EASY / CONFUSING / MISSING. A verb you wanted and did not find
+is an ASK — name it, then do the work with the primitives (never hand-roll a
+parallel layer; that path was tried and vetoed). Asks get converted by the
+conductor at landing, so what you name today the next builder holds
+tomorrow. Nine builders shaped this skill's current surface that way in its
+first two nights.
+
 Two instruments, one contract. INPUT always travels through the real PTY as
 bytes a real terminal could produce — the founding harness invariant; there
 is no teleport path and none may be added. OBSERVATION has two eyes: the
@@ -104,11 +113,15 @@ bun scripts/harness/DriveSession.ts --stop
 
 Attaches run against the SAME live session (~100ms each vs ~400ms cold, and
 navigated state persists — the real win: never re-drive to where you were).
-Rendezvous dir `/tmp/invar-drive-server` (`--server-dir` to change): manifest
-with pid (dead-pid detected), request/response files, `server.log`. A failed
-snippet answers loudly, abandons its queued steps, and the server keeps
-serving. Stale requests from a previous session never replay. One attach at a
-time. Kill orphans by /proc env evidence, never by name-pattern.
+Rendezvous dir: KEYED TO YOUR CHECKOUT by default —
+`/tmp/invar-drive-server-<slug-of-git-toplevel>` — so an agent in a worktree
+gets its own server and its attaches find it; two agents can only share a
+server by BOTH passing the same explicit `--server-dir`, never by accident.
+Inside it: manifest with pid (dead-pid detected), request/response files,
+`server.log`. A failed snippet answers loudly, abandons its queued steps,
+and the server keeps serving. Stale requests from a previous session never
+replay. One attach at a time per server. Kill orphans by /proc env evidence,
+never by name-pattern.
 
 ## The MCP doorway — Claude controls the same warm server
 

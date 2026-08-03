@@ -1,3 +1,22 @@
+# RESUME ANCHOR 51 — 2026-08-03 ~08:20 EDT — #482 IN FLIGHT; USER PRESENT
+
+Delta over 50c: the user's Ctrl+C observation ("claude flinches") pointed at
+composer-vs-transcript focus; #482 filed and DISPATCHED (codex, worktree
+482-agent-pane-copy-fails-with-composer-focus) driving the exact sequence
+with BOTH focus arms + clipboardEmissions() + child-interrupt observation.
+ON READY: convert bycatch, merge main forward, gate (log to a fresh
+/tmp/gate-482.log, death-reporting monitor), land via land.sh with
+GATE_LOG + BYCATCH_TRIAGED=1.
+
+User is PRESENT, happy with the loop (their words: confident agents will do
+the job and we stay on the same page via mirror or conductor-driving).
+No experiments. Everything else per anchors 49-50: twelve landings, fleet
+otherwise zero, morning items: #464 retire call; #460-#463 hygiene backlog
+awaiting the user's word; 7 historical worktrees (194-439) await a
+user-authorized sweep.
+
+---
+
 # RESUME ANCHOR 50c — 2026-08-03 ~08:15 EDT — COPY: TRANSPORT PROVEN INNOCENT
 
 Delta over 50b: the user ran the raw OSC 52 printf — IT PASTES. Transport is
