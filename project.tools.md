@@ -307,6 +307,26 @@ USE IT WHEN: changing the LSP spawn registry, process sampler, or Monitoring LSP
 KNOWN RESULT (2026-07-31): tsgo read `0%` while idle at both sizes. The same edit raised the measured
 peak to `0.87%` at 10 lines and `0.28%` at 10,000 lines. Both runs kept one ordered live row.
 
+### `bun scripts/ast-query.ts imports-of <target>`
+Answers "who imports from module X?" — every import and `export … from` whose specifier lands in
+the target. The target is a repo-relative folder prefix (`src/modules/git`) for relative imports,
+or a bare package name (`vue`) for package imports. Result shape: `file:line  import '<specifier>'
+-> <target> (type-only|value)` plus a count. `bun scripts/ast-query.ts self-test` proves both arms
+(fires on a planted import, silent on the vue-package/vue-folder confusion).
+USE IT WHEN: measuring coupling into a module, or hunting who still depends on a seam.
+GOTCHA: it does not exclude the target module's own internal imports — filter the output by file
+prefix when you want only OUTSIDE consumers (the #488 core-to-plugin census is that filter, frozen).
+
+### `bun scripts/ast-query.ts literals <term[,term,…]>`
+Answers "which string literals match this vocabulary list?" — exact matches over `'…'` and
+no-substitution `` `…` `` literals, with import/export specifiers excluded so a term that is also a
+module path never misfires on its import line. Result shape: `file:line  '<literal>'` plus a
+count. Covered by the same `self-test` (fires on a planted term, silent on absent terms and on
+specifiers).
+USE IT WHEN: censusing who names a command id, pane kind, or label outside its owning module.
+GOTCHA: exact match only — a term embedded in a longer string or built by concatenation is
+invisible; harvest the full id list first (the #488 vocabulary census shows the harvest shape).
+
 ### `bun scripts/check-reactive-observation.ts`
 AST census of live `Ref` reads, `shallowRef` payload reads, `Reactive()` classes and version-signalled
 plain fields, plus three report-only categories for construction-captured or module-scope reactive

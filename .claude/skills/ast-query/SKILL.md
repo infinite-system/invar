@@ -27,6 +27,9 @@ bun scripts/ast-query.ts identifiers <name>   # every occurrence, declarations +
 bun scripts/ast-query.ts classes              # all class declarations
 bun scripts/ast-query.ts module-functions     # module-level function declarations (grammar debt)
 bun scripts/ast-query.ts private-members      # `private` + #private (grammar debt)
+bun scripts/ast-query.ts imports-of <target>  # who imports from a module folder or package
+bun scripts/ast-query.ts literals <a,b,…>     # string literals matching a vocabulary list
+bun scripts/ast-query.ts self-test            # both-arms proof of the parameterized modes
 ```
 Flags: `--tests` include test files; `--path <root>` search another tree (default `src/modules`).
 Output is `file:line  label` plus a count — pipe-friendly.

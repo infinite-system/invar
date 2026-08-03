@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: medium
-State: ACTIVE
+State: IN-PROGRESS
 
 ## In plain words
 
