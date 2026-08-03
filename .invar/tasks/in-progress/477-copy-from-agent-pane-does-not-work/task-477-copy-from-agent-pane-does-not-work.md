@@ -1,11 +1,11 @@
 # Task 477 — copying agent output from the agent pane does not work
 
 Priority: user-directed
-State: ACTIVE
-Engine: any
+State: IN-PROGRESS
+Engine: codex
 Environment: any
-Model: any
-Effort: medium
+Model: 5.6-sol
+Effort: high
 
 ## Evidence (user, live, 2026-08-03)
 

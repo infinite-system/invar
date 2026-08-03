@@ -1,0 +1,15 @@
+{
+  "task": 477,
+  "slug": "copy-from-agent-pane-does-not-work",
+  "branch": "fleet/477-copy-from-agent-pane-does-not-work",
+  "worktree": ".invar/worktrees/477-copy-from-agent-pane-does-not-work",
+  "tmuxSession": "invar/477-copy-from-agent-pane-does-not-work",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-477-copy-from-agent-pane-does-not-work.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e5ee00912561e8f7832c16cf4416c2b52a2ab789",
+  "startedAt": "2026-08-03T03:39:26-04:00"
+}
