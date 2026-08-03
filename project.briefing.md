@@ -6,7 +6,38 @@ The user is PRESENT and directing. Crons stay DISARMED (standing order).
 fleet-watch Monitor is the only watcher; re-arm with
 `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
 
-## THE NEXT ACTION: a census report is IN FLIGHT — wait for it, then report.
+## THE NEXT ACTION: the user owes a DECISION. Do not fix anything until they answer.
+
+Census batch 1 IS DELIVERED — `tmp/harness-wait-census.md` (43 of 77 files).
+Batch 2 (the 34 deferred files, contention tier first) is in flight and
+APPENDS to that same file. The user's exact words were "give me a report
+before we do the fixes", and the report has been given; they were then asked
+which fixes they want and in what order, and have NOT answered. Wait.
+
+### THE BIGGEST FINDING — carry this even if everything else is lost
+`renderQuiescent` is initialized false at StatusChannel.ts:33, set true at
+StatusChannel.ts:97, and NEVER SET BACK TO FALSE ANYWHERE. Verified directly.
+So after the first completed frame it is permanently true, and every `settle`
+wait and every `renderQuiescent === true` check is pre-satisfied for the life
+of the process. `scripts/tui-harness.sh`'s `settle` is therefore a no-op, and
+the ~258 sleeps in the shell suite are the SYMPTOM of people papering over a
+primitive that never worked. Also reaches perf-baselines.sh:100,
+smoke-activitybar-harness.ts:260, smoke-tree-scroll-harness.ts:95/151/375,
+Drive.ts:703.
+
+Recommended order given to the user (awaiting their ruling):
+1. Fix renderQuiescent (reset to false when a frame is requested).
+2. PtyTestDriver.ts:412-439 — add the pre-satisfaction guard its own sibling
+   already has at :277-282. The only fix that stops class 1 recurring.
+3. HarnessSmoke.ts:313-316 — the surviving half of #464, in a SHARED helper
+   on the contention tier.
+4. Finish/act on the census; 5. the individual class-1 sites.
+
+Census counts, batch 1: class 1 pre-satisfied 53 · class 2 proxy 22 · class 3
+sleep-as-sync ~258 (needs triage, not 258 defects) · class 4 stale needle 2 ·
+class 5 blink 13.
+
+## (superseded) the census brief, kept only to re-run if the file is lost
 
 A background subagent is auditing every `scripts/harness/smoke-*.ts` for
 flake-prone waits. The user asked, verbatim: "scout the app harness
@@ -65,17 +96,17 @@ file:line) or "no model path". Then counts per class and the top 5 fixes.
 
 ## Open threads, honestly stated
 
-- **A drag flake, NOT diagnosed.** In one contention round: "88-column a drag
-  begun on the last cell of the drag span still resizes the panel" timed out.
-  It appeared once in 12 runs of the parked-condition build and never in the
-  12 runs before it. It is a DIFFERENT scenario from anything changed today
-  and there is no parked condition live during it, so causation by today's
-  work is unlikely but NOT ruled out from one observation. Do not assert
-  either way without a repro.
-- **The gate has not been run** on any of today's commits (all landed with
-  SKIP_GATE=1 after hand-running: full unit suite, conventions, invariant
-  checker --all/--refs, and the panel-chrome smoke). A real merge-gate run is
-  owed.
+- **The drag flake is DIAGNOSED** (was open earlier in this anchor). The named
+  wait at smoke-panel-chrome-harness.ts:740-745 is INNOCENT — its predicate is
+  genuinely false at issue. The defect is the PRECONDITION at :712-717, class
+  1: it waits for `─` on the splitter row and the splitter always paints `─`,
+  so it returns the pre-relayout frame; splitterMarkRun then reads a stale
+  edgeColumn, the press misses the new grab band, and the later wait times
+  out. Today's work is exonerated. NOT YET FIXED — it is in the gated set.
+- **The gate is GREEN.** `/tmp/gate-469-final.log` — `GATE_EXIT=0`, ALL-PASS,
+  zero FAIL lines, on the tree at 72cf4613. `OK contention: panel-chrome
+  harness` in 20.1s: independent confirmation that the #464 gate red is gone.
+  Verification debt from the SKIP_GATE=1 landings is CLEARED.
 - #451 READY at a80c75c0, never gated. #460-#464 filed from bycatch. The
   #466 `--gesture`/panel-role layer in Drive.ts should be DELETED (superseded
   by DriveSession; the user rejected that direction).
