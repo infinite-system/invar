@@ -19,13 +19,13 @@ edits cannot touch the source. Directory input drives that workspace in place.
 bun run drive --size 100000 --key End --wheel down --click 60,20
 ```
 
-`--key`, `--wheel`, and `--click` are repeatable. Two conveniences fold the
-common sighting boilerplate into single flags:
+`--key`, `--wheel`, and `--click` are repeatable. Attach a status or text wait
+to the input that causes it. Compose longer drives from `DriveSession`'s
+primitive keys, text, coordinates, and published-state waits. Neither front
+door defines app-specific gestures.
 
-- `--gesture NAME` runs a named user gesture with its condition wait built in.
-  Known gestures: `openPanel` (Ctrl+j, waits for `panelVisible=true`) and
-  `closePanel` (waits for `panelVisible=false`). Add gestures to
-  `gestureActions` in `Drive.ts` as the vocabulary grows.
+Useful observation flags are:
+
 - `--cells ROW,C1-C2` (repeatable) prints characters plus bg/fg colors for a
   cell range with every observation — the color evidence a text grid hides.
 - `--home DIR` uses a persistent home directory and keeps it after the run.
@@ -43,7 +43,8 @@ bun run drive --open ~/dev/realized --home /tmp/drive-home \
 Color-dump example:
 
 ```sh
-bun run drive --geometry 120x40 --gesture openPanel \
+bun run drive --geometry 120x40 \
+  --key Control+j --wait-for-status 'panelVisible=true' \
   --cells 22,33-44 --cells 23,100-119
 ```
 

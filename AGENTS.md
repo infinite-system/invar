@@ -25,13 +25,11 @@ skipping those is the exact failure two resurrection drills caught.**
 Your inner loop is **driving the real app in your own PTY** (`scripts/harness/PtyTestDriver.ts`
 + FrameProbe) and LOOKING at what it does. Seconds per turn. No gate, no suite. Start with
 [`bun run drive`](scripts/harness/drive.md) for a settled grid, published probes, scale fixtures,
-and repeatable key, wheel, or click input — plus `--gesture` verbs (named user actions with
-their condition waits built in) and `--cells ROW,C1-C2` per-cell color dumps. Most sightings
-are ONE drive command; write a probe .ts only for logic a flag chain cannot express. New
-gestures land in BOTH layers: the gesture's mechanics (travel, hover, waits) go into the
-shared driver layer (`PtyTestDriver`/harness helpers) so smokes drive the identical gesture,
-and `Drive.ts`'s table entry is only the CLI binding to that helper. A gesture inlined in the
-CLI table alone re-forks the definition of "what the user does".
+and repeatable key, wheel, or click input, condition flags, and `--cells ROW,C1-C2` per-cell
+color dumps. Most sightings are ONE drive command; use primitive `DriveSession` chains when
+the flag sequence cannot express the drive. Keep both front doors primitive: coordinates,
+visible text, keys, and published state. App-specific gesture verbs encode the app into its
+instrument and are forbidden.
 
 1. **REPRODUCE BY DRIVING FIRST.** Write no assertion yet. If you cannot see the problem, you
    cannot fix it. If you truly cannot see it, say so and report what you tried.
