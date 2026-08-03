@@ -1,7 +1,7 @@
 # Task 474 — dispose order emits renderable-removal warnings
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol

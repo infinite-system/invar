@@ -6,11 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
 - #479 [migrate-the-census-tail](.invar/tasks/in-progress/479-migrate-the-census-tail/task-479-migrate-the-census-tail.md)  [building]
   `tmux attach -t invar/479-migrate-the-census-tail`
 - #475 [quick-open-leaves-focus-behind](.invar/tasks/in-progress/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md)  [building]
   `tmux attach -t invar/475-quick-open-leaves-focus-behind`
+- #474 [dispose-order-renderable-warnings](.invar/tasks/in-progress/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md)  [building]
+  `tmux attach -t invar/474-dispose-order-renderable-warnings`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -109,8 +111,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (39)
-- #474 [dispose-order-renderable-warnings](.invar/tasks/active/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md)
+## ARCHITECTURE-HYGIENE (38)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
