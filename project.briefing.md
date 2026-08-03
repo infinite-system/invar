@@ -1,3 +1,16 @@
+# RESUME ANCHOR 50b — 2026-08-03 ~08:00 EDT — LIVE COPY INVESTIGATION OPEN
+
+Delta over anchor 50: the user reports agent-pane copy STILL fails in cmux.
+The decisive differential is pending THEIR answer: a raw OSC 52 printf test
+(bypasses Invar entirely). If it pastes -> the chord/selection never reaches
+the app (ask: is Invar's selection highlight live at chord time? which
+chord?). If it does not paste -> cmux/ghostty clipboard-write policy
+(ghostty config `clipboard-write = allow`), nothing Invar can fix.
+App-side is PROVEN (#477: five chord forms emit OSC 52 with selection).
+Do not re-litigate the app side; wait for the user's branch answer.
+
+---
+
 # RESUME ANCHOR 50 — 2026-08-03 ~06:25 EDT — TWELVE LANDINGS; FLEET AT ZERO
 
 Delta over anchor 49: #451 landed (367e4458) after a day idle — the fleet is
