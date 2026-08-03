@@ -26,6 +26,7 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
   readonly name = 'Animated Media';
   readonly kind = 'media';
   readonly instanceLabel = '3D Demo';
+  readonly panelSpace = { kind: 'media', label: 'Media' } as const;
   readonly offeredInPanelAddMenu = true;
   protected application: ApplicationContributionContext | null = null;
   protected hostPort: PaneRuntimeHostPort | null = null;

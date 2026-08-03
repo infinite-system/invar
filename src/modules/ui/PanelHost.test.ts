@@ -10,6 +10,9 @@ import type { StyledText, KeyEvent } from '@opentui/core';
 function fakeContent(
   id: string,
   kind = id,
+  panelSpace = kind === 'database'
+    ? { kind: 'database', label: 'Database' }
+    : { kind: 'terminal', label: 'Terminal' },
 ): PaneContent & {
   keys: KeyEvent[];
   focused: boolean;
@@ -20,6 +23,7 @@ function fakeContent(
   return {
     id,
     kind,
+    panelSpace,
     instanceLabel: id,
     title: id,
     renderRevision: revision,
@@ -46,6 +50,31 @@ function fakeContent(
     },
   };
 }
+
+test('a third pane kind uses its declared space and label', () => {
+  const host = new PanelHost.Class();
+  const output = fakeContent('output', 'output', {
+    kind: 'output',
+    label: 'Output',
+  });
+
+  host.register(output);
+
+  expect(host.spaces.value).toMatchObject([
+    { kind: 'output', label: 'Output', contentIds: ['output'] },
+  ]);
+  expect(host.spaceKindForPaneKind('output')).toBe('output');
+  expect(host.spaceLabel('output')).toBe('Output');
+});
+
+test('one pane kind cannot declare two different spaces', () => {
+  const host = new PanelHost.Class();
+  host.registerPaneKind('output', { kind: 'output', label: 'Output' });
+
+  expect(() =>
+    host.registerPaneKind('output', { kind: 'logs', label: 'Logs' }),
+  ).toThrow('Panel pane kind has conflicting space declarations: output');
+});
 
 test('the first registered content becomes active', () => {
   const host = new PanelHost.Class();

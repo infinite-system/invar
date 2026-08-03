@@ -1280,7 +1280,11 @@ class $Bootstrap {
       restoringPanelWorkspaceState = true;
       try {
         panelHost.restoreWorkspaceState(
-          PanelWorkspaceState.Class.restore(state, (pane) => restorePane(pane)),
+          PanelWorkspaceState.Class.restore(
+            state,
+            (pane) => restorePane(pane),
+            (kind) => panelHost.spaceKindForPaneKind(kind),
+          ),
         );
       } finally {
         restoringPanelWorkspaceState = false;
@@ -1314,7 +1318,18 @@ class $Bootstrap {
           if (content) panelHost.register(content);
         },
         notice: (request) => {
-          panelHost.register(new TaskNoticePaneContent.Class(request));
+          const activeSpace = panelHost.activeSpace;
+          panelHost.register(
+            new TaskNoticePaneContent.Class(
+              request,
+              activeSpace
+                ? {
+                    kind: activeSpace.kind,
+                    label: panelHost.spaceLabel(activeSpace.kind),
+                  }
+                : undefined,
+            ),
+          );
         },
         // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
         present: (identifiers, transferFocus) => {

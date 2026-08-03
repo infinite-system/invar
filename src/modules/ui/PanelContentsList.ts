@@ -27,9 +27,8 @@ class $PanelContentsList {
   ) {}
 
   protected get headerLabel(): string {
-    return this.panelHost.activeSpace?.kind === 'database'
-      ? 'Database'
-      : 'Terminal';
+    const activeSpace = this.panelHost.activeSpace;
+    return activeSpace ? this.panelHost.spaceLabel(activeSpace.kind) : 'Panel';
   }
 
   get visible(): boolean {

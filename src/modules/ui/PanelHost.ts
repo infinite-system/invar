@@ -20,7 +20,7 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import type { KeyEvent } from '@opentui/core';
-import type { PaneContent } from './PaneContent.interface';
+import type { PaneContent, PaneContentSpace } from './PaneContent.interface';
 import type { PanelHostFocusSet } from './PanelHostFocusSet';
 
 // invariant: One panel host owns keyboard focus (src/modules/ui/ui.invariants.md)
@@ -30,6 +30,7 @@ class $PanelHost {
   }
   protected readonly unregisterFromFocusSet: () => void;
   protected readonly contentSets = new Set<PanelContentSet>();
+  protected readonly spacesByPaneKind = new Map<string, PaneContentSpace>();
   protected readonly initialContentOrder: string[];
   protected nextPanelGroupNumber = 1;
   protected selectedContentSet: PanelContentSet;
@@ -414,32 +415,46 @@ class $PanelHost {
     );
   }
   protected contentSpaceKind(content: PaneContent): string {
-    return (content.kind ?? content.id) === 'database'
-      ? 'database'
-      : 'terminal';
+    return this.spaceForPaneKind(content.kind ?? content.id).kind;
   }
   protected nextSpaceLabel(kind: string): string {
-    const baseLabel = kind === 'database' ? 'Database' : 'Terminal';
+    const baseLabel = this.spaceLabel(kind);
     const count = this.spaces.value.filter(
       (space) => space.kind === kind,
     ).length;
     return count === 0 ? baseLabel : `${baseLabel} ${count + 1}`;
   }
   protected insertSpace(space: PanelSpace): void {
-    const spaces = [...this.spaces.value];
-    if (space.kind === 'terminal') {
-      const databaseIndex = spaces.findIndex(
-        (candidate) => candidate.kind === 'database',
+    this.spaces.value = [...this.spaces.value, space];
+  }
+
+  spaceKindForPaneKind(kind: string): string {
+    return this.spaceForPaneKind(kind).kind;
+  }
+
+  spaceLabel(kind: string): string {
+    const declaration = [...this.spacesByPaneKind.values()].find(
+      (candidate) => candidate.kind === kind,
+    );
+    return declaration?.label ?? kind;
+  }
+
+  protected spaceForPaneKind(kind: string): PaneContentSpace {
+    return this.spacesByPaneKind.get(kind) ?? { kind, label: kind };
+  }
+
+  registerPaneKind(paneKind: string, panelSpace: PaneContentSpace): void {
+    const existingPanelSpace = this.spacesByPaneKind.get(paneKind);
+    if (
+      existingPanelSpace &&
+      (existingPanelSpace.kind !== panelSpace.kind ||
+        existingPanelSpace.label !== panelSpace.label)
+    ) {
+      throw new Error(
+        `Panel pane kind has conflicting space declarations: ${paneKind}`,
       );
-      spaces.splice(
-        databaseIndex < 0 ? spaces.length : databaseIndex,
-        0,
-        space,
-      );
-    } else {
-      spaces.push(space);
     }
-    this.spaces.value = spaces;
+    this.spacesByPaneKind.set(paneKind, panelSpace);
   }
   protected nextSpaceIdentifier(kind: string): string {
     let number = 1;
@@ -675,6 +690,15 @@ class $PanelHost {
       contentSet.order = contentSet.order.filter(
         (identifier) => identifier !== content.id,
       );
+    }
+    const paneKind = content.kind ?? content.id;
+    if (content.panelSpace) {
+      this.registerPaneKind(paneKind, content.panelSpace);
+    } else if (!this.spacesByPaneKind.has(paneKind)) {
+      this.registerPaneKind(paneKind, {
+        kind: paneKind,
+        label: content.instanceLabel ?? content.title,
+      });
     }
     this.contents.set(content.id, content);
     if (!this.order.value.includes(content.id)) {

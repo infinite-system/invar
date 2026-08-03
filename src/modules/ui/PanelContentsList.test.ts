@@ -12,13 +12,21 @@ import { TabStrip } from './TabStrip';
 
 class FakeContent implements PaneContent {
   readonly renderRevision = ref(0);
+  readonly panelSpace;
 
   constructor(
     readonly id: string,
     readonly title: string,
     readonly icon: string,
     readonly kind: string = id,
-  ) {}
+    panelSpace?: { readonly kind: string; readonly label: string },
+  ) {
+    this.panelSpace =
+      panelSpace ??
+      (kind === 'database'
+        ? { kind: 'database', label: 'Database' }
+        : { kind: 'terminal', label: 'Terminal' });
+  }
 
   render(): StyledText {
     return {} as StyledText;
@@ -129,6 +137,29 @@ test('the pinned list width can shrink and clamps to its declared bounds', () =>
   expect(list.width).toBe(40);
 });
 
+test('the add control reads a third space label from pane registration', () => {
+  const host = new PanelHost.Class();
+  host.register(
+    new FakeContent('output', 'Output', 'O', 'output', {
+      kind: 'output',
+      label: 'Output',
+    }),
+  );
+  host.show();
+  host.togglePanelList();
+  const list = new PanelContentsList.Class(host);
+
+  const text = list
+    .render(
+      ThemePalettes.Class.DARK,
+      ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+    )
+    .chunks.map((chunk) => chunk.text)
+    .join('');
+
+  expect(text).toContain('+ Output');
+});
+
 // invariant: The add control keeps one button appearance (src/modules/ui/ui.invariants.md)
 // This test used to assert the OPPOSITE: that an emptied list swapped its button
 // for the bare words "Add Terminal". The user reported that exact behaviour as the
@@ -136,7 +167,9 @@ test('the pinned list width can shrink and clamps to its declared bounds', () =>
 // changed and the test changed with it.
 test('the add control keeps one button form whether or not instances remain', () => {
   const host = new PanelHost.Class();
+  host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
   host.visible.value = true;
+  host.removeContent('terminal');
   const list = new PanelContentsList.Class(host);
   const palette = ThemePalettes.Class.DARK;
   const glyphs = ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
