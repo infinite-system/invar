@@ -90,6 +90,13 @@ class $StatusChannel {
     }
   }
 
+  /** Mark a requested frame as pending before the renderer schedules it. */
+  static markRenderRequested(): void {
+    if (!this.observingEnabled || !this.$state.renderQuiescent) return;
+    this.$state.renderQuiescent = false;
+    this.flush();
+  }
+
   /** Mark the frame settled and flush — called after a render quiesces. */
   static settle(frame: number): void {
     if (!this.observingEnabled) return;
