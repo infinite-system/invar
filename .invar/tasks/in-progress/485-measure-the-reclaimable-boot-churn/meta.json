@@ -1,0 +1,15 @@
+{
+  "task": 485,
+  "slug": "measure-the-reclaimable-boot-churn",
+  "branch": "fleet/485-measure-the-reclaimable-boot-churn",
+  "worktree": ".invar/worktrees/485-measure-the-reclaimable-boot-churn",
+  "tmuxSession": "invar/485-measure-the-reclaimable-boot-churn",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-485-measure-the-reclaimable-boot-churn.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "9a931a54186e763db43b61d6ec672f7610d28674",
+  "startedAt": "2026-08-03T10:13:20-04:00"
+}
