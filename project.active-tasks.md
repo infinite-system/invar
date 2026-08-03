@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #473 [invar-builds-invar](.invar/tasks/in-progress/473-invar-builds-invar/task-473-invar-builds-invar.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/473-invar-builds-invar`
+## IN-PROGRESS (1)
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -154,7 +152,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 182 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 183 — full log: project.tasks-completed.md)
+- #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
 - #471 [graph-reaches-the-whole-app](.invar/tasks/completed/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md) — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
 - #470 [harness-wait-defect-census](.invar/tasks/completed/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md) — 5136cdfa — Slice 1 landed: quiescence reset with publication parity, pre-satisfaction guard, model-count panel waits, settled Drive join, activitybar needles. Round 2 was forced by the conductor gate: the request-time flush published half-frame snapshots. The ~125-site migration remains open behind 471.
 - #469 [drive-reads-the-app-class-graph](.invar/tasks/completed/469-drive-reads-the-app-class-graph/task-469-drive-reads-the-app-class-graph.md) — 7f72091a
@@ -169,4 +168,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #435 [folder-open-task-launch-hygiene](.invar/tasks/completed/435-folder-open-task-launch-hygiene/task-435-folder-open-task-launch-hygiene.md) — 69886b7e — Once-per-root launch memory + restored-identity adoption; issues are notice panes, not pseudo-terminals; Terminal space restores with contents. Contracts refined in-branch. Bycatch converted: #437, #438; drive --home stale-status fix landed mid-task.
 - #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/completed/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md) — 7a33c34b — Filed diagnosis refuted by driving: red was a stale predicate + host-registry coupling. Glance and smoke isolated via INVAR_FLEET_GATE_REGISTRY; three registry states driven; new invariant record. Landed over pre-existing #436 red.
 - #432 [panel-editor-actions-instances-overhaul](.invar/tasks/completed/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md) — 7d2cc879 — All 21 brief items landed in one round; generic Dialog + DragReorder seams; design.invariants.md seeded; markdown preview actions fixed; landed over documented pre-existing 417084fa red (#433)
-- #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/completed/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md) — 483725e4 — The user's layout complaint is closed at the composition seam with the four-combination proof. Bycatch converted to #431 before landing.

@@ -1,7 +1,7 @@
 # Task 473 — invar builds invar
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
 Engine: codex
 Environment: any
 Model: 5.6-sol
