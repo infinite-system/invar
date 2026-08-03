@@ -1296,6 +1296,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
   serial_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
   parallel_safe_smoke "smoke: quit-confirmation harness" bun scripts/harness/smoke-quit-confirmation-harness.ts
+  parallel_safe_smoke "smoke: renderable disposal harness" bun scripts/harness/smoke-renderable-disposal-harness.ts
   parallel_safe_smoke "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
 else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="
