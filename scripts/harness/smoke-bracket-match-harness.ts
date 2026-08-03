@@ -3,6 +3,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,6 +14,7 @@ import {
   requireCondition,
   runGit,
 } from './HarnessSmokeSupport';
+import { GraphClient } from './GraphClient';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
@@ -57,8 +59,11 @@ try {
     (snapshot) => snapshot.findText('Go to File') !== null,
   );
   driver.sendText('sample');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('sample.ts') !== null,
+  await GraphClient.Class.awaitValue(statusPath, 'quickOpen.query', 'sample');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'quickOpen.matches.0.path',
+    'sample.ts',
   );
   driver.sendKeys('Enter');
   let snapshot = await driver.awaitSnapshot(

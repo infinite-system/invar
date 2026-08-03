@@ -4,12 +4,14 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { encode as encodeJpeg } from 'jpeg-js';
 import { ImageDecoders } from '../../src/modules/image/ImageDecoders';
 import { PngDecoder } from '../../src/modules/image/PngDecoder';
+import { GraphClient } from './GraphClient';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -70,14 +72,18 @@ function dominantColorRows(snapshot: HarnessSnapshot.Model): string[] {
 async function openThroughQuickOpen(
   driver: PtyTestDriver.Model,
   query: string,
+  expectedPath: string,
 ): Promise<void> {
   driver.sendKeys('Control+p');
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('Go to File') !== null,
   );
   driver.sendText(query);
-  await driver.awaitSnapshot((snapshot) =>
-    snapshot.textRows().some((rowText) => rowText.includes(query)),
+  await GraphClient.Class.awaitValue(statusPath, 'quickOpen.query', query);
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'quickOpen.matches.0.path',
+    expectedPath,
   );
   driver.sendKeys('Enter');
 }
@@ -242,7 +248,7 @@ try {
     (status) => status.ready === true && status.activeFileIsImage === false,
     15_000,
   );
-  await openThroughQuickOpen(driver, 'picture');
+  await openThroughQuickOpen(driver, 'picture', 'picture.png');
   const pngStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -269,7 +275,7 @@ try {
   console.log(
     '== harness image-preview: text and binary routing remain distinct ==',
   );
-  await openThroughQuickOpen(driver, 'sample');
+  await openThroughQuickOpen(driver, 'sample', 'sample.ts');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -286,7 +292,7 @@ try {
   console.log(
     '== harness image-preview: JPEG preserves expected band colors ==',
   );
-  await openThroughQuickOpen(driver, 'photo');
+  await openThroughQuickOpen(driver, 'photo', 'photo.jpg');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -323,7 +329,7 @@ try {
     `JPEG bands render red/green/blue in order (${redRows}/${greenRows}/${blueRows} rows)`,
   );
 
-  await openThroughQuickOpen(driver, 'data');
+  await openThroughQuickOpen(driver, 'data', 'data.bin');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
