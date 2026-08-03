@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/in-progress/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/492-markdown-syntax-rides-the-provider-seam`
-- #356 [agent-pane-is-a-decoupled-module](.invar/tasks/in-progress/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/356-agent-pane-is-a-decoupled-module`
 
 ## USER-DIRECTED (14)
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
@@ -62,7 +60,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (34)
+## FLAKE-EVIDENCE (35)
+- #500 [database-add-click-misses-popup](.invar/tasks/active/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/active/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
@@ -156,7 +155,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 203 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 204 — full log: project.tasks-completed.md)
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
 - #491 [editor-shared-generators-move-home](.invar/tasks/completed/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md) — cf1befd4 — editor generators move to core text; monitoring rides the provider seam

@@ -1,6 +1,6 @@
 # #356 — the agent pane becomes a decoupled module with an on-off switch
 
-State: IN-PROGRESS
+State: COMPLETED — 94ec7eac — agent pane becomes a plugin; ten generic seams; core agent coupling zero
 Priority: user-directed
 Engine: codex
 Environment: linux
