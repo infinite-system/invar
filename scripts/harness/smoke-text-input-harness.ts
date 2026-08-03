@@ -80,15 +80,6 @@ async function exerciseSharedInput(
     column: valuePosition.column,
   };
 
-  driver.sendKeys('Control+c');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    `${surfaceName} publishes zero copied characters without a selection`,
-    (status) => status.lastCopyChars === 0,
-  );
-  HarnessSmoke.Class.pass(`${surfaceName} unselected copy is inert`);
-
   driver.sendKeys('Shift+Left');
   driver.sendKeys('Shift+Left');
   snapshot = await driver.awaitGridCondition(
@@ -130,6 +121,14 @@ async function exerciseSharedInput(
     '',
     `${surfaceName} End clears the selection at the input end`,
   );
+  driver.sendKeys('Control+c');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${surfaceName} publishes zero copied characters without a selection`,
+    (status) => status.lastCopyChars === 0,
+  );
+  HarnessSmoke.Class.pass(`${surfaceName} unselected copy is inert`);
 
   driver.sendKeys('Left');
   snapshot = await awaitInputValue(
