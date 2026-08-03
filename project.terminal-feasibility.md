@@ -15,8 +15,11 @@ was in `/tmp/pty-spike`, ephemeral). Capture so we don't re-spike.
   real tty, real command execution, **delayed writes 300ms+ later land** (the exact thing node-pty
   fails). fork()-based forkpty is unsafe in Bun's multithreaded runtime → openpty + Bun.spawn is the
   correct decomposition.
-- **I/O rides node:fs**, no FFI polling: `fs.createReadStream("", {fd: master, autoClose:false})` gives
-  async push reads under Bun. FFI is only for `openpty` + the resize `ioctl`.
+- **I/O rides the TTY stream**, no FFI polling: `new tty.ReadStream(dup(master))` gives
+  readiness-driven reads without occupying one process-wide file worker per idle PTY. The earlier
+  `fs.createReadStream` path exhausted Bun's four-worker default after four idle terminals. New
+  terminals then stayed blank, and each input exposed only the previous output. FFI remains limited
+  to `openpty`, descriptor flags and writes, and the resize `ioctl`.
 - **Resize:** `ioctl(master, TIOCSWINSZ=0x5414, &winsize)` → `stty size` reflects it; SIGWINCH reaches
   the foreground program. **Job control / controlling-tty:** bare `Bun.spawn` has no pre-exec hook so
   you get "no job control" — wrap in `setsid --ctty` (Linux, proven). **macOS has no `setsid`** → needs
