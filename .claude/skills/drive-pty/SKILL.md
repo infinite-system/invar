@@ -43,6 +43,15 @@ bun scripts/harness/DriveSession.ts --stop             # done: kill your server
 - Mirror, trail, and humanPace exist for HUMAN-WATCHED sessions only — skip
   them headless; they cost time and change nothing you can assert.
 
+**You are part of this instrument's feedback loop.** If your brief carries
+an `## Instrument feedback` (or `## PTY usability`) section, answer it in
+your report: EASY / CONFUSING / MISSING. A verb you wanted and did not find
+is an ASK — name it, then do the work with the primitives (never hand-roll a
+parallel layer; that path was tried and vetoed). Asks get converted by the
+conductor at landing, so what you name today the next builder holds
+tomorrow. Nine builders shaped this skill's current surface that way in its
+first two nights.
+
 Two instruments, one contract. INPUT always travels through the real PTY as
 bytes a real terminal could produce — the founding harness invariant; there
 is no teleport path and none may be added. OBSERVATION has two eyes: the

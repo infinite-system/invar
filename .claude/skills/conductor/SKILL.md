@@ -116,6 +116,29 @@ optional, for any brief, ever.
    `None observed` — an absent section is indistinguishable from an unasked
    question.
 
+**THE INSTRUMENT DIALOGUE — the third standing brief section.** Every brief
+whose builder will drive the app (the drive-pty layer: warm server, graph,
+gestures) also carries `## Instrument feedback` (historically titled
+`## PTY usability`), and the READY report answers it: what was EASY, what
+was CONFUSING, what was MISSING. The rules that make it a loop instead of a
+suggestion box:
+
+1. A missing verb is an ASK, never a silent hand-rolled workaround — the
+   builder names it in the report and uses the primitives meanwhile.
+2. The conductor CONVERTS every ask at landing time, exactly like bycatch:
+   fix it inline when small, file it when not, and say which in the landing
+   report. An ask left unconverted must be named as deferred, with a reason.
+3. Confusions are documentation defects: the fix lands in the drive-pty
+   skill or --help, not in a reply.
+4. The loop's health check: when consecutive reports say "nothing missing",
+   the instrument has caught up with its users — expected steady state, not
+   a reason to drop the section.
+
+Provenance: instituted 2026-08-03 after one night in which nine builder
+reports produced seven instrument fixes, all landed before the next
+dispatch, ending with an empty ask list. The loop is the mechanism that
+keeps the driving layer fitting the hands that use it.
+
 A test in the inner loop causes two failures, and the second is worse. Each refinement costs
 minutes instead of seconds, so the builder takes fewer swings. And the builder starts to
 optimize for making an assertion pass instead of making it right. For felt qualities such as
