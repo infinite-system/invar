@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #471 [graph-reaches-the-whole-app](.invar/tasks/in-progress/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/471-graph-reaches-the-whole-app`
-- #470 [harness-wait-defect-census](.invar/tasks/in-progress/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/470-harness-wait-defect-census`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -156,7 +154,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 180 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 181 — full log: project.tasks-completed.md)
+- #470 [harness-wait-defect-census](.invar/tasks/completed/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md) — 5136cdfa — Slice 1 landed: quiescence reset with publication parity, pre-satisfaction guard, model-count panel waits, settled Drive join, activitybar needles. Round 2 was forced by the conductor gate: the request-time flush published half-frame snapshots. The ~125-site migration remains open behind 471.
 - #469 [drive-reads-the-app-class-graph](.invar/tasks/completed/469-drive-reads-the-app-class-graph/task-469-drive-reads-the-app-class-graph.md) — 7f72091a
 - #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/completed/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md) — bc367e17 — Unreachable panel registration made impossible at the factory seam; empty panel keeps its Add row; instance close no longer confirms. Phantom pane had been silently satisfying a layout-isolation wait.
 - #457 [serial-tail-lacks-quiet-retry](.invar/tasks/completed/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md) — 687dc80f — Gate verdict is now a function of the commit: 5 identical verdicts on one commit, unchanged at 3 and 6 workers, planted defect red 5/5. Real defect was a live-emulator read in the shortcut sheet, not a missing retry.
@@ -171,4 +170,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #432 [panel-editor-actions-instances-overhaul](.invar/tasks/completed/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md) — 7d2cc879 — All 21 brief items landed in one round; generic Dialog + DragReorder seams; design.invariants.md seeded; markdown preview actions fixed; landed over documented pre-existing 417084fa red (#433)
 - #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/completed/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md) — 483725e4 — The user's layout complaint is closed at the composition seam with the four-combination proof. Bycatch converted to #431 before landing.
 - #429 [layout-switcher-icon-tooltip](.invar/tasks/completed/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md) — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
-- #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/completed/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md) — d5c4ec0c — The contract that blocked two landings today is now genuinely count-based. No bycatch.

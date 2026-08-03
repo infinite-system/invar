@@ -1,7 +1,7 @@
 # Task 470 — harness wait-defect census and repair
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — 5136cdfa — Slice 1 landed: quiescence reset with publication parity, pre-satisfaction guard, model-count panel waits, settled Drive join, activitybar needles. Round 2 was forced by the conductor gate: the request-time flush published half-frame snapshots. The ~125-site migration remains open behind 471.
 Engine: codex
 Environment: any
 Model: 5.6-sol
