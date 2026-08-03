@@ -1,10 +1,10 @@
 # Task 473 — invar builds invar
 
 Priority: user-directed
-State: ACTIVE — accumulating; mirror SHIPPED and HARDENED (user-verified <3)
-Engine: claude
+State: IN-PROGRESS
+Engine: codex
 Environment: any
-Model: fable-5
+Model: 5.6-sol
 Effort: high
 
 ## The user's direction, verbatim (2026-08-02)

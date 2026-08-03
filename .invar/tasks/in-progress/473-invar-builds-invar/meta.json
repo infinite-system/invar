@@ -1,0 +1,15 @@
+{
+  "task": 473,
+  "slug": "invar-builds-invar",
+  "branch": "fleet/473-invar-builds-invar",
+  "worktree": ".invar/worktrees/473-invar-builds-invar",
+  "tmuxSession": "invar/473-invar-builds-invar",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-473-invar-builds-invar.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "5c9567e6fac66935a1965fab673df2305aa65b77",
+  "startedAt": "2026-08-03T02:10:14-04:00"
+}
