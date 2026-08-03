@@ -11,5 +11,8 @@
   "effort": "high",
   "heldFromMain": false,
   "baseCommit": "6d5d75390850abdb51d369f8e93d4456cfb61944",
-  "startedAt": "2026-08-03T13:16:22-04:00"
+  "startedAt": "2026-08-03T13:16:22-04:00",
+  "landedAt": "2026-08-03T14:24:06-04:00",
+  "durationMinutes": 67,
+  "mergeCommit": "cf1befd4"
 }

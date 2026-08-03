@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — cf1befd4 — editor generators move to core text; monitoring rides the provider seam
 
 ## In plain words
 
