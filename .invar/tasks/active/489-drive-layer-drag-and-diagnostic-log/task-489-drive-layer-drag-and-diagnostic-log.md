@@ -32,3 +32,8 @@ CONFUSING: chaining type() with waitForRepaint() can miss the repaint
 type() already caused (pre-satisfied class). Document in the drive-pty
 skill: prefer a visible-text condition (waitForText('$ xy')) over a
 bare repaint wait after input.
+
+## Additional ask from #491 (2026-08-03)
+
+MISSING: a drive primitive `--setting KEY=VALUE` that holds one user
+setting fixed without hand-building a temporary home + settings file.
