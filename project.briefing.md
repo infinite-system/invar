@@ -1,3 +1,15 @@
+# RESUME ANCHOR 50c — 2026-08-03 ~08:15 EDT — COPY: TRANSPORT PROVEN INNOCENT
+
+Delta over 50b: the user ran the raw OSC 52 printf — IT PASTES. Transport is
+fine; the break is BEFORE emission. Awaiting the user's next observation:
+select the reply, press plain Ctrl+C, report (a) was Invar's selection
+highlight alive at chord time, (b) did Claude react (a flinch = SIGINT went
+to the child = the selection-active carve-out did not engage -> suspect
+focus composer-vs-transcript or a selection-clearing click; then drive it).
+Everything else per anchor 50: fleet zero, twelve landings, tree clean.
+
+---
+
 # RESUME ANCHOR 50b — 2026-08-03 ~08:00 EDT — LIVE COPY INVESTIGATION OPEN
 
 Delta over anchor 50: the user reports agent-pane copy STILL fails in cmux.
