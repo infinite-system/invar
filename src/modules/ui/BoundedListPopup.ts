@@ -682,7 +682,6 @@ class $BoundedListPopup {
   dispose(): void {
     this.close();
     try {
-      this.dependencies.renderer.root.remove(this.box);
       this.box.destroyRecursively();
       this.dismissal.dispose();
     } catch {

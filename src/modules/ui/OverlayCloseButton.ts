@@ -50,7 +50,6 @@ class $OverlayCloseButton {
 
   dispose(): void {
     try {
-      this.dependencies.renderer.root.remove(this.renderable);
       this.renderable.destroyRecursively();
     } catch {
       // Render teardown is best-effort after the app's effects have stopped.

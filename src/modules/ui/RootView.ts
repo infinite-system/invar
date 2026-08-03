@@ -2702,7 +2702,6 @@ class $RootView {
         try {
           editorColumnDefault.releaseContent();
           editorContentMount.dispose();
-          root.remove(column);
           column.destroyRecursively();
         } catch {
           /* ignore */

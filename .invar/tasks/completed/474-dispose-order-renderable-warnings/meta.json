@@ -1,0 +1,18 @@
+{
+  "task": 474,
+  "slug": "dispose-order-renderable-warnings",
+  "branch": "fleet/474-dispose-order-renderable-warnings",
+  "worktree": ".invar/worktrees/474-dispose-order-renderable-warnings",
+  "tmuxSession": "invar/474-dispose-order-renderable-warnings",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-474-dispose-order-renderable-warnings.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "d6a0ed2a95d4fe42b4cf72294870109772340f9d",
+  "startedAt": "2026-08-03T04:18:19-04:00",
+  "landedAt": "2026-08-03T04:58:03-04:00",
+  "durationMinutes": 39,
+  "mergeCommit": "7b8b889d"
+}
