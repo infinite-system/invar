@@ -1,3 +1,15 @@
+# RESUME ANCHOR 50 — 2026-08-03 ~06:25 EDT — TWELVE LANDINGS; FLEET AT ZERO
+
+Delta over anchor 49: #451 landed (367e4458) after a day idle — the fleet is
+FULLY DRAINED, zero tmux lanes, zero open worktrees. dist/iv rebuilt.
+
+Backlog triage done: #464 looks largely subsumed by the census arc (user
+should confirm retire); #461 matches the scrollbars wrap-off residual (real,
+keep); #460/#462/#463 ordinary hygiene backlog. User items unchanged:
+cmux Cmd+C test; #464 retire call. No experiments (standing order).
+
+---
+
 # RESUME ANCHOR 49 — 2026-08-03 ~06:15 EDT — ELEVEN LANDINGS; THE NIGHT IS DONE
 
 ## STATE: main green and clean; dist/iv rebuilt at e3e3316a.
