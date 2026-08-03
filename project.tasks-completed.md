@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #483 [shortcut-getters-replace-the-chains](.invar/tasks/completed/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md) — 7330851c — Landed: both phases of the conversion; the codebase now speaks activeEditor/activeDocument.
 - #482 [agent-pane-copy-fails-with-composer-focus](.invar/tasks/completed/482-agent-pane-copy-fails-with-composer-focus/task-482-agent-pane-copy-fails-with-composer-focus.md) — 03fc43fe — Landed: composer-focus arm added to the smoke; hypothesis eliminated; user-side highlight question is the last differential.
 - #481 [shared-machinery-waits-and-drive-gesture-deletion](.invar/tasks/completed/481-shared-machinery-waits-and-drive-gesture-deletion/task-481-shared-machinery-waits-and-drive-gesture-deletion.md) — e3e3316a — Landed: honest shell settle, gesture layer deleted, 11 delays declared. The census migration is now COMPLETE except declared remainders.
 - #480 [migrate-the-quick-open-idiom](.invar/tasks/completed/480-migrate-the-quick-open-idiom/task-480-migrate-the-quick-open-idiom.md) — 04ea99ab — Landed: the Quick Open idiom retired across the suite. Migration remainder: shared machinery + agent/terminal + panel/layout + shell sites, per the #479 table.

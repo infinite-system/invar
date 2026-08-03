@@ -1,7 +1,7 @@
 # Task 483 — shortcut getters replace the chains
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 7330851c — Landed: both phases of the conversion; the codebase now speaks activeEditor/activeDocument.
 Engine: codex
 Environment: any
 Model: 5.6-sol
