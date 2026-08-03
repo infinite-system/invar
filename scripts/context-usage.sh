@@ -20,7 +20,14 @@ project_dir="${CONTEXT_PROJECT_DIR:-$default_project_dir}"
 # harness's own CLAUDE_CODE_AUTO_COMPACT_WINDOW (present in every Bash call's
 # environment — adapts automatically when the user changes the setting),
 # then the 400k fallback.
-budget_tokens="${CONTEXT_BUDGET_TOKENS:-${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-400000}}"
+# A budget FILE outranks the 400k fallback: the window can change MID-SESSION
+# (the user moved this session 400k -> 1M and the gauge cried CHECKPOINT at a
+# fictional 207%), and long-lived watchers like fleet-watch carry a stale env.
+# The conductor writes the file when the window changes.
+budget_file="/tmp/invar-context-budget"
+budget_from_file=""
+[ -r "$budget_file" ] && budget_from_file="$(tr -cd '0-9' < "$budget_file")"
+budget_tokens="${CONTEXT_BUDGET_TOKENS:-${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-${budget_from_file:-400000}}}"
 # The UI's percentage runs against the USABLE window (budget minus the
 # autocompact reserve: output + compaction headroom), not the raw budget.
 # 2026-07-29 calibration: script said 86.4% raw while the user's UI said
