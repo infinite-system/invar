@@ -139,6 +139,8 @@ export interface PaneContent {
   onFocus(): void;
   /** The panel lost keyboard focus. */
   onBlur(): void;
+  /** The host started or stopped painting this content in its resolved cell set. */
+  onVisibilityChange?(visible: boolean): void;
   /** Release owned resources. */
   dispose(): void;
 }

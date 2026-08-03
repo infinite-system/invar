@@ -54,10 +54,6 @@ class $Settings {
     return new Set(['full-height', 'ends-at-panel']);
   }
 
-  protected static get $allowedAgentProviders(): ReadonlySet<AgentProvider> {
-    return new Set(['auto', 'claude', 'codex']);
-  }
-
   constructor(readonly options: SettingsOptions = {}) {}
 
   // ---- Reactive fields (ref-returning getters; read/write via `.value`) --------------------------
@@ -128,34 +124,11 @@ class $Settings {
   get rightDockVerticalSpan(): Ref<DockVerticalSpan> {
     return ref<DockVerticalSpan>('ends-at-panel');
   }
-  get agentProvider(): Ref<AgentProvider> {
-    return ref<AgentProvider>('auto');
-  }
-  get agentSkipPermissions(): Ref<boolean> {
-    return ref(true);
-  }
-  get agentTerminalFollowMode(): Ref<AgentTerminalFollowMode> {
-    return ref<AgentTerminalFollowMode>('off');
-  }
-  get agentModel(): Ref<string> {
-    return ref('');
-  }
-  get agentTypingSpeed(): Ref<number> {
+  get terminalTypingSpeed(): Ref<number> {
     return ref(40);
   }
   get terminalCleanPrompt(): Ref<boolean> {
     return ref(true);
-  }
-  get agentNarrationVoice(): Ref<string> {
-    return ref('');
-  }
-  /** Narration SPEED MULTIPLIER (higher = faster: 1.0 = normal, 2.0 = twice as fast, 0.5 = half
-   *  speed). Engines map it: piper `--length_scale = 1/rate`; espeak/`say` `-s ≈ 175×rate` wpm. */
-  get agentNarrationRate(): Ref<number> {
-    return ref(1.0);
-  }
-  get agentAudioNarration(): Ref<boolean> {
-    return ref(false);
   }
   get sidebarWidth(): Ref<number> {
     return ref(32);
@@ -167,7 +140,7 @@ class $Settings {
     return shallowRef([]);
   }
   get panelContentOrder(): Ref<string[]> {
-    return shallowRef(['agent', 'terminal']);
+    return shallowRef(['terminal']);
   }
   get panelTabCycleSeconds(): Ref<number> {
     return ref(10);
@@ -206,15 +179,8 @@ class $Settings {
       panelAlignment: this.panelAlignment,
       leftDockVerticalSpan: this.leftDockVerticalSpan,
       rightDockVerticalSpan: this.rightDockVerticalSpan,
-      agentProvider: this.agentProvider,
-      agentSkipPermissions: this.agentSkipPermissions,
-      agentTerminalFollowMode: this.agentTerminalFollowMode,
-      agentModel: this.agentModel,
-      agentTypingSpeed: this.agentTypingSpeed,
+      terminalTypingSpeed: this.terminalTypingSpeed,
       terminalCleanPrompt: this.terminalCleanPrompt,
-      agentAudioNarration: this.agentAudioNarration,
-      agentNarrationVoice: this.agentNarrationVoice,
-      agentNarrationRate: this.agentNarrationRate,
       sidebarWidth: this.sidebarWidth,
       rightDockWidth: this.rightDockWidth,
       primaryDockContentOrder: this.primaryDockContentOrder,
@@ -525,19 +491,12 @@ class $Settings {
       panelAlignment: 'center',
       leftDockVerticalSpan: 'full-height',
       rightDockVerticalSpan: 'ends-at-panel',
-      agentProvider: 'auto',
-      agentSkipPermissions: true,
-      agentTerminalFollowMode: 'off',
-      agentModel: '',
-      agentTypingSpeed: 40,
+      terminalTypingSpeed: 40,
       terminalCleanPrompt: true,
-      agentAudioNarration: false,
-      agentNarrationVoice: '',
-      agentNarrationRate: 1.0,
       sidebarWidth: 32,
       rightDockWidth: 28,
       primaryDockContentOrder: [],
-      panelContentOrder: ['agent', 'terminal'],
+      panelContentOrder: ['terminal'],
       panelTabCycleSeconds: 10,
       panelTabCycling: false,
       panelWorkspaceStates: {},
@@ -668,33 +627,9 @@ class $Settings {
       result.rightDockVerticalSpan =
         record.rightDockVerticalSpan as DockVerticalSpan;
     }
-    if (
-      typeof record.agentProvider === 'string' &&
-      this.$allowedAgentProviders.has(record.agentProvider as AgentProvider)
-    ) {
-      result.agentProvider = record.agentProvider as AgentProvider;
-    }
-    if (typeof record.agentSkipPermissions === 'boolean')
-      result.agentSkipPermissions = record.agentSkipPermissions;
-    if (
-      typeof record.agentTerminalFollowMode === 'string' &&
-      this.$allowedAgentTerminalFollowModes.has(
-        record.agentTerminalFollowMode as AgentTerminalFollowMode,
-      )
-    ) {
-      result.agentTerminalFollowMode =
-        record.agentTerminalFollowMode as AgentTerminalFollowMode;
-    }
-    if (typeof record.agentModel === 'string')
-      result.agentModel = record.agentModel;
-    readNumber('agentTypingSpeed');
+    readNumber('terminalTypingSpeed');
     if (typeof record.terminalCleanPrompt === 'boolean')
       result.terminalCleanPrompt = record.terminalCleanPrompt;
-    if (typeof record.agentAudioNarration === 'boolean')
-      result.agentAudioNarration = record.agentAudioNarration;
-    if (typeof record.agentNarrationVoice === 'string')
-      result.agentNarrationVoice = record.agentNarrationVoice;
-    readNumber('agentNarrationRate');
     readNumber('sidebarWidth');
     readNumber('rightDockWidth');
     readNumber('panelTabCycleSeconds');
@@ -813,10 +748,6 @@ class $Settings {
     }
     return sanitized;
   }
-
-  protected static get $allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
-    return new Set(['follow-all', 'on-error', 'on-request', 'off']);
-  }
 }
 
 export namespace Settings {
@@ -834,13 +765,6 @@ export type GlyphMode = 'auto' | 'nerd' | 'unicode' | 'ascii';
 
 /** Where the project-layer tab strip is mounted in the root frame. */
 export type WorkspaceTabPosition = 'top' | 'left';
-
-/** Which engine backs the native agent pane. */
-export type AgentProvider = 'auto' | 'claude' | 'codex';
-
-/** When completed terminal commands enter the native agent session. */
-export type AgentTerminalFollowMode =
-  'follow-all' | 'on-error' | 'on-request' | 'off';
 
 /** The full set of settable values — one field per reactive getter on the store. */
 export interface SettingsValues {
@@ -866,15 +790,8 @@ export interface SettingsValues {
   panelAlignment: PanelAlignment;
   leftDockVerticalSpan: DockVerticalSpan;
   rightDockVerticalSpan: DockVerticalSpan;
-  agentProvider: AgentProvider;
-  agentSkipPermissions: boolean;
-  agentTerminalFollowMode: AgentTerminalFollowMode;
-  agentModel: string;
-  agentTypingSpeed: number;
+  terminalTypingSpeed: number;
   terminalCleanPrompt: boolean;
-  agentAudioNarration: boolean;
-  agentNarrationVoice: string;
-  agentNarrationRate: number;
   sidebarWidth: number;
   rightDockWidth: number;
   primaryDockContentOrder: string[];

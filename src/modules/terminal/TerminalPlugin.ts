@@ -72,7 +72,7 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
       // A declared process owns its own prompt; only the ordinary interactive shell is themed.
       cleanPrompt: declaredProcess ? false : settings.terminalCleanPrompt.value,
       promptColor: declaredProcess ? undefined : theme.palette.terminalPrompt,
-      typingSpeed: () => settings.agentTypingSpeed.value,
+      typingSpeed: () => settings.terminalTypingSpeed.value,
       reducedMotion: () => settings.reducedMotion.value,
     });
     // Only panes that carry this runtime's own kind join its instance registry: a declared task

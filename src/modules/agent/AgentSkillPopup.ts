@@ -20,6 +20,7 @@ import {
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 class $AgentSkillPopup {
   protected readonly popup: BoundedListPopup.Model;
+  protected readonly ownsPopup: boolean;
   protected readonly skillCache = new Map<
     string,
     readonly AgentPromptSkill[]
@@ -28,16 +29,25 @@ class $AgentSkillPopup {
   protected dismissedInvocationKey: string | null = null;
 
   constructor(protected readonly dependencies: AgentSkillPopupDependencies) {
-    this.popup = this.createPopup({
-      ...dependencies,
-      identifier: 'agent-skill-popup',
-    });
+    this.ownsPopup = dependencies.popup === undefined;
+    this.popup = dependencies.popup ?? this.createPopup(dependencies);
   }
 
   protected createPopup(
-    dependencies: ConstructorParameters<typeof BoundedListPopup.Class>[0],
+    dependencies: AgentSkillPopupDependencies,
   ): BoundedListPopup.Model {
-    return new BoundedListPopup.Class(dependencies);
+    if (!dependencies.scrollPhysics) {
+      throw new Error(
+        'Agent skill popup needs scroll physics when no shared popup is supplied',
+      );
+    }
+    return new BoundedListPopup.Class({
+      renderer: dependencies.renderer,
+      settings: dependencies.settings,
+      theme: dependencies.theme,
+      scrollPhysics: dependencies.scrollPhysics,
+      identifier: 'agent-skill-popup',
+    });
   }
 
   get open() {
@@ -149,7 +159,8 @@ class $AgentSkillPopup {
   }
 
   dispose(): void {
-    this.popup.dispose();
+    this.popup.close();
+    if (this.ownsPopup) this.popup.dispose();
     this.skillCache.clear();
   }
 
@@ -228,5 +239,6 @@ export interface AgentSkillPopupDependencies {
   readonly renderer: CliRenderer;
   readonly settings: Settings.Instance;
   readonly theme: Theme.Instance;
-  readonly scrollPhysics: ScrollPhysics.Model;
+  readonly scrollPhysics?: ScrollPhysics.Model;
+  readonly popup?: BoundedListPopup.Model;
 }

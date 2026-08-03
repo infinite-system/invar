@@ -870,6 +870,83 @@ try {
     'Extensions reinstall restores the Terminal runtime and its pane',
   );
 
+  console.log(
+    '== plugin manifest: Invar Agent disable and re-enable are symmetric ==',
+  );
+  driver.sendKeys('Control+j', 'Control+Shift+a');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the installed agent contributor opens its runtime pane',
+    (status) =>
+      status.panelActiveContentKind === 'agent' &&
+      status.agentTurnState !== undefined &&
+      (status.settingsSections as string[] | undefined)?.includes('Agent') ===
+        true,
+  );
+  driver.sendKeys('Control+Shift+x');
+  await selectExtensionsRowFromFirst(driver, statusPath, '[x] Invar Agent');
+  driver.sendKeys('Space');
+  const agentDisabledStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstalling Invar Agent withdraws its pane, settings, and status',
+    (status) =>
+      status.agentTurnState === undefined &&
+      !(status.settingsSections as string[] | undefined)?.includes('Agent') &&
+      !(status.settingsSections as string[] | undefined)?.includes(
+        'Narration',
+      ) &&
+      HarnessSmoke.Class.panelCellsOfKind(status, 'agent').length === 0,
+  );
+  HarnessSmoke.Class.requireCondition(
+    !(agentDisabledStatus.settingsLabels as string[]).includes(
+      'Agent engine',
+    ) && driver.snapshot().findText('✦') === null,
+    'uninstall removes the agent settings rows and status control',
+  );
+  driver.sendKeys('Control+Shift+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'focus returns to the editor with Invar Agent disabled',
+    (status) => status.focus === 'editor',
+  );
+  driver.sendKeysWithoutFrameExpectation('Control+Shift+a');
+  await Bun.sleep(500);
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).agentTurnState === undefined &&
+      HarnessSmoke.Class.panelCellsOfKind(
+        HarnessSmoke.Class.readStatus(statusPath),
+        'agent',
+      ).length === 0,
+    'the removed agent chord cannot recreate the pane',
+  );
+  driver.sendKeys('Control+Shift+x');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('› [ ] Invar Agent') !== null,
+    'the disabled Invar Agent row stays selected for reinstall',
+  );
+  driver.sendKeys('Space', 'Control+Shift+j', 'Control+Shift+a');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall restores the agent pane, settings, status, and chord',
+    (status) =>
+      status.panelActiveContentKind === 'agent' &&
+      status.agentTurnState !== undefined &&
+      (status.settingsSections as string[] | undefined)?.includes('Agent') ===
+        true,
+  );
+  HarnessSmoke.Class.pass(
+    'Extensions reinstall restores every Invar Agent registration',
+  );
+
   // The CONTRIBUTOR positive control for the editor column itself. The source-text editor is an
   // ordinary contribution now, so uninstalling it must release BOTH what it painted (its gutter and
   // code renderables) and what it held (every view its workspaces' provider made), leave the column

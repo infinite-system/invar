@@ -29,6 +29,8 @@ import type {
   SettingValue,
 } from '../settings/SettingContribution.interface';
 import type { Ref } from 'vue';
+import type { FindBarTarget } from '../search/FindBar';
+import type { FindBar } from '../search/FindBar';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 export interface ApplicationContributor {
@@ -54,6 +56,7 @@ export interface ApplicationContributionContext {
   readonly rightDockHost: PanelHost.Instance;
   readonly contextMenu: ContextMenu.Instance;
   readonly boundedListPopup: BoundedListPopup.Instance;
+  readonly findBar: FindBar.Instance;
   readonly overlayCoordinator: OverlayCoordinator.Instance;
   readonly statusBarSegments: StatusBarSegments.Model;
   readonly statusProjectionContributions: StatusProjectionContributions.Model;
@@ -92,6 +95,13 @@ export interface ApplicationContributionContext {
     runtimeKind: string,
     request: PaneRuntimeRequest,
   ) => boolean;
+  readonly currentPaneOfKind: (kind: string) => PaneContent | null;
+  readonly ensureRuntimePane: (kind: string) => PaneContent | null;
+  readonly openFindTarget: (target: FindBarTarget) => void;
+  readonly focusedPanelCaretAnchor: () => {
+    column: number;
+    row: number;
+  } | null;
   readonly editorInteractionIsAvailable: () => boolean;
   readonly dismissEditorSuggestions: () => void;
   readonly bindingHint: (action: string, context: string) => string;

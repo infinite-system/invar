@@ -8,7 +8,7 @@ import { AgentProviderRegistry } from './AgentProviderRegistry';
 import { CodexAppServerBackend } from './CodexAppServerBackend';
 import { AgentSession } from './AgentSession';
 import { AgentPaneContent } from './AgentPaneContent';
-import type { AgentProvider } from '../settings/Settings';
+import type { AgentProvider } from './AgentProviderRegistry';
 import type { AgentTerminalToolPort } from './AgentTerminalTools';
 import {
   AgentIbrFoundation,

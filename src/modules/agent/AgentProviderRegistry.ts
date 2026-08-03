@@ -1,5 +1,6 @@
 import { Static } from 'ivue/extras';
-import type { AgentProvider } from '../settings/Settings';
+
+export type AgentProvider = 'auto' | 'claude' | 'codex';
 
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 

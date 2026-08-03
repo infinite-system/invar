@@ -16,11 +16,6 @@ import {
   type CliRenderer,
   type MouseEvent,
 } from '@opentui/core';
-import { ScrollableTextViewport } from './ScrollableTextViewport';
-import {
-  AgentPaneContent,
-  type AgentScrollPort,
-} from '../agent/AgentPaneContent';
 import { Static } from 'ivue/extras';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { App } from '../app/App';
@@ -131,7 +126,6 @@ class $RootView {
     editorSurfaceContents: EditorSurfaceContents.Model,
     editorColumnDefault: EditorColumnDefault.Model,
     toggleTerminal: () => void,
-    toggleAgent: () => void,
     openPanelAddPopup: (anchor: { column: number; row: number }) => void,
     openPanelPaneAddPopup: (
       anchor: { column: number; row: number },
@@ -527,7 +521,6 @@ class $RootView {
       primaryDockHost,
       statusBarSegments,
       toggleTerminal,
-      toggleAgent,
       toggleRightDock,
     });
     // --- bottom panel slot (the composable PanelHost region) --------------------------------------
@@ -697,96 +690,6 @@ class $RootView {
       onDragEnd: () => panelHost.options.persistWorkspaceState?.(),
     });
     let panelMounted = false;
-    // --- Agent transcript scroll engine ------------------------------------------------------------
-    // The agent pane reuses the ONE shared scroll surface (momentum + smooth glide + a vertical scrollbar)
-    // in WRAP mode (disableHorizontal: no h-wheel, no h-bar) with tail-anchor (followBottom: stay pinned to
-    // the newest turn until the user scrolls up). The pane stays a pure model — it reads scrollTop through
-    // the injected port and never touches a renderable. RootView owns the renderable side: it mounts the
-    // bar into panelBox, positions it over whichever visible cell shows the agent, and feeds the drag its
-    // screen↔content mapping (the pane owns the selection MODEL).
-    const agentContent = (): AgentPaneContent.Model | null => {
-      const content = panelHost.resolvedCells.find(
-        (cell) => cell.content instanceof AgentPaneContent.Class,
-      )?.content;
-      return content instanceof AgentPaneContent.Class ? content : null;
-    };
-    // Live geometry of the cell currently showing the agent (null when the agent is not a visible cell).
-    let agentCellGeometry: {
-      bodyX: number;
-      bodyY: number;
-      width: number;
-      bodyRows: number;
-    } | null = null;
-    const agentScrollViewport = new ScrollableTextViewport.Class({
-      renderer,
-      settings,
-      parent: panelBox,
-      id: 'panel-agent',
-      disableHorizontal: true,
-      followBottom: true,
-      scrollbarZIndex: 50, // the panel adds its cell bodies AFTER this viewport; keep the bar on top
-      extent: () => {
-        const agent = agentContent();
-        return {
-          contentRows: agent?.contentLineCount ?? 0,
-          contentColumns: 0,
-          viewportRows: Math.max(1, agent?.viewportRows ?? 1),
-          viewportColumns: 1,
-        };
-      },
-      colors: () => ({ track: readPalette().panel, thumb: readPalette().dim }),
-      // A scroll change moves the viewport's (non-reactive) scrollTop; bump the pane's reactive paint
-      // signal so the frame effect re-projects the window (else wheel/momentum/keys wouldn't repaint).
-      onScroll: () => {
-        agentContent()?.notifyScrolled();
-        renderer.requestRender();
-      },
-      selection: {
-        positionAtCell: (screenColumn, screenRow) => {
-          const agent = agentContent();
-          const geometry = agentCellGeometry;
-          if (!agent || !geometry) return null;
-          return agent.transcriptPointAt(
-            screenColumn - geometry.bodyX,
-            screenRow - geometry.bodyY,
-          );
-        },
-        begin: (position) => agentContent()?.beginTranscriptSelection(position),
-        extend: (position) =>
-          agentContent()?.extendTranscriptSelection(position),
-        finish: () => agentContent()?.finishTranscriptSelection(),
-        viewportRectangle: () => {
-          const geometry = agentCellGeometry;
-          if (!geometry)
-            return { leftColumn: 0, rightColumn: 0, topRow: 0, bottomRow: 0 };
-          return {
-            leftColumn: geometry.bodyX,
-            rightColumn: geometry.bodyX + geometry.width - 1,
-            topRow: geometry.bodyY,
-            bottomRow: geometry.bodyY + geometry.bodyRows - 1,
-          };
-        },
-        lineGraphemeCount: (lineIndex) =>
-          agentContent()?.transcriptLineGraphemeCount(lineIndex) ?? 0,
-      },
-    });
-    const agentScrollPort: AgentScrollPort = {
-      get scrollTop() {
-        return agentScrollViewport.scrollTop;
-      },
-      get stuckToBottom() {
-        return agentScrollViewport.stuckToBottom;
-      },
-      scrollRowsBy: (delta) => {
-        agentScrollViewport.scrollRowsBy(delta);
-        renderer.requestRender();
-      },
-      scrollToBottom: () => {
-        agentScrollViewport.scrollToBottom();
-        renderer.requestRender();
-      },
-    };
-    const agentsWithScrollPort = new WeakSet<AgentPaneContent.Model>();
     // Pane contents may publish an external scroll extent (the terminal keeps its position in xterm).
     // This host supplies the same settings-derived physics and SolidThumbScrollBar projection to every
     // such content without learning its kind.
@@ -802,11 +705,6 @@ class $RootView {
       requestRender: () => renderer.requestRender(),
     };
     const contentsWithScrollPort = new WeakSet<PaneContent>();
-    // A small manual drag for the COMPOSER selection (it needs no momentum/edge-autoscroll, so it does NOT
-    // go through the viewport): true while a composer drag is in flight. `transcriptDragging` marks a
-    // transcript drag routed through the viewport (so a click on inert chrome rows starts neither).
-    let composerDragging = false;
-    let transcriptDragging = false;
     // Split-aware panel body: a reconciling POOL of cell views. Each visible cell is one TextRenderable
     // body; adjacent cells are separated by a 1-column divider whose drag re-flows the two it sits
     // between (a vertical ratio SplitterModel over the panel's inner width). ONE visible cell means no
@@ -893,47 +791,22 @@ class $RootView {
       container.add(frameHeader);
       container.add(body);
       container.add(verticalScrollBar);
-      // The cell at this pool index whose content is the agent, else null (for scroll/selection routing).
-      const agentAtCell = (): AgentPaneContent.Model | null => {
-        const content = panelHost.resolvedCells[index]?.content;
-        return content instanceof AgentPaneContent.Class ? content : null;
-      };
-      // Focus-follows-click at the CELL grain: clicking a cell body focuses the panel and that cell. For the
-      // AGENT it also begins a drag-selection (transcript via the shared viewport engine, composer via a
-      // small manual drag), grabbing pointer capture so the drag routes here wherever it travels; a BARE
-      // click (no drag) toggles a collapsed tool row on mouse-up. Other panes keep the click hit-test.
+      // Focus follows a click at the cell grain. The active content owns its pointer behavior.
       body.onMouseDown = (event: MouseEvent) => {
         panelHost.focus();
         panelHost.focusCell(index);
-        const agent = agentAtCell();
         const localColumn = (event.x as number) - (body.x as number);
         const localRow = (event.y as number) - (body.y as number);
-        if (agent) {
-          const region = agent.regionAtRow(localRow);
-          if (region.kind === 'composer') {
-            composerDragging = true;
-            transcriptDragging = false;
-            agent.beginComposerSelection(
-              agent.composerPointAt(localColumn, region.visibleRow),
-            );
-          } else if (region.kind === 'transcript') {
-            composerDragging = false;
-            transcriptDragging = true;
-            agentScrollViewport.beginDrag(event.x as number, event.y as number);
-          } else {
-            composerDragging = false; // 'other' rows (spinner/rule/mode line) start no selection
-            transcriptDragging = false;
-            agent.onPointerDown(localColumn, localRow); // reach the mode-line engine segment (click to cycle)
-          }
-        } else {
-          const content = panelHost.resolvedCells[index]?.content;
-          content?.onPointerDown?.(localColumn, localRow, {
+        panelHost.resolvedCells[index]?.content.onPointerDown?.(
+          localColumn,
+          localRow,
+          {
             screenColumn: Number(event.x),
             screenRow: Number(event.y),
             button: event.button,
             modifiers: event.modifiers,
-          });
-        }
+          },
+        );
         renderer.requestRender();
       };
       body.onMouseMove = (event: MouseEvent) => {
@@ -960,83 +833,35 @@ class $RootView {
         renderer.requestRender();
       };
       body.onMouseDrag = (event: MouseEvent) => {
-        const agent = agentAtCell();
-        if (!agent) {
-          const content = panelHost.resolvedCells[index]?.content;
-          content?.onPointerDrag?.(
-            (event.x as number) - (body.x as number),
-            (event.y as number) - (body.y as number),
-            {
-              screenColumn: Number(event.x),
-              screenRow: Number(event.y),
-              button: event.button,
-              modifiers: event.modifiers,
-            },
-          );
-          renderer.requestRender();
-          return;
-        }
-        if (composerDragging) {
-          const region = agent.regionAtRow(
-            (event.y as number) - (body.y as number),
-          );
-          const visibleRow =
-            region.kind === 'composer' ? region.visibleRow : agent.viewportRows; // clamp below
-          agent.extendComposerSelection(
-            agent.composerPointAt(
-              (event.x as number) - (body.x as number),
-              visibleRow,
-            ),
-          );
-        } else if (transcriptDragging) {
-          agentScrollViewport.dragTo(event.x as number, event.y as number);
-        } else {
-          return;
-        }
+        panelHost.resolvedCells[index]?.content.onPointerDrag?.(
+          (event.x as number) - (body.x as number),
+          (event.y as number) - (body.y as number),
+          {
+            screenColumn: Number(event.x),
+            screenRow: Number(event.y),
+            button: event.button,
+            modifiers: event.modifiers,
+          },
+        );
         renderer.requestRender();
       };
-      const endAgentDrag = (event: MouseEvent): void => {
-        const agent = agentAtCell();
-        if (!agent) {
-          const content = panelHost.resolvedCells[index]?.content;
-          content?.onPointerUp?.(
-            (event.x as number) - (body.x as number),
-            (event.y as number) - (body.y as number),
-            {
-              screenColumn: Number(event.x),
-              screenRow: Number(event.y),
-              button: event.button,
-              modifiers: event.modifiers,
-            },
-          );
-          renderer.requestRender();
-          return;
-        }
-        if (composerDragging) {
-          composerDragging = false;
-          agent.finishComposerSelection();
-        } else if (transcriptDragging) {
-          transcriptDragging = false;
-          agentScrollViewport.endDrag();
-          // A bare click (no selection was made) in the transcript toggles a collapsed tool row.
-          if (!agent.hasSelection()) {
-            agent.onPointerDown(
-              (event.x as number) - (body.x as number),
-              (event.y as number) - (body.y as number),
-            );
-          }
-        }
+      const endContentDrag = (event: MouseEvent): void => {
+        panelHost.resolvedCells[index]?.content.onPointerUp?.(
+          (event.x as number) - (body.x as number),
+          (event.y as number) - (body.y as number),
+          {
+            screenColumn: Number(event.x),
+            screenRow: Number(event.y),
+            button: event.button,
+            modifiers: event.modifiers,
+          },
+        );
         renderer.requestRender();
       };
-      body.onMouseUp = endAgentDrag;
-      body.onMouseDragEnd = endAgentDrag;
-      // Vertical wheel over a cell scrolls its content. The agent transcript flings through the shared
-      // momentum engine (wrap mode: no horizontal); other panes route through their optional onWheel.
+      body.onMouseUp = endContentDrag;
+      body.onMouseDragEnd = endContentDrag;
+      // Vertical wheel input routes through the active pane content.
       body.onMouseScroll = (event) => {
-        if (agentAtCell()) {
-          agentScrollViewport.handleWheel(event);
-          return;
-        }
         const content = panelHost.resolvedCells[index]?.content;
         if (!content?.onWheel) return;
         const direction = event.scroll?.direction;
@@ -1976,7 +1801,7 @@ class $RootView {
         const cellRows = panelViewportRows();
         const panelContentTop = panelBox.y as number;
         const panelContentLeft = panelBox.x as number;
-        let agentVisible = false;
+        const visibleContents = new Set<PaneContent>();
         spans.forEach((span, index) => {
           const view = panelCellViews[index];
           if (!view) return;
@@ -2000,156 +1825,97 @@ class $RootView {
               : fg(palette.fg)(closeText),
           ]);
           view.body.fg = palette.fg;
-          const agent =
-            span.content instanceof AgentPaneContent.Class
-              ? span.content
-              : null;
-          if (agent) {
-            view.verticalScrollBar.visible = false;
-            if (!agentsWithScrollPort.has(agent)) {
-              agent.attachScrollPort(agentScrollPort);
-              agentsWithScrollPort.add(agent);
-            }
-            agentScrollViewport.followContentTail(); // tail-anchor before reading scrollTop for the window
-            // Reserve the cell's trailing column for the vertical bar when the transcript overflows.
-            const overflow = agent.contentLineCount > agent.viewportRows;
-            const renderWidth = overflow
-              ? Math.max(1, span.columns - 1)
-              : span.columns;
-            view.body.content = agent.render({
-              width: renderWidth,
+          visibleContents.add(span.content);
+          view.body.content =
+            PaneProjection.Class.paint(span.content, {
+              width: span.columns,
               height: Math.max(1, cellRows - frameHeaderRows),
               palette,
               glyphLevel: theme.glyphLevel.value,
               colorDepth: theme.colorDepth.value,
+              graphicsTier: resolvedGraphicsTier(),
+              screenColumn: Number(view.body.x),
+              screenRow: Number(view.body.y),
+              screenObscured: overlayLayer.modalOverlayOwnsScreen,
               focused: cellFocused,
-            });
-            // Re-sync the tail-anchor AFTER the render refreshed the pane's line count: a synchronous
-            // whole-turn append (echo/permission flows) grows the content in ONE paint, and the pre-render
-            // follow saw the stale extent. The pane already windowed at the fresh maximum while stuck; this
-            // converges the ENGINE's scrollTop to the same place (scrollbar geometry + future wheel deltas).
-            agentScrollViewport.followContentTail();
-            agentCellGeometry = {
-              bodyX: view.body.x as number,
-              bodyY: view.body.y as number,
-              width: renderWidth,
-              bodyRows: agent.viewportRows,
-            };
-            agentVisible = true;
-            agent.setPaneVisible(true);
-            // Position the vertical scrollbar in the cell's trailing column, spanning the transcript rows
-            // (region is in panelBox CONTENT-local coordinates; width includes the reserved bar column).
-            agentScrollViewport.updateScrollbars({
-              top: (view.body.y as number) - panelContentTop,
-              left: (view.body.x as number) - panelContentLeft,
-              width: span.columns,
-              height: agent.viewportRows,
-            });
-          } else {
-            view.body.content =
-              PaneProjection.Class.paint(span.content, {
+            }) ?? view.body.content;
+          const content = span.content;
+          if (
+            content.attachViewportScrollPort &&
+            !contentsWithScrollPort.has(content)
+          ) {
+            content.attachViewportScrollPort(paneScrollPort);
+            contentsWithScrollPort.add(content);
+          }
+          const scrollTop = content.scrollTop;
+          const scrollContentRows = content.scrollContentRows;
+          const scrollViewportRows = content.scrollViewportRows;
+          if (
+            typeof scrollTop === 'number' &&
+            typeof scrollContentRows === 'number' &&
+            typeof scrollViewportRows === 'number' &&
+            content.scrollToLine
+          ) {
+            const geometry = ScrollbarGeometry.Class.scrollbarGeometry(
+              'vertical',
+              {
+                top: Math.max(
+                  0,
+                  Number(view.body.y) -
+                    Number(view.container.y) +
+                    (content.scrollbarRowOffset ?? 0) -
+                    1,
+                ),
+                left: Number(view.body.x) - Number(view.container.x),
                 width: span.columns,
-                height: Math.max(1, cellRows - frameHeaderRows),
-                palette,
-                glyphLevel: theme.glyphLevel.value,
-                colorDepth: theme.colorDepth.value,
-                graphicsTier: resolvedGraphicsTier(),
-                screenColumn: Number(view.body.x),
-                screenRow: Number(view.body.y),
-                screenObscured: overlayLayer.modalOverlayOwnsScreen,
-                focused: cellFocused,
-              }) ?? view.body.content;
-            const content = span.content;
-            if (
-              content.attachViewportScrollPort &&
-              !contentsWithScrollPort.has(content)
-            ) {
-              content.attachViewportScrollPort(paneScrollPort);
-              contentsWithScrollPort.add(content);
-            }
-            const scrollTop = content.scrollTop;
-            const scrollContentRows = content.scrollContentRows;
-            const scrollViewportRows = content.scrollViewportRows;
-            if (
-              typeof scrollTop === 'number' &&
-              typeof scrollContentRows === 'number' &&
-              typeof scrollViewportRows === 'number' &&
-              content.scrollToLine
-            ) {
-              const geometry = ScrollbarGeometry.Class.scrollbarGeometry(
-                'vertical',
-                {
-                  top: Math.max(
-                    0,
-                    Number(view.body.y) -
-                      Number(view.container.y) +
-                      (content.scrollbarRowOffset ?? 0) -
-                      1,
-                  ),
-                  left: Number(view.body.x) - Number(view.container.x),
-                  width: span.columns,
-                  height: scrollViewportRows,
-                },
-                {
-                  scrollSize: scrollContentRows,
-                  viewportSize: scrollViewportRows,
-                  scrollPosition: scrollTop,
-                },
+                height: scrollViewportRows,
+              },
+              {
+                scrollSize: scrollContentRows,
+                viewportSize: scrollViewportRows,
+                scrollPosition: scrollTop,
+              },
+            );
+            if (geometry) {
+              view.verticalScrollBar.visible = true;
+              view.verticalScrollBar.slider.backgroundColor = palette.panel;
+              view.verticalScrollBar.slider.foregroundColor = palette.dim;
+              view.verticalScrollBar.top = geometry.trackTop;
+              view.verticalScrollBar.left = geometry.trackLeft;
+              view.verticalScrollBar.height = geometry.trackLength;
+              view.verticalScrollBar.width = Math.max(
+                1,
+                Math.round(settings.scrollbarThickness.value),
               );
-              if (geometry) {
-                view.verticalScrollBar.visible = true;
-                view.verticalScrollBar.slider.backgroundColor = palette.panel;
-                view.verticalScrollBar.slider.foregroundColor = palette.dim;
-                view.verticalScrollBar.top = geometry.trackTop;
-                view.verticalScrollBar.left = geometry.trackLeft;
-                view.verticalScrollBar.height = geometry.trackLength;
-                view.verticalScrollBar.width = Math.max(
-                  1,
-                  Math.round(settings.scrollbarThickness.value),
-                );
-                view.verticalScrollBarState.applyingGeometry = true;
-                try {
-                  view.verticalScrollBar.scrollSize = scrollContentRows;
-                  view.verticalScrollBar.viewportSize =
-                    geometry.reportedViewportSize;
-                  view.verticalScrollBar.scrollPosition =
-                    geometry.reportedPosition;
-                } finally {
-                  view.verticalScrollBarState.applyingGeometry = false;
-                }
-                view.verticalScrollBarState.reportedToTrueScale =
-                  geometry.reportedToTrueScale;
-              } else {
-                view.verticalScrollBar.visible = false;
+              view.verticalScrollBarState.applyingGeometry = true;
+              try {
+                view.verticalScrollBar.scrollSize = scrollContentRows;
+                view.verticalScrollBar.viewportSize =
+                  geometry.reportedViewportSize;
+                view.verticalScrollBar.scrollPosition =
+                  geometry.reportedPosition;
+              } finally {
+                view.verticalScrollBarState.applyingGeometry = false;
               }
+              view.verticalScrollBarState.reportedToTrueScale =
+                geometry.reportedToTrueScale;
             } else {
               view.verticalScrollBar.visible = false;
             }
+          } else {
+            view.verticalScrollBar.visible = false;
           }
           view.splitterElement?.updateAppearance(palette);
         });
-        if (!agentVisible) {
-          agentScrollViewport.hideBars();
-          agentCellGeometry = null;
-        }
         for (const content of panelHost.orderedContents) {
-          if (
-            content instanceof AgentPaneContent.Class &&
-            content !== agentContent()
-          ) {
-            content.setPaneVisible(false);
-          }
+          content.onVisibilityChange?.(visibleContents.has(content));
         }
       } else {
-        agentScrollViewport.hideBars();
         for (const view of panelCellViews) {
           view.verticalScrollBar.visible = false;
         }
-        agentCellGeometry = null;
         for (const content of panelHost.orderedContents) {
-          if (content instanceof AgentPaneContent.Class) {
-            content.setPaneVisible(false);
-          }
+          content.onVisibilityChange?.(false);
         }
       }
       statusBar.update(
@@ -2636,7 +2402,7 @@ class $RootView {
       modalOverlayOwnsScreen: () => overlayLayer.modalOverlayOwnsScreen,
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
       tickPanelScroll(dtSeconds: number): boolean {
-        let moving = agentScrollViewport.tick(dtSeconds);
+        let moving = false;
         for (const cell of panelHost.resolvedCells) {
           moving = (cell.content.tickScroll?.(dtSeconds) ?? false) || moving;
         }

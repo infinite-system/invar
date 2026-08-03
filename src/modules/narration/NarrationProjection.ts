@@ -16,7 +16,6 @@
 // invariant: Internal tokens are never speakable (src/modules/narration/narration.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, watch, type Ref } from 'vue';
-import type { AgentSession } from '../agent/AgentSession';
 import { StatusChannel } from '../system/StatusChannel';
 import type { TtsBackend } from './TtsBackend.interface';
 import { SpeakableText } from './SpeakableText';
@@ -29,7 +28,7 @@ class $NarrationProjection {
   protected stopWatch: (() => void) | null = null;
 
   constructor(
-    protected readonly session: AgentSession.Instance,
+    protected readonly session: NarrationTranscript,
     protected readonly enabled: Ref<boolean>,
     protected readonly tts: TtsBackend,
   ) {
@@ -84,7 +83,7 @@ class $NarrationProjection {
         // Speak the PROSE, not the markdown: strip syntax + simplify paths so piper doesn't spell out
         // backticks/paths letter-by-letter (the "bebebe" babble).
         const speechPreparation = this.SpeakableText.prepareForSpeech(
-          entry.text,
+          entry.text ?? '',
         );
         if (speechPreparation.usedOriginalFallback) {
           this.session.appendSystemNote(
@@ -128,6 +127,16 @@ class $NarrationProjection {
     this.stopWatch = null;
     this.tts.dispose();
   }
+}
+
+export interface NarrationTranscript {
+  readonly renderRevision: Ref<number>;
+  readonly transcript: readonly {
+    readonly role: string;
+    readonly text?: string;
+  }[];
+  readonly status: Ref<string>;
+  appendSystemNote(note: string): void;
 }
 
 export namespace NarrationProjection {

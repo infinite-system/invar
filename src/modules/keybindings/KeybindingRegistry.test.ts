@@ -322,7 +322,7 @@ describe('the canonical floor', () => {
       registry.resolve(chord('delete', { option: true }), 'editor', 0).action,
     ).toBe('edit.deletePreviousWord');
 
-    for (const context of ['palette', 'quickopen', 'find', 'agent'] as const) {
+    for (const context of ['palette', 'quickopen', 'find'] as const) {
       expect(
         registry.resolve(chord('backspace', { option: true }), context, 0)
           .action,

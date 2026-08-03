@@ -18,6 +18,7 @@ import { ExtensionsPlugin } from './ExtensionsPlugin';
 import { DatabaseProviderPlugin } from '../database/DatabaseProviderPlugin';
 import { DatabaseConsumerPlugin } from '../database/DatabaseConsumerPlugin';
 import { VuePlugin } from '../vue/VuePlugin';
+import { AgentPlugin } from '../agent/AgentPlugin';
 
 class $DefaultPlugins {
   static create(): ApplicationContributor[] {
@@ -30,6 +31,7 @@ class $DefaultPlugins {
       new DatabaseProviderPlugin.Class(),
       new MediaPlugin.Class(),
       new TerminalPlugin.Class(),
+      new AgentPlugin.Class(),
       new InlineRewriteContributor.Class(),
       new EditorPlugin.Class(),
       new StructurePlugin.Class(),

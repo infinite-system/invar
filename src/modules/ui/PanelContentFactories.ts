@@ -23,6 +23,13 @@ class $PanelContentFactories {
   factory(kind: string): PanelContentFactory | null {
     return this.factoriesByKind.get(kind) ?? null;
   }
+
+  addableKinds(): readonly { kind: string; label: string }[] {
+    return [...this.factoriesByKind.values()].map((factory) => ({
+      kind: factory.kind,
+      label: factory.instanceLabel,
+    }));
+  }
 }
 
 export namespace PanelContentFactories {
