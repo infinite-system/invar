@@ -2623,7 +2623,8 @@ class $Bootstrap {
         publishCopyResult(selection.copySelection(), {
           focusedSurface:
             focusedContent.kind ?? focusedContent.id ?? 'unknown-pane',
-          selectionOwner: 'focused-pane-selection',
+          selectionOwner:
+            focusedContent.kind ?? focusedContent.id ?? 'unknown-pane',
           selectionLength: null,
           routeTaken: 'copy-handler',
         });
