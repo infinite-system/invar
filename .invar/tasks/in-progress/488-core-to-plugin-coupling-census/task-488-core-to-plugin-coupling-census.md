@@ -5,7 +5,7 @@ Engine: claude
 Environment: any
 Model: fable-5
 Effort: medium
-State: ACTIVE
+State: IN-PROGRESS
 
 ## In plain words
 

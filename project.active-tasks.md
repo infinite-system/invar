@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #488 [core-to-plugin-coupling-census](.invar/tasks/in-progress/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md)  [building]
+  `tmux attach -t invar/488-core-to-plugin-coupling-census`
 - #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/in-progress/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md)  [building]
   `tmux attach -t invar/487-copy-path-telemetry-names-the-dying-stage`
 - #458 [terminals-all-dead-after-idle](.invar/tasks/in-progress/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)  [building]
