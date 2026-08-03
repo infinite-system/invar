@@ -1,11 +1,11 @@
 # Task 474 — dispose order emits renderable-removal warnings
 
 Priority: architecture-hygiene
-State: ACTIVE
-Engine: any
+State: COMPLETED — 7b8b889d — Landed: single-action teardown + zero-warnings quit ratchet.
+Engine: codex
 Environment: any
-Model: any
-Effort: low
+Model: 5.6-sol
+Effort: high
 
 ## Evidence (user-observed, 2026-08-02, mirror session Ctrl+C)
 

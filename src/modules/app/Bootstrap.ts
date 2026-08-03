@@ -639,10 +639,12 @@ class $Bootstrap {
       } else {
         quickOpen.close();
         // Resolve against the workspace root — openFileInTab (like the tree) reads an ABSOLUTE path.
-        if (path)
+        if (path) {
           workspaceSet.active.openFileInTab(
             Files.Class.join(workspaceSet.active.root, path),
           );
+          workspaceSet.active.focusEditor();
+        }
       }
     };
     const submitGoToLine = (): void => {
