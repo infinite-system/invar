@@ -1,7 +1,7 @@
 # Task 480 — migrate the Quick Open idiom files
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 04ea99ab — Landed: the Quick Open idiom retired across the suite. Migration remainder: shared machinery + agent/terminal + panel/layout + shell sites, per the #479 table.
 Engine: codex
 Environment: any
 Model: 5.6-sol
