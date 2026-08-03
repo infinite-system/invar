@@ -411,6 +411,7 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       {
         chord: { key: 'a', ctrl: true, shift: true },
         action: 'panel.toggleAgent',
+        applicationGlobal: true,
       },
       {
         chord: { key: 'escape' },

@@ -62,6 +62,20 @@ class $KeybindingRegistry {
         `Plugin keybinding cannot reserve ${reservedBinding.action}`,
       );
     }
+    const invalidApplicationGlobalBinding = bindings.find((binding) => {
+      if (!binding.applicationGlobal) return false;
+      const chord = binding.chord;
+      return (
+        !chord ||
+        binding.context !== undefined ||
+        (!chord.ctrl && !chord.alt && !chord.super && !chord.shift)
+      );
+    });
+    if (invalidApplicationGlobalBinding) {
+      throw new Error(
+        `Plugin application-global keybinding must be one modified, context-free chord: ${invalidApplicationGlobalBinding.action}`,
+      );
+    }
     return this.registerTieredLayer(name, bindings, 'plugin');
   }
 
@@ -278,6 +292,41 @@ class $KeybindingRegistry {
     return null;
   }
 
+  /**
+   * Match one application-global binding before a focused pane receives the key. This tier is less
+   * privileged than reservation: modal overlays still own their keys. The lookup is stateless, and a
+   * higher layer that binds the same chord without this flag shadows the pass-through claim.
+   */
+  resolveApplicationGlobal(rawEvent: ChordEvent): string | null {
+    const event = this.normalizeChordEvent(rawEvent);
+    for (
+      let layerIndex = this.layers.length - 1;
+      layerIndex >= 0;
+      layerIndex -= 1
+    ) {
+      const layer = this.layers[layerIndex];
+      if (!layer) continue;
+      let matchedSingle: Keybinding | null = null;
+      let matchedGuardedSingle: Keybinding | null = null;
+      for (const binding of layer.bindings) {
+        if ((binding.context ?? 'global') !== 'global') continue;
+        if (
+          binding.chord &&
+          this.patternMatches(binding.chord, event) &&
+          this.guardPasses(binding)
+        ) {
+          if (binding.when)
+            matchedGuardedSingle = matchedGuardedSingle ?? binding;
+          else matchedSingle = matchedSingle ?? binding;
+        }
+      }
+      const matchedBinding = matchedGuardedSingle ?? matchedSingle;
+      if (matchedBinding)
+        return matchedBinding.applicationGlobal ? matchedBinding.action : null;
+    }
+    return null;
+  }
+
   cancelChord(): void {
     this.pendingChord = null;
     this.chordArmed.value = false;
@@ -430,6 +479,9 @@ export interface Keybinding {
   context?: string;
   /** Named guard (host-registered predicate) that must be true for the binding to fire. */
   when?: string;
+  /** An application action that survives focused pane input, but not a modal overlay. Plugin layers
+   *  may use only one modified, context-free chord. The lookup is stateless. */
+  applicationGlobal?: boolean;
   /** A RESERVED-GLOBAL escape hatch (e.g. quit): fires from ANY mode — even while a modal/search
    *  input is focused — so the user is never trapped. Must be a single chord (no steps): the
    *  pass-through check is stateless. invariant: Reserved global chords fire from any mode. */

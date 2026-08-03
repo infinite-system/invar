@@ -156,6 +156,93 @@ describe('reserved global bindings', () => {
   });
 });
 
+describe('application-global bindings', () => {
+  test('a contributed modified chord resolves statelessly and unregisters', () => {
+    const registry = new KeybindingRegistry.Class();
+    registry.registerLayer('canonical', [
+      {
+        steps: [
+          { key: 'x', ctrl: true },
+          { key: 'c', ctrl: true },
+        ],
+        action: 'app.quit',
+      },
+    ]);
+    expect(
+      registry.resolve(chord('x', { ctrl: true }), 'terminal', 0).chordPending,
+    ).toBe(true);
+    const unregister = registry.registerPluginLayer('plugin:sample', [
+      {
+        chord: { key: 'a', ctrl: true, shift: true },
+        action: 'sample.toggle',
+        applicationGlobal: true,
+      },
+    ]);
+
+    expect(
+      registry.resolveApplicationGlobal(
+        chord('a', { ctrl: true, shift: true }),
+      ),
+    ).toBe('sample.toggle');
+    expect(
+      registry.resolve(chord('c', { ctrl: true }), 'terminal', 100).action,
+    ).toBe('app.quit');
+
+    unregister();
+    expect(
+      registry.resolveApplicationGlobal(
+        chord('a', { ctrl: true, shift: true }),
+      ),
+    ).toBeNull();
+  });
+
+  test('a higher user binding shadows pane pass-through', () => {
+    const registry = new KeybindingRegistry.Class();
+    registry.registerPluginLayer('plugin:sample', [
+      {
+        chord: { key: 'a', ctrl: true, shift: true },
+        action: 'sample.toggle',
+        applicationGlobal: true,
+      },
+    ]);
+    registry.registerUserLayer('user', [
+      {
+        chord: { key: 'a', ctrl: true, shift: true },
+        action: 'user.action',
+      },
+    ]);
+
+    expect(
+      registry.resolveApplicationGlobal(
+        chord('a', { ctrl: true, shift: true }),
+      ),
+    ).toBeNull();
+  });
+
+  test('plugin application-global bindings require one modified global chord', () => {
+    const registry = new KeybindingRegistry.Class();
+    expect(() =>
+      registry.registerPluginLayer('plugin:plain', [
+        {
+          chord: { key: 'a' },
+          action: 'sample.plain',
+          applicationGlobal: true,
+        },
+      ]),
+    ).toThrow('must be one modified, context-free chord');
+    expect(() =>
+      registry.registerPluginLayer('plugin:context', [
+        {
+          chord: { key: 'a', ctrl: true },
+          action: 'sample.context',
+          context: 'sample',
+          applicationGlobal: true,
+        },
+      ]),
+    ).toThrow('must be one modified, context-free chord');
+  });
+});
+
 describe('multi-step chords', () => {
   test('completes on the second step and reports the action', () => {
     const registry = registryWithDefaults();

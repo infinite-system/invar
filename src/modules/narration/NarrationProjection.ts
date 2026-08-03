@@ -129,6 +129,13 @@ class $NarrationProjection {
   }
 }
 
+export namespace NarrationProjection {
+  export const $Class = $NarrationProjection;
+  export let Class = Reactive($Class);
+  export type Instance = typeof Class.Instance;
+  export type Model = InstanceType<typeof Class>;
+}
+
 export interface NarrationTranscript {
   readonly renderRevision: Ref<number>;
   readonly transcript: readonly {
@@ -137,11 +144,4 @@ export interface NarrationTranscript {
   }[];
   readonly status: Ref<string>;
   appendSystemNote(note: string): void;
-}
-
-export namespace NarrationProjection {
-  export const $Class = $NarrationProjection;
-  export let Class = Reactive($Class);
-  export type Instance = typeof Class.Instance;
-  export type Model = InstanceType<typeof Class>;
 }

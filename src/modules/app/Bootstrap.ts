@@ -2405,6 +2405,21 @@ class $Bootstrap {
       const dockOwnsKeyboard =
         (primaryDockHost.visible.value && primaryDockHost.focused.value) ||
         (rightDockHost.visible.value && rightDockHost.focused.value);
+      const panelOwnsKeyboard =
+        panelHost.visible.value && panelHost.focused.value;
+      if (!modalOverlayOwnsScreen && (dockOwnsKeyboard || panelOwnsKeyboard)) {
+        const applicationGlobalAction = keybindings.resolveApplicationGlobal({
+          name: key.name,
+          ctrl: key.ctrl,
+          shift: key.shift,
+          option: key.option || key.meta,
+          super: key.super,
+        });
+        if (applicationGlobalAction) {
+          dispatchAction(applicationGlobalAction, key);
+          return;
+        }
+      }
       if (!modalOverlayOwnsScreen && dockOwnsKeyboard) {
         const activityResolution = keybindings.resolve(
           {
@@ -2450,16 +2465,11 @@ class $Bootstrap {
         if (content?.handleKey(key)) return;
       }
 
-      // A focused bottom panel (the terminal) owns the keyboard: every non-reserved key is encoded to
-      // terminal bytes and delivered to the active PaneContent's handleKey. Reserved globals (quit, panel
-      // toggle) already fired above, so Ctrl+Q / F10 still quit and the toggle still hides the panel; an
-      // unencodable key is swallowed so it never drives the hidden editor beneath.
+      // A focused bottom panel owns the keyboard: every key not claimed by a reserved or
+      // application-global binding is delivered to the active PaneContent's handleKey. An unencodable
+      // key is swallowed so it never drives the hidden editor beneath.
       // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
-      if (
-        !modalOverlayOwnsScreen &&
-        panelHost.visible.value &&
-        panelHost.focused.value
-      ) {
+      if (!modalOverlayOwnsScreen && panelOwnsKeyboard) {
         const panelResolution = keybindings.resolve(
           {
             name: key.name,
