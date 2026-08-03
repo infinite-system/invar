@@ -310,6 +310,12 @@ export async function dragBetweenCells(
   endRow: number,
 ): Promise<void> {
   driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: startColumn,
+    row: startRow,
+    button: 'none',
+  });
+  driver.sendMouseWithoutFrameExpectation({
     kind: 'press',
     column: startColumn,
     row: startRow,
