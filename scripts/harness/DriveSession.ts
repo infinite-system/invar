@@ -20,7 +20,14 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
@@ -427,6 +434,14 @@ class $DriveSession {
     }
   }
 
+  /** Drop every queued step. The drive server calls this after a snippet
+   *  throws: the queue may hold steps built on the failed premise, and
+   *  replaying them against the NEXT snippet would attribute the old
+   *  snippet's intent to the new one. */
+  abandonQueue(): void {
+    this.steps.length = 0;
+  }
+
   /** Makes the chain awaitable: `await app.key(...).waitForStatus(...)`. */
   then<TResult = void>(
     onFulfilled?: ((value: void) => TResult | PromiseLike<TResult>) | null,
@@ -506,12 +521,221 @@ class $DriveScriptRunner {
     return workspaceRoot;
   }
 
+  // ---- the drive server (task #472, case 1) ----
+  //
+  // One warm app, many probes. `--serve` boots the app ONCE and then executes
+  // attached snippets against the SAME live session; `--attach` sends a
+  // snippet from any other process and prints its output. The win is not the
+  // ~250ms boot — it is that navigated STATE survives between probes, so a
+  // sighting continues where the last one ended instead of re-driving there.
+  //
+  // Input stays real PTY bytes through the one persistent driver; the graph
+  // channel is file-based and works from any process already. The protocol
+  // here is the same write-temp+rename request/response family as GraphClient.
+  // One attach at a time: a second writer before the server reads simply
+  // replaces the request, and ids are time-monotone so nothing stale wins.
+
+  protected static readonly DEFAULT_SERVER_DIRECTORY =
+    '/tmp/invar-drive-server';
+
+  static async serve(options: {
+    workspaceRoot?: string;
+    columns?: number;
+    rows?: number;
+    homeDirectory?: string;
+    serverDirectory?: string;
+  }): Promise<void> {
+    const serverDirectory =
+      options.serverDirectory ?? this.DEFAULT_SERVER_DIRECTORY;
+    mkdirSync(serverDirectory, { recursive: true });
+    const workspaceRoot =
+      options.workspaceRoot ?? this.temporaryWorkspaceRoot();
+    const homeDirectory =
+      options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
+    mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+    const statusPath = join(homeDirectory, 'status.json');
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot,
+      columns: options.columns ?? 120,
+      rows: options.rows ?? 40,
+      homeDirectory,
+      environment: {
+        TUI_STATUS_PATH: statusPath,
+        INVAR_AGENT_BACKEND: 'echo',
+      },
+    });
+    const session = new DriveSession.Class(driver, statusPath);
+    const requestPath = join(serverDirectory, 'snippet-request.json');
+    const responsePath = join(serverDirectory, 'snippet-response.json');
+    const manifestPath = join(serverDirectory, 'server.json');
+    let lastServicedId = 0;
+    try {
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'the served app publishes its first status',
+        (candidate) => candidate.width !== undefined,
+      );
+      writeFileSync(
+        manifestPath,
+        JSON.stringify(
+          {
+            pid: process.pid,
+            statusPath,
+            workspaceRoot,
+            homeDirectory,
+            startedAtMs: Date.now(),
+          },
+          null,
+          2,
+        ),
+      );
+      console.log(
+        `drive-server: ready on ${serverDirectory} (workspace ${workspaceRoot})`,
+      );
+      for (;;) {
+        const request = this.readServerFile(requestPath);
+        if (
+          request &&
+          typeof request.id === 'number' &&
+          request.id > lastServicedId
+        ) {
+          lastServicedId = request.id;
+          if (request.stop === true) {
+            this.writeServerFile(responsePath, {
+              id: request.id,
+              ok: true,
+              output: 'drive-server: stopped',
+            });
+            break;
+          }
+          const captured: string[] = [];
+          const originalLog = console.log;
+          console.log = (...parts: unknown[]) => {
+            captured.push(parts.map((part) => String(part)).join(' '));
+            originalLog(...parts);
+          };
+          try {
+            const snippet = new Function(
+              'app',
+              'driver',
+              `return (async () => { ${String(request.source)}\n })();`,
+            ) as (
+              app: DriveSession.Model,
+              driver: PtyTestDriver.Model,
+            ) => Promise<void>;
+            await snippet(session, driver);
+            await session.flush();
+            this.writeServerFile(responsePath, {
+              id: request.id,
+              ok: true,
+              output: captured.join('\n'),
+            });
+          } catch (thrown) {
+            // The server SURVIVES a bad snippet: abandon the queued steps the
+            // snippet left behind, answer with the error, keep serving.
+            session.abandonQueue();
+            this.writeServerFile(responsePath, {
+              id: request.id,
+              ok: false,
+              output: captured.join('\n'),
+              error: thrown instanceof Error ? thrown.message : String(thrown),
+            });
+          } finally {
+            console.log = originalLog;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    } finally {
+      try {
+        rmSync(manifestPath, { force: true });
+      } catch {
+        /* the manifest is advisory; a stale one is caught by the pid check */
+      }
+      await driver.dispose();
+    }
+  }
+
+  static async attach(options: {
+    source: string;
+    serverDirectory?: string;
+    stop?: boolean;
+    timeoutMilliseconds?: number;
+  }): Promise<void> {
+    const serverDirectory =
+      options.serverDirectory ?? this.DEFAULT_SERVER_DIRECTORY;
+    const manifest = this.readServerFile(join(serverDirectory, 'server.json'));
+    if (!manifest || typeof manifest.pid !== 'number') {
+      throw new Error(
+        `no drive server on ${serverDirectory} — start one with:\n` +
+          `  bun scripts/harness/DriveSession.ts --serve --open DIR`,
+      );
+    }
+    try {
+      process.kill(manifest.pid as number, 0);
+    } catch {
+      throw new Error(
+        `the drive server manifest names pid ${manifest.pid}, which is dead — ` +
+          `remove ${serverDirectory} and start a fresh server`,
+      );
+    }
+    const id = Date.now();
+    const requestPath = join(serverDirectory, 'snippet-request.json');
+    const responsePath = join(serverDirectory, 'snippet-response.json');
+    this.writeServerFile(requestPath, {
+      id,
+      ...(options.stop === true ? { stop: true } : { source: options.source }),
+    });
+    const deadline = Date.now() + (options.timeoutMilliseconds ?? 60_000);
+    while (Date.now() < deadline) {
+      const response = this.readServerFile(responsePath);
+      if (response && response.id === id) {
+        if (typeof response.output === 'string' && response.output !== '') {
+          console.log(response.output);
+        }
+        if (response.ok !== true) {
+          console.error(`attach: snippet failed: ${String(response.error)}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+    throw new Error(
+      'the drive server never answered — it may be mid-snippet; ' +
+        'retry, or check its terminal',
+    );
+  }
+
+  protected static readServerFile(
+    path: string,
+  ): Record<string, unknown> | null {
+    try {
+      return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+
+  protected static writeServerFile(
+    path: string,
+    body: Record<string, unknown>,
+  ): void {
+    writeFileSync(`${path}.tmp`, JSON.stringify(body, null, 2));
+    renameSync(`${path}.tmp`, path);
+  }
+
   static async main(argumentsList: readonly string[]): Promise<void> {
     let workspaceRoot: string | undefined;
     let source: string | undefined;
     let columns = 120;
     let rows = 40;
     let homeDirectory: string | undefined;
+    let serverDirectory: string | undefined;
+    let serve = false;
+    let attachSource: string | undefined;
+    let stop = false;
     for (let index = 0; index < argumentsList.length; index += 1) {
       const argument = argumentsList[index];
       const value = argumentsList[index + 1] ?? '';
@@ -527,6 +751,19 @@ class $DriveScriptRunner {
       } else if (argument === '--home') {
         homeDirectory = resolve(value);
         index += 1;
+      } else if (argument === '--serve') {
+        serve = true;
+      } else if (argument === '--attach') {
+        attachSource = value;
+        index += 1;
+      } else if (argument === '--attach-script') {
+        attachSource = await Bun.file(resolve(value)).text();
+        index += 1;
+      } else if (argument === '--stop') {
+        stop = true;
+      } else if (argument === '--server-dir') {
+        serverDirectory = resolve(value);
+        index += 1;
       } else if (argument === '--geometry') {
         const [columnText, rowText] = value.split('x');
         columns = Number(columnText) || columns;
@@ -536,6 +773,24 @@ class $DriveScriptRunner {
         console.log(this.helpText);
         return;
       }
+    }
+    if (serve) {
+      await this.serve({
+        workspaceRoot,
+        columns,
+        rows,
+        homeDirectory,
+        serverDirectory,
+      });
+      return;
+    }
+    if (stop || attachSource !== undefined) {
+      await this.attach({
+        source: attachSource ?? '',
+        serverDirectory,
+        stop,
+      });
+      return;
     }
     if (!source) {
       console.error(this.helpText);
@@ -554,6 +809,14 @@ class $DriveScriptRunner {
       '  --eval CODE          the same, inline',
       '  --geometry CxR       terminal size (default 120x40)',
       '  --home DIR           persistent home, so state carries across runs',
+      '',
+      'Warm-app server (one boot, many probes; state survives between them):',
+      '',
+      '  --serve              boot once, then execute attached snippets forever',
+      "  --attach CODE        run a snippet against the RUNNING server's session",
+      '  --attach-script FILE the same, from a file',
+      '  --stop               shut the server down',
+      '  --server-dir DIR     rendezvous dir (default /tmp/invar-drive-server)',
       '',
       'The snippet gets `app` (fluent, awaitable) and `driver` (the raw PTY).',
       'Example snippet:',
