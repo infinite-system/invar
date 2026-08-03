@@ -107,7 +107,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (39)
+## ARCHITECTURE-HYGIENE (43)
+- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/active/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md)
+- #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/active/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)
+- #491 [editor-shared-generators-move-home](.invar/tasks/active/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md)
+- #490 [chord-and-command-relocation-sweep](.invar/tasks/active/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/active/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
