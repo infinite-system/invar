@@ -131,7 +131,7 @@ class $Drive {
       await driver.awaitScreenChange(options.timeoutMilliseconds);
 
       if (target.filePath) {
-        await this.openFile(
+        await HarnessSmoke.Class.openFileThroughQuickOpen(
           driver,
           statusPath,
           target.filePath,
@@ -621,17 +621,8 @@ class $Drive {
     options: DriveOptions,
   ): Promise<DriveTarget> {
     if (options.fixtureSize !== null) {
-      const workspaceRoot = mkdtempSync(
-        join(tmpdir(), `invar-drive-fixture-${options.fixtureSize}-`),
-      );
-      const filePath = join(workspaceRoot, `scale-${options.fixtureSize}.txt`);
-      const fixtureLines = Array.from(
-        { length: options.fixtureSize },
-        (_unused, lineIndex) =>
-          `DRIVE-LINE-${String(lineIndex + 1).padStart(6, '0')} ` +
-          `content at scale ${options.fixtureSize}`,
-      );
-      await Bun.write(filePath, fixtureLines.join('\n'));
+      const { workspaceRoot, filePath } =
+        await HarnessSmoke.Class.createDriveScaleFixture(options.fixtureSize);
       return {
         workspaceRoot,
         filePath,
@@ -719,74 +710,6 @@ class $Drive {
     return this.$settledStatusRules
       .filter((rule) => rule.isPending(status, snapshot))
       .map((rule) => rule.pendingName);
-  }
-
-  protected static async openFile(
-    driver: PtyTestDriver.Model,
-    statusPath: string,
-    filePath: string,
-    timeoutMilliseconds: number,
-  ): Promise<void> {
-    driver.sendKeys('Control+p');
-    await driver.awaitGridCondition(
-      'Quick Open to become visible for the requested file',
-      () => {
-        try {
-          return (
-            HarnessSmoke.Class.readStatus(statusPath).quickOpenOpen === true
-          );
-        } catch {
-          return false;
-        }
-      },
-      timeoutMilliseconds,
-    );
-    driver.sendText(basename(filePath));
-    await driver.awaitGridCondition(
-      `Quick Open to rank the requested file: ${filePath}`,
-      (snapshot) => {
-        try {
-          const status = HarnessSmoke.Class.readStatus(statusPath);
-          return (
-            status.quickOpenQuery === basename(filePath) &&
-            Number(status.quickOpenMatches) >= 1 &&
-            snapshot.findText(basename(filePath)) !== null
-          );
-        } catch {
-          return false;
-        }
-      },
-      timeoutMilliseconds,
-    );
-    driver.sendKeys('Enter');
-    await driver.awaitGridCondition(
-      `the requested file to open: ${filePath}`,
-      () => {
-        try {
-          return (
-            HarnessSmoke.Class.readStatus(statusPath).activeBuffer === filePath
-          );
-        } catch {
-          return false;
-        }
-      },
-      timeoutMilliseconds,
-    );
-    if (HarnessSmoke.Class.readStatus(statusPath).focus !== 'editor') {
-      driver.sendKeys('Tab');
-      await driver.awaitGridCondition(
-        'the opened file editor to receive focus',
-        () => {
-          try {
-            return HarnessSmoke.Class.readStatus(statusPath).focus === 'editor';
-          } catch {
-            return false;
-          }
-        },
-        timeoutMilliseconds,
-      );
-    }
-    await driver.awaitScreenChange(timeoutMilliseconds);
   }
 
   protected static async performAction(

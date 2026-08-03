@@ -38,6 +38,8 @@ bun scripts/harness/DriveSession.ts --stop             # done: kill your server
 - Do not boot per probe (`--eval` cold-runs are for one-shots); do not leave
   servers running when your task ends; a `timeout`-killed server LEAKS its
   inner app — always `--stop`.
+- `bun run drive` is one-shot and stops itself. Only a warm DriveSession
+  server needs the separate `DriveSession.ts --stop` command.
 - Mirror, trail, and humanPace exist for HUMAN-WATCHED sessions only — skip
   them headless; they cost time and change nothing you can assert.
 
@@ -76,6 +78,7 @@ driver is a second copy of the app. Do not add app verbs.
   `waitForRepaint()`.
 - Readers: `show(...statusFields)`, `showScreen(rows)`, `await app.screen()`,
   `await app.status()`, `await app.get(path)`, `await app.set(path, value)`.
+- Labeled evidence: `app.show('after panel open', ['panelVisible', 'frame'])`.
 - Impossible inputs fail loudly: a pointer target outside the live grid
   throws (a real terminal cannot produce that event) — never a silent no-op.
 
@@ -93,6 +96,7 @@ of `screen.columns/rows`.
 
 ```
 bun scripts/harness/DriveSession.ts --serve [--open DIR]      # boots ONCE
+bun scripts/harness/DriveSession.ts --serve --size 100000     # generated fixture
 bun scripts/harness/DriveSession.ts --attach "…snippet…"      # probe it
 bun scripts/harness/DriveSession.ts --attach-script FILE
 bun scripts/harness/DriveSession.ts --stop
@@ -106,6 +110,24 @@ snippet answers loudly, abandons its queued steps, and the server keeps
 serving. Stale requests from a previous session never replay. One attach at a
 time. Kill orphans by /proc env evidence, never by name-pattern.
 
+## The MCP doorway — Claude controls the same warm server
+
+From the checkout, add the stdio server to the current Claude project:
+
+```
+claude mcp add --scope local invar-drive -- bun "$PWD/scripts/harness/InvarMcpServer.ts"
+```
+
+Restart Claude after adding it. The MCP server resolves the same
+checkout-keyed DriveSession server as the shell commands. It exposes
+`server_start`, `server_reload`, `server_stop`, `drive_attach`, `graph_get`,
+`graph_await`, `graph_set`, and `screen`.
+
+`drive_attach` sends actions through the existing real-PTY verbs. `graph_set`
+is EXPERIMENT ONLY and never supplies verification evidence. Use
+`server_stop` before ending the task. It is the MCP form of
+`DriveSession.ts --stop`.
+
 ## --mirror — a human watches the agent's hand, live
 
 ```
@@ -116,6 +138,8 @@ Relays the app's raw bytes to the hosting terminal (geometry inherited,
 workspace defaults to cwd, settings seeded BY COPY from the real config —
 never shared; the #465 damaged-config incident is why). Watch-only: stdin is
 swallowed raw (Ctrl+C stops the server); your keyboard does not double-drive.
+The server forwards hosting-terminal `SIGWINCH` events to the inner PTY. A
+pane resize therefore changes the mirrored app's live grid.
 
 Hard-won mirror rules, each bought with a live defect:
 
@@ -191,6 +215,12 @@ a path never contains `.value`.
 - Contributor state starts at paths such as
   `contributors.file-tree.activeWorkspace.rowCount` and
   `contributors.git.activeWorkspace.changedCount`.
+
+The status projection and graph answer different questions. Use
+`waitForStatus` and `show` for status-only fields such as `renderQuiescent`.
+Use `waitFor` for a frame-settled graph condition. Use `get` for an immediate
+graph question. The projection is an atomic bulk snapshot. The graph reaches
+state that the projection does not publish.
 
 Smokes use the same protocol through `GraphClient.Class.awaitValue(statusPath,
 path, value)` — one client, shared with DriveSession; never fork it.

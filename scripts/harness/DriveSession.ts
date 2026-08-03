@@ -444,9 +444,21 @@ class $DriveSession {
     return current;
   }
 
-  /** Print named status fields at this point in the flow. */
-  show(...fieldNames: string[]): this {
+  /** Print named status fields at this point in the flow. Pass a label plus
+   *  an array when several observations need distinct evidence headings. */
+  show(...fieldNames: string[]): this;
+  show(label: string, fieldNames: readonly string[]): this;
+  show(
+    labelOrFieldName: string,
+    ...remainingFieldNames: readonly (string | readonly string[])[]
+  ): this {
+    const labeled = Array.isArray(remainingFieldNames[0]);
+    const label = labeled ? labelOrFieldName : null;
+    const fieldNames = labeled
+      ? (remainingFieldNames[0] as readonly string[])
+      : [labelOrFieldName, ...(remainingFieldNames as readonly string[])];
     return this.step(`show ${fieldNames.join(', ')}`, async () => {
+      if (label !== null) console.log(`\n== ${label} ==`);
       const status = HarnessSmoke.Class.readStatus(this.statusPath);
       const missing: string[] = [];
       for (const fieldName of fieldNames) {
@@ -626,13 +638,33 @@ class $DriveScriptRunner {
    *  snippet never sees setup or teardown. */
   static async run(options: {
     workspaceRoot?: string;
+    fixtureSize?: number;
     source: string;
     columns?: number;
     rows?: number;
     homeDirectory?: string;
   }): Promise<void> {
+    if (
+      options.workspaceRoot !== undefined &&
+      options.fixtureSize !== undefined
+    ) {
+      throw new Error(
+        'DriveSession workspace and fixture size are mutually exclusive',
+      );
+    }
+    const scaleFixture =
+      options.fixtureSize === undefined
+        ? null
+        : await HarnessSmoke.Class.createDriveScaleFixture(options.fixtureSize);
+    const temporaryWorkspaceRoot =
+      options.workspaceRoot === undefined && scaleFixture === null
+        ? this.temporaryWorkspaceRoot()
+        : null;
     const workspaceRoot =
-      options.workspaceRoot ?? this.temporaryWorkspaceRoot();
+      options.workspaceRoot ??
+      scaleFixture?.workspaceRoot ??
+      temporaryWorkspaceRoot!;
+    const homeDirectoryOwned = options.homeDirectory === undefined;
     const homeDirectory =
       options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
     mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
@@ -658,6 +690,13 @@ class $DriveScriptRunner {
         'the app publishes its first status',
         (candidate) => candidate.width !== undefined,
       );
+      if (scaleFixture !== null) {
+        await HarnessSmoke.Class.openFileThroughQuickOpen(
+          driver,
+          statusPath,
+          scaleFixture.filePath,
+        );
+      }
       const snippet = new Function(
         'app',
         'driver',
@@ -671,6 +710,18 @@ class $DriveScriptRunner {
       await session.flush();
     } finally {
       await driver.dispose();
+      if (homeDirectoryOwned) {
+        await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+      }
+      if (scaleFixture !== null) {
+        await HarnessSmoke.Class.removeTemporaryDirectory(
+          scaleFixture.workspaceRoot,
+        );
+      } else if (temporaryWorkspaceRoot !== null) {
+        await HarnessSmoke.Class.removeTemporaryDirectory(
+          temporaryWorkspaceRoot,
+        );
+      }
     }
   }
 
@@ -725,12 +776,21 @@ class $DriveScriptRunner {
 
   static async serve(options: {
     workspaceRoot?: string;
+    fixtureSize?: number;
     columns?: number;
     rows?: number;
     homeDirectory?: string;
     serverDirectory?: string;
     mirror?: boolean;
   }): Promise<void> {
+    if (
+      options.workspaceRoot !== undefined &&
+      options.fixtureSize !== undefined
+    ) {
+      throw new Error(
+        'DriveSession workspace and fixture size are mutually exclusive',
+      );
+    }
     const serverDirectory =
       options.serverDirectory ?? this.defaultServerDirectory;
     mkdirSync(serverDirectory, { recursive: true });
@@ -758,9 +818,20 @@ class $DriveScriptRunner {
     // A mirrored server has a human WATCHING — they almost certainly mean the
     // project they are standing in, not an empty scratch dir. Headless serves
     // keep the isolated temp workspace.
+    const scaleFixture =
+      options.fixtureSize === undefined
+        ? null
+        : await HarnessSmoke.Class.createDriveScaleFixture(options.fixtureSize);
+    const temporaryWorkspaceRoot =
+      options.workspaceRoot === undefined &&
+      scaleFixture === null &&
+      !options.mirror
+        ? this.temporaryWorkspaceRoot()
+        : null;
     const workspaceRoot =
       options.workspaceRoot ??
-      (options.mirror ? process.cwd() : this.temporaryWorkspaceRoot());
+      scaleFixture?.workspaceRoot ??
+      (options.mirror ? process.cwd() : temporaryWorkspaceRoot!);
     // Mirroring means a human is WATCHING in a real terminal (often an Invar
     // terminal pane — the app inside the app), so the inner app inherits the
     // hosting terminal's geometry and the mirror fills the pane exactly.
@@ -804,7 +875,10 @@ class $DriveScriptRunner {
       driver: PtyTestDriver.Model;
       session: DriveSession.Model;
       statusPath: string;
+      homeDirectory: string;
+      homeDirectoryOwned: boolean;
     }> => {
+      const homeDirectoryOwned = options.homeDirectory === undefined;
       const homeDirectory =
         options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
       mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
@@ -868,6 +942,13 @@ class $DriveScriptRunner {
         'the served app publishes its first status',
         (candidate) => candidate.width !== undefined,
       );
+      if (scaleFixture !== null) {
+        await HarnessSmoke.Class.openFileThroughQuickOpen(
+          driver,
+          statusPath,
+          scaleFixture.filePath,
+        );
+      }
       writeFileSync(
         manifestPath,
         JSON.stringify(
@@ -883,7 +964,13 @@ class $DriveScriptRunner {
           2,
         ),
       );
-      return { driver, session, statusPath };
+      return {
+        driver,
+        session,
+        statusPath,
+        homeDirectory,
+        homeDirectoryOwned,
+      };
     };
 
     if (options.mirror && process.stdin.isTTY) {
@@ -913,6 +1000,26 @@ class $DriveScriptRunner {
     let lastServicedId =
       staleRequest && typeof staleRequest.id === 'number' ? staleRequest.id : 0;
     let active = await bootInnerApp();
+    let resizeTargetDriver: PtyTestDriver.Model | null = active.driver;
+    const forwardHostingTerminalResize = () => {
+      if (!options.mirror || resizeTargetDriver === null) return;
+      const columns = process.stdout.columns;
+      const rows = process.stdout.rows;
+      if (
+        columns === undefined ||
+        rows === undefined ||
+        columns < 1 ||
+        rows < 1
+      ) {
+        return;
+      }
+      const currentScreen = resizeTargetDriver.snapshot();
+      if (currentScreen.columns === columns && currentScreen.rows === rows) {
+        return;
+      }
+      resizeTargetDriver.resize(columns, rows);
+    };
+    if (options.mirror) process.on('SIGWINCH', forwardHostingTerminalResize);
     try {
       console.log(
         `drive-server: ready on ${serverDirectory} (workspace ${workspaceRoot})`,
@@ -938,9 +1045,16 @@ class $DriveScriptRunner {
             // unless --home pinned persistence), same server, same rendezvous
             // — attaches never re-target.
             try {
+              resizeTargetDriver = null;
               await active.driver.dispose();
+              if (active.homeDirectoryOwned) {
+                await HarnessSmoke.Class.removeTemporaryDirectory(
+                  active.homeDirectory,
+                );
+              }
               reloadCount += 1;
               active = await bootInnerApp();
+              resizeTargetDriver = active.driver;
               this.writeServerFile(responsePath, {
                 id: request.id,
                 ok: true,
@@ -995,12 +1109,28 @@ class $DriveScriptRunner {
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
     } finally {
+      resizeTargetDriver = null;
+      if (options.mirror) {
+        process.off('SIGWINCH', forwardHostingTerminalResize);
+      }
       try {
         rmSync(manifestPath, { force: true });
       } catch {
         /* the manifest is advisory; a stale one is caught by the pid check */
       }
       await active.driver.dispose();
+      if (active.homeDirectoryOwned) {
+        await HarnessSmoke.Class.removeTemporaryDirectory(active.homeDirectory);
+      }
+      if (scaleFixture !== null) {
+        await HarnessSmoke.Class.removeTemporaryDirectory(
+          scaleFixture.workspaceRoot,
+        );
+      } else if (temporaryWorkspaceRoot !== null) {
+        await HarnessSmoke.Class.removeTemporaryDirectory(
+          temporaryWorkspaceRoot,
+        );
+      }
       if (options.mirror && process.stdin.isTTY) {
         // Hand the hosting terminal back the way we found it: cooked stdin,
         // and the inner app's own shutdown bytes (already mirrored) have
@@ -1017,10 +1147,10 @@ class $DriveScriptRunner {
     stop?: boolean;
     reload?: boolean;
     timeoutMilliseconds?: number;
-  }): Promise<void> {
+  }): Promise<string> {
     const serverDirectory =
       options.serverDirectory ?? this.defaultServerDirectory;
-    const manifest = this.readServerFile(join(serverDirectory, 'server.json'));
+    const manifest = this.serverManifest(serverDirectory);
     if (!manifest || typeof manifest.pid !== 'number') {
       throw new Error(
         `no drive server on ${serverDirectory} — start one with:\n` +
@@ -1050,20 +1180,31 @@ class $DriveScriptRunner {
     while (Date.now() < deadline) {
       const response = this.readServerFile(responsePath);
       if (response && response.id === id) {
-        if (typeof response.output === 'string' && response.output !== '') {
-          console.log(response.output);
-        }
+        const output =
+          typeof response.output === 'string' ? response.output : '';
         if (response.ok !== true) {
-          console.error(`attach: snippet failed: ${String(response.error)}`);
-          process.exitCode = 1;
+          throw new Error(
+            `attach: snippet failed: ${String(response.error)}` +
+              `${output === '' ? '' : `\n${output}`}`,
+          );
         }
-        return;
+        return output;
       }
       await new Promise((resolve) => setTimeout(resolve, 15));
     }
     throw new Error(
       'the drive server never answered — it may be mid-snippet; ' +
         'retry, or check its terminal',
+    );
+  }
+
+  /** Read the checkout-keyed server manifest without opening a second
+   *  rendezvous protocol. MCP graph tools use its status path directly. */
+  static serverManifest(
+    serverDirectory?: string,
+  ): Record<string, unknown> | null {
+    return this.readServerFile(
+      join(serverDirectory ?? this.defaultServerDirectory, 'server.json'),
     );
   }
 
@@ -1087,6 +1228,7 @@ class $DriveScriptRunner {
 
   static async main(argumentsList: readonly string[]): Promise<void> {
     let workspaceRoot: string | undefined;
+    let fixtureSize: number | undefined;
     let source: string | undefined;
     let columns = 220;
     let rows = 60;
@@ -1103,6 +1245,12 @@ class $DriveScriptRunner {
       const value = argumentsList[index + 1] ?? '';
       if (argument === '--open') {
         workspaceRoot = resolve(value);
+        index += 1;
+      } else if (argument === '--size') {
+        fixtureSize = Number(value);
+        if (!Number.isSafeInteger(fixtureSize) || fixtureSize < 1) {
+          throw new Error(`--size must be a positive integer, got ${value}`);
+        }
         index += 1;
       } else if (argument === '--script') {
         source = await Bun.file(resolve(value)).text();
@@ -1141,9 +1289,13 @@ class $DriveScriptRunner {
         return;
       }
     }
+    if (workspaceRoot !== undefined && fixtureSize !== undefined) {
+      throw new Error('--open and --size are mutually exclusive');
+    }
     if (serve) {
       await this.serve({
         workspaceRoot,
+        fixtureSize,
         columns: columnsExplicit ? columns : undefined,
         rows: columnsExplicit ? rows : undefined,
         homeDirectory,
@@ -1153,12 +1305,13 @@ class $DriveScriptRunner {
       return;
     }
     if (stop || reload || attachSource !== undefined) {
-      await this.attach({
+      const output = await this.attach({
         source: attachSource ?? '',
         serverDirectory,
         stop,
         reload,
       });
+      if (output !== '') console.log(output);
       return;
     }
     if (!source) {
@@ -1166,7 +1319,14 @@ class $DriveScriptRunner {
       process.exitCode = 2;
       return;
     }
-    await this.run({ workspaceRoot, source, columns, rows, homeDirectory });
+    await this.run({
+      workspaceRoot,
+      fixtureSize,
+      source,
+      columns,
+      rows,
+      homeDirectory,
+    });
   }
 
   protected static get helpText(): string {
@@ -1174,6 +1334,7 @@ class $DriveScriptRunner {
       'Usage: bun scripts/harness/DriveSession.ts [options]',
       '',
       '  --open DIR           workspace to open (default: a temp workspace)',
+      '  --size LINE_COUNT    generate and open a temporary scale fixture',
       '  --script FILE        a snippet: NO imports, NO setup. `app` is live.',
       '  --eval CODE          the same, inline',
       '  --geometry CxR       terminal size (default 220x60, a real user scale)',
@@ -1198,6 +1359,7 @@ class $DriveScriptRunner {
       "  app.key('Control+j').waitForStatus('panelVisible', true)",
       "     .clickText('+ Plugin').waitForRepaint()",
       "     .show('panelContentLabels')",
+      "  app.show('after panel open', ['panelVisible', 'frame'])",
       '',
       'Watched sessions: app.humanPace() makes every gesture eye-speed —',
       'the pointer glides, clicks dwell, typing lands per character.',
@@ -1207,6 +1369,16 @@ class $DriveScriptRunner {
       "  await app.get('panelHost.panelListWidth')      // ask now",
       "  app.waitFor('panelHost.visible', true)         // condition, frame-settled",
       "  await app.set('panelHost.panelListWidth', 30)  // EXPERIMENT only — never verification",
+      '',
+      'Status projection versus graph:',
+      '',
+      "  app.waitForStatus('renderQuiescent', true)     // published status-only field",
+      "  app.show('renderQuiescent')                    // read the atomic status projection",
+      "  app.waitFor('panelHost.visible', true)         // live graph, frame-settled condition",
+      "  await app.get('panelHost.visible')              // live graph, ask now",
+      '',
+      '`bun run drive` is one-shot and stops itself. Only a warm DriveSession',
+      'server needs `bun scripts/harness/DriveSession.ts --stop`.',
 
       '',
     ].join('\n');
@@ -1219,5 +1391,10 @@ export namespace DriveScriptRunner {
 }
 
 if (import.meta.main) {
-  await DriveScriptRunner.Class.main(process.argv.slice(2));
+  try {
+    await DriveScriptRunner.Class.main(process.argv.slice(2));
+  } catch (thrown) {
+    console.error(thrown instanceof Error ? thrown.message : String(thrown));
+    process.exitCode = 1;
+  }
 }
