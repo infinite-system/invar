@@ -1,7 +1,7 @@
 # Task 475 — Quick Open can leave focus on the previous pane
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — f10ebd13 — Landed: Quick Open focus follows the opened file; smoke asserts it directly.
 Engine: codex
 Environment: any
 Model: 5.6-sol

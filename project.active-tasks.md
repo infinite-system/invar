@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #479 [migrate-the-census-tail](.invar/tasks/in-progress/479-migrate-the-census-tail/task-479-migrate-the-census-tail.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/479-migrate-the-census-tail`
-- #475 [quick-open-leaves-focus-behind](.invar/tasks/in-progress/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/475-quick-open-leaves-focus-behind`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -153,10 +151,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 187 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 188 — full log: project.tasks-completed.md)
 - #478 [migrate-the-pre-satisfied-waits](.invar/tasks/completed/478-migrate-the-pre-satisfied-waits/task-478-migrate-the-pre-satisfied-waits.md) — 655c0db0 — Round 1 landed: five unfalsifiable positive controls + panel-chrome drag-span converted with planted-defect proof. Remainder (plugin-manifest, scrollbars, the census tail) queued for round 2.
 - #477 [copy-from-agent-pane-does-not-work](.invar/tasks/completed/477-copy-from-agent-pane-does-not-work/task-477-copy-from-agent-pane-does-not-work.md) — 08ab9d46 — Landed: shared-drag hover fix + assistant-reply copy smoke, no production change. Morning item for the user: confirm whether cmux forwards Cmd+C/kitty Ctrl+C over ssh — the app side is proven.
 - #476 [reload-keeps-a-disposed-session-on-boot-failure](.invar/tasks/completed/476-reload-keeps-a-disposed-session-on-boot-failure/task-476-reload-keeps-a-disposed-session-on-boot-failure.md) — 305185c5 — Landed: boot-before-dispose reload with both arms proven; MCP sizeLines closes the last builder ask from #473.
+- #475 [quick-open-leaves-focus-behind](.invar/tasks/completed/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md) — f10ebd13 — Landed: Quick Open focus follows the opened file; smoke asserts it directly.
 - #474 [dispose-order-renderable-warnings](.invar/tasks/completed/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md) — 7b8b889d — Landed: single-action teardown + zero-warnings quit ratchet.
 - #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
 - #471 [graph-reaches-the-whole-app](.invar/tasks/completed/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md) — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
@@ -168,4 +167,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #448 [static-reads-that-can-block-overrides](.invar/tasks/completed/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md) — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.
 - #444 [history-is-editor-area-view-states](.invar/tasks/completed/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md) — 61fd213e — History as editor-area view states landed as part of the stack.
 - #443 [static-read-indirection-defeats-override](.invar/tasks/completed/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md) — 3d9fdca6 — Six classes cleaned; five deleted their statics outright. Bycatch became #448 (55-site census) and the Drive.ts type error the conductor had introduced.
-- #442 [panel-editor-tree-chrome-polish](.invar/tasks/completed/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md) — 334add87 — Panel editor chrome polish landed as part of the stack.
