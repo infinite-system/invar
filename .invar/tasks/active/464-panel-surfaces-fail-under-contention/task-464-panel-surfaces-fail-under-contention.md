@@ -53,3 +53,13 @@ Test it before assuming a product defect. Do not widen any budget.
 
 A repaired wait must still FAIL when the geometry genuinely never settles.
 A fix that makes the wait unable to fail is worse than the flake.
+
+## Sighting 2026-08-03 (gate-492 r1, contention tier)
+
+panel-chrome: timed out at "88-column a drag begun on the last cell
+of the drag span still resizes the panel" — a DIFFERENT assertion
+than the #500 popup revocation (fixed at 94ec7eac); this one is the
+drag-span wait under load. Also same gate: navigation-history
+(serial tier) failed at "the breadcrumb and history row sits directly
+above the buffer tab row" but exits 0 solo on the same tip — load
+geometry flake, first sighting of that assertion.
