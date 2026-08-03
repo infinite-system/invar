@@ -176,7 +176,7 @@ describe('Drive action completion', () => {
       'Mirror activity bar on right',
     ]);
     let currentSnapshot = hiddenTargetSnapshot;
-    let screenChangeWaitStarted = false;
+    let settledGridWaitStarted = false;
     let actionCompleted = false;
     let releasePaint: () => void = () => {};
     const paintRelease = new Promise<void>((resolvePaint) => {
@@ -186,11 +186,35 @@ describe('Drive action completion', () => {
     const driver = {
       snapshot: () => currentSnapshot,
       sendKeys: () => {
-        void Bun.write(statusPath, JSON.stringify({ settingsOpen: true }));
+        void Bun.write(
+          statusPath,
+          JSON.stringify({
+            settingsOpen: true,
+            ready: true,
+            renderQuiescent: false,
+            activeWorkspace: 'test-workspace',
+          }),
+        );
       },
-      awaitScreenChange: async () => {
-        screenChangeWaitStarted = true;
+      awaitGridCondition: async (
+        _predicateDescription: string,
+        predicate: (snapshot: HarnessSnapshot.Model) => boolean,
+      ) => {
+        settledGridWaitStarted = true;
         await paintRelease;
+        await Bun.write(
+          statusPath,
+          JSON.stringify({
+            settingsOpen: true,
+            ready: true,
+            renderQuiescent: true,
+            activeWorkspace: 'test-workspace',
+          }),
+        );
+        if (!predicate(currentSnapshot)) {
+          throw new Error('The settled test snapshot did not satisfy the wait');
+        }
+        return currentSnapshot;
       },
     } as unknown as PtyTestDriver.Model;
 
@@ -204,14 +228,14 @@ describe('Drive action completion', () => {
       });
       const observationDeadline = performance.now() + 1_000;
       while (
-        !screenChangeWaitStarted &&
+        !settledGridWaitStarted &&
         !actionCompleted &&
         performance.now() < observationDeadline
       ) {
         await Bun.sleep(1);
       }
 
-      expect(screenChangeWaitStarted).toBeTrue();
+      expect(settledGridWaitStarted).toBeTrue();
       expect(actionCompleted).toBeFalse();
       expect(() =>
         TestDrive.textPosition(currentSnapshot, 'Mirror activity bar on right'),

@@ -90,6 +90,12 @@ class $StatusChannel {
     }
   }
 
+  /** Mark a requested frame pending in memory; the completed frame owns publication. */
+  static markRenderRequested(): void {
+    if (!this.observingEnabled || !this.$state.renderQuiescent) return;
+    this.$state.renderQuiescent = false;
+  }
+
   /** Mark the frame settled and flush — called after a render quiesces. */
   static settle(frame: number): void {
     if (!this.observingEnabled) return;
