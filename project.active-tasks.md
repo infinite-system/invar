@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/in-progress/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md)  [building]
   `tmux attach -t invar/495-terminal-copy-selection-empty-at-chord-time`
+- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/in-progress/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md)  [building]
+  `tmux attach -t invar/493-ast-query-imports-and-literal-census-modes`
 - #356 [agent-pane-is-a-decoupled-module](.invar/tasks/in-progress/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)  [building]
   `tmux attach -t invar/356-agent-pane-is-a-decoupled-module`
 
@@ -107,8 +109,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (43)
-- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/active/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md)
+## ARCHITECTURE-HYGIENE (42)
 - #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/active/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)
 - #491 [editor-shared-generators-move-home](.invar/tasks/active/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md)
 - #490 [chord-and-command-relocation-sweep](.invar/tasks/active/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)

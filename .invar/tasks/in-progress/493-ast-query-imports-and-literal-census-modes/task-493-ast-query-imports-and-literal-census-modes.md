@@ -5,7 +5,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: low
-State: ACTIVE
+State: IN-PROGRESS
 
 ## In plain words
 

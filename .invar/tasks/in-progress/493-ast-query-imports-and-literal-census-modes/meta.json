@@ -1,0 +1,15 @@
+{
+  "task": 493,
+  "slug": "ast-query-imports-and-literal-census-modes",
+  "branch": "fleet/493-ast-query-imports-and-literal-census-modes",
+  "worktree": ".invar/worktrees/493-ast-query-imports-and-literal-census-modes",
+  "tmuxSession": "invar/493-ast-query-imports-and-literal-census-modes",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-low-493-ast-query-imports-and-literal-census-modes.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "8fcba5c06e63f75acd289cf13c1c3eed607a3b43",
+  "startedAt": "2026-08-03T13:07:22-04:00"
+}
