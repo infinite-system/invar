@@ -40,3 +40,10 @@ commit, against the brief. The builder used SKIP_GATE=1 after an
 accidental partial gate run. Mitigation now in effect: wave briefs
 name SKIP_GATE=1 for builder commits. The structural fix (dispatch
 plants worktree-local hook config) is still this task.
+
+## Evidence from #495 (2026-08-03) — fourth instance, opposite polarity
+
+This builder let the hook's gate RUN to completion (green) instead of
+bypassing — a full merge gate executed while two other builders were
+live, which the concurrency rule forbids. The hook enforces neither
+policy; dispatch must decide for the worktree.
