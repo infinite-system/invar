@@ -1,3 +1,17 @@
+# RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT
+
+The user chose OPTION 1 for the churn question: measure first. #485
+DISPATCHED (codex, worktree 485-measure-the-reclaimable-boot-churn):
+classify every runtime smoke boot as SEMANTIC (the boot is the coverage —
+restart persistence, isolation, capability re-negotiation; uncertain
+defaults to semantic) vs RECLAIMABLE; report ends with the totals table.
+MEASUREMENT ONLY — no smoke conversions; the conversion decision is the
+user's on the numbers. ON READY: convert bycatch + instrument feedback,
+merge main, gate with a death-reporting monitor, land. Fifteen landings
+sealed before this. User is PRESENT. No experiments.
+
+---
+
 # RESUME ANCHOR 54 — 2026-08-03 ~10:20 EDT — FIFTEEN LANDINGS; FLEET AT ZERO
 
 484 LANDED (4e9d13d1): BLOCKED-premise finding — the heavy boots ARE
