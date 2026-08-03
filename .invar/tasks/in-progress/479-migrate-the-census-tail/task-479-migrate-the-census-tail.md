@@ -1,7 +1,7 @@
 # Task 479 — migrate the census tail
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol
