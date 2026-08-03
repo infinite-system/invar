@@ -50,36 +50,46 @@ class $DriveSession {
   protected pointerColumn = 0;
   protected pointerRow = 0;
   protected quiet = false;
-  protected humanPaceCellsPerSecond = 0;
+  protected humanPaceTempoMultiplier = 0;
 
-  /** HUMAN PACE: every gesture moves at eye speed — the pointer GLIDES cell
-   *  by cell instead of teleporting, clicks dwell before pressing, typing
+  /** HUMAN PACE: every gesture moves at eye speed — the pointer GLIDES with
+   *  a human's acceleration profile, clicks dwell before pressing, typing
    *  lands character by character. For a WATCHED session (the mirror), so an
    *  observing human can follow the agent's hand.
+   *
+   *  The motion model is Fitts-shaped: a gesture takes roughly constant TIME
+   *  regardless of distance (a long throw sweeps fast mid-flight and lands
+   *  softly; a short hop is just quick), with ease-in/ease-out. A constant
+   *  cells-per-second glide was tried first and read robotic — long crossings
+   *  dragged.
    *
    *  The tempo delays here are DELIBERATE ANIMATION, not synchronization:
    *  no step's correctness depends on them, every wait-for-state remains a
    *  real condition. Pacing a gesture is allowed; pacing a VERIFICATION is
-   *  the sleep-as-sync defect. Default speed ~28 cells/second reads
-   *  comfortably at typical pane sizes; pass 0 to switch back to machine
-   *  speed. */
-  humanPace(cellsPerSecond = 28): this {
-    this.humanPaceCellsPerSecond = Math.max(0, cellsPerSecond);
+   *  the sleep-as-sync defect.
+   *
+   *  `tempoMultiplier` scales every duration: 1 is the tuned default, 1.5 is
+   *  half again slower, 0 returns to machine speed. */
+  humanPace(tempoMultiplier = 1): this {
+    this.humanPaceTempoMultiplier = Math.max(0, tempoMultiplier);
     return this;
   }
 
   protected get paced(): boolean {
-    return this.humanPaceCellsPerSecond > 0;
+    return this.humanPaceTempoMultiplier > 0;
   }
 
   /** Tempo only — never used to wait for app state. */
   protected async tempo(milliseconds: number): Promise<void> {
     if (!this.paced) return;
-    await new Promise((resolve) => setTimeout(resolve, milliseconds));
+    await new Promise((resolve) =>
+      setTimeout(resolve, milliseconds * this.humanPaceTempoMultiplier),
+    );
   }
 
-  /** The glide: interpolate from the current pointer to the target, one real
-   *  move event per cell-ish step, timed to the configured speed. */
+  /** The glide: eased positions over a near-constant gesture time. Uniform
+   *  time slices with smoothstep-eased positions give the acceleration in
+   *  the middle and the soft landing at the end. */
   protected async glideTo(column: number, row: number): Promise<void> {
     const fromColumn = this.pointerColumn;
     const fromRow = this.pointerRow;
@@ -87,25 +97,29 @@ class $DriveSession {
       Math.abs(column - fromColumn),
       Math.abs(row - fromRow),
     );
-    const stepCount = Math.max(1, Math.round(distance / 2));
-    const stepDelayMilliseconds = Math.max(
-      16,
-      1000 / (this.humanPaceCellsPerSecond / 2),
-    );
+    if (distance === 0) return;
+    // Fitts-shaped: mostly constant, gently longer for long throws.
+    const gestureMilliseconds = Math.min(700, 260 + distance * 4);
+    const stepCount = Math.max(3, Math.min(22, Math.round(distance / 2)));
+    const sliceMilliseconds = gestureMilliseconds / stepCount;
+    let lastColumn = fromColumn;
+    let lastRow = fromRow;
     for (let step = 1; step <= stepCount; step += 1) {
-      const stepColumn = Math.round(
-        fromColumn + ((column - fromColumn) * step) / stepCount,
-      );
-      const stepRow = Math.round(
-        fromRow + ((row - fromRow) * step) / stepCount,
-      );
-      this.driver.sendMouseWithoutFrameExpectation({
-        kind: 'move',
-        column: stepColumn,
-        row: stepRow,
-        button: 'none',
-      });
-      await this.tempo(stepDelayMilliseconds);
+      const linear = step / stepCount;
+      const eased = linear * linear * (3 - 2 * linear); // smoothstep
+      const stepColumn = Math.round(fromColumn + (column - fromColumn) * eased);
+      const stepRow = Math.round(fromRow + (row - fromRow) * eased);
+      if (stepColumn !== lastColumn || stepRow !== lastRow) {
+        this.driver.sendMouseWithoutFrameExpectation({
+          kind: 'move',
+          column: stepColumn,
+          row: stepRow,
+          button: 'none',
+        });
+        lastColumn = stepColumn;
+        lastRow = stepRow;
+      }
+      await this.tempo(sliceMilliseconds);
     }
   }
 
@@ -239,7 +253,9 @@ class $DriveSession {
     return this.step(`type ${JSON.stringify(text)}`, async () => {
       for (const character of text) {
         this.driver.sendKeysWithoutFrameExpectation(character);
-        await this.tempo(70);
+        // Human typing cadence with a light rhythm wobble — pacing only,
+        // never synchronization.
+        await this.tempo(105 + Math.random() * 45);
       }
     });
   }
