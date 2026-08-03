@@ -346,6 +346,21 @@ launch without committing the record first, and it enforces the assignment (belo
 **When a brief's first step is a MEASUREMENT**, say in the brief that a setup failure is not
 a data point. Then a uniform red gets re-examined instead of averaged into a rate.
 
+**A surface-move brief enumerates the surface's smoke inventory.** When a task
+relocates or decouples a whole surface (a pane becomes a plugin, a module
+splits), the gate will find the lost behaviors ONE PER RUN — the most
+expensive possible discovery loop (#356 took 5 rounds this way, 2026-08-03).
+Derive the inventory up front: every smoke whose name or primary subject
+intersects the diff's modules. The round brief demands one sweep and one
+per-smoke table (green / fixed-then-green with mechanism / red-outside-diff
+with merge-base proof). Same generator as family 4: enumerate the surface
+independently, never sample it through the sieve.
+
+**round-brief.sh and steer.sh never share a command block.** The filing can
+REFUSE (missing section, dead link) after the steer already landed, handing
+the builder a pointer to a brief that does not exist. File, read the filing
+result, then steer.
+
 **Verify environment claims before writing them into a brief.** A remembered fact about the
 machine is a hypothesis about the machine. One `which` is cheaper than the correction.
 

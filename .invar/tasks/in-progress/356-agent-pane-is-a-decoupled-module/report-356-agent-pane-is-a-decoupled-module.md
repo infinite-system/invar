@@ -1,88 +1,100 @@
 ## In plain words
 
-The Agent transcript could keep moving after PageDown because an older wheel push was still running. Narration also ignored its saved switch because the plugin renamed the setting, and Escape no longer reached its speech controller. Keyboard scrolling now stops the wheel first, the plugin reads the durable setting names again, and Escape reaches narration through a generic application-contributor key observer.
+The Agent lost terminal notes because nobody carried them from the terminal to the Agent, and terminal follow missed commands when Agent opened before Terminal. The voice test also stopped walking before it reached the voice row, while the Agent skill popup could close a different popup. Generic note, pane-lifecycle, and popup-ownership seams now keep those behaviors working, and the widened inventory is green except for one independently red merge-base smoke.
 
 ## Outcome
 
-Round 6 is READY at commit `edc316c9bbd42f35f49922610e0d6a0e33754eb9`. The worktree is clean.
+Round 7 is READY at commit `b744969ba3cd95b880a5b0b17ad2bf076f3e9164`. The worktree is clean.
 
-Fourteen of the 15 bare inventory commands exit 0 on this tip. The remaining [plugin-manifest smoke](../../../../scripts/harness/smoke-plugin-manifest-harness.ts) is independently red at merge base `6d0a78eb5411531364c4d14eb8919da404966b3b`, as the [Round 6 brief](brief-356-6-6.md) asks me to prove instead of repairing an outside failure.
+Twenty-two of the 23 bare inventory commands exit 0 on this tip. The remaining [plugin-manifest smoke](../../../../scripts/harness/smoke-plugin-manifest-harness.ts) is red outside this diff: the tip times out during Structure Navigator uninstall, and merge base `c6f7c09032cae85616401f56446fac055a3b630e` independently times out earlier while the dirty manifest should regain editor focus.
 
 ## Reproduction and causes
 
-The filed [Agent pane UX smoke](../../../../scripts/harness/smoke-agent-pane-ux-harness.ts) timed out while it waited for `agentStuckToBottom === true`. A wheel impulse remained active after PageDown. Its next animation step could move the transcript away from the bottom after the keyboard had reached it.
+The filed [voice-picker smoke](../../../../scripts/harness/smoke-voice-picker-harness.ts) stopped after 30 Down keys. The contributed Settings schema now places Narration voice at row 42. The setting already published the empty automatic value correctly, but the fixed walk bound never reached it.
 
-The filed [audio narration smoke](../../../../scripts/harness/smoke-audio-narration-harness.ts) timed out during enabled boot. [AgentPlugin.ts](../../../../src/modules/agent/AgentPlugin.ts) had shortened seven persisted setting identifiers when Agent became a plugin. Existing settings files still used `agentAudioNarration` and the other durable Agent names, so the plugin read defaults instead. Restoring the narration switch then exposed a second red: the former Bootstrap Escape-to-barge-in call had disappeared during extraction.
+The filed [terminal-stage smoke](../../../../scripts/harness/smoke-terminal-stage-harness.ts) executed the replacement command and created its proof file, but the Agent transcript never showed `terminal command user-executed`. The plugin extraction had removed the host subscription that carried a runtime pane's generic `onSystemNote` output to a contributed display surface.
 
-The completed Agent pane drive exposed two more lost copy behaviors. Agent contributed Ctrl+C but not Super+C, so Kitty Cmd+C had no Agent action. Agent also declined its copy action when no text was selected, so its zero-character copy proof never completed. The smoke sent three clipboard encodings back to back; it now waits for a work-count completion signal between them instead of starting one asynchronous copy while the prior copy still finishes.
+The widened [settings-applied smoke](../../../../scripts/harness/smoke-settings-applied-harness.ts) found `terminalTypingSpeed` uncovered. The terminal-stage fixture still wrote the removed `agentTypingSpeed` key. Its slow and fast drives therefore used the same default and could pass from incidental frame-count variance.
+
+The widened [terminal-follow smoke](../../../../scripts/harness/smoke-terminal-follow-harness.ts) opened Agent first and Terminal second. Agent tried to bind only during its own creation, saw no terminal capability, and never retried after Terminal registered.
+
+The solo [panel-chrome smoke](../../../../scripts/harness/smoke-panel-chrome-harness.ts) reached the Database Add control and opened the correct one-item popup, but the inactive Agent pane closed it on the next projection update. `AgentSkillPopup` shared `BoundedListPopup` and called unconditional `close()`, so it could revoke another adapter's live popup.
 
 ## Repair
 
-- [AgentPaneContent.ts](../../../../src/modules/agent/AgentPaneContent.ts) halts transcript momentum before PageUp, PageDown, Up, or Down applies a keyboard scroll. The rule also applies while a permission prompt owns the composer.
-- Agent now claims its copy action with or without a selection. The shared pane-selection seam publishes zero characters for an empty selection.
-- [AgentPlugin.ts](../../../../src/modules/agent/AgentPlugin.ts) restores all seven durable Agent setting identifiers and contributes both Ctrl+C and Super+C.
-- [ApplicationContributor.interface.ts](../../../../src/modules/app/ApplicationContributor.interface.ts) and [ApplicationContributions.ts](../../../../src/modules/app/ApplicationContributions.ts) add one decoded-key observer seam. Registration follows the contributor lifecycle and is removed on disable.
-- [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) publishes each decoded key to that generic seam. Agent uses it to barge in only on Escape.
-- The shared copy publication path exposes `clipboardCopyCompletionCount`. The Agent pane smoke waits for this load-invariant work count between legacy, Kitty Control, and Kitty Super copy gestures.
+- [SystemNoteContributions.ts](../../../../src/modules/app/SystemNoteContributions.ts) is the generic source-to-display registry. [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) subscribes every runtime pane's `onSystemNote` stream, releases that subscription with the pane, and Agent registers its current transcript as a listener.
+- [PanelContentLifecycle.ts](../../../../src/modules/app/PanelContentLifecycle.ts) publishes content only after `PanelHost` can resolve it. [AgentPlugin.ts](../../../../src/modules/agent/AgentPlugin.ts) reconnects its terminal-follow controller when a terminal pane becomes available, independent of creation order.
+- [BoundedListPopup.ts](../../../../src/modules/ui/BoundedListPopup.ts) accepts an optional owner identifier and supports owner-checked close. [AgentSkillPopup.ts](../../../../src/modules/agent/AgentSkillPopup.ts) now closes only its own popup session.
+- The voice-picker walk uses the published Settings row count instead of 30.
+- Terminal-stage and settings coverage use the real `terminalTypingSpeed` name. The matching [terminal invariant](../../../../src/modules/terminal/terminal.invariants.md) now names the same setting.
+- Panel-chrome mouse gestures retain their hover move and use the driver's one real-click helper for the press and release bytes.
 
 ## Full bare smoke inventory
 
-| Bare command | Result | Round 6 mechanism |
+| Bare command | Result | Round 7 mechanism |
 | --- | --- | --- |
-| `bun scripts/harness/smoke-agent-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-agent-pane-ux-harness.ts` | FIXED, THEN GREEN | Keyboard scroll stops old wheel momentum. Agent owns empty copy, contributes Super+C, and the smoke sequences copy completion by work count. |
-| `bun scripts/harness/smoke-agent-cancel-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-agent-search-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-agent-engine-switch-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-agent-permissions-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-agent-skill-popup-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-audio-narration-harness.ts` | FIXED, THEN GREEN | Durable settings restore enabled boot. The contributor key observer restores Escape barge-in. |
-| `bash scripts/smoke-keyboard-invariant.sh` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-panel-split-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-activitybar-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts` | GREEN | No Round 6 repair was needed. It also proves repeated active and idle Agent copies cross the PTY. |
-| `bun scripts/harness/smoke-workspace-tabs-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-workspace-layout-isolation-harness.ts` | GREEN | No Round 6 repair was needed. |
-| `bun scripts/harness/smoke-plugin-manifest-harness.ts` | RED OUTSIDE DIFF | Tip times out while Structure Navigator uninstall should withdraw its pane. The bare merge-base run is also red and times out earlier while the dirty manifest should regain editor focus. |
+| `bun scripts/harness/smoke-agent-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-agent-pane-ux-harness.ts` | GREEN | The Round 6 tail-anchor and copy repairs remain green. |
+| `bun scripts/harness/smoke-agent-cancel-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-agent-search-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-agent-engine-switch-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-agent-permissions-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-agent-skill-popup-harness.ts` | FIXED, THEN GREEN | Owner-checked close preserves other bounded-popup consumers while the skill popup still filters and accepts normally. |
+| `bun scripts/harness/smoke-audio-narration-harness.ts` | GREEN | The Round 6 durable setting and Escape repairs remain green. |
+| `bash scripts/smoke-keyboard-invariant.sh` | GREEN | The bare run preserves Agent-first split ordering and all reserved chords. |
+| `bun scripts/harness/smoke-panel-split-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-activitybar-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-workspace-tabs-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-workspace-layout-isolation-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-plugin-manifest-harness.ts` | RED OUTSIDE DIFF | Tip: Structure Navigator uninstall timeout. Merge base `c6f7c090`: dirty-manifest editor-focus timeout. |
+| `bun scripts/harness/smoke-voice-picker-harness.ts` | FIXED, THEN GREEN | Navigation is bounded by the published Settings row count, so it reaches row 42 and sees `auto (first found)`. |
+| `bun scripts/harness/smoke-terminal-stage-harness.ts` | FIXED, THEN GREEN | Runtime system notes reach Agent, and the speed drive uses `terminalTypingSpeed`. |
+| `bun scripts/harness/smoke-bounded-list-popup-harness.ts` | GREEN | Owner tracking preserves filtering, hierarchy, pointer activation, and dismissal. |
+| `bun scripts/harness/smoke-settings-applied-harness.ts` | FIXED, THEN GREEN | The schema meta-gate names the driven `terminalTypingSpeed` setting. |
+| `bun scripts/harness/smoke-terminal-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-terminal-follow-harness.ts` | FIXED, THEN GREEN | A generic post-registration lifecycle event binds Agent to a later-created Terminal. |
+| `bun scripts/harness/smoke-terminal-backpressure-harness.ts` | GREEN | No Round 7 repair was needed. |
+| `bun scripts/harness/smoke-panel-chrome-harness.ts` | FIXED, THEN GREEN | Agent can no longer close the Database adapter's owned popup; the solo two-scale drive passes. |
 
 ## Positive controls
 
-- Removing the keyboard momentum halt made `a keyboard page gesture halts an earlier wheel impulse` fail with `Expected: false, Received: true`. Restoring it made the unit test and the full pane smoke green.
-- Removing key-observer registration made `key observers receive decoded keys only while their contribution is active` fail with an empty observed-key list. Restoring it made the test and narration smoke green.
-- The filed narration enabled-boot timeout is the persisted-setting positive control.
-- After enabled boot was restored, the audio smoke timed out on Escape barge-in until the contributor observer was connected.
-- The pane smoke timed out on Kitty Super+C before the Super+C contribution was restored.
-- The pane smoke stopped after composer copy while empty copy escaped Agent ownership. Claiming the action produced the required zero-character completion and let the remaining drive finish.
+- The filed voice-picker run timed out at the automatic initial value while status stopped at Settings row 30. The row-count walk reached Narration voice at row 42 and completed every keyboard and mouse edit.
+- The filed terminal-stage run created `replacement-proof.txt` but timed out on `terminal command user-executed`. The generic note relay made the stamp visible and the full smoke green.
+- Replacing `SystemNoteContributions.publish` with a no-op made its new unit test fail with an empty received-note list.
+- Replacing `PanelContentLifecycle.publishRegistered` with a no-op made its new unit test fail with an empty registered-content list. Before the live connection, terminal-follow also timed out on its first Bash boundary; after it, every follow mode and secondary scenario passed.
+- Restoring unconditional Agent popup close made `closing an inactive skill adapter preserves another bounded popup owner` fail with `Expected: true, Received: false`. Owner-checked close made that test and panel chrome green.
+- Settings-applied itself was the positive control for the corrected key: it reported `terminalTypingSpeed` as uncovered before the coverage name changed.
 
 ## Invariant verdicts
 
-- [The agent pane is a PaneContent citizen, not a special case](../../../../src/modules/agent/agent.invariants.md): satisfied. Scroll, copy ownership, narration, settings, and keybindings remain in Agent code. Bootstrap sees only a contributor observer and generic pane-selection work.
-- [One generator owns each scroll position](../../../../src/modules/ui/scroll.invariants.md): satisfied. The Agent pane keeps one transcript position and one momentum value. A keyboard writer first halts the competing wheel writer.
-- [A focused panel routes keystrokes to its active pane content](../../../../src/modules/ui/ui.invariants.md): satisfied. Agent claims its own copy action, including the empty-selection proof. Terminal panes retain their separate raw Ctrl+C fallthrough.
-- [Bindings are intent addressed](../../../../src/modules/keybindings/keybindings.invariants.md): satisfied. Ctrl+C and Super+C are data in Agent's contributed keybinding layer and resolve to one `agent.copy` command.
-- [Plugin settings live in contributed schema](../../../../src/modules/settings/settings.invariants.md): satisfied. The setting descriptors remain contributed, while their persisted identifiers stay compatible with existing files.
-- [Seams are drawn at the shared generator](../../../../project.invariants.md): satisfied. Decoded-key observation is one contributor lifecycle seam. Agent does not add another Bootstrap narration branch.
+- [A pane runtime owns its processes](../../../../src/modules/ui/ui.invariants.md): satisfied. The host still sees opaque pane content. It now performs the record's promised generic `onSystemNote` subscription and releases it with runtime content.
+- [Terminal follow obeys the live user mode](../../../../src/modules/agent/agent.invariants.md): satisfied. Mode delivery is unchanged, while the generic lifecycle event makes capability binding independent of Agent-first or Terminal-first creation.
+- [Bounded list interactions live in one popup](../../../../src/modules/ui/ui.invariants.md): satisfied. Popup ownership is part of the shared generator, so an adapter can release its state without closing another consumer.
+- [Terminal replacement preserves human execution](../../../../src/modules/terminal/terminal.invariants.md): satisfied. Human Enter still executes the staged replacement once, and its generic system note reaches Agent.
+- [Plugin settings live in contributed schema](../../../../src/modules/settings/settings.invariants.md): satisfied. The voice and terminal settings retain their durable identifiers and are driven through the contributed Settings surface.
+- [Seams are drawn at the shared generator](../../../../project.invariants.md): satisfied. Note relay, pane availability, and popup ownership each live at the shared source instead of adding terminal, Agent, or Database branches to Bootstrap.
 
 ## Verification
 
-- Required bare inventory: 14 green; one independently red at merge base, as shown in the table.
-- Targeted ApplicationContributions and AgentPaneContent tests: 44 pass, 0 fail, 140 expectations.
+- Widened bare inventory: 22 green; one independently red at merge base, as shown in the table.
+- Targeted tests: 24 pass, 0 fail, 91 expectations across six files.
 - `bunx tsc --noEmit`: pass.
-- `bash scripts/conventions-gate.sh`: pass. It inspected 656 TypeScript files, found 0 enforced violations, and reported 20 legacy violations outside enforced modules.
+- `bash scripts/conventions-gate.sh`: pass. It inspected 660 TypeScript files, found 0 violations in the 16 changed files, and reported 20 legacy violations outside enforced modules.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`: 0 problems. It resolved 1,379 annotations and 266 lattice links.
 - `bun scripts/check-coverage-ratchet.ts`: 392 files inspected, with no undeclared decrease against `a9700d9`.
-- `bun test`: 2,375 pass, 0 fail, 72,158 expectations across 356 files.
-- `git diff --check`: pass.
+- `bun test`: 2,378 pass, 0 fail, 72,162 expectations across 358 files.
+- `git diff --check` and committed patch check: pass.
 
-I did not run [the merge gate](../../../../scripts/merge-gate.sh). I used `SKIP_GATE=1` for commit `edc316c9`, as the [Round 6 brief](brief-356-6-6.md) requires.
+I did not run [the merge gate](../../../../scripts/merge-gate.sh). I used `SKIP_GATE=1` for commit `b744969b`, as the [Round 7 brief](brief-356-7-7.md) requires.
 
 ## Bycatch
 
-- CONTRACT DRIFT: [narration.invariants.md](../../../../src/modules/narration/narration.invariants.md) says any keystroke calls `bargeIn` and names a direct Bootstrap call. The live behavior and audio smoke require ordinary typing to keep narration playing and only Escape to stop it. This reproduced in the full audio drive.
-- PRE-EXISTING RED: the plugin-manifest inventory smoke fails at merge base `6d0a78eb` as well as this tip. The exact timeout moves between dirty-manifest editor focus and Structure Navigator uninstall. I did not change plugin lifecycle behavior outside Agent.
+- CONTRACT DRIFT: [narration.invariants.md](../../../../src/modules/narration/narration.invariants.md) still says any keystroke calls `bargeIn` and names a direct Bootstrap call. The live behavior and audio smoke require ordinary typing to keep narration playing and only Escape to stop it. This remains outside the Round 7 repairs.
+- PRE-EXISTING RED: the plugin-manifest inventory smoke is red at merge base `c6f7c090` and at this tip. The failure sites differ, so I did not change Structure Navigator or manifest lifecycle behavior.
 
 ## Instrument feedback
 
-- EASY: the 15-command inventory found later pane behaviors in the same drive instead of waiting for another gate round.
-- CONFUSING: the pane smoke reported the same expected clipboard text for legacy, Kitty Control, and Kitty Super copy. The raw OSC bytes were present for the first two, but the log did not name which encoding had timed out.
-- MISSING: include the encoding name and `clipboardCopyCompletionCount` in each repeated-copy timeout. The work count separates completed clipboard operations from bytes that arrived while another operation still finishes.
+- EASY: the name-primary inventory found the ignored terminal speed key, the Agent-first terminal-follow loss, and the cross-consumer popup close in one round.
+- CONFUSING: panel chrome looked like a swallowed pointer press. A temporary bounded trace showed the correct Database item set opened and then an inactive Agent adapter closed it.
+- LOAD SENSITIVITY: one parallel terminal-stage probe reported slow and fast frame counts of 100 and 102. The required solo bare runs passed after the real `terminalTypingSpeed` key was restored. No timeout or threshold was widened.
