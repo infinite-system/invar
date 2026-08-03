@@ -1,7 +1,7 @@
 # Task 478 — migrate the pre-satisfied waits
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 655c0db0 — Round 1 landed: five unfalsifiable positive controls + panel-chrome drag-span converted with planted-defect proof. Remainder (plugin-manifest, scrollbars, the census tail) queued for round 2.
 Engine: codex
 Environment: any
 Model: 5.6-sol

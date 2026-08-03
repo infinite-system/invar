@@ -77,14 +77,21 @@ interface MarkRun {
 function splitterMarkRun(
   snapshot: HarnessSnapshot.Model,
   row: number,
+  startColumn: number,
+  width: number,
 ): MarkRun {
-  const text = Array.from(snapshot.rowText(row));
-  const firstColumn = text.indexOf('\u2500');
-  const lastColumn = text.lastIndexOf('\u2500');
-  if (firstColumn < 0) {
+  const dragSpan = Array.from(
+    snapshot.rowText(row).slice(startColumn, startColumn + width),
+  );
+  const firstColumnWithinSpan = dragSpan.indexOf('\u2500');
+  const lastColumnWithinSpan = dragSpan.lastIndexOf('\u2500');
+  if (firstColumnWithinSpan < 0) {
     throw new Error(`No splitter mark painted on row ${row}`);
   }
-  return { firstColumn, lastColumn };
+  return {
+    firstColumn: startColumn + firstColumnWithinSpan,
+    lastColumn: startColumn + lastColumnWithinSpan,
+  };
 }
 
 function clickSegment(
@@ -698,6 +705,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
     // Both ends of the flush drag span must grab. The two drags move in opposite directions so
     // neither asks the panel to push past a bound it already occupies.
     if (initialTabBar.drag.width > 1) {
+      let currentTabBar = initialTabBar;
+      let currentEdgeSnapshot = tabRowSnapshot;
       for (const [edgeName, edgeColumnOf, rowDelta] of [
         ['the first painted cell', (run: MarkRun) => run.firstColumn, 1],
         [
@@ -706,17 +715,14 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           -1,
         ],
       ] as const) {
-        const rowBeforeEdgeDrag = tabBar(
-          HarnessSmoke.Class.readStatus(statusPath),
-        ).row;
-        const edgeSnapshot = await driver.awaitGridCondition(
-          `${columns}-column splitter mark is painted before the ${edgeName} drag`,
-          (snapshot) =>
-            Array.from(snapshot.rowText(rowBeforeEdgeDrag)).indexOf('\u2500') >=
-            0,
-        );
+        const rowBeforeEdgeDrag = currentTabBar.row;
         const edgeColumn = edgeColumnOf(
-          splitterMarkRun(edgeSnapshot, rowBeforeEdgeDrag),
+          splitterMarkRun(
+            currentEdgeSnapshot,
+            rowBeforeEdgeDrag,
+            currentTabBar.drag.left,
+            currentTabBar.drag.width,
+          ),
         );
         const edgeTargetRow = Math.max(0, rowBeforeEdgeDrag + rowDelta);
         driver.sendMouse({
@@ -737,12 +743,32 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           row: edgeTargetRow,
           button: 'left',
         });
-        await HarnessSmoke.Class.awaitStatus(
+        const resizedStatus = await HarnessSmoke.Class.awaitStatus(
           driver,
           statusPath,
           `${columns}-column a drag begun on ${edgeName} still resizes the panel`,
           (candidate) => tabBar(candidate).row !== rowBeforeEdgeDrag,
         );
+        const nextTabBar = tabBar(resizedStatus);
+        const previousDragCells = '\u2500'.repeat(currentTabBar.drag.width);
+        const nextDragCells = '\u2500'.repeat(nextTabBar.drag.width);
+        currentEdgeSnapshot = await driver.awaitGridCondition(
+          `${columns}-column relayout paints the current splitter before the next drag`,
+          (candidate) =>
+            candidate
+              .rowText(nextTabBar.row)
+              .slice(
+                nextTabBar.drag.left,
+                nextTabBar.drag.left + nextTabBar.drag.width,
+              ) === nextDragCells &&
+            candidate
+              .rowText(rowBeforeEdgeDrag)
+              .slice(
+                currentTabBar.drag.left,
+                currentTabBar.drag.left + currentTabBar.drag.width,
+              ) !== previousDragCells,
+        );
+        currentTabBar = nextTabBar;
         HarnessSmoke.Class.pass(
           `${columns}-column a drag begun on ${edgeName} still resizes the panel`,
         );

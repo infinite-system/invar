@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
+import { GraphClient } from './GraphClient';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function resultRowBackground(
@@ -151,14 +152,13 @@ try {
     (candidate) =>
       resultRowBackground(candidate, 'sample.txt') !== unselectedBackground,
   );
-  const hoverStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
+  const hoveredQuickOpenSelection = await GraphClient.Class.query(
     statusPath,
-    'status condition: status.quickOpenSelected === 0',
-    (status) => status.quickOpenSelected === 0,
+    'quickOpen.selectedIndex',
+    'settle',
   );
   HarnessSmoke.Class.requireCondition(
-    hoverStatus.quickOpenSelected === 0,
+    hoveredQuickOpenSelection.value === 0,
     'hover leaves keyboard selection unchanged',
   );
   driver.sendMouse({
