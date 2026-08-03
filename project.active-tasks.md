@@ -10,8 +10,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
-## USER-DIRECTED (16)
-- #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 being built inline by the conductor (user: "build case 1 right now")]
+## USER-DIRECTED (17)
+- #473 [invar-builds-invar](.invar/tasks/active/473-invar-builds-invar/task-473-invar-builds-invar.md)  [ACTIVE — accumulating; mirror mode already SHIPPED]
+- #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #471 [graph-reaches-the-whole-app](.invar/tasks/active/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
