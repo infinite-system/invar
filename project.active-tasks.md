@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (2)
-- #473 [invar-builds-invar](.invar/tasks/in-progress/473-invar-builds-invar/task-473-invar-builds-invar.md)  [building]
+- #473 [invar-builds-invar](.invar/tasks/in-progress/473-invar-builds-invar/task-473-invar-builds-invar.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/473-invar-builds-invar`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
@@ -108,7 +108,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (39)
+## ARCHITECTURE-HYGIENE (40)
+- #476 [reload-keeps-a-disposed-session-on-boot-failure](.invar/tasks/active/476-reload-keeps-a-disposed-session-on-boot-failure/task-476-reload-keeps-a-disposed-session-on-boot-failure.md)
 - #474 [dispose-order-renderable-warnings](.invar/tasks/active/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
