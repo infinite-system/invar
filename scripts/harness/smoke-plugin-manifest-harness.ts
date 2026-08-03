@@ -857,6 +857,27 @@ try {
     'Ctrl+J opens no pane and leaves the editor untouched without a runtime',
   );
 
+  driver.sendKeys('Control+Shift+a');
+  const agentWithoutTerminalStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Invar Agent opens while the Terminal runtime is absent',
+    (status) =>
+      status.panelActiveContentKind === 'agent' &&
+      status.agentTurnState !== undefined,
+  );
+  HarnessSmoke.Class.requireCondition(
+    agentWithoutTerminalStatus.terminalObservedEventCount === undefined,
+    'Invar Agent remains usable without the Terminal runtime',
+  );
+  await clickStatusMarker(driver, ' ✦ ');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the independent agent pane closes before Terminal reinstall',
+    (status) => status.panelVisible === false && status.focus === 'editor',
+  );
+
   driver.sendKeys('Control+Shift+x');
   await GraphClient.Class.awaitValue(
     statusPath,
@@ -951,6 +972,26 @@ try {
         'agent',
       ).length === 0,
     'the removed agent chord cannot recreate the pane',
+  );
+  driver.sendKeys('Control+j');
+  const terminalWithoutAgentStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Terminal opens while Invar Agent is absent',
+    (status) =>
+      status.terminalVisible === true &&
+      status.terminalObservedEventCount !== undefined,
+  );
+  HarnessSmoke.Class.requireCondition(
+    terminalWithoutAgentStatus.agentTurnState === undefined,
+    'Terminal remains usable without Invar Agent',
+  );
+  driver.sendKeys('Control+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the independent Terminal pane closes before agent reinstall',
+    (status) => status.panelVisible === false && status.focus === 'editor',
   );
   driver.sendKeys('Control+Shift+x');
   await GraphClient.Class.awaitValue(
