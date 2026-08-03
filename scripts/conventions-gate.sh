@@ -505,5 +505,33 @@ plugin_boundary_check 'file-tree' 'file tree' \
   "([Ff]ileTree|\btree[A-Z]|\bfocusFiles\b|\bfiles\.|\btree\.|view\.(show|focus)Files|['\"]files['\"])" \
   "workspaceSet.active.tree.moveSelection(-1);"
 
+# --- core-to-plugin coupling ratchet (#488 census, wired 2026-08-03) ---
+# The import census must stay at ZERO offending imports. The vocabulary
+# census must not exceed the baseline below; when the count falls, tighten
+# the baseline in the same commit (same discipline as the boundary ratchet).
+CENSUS_DIR=".invar/tasks/completed/488-core-to-plugin-coupling-census"
+VOCabulary_BASELINE=34
+if [ -f "$CENSUS_DIR/census-488-imports.ts" ]; then
+  import_output=$(bun "$CENSUS_DIR/census-488-imports.ts" 2>&1) || { echo "conventions-gate: FAIL — import census controls failed"; echo "$import_output" | tail -3; fail=1; }
+  import_count=$(printf '%s' "$import_output" | grep -oE 'offending count: [0-9]+' | grep -oE '[0-9]+' || echo missing)
+  if [ "$import_count" != "0" ]; then
+    echo "conventions-gate: FAIL — core-to-plugin imports ratchet: offending count is ${import_count}, must be 0"
+    printf '%s
+' "$import_output" | grep -v '^==' | head -10
+    fail=1
+  fi
+  vocabulary_output=$(bun "$CENSUS_DIR/census-488-vocabulary.ts" 2>&1) || { echo "conventions-gate: FAIL — vocabulary census controls failed"; echo "$vocabulary_output" | tail -3; fail=1; }
+  vocabulary_count=$(printf '%s' "$vocabulary_output" | grep -oE 'total core vocabulary sites: [0-9]+' | grep -oE '[0-9]+' || echo missing)
+  if [ "$vocabulary_count" = "missing" ] || [ "$vocabulary_count" -gt "$VOCabulary_BASELINE" ]; then
+    echo "conventions-gate: FAIL — core vocabulary ratchet: ${vocabulary_count} site(s), baseline ${VOCabulary_BASELINE}"
+    fail=1
+  elif [ "$vocabulary_count" -lt "$VOCabulary_BASELINE" ]; then
+    echo "conventions-gate: VOCABULARY RATCHET SLACK — down to ${vocabulary_count} site(s) from ${VOCabulary_BASELINE}; tighten the baseline in this commit."
+  fi
+else
+  echo "conventions-gate: FAIL — census scripts missing at $CENSUS_DIR (ratchet cannot run)"
+  fail=1
+fi
+
 [ "$fail" = 0 ] && echo "conventions-gate: PASS"
 exit "$fail"
