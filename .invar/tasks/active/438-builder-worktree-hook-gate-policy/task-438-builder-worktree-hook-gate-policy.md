@@ -23,3 +23,12 @@ exports SKIP_GATE=1 into builder sessions; (c) keep as is and put the
 SKIP_GATE instruction in every brief template. Option (a) keeps the
 gate for the user's own checkouts and removes the per-builder
 foot-gun; the conductor recommends it.
+
+## Evidence from #487 (2026-08-03)
+
+The commit hook auto-started the FULL merge gate inside a builder
+worktree, against the brief's own rule that builders never run it.
+The builder had to stop its own hook process and commit with
+SKIP_GATE=1. Second live instance of the policy gap; the hook should
+detect builder worktrees (or dispatch should plant a worktree-local
+config) so briefs and hooks stop contradicting each other.
