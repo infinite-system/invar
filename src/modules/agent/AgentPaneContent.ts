@@ -41,6 +41,7 @@ import {
 import type { AgentSession } from './AgentSession';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import type { AgentSkillPopup } from './AgentSkillPopup';
+import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
 
 // invariant: The agent pane is a PaneContent citizen, not a special case (src/modules/agent/agent.invariants.md)
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
@@ -103,6 +104,8 @@ class $AgentPaneContent implements PaneContent {
   protected readonly expandedIndices = new Set<number>();
   /** The transcript text selection (read-only surface; shares the model with the composer's own). */
   protected readonly transcriptSelection = new TextSelectionModel.Class();
+  /** The shared pointer-selection generator supplies inclusive release cells and edge autoscroll. */
+  protected readonly transcriptSelectionDrag: SelectionDragBehavior.Model;
   /** Per pending-tool start times (tool-use id → ms), for the waiting-note's per-call elapsed. */
   protected readonly toolStartMilliseconds = new Map<string, number>();
 
@@ -170,6 +173,27 @@ class $AgentPaneContent implements PaneContent {
     this.spinner = new AgentSpinner.Class(
       () => this.session.turnInFlight && this.paneVisible.value,
     );
+    this.transcriptSelectionDrag = new SelectionDragBehavior.Class({
+      viewportRectangle: () => ({
+        leftColumn: 0,
+        rightColumn: Math.max(0, this.lastWidth - 1),
+        topRow: 0,
+        bottomRow: Math.max(0, this.lastBodyHeight - 1),
+      }),
+      positionAtCell: (column, row) =>
+        this.regionAtRow(row).kind === 'transcript'
+          ? this.transcriptPointAt(column, row)
+          : null,
+      horizontalScrollPosition: () => 0,
+      horizontalScrollingEnabled: () => false,
+      beginSelection: (position) => this.beginTranscriptSelection(position),
+      extendSelection: (position) => this.extendTranscriptSelection(position),
+      finishSelection: () => this.finishTranscriptSelection(),
+      lineGraphemeCount: (line) => this.transcriptLineGraphemeCount(line),
+      scrollColumns: () => {},
+      scrollRows: (rows) => this.scrollRowsBy(rows),
+      haltCompetingScroll: () => this.haltScrollMomentum(),
+    });
     // MONOTONIC fuse: read every repaint source, then return a strictly increasing counter. An
     // arithmetic SUM here could cancel (spinner-stop −1 + session-bump +1 = net 0 → a finished turn
     // stuck rendering "working…", the reviewed repaint bug); a recompute now ALWAYS yields a new value.
@@ -913,7 +937,7 @@ class $AgentPaneContent implements PaneContent {
     }
     if (!line.toggleable) {
       this.activePointerRegion = 'transcript';
-      this.beginTranscriptSelection(this.transcriptPointAt(column, row));
+      this.transcriptSelectionDrag.begin(column, row);
       return true;
     }
     if (this.expandedIndices.has(line.entryIndex))
@@ -937,8 +961,7 @@ class $AgentPaneContent implements PaneContent {
       return true;
     }
     if (this.activePointerRegion === 'transcript') {
-      const localRow = Math.max(0, Math.min(row, this.lastBodyHeight - 1));
-      this.extendTranscriptSelection(this.transcriptPointAt(column, localRow));
+      this.transcriptSelectionDrag.drag(column, row);
       return true;
     }
     return false;
@@ -947,7 +970,7 @@ class $AgentPaneContent implements PaneContent {
   onPointerUp(_column: number, _row: number): boolean {
     if (this.activePointerRegion === 'composer') this.finishComposerSelection();
     else if (this.activePointerRegion === 'transcript')
-      this.finishTranscriptSelection();
+      this.transcriptSelectionDrag.end();
     else return false;
     this.activePointerRegion = null;
     return true;
@@ -970,7 +993,10 @@ class $AgentPaneContent implements PaneContent {
     );
     this.verticalMomentum = stepped.momentum;
     if (stepped.rows !== 0) this.scrollRowsBy(stepped.rows);
-    return Momentum.Class.isMoving(this.verticalMomentum);
+    return (
+      Momentum.Class.isMoving(this.verticalMomentum) ||
+      this.transcriptSelectionDrag.tick(deltaSeconds)
+    );
   }
 
   haltScrollMomentum(): void {
@@ -979,6 +1005,10 @@ class $AgentPaneContent implements PaneContent {
 
   scrollToLine(line: number): void {
     this.haltScrollMomentum();
+    this.setScrollTop(line);
+  }
+
+  protected setScrollTop(line: number): void {
     const maximumTop = Math.max(0, this.lastTotalLines - this.lastBodyHeight);
     this.transcriptScrollTop = Math.max(0, Math.min(line, maximumTop));
     this.transcriptStuckToBottom = this.transcriptScrollTop === maximumTop;
@@ -986,7 +1016,7 @@ class $AgentPaneContent implements PaneContent {
   }
 
   protected scrollRowsBy(deltaRows: number): void {
-    this.scrollToLine(this.transcriptScrollTop + deltaRows);
+    this.setScrollTop(this.transcriptScrollTop + deltaRows);
   }
 
   protected scrollToBottom(): void {

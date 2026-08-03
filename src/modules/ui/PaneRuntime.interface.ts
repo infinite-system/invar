@@ -18,6 +18,9 @@ export interface PaneRuntime {
   readonly panelSpace: PaneContentSpace;
   /** True when the panel Add menu offers this kind to the user. */
   readonly offeredInPanelAddMenu: boolean;
+  /** Optional ordering for the pane kinds created by the panel's default split action. Lower values
+   *  appear first. A runtime without this declaration stays available through the Add menu only. */
+  readonly defaultSplitPriority?: number;
   /** Build a ready pane for the given request. The host registers whatever comes back. */
   createPane(request: PaneRuntimeRequest): PaneContent;
   /** One of this runtime's panes was removed from its host; release the session behind it. */

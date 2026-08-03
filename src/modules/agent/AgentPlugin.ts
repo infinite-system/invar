@@ -45,6 +45,7 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
   // grouping the hand-wired pane had before the plugin move.
   readonly panelSpace = { kind: 'terminal', label: 'Terminal' } as const;
   readonly offeredInPanelAddMenu = true;
+  readonly defaultSplitPriority = 0;
   protected application: ApplicationContributionContext | null = null;
   protected hostPort: PaneRuntimeHostPort | null = null;
   protected readonly panes = new Map<string, AgentPaneContent.Model>();
@@ -69,9 +70,17 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
   protected audioNarration: RegisteredSetting<boolean> | null = null;
   protected narrationVoice: RegisteredSetting<string> | null = null;
   protected narrationRate: RegisteredSetting<number> | null = null;
+  protected insertedDefaultPanelOrder = false;
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
+    if (!context.settings.panelContentOrder.value.includes(this.kind)) {
+      context.settings.panelContentOrder.value = [
+        this.kind,
+        ...context.settings.panelContentOrder.value,
+      ];
+      this.insertedDefaultPanelOrder = true;
+    }
     SdkBinaryExtraction.Class.reapStaleSiblings();
     this.provider = context.registerSetting({
       identifier: 'provider',
@@ -283,6 +292,13 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
     this.testVoiceBackend = null;
     this.skillPopup?.dispose();
     this.skillPopup = null;
+    if (this.insertedDefaultPanelOrder && this.application) {
+      this.application.settings.panelContentOrder.value =
+        this.application.settings.panelContentOrder.value.filter(
+          (identifier) => identifier !== this.kind,
+        );
+    }
+    this.insertedDefaultPanelOrder = false;
     this.hostPort?.dispose();
     this.hostPort = null;
     this.application = null;

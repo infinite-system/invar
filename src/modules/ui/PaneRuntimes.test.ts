@@ -26,6 +26,7 @@ function fakePaneContent(
 function fakeRuntime(
   kind: string,
   offeredInPanelAddMenu = true,
+  defaultSplitPriority?: number,
 ): PaneRuntime & {
   readonly requests: PaneRuntimeRequest[];
   readonly removed: string[];
@@ -40,6 +41,7 @@ function fakeRuntime(
       label: kind === 'terminal' ? 'Terminal' : 'Output',
     },
     offeredInPanelAddMenu,
+    defaultSplitPriority,
     requests,
     removed,
     createPane(request) {
@@ -151,6 +153,18 @@ test('the add menu offers only the kinds that ask to be offered', () => {
   paneRuntimes.register(fakeRuntime('terminal'));
   paneRuntimes.register(fakeRuntime('output', false));
   expect(paneRuntimes.addableKinds()).toEqual([
+    { kind: 'terminal', label: 'Terminal' },
+  ]);
+});
+
+test('the default split contains only declared runtimes in priority order', () => {
+  const paneRuntimes = new PaneRuntimes.Class();
+  paneRuntimes.register(fakeRuntime('media'));
+  paneRuntimes.register(fakeRuntime('terminal', true, 1));
+  paneRuntimes.register(fakeRuntime('agent', true, 0));
+
+  expect(paneRuntimes.defaultSplitKinds()).toEqual([
+    { kind: 'agent', label: 'Output' },
     { kind: 'terminal', label: 'Terminal' },
   ]);
 });

@@ -39,6 +39,17 @@ class $PaneRuntimes {
       .map((runtime) => ({ kind: runtime.kind, label: runtime.instanceLabel }));
   }
 
+  /** Runtime kinds in the declarative order used by the panel's default split action. */
+  defaultSplitKinds(): readonly { kind: string; label: string }[] {
+    return [...this.runtimesByKind.values()]
+      .filter((runtime) => runtime.defaultSplitPriority !== undefined)
+      .sort(
+        (left, right) =>
+          (left.defaultSplitPriority ?? 0) - (right.defaultSplitPriority ?? 0),
+      )
+      .map((runtime) => ({ kind: runtime.kind, label: runtime.instanceLabel }));
+  }
+
   /** Allocate one opaque application identity and one workspace-local `<Label>`/`<Label> N`. */
   allocateInstanceIdentity(
     kind: string,

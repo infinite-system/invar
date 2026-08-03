@@ -1028,7 +1028,7 @@ class $Bootstrap {
         return;
       }
       const contents = paneRuntimes
-        .addableKinds()
+        .defaultSplitKinds()
         .map(({ kind }) => ensureRuntimePane(kind))
         .filter((content): content is PaneContent => content !== null)
         .slice(0, 2);

@@ -83,6 +83,29 @@ describe('AgentPaneContent — collapsible tool rows', () => {
 });
 
 describe('AgentPaneContent — scroll owns one generic pane extent', () => {
+  test('a wheel impulse remains active across animation frames', () => {
+    const { pane, backend } = makePane();
+    for (let index = 0; index < 40; index += 1)
+      backend.emit({ kind: 'text-delta', text: `line ${index}\n` });
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    pane.render(context());
+    pane.scrollToLine(0);
+    pane.attachViewportScrollPort({
+      momentumOptions: () => ({
+        impulse: 100,
+        max: 220,
+        decayPerSec: 0.015,
+        stopVelocity: 0.05,
+        maximumGlideDurationMilliseconds: 900,
+      }),
+      requestRender: () => {},
+    });
+
+    expect(pane.onWheel(3)).toBe(true);
+    expect(pane.tickScroll(1 / 60)).toBe(true);
+    expect(pane.tickScroll(1 / 60)).toBe(true);
+  });
+
   test('PageUp/PageDown/arrows move the pane; Enter re-anchors to the bottom', () => {
     const { pane, backend } = makePane();
     for (let index = 0; index < 40; index += 1)
@@ -158,6 +181,24 @@ describe('AgentPaneContent — multi-line composer', () => {
 });
 
 describe('AgentPaneContent — transcript selection + highlight', () => {
+  test('a pointer drag includes the character under its release cell', () => {
+    const { pane, backend } = makePane();
+    backend.script([
+      { kind: 'text-delta', text: 'hello there' },
+      { kind: 'session-end', reason: 'completed' },
+    ]);
+    pane.render(context());
+    const transcriptRow = pane.viewportRows - 1;
+
+    expect(pane.onPointerDown(2, transcriptRow)).toBe(true);
+    expect(pane.onPointerDrag(6, transcriptRow)).toBe(true);
+    expect(pane.onPointerUp(6, transcriptRow)).toBe(true);
+    expect(pane.selectionTelemetry()).toEqual({
+      owner: 'agent-transcript',
+      characterLength: 5,
+    });
+  });
+
   test('a transcript selection highlights the span (a chunk equals the selected text) and copies it', async () => {
     const { pane, backend } = makePane();
     backend.script([
