@@ -493,6 +493,8 @@ mode ref inside each event callback. It calls `AgentSession.requestExternalRespo
 modes and `AgentSession.ingestContext` for `on-request`; every command path cycles the same setting
 ref. Before either delivery path, the controller reads
 `AgentTerminalObservationPort.terminalExited`; an exited terminal makes the event non-deliverable.
+`AgentPlugin` binds through the generic panel-content lifecycle after a terminal becomes available,
+so Agent-first and Terminal-first construction orders reach the same observation port.
 
 **Generates:** Activity-paced agent turns; silent on-request context; keybinding, palette, and
 Settings parity; follow mode and event-count probe fields; no misleading turn from output that
@@ -510,7 +512,7 @@ the terminal reports exited; Settings and status reporting different modes.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-08-03
 
 ### Agent events cross exactly one backend seam
 

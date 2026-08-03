@@ -283,16 +283,7 @@ class $KeybindingDefaults {
         reservedBecause:
           'toggle symmetry: the chord that opened the panel must close it while the panel holds focus',
       },
-      // The native agent (Claude) pane — a second PaneContent in the same bottom slot. Reserved so it
-      // toggles from any mode, including from inside a focused pane, exactly like the terminal toggle.
-      {
-        chord: { key: 'a', ctrl: true, shift: true },
-        action: 'panel.toggleAgent',
-        reserved: true,
-        reservedBecause:
-          'toggle symmetry: the chord that opened the agent pane must close it while the pane holds focus',
-      },
-      // Split the bottom panel into two side-by-side cells (agent | terminal) and back. S for Split.
+      // Split the bottom panel into two side-by-side cells and back. S for Split.
       // Replaces F9. Reserved so it fires even while the terminal owns the keyboard.
       {
         chord: { key: 's', ctrl: true, shift: true },
@@ -685,25 +676,6 @@ class $KeybindingDefaults {
         action: 'editor.copy',
         context: 'editor',
       },
-      {
-        chord: { key: 'escape' },
-        action: 'agent.cancelTurn',
-        context: 'agent',
-      },
-      // Transcript copy remains the first owner of Ctrl+C. Its handler also delegates to the
-      // shared composer input when the composer has the active selection.
-      {
-        chord: { key: 'c', ctrl: true },
-        action: 'agent.copy',
-        context: 'agent',
-      },
-      // Cycle the agent's terminal-follow MODE (M for Mode). Replaces F6.
-      {
-        chord: { key: 'm', ctrl: true, shift: true },
-        action: 'agent.cycleTerminalFollowMode',
-        context: 'agent',
-      },
-      ...this.textInputBindings('agent'),
       // The `terminal` context's bindings are contributed by the terminal RUNTIME plugin, not by
       // this canonical layer — the host declares no pane-runtime vocabulary.
       // Guarded: with a selection Ctrl+X cuts (outranks starting the quit chord); without, the
@@ -767,15 +739,7 @@ export namespace KeybindingDefaults {
   export let Class = $Class;
 }
 
-export type TextInputBindingContext =
-  | 'palette'
-  | 'quickopen'
-  | 'goToLine'
-  | 'find'
-  | 'agent'
-  | 'listPopup'
-  | 'structure'
-  | 'database';
+export type TextInputBindingContext = string;
 
 export interface TextInputBindingOptions {
   /** Unmodified keys the surrounding surface already owns; their text-field chords are omitted. */

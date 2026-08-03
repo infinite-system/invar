@@ -8,6 +8,14 @@ test('a factory is available only while its registration is active', () => {
     kind: 'database',
     instanceLabel: 'Database',
     panelSpace: { kind: 'database', label: 'Database' },
+    paneAddMenuEntries: [
+      {
+        identifier: 'database-instance',
+        label: 'Database',
+        instanceLabel: 'Database',
+        spaceKind: 'database',
+      },
+    ],
     createPane: () => {
       throw new Error('The registry test does not create a pane');
     },
@@ -16,6 +24,12 @@ test('a factory is available only while its registration is active', () => {
   const unregister = factories.register(factory);
 
   expect(factories.factory('database')).toBe(factory);
+  expect(factories.paneAddMenuEntries('database')).toEqual([
+    {
+      factoryKind: 'database',
+      entry: factory.paneAddMenuEntries[0]!,
+    },
+  ]);
   unregister();
   expect(factories.factory('database')).toBeNull();
 });

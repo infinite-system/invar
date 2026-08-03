@@ -7,7 +7,7 @@ import {
   type AgentTerminalObservation,
 } from './AgentTerminalFollow';
 import { MockAgentBackend } from './MockAgentBackend';
-import type { AgentTerminalFollowMode } from '../settings/Settings';
+import type { AgentTerminalFollowMode } from './AgentPaneContent';
 
 class $AgentTerminalFollowTest {
   static {

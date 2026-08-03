@@ -22,7 +22,6 @@ class $KeybindingPlatform {
   protected static get $primaryModifierActions(): ReadonlySet<string> {
     const primaryModifierActions = new Set<string>([
       'app.quit',
-      'agent.copy',
       'editor.copy',
       'editor.cut',
       'editor.paste',

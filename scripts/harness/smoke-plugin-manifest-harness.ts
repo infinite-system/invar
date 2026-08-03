@@ -74,6 +74,22 @@ async function awaitRightDockScrollbarDiagnostic(
   throw new Error(`Timed out waiting for ${conditionDescription}`);
 }
 
+async function clickStatusMarker(
+  driver: PtyTestDriver.Model,
+  marker: string,
+): Promise<void> {
+  const snapshot = await driver.awaitGridCondition(
+    `the ${marker.trim()} status control paints`,
+    (candidate) => candidate.rowText(candidate.rows - 1).includes(marker),
+  );
+  const row = snapshot.rows - 1;
+  const column = snapshot.rowText(row).indexOf(marker);
+  if (column < 0)
+    throw new Error(`The ${marker.trim()} status control is not visible`);
+  driver.sendMouse({ kind: 'press', column, row, button: 'left' });
+  driver.sendMouse({ kind: 'release', column, row, button: 'left' });
+}
+
 async function selectSetting(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -123,8 +139,9 @@ async function selectExtensionsRowFromFirst(
   statusPath: string,
   rowLabel: string,
 ): Promise<HarnessSnapshot.Model> {
+  const maximumExtensionRows = 24;
   driver.sendKeysWithoutFrameExpectation(
-    ...Array.from({ length: 12 }, () => 'Up'),
+    ...Array.from({ length: maximumExtensionRows }, () => 'Up'),
   );
   await GraphClient.Class.awaitValue(
     statusPath,
@@ -150,7 +167,8 @@ async function selectExtensionsRowFromFirst(
   let selectedIndex = 0;
   for (
     let selectionStep = 0;
-    selectionStep < 12 && driver.snapshot().findText(`› ${rowLabel}`) === null;
+    selectionStep < maximumExtensionRows &&
+    driver.snapshot().findText(`› ${rowLabel}`) === null;
     selectionStep += 1
   ) {
     const selectedRowBeforeNavigation = selectedExtensionsRowText(
@@ -705,7 +723,7 @@ try {
       status.quickOpenQuery === 'manifest.ts' &&
       Number(status.quickOpenMatches) > 0,
   );
-  driver.sendKeys('Enter', 'Control+Shift+j');
+  driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -839,6 +857,27 @@ try {
     'Ctrl+J opens no pane and leaves the editor untouched without a runtime',
   );
 
+  driver.sendKeys('Control+Shift+a');
+  const agentWithoutTerminalStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Invar Agent opens while the Terminal runtime is absent',
+    (status) =>
+      status.panelActiveContentKind === 'agent' &&
+      status.agentTurnState !== undefined,
+  );
+  HarnessSmoke.Class.requireCondition(
+    agentWithoutTerminalStatus.terminalObservedEventCount === undefined,
+    'Invar Agent remains usable without the Terminal runtime',
+  );
+  await clickStatusMarker(driver, ' ✦ ');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the independent agent pane closes before Terminal reinstall',
+    (status) => status.panelVisible === false && status.focus === 'editor',
+  );
+
   driver.sendKeys('Control+Shift+x');
   await GraphClient.Class.awaitValue(
     statusPath,
@@ -870,6 +909,115 @@ try {
     'Extensions reinstall restores the Terminal runtime and its pane',
   );
 
+  console.log(
+    '== plugin manifest: Invar Agent disable and re-enable are symmetric ==',
+  );
+  driver.sendKeys('Control+j', 'Control+Shift+a');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the installed agent contributor opens its runtime pane',
+    (status) =>
+      status.panelActiveContentKind === 'agent' &&
+      status.agentTurnState !== undefined &&
+      (status.settingsSections as string[] | undefined)?.includes('Agent') ===
+        true,
+  );
+  await clickStatusMarker(driver, ' ✦ ');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the agent panel closes before the Extensions drive',
+    (status) => status.panelVisible === false && status.focus === 'editor',
+  );
+  driver.sendKeys('Control+Shift+x');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
+  );
+  await selectExtensionsRowFromFirst(driver, statusPath, '[x] Invar Agent');
+  driver.sendKeys('Space');
+  const agentDisabledStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstalling Invar Agent withdraws its pane, settings, and status',
+    (status) =>
+      status.agentTurnState === undefined &&
+      !(status.settingsSections as string[] | undefined)?.includes('Agent') &&
+      !(status.settingsSections as string[] | undefined)?.includes(
+        'Narration',
+      ) &&
+      HarnessSmoke.Class.panelCellsOfKind(status, 'agent').length === 0,
+  );
+  HarnessSmoke.Class.requireCondition(
+    !(agentDisabledStatus.settingsLabels as string[]).includes(
+      'Agent engine',
+    ) && driver.snapshot().findText('✦') === null,
+    'uninstall removes the agent settings rows and status control',
+  );
+  driver.sendKeys('Control+Shift+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'focus returns to the editor with Invar Agent disabled',
+    (status) => status.focus === 'editor',
+  );
+  driver.sendKeysWithoutFrameExpectation('Control+Shift+a');
+  await Bun.sleep(500);
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).agentTurnState === undefined &&
+      HarnessSmoke.Class.panelCellsOfKind(
+        HarnessSmoke.Class.readStatus(statusPath),
+        'agent',
+      ).length === 0,
+    'the removed agent chord cannot recreate the pane',
+  );
+  driver.sendKeys('Control+j');
+  const terminalWithoutAgentStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Terminal opens while Invar Agent is absent',
+    (status) =>
+      status.terminalVisible === true &&
+      status.terminalObservedEventCount !== undefined,
+  );
+  HarnessSmoke.Class.requireCondition(
+    terminalWithoutAgentStatus.agentTurnState === undefined,
+    'Terminal remains usable without Invar Agent',
+  );
+  driver.sendKeys('Control+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the independent Terminal pane closes before agent reinstall',
+    (status) => status.panelVisible === false && status.focus === 'editor',
+  );
+  driver.sendKeys('Control+Shift+x');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('› [ ] Invar Agent') !== null,
+    'the disabled Invar Agent row stays selected for reinstall',
+  );
+  driver.sendKeys('Space', 'Control+Shift+j', 'Control+Shift+a');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall restores the agent pane, settings, status, and chord',
+    (status) =>
+      status.panelActiveContentKind === 'agent' &&
+      status.agentTurnState !== undefined &&
+      (status.settingsSections as string[] | undefined)?.includes('Agent') ===
+        true,
+  );
+  HarnessSmoke.Class.pass(
+    'Extensions reinstall restores every Invar Agent registration',
+  );
+
   // The CONTRIBUTOR positive control for the editor column itself. The source-text editor is an
   // ordinary contribution now, so uninstalling it must release BOTH what it painted (its gutter and
   // code renderables) and what it held (every view its workspaces' provider made), leave the column
@@ -877,15 +1025,15 @@ try {
   console.log(
     '== plugin manifest: the source-text editor uninstalls and reinstalls ==',
   );
-  // Close the terminal panel before driving anything the host must answer. With the panel OPEN and
+  // Close the agent panel before driving anything the host must answer. With the panel OPEN and
   // the workspace focus back on the editor, Ctrl+P never reaches Quick Open — a pre-existing defect
   // (see the #220 report's bycatch), reproduced on the unmodified tree, and not this arm's subject.
-  driver.sendKeys('Control+j');
+  await clickStatusMarker(driver, ' ✦ ');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the terminal panel closes before the editor-contribution drive',
-    (status) => status.terminalVisible === false,
+    'the agent panel closes before the editor-contribution drive',
+    (status) => status.panelVisible === false,
   );
   driver.sendKeys('Control+p');
   await HarnessSmoke.Class.awaitStatus(

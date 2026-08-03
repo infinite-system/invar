@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Settings, type SettingsFileSystem } from './Settings';
 import { SettingsPanel } from './SettingsPanel';
+import { VoiceDiscovery } from '../narration/VoiceDiscovery';
 
 function makeSettings(): {
   settings: Settings.Instance;
@@ -156,10 +157,17 @@ describe('SettingsPanel', () => {
     panel.adjust(1);
     expect(settings.leftDockVerticalSpan.value).toBe('ends-at-panel');
 
-    panel.selectedIndex.value = indexOfKey(panel, 'agentTerminalFollowMode');
+    const terminalFollowMode = settings.registerSetting({
+      identifier: 'agent.terminalFollowMode',
+      label: 'Terminal follow mode',
+      section: 'Agent',
+      defaultValue: 'off' as string,
+      spec: { kind: 'enum', options: ['off', 'follow-all'] },
+    });
+    panel.selectedIndex.value = indexOfKey(panel, 'agent.terminalFollowMode');
     expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe('off');
     panel.adjust(1);
-    expect(settings.agentTerminalFollowMode.value).toBe('follow-all');
+    expect(terminalFollowMode.value.value).toBe('follow-all');
     expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe(
       'follow-all',
     );
@@ -210,36 +218,56 @@ describe('SettingsPanel', () => {
     test('the voice row is a dynamic-enum whose options are probed at panel-open and cycle the setting', () => {
       seedVoices();
       const { settings, store } = makeSettings();
+      const voice = settings.registerSetting({
+        identifier: 'agent.narrationVoice',
+        label: 'Narration voice',
+        section: 'Narration',
+        defaultValue: '' as string,
+        spec: {
+          kind: 'dynamic-enum',
+          resolveOptions: () => VoiceDiscovery.Class.options(),
+        },
+      });
       const panel = new SettingsPanel.Class(settings);
-      const voiceIndex = indexOfKey(panel, 'agentNarrationVoice');
+      const voiceIndex = indexOfKey(panel, 'agent.narrationVoice');
       expect(voiceIndex).toBeGreaterThanOrEqual(0);
       expect(panel.descriptors[voiceIndex]?.spec.kind).toBe('dynamic-enum');
 
       panel.show(); // probes the installed voices
       panel.selectedIndex.value = voiceIndex;
-      expect(settings.agentNarrationVoice.value).toBe(''); // default: auto
+      expect(voice.value.value).toBe(''); // default: auto
       expect(panel.rows()[voiceIndex]?.valueText).toBe('auto (first found)');
 
       panel.adjust(1); // cycle from '' → first discovered voice
-      expect(settings.agentNarrationVoice.value).toBe('aaa');
+      expect(voice.value.value).toBe('aaa');
       expect(panel.rows()[voiceIndex]?.valueText).toBe('aaa');
       expect(Object.keys(store).length).toBeGreaterThan(0); // persisted
 
       panel.adjust(1); // → next voice
-      expect(settings.agentNarrationVoice.value).toBe('bbb');
+      expect(voice.value.value).toBe('bbb');
       panel.adjust(-1); // back
-      expect(settings.agentNarrationVoice.value).toBe('aaa');
+      expect(voice.value.value).toBe('aaa');
     });
 
     test('cycling with no voices installed is a safe no-op (only the "" auto option exists)', () => {
       dataHome = mkdtempSync(join(tmpdir(), 'invar-empty-voices-'));
       process.env.XDG_DATA_HOME = dataHome; // no piper-voices dir → no voices
       const { settings } = makeSettings();
+      const voice = settings.registerSetting({
+        identifier: 'agent.narrationVoice',
+        label: 'Narration voice',
+        section: 'Narration',
+        defaultValue: '' as string,
+        spec: {
+          kind: 'dynamic-enum',
+          resolveOptions: () => VoiceDiscovery.Class.options(),
+        },
+      });
       const panel = new SettingsPanel.Class(settings);
       panel.show();
-      panel.selectedIndex.value = indexOfKey(panel, 'agentNarrationVoice');
+      panel.selectedIndex.value = indexOfKey(panel, 'agent.narrationVoice');
       panel.adjust(1); // options = [''] → cycles to itself
-      expect(settings.agentNarrationVoice.value).toBe('');
+      expect(voice.value.value).toBe('');
     });
   });
 });

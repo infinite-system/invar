@@ -95,6 +95,24 @@ test('the terminal registers as a runtime and withdraws it symmetrically', () =>
   expect(context.paneRuntimes.addableKinds()).toEqual([
     { kind: 'terminal', label: 'Terminal' },
   ]);
+  expect(context.paneRuntimes.spaceAddableKinds()).toEqual([
+    { kind: 'terminal', label: 'Terminal' },
+  ]);
+  expect(context.paneRuntimes.paneAddMenuEntries('terminal')).toEqual([
+    {
+      identifier: 'terminal',
+      label: 'Terminal',
+      instanceLabel: 'Terminal',
+      spaceKind: 'terminal',
+    },
+    {
+      identifier: 'terminal-agent',
+      label: 'Terminal (Agent)',
+      instanceLabel: 'Terminal (Agent)',
+      spaceKind: 'terminal',
+      process: { command: 'claude' },
+    },
+  ]);
   expect(
     context.keybindings.resolve(
       keyboardEvent('left', { alt: true }),

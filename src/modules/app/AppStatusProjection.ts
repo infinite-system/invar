@@ -2,10 +2,7 @@
 // StatusChannel snapshot consumed by the driven verification harness.
 // invariant: Pane identity is separate from presentation (src/modules/ui/ui.invariants.md)
 import { Static } from 'ivue/extras';
-import { AgentPaneContent } from '../agent/AgentPaneContent';
-import type { AgentSkillPopup } from '../agent/AgentSkillPopup';
 import { CommandRegistry } from '../commands/CommandRegistry';
-import { NarrationProjection } from '../narration/NarrationProjection';
 import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
 import { Settings } from '../settings/Settings';
@@ -140,8 +137,7 @@ class $AppStatusProjection {
       paletteMatches: ports.commands.open.value
         ? ports.commands.filtered.length
         : 0,
-      // Settings panel + voice picker (drives smoke-voice-picker): the selected row's label + displayed
-      // value, and the live agentNarrationVoice setting. (settingsOpen is already exposed below.)
+      // The selected settings row and its displayed value.
       settingsSelectedLabel: ports.settingsPanel.open.value
         ? (ports.settingsPanel.rows()[ports.settingsPanel.selectedIndex.value]
             ?.label ?? '')
@@ -160,8 +156,6 @@ class $AppStatusProjection {
       settingsLabels: ports.settingsPanel.descriptors.map(
         (descriptor) => descriptor.label,
       ),
-      narrationVoice: ports.settings.agentNarrationVoice.value,
-      narrationRate: ports.settings.agentNarrationRate.value,
       focus:
         workspace.focus.value === 'primaryPane'
           ? (ports.primaryDockHost.activeId.value ?? 'primaryPane')
@@ -227,13 +221,6 @@ class $AppStatusProjection {
       completionSelectedLabel: ports.completionPopup.selectedLabel,
       completionItemCount: ports.completionPopup.itemCount,
       completionGeometry: ports.completionPopup.geometry,
-      agentSkillPopupOpen: ports.agentSkillPopup.open.value,
-      agentSkillPopupItemIdentifiers: ports.agentSkillPopup.items.map(
-        (item) => item.identifier,
-      ),
-      agentSkillPopupSelectedIdentifier:
-        ports.agentSkillPopup.selectedIdentifier,
-      agentSkillPopupGeometry: ports.agentSkillPopup.geometry,
       tooltipVisible: ports.tooltip.visible.value,
       // Whichever contributed surface occupies the editor column, by its own stable identifier —
       // empty while the active buffer's editor owns it. A surface's OWN projection fields come from
@@ -353,66 +340,6 @@ class $AppStatusProjection {
         (total, workspace) => total + workspace.sourceTextViewsForOpenBuffers,
         0,
       ),
-      // Audio narration (third projection): the toggle, how many assistant turns have been spoken, and
-      // the last spoken text — the driving smoke reads these to prove it speaks completed turns when ON
-      // and NOTHING when off, all through the silent mock backend (no audio in CI).
-      narrationEnabled: ports.settings.agentAudioNarration.value,
-      narrationSpokenCount: ports.narration?.spokenCount.value ?? 0,
-      narrationLastSpoken: ports.narration?.lastSpoken.value ?? '',
-      narrationBargeInCount: ports.narration?.bargeInCount.value ?? 0,
-      // Agent pane UX view state (drives smoke-agent-pane-ux): busy shows the spinner; stuckToBottom
-      // flips false once the user scrolls up; expandedCount rises when a collapsed tool row is opened.
-      agentBusy: ports.agentPaneContent?.agentSession.busy ?? false,
-      agentTurnState:
-        ports.agentPaneContent?.agentSession.turnState?.value ?? 'idle',
-      queuedMessageCount:
-        ports.agentPaneContent?.agentSession.queuedMessageCount ?? 0,
-      agentStuckToBottom: ports.agentPaneContent?.stuckToBottom ?? true,
-      agentExpandedCount: ports.agentPaneContent?.expandedCount ?? 0,
-      agentScrollTop: ports.agentPaneContent?.scrollTop ?? 0,
-      agentViewportRows: ports.agentPaneContent?.viewportRows ?? 0,
-      agentContentLineCount: ports.agentPaneContent?.contentLineCount ?? 0,
-      // Interactive permission prompt state (drives the permission-flow smoke): the pending tool name
-      // (empty when none) — flips on when ask-mode pauses a tool, off when y/n/a resolves it.
-      agentPendingPermissionTool:
-        ports.agentPaneContent?.agentSession.pendingPermission?.toolName ?? '',
-      agentSkipPermissions: ports.settings.agentSkipPermissions.value,
-      // The live engine label (drives the engine-switch smoke) — flips claude⇄codex on cycle.
-      agentEngine: ports.agentPaneContent?.currentEngine ?? '',
-      // The pane's LIVE title (drives the identity smoke) — the registry display label of the active
-      // engine ('Claude'/'Codex'/…, '(working…)' while busy), never a frozen 'Claude'.
-      agentTitle: ports.agentPaneContent?.title ?? '',
-      agentAssistantEntryCount:
-        ports.agentPaneContent?.agentSession.transcript?.filter(
-          (entry) => entry.role === 'assistant',
-        ).length ?? 0,
-      agentLastAssistantText: (() => {
-        const transcript =
-          ports.agentPaneContent?.agentSession.transcript ?? [];
-        for (
-          let entryIndex = transcript.length - 1;
-          entryIndex >= 0;
-          entryIndex -= 1
-        ) {
-          const entry = transcript[entryIndex]!;
-          if (entry.role === 'assistant') return entry.text;
-        }
-        return '';
-      })(),
-      terminalFollowMode: ports.settings.agentTerminalFollowMode.value,
-      agentLastToolResult: (() => {
-        const transcript =
-          ports.agentPaneContent?.agentSession.transcript ?? [];
-        for (
-          let entryIndex = transcript.length - 1;
-          entryIndex >= 0;
-          entryIndex -= 1
-        ) {
-          const entry = transcript[entryIndex]!;
-          if (entry.role === 'tool-result') return entry.result;
-        }
-        return '';
-      })(),
       ...ports.statusProjectionContributions.snapshot(),
     };
   }
@@ -442,15 +369,10 @@ export interface AppStatusProjectionPorts {
     | 'panelAlignment'
     | 'leftDockVerticalSpan'
     | 'rightDockVerticalSpan'
-    | 'agentNarrationVoice'
-    | 'agentNarrationRate'
     | 'showActivityBar'
     | 'showRightActivityBar'
     | 'sidebarWidth'
     | 'rightDockWidth'
-    | 'agentAudioNarration'
-    | 'agentTerminalFollowMode'
-    | 'agentSkipPermissions'
     | 'panelTabCycling'
     | 'panelTabCycleSeconds'
   >;
@@ -499,10 +421,6 @@ export interface AppStatusProjectionPorts {
   readonly completionPopup: Pick<
     InstanceType<typeof CompletionPopup.Class>,
     'open' | 'selectedLabel' | 'itemCount' | 'geometry'
-  >;
-  readonly agentSkillPopup: Pick<
-    AgentSkillPopup.Model,
-    'open' | 'items' | 'selectedIdentifier' | 'geometry'
   >;
   readonly shortcutHelp: Pick<
     InstanceType<typeof ShortcutHelp.Class>,
@@ -572,20 +490,5 @@ export interface AppStatusProjectionPorts {
     | 'editorColumnContentIdentifier'
   >;
   readonly mouse: AppStatusMouseEvent | null;
-  readonly narration: Pick<
-    InstanceType<typeof NarrationProjection.Class>,
-    'spokenCount' | 'lastSpoken' | 'bargeInCount'
-  > | null;
-  readonly agentPaneContent: Pick<
-    AgentPaneContent.Model,
-    | 'agentSession'
-    | 'stuckToBottom'
-    | 'expandedCount'
-    | 'scrollTop'
-    | 'viewportRows'
-    | 'contentLineCount'
-    | 'currentEngine'
-    | 'title'
-  > | null;
   readonly terminalPaneContent: Pick<PaneContent, 'id'> | null;
 }

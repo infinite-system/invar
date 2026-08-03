@@ -29,3 +29,5 @@ consumes.
 
 #490 (chord relocation) touches the same keybinding files — sequence
 after it, or brief them together.
+
+Round 2 of [#356 (Agent pane is a decoupled module)](../../in-progress/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md) adds the generic `applicationGlobal` binding flag and focused-pane routing seam. This task still owns the wider policy for existing app chords and pane consumption.

@@ -4,6 +4,10 @@ import { computed, ref, type Ref } from 'vue';
 import type {
   PaneContent,
   PaneRenderContext,
+  PaneScrollPort,
+  PaneTextInputPort,
+  PaneTextSelectionPort,
+  PaneWheelContext,
 } from '../ui/PaneContent.interface';
 import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import { ThemeIcons } from '../theme/ThemeIcons';
@@ -35,7 +39,9 @@ import {
   type ThinkingSegment,
 } from './AgentThinkingIndicator';
 import type { AgentSession } from './AgentSession';
-import type { AgentTerminalFollowMode } from '../settings/Settings';
+import { Momentum, type ScrollMomentum } from '../system/Momentum';
+import type { AgentSkillPopup } from './AgentSkillPopup';
+import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
 
 // invariant: The agent pane is a PaneContent citizen, not a special case (src/modules/agent/agent.invariants.md)
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
@@ -81,6 +87,7 @@ class $AgentPaneContent implements PaneContent {
   readonly panelSpace = { kind: 'terminal', label: 'Terminal' } as const;
   readonly frameHeaderRows = 1;
   readonly icon = '✦';
+  readonly keybindingContext = 'agent';
 
   /** The editable, wrapping, cap-scrolled composer (the second text surface). */
   protected readonly composer = new AgentComposer.Class();
@@ -97,11 +104,16 @@ class $AgentPaneContent implements PaneContent {
   protected readonly expandedIndices = new Set<number>();
   /** The transcript text selection (read-only surface; shares the model with the composer's own). */
   protected readonly transcriptSelection = new TextSelectionModel.Class();
+  /** The shared pointer-selection generator supplies inclusive release cells and edge autoscroll. */
+  protected readonly transcriptSelectionDrag: SelectionDragBehavior.Model;
   /** Per pending-tool start times (tool-use id → ms), for the waiting-note's per-call elapsed. */
   protected readonly toolStartMilliseconds = new Map<string, number>();
 
   /** The shared scroll engine (bound by the host). Null until attached — then render tail-anchors. */
-  protected scrollPort: AgentScrollPort | null = null;
+  protected viewportScrollPort: PaneScrollPort | null = null;
+  protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
+  protected transcriptScrollTop = 0;
+  protected transcriptStuckToBottom = true;
   /** The engine seam (bound by the host) — current provider + cycle. Null until attached. */
   protected enginePort: AgentEnginePort | null = null;
   /** The user-owned terminal-follow setting and cycle action, bound by the host. */
@@ -130,6 +142,8 @@ class $AgentPaneContent implements PaneContent {
   } | null = null;
   /** The permission-mode setting (bound by the host) — drives the mode line + Shift+Tab toggle. */
   protected permissionMode: Ref<boolean> | null = null;
+  protected skillPopupPort: AgentSkillPopupPort | null = null;
+  protected activePointerRegion: AgentPaneRegion['kind'] | null = null;
 
   /** Last render's geometry, so keys clamp scroll, the host reads the viewport extent, and pointer rows
    *  route to the right surface. */
@@ -159,6 +173,27 @@ class $AgentPaneContent implements PaneContent {
     this.spinner = new AgentSpinner.Class(
       () => this.session.turnInFlight && this.paneVisible.value,
     );
+    this.transcriptSelectionDrag = new SelectionDragBehavior.Class({
+      viewportRectangle: () => ({
+        leftColumn: 0,
+        rightColumn: Math.max(0, this.lastWidth - 1),
+        topRow: 0,
+        bottomRow: Math.max(0, this.lastBodyHeight - 1),
+      }),
+      positionAtCell: (column, row) =>
+        this.regionAtRow(row).kind === 'transcript'
+          ? this.transcriptPointAt(column, row)
+          : null,
+      horizontalScrollPosition: () => 0,
+      horizontalScrollingEnabled: () => false,
+      beginSelection: (position) => this.beginTranscriptSelection(position),
+      extendSelection: (position) => this.extendTranscriptSelection(position),
+      finishSelection: () => this.finishTranscriptSelection(),
+      lineGraphemeCount: (line) => this.transcriptLineGraphemeCount(line),
+      scrollColumns: () => {},
+      scrollRows: (rows) => this.scrollRowsBy(rows),
+      haltCompetingScroll: () => this.haltScrollMomentum(),
+    });
     // MONOTONIC fuse: read every repaint source, then return a strictly increasing counter. An
     // arithmetic SUM here could cancel (spinner-stop −1 + session-bump +1 = net 0 → a finished turn
     // stuck rendering "working…", the reviewed repaint bug); a recompute now ALWAYS yields a new value.
@@ -228,8 +263,8 @@ class $AgentPaneContent implements PaneContent {
     return this.revision;
   }
 
-  attachScrollPort(port: AgentScrollPort): void {
-    this.scrollPort = port;
+  attachViewportScrollPort(port: PaneScrollPort): void {
+    this.viewportScrollPort = port;
   }
   /** Bind the permission-mode setting (reactive) so the mode line reflects it and Shift+Tab toggles it. */
   attachPermissionMode(mode: Ref<boolean>): void {
@@ -249,6 +284,10 @@ class $AgentPaneContent implements PaneContent {
     transcriptSearchPort: AgentTranscriptSearchPort,
   ): void {
     this.transcriptSearchPort = transcriptSearchPort;
+  }
+
+  attachSkillPopupPort(skillPopupPort: AgentSkillPopupPort): void {
+    this.skillPopupPort = skillPopupPort;
   }
 
   /** The transcript as a FindBar target: the mirror document (read-only — replace is peripheral config
@@ -275,14 +314,11 @@ class $AgentPaneContent implements PaneContent {
   /** Scroll the transcript viewport so the revealed match's line sits mid-body (the pane's one scroll
    *  writer for a search jump — adopt-and-stop like every other scroll authority). */
   protected revealTranscriptMatch(match: FindInBufferMatch): void {
-    const scrollPort = this.scrollPort;
-    if (!scrollPort) return;
     const targetTop = Math.max(
       0,
       match.line - Math.floor(this.lastBodyHeight / 2),
     );
-    scrollPort.scrollRowsBy(targetTop - scrollPort.scrollTop);
-    this.viewRevision.value += 1;
+    this.scrollRowsBy(targetTop - this.transcriptScrollTop);
   }
 
   /** Refresh the search mirror from THIS frame's projected lines and re-derive matches when the text
@@ -317,7 +353,7 @@ class $AgentPaneContent implements PaneContent {
   protected cycleEngine(): boolean {
     if (!this.enginePort?.cycle()) return false;
     this.transcriptSelection.clear();
-    this.scrollPort?.scrollToBottom(); // reveal the "switched to X" system note
+    this.scrollToBottom(); // reveal the "switched to X" system note
     this.viewRevision.value += 1;
     return true;
   }
@@ -341,11 +377,17 @@ class $AgentPaneContent implements PaneContent {
   }
   /** True while the view auto-sticks to the newest line (from the engine; drives the scroll smoke). */
   get stuckToBottom(): boolean {
-    return this.scrollPort?.stuckToBottom ?? true;
+    return this.transcriptStuckToBottom;
   }
   /** The current transcript scroll position (from the engine) — drives the momentum-glide smoke. */
   get scrollTop(): number {
-    return this.scrollPort?.scrollTop ?? 0;
+    return this.transcriptScrollTop;
+  }
+  get scrollContentRows(): number {
+    return this.lastTotalLines;
+  }
+  get scrollViewportRows(): number {
+    return this.lastBodyHeight;
   }
 
   render(context: PaneRenderContext): StyledText {
@@ -411,11 +453,10 @@ class $AgentPaneContent implements PaneContent {
     // render's geometry), which would show the top of the log instead of the newest turn. Unstuck, honor
     // the engine's position clamped into the fresh range.
     const maximumTop = Math.max(0, lines.length - bodyHeight);
-    const firstLine = this.scrollPort
-      ? this.scrollPort.stuckToBottom
-        ? maximumTop
-        : Math.max(0, Math.min(this.scrollPort.scrollTop, maximumTop))
-      : maximumTop;
+    if (this.transcriptStuckToBottom) this.transcriptScrollTop = maximumTop;
+    else
+      this.transcriptScrollTop = Math.min(this.transcriptScrollTop, maximumTop);
+    const firstLine = this.transcriptScrollTop;
     this.lastFirstLine = firstLine;
 
     const visible = lines.slice(firstLine, firstLine + bodyHeight);
@@ -680,6 +721,28 @@ class $AgentPaneContent implements PaneContent {
   }
 
   handleKey(key: KeyEvent): boolean {
+    if (this.skillPopupPort?.popup.open.value) {
+      if (key.name === 'escape') {
+        this.skillPopupPort.popup.dismiss();
+        return true;
+      }
+      if (key.name === 'up') {
+        this.skillPopupPort.popup.moveSelection(-1);
+        return true;
+      }
+      if (key.name === 'down') {
+        this.skillPopupPort.popup.moveSelection(1);
+        return true;
+      }
+      if (key.name === 'return') {
+        this.skillPopupPort.popup.runSelected();
+        return true;
+      }
+    }
+    if (key.ctrl && (key.name === 'f' || key.name === 'h')) {
+      this.transcriptSearchPort?.open();
+      return true;
+    }
     // Shift+Tab cycles the permission mode (a boolean → on↔off); the mode line updates live.
     if ((key.name === 'tab' && key.shift) || key.name === 'backtab') {
       if (this.permissionMode) {
@@ -700,11 +763,13 @@ class $AgentPaneContent implements PaneContent {
     const pendingPermission = this.session.pendingPermission;
     if (pendingPermission) {
       if (key.name === 'pageup') {
-        this.scrollPort?.scrollRowsBy(-(this.lastBodyHeight - 1));
+        this.haltScrollMomentum();
+        this.scrollRowsBy(-(this.lastBodyHeight - 1));
         return true;
       }
       if (key.name === 'pagedown') {
-        this.scrollPort?.scrollRowsBy(this.lastBodyHeight - 1);
+        this.haltScrollMomentum();
+        this.scrollRowsBy(this.lastBodyHeight - 1);
         return true;
       }
       if (!key.ctrl && !key.meta && !key.option && !key.super) {
@@ -738,17 +803,19 @@ class $AgentPaneContent implements PaneContent {
       if (this.session.send(this.composer.value)) {
         this.composer.clear();
         this.transcriptSelection.clear();
-        this.scrollPort?.scrollToBottom(); // sending re-anchors to the newest output
+        this.scrollToBottom(); // sending re-anchors to the newest output
       }
       return true;
     }
     // Transcript paging always works (the composer keeps the arrow keys for cursor motion).
     if (key.name === 'pageup') {
-      this.scrollPort?.scrollRowsBy(-(this.lastBodyHeight - 1));
+      this.haltScrollMomentum();
+      this.scrollRowsBy(-(this.lastBodyHeight - 1));
       return true;
     }
     if (key.name === 'pagedown') {
-      this.scrollPort?.scrollRowsBy(this.lastBodyHeight - 1);
+      this.haltScrollMomentum();
+      this.scrollRowsBy(this.lastBodyHeight - 1);
       return true;
     }
     // Alt/Option/Ctrl → move by WORD (mac overlay uses Option); super/Cmd → jump to line start/end.
@@ -777,12 +844,14 @@ class $AgentPaneContent implements PaneContent {
     // through to transcript scroll (an empty single-line composer therefore scrolls, as before).
     if (key.name === 'up') {
       if (this.composer.moveUp()) return this.composerHandled();
-      this.scrollPort?.scrollRowsBy(-1);
+      this.haltScrollMomentum();
+      this.scrollRowsBy(-1);
       return true;
     }
     if (key.name === 'down') {
       if (this.composer.moveDown()) return this.composerHandled();
-      this.scrollPort?.scrollRowsBy(1);
+      this.haltScrollMomentum();
+      this.scrollRowsBy(1);
       return true;
     }
     if (key.name === 'backspace') {
@@ -809,7 +878,21 @@ class $AgentPaneContent implements PaneContent {
    *  so the caret would not repaint otherwise) and report the key handled. */
   protected composerHandled(): boolean {
     this.viewRevision.value += 1;
+    this.synchronizeSkillPopup();
     return true;
+  }
+
+  protected synchronizeSkillPopup(): void {
+    const port = this.skillPopupPort;
+    if (!port) return;
+    port.popup.synchronize(
+      this.id,
+      port.workspaceDirectory(),
+      this.skillInvocation(),
+      port.caretAnchor(),
+      (invocation, skillName) =>
+        this.acceptSkillInvocation(invocation, skillName),
+    );
   }
 
   applyComposerInputAction(action: TextInputAction): void {
@@ -853,21 +936,113 @@ class $AgentPaneContent implements PaneContent {
       this.transcriptSearchPort?.open();
       return true;
     }
+    const region = this.regionAtRow(row);
+    if (region.kind === 'composer') {
+      this.activePointerRegion = region.kind;
+      this.beginComposerSelection(
+        this.composerPointAt(column, region.visibleRow),
+      );
+      return true;
+    }
     const line = this.lastBodyRows[row];
     if (!line || line.entryIndex < 0) return false;
     if (this.session.sendQueuedMessage(line.entryIndex)) {
       this.transcriptSelection.clear();
-      this.scrollPort?.scrollToBottom();
+      this.scrollToBottom();
       this.viewRevision.value += 1;
       return true;
     }
-    if (!line.toggleable) return false;
+    if (!line.toggleable) {
+      this.activePointerRegion = 'transcript';
+      this.transcriptSelectionDrag.begin(column, row);
+      return true;
+    }
     if (this.expandedIndices.has(line.entryIndex))
       this.expandedIndices.delete(line.entryIndex);
     else this.expandedIndices.add(line.entryIndex);
     this.transcriptSelection.clear(); // expand/collapse reflows lines, invalidating selection coords
     this.viewRevision.value += 1;
     return true;
+  }
+
+  onPointerDrag(column: number, row: number): boolean {
+    if (this.activePointerRegion === 'composer') {
+      const region = this.regionAtRow(row);
+      const visibleRow =
+        region.kind === 'composer'
+          ? region.visibleRow
+          : row < this.lastComposerStart
+            ? 0
+            : this.lastComposerRows - 1;
+      this.extendComposerSelection(this.composerPointAt(column, visibleRow));
+      return true;
+    }
+    if (this.activePointerRegion === 'transcript') {
+      this.transcriptSelectionDrag.drag(column, row);
+      return true;
+    }
+    return false;
+  }
+
+  onPointerUp(_column: number, _row: number): boolean {
+    if (this.activePointerRegion === 'composer') this.finishComposerSelection();
+    else if (this.activePointerRegion === 'transcript')
+      this.transcriptSelectionDrag.end();
+    else return false;
+    this.activePointerRegion = null;
+    return true;
+  }
+
+  onWheel(rowDelta: number, _context?: PaneWheelContext): boolean {
+    Momentum.Class.queueImpulse(this.verticalMomentum, rowDelta);
+    this.viewportScrollPort?.requestRender();
+    return true;
+  }
+
+  tickScroll(deltaSeconds: number): boolean {
+    const options =
+      this.viewportScrollPort?.momentumOptions() ??
+      Momentum.Class.verticalOptions;
+    const stepped = Momentum.Class.stepMomentum(
+      this.verticalMomentum,
+      deltaSeconds,
+      options,
+    );
+    this.verticalMomentum = stepped.momentum;
+    if (stepped.rows !== 0) this.scrollRowsBy(stepped.rows);
+    return (
+      Momentum.Class.isMoving(this.verticalMomentum) ||
+      this.transcriptSelectionDrag.tick(deltaSeconds)
+    );
+  }
+
+  haltScrollMomentum(): void {
+    this.verticalMomentum = Momentum.Class.halt();
+  }
+
+  scrollToLine(line: number): void {
+    this.haltScrollMomentum();
+    this.setScrollTop(line);
+  }
+
+  protected setScrollTop(line: number): void {
+    const maximumTop = Math.max(0, this.lastTotalLines - this.lastBodyHeight);
+    this.transcriptScrollTop = Math.max(0, Math.min(line, maximumTop));
+    this.transcriptStuckToBottom = this.transcriptScrollTop === maximumTop;
+    this.notifyScrolled();
+  }
+
+  protected scrollRowsBy(deltaRows: number): void {
+    this.setScrollTop(this.transcriptScrollTop + deltaRows);
+  }
+
+  protected scrollToBottom(): void {
+    this.transcriptStuckToBottom = true;
+    this.transcriptScrollTop = Math.max(
+      0,
+      this.lastTotalLines - this.lastBodyHeight,
+    );
+    this.notifyScrolled();
   }
 
   // --- region routing + selection (host maps screen cells; this pane owns the models) ----------------
@@ -1006,11 +1181,38 @@ class $AgentPaneContent implements PaneContent {
     if (cleared || composerCleared) this.viewRevision.value += 1;
   }
 
+  capability<Port>(identifier: string): Port | null {
+    switch (identifier) {
+      case 'text-input':
+        return this as unknown as PaneTextInputPort as unknown as Port;
+      case 'text-selection':
+        return this as unknown as PaneTextSelectionPort as unknown as Port;
+      default:
+        return null;
+    }
+  }
+
+  claimsContextAction(action: string): boolean {
+    if (
+      action === 'agent.cancelTurn' &&
+      this.skillPopupPort?.popup.open.value
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   /** A paste into the composer: insert at the caret (newlines flatten to spaces). */
   handlePaste(text: string): boolean {
     if (!text) return false;
     this.composer.insert(text);
+    this.composerHandled();
     return true;
+  }
+
+  onVisibilityChange(visible: boolean): void {
+    this.setPaneVisible(visible);
+    if (!visible) this.skillPopupPort?.popup.close();
   }
 
   caret(): { column: number; row: number } | null {
@@ -1030,6 +1232,7 @@ class $AgentPaneContent implements PaneContent {
     /* no-op */
   }
   dispose(): void {
+    this.skillPopupPort?.popup.close();
     this.spinner.dispose();
     this.session.dispose();
   }
@@ -1052,13 +1255,6 @@ export interface AgentPaneIdentity {
   onExit?: (identifier: string) => void;
 }
 
-export interface AgentScrollPort {
-  readonly scrollTop: number;
-  readonly stuckToBottom: boolean;
-  scrollRowsBy(deltaRows: number): void;
-  scrollToBottom(): void;
-}
-
 export interface AgentEnginePort {
   readonly provider: string;
   readonly canCycle: boolean;
@@ -1073,6 +1269,15 @@ export interface AgentTranscriptSearchPort {
 export interface AgentTerminalFollowPort {
   readonly mode: Ref<AgentTerminalFollowMode>;
 }
+
+export interface AgentSkillPopupPort {
+  readonly popup: AgentSkillPopup.Model;
+  readonly workspaceDirectory: () => string;
+  readonly caretAnchor: () => { column: number; row: number } | null;
+}
+
+export type AgentTerminalFollowMode =
+  'follow-all' | 'on-error' | 'on-request' | 'off';
 
 export type AgentPaneRegion =
   | { readonly kind: 'transcript'; readonly localRow: number }

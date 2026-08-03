@@ -48,7 +48,7 @@ const coveredSettingNames = new Set([
   'agentSkipPermissions',
   'agentModel',
   'agentTerminalFollowMode',
-  'agentTypingSpeed',
+  'terminalTypingSpeed',
   'terminalCleanPrompt',
   'agentAudioNarration',
   'agentNarrationVoice',

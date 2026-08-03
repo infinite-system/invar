@@ -7,13 +7,11 @@
 import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
-import { VoiceDiscovery } from '../narration/VoiceDiscovery';
 import {
   Settings,
   type ScrollModifier,
   type GlyphMode,
   type WorkspaceTabPosition,
-  type AgentProvider,
 } from './Settings';
 import type { GraphicsTierSetting } from '../theme/TerminalCapabilities';
 import type {
@@ -64,11 +62,6 @@ class $SettingsPanel {
     const dockVerticalSpanOptions: readonly DockVerticalSpan[] = [
       'full-height',
       'ends-at-panel',
-    ];
-    const agentProviderOptions: readonly AgentProvider[] = [
-      'auto',
-      'claude',
-      'codex',
     ];
     const settingDescriptors: readonly SettingDescriptor[] = [
       {
@@ -169,7 +162,7 @@ class $SettingsPanel {
       },
       {
         key: 'reducedMotion',
-        label: 'Reduced motion (instant agent typing)',
+        label: 'Reduced motion',
         section: 'Appearance',
         spec: { kind: 'boolean' },
       },
@@ -192,30 +185,9 @@ class $SettingsPanel {
         spec: { kind: 'enum', options: workspaceTabPositionOptions },
       },
       {
-        key: 'agentProvider',
-        label: 'Agent engine',
-        section: 'Agent',
-        spec: { kind: 'enum', options: agentProviderOptions },
-      },
-      {
-        key: 'agentSkipPermissions',
-        label: 'Agent bypasses permissions (off = ask interactively)',
-        section: 'Agent',
-        spec: { kind: 'boolean' },
-      },
-      {
-        key: 'agentTerminalFollowMode',
-        label: 'Agent terminal follow mode',
-        section: 'Agent',
-        spec: {
-          kind: 'enum',
-          options: ['follow-all', 'on-error', 'on-request', 'off'],
-        },
-      },
-      {
-        key: 'agentTypingSpeed',
-        label: 'Agent terminal typing speed (higher = faster)',
-        section: 'Agent',
+        key: 'terminalTypingSpeed',
+        label: 'Terminal typing speed (higher = faster)',
+        section: 'Terminal',
         spec: {
           kind: 'number',
           step: 10,
@@ -229,33 +201,6 @@ class $SettingsPanel {
         label: 'Terminal clean themed prompt',
         section: 'Terminal',
         spec: { kind: 'boolean' },
-      },
-      {
-        key: 'agentAudioNarration',
-        label: 'Speak agent replies aloud (needs a TTS engine)',
-        section: 'Narration',
-        spec: { kind: 'boolean' },
-      },
-      {
-        key: 'agentNarrationVoice',
-        label: 'Narration voice',
-        section: 'Narration',
-        spec: {
-          kind: 'dynamic-enum',
-          resolveOptions: () => VoiceDiscovery.Class.options(),
-        },
-      },
-      {
-        key: 'agentNarrationRate',
-        label: 'Narration speed (higher = faster; 1.0 = normal)',
-        section: 'Narration',
-        spec: {
-          kind: 'number',
-          step: 0.1,
-          minimum: 0.5,
-          maximum: 3.0,
-          decimals: 1,
-        },
       },
       {
         key: 'sidebarWidth',

@@ -77,7 +77,7 @@ class $OverlayLayer {
       this.dependencies.goToLinePrompt.open.value ||
       this.dependencies.quickOpen.open.value ||
       this.dependencies.contextMenu.open.value ||
-      this.dependencies.boundedListPopup.open.value ||
+      this.dependencies.boundedListPopup.capturesKeyboard ||
       this.dependencies.settingsPanel.open.value ||
       this.dependencies.shortcutHelp.open.value ||
       this.dependencies.quitConfirmation.open.value ||
@@ -1084,6 +1084,14 @@ class $OverlayLayer {
     });
     return Math.max(1, geometry.interiorHeight - 1);
   }
+  protected shortcutHelpScrollHint(
+    scrollTop: number,
+    totalRows: number,
+    visibleRows: number,
+  ): string {
+    if (totalRows <= visibleRows) return '';
+    return `   ${scrollTop + 1}-${Math.min(scrollTop + visibleRows, totalRows)} of ${totalRows}`;
+  }
   scrollShortcutHelpBy(rowDelta: number): void {
     this.shortcutHelpViewport.scrollRowsBy(rowDelta);
     this.dependencies.shortcutHelp.scrollTop.value =
@@ -1580,13 +1588,23 @@ class $OverlayLayer {
     if (shortcutHelp.open.value) {
       const sheetRows = shortcutHelp.rows();
       this.shortcutHelpContentRows = sheetRows.length;
+      const layoutViewportRows = this.shortcutHelpViewportRows();
+      const lastSheetScrollTop = Math.max(
+        0,
+        sheetRows.length - layoutViewportRows,
+      );
+      const widestSheetScrollHint = this.shortcutHelpScrollHint(
+        lastSheetScrollTop,
+        sheetRows.length,
+        layoutViewportRows,
+      );
       const chordColumnWidth = sheetRows.reduce(
         (widestWidth, sheetRow) =>
           Math.max(widestWidth, sheetRow.chordLabel.length),
         0,
       );
       const shortcutContentLines = [
-        '  ↑/↓, wheel, or thumb scroll · Esc close',
+        `  ↑/↓, wheel, or thumb scroll · Esc close${widestSheetScrollHint}`,
         ...sheetRows.map((sheetRow) =>
           sheetRow.kind === 'category'
             ? ` ${sheetRow.label}`
@@ -1619,10 +1637,11 @@ class $OverlayLayer {
         sheetScrollTop,
         sheetScrollTop + this.shortcutHelpVisibleRows,
       );
-      const sheetScrollHint =
-        sheetRows.length > this.shortcutHelpVisibleRows
-          ? `   ${sheetScrollTop + 1}-${Math.min(sheetScrollTop + this.shortcutHelpVisibleRows, sheetRows.length)} of ${sheetRows.length}`
-          : '';
+      const sheetScrollHint = this.shortcutHelpScrollHint(
+        sheetScrollTop,
+        sheetRows.length,
+        this.shortcutHelpVisibleRows,
+      );
       const sheetChunks: TextChunk[] = [];
       sheetChunks.push(
         fg(palette.dim)(

@@ -8,7 +8,11 @@
 // invariant: Each panel instance owns one independent session (src/modules/ui/ui.invariants.md)
 // invariant: Pane identity is separate from presentation (src/modules/ui/ui.invariants.md)
 import type { PaneContent } from './PaneContent.interface';
-import type { PaneRuntime, PaneRuntimeRequest } from './PaneRuntime.interface';
+import type {
+  PaneRuntime,
+  PaneRuntimeAddMenuEntry,
+  PaneRuntimeRequest,
+} from './PaneRuntime.interface';
 
 class $PaneRuntimes {
   protected readonly runtimesByKind = new Map<string, PaneRuntime>();
@@ -17,6 +21,7 @@ class $PaneRuntimes {
     number
   >();
   protected readonly claimedInstanceIdentifiers = new Set<string>();
+  protected readonly reservedInstanceIdentifiers = new Set<string>();
   protected nextInstanceIdentifierNumber = 1;
 
   register(runtime: PaneRuntime): () => void {
@@ -37,6 +42,43 @@ class $PaneRuntimes {
     return [...this.runtimesByKind.values()]
       .filter((runtime) => runtime.offeredInPanelAddMenu)
       .map((runtime) => ({ kind: runtime.kind, label: runtime.instanceLabel }));
+  }
+
+  spaceAddableKinds(): readonly { kind: string; label: string }[] {
+    return [...this.runtimesByKind.values()]
+      .filter((runtime) => runtime.offeredAsPanelSpace)
+      .map((runtime) => ({ kind: runtime.kind, label: runtime.instanceLabel }));
+  }
+
+  /** Runtime kinds in the declarative order used by the panel's default split action. */
+  defaultSplitKinds(): readonly { kind: string; label: string }[] {
+    return [...this.runtimesByKind.values()]
+      .filter((runtime) => runtime.defaultSplitPriority !== undefined)
+      .sort(
+        (left, right) =>
+          (left.defaultSplitPriority ?? 0) - (right.defaultSplitPriority ?? 0),
+      )
+      .map((runtime) => ({ kind: runtime.kind, label: runtime.instanceLabel }));
+  }
+
+  paneAddMenuEntries(spaceKind: string): readonly PaneRuntimeAddMenuEntry[] {
+    return [...this.runtimesByKind.values()].flatMap((runtime) =>
+      (runtime.paneAddMenuEntries ?? []).filter(
+        (entry) => entry.spaceKind === spaceKind,
+      ),
+    );
+  }
+
+  paneAddMenuEntry(
+    identifier: string,
+  ): { runtimeKind: string; entry: PaneRuntimeAddMenuEntry } | null {
+    for (const runtime of this.runtimesByKind.values()) {
+      const entry = runtime.paneAddMenuEntries?.find(
+        (candidate) => candidate.identifier === identifier,
+      );
+      if (entry) return { runtimeKind: runtime.kind, entry };
+    }
+    return null;
   }
 
   /** Allocate one opaque application identity and one workspace-local `<Label>`/`<Label> N`. */
@@ -69,15 +111,22 @@ class $PaneRuntimes {
     while (true) {
       const identifier = `pane-instance-${this.nextInstanceIdentifierNumber}`;
       this.nextInstanceIdentifierNumber += 1;
-      if (this.claimedInstanceIdentifiers.has(identifier)) continue;
+      if (this.reservedInstanceIdentifiers.has(identifier)) continue;
+      this.reservedInstanceIdentifiers.add(identifier);
       this.claimedInstanceIdentifiers.add(identifier);
       return identifier;
     }
   }
 
+  /** Keep an identity found in persisted settings unavailable until its workspace is restored. */
+  reservePersistedInstanceIdentifier(identifier: string): void {
+    this.reservedInstanceIdentifiers.add(identifier);
+  }
+
   /** Claim an identifier read from persisted state before rebuilding its pane. */
   claimPersistedInstanceIdentifier(identifier: string): boolean {
     if (this.claimedInstanceIdentifiers.has(identifier)) return false;
+    this.reservedInstanceIdentifiers.add(identifier);
     this.claimedInstanceIdentifiers.add(identifier);
     return true;
   }

@@ -617,7 +617,7 @@ byte, emulator, and observation contracts above are unchanged by the extraction.
   Ctrl+C still reaches the child as SIGINT without the host special-casing the pane.
 
 **Mechanism:** `TerminalPlugin` reads `settings.terminalCleanPrompt`, `theme.palette.terminalPrompt`,
-`settings.agentTypingSpeed`, and `settings.reducedMotion` itself and passes them to
+`settings.terminalTypingSpeed`, and `settings.reducedMotion` itself and passes them to
 `TerminalFactory.create`; a request carrying a declared `process` is launched with its own prompt
 instead. The plugin keeps its own map of the panes it created and resolves "the current terminal"
 only as the host-reported pane in the active workspace world. A hidden workspace terminal never

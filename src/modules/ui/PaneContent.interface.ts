@@ -142,6 +142,8 @@ export interface PaneContent {
   onFocus(): void;
   /** The panel lost keyboard focus. */
   onBlur(): void;
+  /** The host started or stopped painting this content in its resolved cell set. */
+  onVisibilityChange?(visible: boolean): void;
   /** Release owned resources. */
   dispose(): void;
 }
@@ -151,6 +153,14 @@ export interface PaneContentSpace {
   readonly kind: string;
   /** User-facing base label. The host adds a number for later spaces of the same kind. */
   readonly label: string;
+}
+
+/** One contributed choice for adding another pane inside an existing panel space. */
+export interface PaneAddMenuEntry {
+  readonly identifier: string;
+  readonly label: string;
+  readonly instanceLabel: string;
+  readonly spaceKind: string;
 }
 
 /** The `native-surface` capability: a pane content that owns OpenTUI renderables and paints them
@@ -187,6 +197,10 @@ export interface PaneSurfaceRegion {
 export interface PaneTextSelectionPort {
   hasSelection(): boolean;
   copySelection(): Promise<number>;
+  selectionTelemetry?(): {
+    readonly owner: string;
+    readonly characterLength: number;
+  };
 }
 
 /** The `text-input` capability: a pane-owned one-line input that uses the shared input model. */

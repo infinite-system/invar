@@ -148,7 +148,6 @@ test('the reserved set is SMALL and holds only frame-scoped actions', () => {
   );
   expect([...reservedActions].sort()).toEqual([
     'app.quit',
-    'panel.toggleAgent',
     'panel.toggleSplit',
     'panel.toggleTerminal',
     'view.toggleRightDock',
@@ -309,9 +308,6 @@ test('every retired F-key chord resolves to the replacement it was given', () =>
   expect(resolveIn('editor', { name: 'h', ctrl: true, shift: true })).toBe(
     'help.shortcuts',
   );
-  expect(resolveIn('agent', { name: 'm', ctrl: true, shift: true })).toBe(
-    'agent.cycleTerminalFollowMode',
-  );
   expect(resolveIn('editor', { name: 'j', ctrl: true, shift: true })).toBe(
     'focus.toggle',
   );
@@ -369,13 +365,7 @@ test('the host floor names NO contributed-surface action — the surface owns it
 });
 
 test('every adopted text input receives the same complete binding table', () => {
-  const contexts = [
-    'palette',
-    'quickopen',
-    'goToLine',
-    'find',
-    'agent',
-  ] as const;
+  const contexts = ['palette', 'quickopen', 'goToLine', 'find'] as const;
   const signaturesByContext = contexts.map((context) =>
     KeybindingDefaults.Class.canonicalBindings
       .filter(
@@ -413,21 +403,6 @@ test('every adopted text input receives the same complete binding table', () => 
       chord: { key: 'c', ctrl: true },
     }),
   );
-});
-
-test('agent copy keeps transcript ownership while Shift arrows reach the composer input', () => {
-  const registry = registryWithCanonicalLayer();
-  expect(
-    registry.resolve({ ...unmodifiedEvent, name: 'c', ctrl: true }, 'agent', 0)
-      .action,
-  ).toBe('agent.copy');
-  expect(
-    registry.resolve(
-      { ...unmodifiedEvent, name: 'left', shift: true },
-      'agent',
-      0,
-    ).action,
-  ).toBe('textInput.selectLeft');
 });
 
 test('Alt+G opens go-to-line without taking the Git chords', () => {
