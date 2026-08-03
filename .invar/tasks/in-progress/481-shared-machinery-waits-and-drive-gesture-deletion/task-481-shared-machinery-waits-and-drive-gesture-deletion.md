@@ -1,7 +1,7 @@
 # Task 481 — shared-machinery waits and the Drive gesture-layer deletion
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol
