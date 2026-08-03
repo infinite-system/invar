@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #481 [shared-machinery-waits-and-drive-gesture-deletion](.invar/tasks/in-progress/481-shared-machinery-waits-and-drive-gesture-deletion/task-481-shared-machinery-waits-and-drive-gesture-deletion.md)  [building]
-  `tmux attach -t invar/481-shared-machinery-waits-and-drive-gesture-deletion`
+## IN-PROGRESS (1)
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -151,7 +149,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 190 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 191 — full log: project.tasks-completed.md)
+- #481 [shared-machinery-waits-and-drive-gesture-deletion](.invar/tasks/completed/481-shared-machinery-waits-and-drive-gesture-deletion/task-481-shared-machinery-waits-and-drive-gesture-deletion.md) — e3e3316a — Landed: honest shell settle, gesture layer deleted, 11 delays declared. The census migration is now COMPLETE except declared remainders.
 - #480 [migrate-the-quick-open-idiom](.invar/tasks/completed/480-migrate-the-quick-open-idiom/task-480-migrate-the-quick-open-idiom.md) — 04ea99ab — Landed: the Quick Open idiom retired across the suite. Migration remainder: shared machinery + agent/terminal + panel/layout + shell sites, per the #479 table.
 - #479 [migrate-the-census-tail](.invar/tasks/completed/479-migrate-the-census-tail/task-479-migrate-the-census-tail.md) — c5316ddf — Round 1 landed: the two live gate-flake files migrated site-complete. Remainder (Quick Open idiom files, shared machinery, agent/terminal files, shell sites) stays honestly tabled for the next round.
 - #478 [migrate-the-pre-satisfied-waits](.invar/tasks/completed/478-migrate-the-pre-satisfied-waits/task-478-migrate-the-pre-satisfied-waits.md) — 655c0db0 — Round 1 landed: five unfalsifiable positive controls + panel-chrome drag-span converted with planted-defect proof. Remainder (plugin-manifest, scrollbars, the census tail) queued for round 2.
@@ -166,4 +165,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/completed/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md) — bc367e17 — Unreachable panel registration made impossible at the factory seam; empty panel keeps its Add row; instance close no longer confirms. Phantom pane had been silently satisfying a layout-isolation wait.
 - #457 [serial-tail-lacks-quiet-retry](.invar/tasks/completed/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md) — 687dc80f — Gate verdict is now a function of the commit: 5 identical verdicts on one commit, unchanged at 3 and 6 workers, planted defect red 5/5. Real defect was a live-emulator read in the shortcut sheet, not a missing retry.
 - #452 [pane-identity-collides-by-name](.invar/tasks/completed/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md) — da584da4 — Pane identity separated from presentation; original all-terminal incident remains unexplained.
-- #448 [static-reads-that-can-block-overrides](.invar/tasks/completed/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md) — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.

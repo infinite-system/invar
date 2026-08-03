@@ -1,7 +1,7 @@
 # Task 481 — shared-machinery waits and the Drive gesture-layer deletion
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — e3e3316a — Landed: honest shell settle, gesture layer deleted, 11 delays declared. The census migration is now COMPLETE except declared remainders.
 Engine: codex
 Environment: any
 Model: 5.6-sol
