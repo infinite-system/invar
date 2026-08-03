@@ -146,11 +146,20 @@ class $InvarMcpServer {
             .min(1)
             .optional()
             .describe('Workspace directory; defaults to a temporary workspace'),
+          sizeLines: z
+            .number()
+            .int()
+            .positive()
+            .max(Number.MAX_SAFE_INTEGER)
+            .optional()
+            .describe(
+              'Generate and open a temporary file with this many lines',
+            ),
         },
       },
-      async ({ workspace }) =>
+      async ({ workspace, sizeLines }) =>
         this.textResult(
-          await this.startServer(options.serverDirectory, workspace),
+          await this.startServer(options.serverDirectory, workspace, sizeLines),
         ),
     );
 
@@ -218,11 +227,17 @@ class $InvarMcpServer {
   protected static async startServer(
     serverDirectory?: string,
     workspace?: string,
+    sizeLines?: number,
   ): Promise<string> {
     const currentManifest =
       DriveScriptRunner.Class.serverManifest(serverDirectory);
     if (this.manifestNamesLiveServer(currentManifest)) {
       return `drive-server: already ready (pid ${String(currentManifest?.pid)})`;
+    }
+    if (workspace !== undefined && sizeLines !== undefined) {
+      throw new Error(
+        'server_start workspace and sizeLines are mutually exclusive',
+      );
     }
     if (workspace !== undefined) {
       const workspacePath = resolve(workspace);
@@ -244,6 +259,7 @@ class $InvarMcpServer {
         ? []
         : ['--server-dir', serverDirectory]),
       ...(workspace === undefined ? [] : ['--open', resolve(workspace)]),
+      ...(sizeLines === undefined ? [] : ['--size', String(sizeLines)]),
     ];
     const serverProcess = Bun.spawn({
       cmd: command,
