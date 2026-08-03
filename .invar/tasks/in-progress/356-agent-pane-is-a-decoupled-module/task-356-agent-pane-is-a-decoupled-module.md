@@ -1,6 +1,6 @@
 # #356 — the agent pane becomes a decoupled module with an on-off switch
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
