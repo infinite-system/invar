@@ -115,7 +115,7 @@ test('a normal master read-stream close resumes bytes from the live PTY', async 
       }
 
       interruptMasterRead(): void {
-        this.readStream?.destroy();
+        this.masterReadStream?.destroy();
       }
     }
 
