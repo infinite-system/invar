@@ -28,28 +28,6 @@ class $InvarMcpServerTest {
       .join('\n');
   }
 
-  static async awaitManifest(
-    serverDirectory: string,
-    processIdentifier: number,
-  ): Promise<void> {
-    const deadline = Date.now() + 30_000;
-    const manifestPath = join(serverDirectory, 'server.json');
-    while (Date.now() < deadline) {
-      try {
-        const manifest = JSON.parse(
-          await Bun.file(manifestPath).text(),
-        ) as Record<string, unknown>;
-        if (manifest.pid === processIdentifier) return;
-      } catch {
-        // The named ready manifest is the condition. Keep polling it.
-      }
-      await new Promise((resolveWait) => setTimeout(resolveWait, 15));
-    }
-    throw new Error(
-      `Drive server ${processIdentifier} did not publish ${manifestPath}`,
-    );
-  }
-
   static async awaitServerStopped(serverDirectory: string): Promise<void> {
     const deadline = Date.now() + 30_000;
     const manifestPath = join(serverDirectory, 'server.json');
@@ -61,31 +39,11 @@ class $InvarMcpServerTest {
   }
 
   static async runScaleArm(lineCount: number): Promise<void> {
-    const fixture = await HarnessSmoke.Class.createDriveScaleFixture(lineCount);
     const serverDirectory = mkdtempSync(
       join(tmpdir(), `invar-mcp-server-${lineCount}-`),
     );
     const mcpServerPath = resolve(import.meta.dir, 'InvarMcpServer.ts');
     const driveSessionPath = resolve(import.meta.dir, 'DriveSession.ts');
-    let directlyStartedServer: ReturnType<typeof Bun.spawn> | null = null;
-    if (lineCount === 100_000) {
-      directlyStartedServer = Bun.spawn({
-        cmd: [
-          process.execPath,
-          driveSessionPath,
-          '--serve',
-          '--size',
-          String(lineCount),
-          '--server-dir',
-          serverDirectory,
-        ],
-        cwd: resolve(import.meta.dir, '../..'),
-        stdin: 'ignore',
-        stdout: 'ignore',
-        stderr: 'pipe',
-      });
-      await this.awaitManifest(serverDirectory, directlyStartedServer.pid);
-    }
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [mcpServerPath, '--server-dir', serverDirectory],
@@ -111,22 +69,9 @@ class $InvarMcpServerTest {
       ).toContain('EXPERIMENT ONLY, never verification');
 
       const startResult = await this.callTool(client, 'server_start', {
-        workspace: fixture.workspaceRoot,
+        sizeLines: lineCount,
       });
       expect(startResult.isError).not.toBe(true);
-      if (lineCount === 10) {
-        const openResult = await this.callTool(client, 'drive_attach', {
-          snippet:
-            `await app.key('Control+p')` +
-            `.waitForStatus('quickOpenOpen', true)` +
-            `.type(${JSON.stringify(`scale-${lineCount}.txt`)})` +
-            `.waitForStatus('quickOpenQuery', ${JSON.stringify(`scale-${lineCount}.txt`)})` +
-            `.waitForStatus('quickOpenMatches', 1)` +
-            `.key('Enter')` +
-            `.waitForStatus('activeBuffer', ${JSON.stringify(fixture.filePath)});`,
-        });
-        expect(openResult.isError).not.toBe(true);
-      }
 
       const graphResult = await this.callTool(client, 'graph_get', {
         path: 'workspaceSet.active.editor.document.lineCount',
@@ -195,18 +140,13 @@ class $InvarMcpServerTest {
         'attach: snippet failed: planted CLI snippet failure',
       );
 
-      if (lineCount === 10) {
-        const reloadResult = await this.callTool(client, 'server_reload');
-        expect(reloadResult.isError).not.toBe(true);
-        expect(this.text(reloadResult)).toContain('drive-server: reloaded');
-      }
+      const reloadResult = await this.callTool(client, 'server_reload');
+      expect(reloadResult.isError).not.toBe(true);
+      expect(this.text(reloadResult)).toContain('drive-server: reloaded');
       const stopResult = await this.callTool(client, 'server_stop');
       expect(stopResult.isError).not.toBe(true);
       expect(this.text(stopResult)).toContain('drive-server: stopped');
       await this.awaitServerStopped(serverDirectory);
-      if (directlyStartedServer !== null) {
-        expect(await directlyStartedServer.exited).toBe(0);
-      }
     } finally {
       await client.close();
       try {
@@ -227,7 +167,6 @@ class $InvarMcpServerTest {
         // The normal test path already stopped the server.
       }
       await HarnessSmoke.Class.removeTemporaryDirectory(serverDirectory);
-      await HarnessSmoke.Class.removeTemporaryDirectory(fixture.workspaceRoot);
     }
   }
 }

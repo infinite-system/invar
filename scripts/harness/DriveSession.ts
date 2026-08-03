@@ -896,7 +896,9 @@ class $DriveScriptRunner {
      *  pinned --home, which means state persistence BY CHOICE), settings
      *  re-seeded by copy, a new app process, manifest rewritten. The server
      *  and its rendezvous files stay put, so attaches never re-target. */
-    const bootInnerApp = async (): Promise<{
+    const bootInnerApp = async (
+      manifestReloadCount: number,
+    ): Promise<{
       driver: PtyTestDriver.Model;
       session: DriveSession.Model;
       statusPath: string;
@@ -930,72 +932,89 @@ class $DriveScriptRunner {
           // No real config to inherit — defaults are correct then.
         }
       }
-      const statusPath = join(homeDirectory, 'status.json');
-      const driver = new PtyTestDriver.Class({
-        workspaceRoot,
-        columns: options.columns ?? hostColumns ?? 220,
-        rows: options.rows ?? hostRows ?? 60,
+      // Each candidate needs its own readiness signal. A pinned --home keeps
+      // the prior status file, so reusing status.json would let stale ready
+      // state certify a replacement that has not booted yet.
+      const statusPath = join(
         homeDirectory,
-        // Mirroring: negotiate as the LEAST capable link in the chain. The
-        // emulator swallows OSC 66 whole, so the inner app's text-sizing probe
-        // fails and it emits plain glyphs the watching terminal can draw
-        // (a wrapped glyph on a terminal without the protocol is DELETED whole
-        // — the invisible activity-bar-icons defect).
-        textSizingSupported: !options.mirror,
-        environment: {
-          ...hostIdentity,
-          TUI_STATUS_PATH: statusPath,
-          INVAR_AGENT_BACKEND: 'echo',
-          // The watcher needs to SEE the agent's hand: pointer cell, fading
-          // wake, click rings. Override with TUI_POINTER_TRAIL=0.
-          ...(options.mirror
-            ? { TUI_POINTER_TRAIL: process.env.TUI_POINTER_TRAIL ?? '1' }
-            : {}),
-        },
-      });
-      if (options.mirror) {
-        // The WATCH feed: every byte the app writes, relayed verbatim. The
-        // human sees exactly what the agent's gestures cause, live — dropdowns
-        // opening, state changing — because this IS the app's own output, not
-        // a reconstruction.
-        driver.tapOutput((bytes) => process.stdout.write(bytes));
-      }
-      const session = new DriveSession.Class(driver, statusPath);
-      await HarnessSmoke.Class.awaitStatus(
-        driver,
-        statusPath,
-        'the served app publishes its first status',
-        (candidate) => candidate.width !== undefined,
+        `status-${crypto.randomUUID()}.json`,
       );
-      if (scaleFixture !== null) {
-        await HarnessSmoke.Class.openFileThroughQuickOpen(
+      let driver: PtyTestDriver.Model | null = null;
+      try {
+        driver = new PtyTestDriver.Class({
+          workspaceRoot,
+          columns: options.columns ?? hostColumns ?? 220,
+          rows: options.rows ?? hostRows ?? 60,
+          homeDirectory,
+          // Mirroring: negotiate as the LEAST capable link in the chain. The
+          // emulator swallows OSC 66 whole, so the inner app's text-sizing probe
+          // fails and it emits plain glyphs the watching terminal can draw
+          // (a wrapped glyph on a terminal without the protocol is DELETED whole
+          // — the invisible activity-bar-icons defect).
+          textSizingSupported: !options.mirror,
+          environment: {
+            ...hostIdentity,
+            TUI_STATUS_PATH: statusPath,
+            INVAR_AGENT_BACKEND: 'echo',
+            // The watcher needs to SEE the agent's hand: pointer cell, fading
+            // wake, click rings. Override with TUI_POINTER_TRAIL=0.
+            ...(options.mirror
+              ? { TUI_POINTER_TRAIL: process.env.TUI_POINTER_TRAIL ?? '1' }
+              : {}),
+          },
+        });
+        if (options.mirror) {
+          // The WATCH feed: every byte the app writes, relayed verbatim. The
+          // human sees exactly what the agent's gestures cause, live — dropdowns
+          // opening, state changing — because this IS the app's own output, not
+          // a reconstruction.
+          driver.tapOutput((bytes) => process.stdout.write(bytes));
+        }
+        const session = new DriveSession.Class(driver, statusPath);
+        await HarnessSmoke.Class.awaitStatus(
           driver,
           statusPath,
-          scaleFixture.filePath,
+          'the served app publishes its first status',
+          (candidate) => candidate.width !== undefined,
         );
-      }
-      writeFileSync(
-        manifestPath,
-        JSON.stringify(
-          {
-            pid: process.pid,
+        if (scaleFixture !== null) {
+          await HarnessSmoke.Class.openFileThroughQuickOpen(
+            driver,
             statusPath,
-            workspaceRoot,
+            scaleFixture.filePath,
+          );
+        }
+        writeFileSync(
+          manifestPath,
+          JSON.stringify(
+            {
+              pid: process.pid,
+              statusPath,
+              workspaceRoot,
+              homeDirectory,
+              startedAtMs: Date.now(),
+              reloadCount: manifestReloadCount,
+            },
+            null,
+            2,
+          ),
+        );
+        return {
+          driver,
+          session,
+          statusPath,
+          homeDirectory,
+          homeDirectoryOwned,
+        };
+      } catch (thrown) {
+        await driver?.dispose().catch(() => undefined);
+        if (homeDirectoryOwned) {
+          await HarnessSmoke.Class.removeTemporaryDirectory(
             homeDirectory,
-            startedAtMs: Date.now(),
-            reloadCount,
-          },
-          null,
-          2,
-        ),
-      );
-      return {
-        driver,
-        session,
-        statusPath,
-        homeDirectory,
-        homeDirectoryOwned,
-      };
+          ).catch(() => undefined);
+        }
+        throw thrown;
+      }
     };
 
     if (options.mirror && process.stdin.isTTY) {
@@ -1024,7 +1043,7 @@ class $DriveScriptRunner {
     const staleRequest = this.readServerFile(requestPath);
     let lastServicedId =
       staleRequest && typeof staleRequest.id === 'number' ? staleRequest.id : 0;
-    let active = await bootInnerApp();
+    let active = await bootInnerApp(reloadCount);
     let resizeTargetDriver: PtyTestDriver.Model | null = active.driver;
     const forwardHostingTerminalResize = () => {
       if (!options.mirror || resizeTargetDriver === null) return;
@@ -1066,20 +1085,21 @@ class $DriveScriptRunner {
             break;
           }
           if (request.reload === true) {
-            // START FRESH: dispose the app, boot a new one (new scratch home
-            // unless --home pinned persistence), same server, same rendezvous
-            // — attaches never re-target.
+            // START FRESH: ready the replacement before releasing the current
+            // app. A failed boot therefore leaves the current session live.
             try {
-              resizeTargetDriver = null;
-              await active.driver.dispose();
-              if (active.homeDirectoryOwned) {
+              const nextReloadCount = reloadCount + 1;
+              const previous = active;
+              const replacement = await bootInnerApp(nextReloadCount);
+              active = replacement;
+              reloadCount = nextReloadCount;
+              resizeTargetDriver = replacement.driver;
+              await previous.driver.dispose();
+              if (previous.homeDirectoryOwned) {
                 await HarnessSmoke.Class.removeTemporaryDirectory(
-                  active.homeDirectory,
+                  previous.homeDirectory,
                 );
               }
-              reloadCount += 1;
-              active = await bootInnerApp();
-              resizeTargetDriver = active.driver;
               this.writeServerFile(responsePath, {
                 id: request.id,
                 ok: true,
