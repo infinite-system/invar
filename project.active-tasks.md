@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #490 [chord-and-command-relocation-sweep](.invar/tasks/in-progress/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)  [building]
+  `tmux attach -t invar/490-chord-and-command-relocation-sweep`
+
 ## USER-DIRECTED (14)
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -105,8 +109,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (39)
-- #490 [chord-and-command-relocation-sweep](.invar/tasks/active/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)
+## ARCHITECTURE-HYGIENE (38)
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/active/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
