@@ -101,7 +101,6 @@ try {
     'workspaceSet.activeDocument.path',
     join(fixtureRoot, 'root.txt'),
   );
-  driver.sendKeys('Tab');
   await GraphClient.Class.awaitValue(
     statusPath,
     'workspaceSet.active.focus',
