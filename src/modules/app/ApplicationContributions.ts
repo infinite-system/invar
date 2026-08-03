@@ -25,7 +25,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   protected readonly failures = new Map<string, string>();
 
   constructor(
-    protected readonly contributors: readonly ApplicationContributor[],
+    protected readonly orderedContributors: readonly ApplicationContributor[],
     protected readonly options: ApplicationContributionsOptions,
   ) {}
 
@@ -33,9 +33,19 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     return ref(0);
   }
 
+  /** Every installed contributor, keyed by its own stable identity. */
+  get contributors(): Readonly<Record<string, ApplicationContributor>> {
+    return Object.fromEntries(
+      this.orderedContributors.map((contributor) => [
+        contributor.identifier,
+        contributor,
+      ]),
+    );
+  }
+
   entries(): readonly ApplicationContributionEntry[] {
     void this.revision.value;
-    return this.contributors.map((contributor) => ({
+    return this.orderedContributors.map((contributor) => ({
       identifier: contributor.identifier,
       name: contributor.name,
       enabled: this.activeContributions.has(contributor.identifier),
@@ -48,7 +58,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   }
 
   activateAll(): void {
-    for (const contributor of this.contributors) {
+    for (const contributor of this.orderedContributors) {
       try {
         this.activate(contributor);
       } catch (error) {
@@ -59,7 +69,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   }
 
   setEnabled(identifier: string, enabled: boolean): void {
-    const contributor = this.contributors.find(
+    const contributor = this.orderedContributors.find(
       (candidate) => candidate.identifier === identifier,
     );
     if (!contributor) return;
@@ -254,7 +264,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   }
 
   dispose(): void {
-    for (const contributor of [...this.contributors].reverse()) {
+    for (const contributor of [...this.orderedContributors].reverse()) {
       this.deactivate(contributor);
     }
   }

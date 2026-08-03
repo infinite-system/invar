@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+import { GraphClient } from './GraphClient';
 
 function initializeRepository(repositoryRoot: string): void {
   HarnessSmoke.Class.runGit(repositoryRoot, ['init', '-q']);
@@ -71,7 +72,63 @@ try {
     "status condition: status.focus === 'git' && status.gitChangedCount === 0",
     (status) => status.focus === 'git' && status.gitChangedCount === 0,
   );
-  HarnessSmoke.Class.pass('clean repo, 0 changes');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'contributors.git.activeWorkspace.repositoryScanCompleted',
+    true,
+  );
+  HarnessSmoke.Class.pass('clean repo, completed scan, 0 changes');
+  const cleanGraphCount = await GraphClient.Class.query(
+    statusPath,
+    'contributors.git.activeWorkspace.changedCount',
+    'settle',
+  );
+  HarnessSmoke.Class.requireCondition(
+    cleanGraphCount.value === 0,
+    'the composition graph reaches the Git contributor changed count',
+  );
+
+  console.log(
+    '== harness git-watch: a real editor save changes the graph count ==',
+  );
+  driver.sendKeys('Control+p');
+  await GraphClient.Class.awaitValue(statusPath, 'quickOpen.open', true);
+  driver.sendText('root.txt');
+  await GraphClient.Class.awaitValue(statusPath, 'quickOpen.query', 'root.txt');
+  driver.sendKeys('Enter');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'workspaceSet.activeDocument.path',
+    join(fixtureRoot, 'root.txt'),
+  );
+  driver.sendKeys('Tab');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'workspaceSet.active.focus',
+    'editor',
+  );
+  driver.sendKeys('End');
+  driver.sendText('x');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'workspaceSet.activeDocument.dirty',
+    true,
+  );
+  driver.sendKeys('Control+s');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'contributors.git.activeWorkspace.changedCount',
+    1,
+  );
+  HarnessSmoke.Class.runGit(fixtureRoot, ['checkout', '-q', '--', 'root.txt']);
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'contributors.git.activeWorkspace.changedCount',
+    0,
+  );
+  HarnessSmoke.Class.pass(
+    'real edit and save moved the graph count from 0 to 1',
+  );
 
   console.log(
     '== harness git-watch: external nested changes arrive without input ==',
@@ -92,6 +149,15 @@ try {
   HarnessSmoke.Class.pass(
     `external nested modify+add+delete reflected without input (0 -> ${changedStatus.gitChangedCount})`,
   );
+  const changedGraphCount = await GraphClient.Class.query(
+    statusPath,
+    'contributors.git.activeWorkspace.changedCount',
+    'settle',
+  );
+  HarnessSmoke.Class.requireCondition(
+    changedGraphCount.value === changedStatus.gitChangedCount,
+    'the Git contributor graph count tracks the live working tree',
+  );
 
   console.log(
     '== harness git-watch: reverting external changes clears the panel ==',
@@ -110,6 +176,11 @@ try {
     'status condition: status.gitChangedCount === 0',
     (status) => status.gitChangedCount === 0,
     7_000,
+  );
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'contributors.git.activeWorkspace.changedCount',
+    0,
   );
   HarnessSmoke.Class.pass('panel returned to 0 after external revert');
 

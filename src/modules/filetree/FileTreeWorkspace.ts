@@ -19,6 +19,10 @@ class $FileTreeWorkspace implements WorkspaceContribution {
   readonly tree: FileTree.Instance;
   protected settingsSource: Settings.Instance | null = null;
 
+  get rowCount(): number {
+    return this.tree.rows.length;
+  }
+
   protected createTree(): FileTree.Instance {
     return new FileTree.Class(this.showHiddenFiles);
   }

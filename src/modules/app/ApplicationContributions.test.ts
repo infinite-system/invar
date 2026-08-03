@@ -113,6 +113,13 @@ function createManager() {
 }
 
 describe('ApplicationContributions', () => {
+  test('the composition exposes every contributor by its own identifier', () => {
+    const { contributor, manager } = createManager();
+
+    expect(Object.keys(manager.contributors)).toEqual(['sample']);
+    expect(manager.contributors.sample).toBe(contributor);
+  });
+
   test('plugin defaults sit above the host and below user rebinds', () => {
     const { keybindings, manager } = createManager();
     manager.activateAll();

@@ -41,6 +41,18 @@ class $WorkspaceSet {
     return workspace;
   }
 
+  get activeEditor() {
+    return this.active.editor;
+  }
+
+  get activeDocument() {
+    return this.active.activeDocumentHandle?.document ?? null;
+  }
+
+  get activeLanguageProviderNotice(): string | null {
+    return this.active.languageProviderNotice();
+  }
+
   tabs(): WorkspaceTab[] {
     const activeWorkspaceIndex = this.activeWorkspaceIndex.value;
     return this.entries.value.map((workspace, workspaceIndex) => ({
