@@ -1,0 +1,15 @@
+{
+  "task": 483,
+  "slug": "shortcut-getters-replace-the-chains",
+  "branch": "fleet/483-shortcut-getters-replace-the-chains",
+  "worktree": ".invar/worktrees/483-shortcut-getters-replace-the-chains",
+  "tmuxSession": "invar/483-shortcut-getters-replace-the-chains",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-483-shortcut-getters-replace-the-chains.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "030c655c7e0e88b09f2fc279f5aeda2278911f57",
+  "startedAt": "2026-08-03T08:34:57-04:00"
+}

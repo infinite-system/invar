@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (16)
-- #483 [shortcut-getters-replace-the-chains](.invar/tasks/active/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md)
+## IN-PROGRESS (1)
+- #483 [shortcut-getters-replace-the-chains](.invar/tasks/in-progress/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md)  [building]
+  `tmux attach -t invar/483-shortcut-getters-replace-the-chains`
+
+## USER-DIRECTED (15)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)

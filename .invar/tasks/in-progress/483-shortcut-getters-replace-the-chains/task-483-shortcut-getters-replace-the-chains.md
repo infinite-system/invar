@@ -1,7 +1,7 @@
 # Task 483 — shortcut getters replace the chains
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol
