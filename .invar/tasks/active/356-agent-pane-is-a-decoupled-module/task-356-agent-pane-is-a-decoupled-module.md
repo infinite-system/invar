@@ -69,3 +69,13 @@ but it is OUR wrapper around them, not claude directly — named so we can
 layer custom behaviors on it. UI labels, plugin registry entry, and docs
 say "Invar Agent"; the backend provider (claude/codex) is a detail inside
 it. Apply the name as part of the plugin extraction.
+
+## Evidence from #487 (2026-08-03) — the special-casing is now a recorded contract disagreement
+
+The #487 builder confirmed by inspection: Bootstrap.ts branches on
+`AgentPaneContent.Class` and `agent.*` action prefixes BEFORE the
+generic PaneContent route. This disagrees with two records:
+ui.invariants.md (the panel host must not name a pane class or action
+prefix) and agent.invariants.md (the agent pane is not a special
+case). This task is where that disagreement gets repaired. Also
+inherit: #488's coupling census will enumerate the full site list.

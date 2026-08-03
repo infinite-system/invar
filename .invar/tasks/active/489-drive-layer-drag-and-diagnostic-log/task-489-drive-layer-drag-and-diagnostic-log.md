@@ -1,0 +1,27 @@
+# Task 489 — drive layer: drag primitive and first-class diagnostic log
+
+Priority: architecture-hygiene
+Engine: claude
+Environment: linux
+Model: fable-5
+Effort: medium
+State: ACTIVE
+
+## In plain words
+
+Two asks from the #487 builder. First: selecting text by mouse drag
+needs raw-driver calls today; DriveSession should have a drag verb.
+Second: the warm driver silently replaces an inherited TUI_LOG_PATH
+with its own diagnostic path, and nothing on DriveSession exposes it;
+structured-log probes should be first-class.
+
+## Wanted (verbatim class from report-487 Instrument feedback)
+
+1. A primitive DriveSession drag operation (press, glide, release —
+   humanPace-aware) so transcript selection needs no raw-driver calls.
+2. A diagnostic-log path getter and a tail/read method on DriveSession
+   that exposes the warm driver's actual log path (and documents the
+   TUI_LOG_PATH replacement in the drive-pty skill).
+3. Also from #487: a note in the skill that broad findText needles
+   (like the composer prompt glyph) can match other surfaces first —
+   prefer narrow visible text.

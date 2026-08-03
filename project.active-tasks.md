@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (2)
-- #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/in-progress/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md)  [building]
+- #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/in-progress/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/487-copy-path-telemetry-names-the-dying-stage`
 - #458 [terminals-all-dead-after-idle](.invar/tasks/in-progress/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)  [building]
   `tmux attach -t invar/458-terminals-all-dead-after-idle`
@@ -107,7 +107,12 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (38)
+## ARCHITECTURE-HYGIENE (43)
+- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/active/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md)
+- #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/active/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)
+- #491 [editor-shared-generators-move-home](.invar/tasks/active/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md)
+- #490 [chord-and-command-relocation-sweep](.invar/tasks/active/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)
+- #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/active/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
@@ -151,7 +156,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 196 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 197 — full log: project.tasks-completed.md)
+- #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
 - #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
 - #484 [per-file-smoke-reuse-experiment](.invar/tasks/completed/484-per-file-smoke-reuse-experiment/task-484-per-file-smoke-reuse-experiment.md) — 4e9d13d1 — Landed: instruments + the blocked-premise finding. Rollout re-scope awaits the user.
 - #483 [shortcut-getters-replace-the-chains](.invar/tasks/completed/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md) — 7330851c — Landed: both phases of the conversion; the codebase now speaks activeEditor/activeDocument.
@@ -166,4 +172,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #474 [dispose-order-renderable-warnings](.invar/tasks/completed/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md) — 7b8b889d — Landed: single-action teardown + zero-warnings quit ratchet.
 - #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
 - #471 [graph-reaches-the-whole-app](.invar/tasks/completed/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md) — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
-- #470 [harness-wait-defect-census](.invar/tasks/completed/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md) — 5136cdfa — Slice 1 landed: quiescence reset with publication parity, pre-satisfaction guard, model-count panel waits, settled Drive join, activitybar needles. Round 2 was forced by the conductor gate: the request-time flush published half-frame snapshots. The ~125-site migration remains open behind 471.

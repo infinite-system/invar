@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
 - #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
 - #484 [per-file-smoke-reuse-experiment](.invar/tasks/completed/484-per-file-smoke-reuse-experiment/task-484-per-file-smoke-reuse-experiment.md) — 4e9d13d1 — Landed: instruments + the blocked-premise finding. Rollout re-scope awaits the user.
 - #483 [shortcut-getters-replace-the-chains](.invar/tasks/completed/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md) — 7330851c — Landed: both phases of the conversion; the codebase now speaks activeEditor/activeDocument.
