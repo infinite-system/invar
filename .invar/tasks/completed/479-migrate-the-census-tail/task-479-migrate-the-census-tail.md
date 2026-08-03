@@ -1,7 +1,7 @@
 # Task 479 — migrate the census tail
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — c5316ddf — Round 1 landed: the two live gate-flake files migrated site-complete. Remainder (Quick Open idiom files, shared machinery, agent/terminal files, shell sites) stays honestly tabled for the next round.
 Engine: codex
 Environment: any
 Model: 5.6-sol
