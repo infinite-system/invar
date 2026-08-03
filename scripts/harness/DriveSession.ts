@@ -698,7 +698,7 @@ class $DriveScriptRunner {
    *  different worktrees each get their own server and their attaches find
    *  the right one automatically — a shared singleton would make two agents
    *  fight over one app. --server-dir overrides for deliberate sharing. */
-  protected static get DEFAULT_SERVER_DIRECTORY(): string {
+  protected static get defaultServerDirectory(): string {
     let probe = process.cwd();
     for (;;) {
       try {
@@ -732,7 +732,7 @@ class $DriveScriptRunner {
     mirror?: boolean;
   }): Promise<void> {
     const serverDirectory =
-      options.serverDirectory ?? this.DEFAULT_SERVER_DIRECTORY;
+      options.serverDirectory ?? this.defaultServerDirectory;
     mkdirSync(serverDirectory, { recursive: true });
     if (options.mirror) {
       // THE MIRROR OWNS STDOUT EXCLUSIVELY. Any server log written there
@@ -1019,7 +1019,7 @@ class $DriveScriptRunner {
     timeoutMilliseconds?: number;
   }): Promise<void> {
     const serverDirectory =
-      options.serverDirectory ?? this.DEFAULT_SERVER_DIRECTORY;
+      options.serverDirectory ?? this.defaultServerDirectory;
     const manifest = this.readServerFile(join(serverDirectory, 'server.json'));
     if (!manifest || typeof manifest.pid !== 'number') {
       throw new Error(
