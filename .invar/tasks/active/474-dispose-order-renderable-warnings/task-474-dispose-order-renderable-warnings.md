@@ -2,10 +2,10 @@
 
 Priority: architecture-hygiene
 State: ACTIVE
-Engine: any
+Engine: codex
 Environment: any
-Model: any
-Effort: low
+Model: 5.6-sol
+Effort: high
 
 ## Evidence (user-observed, 2026-08-02, mirror session Ctrl+C)
 

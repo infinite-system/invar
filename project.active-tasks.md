@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #479 [migrate-the-census-tail](.invar/tasks/in-progress/479-migrate-the-census-tail/task-479-migrate-the-census-tail.md)  [building]
   `tmux attach -t invar/479-migrate-the-census-tail`
+- #475 [quick-open-leaves-focus-behind](.invar/tasks/in-progress/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md)  [building]
+  `tmux attach -t invar/475-quick-open-leaves-focus-behind`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -60,8 +62,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (33)
-- #475 [quick-open-leaves-focus-behind](.invar/tasks/active/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md)
+## FLAKE-EVIDENCE (32)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
