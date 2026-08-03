@@ -19,3 +19,9 @@ Fix the welcome text to match the real default bindings (check what the
 command palette's actual default chord is and state both correctly). Drive
 the welcome screen to verify; extend an existing welcome/help smoke
 assertion rather than adding a new smoke.
+
+## Evidence from #405 (2026-08-03) — reproduced again
+
+Welcome screen says "Ctrl+P command palette"; a real Ctrl+P drive
+opened Quick Open; F1 opened the palette. Stale label reappeared on
+later boots. Second independent sighting; still user-visible.

@@ -1,6 +1,6 @@
 # #405 — PanelHost hard-codes the database/terminal kind tables
 
-State: ACTIVE
+State: COMPLETED — ebced810 — panel spaces from pane kind declarations
 Priority: architecture-hygiene
 Engine: codex
 Environment: linux

@@ -35,6 +35,10 @@ function fakeRuntime(
   return {
     kind,
     instanceLabel: kind === 'terminal' ? 'Terminal' : 'Output',
+    panelSpace: {
+      kind,
+      label: kind === 'terminal' ? 'Terminal' : 'Output',
+    },
     offeredInPanelAddMenu,
     requests,
     removed,

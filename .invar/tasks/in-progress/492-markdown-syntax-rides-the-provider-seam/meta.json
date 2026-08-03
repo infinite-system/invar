@@ -1,0 +1,15 @@
+{
+  "task": 492,
+  "slug": "markdown-syntax-rides-the-provider-seam",
+  "branch": "fleet/492-markdown-syntax-rides-the-provider-seam",
+  "worktree": ".invar/worktrees/492-markdown-syntax-rides-the-provider-seam",
+  "tmuxSession": "invar/492-markdown-syntax-rides-the-provider-seam",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-492-markdown-syntax-rides-the-provider-seam.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "cb8261efcac6af1165bc9ec823826cfbc6733200",
+  "startedAt": "2026-08-03T13:48:09-04:00"
+}

@@ -7,6 +7,7 @@ test('a factory is available only while its registration is active', () => {
   const factory = {
     kind: 'database',
     instanceLabel: 'Database',
+    panelSpace: { kind: 'database', label: 'Database' },
     createPane: () => {
       throw new Error('The registry test does not create a pane');
     },
@@ -24,6 +25,7 @@ test('two factories cannot claim the same pane kind', () => {
   const firstFactory = {
     kind: 'database',
     instanceLabel: 'Database',
+    panelSpace: { kind: 'database', label: 'Database' },
     createPane: () => {
       throw new Error('The registry test does not create a pane');
     },
