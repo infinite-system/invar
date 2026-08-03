@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #480 [migrate-the-quick-open-idiom](.invar/tasks/in-progress/480-migrate-the-quick-open-idiom/task-480-migrate-the-quick-open-idiom.md)  [building]
+  `tmux attach -t invar/480-migrate-the-quick-open-idiom`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 

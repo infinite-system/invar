@@ -1,7 +1,7 @@
 # Task 480 — migrate the Quick Open idiom files
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol

@@ -1,0 +1,15 @@
+{
+  "task": 480,
+  "slug": "migrate-the-quick-open-idiom",
+  "branch": "fleet/480-migrate-the-quick-open-idiom",
+  "worktree": ".invar/worktrees/480-migrate-the-quick-open-idiom",
+  "tmuxSession": "invar/480-migrate-the-quick-open-idiom",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-480-migrate-the-quick-open-idiom.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "2a1a8ed5a7dcbbdd20ded606dbf91149b071f809",
+  "startedAt": "2026-08-03T05:09:57-04:00"
+}
