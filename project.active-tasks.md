@@ -6,12 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (5)
+## IN-PROGRESS (6)
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/in-progress/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/495-terminal-copy-selection-empty-at-chord-time`
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/in-progress/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/493-ast-query-imports-and-literal-census-modes`
-- #491 [editor-shared-generators-move-home](.invar/tasks/in-progress/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md)  [building]
+- #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/in-progress/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)  [building]
+  `tmux attach -t invar/492-markdown-syntax-rides-the-provider-seam`
+- #491 [editor-shared-generators-move-home](.invar/tasks/in-progress/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/491-editor-shared-generators-move-home`
 - #405 [panelhost-hardcoded-kind-tables](.invar/tasks/in-progress/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)  [building]
   `tmux attach -t invar/405-panelhost-hardcoded-kind-tables`
@@ -66,7 +68,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (33)
+## FLAKE-EVIDENCE (34)
+- #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/active/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
@@ -114,8 +117,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (40)
-- #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/active/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)
+## ARCHITECTURE-HYGIENE (39)
 - #490 [chord-and-command-relocation-sweep](.invar/tasks/active/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/active/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
