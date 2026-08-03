@@ -1,4 +1,6 @@
-import { readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 import { Static } from 'ivue/extras';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { GraphClient } from './GraphClient';
@@ -29,6 +31,116 @@ class $HarnessSmoke {
   static requireCondition(condition: unknown, label: string): void {
     if (!condition) throw new Error(`FAIL ${label}`);
     this.pass(label);
+  }
+
+  /** The one generated scale fixture shared by Drive and DriveSession. */
+  static async createDriveScaleFixture(lineCount: number): Promise<{
+    workspaceRoot: string;
+    filePath: string;
+  }> {
+    if (!Number.isSafeInteger(lineCount) || lineCount < 1) {
+      throw new Error(
+        `Drive fixture line count must be a positive integer, got ${lineCount}`,
+      );
+    }
+    const workspaceRoot = mkdtempSync(
+      join(tmpdir(), `invar-drive-fixture-${lineCount}-`),
+    );
+    const filePath = join(workspaceRoot, `scale-${lineCount}.txt`);
+    const writer = Bun.file(filePath).writer();
+    try {
+      const chunkLineCount = 20_000;
+      for (
+        let chunkStart = 0;
+        chunkStart < lineCount;
+        chunkStart += chunkLineCount
+      ) {
+        const chunkEnd = Math.min(chunkStart + chunkLineCount, lineCount);
+        const fixtureLines: string[] = [];
+        for (let lineIndex = chunkStart; lineIndex < chunkEnd; lineIndex += 1) {
+          fixtureLines.push(
+            `DRIVE-LINE-${String(lineIndex + 1).padStart(6, '0')} ` +
+              `content at scale ${lineCount}`,
+          );
+        }
+        writer.write(
+          `${chunkStart === 0 ? '' : '\n'}${fixtureLines.join('\n')}`,
+        );
+        await writer.flush();
+      }
+      await writer.end();
+      return { workspaceRoot, filePath };
+    } catch (thrown) {
+      await writer.end();
+      await this.removeTemporaryDirectory(workspaceRoot);
+      throw thrown;
+    }
+  }
+
+  /** Open one file through Quick Open, using the same real keys in every drive. */
+  static async openFileThroughQuickOpen(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    filePath: string,
+    timeoutMilliseconds = 15_000,
+  ): Promise<void> {
+    const fileName = basename(filePath);
+    driver.sendKeys('Control+p');
+    await driver.awaitGridCondition(
+      'Quick Open to become visible for the requested file',
+      () => {
+        try {
+          return this.readStatus(statusPath).quickOpenOpen === true;
+        } catch {
+          return false;
+        }
+      },
+      timeoutMilliseconds,
+    );
+    driver.sendText(fileName);
+    await driver.awaitGridCondition(
+      `Quick Open to rank the requested file: ${filePath}`,
+      (snapshot) => {
+        try {
+          const status = this.readStatus(statusPath);
+          return (
+            status.quickOpenQuery === fileName &&
+            Number(status.quickOpenMatches) >= 1 &&
+            snapshot.findText(fileName) !== null
+          );
+        } catch {
+          return false;
+        }
+      },
+      timeoutMilliseconds,
+    );
+    driver.sendKeys('Enter');
+    await driver.awaitGridCondition(
+      `the requested file to open: ${filePath}`,
+      () => {
+        try {
+          return this.readStatus(statusPath).activeBuffer === filePath;
+        } catch {
+          return false;
+        }
+      },
+      timeoutMilliseconds,
+    );
+    if (this.readStatus(statusPath).focus !== 'editor') {
+      driver.sendKeys('Tab');
+      await driver.awaitGridCondition(
+        'the opened file editor to receive focus',
+        () => {
+          try {
+            return this.readStatus(statusPath).focus === 'editor';
+          } catch {
+            return false;
+          }
+        },
+        timeoutMilliseconds,
+      );
+    }
+    await driver.awaitScreenChange(timeoutMilliseconds);
   }
 
   static runGit(
