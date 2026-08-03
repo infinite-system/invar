@@ -588,12 +588,35 @@ class $DriveScriptRunner {
       options.mirror && process.stdout.columns ? process.stdout.columns : null;
     const hostRows =
       options.mirror && process.stdout.rows ? process.stdout.rows : null;
+    // A mirrored app is DRAWN by the hosting terminal, so it must style itself
+    // for that terminal, not for the harness's synthetic identity. The server
+    // process runs inside the hosting terminal (locally or over ssh), so its
+    // own env carries the truth — forward the identity variables; they win
+    // over the harness's TERM/COLORTERM constants. Query-negotiated
+    // capabilities (cell widths, graphics probes) still answer from the
+    // harness emulator — the residual mismatch class, tracked in task #473.
+    const hostIdentity: Record<string, string> = {};
+    if (options.mirror) {
+      for (const key of [
+        'TERM',
+        'COLORTERM',
+        'TERM_PROGRAM',
+        'TERM_PROGRAM_VERSION',
+        'LANG',
+        'LC_ALL',
+        'NERD_FONT',
+      ]) {
+        const value = process.env[key];
+        if (value !== undefined) hostIdentity[key] = value;
+      }
+    }
     const driver = new PtyTestDriver.Class({
       workspaceRoot,
       columns: options.columns ?? hostColumns ?? 120,
       rows: options.rows ?? hostRows ?? 40,
       homeDirectory,
       environment: {
+        ...hostIdentity,
         TUI_STATUS_PATH: statusPath,
         INVAR_AGENT_BACKEND: 'echo',
       },
