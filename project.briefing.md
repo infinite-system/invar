@@ -4,6 +4,26 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 58 — 2026-08-03 ~19:25 EDT — DECOUPLING WAVE COMPLETE
+
+The /goal ("get the decoupling done fully") is MET. Landed today, in
+order: #485, #488, #458, #487, #493, #405, #491, #495, #356 (8 rounds,
+311m), #492, #490; #500 closed inside #356 r7. The coupling ratchet is
+LIVE in scripts/conventions-gate.sh (import census must be 0;
+vocabulary baseline 34, tightening; red arms proven) — gate-verified
+on main at bc212e81 (mislabeled commit, accounted in 169dc59d).
+Fleet idle; no in-progress tasks. AWAITING THE USER: (1) Shift+drag
+gesture confirmation (#495) + pointer-authority record refinement;
+(2) Focus-owns-the-keystroke applicationGlobal refinement wording
+(#356 r2); (3) pane-identity reservation record proposal (#356 r4);
+(4) readiness-driven PTY read record (#458); (5) the coupling
+invariant record itself (census-measured property, no record yet).
+All propose-only, unwritten. Next wave candidates if asked: #498
+(global chord pass-through policy, applicationGlobal is its seam),
+#438 (worktree hook policy — bit four builders today), #499 (smoke
+output hygiene), #496, #497, #489 (drive-layer batch).
+---
+
 # RESUME ANCHOR 57 — 2026-08-03 ~14:05 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
 
 LANDING PLAN (once #492 reports; it is the last live builder): land
@@ -48,8 +68,6 @@ machinery and contamination risk; the honest recommendation is OPTION 2/3
 (accept the churn; test higher worker counts directly). The CALL IS THE
 USER'S. Briefing now self-prunes to 5 anchors (rule in header + conductor
 skill). Sixteen landings after 485 lands.
-
-
 ---
 
 # RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT
@@ -63,7 +81,6 @@ MEASUREMENT ONLY — no smoke conversions; the conversion decision is the
 user's on the numbers. ON READY: convert bycatch + instrument feedback,
 merge main, gate with a death-reporting monitor, land. Fifteen landings
 sealed before this. User is PRESENT. No experiments.
-
 ---
 
 # RESUME ANCHOR 54 — 2026-08-03 ~10:20 EDT — FIFTEEN LANDINGS; FLEET AT ZERO
@@ -76,7 +93,6 @@ RETURN ITEMS: (1) copy saga — which selection highlight do they see
 (Invar theme vs terminal-native)? (2) 484 re-scope call. (3) #464 retire,
 #460-#463 hygiene, 7 historical worktrees sweep. Crons :07/:37 + fleet-watch
 armed. No experiments (standing order). Fifteen landings this session.
-
 ---
 
 # RESUME ANCHOR 53 — 2026-08-03 ~09:35 EDT — GOAL MET; 484 EXPERIMENT IN FLIGHT
@@ -89,6 +105,8 @@ death-reporting monitor, land — but the ROLLOUT DECISION IS THE USER'S; the
 report ends with numbers, not a rollout. User RESTING. Copy saga: app proven
 under all arms; ask the user which selection highlight they see when they
 return. Fourteen landings this session.
+
+---
 
 ---
 
@@ -114,3 +132,4 @@ return. Fourteen landings this session.
 - RESUME ANCHOR 32 — 2026-08-01 ~19:15 EDT (97% gauge)
 - RESUME ANCHOR 51 — 2026-08-03 ~08:20 EDT — #482 IN FLIGHT; USER PRESENT
 - RESUME ANCHOR 52 — 2026-08-03 ~09:10 EDT — 483 IN FLIGHT, 484 STAGED
+
