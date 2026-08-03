@@ -1240,3 +1240,37 @@ checker exits 1. `bun test scripts/check-coverage-ratchet.test.ts` covers the co
 **Status:** provisional
 
 **Last refined:** 2026-07-27
+
+### Core carries no plugin vocabulary
+
+**Invariant:** If a module is registered as a contributor in `DefaultPlugins`, then core files
+outside the sanctioned composition sites neither import from its folder nor name its identifiers —
+command ids, pane kinds, labels, category names, setting keys.
+
+**Scope:** every file outside the plugin-tier module folders; sanctioned sites are
+`src/modules/plugins/DefaultPlugins.ts` (composition) and consumer-owned rendezvous interfaces
+(the consumer owns the interface and its capability id).
+
+**Mechanism:** plugins reach core through the contribution context seams (pane runtimes,
+keybindings, commands, settings, status segments, status projection, syntax and capability
+providers), so core needs no plugin names; the #488 census scripts measure both coupling forms,
+and the conventions gate fails any commit that adds an import (must be 0) or exceeds the
+vocabulary baseline (34, tightening as counts fall).
+
+**Generates:** installable and removable plugins; the negative-space proof that the seams work
+(seven plugins have zero vocabulary in core); the decoupling wave's end state staying the floor.
+
+**Evidence:** the #488 census report and scripts
+(`.invar/tasks/completed/488-core-to-plugin-coupling-census/`); the wave landings (#356, #405,
+#490, #491, #492) driving imports 15→0 and assigned vocabulary sites to zero;
+`scripts/conventions-gate.sh` (the coupling ratchet, red arms proven at bc212e81).
+
+**Impossible if true:** a new core file importing a plugin class; core growing a new fallback map
+of plugin command titles; the vocabulary census rising above its baseline while the gate passes.
+
+**Verification:** `bash scripts/conventions-gate.sh` (runs both census scripts with their built-in
+positive and negative controls).
+
+**Status:** established
+
+**Last refined:** 2026-08-03

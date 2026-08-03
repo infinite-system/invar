@@ -62,6 +62,7 @@ class $KeybindingRegistry {
         `Plugin keybinding cannot reserve ${reservedBinding.action}`,
       );
     }
+    // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
     const invalidApplicationGlobalBinding = bindings.find((binding) => {
       if (!binding.applicationGlobal) return false;
       const chord = binding.chord;

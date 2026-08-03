@@ -645,3 +645,79 @@ terminal command event.
 **Status:** provisional
 
 **Last refined:** 2026-08-03
+
+### A live PTY read is readiness driven
+
+**Invariant:** If a PTY master is open in either the integrated or the harness role, then its
+bytes are read through a TTY readiness stream on its duplicated descriptor — never through a
+blocking read parked on a shared file worker.
+
+**Scope:** the shared `OpenPty` allocator, both roles (integrated terminal panes and harness
+drivers), on every platform Bun's file-worker pool serves.
+
+**Mechanism:** `node:tty` `ReadStream` on the duplicated master registers with the runtime's
+readiness notification instead of occupying a worker thread. The read side stays blocking; the
+bounded write queue switches the shared open file to nonblocking mode only for its write turn and
+restores read mode after. Closing a pane destroys the stream and closes the master through the
+existing ownership path.
+
+**Generates:** unbounded quiet-terminal count (the four-worker ceiling is gone); the shared
+file-worker pool stays free for real file I/O; immediate process exit on shutdown (the stream
+holds no worker hostage).
+
+**Rejected alternatives:** `Bun.file(fd).stream()` — fixed the worker limit but kept the process
+alive during shutdown. Raising `UV_THREADPOOL_SIZE` — moves the cliff instead of removing it, and
+taxes every quiet pane one thread.
+
+**Evidence:** `src/modules/terminal/OpenPty.ts` (the TTY ReadStream read path);
+`src/modules/terminal/OpenPty.test.ts`; the #458 diagnosis (exact four-reader boundary;
+`UV_THREADPOOL_SIZE=64` control un-broke it alone; landed a3fb876e).
+
+**Impossible if true:** a terminal with a live shell and no painted output while other quiet
+terminals exist; quiet PTYs each consuming one shared file worker until a later live PTY has no
+read path.
+
+**Verification:** `bun scripts/harness/smoke-terminal-harness.ts` — the six-terminal ratchet
+creates more idle terminals than Bun's default file-worker count, requires every new prompt
+without another pane's output, and requires terminal 6 to return computed output absent from its
+typed input.
+
+**Status:** established
+
+**Last refined:** 2026-08-03
+
+### Shift at pointer down reserves the drag for the host
+
+**Invariant:** If a pointer gesture begins on a child cell while child mouse tracking is enabled,
+then the child owns the gesture unless Shift is held at pointer down; a Shift-started gesture
+stays host-owned for terminal selection through move and release and writes no pointer bytes to
+the child. With tracking off, the host owns selection and writes no pointer bytes. This exception
+does not apply to wheel input.
+
+**Scope:** `TerminalPaneContent` pointer routing for press, move, and release on child cells; the
+ownership choice is made once, at pointer down, and stays fixed for the gesture.
+
+**Mechanism:** the Shift state at press selects the owner; a host-owned drag feeds the shared
+`TextSelectionModel` (inclusive release cell via the shared `SelectionDragBehavior`), and
+`terminal.copy` then owns Ctrl+C while the selection exists. A child-owned gesture is encoded for
+the child's selected mouse protocol, exactly as before.
+
+**Generates:** copyable selections over mouse-aware children (claude CLI and every full-screen
+mouse application); the user-facing rule "Shift means the selection is mine".
+
+**Evidence:** `src/modules/terminal/TerminalPaneContent.ts`;
+`src/modules/terminal/TerminalPaneContent.test.ts` (ownership with tracking active: a Shift drag
+writes zero pointer bytes to the child); `scripts/harness/smoke-terminal-harness.ts` (drives the
+real Shift gesture over a mouse-mode child, asserts selection paint, copied text, OSC 52, and
+telemetry, then proves a plain click and wheel still reach the child); the #495 diagnosis (the
+user's highlight belonged to the child; Invar owned no selection at chord time).
+
+**Impossible if true:** a Shift-started drag delivering pointer bytes to the child; a plain drag
+over a mouse-tracking child painting a host selection; wheel routing changing because Shift was
+held.
+
+**Verification:** `bun scripts/harness/smoke-terminal-harness.ts` (the mouse-mode child arm).
+
+**Status:** established
+
+**Last refined:** 2026-08-03

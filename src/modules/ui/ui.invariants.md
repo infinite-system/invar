@@ -2746,7 +2746,8 @@ matched because it is global falls through to the pane as raw input, so a pane t
 surface never swallows a chord the rest of the application owns.
 
 **Scope:** `KeybindingRegistry.resolve`'s reported `Resolution.context`, and the panel pane-context
-branch in `Bootstrap.keyTick`. Reserved global chords are resolved earlier and are outside this
+branch in `Bootstrap.keyTick`. Reserved chords and `applicationGlobal` plugin chords (see Focus
+owns the keystroke in the keybindings contract) are resolved earlier and are outside this
 rule; the primary-dock branch is deliberately unchanged, because a dock pane has no raw-byte sink
 to pass a keystroke to.
 
@@ -2785,7 +2786,7 @@ scripts/harness/smoke-reserved-chord-harness.ts && bash scripts/smoke-keyboard-i
 
 **Status:** provisional
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-08-03
 
 ### A pane content projects through exactly one surface
 
@@ -3002,3 +3003,40 @@ scripts/harness/smoke-plugin-manifest-harness.ts`
 **Status:** provisional
 
 **Last refined:** 2026-07-29
+
+### A persisted pane identity is never reissued
+
+**Invariant:** If a pane identity appears in any loaded persisted panel state — the panel order or
+a saved workspace layout — then the allocator never issues that identity to a new pane; only
+restoration may claim it.
+
+**Scope:** `PaneRuntimes` identity allocation, `Bootstrap` persisted-state collection before
+plugin registration, `PanelWorkspaceState` saved-identity traversal.
+
+**Mechanism:** Bootstrap collects every pane identity from the saved panel order and every saved
+workspace panel state BEFORE plugins register; `PaneRuntimes` reserves those identities, so
+allocation skips them while restoration can still claim the exact saved name.
+
+**Generates:** stable panel ordering across restarts regardless of plugin registration order; the
+persisted sequence stays the one order generator because no allocator can counterfeit its
+entries.
+
+**Rejected alternatives:** filtering the saved order against live panes at read time — it treats
+the symptom; a counterfeited identity still exists and the order still lies.
+
+**Evidence:** `src/modules/ui/PaneRuntimes.ts` (reservation before allocation);
+`src/modules/app/Bootstrap.ts` (persisted-identity collection);
+`src/modules/ui/PaneRuntimes.test.ts`; the #356 round-4 diagnosis (the allocator issued
+`pane-instance-1` to Agent while the saved order already owned it, producing Terminal-first
+splits only on homes with history — the round-3 false green).
+
+**Impossible if true:** a fresh pane holding an identity that a saved order or saved workspace
+layout already names; split order differing between a fresh home and a saved home that recorded
+the same order.
+
+**Verification:** `bash scripts/smoke-keyboard-invariant.sh` run bare (its reused
+`artifacts/home` carries legacy identities — the exact fixture that exposed the defect).
+
+**Status:** established
+
+**Last refined:** 2026-08-03

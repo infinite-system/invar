@@ -21,6 +21,7 @@ class $PaneRuntimes {
     number
   >();
   protected readonly claimedInstanceIdentifiers = new Set<string>();
+  // invariant: A persisted pane identity is never reissued (src/modules/ui/ui.invariants.md)
   protected readonly reservedInstanceIdentifiers = new Set<string>();
   protected nextInstanceIdentifierNumber = 1;
 

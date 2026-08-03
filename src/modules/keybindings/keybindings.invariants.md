@@ -66,14 +66,18 @@ the renderer.
 
 ### Focus owns the keystroke
 
-**Invariant:** If a surface holds keyboard focus, then it owns every keystroke that arrives — the
-host may claim a chord away from it ONLY when that chord is in the reserved set, and a chord enters
-the reserved set only by passing the admission test: the ACTION must be frame-scoped (it changes
-which surfaces exist, are visible, or hold focus — never content inside a surface) AND must be
-either trap-avoiding (unreachable otherwise when the focused surface is a full-screen child that
-consumes every key) or the INVERSE of the gesture that put the user inside the surface; and the
-CHORD must carry a modifier (never an unmodified key), be proven deliverable through a real PTY, and
-not be one the child's shell/readline/TUI owns.
+**Invariant:** If a surface holds keyboard focus, then it owns every keystroke that arrives, with
+exactly two exceptions: a chord in the reserved set, or one modified, single-chord, effective
+binding marked `applicationGlobal`. A chord enters the reserved set only by passing the admission
+test: the ACTION must be frame-scoped (it changes which surfaces exist, are visible, or hold
+focus — never content inside a surface) AND must be either trap-avoiding (unreachable otherwise
+when the focused surface is a full-screen child that consumes every key) or the INVERSE of the
+gesture that put the user inside the surface; and the CHORD must carry a modifier (never an
+unmodified key), be proven deliverable through a real PTY, and not be one the child's
+shell/readline/TUI owns. An `applicationGlobal` binding is the plugin-tier sibling of reservation:
+it must name a frame-scoped action, runs only when no modal overlay owns the screen, remains
+subject to layer shadowing (a higher user binding on the same chord blocks it), and — unlike
+reservation — can belong to a plugin and withdraws with it.
 
 **Scope:** every keystroke the app receives, in every focus state, on every platform. Governs
 `KeybindingDefaults.$canonicalBindings`, `KeybindingRegistry.resolveReservedGlobal`, and the key
@@ -83,8 +87,11 @@ router in `Bootstrap.keyTick`.
 is a host claim and must therefore be justified. `reserved: true` marks the claim as surviving a
 focused surface and requires a `reservedBecause` warrant string on the same binding, so the
 justification cannot be separated from the binding. The key router resolves reserved chords first
-and STATELESSLY, then hands the event to the focused surface — a focused panel returns before the
-global resolve is reached, so the host's non-reserved globals cannot reach a child process's keys.
+and STATELESSLY, then asks for one `applicationGlobal` action after modal ownership is known and
+before any focused pane receives the key (the registry accepts the flag only on a modified,
+context-free plugin chord), then hands the event to the focused surface — a focused panel returns
+before the global resolve is reached, so the host's non-reserved, non-application-global chords
+cannot reach a child process's keys.
 Unmodified keys are never reserved, which is what leaves `Tab` to whichever surface has focus:
 indentation in the editor, permission-mode cycling in the agent composer, `\t` to the child in the
 terminal.
@@ -108,6 +115,10 @@ field); `src/modules/app/Bootstrap.ts` (reserved-first router; the focused-panel
 `project.keyboard.md` (the reduction and the admission test);
 `scripts/smoke-keyboard-invariant.sh` (drives Tab/Shift+Tab indentation, every retired F-key's
 replacement chord, and the terminal pass-through sweep);
+`src/modules/keybindings/KeybindingRegistry.ts` (`applicationGlobal` acceptance — one modified,
+context-free plugin chord); `scripts/harness/smoke-workspace-tabs-harness.ts` and
+`scripts/harness/smoke-workspace-layout-isolation-harness.ts` (a focused terminal opens the Agent
+pane through the application-global route, #356 round 2);
 `scripts/harness/smoke-reserved-chord-harness.ts` (drives the surface-scoped Settings chord from
 the editor, then proves a focused task keeps it while reserved Ctrl+Alt+B still reaches the host);
 `src/modules/git/GitComparisonContent.ts` (a contributed surface owning its own Ctrl+Shift+Up/Down
@@ -127,7 +138,7 @@ warrants; no unmodified reserved chord; no `F<n>` primary).
 
 **Status:** provisional
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-08-03
 
 ### Bindings are intent addressed
 

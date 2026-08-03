@@ -340,6 +340,7 @@ class $TerminalPaneContent implements PaneContent {
     return true;
   }
 
+  // invariant: Shift at pointer down reserves the drag for the host (src/modules/terminal/terminal.invariants.md)
   onPointerDown(
     column: number,
     row: number,

@@ -4,6 +4,7 @@
 // descriptor ownership stay here.
 //
 // invariant: One openpty allocator serves both PTY roles (src/modules/terminal/terminal.invariants.md)
+// invariant: A live PTY read is readiness driven (src/modules/terminal/terminal.invariants.md)
 // invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
 // invariant: Shared PTY writes never block the event loop (src/modules/terminal/terminal.invariants.md)
 import { Static } from 'ivue/extras';

@@ -505,6 +505,7 @@ plugin_boundary_check 'file-tree' 'file tree' \
   "([Ff]ileTree|\btree[A-Z]|\bfocusFiles\b|\bfiles\.|\btree\.|view\.(show|focus)Files|['\"]files['\"])" \
   "workspaceSet.active.tree.moveSelection(-1);"
 
+# invariant: Core carries no plugin vocabulary (project.invariants.md)
 # --- core-to-plugin coupling ratchet (#488 census, wired 2026-08-03) ---
 # The import census must stay at ZERO offending imports. The vocabulary
 # census must not exceed the baseline below; when the count falls, tighten
