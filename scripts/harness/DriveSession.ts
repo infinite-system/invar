@@ -57,11 +57,32 @@ class $DriveSession {
 
   // ---- input ----
 
+  /** A real terminal CANNOT emit a pointer event outside its own grid, so a
+   *  probe that tries is a mistake, never a gesture — and sending it anyway
+   *  would be the silent no-op class: the app ignores the impossible cell and
+   *  the probe "passes" having tested nothing. Checked at step-run time
+   *  against the live geometry, so it survives a resize. */
+  protected requireCellInsideScreen(column: number, row: number): void {
+    const screen = this.driver.snapshot();
+    if (
+      column < 0 ||
+      row < 0 ||
+      column >= screen.columns ||
+      row >= screen.rows
+    ) {
+      throw new Error(
+        `pointer target ${column},${row} is outside the ${screen.columns}x` +
+          `${screen.rows} screen — a real terminal cannot produce this event`,
+      );
+    }
+  }
+
   /** Move the pointer. Hover states are real state, so this is a real move. */
   moveMouse(column: number, row: number): this {
     this.pointerColumn = column;
     this.pointerRow = row;
     return this.step(`move to ${column},${row}`, async () => {
+      this.requireCellInsideScreen(column, row);
       this.driver.sendMouseWithoutFrameExpectation({
         kind: 'move',
         column,
@@ -78,6 +99,7 @@ class $DriveSession {
     if (column !== undefined) this.pointerColumn = column;
     if (row !== undefined) this.pointerRow = row;
     return this.step(`click ${targetColumn},${targetRow}`, async () => {
+      this.requireCellInsideScreen(targetColumn, targetRow);
       this.driver.sendMouse({
         kind: 'press',
         column: targetColumn,
@@ -568,7 +590,13 @@ class $DriveScriptRunner {
     const requestPath = join(serverDirectory, 'snippet-request.json');
     const responsePath = join(serverDirectory, 'snippet-response.json');
     const manifestPath = join(serverDirectory, 'server.json');
-    let lastServicedId = 0;
+    // A stale request from a PREVIOUS server session must never replay into
+    // this one — the last one standing is usually {stop:true}, which would
+    // stop a fresh server the instant it boots. Anything already on disk at
+    // startup is by definition not addressed to this server.
+    const staleRequest = this.readServerFile(requestPath);
+    let lastServicedId =
+      staleRequest && typeof staleRequest.id === 'number' ? staleRequest.id : 0;
     try {
       await HarnessSmoke.Class.awaitStatus(
         driver,
