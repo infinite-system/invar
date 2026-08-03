@@ -729,3 +729,13 @@ wholesale — glyph included).
 4. **Read the bytes before modeling the renderer.** Four hypotheses about
    env, settings, fonts, and color died politely; sixty bytes of hexdump
    around one missing glyph ended the argument (`\x1b]66;w=1;≡\x1b\\`).
+
+## 2026-08-03 — file-before-steer violated by batching (family 0 adjacent)
+
+Batched round-brief.sh and steer.sh in ONE command block; the filing
+REFUSED (missing section) while the steer had already landed, so for
+one minute the builder held a pointer to a brief that did not exist.
+The doctrine line "filed BEFORE the steer" forbids exactly this;
+batching made the order a race. Rule restated operationally: never
+put round-brief.sh and steer.sh in the same command block — file,
+READ THE FILING RESULT, then steer.
