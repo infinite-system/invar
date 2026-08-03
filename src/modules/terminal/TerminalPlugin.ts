@@ -49,6 +49,7 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
   protected application: ApplicationContributionContext | null = null;
   protected hostPort: PaneRuntimeHostPort | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
+  protected disposeCommands: (() => void) | null = null;
   // Every live pane this runtime owns, oldest first — the runtime's own session registry, so the
   // host never keeps a per-kind instance map.
   protected readonly panes = new Map<string, TerminalPaneContent.Model>();
@@ -57,6 +58,7 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
     this.application = context;
     this.hostPort = context.registerPaneRuntime(this);
     context.registerKeybindings(this.keybindings());
+    this.registerCommands(context);
     this.disposeStatusProjection =
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
@@ -122,6 +124,8 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
   }
 
   disposeApplication(): void {
+    this.disposeCommands?.();
+    this.disposeCommands = null;
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
     // Release the panes BEFORE dropping the host port: a withdrawn runtime must leave no live pane
@@ -163,6 +167,11 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
         context: 'terminal',
       },
       {
+        chord: { key: 'c', super: true },
+        action: 'terminal.copy',
+        context: 'terminal',
+      },
+      {
         chord: { key: 'left', alt: true },
         action: 'terminal.wordLeft',
         context: 'terminal',
@@ -188,6 +197,44 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
         context: 'terminal',
       },
     ];
+  }
+
+  protected registerCommands(context: ApplicationContributionContext): void {
+    const currentPane = (): TerminalPaneContent.Model | null =>
+      this.currentPane();
+    this.disposeCommands = context.commands.registerAll([
+      {
+        id: 'terminal.copy',
+        title: 'Terminal: Copy',
+        category: 'Terminal',
+        when: () => currentPane()?.hasSelection() ?? false,
+        run: () => {
+          const pane = currentPane();
+          if (pane) context.copyPaneSelection(pane);
+        },
+      },
+      {
+        id: 'terminal.wordLeft',
+        title: 'Terminal: Word Left',
+        category: 'Terminal',
+        when: () => currentPane() !== null,
+        run: () => currentPane()?.moveWordLeft(),
+      },
+      {
+        id: 'terminal.wordRight',
+        title: 'Terminal: Word Right',
+        category: 'Terminal',
+        when: () => currentPane() !== null,
+        run: () => currentPane()?.moveWordRight(),
+      },
+      {
+        id: 'terminal.deletePreviousWord',
+        title: 'Terminal: Delete Previous Word',
+        category: 'Terminal',
+        when: () => currentPane() !== null,
+        run: () => currentPane()?.deletePreviousWord(),
+      },
+    ]);
   }
 }
 

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { ApplicationContributions } from '../app/ApplicationContributions';
+import { CommandRegistry } from '../commands/CommandRegistry';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { Settings } from '../settings/Settings';
 import { StatusProjectionContributions } from '../app/StatusProjectionContributions';
@@ -52,6 +53,7 @@ function activatedTerminalPlugin(currentPane: () => PaneContent | null) {
   const releasedPaneIdentifiers: string[] = [];
   const settings = new Settings.Class();
   const keybindings = new KeybindingRegistry.Class();
+  const commands = new CommandRegistry.Class();
   const workspaceSet = new WorkspaceSet.Class(settings);
   workspaceSet.open('/tmp');
   const paneRuntimes = new PaneRuntimes.Class();
@@ -61,6 +63,7 @@ function activatedTerminalPlugin(currentPane: () => PaneContent | null) {
   const manager = new ApplicationContributions.Class([plugin], {
     settings,
     keybindings,
+    commands,
     workspaceSet,
     theme: new Theme.Class(),
     paneRuntimes,
@@ -81,6 +84,7 @@ function activatedTerminalPlugin(currentPane: () => PaneContent | null) {
   return {
     manager,
     keybindings,
+    commands,
     paneRuntimes,
     statusProjectionContributions,
     releasedPaneIdentifiers,
@@ -145,6 +149,17 @@ test('the terminal registers as a runtime and withdraws it symmetrically', () =>
       0,
     ).context,
   ).toBe('terminal');
+  expect(
+    context.keybindings.resolve(
+      { name: 'c', ctrl: false, shift: false, option: false, super: true },
+      'terminal',
+      0,
+    ).action,
+  ).toBe('terminal.copy');
+  expect(context.commands.get('terminal.wordLeft')).toMatchObject({
+    title: 'Terminal: Word Left',
+    category: 'Terminal',
+  });
   // Chords the terminal must NOT own: they have to pass through to the child as raw bytes.
   for (const passThroughChord of ['p', 'f', 's', 'r', 'u', 'w']) {
     expect(
@@ -173,6 +188,7 @@ test('the terminal registers as a runtime and withdraws it symmetrically', () =>
       0,
     ).action,
   ).toBeNull();
+  expect(context.commands.get('terminal.wordLeft')).toBeUndefined();
   expect(
     context.statusProjectionContributions.snapshot().terminalObservedEventCount,
   ).toBeUndefined();

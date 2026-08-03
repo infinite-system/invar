@@ -232,7 +232,7 @@ class $RootView {
       height: '100%',
       border: true,
       borderStyle: 'rounded',
-      title: 'Files',
+      title: primaryDockHost.activeContent?.title ?? '',
       backgroundColor: readPalette().panel,
     });
     const sidebarBody = new TextRenderable(renderer, {

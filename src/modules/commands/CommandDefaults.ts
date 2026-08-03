@@ -142,6 +142,12 @@ class $CommandDefaults {
         run: context.toggleRightDock,
       },
       {
+        id: 'focus.toggle',
+        title: 'Toggle Sidebar/Editor Focus',
+        category: 'View',
+        run: context.toggleFocus,
+      },
+      {
         id: 'panel.toggleTerminal',
         title: 'Panel: Toggle Terminal',
         category: 'Panel',
@@ -270,6 +276,7 @@ export interface CommandContext {
   requestRender: () => void;
   toggleActivityBar: () => void;
   toggleRightDock: () => void;
+  toggleFocus: () => void;
   toggleTerminal: () => void;
   togglePanelSplit: () => void;
   focusPreviousPanelContent: () => void;

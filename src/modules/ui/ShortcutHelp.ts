@@ -11,21 +11,6 @@ import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 
 class $ShortcutHelp {
-  protected get mergedShortcutContexts() {
-    const mergedShortcutContextsValue = [
-      'global',
-      'editor',
-      'files',
-      'git',
-      'quickopen',
-      'find',
-      'palette',
-      'settings',
-      'menu',
-      'help',
-    ] as const;
-    return mergedShortcutContextsValue;
-  }
   protected get categoryByActionPrefix(): Record<string, string> {
     const categoryByActionPrefixValue: Record<string, string> = {
       app: 'Application',
@@ -38,10 +23,6 @@ class $ShortcutHelp {
       navigation: 'Navigation',
       palette: 'Commands',
       settings: 'Settings',
-      git: 'Git',
-      diff: 'Diff',
-      markdown: 'Markdown',
-      tree: 'Files',
       focus: 'View',
       menu: 'Menu',
       help: 'Help',
@@ -56,8 +37,6 @@ class $ShortcutHelp {
       'find.replace': 'Replace',
       'navigation.back': 'Go Back',
       'navigation.forward': 'Go Forward',
-      'git.togglePanel': 'Toggle Git Panel',
-      'focus.toggle': 'Toggle Sidebar/Editor Focus',
       'settings.toggle': 'Open Settings',
     };
     return fallbackTitleByActionIdentifierValue;
@@ -114,7 +93,7 @@ class $ShortcutHelp {
   rows(): ShortcutHelpRow[] {
     // First-wins merge across contexts: one row per action, under the first context listing it.
     const contextByActionIdentifier = new Map<string, string>();
-    for (const context of this.mergedShortcutContexts) {
+    for (const context of this.keybindings.contexts()) {
       for (const actionIdentifier of this.keybindings
         .effectiveBindings(context)
         .keys()) {

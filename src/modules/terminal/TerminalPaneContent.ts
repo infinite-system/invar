@@ -143,6 +143,18 @@ class $TerminalPaneContent implements PaneContent {
     return true;
   }
 
+  moveWordLeft(): void {
+    this.instance.sendUserInput('\x1bb');
+  }
+
+  moveWordRight(): void {
+    this.instance.sendUserInput('\x1bf');
+  }
+
+  deletePreviousWord(): void {
+    this.instance.sendUserInput('\x1b\x7f');
+  }
+
   /** A paste while the terminal is focused: deliver the text to the child as raw input — the same
    *  bytes as if the user had typed the pasted/dictated text. */
   handlePaste(text: string): boolean {

@@ -44,6 +44,17 @@ function makePane() {
   return { backend, instance, pane };
 }
 
+test('terminal command actions send the readline word-operation bytes', () => {
+  const { backend, pane } = makePane();
+
+  pane.moveWordLeft();
+  pane.moveWordRight();
+  pane.deletePreviousWord();
+
+  expect(backend.writes).toEqual(['\x1bb', '\x1bf', '\x1b\x7f']);
+  pane.dispose();
+});
+
 test('primary-screen wheel input glides through shared momentum without writing the child', async () => {
   const { backend, instance, pane } = makePane();
   backend.feed(

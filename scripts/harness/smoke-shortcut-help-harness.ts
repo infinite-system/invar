@@ -240,6 +240,11 @@ try {
     snapshot.findText('Ctrl+P') !== null,
     'Go to File row shows its effective Ctrl+P binding',
   );
+  snapshot = await scrollUntilVisible(driver, 'Source Control: Toggle');
+  HarnessSmoke.Class.requireCondition(
+    shortcutBindingIsVisible(snapshot, 'Source Control: Toggle', 'Ctrl+G'),
+    'the Git plugin command metadata supplies its shortcut label and category',
+  );
   snapshot = await scrollUntilVisible(driver, 'Toggle Word Wrap');
   HarnessSmoke.Class.requireCondition(
     shortcutBindingIsVisible(snapshot, 'Toggle Word Wrap', 'Alt+Z'),

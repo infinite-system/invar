@@ -80,3 +80,37 @@ test('navigation history commands remain discoverable and dispatch through the w
   forward?.run();
   expect([backCount, forwardCount]).toEqual([1, 1]);
 });
+
+test('the shared dock focus action supplies Shortcut Help metadata', () => {
+  let registeredCommands: Command[] = [];
+  let toggleCount = 0;
+  const registry = {
+    registerAll(commands: Command[]) {
+      registeredCommands = commands;
+      return () => {};
+    },
+  };
+  const context = {
+    workspaceSet: {
+      active: {
+        editor: { hasDocument: { value: false } },
+      },
+      get activeEditor() {
+        return this.active.editor;
+      },
+      count: 1,
+    },
+    toggleFocus: () => {
+      toggleCount += 1;
+    },
+  } as unknown as CommandContext;
+
+  CommandDefaults.Class.registerDefaultCommands(registry as never, context);
+  const focusCommand = registeredCommands.find(
+    (candidate) => candidate.id === 'focus.toggle',
+  );
+  expect(focusCommand?.title).toBe('Toggle Sidebar/Editor Focus');
+  expect(focusCommand?.category).toBe('View');
+  focusCommand?.run();
+  expect(toggleCount).toBe(1);
+});

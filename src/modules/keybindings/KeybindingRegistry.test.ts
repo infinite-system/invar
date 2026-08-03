@@ -487,6 +487,29 @@ test('a user rebind DOES displace the floor chord in the hint map', () => {
   expect(registry.bindingHint('quickopen.open', 'global')).toBe('Ctrl+O');
 });
 
+test('binding contexts come from every live layer without a separate membership list', () => {
+  const registry = new KeybindingRegistry.Class();
+  registry.registerLayer('canonical', [
+    { chord: { key: 'p', ctrl: true }, action: 'quickopen.open' },
+    {
+      chord: { key: 'left' },
+      action: 'editor.left',
+      context: 'editor',
+    },
+  ]);
+  const disposePlugin = registry.registerPluginLayer('plugin:sample', [
+    {
+      chord: { key: 'r' },
+      action: 'sample.refresh',
+      context: 'sample-surface',
+    },
+  ]);
+
+  expect(registry.contexts()).toEqual(['global', 'editor', 'sample-surface']);
+  disposePlugin();
+  expect(registry.contexts()).toEqual(['global', 'editor']);
+});
+
 describe('the context a resolution came from', () => {
   // A global binding deliberately matches inside every context, so a caller that owns a real
   // surface (a focused terminal receiving raw bytes) cannot tell "mine" from "everyone's" by the
