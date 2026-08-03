@@ -571,8 +571,12 @@ class $DriveScriptRunner {
     const serverDirectory =
       options.serverDirectory ?? this.DEFAULT_SERVER_DIRECTORY;
     mkdirSync(serverDirectory, { recursive: true });
+    // A mirrored server has a human WATCHING — they almost certainly mean the
+    // project they are standing in, not an empty scratch dir. Headless serves
+    // keep the isolated temp workspace.
     const workspaceRoot =
-      options.workspaceRoot ?? this.temporaryWorkspaceRoot();
+      options.workspaceRoot ??
+      (options.mirror ? process.cwd() : this.temporaryWorkspaceRoot());
     const homeDirectory =
       options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
     mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
@@ -600,6 +604,28 @@ class $DriveScriptRunner {
       // opening, state changing — because this IS the app's own output, not
       // a reconstruction.
       driver.tapOutput((bytes) => process.stdout.write(bytes));
+      // The mirrored enable-sequences make the HOSTING terminal start
+      // reporting its own mouse and answering the inner app's capability
+      // queries — into OUR stdin. Cooked mode would ECHO all of that as
+      // gibberish (the `35;66;…` class), so: raw mode, swallow everything,
+      // keep only Ctrl+C (0x03 arrives as a byte in raw mode) as the local
+      // "stop watching" gesture. Watch-only is the v1 contract — the human's
+      // input deliberately does NOT reach the inner app.
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode?.(true);
+        process.stdin.resume();
+        process.stdin.on('data', (bytes: Buffer) => {
+          if (bytes.includes(0x03)) {
+            this.writeServerFile(
+              join(serverDirectory, 'snippet-request.json'),
+              {
+                id: Date.now(),
+                stop: true,
+              },
+            );
+          }
+        });
+      }
     }
     const session = new DriveSession.Class(driver, statusPath);
     const requestPath = join(serverDirectory, 'snippet-request.json');
@@ -697,6 +723,13 @@ class $DriveScriptRunner {
         /* the manifest is advisory; a stale one is caught by the pid check */
       }
       await driver.dispose();
+      if (options.mirror && process.stdin.isTTY) {
+        // Hand the hosting terminal back the way we found it: cooked stdin,
+        // and the inner app's own shutdown bytes (already mirrored) have
+        // disabled the mouse/alt-screen modes its boot enabled.
+        process.stdin.setRawMode?.(false);
+        process.stdin.pause();
+      }
     }
   }
 
