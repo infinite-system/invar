@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
 
 ## In plain words
 
