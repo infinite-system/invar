@@ -354,6 +354,14 @@ class $Bootstrap {
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
     // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
     const paneRuntimes = new PaneRuntimes.Class();
+    for (const persistedIdentifier of [
+      ...settings.panelContentOrder.value,
+      ...Object.values(settings.panelWorkspaceStates.value).flatMap((state) =>
+        PanelWorkspaceState.Class.paneIdentifiers(state),
+      ),
+    ]) {
+      paneRuntimes.reservePersistedInstanceIdentifier(persistedIdentifier);
+    }
     const panelContentFactories = new PanelContentFactories.Class();
     let openPanelContent = (_kind: string): boolean => false;
     let openRuntimePane = (
@@ -370,6 +378,11 @@ class $Bootstrap {
     } | null => null;
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
     let persistPanelWorkspaceState = (): void => {};
+    let copyPaneSelection = (_content: PaneContent): void => {};
+    let replacePaneWithRuntime = (
+      _identifier: string,
+      _runtimeKind: string,
+    ): boolean => false;
     let restorePanelWorkspaceState = (
       _workspace: Workspace.Instance,
     ): void => {};
@@ -532,6 +545,9 @@ class $Bootstrap {
         ensureRuntimePane: (kind) => ensureRuntimePane(kind),
         openFindTarget: (target) => openFindTarget(target),
         focusedPanelCaretAnchor: () => focusedPanelCaretAnchor(),
+        copyPaneSelection: (content) => copyPaneSelection(content),
+        replacePaneWithRuntime: (identifier, runtimeKind) =>
+          replacePaneWithRuntime(identifier, runtimeKind),
         releasePane: (identifier) =>
           panelHost.removeContentFromAnySet(identifier),
         editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
@@ -780,6 +796,12 @@ class $Bootstrap {
     };
     ensureRuntimePane = (kind: string): PaneContent | null =>
       currentPaneOfKind(kind) ?? createRuntimePane(kind);
+    replacePaneWithRuntime = (identifier, runtimeKind): boolean => {
+      const replacement = createRuntimePane(runtimeKind, true);
+      return replacement
+        ? panelHost.replaceContent(identifier, replacement.id)
+        : false;
+    };
     openRuntimePane = (
       runtimeKind: string,
       request: PaneRuntimeRequest,
@@ -842,7 +864,7 @@ class $Bootstrap {
       popup: boundedListPopup,
       overlayCoordinator,
       addableKinds: () => [
-        ...paneRuntimes.addableKinds(),
+        ...paneRuntimes.spaceAddableKinds(),
         ...panelContentFactories.addableKinds(),
       ],
       addContent: addPanelContent,
@@ -854,9 +876,23 @@ class $Bootstrap {
       }).length;
       return count === 0 ? baseLabel : `${baseLabel} ${count + 1}`;
     };
-    const addPaneWindow = (kind: string): void => {
-      const content =
-        createContributedPaneInstance(kind) ?? createRuntimePane(kind, true);
+    const addPaneWindow = (entryIdentifier: string): void => {
+      const runtimeMenuEntry = paneRuntimes.paneAddMenuEntry(entryIdentifier);
+      const factoryMenuEntry =
+        panelContentFactories.paneAddMenuEntry(entryIdentifier);
+      const content = runtimeMenuEntry
+        ? createRuntimePane(
+            runtimeMenuEntry.runtimeKind,
+            true,
+            runtimeMenuEntry.entry.process,
+            nextWindowLabel(runtimeMenuEntry.entry.instanceLabel),
+          )
+        : factoryMenuEntry
+          ? createContributedPaneInstance(
+              factoryMenuEntry.factoryKind,
+              nextWindowLabel(factoryMenuEntry.entry.instanceLabel),
+            )
+          : null;
       if (!content) return;
       const splitTargetIdentifier = pendingPanelSplitTargetIdentifier;
       pendingPanelSplitTargetIdentifier = null;
@@ -871,11 +907,18 @@ class $Bootstrap {
     panelPaneAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
       overlayCoordinator,
-      title: () => 'Add Pane',
-      addableKinds: () => [
-        ...paneRuntimes.addableKinds(),
-        ...panelContentFactories.addableKinds(),
-      ],
+      title: () =>
+        `Add ${panelHost.activeSpace ? panelHost.spaceLabel(panelHost.activeSpace.kind) : 'Pane'}`,
+      addableKinds: () => {
+        const spaceKind = panelHost.activeSpace?.kind;
+        if (!spaceKind) return [];
+        return [
+          ...paneRuntimes.paneAddMenuEntries(spaceKind),
+          ...panelContentFactories
+            .paneAddMenuEntries(spaceKind)
+            .map(({ entry }) => entry),
+        ].map((entry) => ({ kind: entry.identifier, label: entry.label }));
+      },
       addContent: addPaneWindow,
     });
     let restoringPanelWorkspaceState = false;
@@ -1921,6 +1964,18 @@ class $Bootstrap {
         }
       });
     };
+    copyPaneSelection = (content): void => {
+      const selection =
+        content.capability?.<PaneTextSelectionPort>('text-selection');
+      if (!selection) return;
+      const telemetry = selection.selectionTelemetry?.();
+      publishCopyResult(selection.copySelection(), {
+        focusedSurface: content.kind ?? content.id,
+        selectionOwner: telemetry?.owner ?? content.kind ?? content.id,
+        selectionLength: telemetry?.characterLength ?? null,
+        routeTaken: 'copy-handler',
+      });
+    };
 
     // The ACTION TABLE: every binding's action id -> its handler. Handlers receive the raw KeyEvent
     // for parameters that compose (shift = extend; repeat runs = acceleration).
@@ -2224,17 +2279,7 @@ class $Bootstrap {
         const focusedContent =
           panelHost.focusedContent ?? currentPaneOfKind('terminal');
         if (!focusedContent) return;
-        const selection =
-          focusedContent.capability?.<PaneTextSelectionPort>('text-selection');
-        if (!selection) return;
-        publishCopyResult(selection.copySelection(), {
-          focusedSurface:
-            focusedContent.kind ?? focusedContent.id ?? 'unknown-pane',
-          selectionOwner:
-            focusedContent.kind ?? focusedContent.id ?? 'unknown-pane',
-          selectionLength: null,
-          routeTaken: 'copy-handler',
-        });
+        copyPaneSelection(focusedContent);
       },
       'terminal.wordLeft': (key) => panelHost.handleKey(key),
       'terminal.wordRight': (key) => panelHost.handleKey(key),
@@ -2510,13 +2555,51 @@ class $Bootstrap {
             Date.now(),
           );
           const paneContextAction = paneContextResolution.action;
+          const paneContextActionBelongsToFocusedPane =
+            paneContextAction !== null &&
+            paneContextResolution.context === paneKeybindingContext;
+          const paneClaimsContextAction =
+            paneContextAction !== null &&
+            (contextOwningPane.claimsContextAction?.(paneContextAction) ??
+              true);
           if (
+            paneContextActionBelongsToFocusedPane &&
             paneContextAction &&
-            paneContextResolution.context === paneKeybindingContext &&
-            (contextOwningPane.claimsContextAction?.(paneContextAction) ?? true)
+            paneClaimsContextAction
           ) {
             dispatchAction(paneContextAction, key);
             return;
+          }
+          if (
+            paneContextActionBelongsToFocusedPane &&
+            !paneClaimsContextAction
+          ) {
+            const backgroundSelection = panelHost
+              .visibleContents()
+              .filter((content) => content !== contextOwningPane)
+              .map((content) => ({
+                content,
+                selection:
+                  content.capability?.<PaneTextSelectionPort>(
+                    'text-selection',
+                  ) ?? null,
+              }))
+              .find(({ selection }) => selection?.hasSelection());
+            const selectionTelemetry =
+              backgroundSelection?.selection?.selectionTelemetry?.();
+            if (backgroundSelection?.selection) {
+              logCopyAttempt({
+                focusedSurface: contextOwningPane.kind ?? contextOwningPane.id,
+                selectionOwner:
+                  selectionTelemetry?.owner ??
+                  backgroundSelection.content.kind ??
+                  backgroundSelection.content.id,
+                selectionLength: selectionTelemetry?.characterLength ?? 0,
+                routeTaken: 'forwarded-to-child-pty',
+                osc52Emitted: false,
+                osc52ByteLength: 0,
+              });
+            }
           }
         }
         panelHost.handleKey(key);

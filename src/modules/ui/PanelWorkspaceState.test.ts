@@ -31,6 +31,34 @@ class FakePane implements PaneContent {
   dispose(): void {}
 }
 
+test('persisted pane identities are enumerated before any workspace restores', () => {
+  expect(
+    PanelWorkspaceState.Class.paneIdentifiers({
+      spaces: [
+        {
+          kind: 'terminal',
+          label: 'Terminal',
+          groups: [
+            [
+              {
+                identifier: 'pane-instance-3',
+                kind: 'agent',
+                label: 'Agent',
+              },
+              { kind: 'terminal', label: 'Terminal' },
+            ],
+          ],
+          activeGroupIndex: 0,
+        },
+      ],
+      activeSpaceIndex: 0,
+      panelListExpanded: false,
+      panelListWidth: 20,
+      visible: false,
+    }),
+  ).toEqual(['pane-instance-3']);
+});
+
 test('a relaunch rebuilds group order, active group, list pin, and list width', () => {
   const firstHost = new PanelHost.Class();
   firstHost.register(new FakePane('terminal', 'Terminal', 'terminal'));

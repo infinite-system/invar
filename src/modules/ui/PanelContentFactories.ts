@@ -1,4 +1,5 @@
 import type { PanelContentFactory } from './PanelContentFactory.interface';
+import type { PaneAddMenuEntry } from './PaneContent.interface';
 
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
@@ -30,10 +31,33 @@ class $PanelContentFactories {
       label: factory.instanceLabel,
     }));
   }
+
+  paneAddMenuEntries(spaceKind: string): readonly PanelFactoryMenuEntry[] {
+    return [...this.factoriesByKind.values()].flatMap((factory) =>
+      (factory.paneAddMenuEntries ?? [])
+        .filter((entry) => entry.spaceKind === spaceKind)
+        .map((entry) => ({ factoryKind: factory.kind, entry })),
+    );
+  }
+
+  paneAddMenuEntry(identifier: string): PanelFactoryMenuEntry | null {
+    for (const factory of this.factoriesByKind.values()) {
+      const entry = factory.paneAddMenuEntries?.find(
+        (candidate) => candidate.identifier === identifier,
+      );
+      if (entry) return { factoryKind: factory.kind, entry };
+    }
+    return null;
+  }
 }
 
 export namespace PanelContentFactories {
   export const $Class = $PanelContentFactories;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface PanelFactoryMenuEntry {
+  readonly factoryKind: string;
+  readonly entry: PaneAddMenuEntry;
 }

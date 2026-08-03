@@ -148,6 +148,23 @@ test('persisted identifiers are kept and claimed before new panes are minted', (
   });
 });
 
+test('reserved settings identities cannot collide with new panes and remain restorable', () => {
+  const paneRuntimes = new PaneRuntimes.Class();
+  paneRuntimes.register(fakeRuntime('terminal'));
+  paneRuntimes.reservePersistedInstanceIdentifier('pane-instance-1');
+
+  expect(paneRuntimes.allocateInstanceIdentity('terminal', false)).toEqual({
+    identifier: 'pane-instance-2',
+    label: 'Terminal',
+  });
+  expect(paneRuntimes.claimPersistedInstanceIdentifier('pane-instance-1')).toBe(
+    true,
+  );
+  expect(paneRuntimes.claimPersistedInstanceIdentifier('pane-instance-1')).toBe(
+    false,
+  );
+});
+
 test('the add menu offers only the kinds that ask to be offered', () => {
   const paneRuntimes = new PaneRuntimes.Class();
   paneRuntimes.register(fakeRuntime('terminal'));

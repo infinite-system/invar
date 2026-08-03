@@ -26,6 +26,14 @@ class $DatabaseConsumerPlugin
   readonly kind = 'database';
   readonly instanceLabel = 'Database';
   readonly panelSpace = { kind: 'database', label: 'Database' } as const;
+  readonly paneAddMenuEntries = [
+    {
+      identifier: 'database-instance',
+      label: 'Database',
+      instanceLabel: 'Database',
+      spaceKind: 'database',
+    },
+  ] as const;
   readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,

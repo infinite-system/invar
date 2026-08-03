@@ -45,6 +45,14 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
   // grouping the hand-wired pane had before the plugin move.
   readonly panelSpace = { kind: 'terminal', label: 'Terminal' } as const;
   readonly offeredInPanelAddMenu = true;
+  readonly paneAddMenuEntries = [
+    {
+      identifier: 'invar-agent',
+      label: 'Terminal (Invar agent)',
+      instanceLabel: 'Terminal (Invar agent)',
+      spaceKind: 'terminal',
+    },
+  ] as const;
   readonly defaultSplitPriority = 0;
   protected application: ApplicationContributionContext | null = null;
   protected hostPort: PaneRuntimeHostPort | null = null;
@@ -161,7 +169,10 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
         id: 'agent.copy',
         title: 'Agent: Copy Selection',
         category: 'Agent',
-        run: () => void this.currentPane()?.copySelection(),
+        run: () => {
+          const pane = this.currentPane();
+          if (pane) context.copyPaneSelection(pane);
+        },
       },
       {
         id: 'agent.cancelTurn',
@@ -187,7 +198,7 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       controls: () => [
         {
           identifier: 'agent',
-          icon: '✦',
+          icon: context.theme.agentIcon,
           label: 'Toggle Agent',
           active:
             context.bottomPanelHost.visible.value &&
@@ -213,9 +224,7 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       model: this.requireModel().value.value,
       terminalTools: this.terminalTools(),
       onExit: (identifier) => {
-        this.hostPort?.releasePane(identifier);
-        const terminal = context.ensureRuntimePane('terminal');
-        if (terminal) context.bottomPanelHost.showContent(terminal.id);
+        context.replacePaneWithRuntime(identifier, 'terminal');
       },
     });
     if (this.panes.has(pane.id)) {

@@ -29,6 +29,22 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
   readonly instanceLabel = 'Terminal';
   readonly panelSpace = { kind: 'terminal', label: 'Terminal' } as const;
   readonly offeredInPanelAddMenu = true;
+  readonly offeredAsPanelSpace = true;
+  readonly paneAddMenuEntries = [
+    {
+      identifier: 'terminal',
+      label: 'Terminal',
+      instanceLabel: 'Terminal',
+      spaceKind: 'terminal',
+    },
+    {
+      identifier: 'terminal-agent',
+      label: 'Terminal (Agent)',
+      instanceLabel: 'Terminal (Agent)',
+      spaceKind: 'terminal',
+      process: { command: 'claude' },
+    },
+  ] as const;
   readonly defaultSplitPriority = 1;
   protected application: ApplicationContributionContext | null = null;
   protected hostPort: PaneRuntimeHostPort | null = null;

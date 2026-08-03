@@ -155,6 +155,14 @@ export interface PaneContentSpace {
   readonly label: string;
 }
 
+/** One contributed choice for adding another pane inside an existing panel space. */
+export interface PaneAddMenuEntry {
+  readonly identifier: string;
+  readonly label: string;
+  readonly instanceLabel: string;
+  readonly spaceKind: string;
+}
+
 /** The `native-surface` capability: a pane content that owns OpenTUI renderables and paints them
  *  itself. The host mounts nothing of the content's own — it hands over a slot box once and then
  *  calls `paint` exactly where it would otherwise assign a `render()` StyledText into a host body.
@@ -189,6 +197,10 @@ export interface PaneSurfaceRegion {
 export interface PaneTextSelectionPort {
   hasSelection(): boolean;
   copySelection(): Promise<number>;
+  selectionTelemetry?(): {
+    readonly owner: string;
+    readonly characterLength: number;
+  };
 }
 
 /** The `text-input` capability: a pane-owned one-line input that uses the shared input model. */

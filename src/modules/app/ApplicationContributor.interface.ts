@@ -102,6 +102,13 @@ export interface ApplicationContributionContext {
     column: number;
     row: number;
   } | null;
+  /** Copy through a pane's generic text-selection capability and publish the shared result proof. */
+  readonly copyPaneSelection: (content: PaneContent) => void;
+  /** Replace one pane in place with a fresh pane from another contributed runtime. */
+  readonly replacePaneWithRuntime: (
+    identifier: string,
+    runtimeKind: string,
+  ) => boolean;
   readonly editorInteractionIsAvailable: () => boolean;
   readonly dismissEditorSuggestions: () => void;
   readonly bindingHint: (action: string, context: string) => string;

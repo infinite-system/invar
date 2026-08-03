@@ -8,6 +8,14 @@ import type { PanelHost, PanelSpace } from './PanelHost';
 
 // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
 class $PanelWorkspaceState {
+  static paneIdentifiers(state: PersistedPanelWorkspaceState): string[] {
+    return state.spaces.flatMap((space) =>
+      space.groups.flatMap((group) =>
+        group.flatMap((pane) => (pane.identifier ? [pane.identifier] : [])),
+      ),
+    );
+  }
+
   static snapshot(
     panelHost: PanelHost.Instance,
     paneKind: (content: PaneContent) => string | null,
