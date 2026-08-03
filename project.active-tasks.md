@@ -7,9 +7,9 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #471 [graph-reaches-the-whole-app](.invar/tasks/in-progress/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)  [building]
+- #471 [graph-reaches-the-whole-app](.invar/tasks/in-progress/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/471-graph-reaches-the-whole-app`
-- #470 [harness-wait-defect-census](.invar/tasks/in-progress/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [building]
+- #470 [harness-wait-defect-census](.invar/tasks/in-progress/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/470-harness-wait-defect-census`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
@@ -63,7 +63,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (32)
+## FLAKE-EVIDENCE (33)
+- #475 [quick-open-leaves-focus-behind](.invar/tasks/active/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)

@@ -92,3 +92,17 @@ From #470's builder (codex, 2026-08-03, first overnight PTY use):
 - GAP 2: `app.show` has no label argument — a label is treated as another
   status path. Small ergonomics fix.
 - Add both to this task's implementation round alongside the MCP doorway.
+
+From #471's builder (codex, 2026-08-03):
+- EASY: warm server fast loop; clickText/waitFor/get in one probe; loud
+  misses made contributor discovery immediate.
+- GAP 3: `bun run drive` and DriveSession have DIFFERENT stop commands —
+  unify or document in the skill.
+- GAP 4: DriveSession has no generated `--size` fixture option (builder fell
+  back to the scale smoke for the large arm).
+- BUG: a failed `--attach` snippet prints the failure but can exit 0
+  (observed once with a wrong-path probe) — a script can overlook a failed
+  positive control. Verify and fix the exit-code path.
+- PROPOSED RECORD (needs the user): a reach-completeness record in
+  system.invariants.md — "the composition graph reaches every installed
+  contributor" — the behavior now promises it, no record states it.
