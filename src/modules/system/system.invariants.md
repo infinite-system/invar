@@ -208,6 +208,43 @@ in `GraphChannel.ts` for any assignment into walked nodes.
 
 **Last refined:** 2026-08-02
 
+### The composition graph reaches every installed contributor
+
+**Invariant:** If a contributor is installed in the running app, then its state is reachable
+through the observation graph by path, rooted at the composition object — with no per-contributor
+membership decision anywhere.
+
+**Scope:** `GraphChannel` roots (`src/modules/app/Bootstrap.ts` BootedApp composition) and
+`src/modules/app/ApplicationContributions.ts`. Applies to every current and future contributor.
+
+**Mechanism:** ApplicationContributions exposes every installed contributor by its own
+identifier automatically; Bootstrap builds one BootedApp composition object owning the
+contributors, tab strips, and renderer; GraphChannel roots at that object. A membership list is
+a future gap, so none exists — reach follows installation.
+
+**Generates:** graph paths for contributor state (`contributors.file-tree.activeWorkspace.rowCount`,
+`contributors.git.activeWorkspace.changedCount`); the #470 wait migration's model conditions;
+the drive-pty discovery loop over contributors.
+
+**Rejected alternatives:** a curated ports list — rebuilt the publish tax at root granularity
+(the pre-#471 gap: file tree and git state unreachable because their instances were Bootstrap
+locals).
+
+**Evidence:** `src/modules/app/ApplicationContributions.ts`; contributor paths locked by
+`scripts/harness/smoke-tree-scroll-harness.ts` and `scripts/harness/smoke-git-watch-harness.ts`
+(driven: a real click moved rowCount 3 to 4; a saved edit moved changedCount 0 to 1 to 0).
+
+**Impossible if true:** an installed contributor whose state the graph cannot reach; a
+contributor that becomes reachable only after someone edits a membership list.
+
+**Verification:** `bun scripts/harness/smoke-tree-scroll-harness.ts` and
+`bun scripts/harness/smoke-git-watch-harness.ts`; or drive `app.get('contributors.<id>...')`
+against a warm server for any installed identifier.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-03
+
 ### Copy reaches the host terminal
 
 **Invariant:** If the user copies selected text from Settings, a `TextInputModel` field, the terminal

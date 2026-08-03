@@ -17,6 +17,7 @@ import type {
 } from './ApplicationContributor.interface';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
+// invariant: The composition graph reaches every installed contributor (src/modules/system/system.invariants.md)
 class $ApplicationContributions implements ApplicationContributionCatalog {
   protected readonly activeContributions = new Map<
     string,
