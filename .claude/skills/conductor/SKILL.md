@@ -52,6 +52,11 @@ family 0.
 
 1. ANCHOR — write the RESUME ANCHOR in `project.briefing.md`: lanes with
    verdict state, queue, laws delta, watcher re-arm lines verbatim.
+   **The file keeps AT MOST 5 anchors** (user rule, 2026-08-03): writing a
+   new one deletes the oldest kept anchor and moves its heading line to the
+   Condensed history section at the bottom. Durable lessons never live in
+   the briefing — they go to conductor families and skills; the briefing is
+   the CURRENT STATE pointer only, and git archives every pruned anchor.
 2. LESSON SWEEP — instance lessons go to task records and the census.
    Fundamental lessons (true even if every task were deleted) go to
    `project.conductor.md` as a family, and to this skill when operative,
