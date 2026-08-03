@@ -55,7 +55,16 @@ class $GraphClient {
     while (Date.now() < deadline) {
       const response = this.readResponse(responsePath);
       if (response && response.id === id) {
-        if (response.resolved !== true) throw this.missError(path, response);
+        if (response.resolved !== true) {
+          // A parked-wait TIMEOUT is not a path miss: the path resolved fine
+          // and the VALUE never matched. Dressing it as "walk died at:
+          // <unknown>" sent five positive controls chasing a phantom
+          // resolution failure (#480 bycatch). The app's own error already
+          // names the wanted and last settled values — pass it through.
+          const errorText = String(response.error ?? '');
+          if (errorText.includes('timed out')) throw new Error(errorText);
+          throw this.missError(path, response);
+        }
         return {
           value: response.value,
           frame: Number(response.frame ?? -1),
