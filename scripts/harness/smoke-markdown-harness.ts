@@ -1745,6 +1745,12 @@ try {
     HarnessSmoke.Class.readStatus(statusPath).markdownPaneFocus === 'source',
     'auto-open keeps the keyboard on the source pane',
   );
+  const sourceHeading = sourceMarkerPosition(snapshot, '# Rendered heading');
+  HarnessSmoke.Class.requireCondition(
+    snapshot.cell(sourceHeading.row, sourceHeading.column)?.foreground ===
+      packedThemeColor(ThemePalettes.Class.DARK.keyword),
+    'the Markdown provider highlights the source heading through the document syntax seam',
+  );
   const renderedHeading = previewMarkerPosition(snapshot, 'Rendered heading');
   HarnessSmoke.Class.requireCondition(
     !snapshot

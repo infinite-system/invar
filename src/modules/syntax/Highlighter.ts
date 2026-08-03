@@ -213,40 +213,6 @@ class $Highlighter {
     return spans.length ? spans : [{ text: line, role: 'text' }];
   }
 
-  protected static tokenizeMarkdown(line: string): Span[] {
-    if (/^\s*#{1,6}\s/.test(line)) return [{ text: line, role: 'keyword' }];
-    if (/^\s*([-*+]|\d+\.)\s/.test(line)) {
-      const match = line.match(/^(\s*(?:[-*+]|\d+\.)\s)(.*)$/);
-      if (match)
-        return [
-          { text: match[1]!, role: 'operator' },
-          { text: match[2]!, role: 'text' },
-        ];
-    }
-    if (/^\s*>/.test(line)) return [{ text: line, role: 'comment' }];
-    if (/^\s*```/.test(line)) return [{ text: line, role: 'string' }];
-    // inline code
-    if (line.includes('`')) {
-      const spans: Span[] = [];
-      const pattern = /`[^`]*`/g;
-      let lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = pattern.exec(line))) {
-        if (match.index > lastIndex)
-          spans.push({
-            text: line.slice(lastIndex, match.index),
-            role: 'text',
-          });
-        spans.push({ text: match[0], role: 'string' });
-        lastIndex = match.index + match[0].length;
-      }
-      if (lastIndex < line.length)
-        spans.push({ text: line.slice(lastIndex), role: 'text' });
-      return spans.length ? spans : [{ text: line, role: 'text' }];
-    }
-    return [{ text: line, role: 'text' }];
-  }
-
   /** Tokenize one line of HTML (and, with `vue`, Vue-SFC template sugar: directives + interpolations).
    *  Line-local `insideTag` state, mirroring the block-comment heuristic in tokenizeCode — a tag that
    *  spans lines re-opens its attribute coloring on the next line, which is acceptable for the immediate
@@ -524,8 +490,6 @@ class $Highlighter {
         return this.tokenizeCode(line);
       case 'json':
         return this.tokenizeJson(line);
-      case 'markdown':
-        return this.tokenizeMarkdown(line);
       case 'html':
         return this.tokenizeHtml(line, false);
       case 'vue':
@@ -602,14 +566,5 @@ export interface Span {
   role: Role;
 }
 
-export type LangId =
-  | 'typescript'
-  | 'javascript'
-  | 'json'
-  | 'markdown'
-  | 'html'
-  | 'css'
-  | 'scss'
-  | 'vue'
-  | 'diff'
-  | 'plain';
+/** Language identifiers stay open because document-syntax providers own format vocabulary. */
+export type LangId = string;

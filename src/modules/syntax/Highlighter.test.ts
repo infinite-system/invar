@@ -72,11 +72,11 @@ test('json keys vs string values differ, numbers and literals colored', () => {
   ).toBe(true);
 });
 
-test('markdown headings and lists are recognized', () => {
-  expect(roles('## Title', 'markdown')).toEqual(['keyword']);
-  expect(Highlighter.Class.highlightLine('- item', 'markdown')[0]!.role).toBe(
-    'operator',
-  );
+test('provider-owned language identifiers use the plain fallback', () => {
+  expect(roles('## Title', 'markdown')).toEqual(['text']);
+  expect(Highlighter.Class.highlightLine('- item', 'markdown')).toEqual([
+    { text: '- item', role: 'text' },
+  ]);
 });
 
 test('plain language returns a single text span', () => {

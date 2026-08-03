@@ -4,7 +4,7 @@ import { LanguageRegistry } from './LanguageRegistry';
 test('language registry maps extensions', () => {
   expect(LanguageRegistry.Class.forPath('a/b.ts')).toBe('typescript');
   expect(LanguageRegistry.Class.forPath('x.JSON')).toBe('json');
-  expect(LanguageRegistry.Class.forPath('r.md')).toBe('markdown');
+  expect(LanguageRegistry.Class.forPath('r.md')).toBe('plain');
   expect(LanguageRegistry.Class.forPath('LICENSE')).toBe('plain');
 });
 
