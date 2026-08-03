@@ -1,0 +1,15 @@
+{
+  "task": 487,
+  "slug": "copy-path-telemetry-names-the-dying-stage",
+  "branch": "fleet/487-copy-path-telemetry-names-the-dying-stage",
+  "worktree": ".invar/worktrees/487-copy-path-telemetry-names-the-dying-stage",
+  "tmuxSession": "invar/487-copy-path-telemetry-names-the-dying-stage",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-487-copy-path-telemetry-names-the-dying-stage.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "3699bb071e33ffe058ff3fb05ca38bf37b4e26a6",
+  "startedAt": "2026-08-03T11:57:14-04:00"
+}
