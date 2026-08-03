@@ -1,7 +1,7 @@
 # Task 478 — migrate the pre-satisfied waits
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol
