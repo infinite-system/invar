@@ -95,23 +95,9 @@ RETURN ITEMS: (1) copy saga — which selection highlight do they see
 armed. No experiments (standing order). Fifteen landings this session.
 ---
 
-# RESUME ANCHOR 53 — 2026-08-03 ~09:35 EDT — GOAL MET; 484 EXPERIMENT IN FLIGHT
-
-483 LANDED (7330851c): both conversion phases, 112->0 non-test chains,
-AST-census-proven. The user's "get both done intelligently" goal is MET.
-#484 (per-file smoke reuse churn experiment) DISPATCHED — ON READY: read the
-measurement table, convert bycatch/instrument feedback, gate with a
-death-reporting monitor, land — but the ROLLOUT DECISION IS THE USER'S; the
-report ends with numbers, not a rollout. User RESTING. Copy saga: app proven
-under all arms; ask the user which selection highlight they see when they
-return. Fourteen landings this session.
-
----
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 53 — 2026-08-03 ~09:35 EDT — GOAL MET; 484 EXPERIMENT IN FLIGHT
 - RESUME ANCHOR 50c — 2026-08-03 ~08:15 EDT — COPY: TRANSPORT PROVEN INNOCENT
 - RESUME ANCHOR 50b — 2026-08-03 ~08:00 EDT — LIVE COPY INVESTIGATION OPEN
 - RESUME ANCHOR 50 — 2026-08-03 ~06:25 EDT — TWELVE LANDINGS; FLEET AT ZERO
