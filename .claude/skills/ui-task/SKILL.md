@@ -100,6 +100,25 @@ Two layers, refined differently:
   reading of results (slot tables, findText positions). The conductor
   never fights the instrument — the instrument walks the user's path.
 
+**NEVER WRITE THE SECOND PROBE.** The first probe for a new surface is
+legitimate exploration. The moment you find yourself reading a grid dump to
+work out which column to click, stop: that is the instrument's job. Add the
+ROLE and the GESTURE to the driver instead. On 2026-08-02 the conductor
+hand-wrote four probes for one panel bug; all four failed for probe reasons
+(clicked the tab's × instead of the row's, hit a column that worked at 41 and
+not at 109, carried a stale label list, waited for a repaint after hovering an
+already-active row), and each failure was briefly read as an app defect. A
+probe is a second implementation of the user's path with no review, no tests,
+and no reuse, so its bugs arrive disguised as product bugs at the exact moment
+you cannot tell the difference. See `project.conductor.md` family 15.
+
+Two corollaries from that night, both cheap and both skipped:
+- **The user tests the BINARY.** Run `bun run build` after any user-facing
+  change, or they test stale code and report the bug as unfixed.
+- **"The text is painted" is not "the control works."** Reporting
+  `paints "Add Terminal": yes` settled nothing; the user's point was that it
+  did not LOOK like a button. Drive the gesture, not the glyph.
+
 Practical form: named gesture helpers like `clickLayoutSwitcher()`
 (locate the visible control, move there, click, await the popup) or
 `pressPanelShortcut()` — each named for the user action it performs,

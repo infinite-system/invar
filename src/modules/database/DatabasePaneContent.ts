@@ -61,14 +61,6 @@ class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
     return 'database';
   }
 
-  createInstance(identifier: string, label: string): PaneContent {
-    return new DatabasePaneContent.Class(
-      this.application,
-      this.activeWorkspace,
-      identifier,
-      label,
-    );
-  }
   get renderRevision() {
     return computed(() => this.readRenderRevision());
   }

@@ -555,3 +555,177 @@ with a committed src edit), never re-widening the fallback.
   builder's repaired probe conditions the toggle on panelListVisible.
 
 
+
+## Family 14 — the conductor asserts repo facts from memory, in the document whose job is to be authoritative (2026-08-02)
+
+Three briefs in one session carried a false claim about the repo, each
+caught by the builder it was sent to:
+
+1. **#451** — verification ordered `bun scripts/harness/smoke-animated-media-harness.ts`.
+   No such file. The real one is `smoke-media-harness.ts`. The name was
+   derived from the GATE'S OWN LABEL, which is
+   `smoke: animated-media harness` at `merge-gate.sh:1231` — the label
+   does not match the script it runs. So the trap is structural, not
+   only carelessness: any reader reproducing a failure from gate output
+   hits it.
+2. **#451** — the invariants list omitted
+   `src/modules/media/media.invariants.md` while the task changed
+   `src/modules/media/`. PATH-IMPLICATION would have found it
+   mechanically; I listed contracts from memory instead.
+3. **#459 round 5** — the brief asserted "no record governs the
+   declaration file". `Coverage may fall but never silently` governs it
+   explicitly, and requires exact before/after counts.
+
+**The generator:** a brief is the document a builder treats as
+authoritative, and it is precisely where I stop checking and start
+recalling. An instruction is an assertion (family 8) — this is that
+rule applied to the brief itself, which is the highest-leverage place
+to break it.
+
+**Operative rules:**
+
+- **Derive the invariants list mechanically before writing it.** For
+  every path the task will touch, walk up for `*.invariants.md` and
+  list what you find. Then add content-implicated records. Memory is
+  the last step, not the first.
+- **Never name a script you have not `ls`-ed**, and never derive a
+  filename from a gate label — labels and scripts drift, proven above.
+- **Before claiming no record governs X, grep for X** across
+  `*.invariants.md`. A negative claim about the contract layer needs a
+  search, not a recollection.
+- The mechanical half of this belongs in `dispatch.sh`: it already
+  refuses dead links; it should also refuse a brief whose invariants
+  list omits a contract path-implicated by the task's own folder.
+  Until that exists, the check is manual and I keep failing it.
+
+The loop worked — every one was caught, because briefs demand bycatch
+and record-by-record invariant answers. But it spends BUILDER attention
+correcting the conductor, which is the most expensive way to find a
+typo.
+
+---
+
+## Family 15 — a hand-written probe is a second system, and it fails first
+
+**2026-08-02, user-directed.** Fixing one panel bug, the conductor hand-wrote
+four probes in one evening. Every one failed for a PROBE reason, and each
+failure was briefly mistaken for app behaviour:
+
+- clicked the tab's `×` instead of the list row's, because both paint the word
+  "Terminal" — read as "the product ignored my close";
+- clicked a popup entry at column 41 (worked) and at column 109 (did not) —
+  read as a right-side hit-testing defect;
+- carried a stale label list across a close — read as "closing the last
+  instance fails";
+- waited for a repaint after hovering the ALREADY-ACTIVE row, which repaints
+  nothing — read as "the last instance cannot be closed".
+
+The user named it: *"the problem is you still write probes by hand, drive.ts
+should be sophisticated enough that you can drive the terminal app without hand
+coding the probes each time."*
+
+**The rule.** When a drive is fiddly, fix the INSTRUMENT once. Never write the
+next probe. A probe is a second implementation of the user's path, with none of
+the review, none of the tests, and none of the reuse — so its defects arrive
+disguised as product defects, at the exact moment you are least able to tell
+the difference.
+
+**What "fix the instrument" means concretely** (all landed as #466):
+- name controls by ROLE, resolved from what is painted, never from a column
+  the caller computed;
+- anchor list rows relative to their list header, because chrome elsewhere
+  paints the same words;
+- give each gesture its own completion condition, and make the condition the
+  thing that actually changed (`status-excludes`: the label LEFT the list);
+- declare a step frame-silent when it genuinely repaints nothing, rather than
+  demanding a repaint that only happens in the cases you were not debugging;
+- resolve a control by geometry when its glyph is hover-revealed — the hit
+  target exists whether or not the decoration is drawn.
+
+**The tell that you are in this failure mode:** you are reading a grid dump to
+work out where to click. That is the instrument's job, and every minute spent
+on it is a minute not spent on the defect.
+
+**Corollary — the user tests the BINARY.** After any user-facing change, run
+`bun run build`. Tonight the user tested a `dist/iv` built three minutes before
+the fix landed and reported the bug as unfixed. Source-green is not user-green.
+
+**Corollary — "the text is painted" is not "the control works".** The conductor
+reported `paints "Add Terminal": yes` as though it settled the question. The
+user's answer: *"Add Terminal thing is not just a text, it's a button... but
+that's not clear."* Presence of text proves nothing about whether a user can
+tell it is a target. Drive the GESTURE, not the glyph.
+
+## Family 16 — the pre-satisfied wait is the flake generator (2026-08-02)
+
+**The account.** The panel-chrome smoke was red on the contention tier (#464)
+and read as a load problem for days. It was not. After closing a list row, the
+smoke located its next click target by waiting for `findText('+ Database')` —
+text painted BOTH BEFORE AND AFTER the relayout. The wait was already true, so
+it returned the STALE frame; the click landed on pre-close geometry, the popup
+never opened, and an unrelated status wait timed out 15 seconds later. Load
+never caused it. Load widened the model-to-paint window, so the stale frame was
+staler.
+
+**The rule, operative.** Before writing any wait, ask: *is this condition FALSE
+right now?* If it is already true, the wait is a no-op that hands back whatever
+frame happens to be current. This is the inverse of family 1's unreachable
+wait, and it is worse, because it goes GREEN most of the time.
+
+**The tell in review.** A wait whose needle is chrome — a header, a button
+label, a title bar — is almost always pre-satisfied. Chrome by definition
+survives the transition. Wait on the thing that CHANGED.
+
+**Why it resisted diagnosis.** Every symptom pointed at timing: it only failed
+under load, it failed at a different place each time, and rerunning cleared it.
+Those three together read as "flaky machine" and stop the investigation. The
+actual evidence needed was one instrumented reproduction printing what the app
+believed at the moment of failure — popup closed, correct space, click at a
+plausible cell. That triple says "the click missed", which is a geometry
+question, not a timing one.
+
+**Corollary — a threshold you invent is one you get wrong.** My first fix waited
+on `orderedContents.length === 2`, reasoned from the scenario. The real count
+was 4 (the collection spans all spaces). It failed all six rounds
+deterministically. The repair is to MEASURE the value first and express the
+expectation relatively (one fewer than now). Convenient access to model state
+invites asserting a state you never read — the tool removes friction from
+reading truth and from skipping the read, equally.
+
+**Corollary — an easy instrument invites model-only assertions.** Graph reads
+cannot see paint. A smoke that waits AND asserts on the graph goes green while
+the screen is broken. The standing split: **graph to sequence, screen to
+assert.**
+
+## Family 17 — two oracles, one byte stream (2026-08-02)
+
+**The account.** The mirrored app showed blank activity-bar icons on the
+user's terminal while the harness emulator showed them present. The
+disagreement between the two oracles WAS the diagnostic: same bytes, two
+interpreters, so the defect had to live in interpretation or outside the
+stream. Round one: outside the stream (the server's own logs clobbering
+cells the app never repaints — fixed by giving the mirror exclusive stdout).
+Round two: interpretation (the app wrapped glyphs in kitty OSC 66 because
+its capability probe PASSED against the emulator, which faithfully
+implements the protocol, while the user's terminal deletes unknown OSC
+wholesale — glyph included).
+
+**The rules, operative:**
+
+1. **A shared byte stream with two renderers is a differential oracle.**
+   When human eyes and the emulator disagree, do not debug the app — diff
+   the interpreters. What only one of them shows locates the defect class in
+   one step: outside-the-stream writes, or capability-dependent encoding.
+2. **A faithful emulator is the wrong terminal to negotiate against when a
+   less capable one is watching.** Any relay that lets an app negotiate with
+   interpreter A while rendering on interpreter B must force negotiation to
+   the least capable link, or the app emits what B cannot draw. This
+   defect class is STRUCTURALLY invisible to the gate: every smoke passes,
+   because the oracle that grades the output is the same one that answered
+   the probe.
+3. **A stream owner owns the stream exclusively.** One log line written to a
+   terminal mid-frame clobbers cells that damage-tracked repaint will never
+   repair. Diagnostics of a mirrored/relayed UI go to a file, never stdout.
+4. **Read the bytes before modeling the renderer.** Four hypotheses about
+   env, settings, fonts, and color died politely; sixty bytes of hexdump
+   around one missing glyph ended the argument (`\x1b]66;w=1;≡\x1b\\`).

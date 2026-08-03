@@ -36,3 +36,28 @@ changes that row.
 
 `Public classes use the namespace pattern` (project.invariants.md).
 This is a live violation, not drift.
+
+## HELD from gating 2026-08-02 — deliberate, not forgotten
+
+Delivered READY at `a80c75c0`. NOT gated and NOT landed, on purpose.
+
+#457 is measuring gate determinism by RUNNING GATES on unchanged
+commits. A concurrent gate from this task would add load to exactly the
+measurement that decides whether the gate can be trusted. The user's
+standing goal is a solid deterministic gate, and that outranks landing
+a small hygiene fix a few hours sooner.
+
+Land this once #457 reports its acceptance runs.
+
+## Two conductor-map findings from its Bycatch — both correct, both mine
+
+1. The brief ordered `bun scripts/harness/smoke-animated-media-harness.ts`.
+   **That file does not exist.** The only media harness is
+   `scripts/harness/smoke-media-harness.ts`. An instruction is an
+   assertion; this one was never run before being handed over.
+2. The brief's invariant list omitted the colocated
+   `src/modules/media/media.invariants.md` while the task changes
+   `src/modules/media/`. Path-implication should have caught it. The
+   builder reviewed all six records anyway.
+
+Both are defects in briefing, not in the work.

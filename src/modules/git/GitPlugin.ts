@@ -131,7 +131,7 @@ class $GitPlugin
     ]);
     this.paneContent = new GitPaneContent.Class(
       context,
-      () => this.activeWorkspace(),
+      () => this.activeWorkspace,
       this.splitRatioSetting.value.value,
     );
     context.registerPrimaryDockContent(this.paneContent);
@@ -175,7 +175,7 @@ class $GitPlugin
     return controller;
   }
 
-  protected activeWorkspace(): GitWorkspace.Model {
+  get activeWorkspace(): GitWorkspace.Model {
     const application = this.application;
     if (!application) {
       throw new Error('Source-control application contribution is not active');
@@ -212,7 +212,7 @@ class $GitPlugin
   }
 
   protected registerCommands(context: ApplicationContributionContext): void {
-    const active = () => this.activeWorkspace();
+    const active = () => this.activeWorkspace;
     const show = (): void => {
       if (!this.paneContent) return;
       context.primaryDockHost.showContent(this.paneContent.id);
@@ -414,8 +414,7 @@ class $GitPlugin
   protected statusSnapshot(): Partial<StatusSnapshot> {
     const application = this.application;
     if (!application) return {};
-    const workspace = this.activeWorkspace();
-    const repository = workspace.repository.value;
+    const workspace = this.activeWorkspace;
     const comparisonView = this.comparisonSurface?.comparisonView ?? null;
     return {
       // The transient-comparison projection the driven smokes read. It lives here because the
@@ -457,11 +456,7 @@ class $GitPlugin
       gitRegion: workspace.panel.region.value,
       gitSelectedPaths: [...workspace.panel.selectedPaths.value],
       gitSplitRatio: workspace.splitRatio,
-      gitChangedCount: repository
-        ? repository.staged.value.length +
-          repository.unstaged.value.length +
-          repository.untracked.value.length
-        : 0,
+      gitChangedCount: workspace.changedCount,
       currentLineBlameAuthor: workspace.activeLineBlame?.author ?? '',
     };
   }

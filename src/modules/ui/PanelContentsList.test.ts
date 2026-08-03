@@ -129,6 +129,34 @@ test('the pinned list width can shrink and clamps to its declared bounds', () =>
   expect(list.width).toBe(40);
 });
 
+// invariant: The add control keeps one button appearance (src/modules/ui/ui.invariants.md)
+// This test used to assert the OPPOSITE: that an emptied list swapped its button
+// for the bare words "Add Terminal". The user reported that exact behaviour as the
+// defect — the only way back looked like a label, not a control — so the contract
+// changed and the test changed with it.
+test('the add control keeps one button form whether or not instances remain', () => {
+  const host = new PanelHost.Class();
+  host.visible.value = true;
+  const list = new PanelContentsList.Class(host);
+  const palette = ThemePalettes.Class.DARK;
+  const glyphs = ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
+  const renderText = (): string =>
+    list
+      .render(palette, glyphs)
+      .chunks.map((chunk) => chunk.text)
+      .join('');
+
+  expect(list.visible).toBe(true);
+  // Empty: the button is present, in its button form, NOT as bare label text.
+  expect(renderText()).toContain('+ Terminal');
+  expect(renderText()).not.toContain('Add Terminal');
+
+  // Occupied: the same control, unchanged.
+  host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
+  expect(renderText()).toContain('+ Terminal');
+  expect(renderText()).not.toContain('Add Terminal');
+});
+
 test('the list selects visibility among multiple open instances of one kind', () => {
   const host = new PanelHost.Class();
   host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));

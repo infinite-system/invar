@@ -80,13 +80,26 @@ class $PanelContentsList {
     palette: Palette,
     glyphVocabulary: InterfaceGlyphVocabulary,
   ): StyledText {
-    const headerText = `+ ${this.headerLabel} ▾`;
-    const chunks: TextChunk[] = [
-      fg(palette.fg)(
-        `${WrapText.Class.clipToWidth(headerText, this.width, '…')}\n\n`,
-      ),
-    ];
     const rows = this.rows;
+    // invariant: The add control keeps one button appearance (src/modules/ui/ui.invariants.md)
+    // ONE control in ONE form, whether or not the list has rows. An emptied list
+    // used to swap this button for the bare words "Add Terminal", which reads as a
+    // label: the user could not tell the only way back was clickable.
+    const headerText = `+ ${this.headerLabel} ▾`;
+    const headerBody = WrapText.Class.clipToWidth(headerText, this.width, '…');
+    const headerPadding = ' '.repeat(
+      Math.max(0, this.width - WrapText.Class.displayWidth(headerBody)),
+    );
+    const chunks: TextChunk[] = [
+      // A full-width bar in the accent tone on the selection ground: it reads as
+      // a control rather than as text that happens to start with a plus. The bar
+      // starts at the list's own first column, so every row control below it
+      // keeps its column arithmetic — a leading pad here shifts the whole list.
+      bg(palette.selection)(
+        fg(palette.accent)(`${headerBody}${headerPadding}`),
+      ),
+      fg(palette.fg)('\n\n'),
+    ];
     rows.forEach((row, rowIndex) => {
       const groupMark =
         row.memberCount === 1

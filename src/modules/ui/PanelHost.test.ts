@@ -565,7 +565,7 @@ test('showContent selects the owning space and group before it focuses content',
   host.register(agent);
   host.split(['terminal', 'agent']);
   host.show();
-  host.registerShared(database);
+  host.register(database);
 
   host.showContent('database');
 
@@ -635,6 +635,62 @@ test('closing an instance disposes it and selects a surviving open session', () 
   ]);
 });
 
+test('closing the last instance keeps the panel open with its list visible', () => {
+  const host = new PanelHost.Class();
+  host.register(fakeContent('terminal', 'terminal'));
+  host.showContent('terminal');
+  host.panelListExpanded.value = false;
+
+  host.removeContent('terminal');
+
+  expect(host.orderedContents).toEqual([]);
+  expect(host.resolvedCells).toEqual([]);
+  expect(host.visible.value).toBe(true);
+  expect(host.panelListVisible).toBe(true);
+});
+
+test('workspace restore rejects registered content with no reachable row', () => {
+  const host = new PanelHost.Class();
+  host.register(fakeContent('terminal', 'terminal'));
+
+  expect(() =>
+    host.restoreWorkspaceState({
+      spaces: [],
+      activeSpaceIndex: 0,
+      panelListExpanded: true,
+      panelListWidth: 20,
+      visible: true,
+    }),
+  ).toThrow('Registered panel content has no reachable row: terminal');
+
+  expect(() =>
+    host.restoreWorkspaceState({
+      spaces: host.spaces.value,
+      activeSpaceIndex: 0,
+      panelListExpanded: true,
+      panelListWidth: 20,
+      visible: true,
+    }),
+  ).not.toThrow();
+});
+
+test('container close requests confirmation with its live instance count', () => {
+  const requests: { identifier: string; instanceCount: number }[] = [];
+  const host = new PanelHost.Class({
+    requestCloseSpace: (identifier, instanceCount) =>
+      requests.push({ identifier, instanceCount }),
+  });
+  host.register(fakeContent('terminal', 'terminal'));
+  host.register(fakeContent('terminal-2', 'terminal'));
+  const identifier = host.activeSpace?.identifier;
+  if (!identifier) throw new Error('The test has no panel container');
+
+  host.closeOpenSpace(identifier);
+
+  expect(requests).toEqual([{ identifier, instanceCount: 2 }]);
+  expect(host.orderedContents).toHaveLength(2);
+});
+
 test('expanded state toggles only while visible and resets when the panel hides', () => {
   const host = new PanelHost.Class();
   host.register(fakeContent('terminal'));
@@ -656,7 +712,7 @@ test('each workspace restores its active space and retained split independently'
   host.register(firstTerminal);
   host.split(['agent', 'terminal']);
   const database = fakeContent('database', 'database');
-  host.registerShared(database);
+  host.register(database);
   const databaseSpace = host.spaces.value.find(
     (space) => space.kind === 'database',
   );
@@ -681,4 +737,94 @@ test('each workspace restores its active space and retained split independently'
   expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
     'database',
   ]);
+});
+
+test('kind removal reaches every workspace panel world', () => {
+  const host = new PanelHost.Class();
+  const firstWorld = host.activeContentSet;
+  const firstDatabase = fakeContent('database@1', 'database');
+  const firstTerminal = fakeContent('terminal@1', 'terminal');
+  host.register(firstDatabase);
+  host.register(firstTerminal);
+
+  const secondWorld = host.createContentSet();
+  host.selectContentSet(secondWorld);
+  const secondDatabase = fakeContent('database@2', 'database');
+  const secondTerminal = fakeContent('terminal@2', 'terminal');
+  host.register(secondDatabase);
+  host.register(secondTerminal);
+
+  host.removeContentsOfKindFromEverySet('database');
+
+  expect(secondDatabase.disposed).toBe(true);
+  expect(secondTerminal.disposed).toBe(false);
+  expect(host.contentsOfKind('database')).toEqual([]);
+  host.selectContentSet(firstWorld);
+  expect(firstDatabase.disposed).toBe(true);
+  expect(firstTerminal.disposed).toBe(false);
+  expect(host.contentsOfKind('database')).toEqual([]);
+});
+
+// invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
+// The user closed every terminal in the terminal space and the panel showed the Database
+// plugin's pane instead of an empty terminal space offering Add. Two mechanisms produced it:
+// the emptied space was pruned, and the last-cell fallback promoted orderedContents[0] across
+// the WHOLE registry rather than the active space.
+test('emptying a space keeps the space and never promotes another space content', () => {
+  const host = new PanelHost.Class();
+  const firstTerminal = fakeContent('pane-instance-1', 'terminal');
+  const secondTerminal = fakeContent('pane-instance-2', 'terminal');
+  const database = fakeContent('database', 'database');
+  host.register(firstTerminal);
+  host.register(secondTerminal);
+  host.register(database);
+  // The database sits in its own space, exactly as a plugin tab does; both
+  // terminals stay together in the space the user is looking at.
+  host.createSpaceForContent('database');
+  const terminalSpaceIdentifier = host.spaces.value.find((space) =>
+    space.contentIds.includes('pane-instance-1'),
+  )?.identifier;
+  expect(terminalSpaceIdentifier).toBeDefined();
+  host.selectSpace(terminalSpaceIdentifier as string);
+  host.activate('pane-instance-1');
+  expect(terminalSpaceIdentifier).not.toBeNull();
+
+  host.closeOpenContent('pane-instance-1');
+  host.closeOpenContent('pane-instance-2');
+
+  // The space the user emptied is still here and still active.
+  expect(host.activeSpaceId.value).toBe(terminalSpaceIdentifier as string);
+  expect(
+    host.spaces.value.some(
+      (space) => space.identifier === terminalSpaceIdentifier,
+    ),
+  ).toBe(true);
+  // Nothing from another space was promoted into it.
+  expect(host.activeId.value).toBeNull();
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([]);
+  // The database itself was never touched: it is still registered, in its own space.
+  expect(host.has('database')).toBe(true);
+});
+
+// The ABSENT arm: a space with content left must still promote a survivor from its OWN space,
+// so the fix above cannot pass by simply never promoting anything.
+test('closing one of several instances still promotes a survivor of the same space', () => {
+  const host = new PanelHost.Class();
+  const firstTerminal = fakeContent('pane-instance-1', 'terminal');
+  const secondTerminal = fakeContent('pane-instance-2', 'terminal');
+  const database = fakeContent('database', 'database');
+  host.register(firstTerminal);
+  host.register(secondTerminal);
+  host.register(database);
+  host.createSpaceForContent('database');
+  const terminalSpace = host.spaces.value.find((space) =>
+    space.contentIds.includes('pane-instance-1'),
+  );
+  host.selectSpace(terminalSpace?.identifier as string);
+  host.activate('pane-instance-1');
+
+  host.closeOpenContent('pane-instance-1');
+
+  expect(host.activeId.value).toBe('pane-instance-2');
+  expect(host.has('database')).toBe(true);
 });

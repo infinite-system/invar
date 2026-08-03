@@ -1,0 +1,18 @@
+{
+  "task": 476,
+  "slug": "reload-keeps-a-disposed-session-on-boot-failure",
+  "branch": "fleet/476-reload-keeps-a-disposed-session-on-boot-failure",
+  "worktree": ".invar/worktrees/476-reload-keeps-a-disposed-session-on-boot-failure",
+  "tmuxSession": "invar/476-reload-keeps-a-disposed-session-on-boot-failure",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-476-reload-keeps-a-disposed-session-on-boot-failure.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "c15e3d351ca81b797001413b7ea209eea3fda3f4",
+  "startedAt": "2026-08-03T03:40:03-04:00",
+  "landedAt": "2026-08-03T04:14:58-04:00",
+  "durationMinutes": 34,
+  "mergeCommit": "305185c5"
+}

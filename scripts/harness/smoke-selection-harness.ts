@@ -176,14 +176,21 @@ try {
   pass('click paints the selected tree token with exact truecolor background');
 
   const hoverTarget = markerPosition(snapshot, 'directory-05');
+  const treeHoverTargetRowBefore = JSON.stringify(
+    snapshot.rowCells(hoverTarget.row),
+  );
   driver.sendMouse({
     kind: 'move',
     column: hoverTarget.column,
     row: hoverTarget.row,
     button: 'none',
   });
-  snapshot = await driver.awaitSnapshot((candidate) =>
-    markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
+  snapshot = await driver.awaitGridCondition(
+    'hover decorates directory-05 while directory-15 stays selected',
+    (candidate) =>
+      JSON.stringify(candidate.rowCells(hoverTarget.row)) !==
+        treeHoverTargetRowBefore &&
+      markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
   );
   pass('hover leaves the item selection anchored');
 
@@ -194,8 +201,11 @@ try {
     row: selectedTreePosition.row,
     direction: 'down',
   });
-  snapshot = await driver.awaitSnapshot((candidate) =>
-    markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
+  snapshot = await driver.awaitGridCondition(
+    'wheel moves directory-15 while its selected background stays painted',
+    (candidate) =>
+      candidate.findText('directory-15')?.row !== selectedTreePosition.row &&
+      markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
   );
   pass('wheel moves the viewport while the highlight travels with its item');
 
@@ -263,8 +273,11 @@ try {
     'staging hover leaves the following row byte-identical',
   );
   clickMarker(driver, snapshot, 'file-10.txt');
-  snapshot = await driver.awaitSnapshot((candidate) =>
-    markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
+  snapshot = await driver.awaitGridCondition(
+    'the clicked file opens while its dim selection stays painted',
+    (candidate) =>
+      candidate.findText('base 10') !== null &&
+      markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
   );
   pass('opening a clicked change preserves its dim selection');
 
@@ -312,8 +325,11 @@ try {
     row: selectedCommitPosition.row,
     direction: 'down',
   });
-  await driver.awaitSnapshot((candidate) =>
-    markerHasBackground(candidate, 'commit-14', focusedSelectionColor),
+  await driver.awaitGridCondition(
+    'wheel moves commit-14 while its selected background stays painted',
+    (candidate) =>
+      candidate.findText('commit-14')?.row !== selectedCommitPosition.row &&
+      markerHasBackground(candidate, 'commit-14', focusedSelectionColor),
   );
   pass('commit selection remains item-anchored across wheel scroll');
   driver.sendKeys('Control+Shift+j');

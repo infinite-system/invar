@@ -1,0 +1,20 @@
+{
+  "task": 481,
+  "slug": "shared-machinery-waits-and-drive-gesture-deletion",
+  "branch": "fleet/481-shared-machinery-waits-and-drive-gesture-deletion",
+  "worktree": ".invar/worktrees/481-shared-machinery-waits-and-drive-gesture-deletion",
+  "tmuxSession": "invar/481-shared-machinery-waits-and-drive-gesture-deletion",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-481-shared-machinery-waits-and-drive-gesture-deletion.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "9224a2b838185dd8b4c5a07206c32451c4e705d7",
+  "startedAt": "2026-08-03T05:29:59-04:00",
+  "round": 2,
+  "roundBriefedAtMs": 1785749842585,
+  "landedAt": "2026-08-03T06:04:54-04:00",
+  "durationMinutes": 34,
+  "mergeCommit": "e3e3316a"
+}

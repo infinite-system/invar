@@ -71,8 +71,11 @@ async function scrollUntilVisible(
   driver: PtyTestDriver.Model,
   marker: string,
 ): Promise<HarnessSnapshot.Model> {
+  let snapshot = await driver.awaitCompletedGridCondition(
+    `the completed shortcut sheet is visible while seeking ${marker}`,
+    (candidate) => shortcutSheetVisibleRange(candidate) !== null,
+  );
   for (let scrollAttempt = 0; scrollAttempt < 8; scrollAttempt++) {
-    const snapshot = driver.snapshot();
     if (snapshot.findText(marker)) return snapshot;
     const visibleRangeBeforeScroll = shortcutSheetVisibleRange(snapshot);
     if (!visibleRangeBeforeScroll) {
@@ -87,8 +90,8 @@ async function scrollUntilVisible(
         `FAIL shortcut sheet reached its final row without showing ${marker}`,
       );
     }
-    driver.sendKeys('PageDown');
-    await driver.awaitGridCondition(
+    const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+      ['PageDown'],
       `PageDown advances the shortcut sheet beyond row ` +
         `${visibleRangeBeforeScroll.firstRow} while seeking ${marker}`,
       (candidate) => {
@@ -99,6 +102,7 @@ async function scrollUntilVisible(
         );
       },
     );
+    snapshot = measurement.snapshot;
   }
   throw new Error(`FAIL shortcut sheet never showed ${marker}`);
 }
@@ -126,26 +130,23 @@ async function openWithHelpChord(
   driver: PtyTestDriver.Model,
   statusPath: string,
 ): Promise<void> {
-  for (let deliveryAttempt = 0; deliveryAttempt < 3; deliveryAttempt++) {
-    driver.sendKeysWithoutFrameExpectation('Control+Shift+h');
-    try {
-      await HarnessSmoke.Class.awaitStatusWithoutFrame(
-        driver,
-        statusPath,
-        'status condition: status.shortcutHelpOpen === true',
-        (status) => status.shortcutHelpOpen === true,
-        750,
-      );
-      await driver.awaitSnapshot(
-        (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
-      );
-      return;
-    } catch {
-      await Bun.sleep(200);
-    }
-  }
-  throw new Error(
-    'FAIL Ctrl+Shift+H did not open the shortcut sheet after three PTY deliveries',
+  driver.sendKeys('Control+Shift+h');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.shortcutHelpOpen === true',
+    (status) => status.shortcutHelpOpen === true,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
+  );
+  await driver.awaitCompletedGridCondition(
+    'the reopened shortcut sheet reaches a complete synchronized frame',
+    (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
+  );
+  await driver.awaitGridCondition(
+    'the reopened shortcut sheet publishes its visible row range',
+    (snapshot) => shortcutSheetVisibleRange(snapshot) !== null,
   );
 }
 

@@ -108,7 +108,7 @@ class $FileTreeContributor
   protected createPaneContent(
     context: ApplicationContributionContext,
   ): FileTreePaneContent.Model {
-    return new FileTreePaneContent.Class(context, () => this.activeWorkspace());
+    return new FileTreePaneContent.Class(context, () => this.activeWorkspace);
   }
 
   disposeApplication(): void {
@@ -130,7 +130,7 @@ class $FileTreeContributor
     return controller;
   }
 
-  protected activeWorkspace(): FileTreeWorkspace.Model {
+  get activeWorkspace(): FileTreeWorkspace.Model {
     const application = this.application;
     if (!application) {
       throw new Error('File-tree application contribution is not active');
@@ -139,7 +139,7 @@ class $FileTreeContributor
   }
 
   protected registerCommands(context: ApplicationContributionContext): void {
-    const active = () => this.activeWorkspace();
+    const active = () => this.activeWorkspace;
     const show = (): void => {
       context.primaryDockHost.showContent('files');
       context.workspaceSet.active.focusPrimaryPane('files');
@@ -224,9 +224,10 @@ class $FileTreeContributor
   protected statusSnapshot(): Partial<StatusSnapshot> {
     const application = this.application;
     if (!application) return {};
-    const tree = this.activeWorkspace().tree;
+    const workspace = this.activeWorkspace;
+    const tree = workspace.tree;
     return {
-      treeRows: tree.rows.length,
+      treeRows: workspace.rowCount,
       treeSelected: tree.selectedIndex.value,
       treeScrollTop: tree.scrollTop.value,
       treeHovered: tree.hoveredIndex.value,

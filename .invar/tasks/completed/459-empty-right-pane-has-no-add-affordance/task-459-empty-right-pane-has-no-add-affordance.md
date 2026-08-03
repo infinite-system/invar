@@ -1,7 +1,7 @@
 # #459 — an emptied panel keeps its space, hides its list, and offers no way back
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — bc367e17 — Unreachable panel registration made impossible at the factory seam; empty panel keeps its Add row; instance close no longer confirms. Phantom pane had been silently satisfying a layout-isolation wait.
 Engine: codex
 Environment: any
 Model: 5.6-sol
@@ -139,3 +139,28 @@ Report per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. Write the
   chose the "Add terminal" affordance over closing the space. Quote:
   "If there are 0 instances in right pane, there should be a message,
   Add terminal". Implement that; do not close the panel instead.
+
+## Bycatch inherited from #457 (2026-08-02) — two panel defects, both reproduced
+
+#457's determinism work drove the panel surfaces hard under load and found
+two defects that belong to this task, not to the gate:
+
+1. **`panel-chrome` fails under contention.** It passed only on retry in two
+   acceptance runs and failed both attempts in another, then failed as a
+   report-only job in runs 4 and 5 of the definitive series — on an
+   UNCHANGED commit. #457 moved it to the report-only contention tier, so it
+   no longer blocks a merge. That is a stay of execution, not an acquittal:
+   this task owns the product fix. NOTE: this is the same red that blocked
+   #459's own gate (anchor 39) — re-gate on the new gate before assuming it
+   still blocks.
+
+2. **Plugin-manifest panel geometry.** The wait `the structure scrollbar
+   publishes its settled dock-height geometry` timed out on BOTH attempts of
+   a FAST gate and later caused behavioral-contract retries. Only this panel
+   lifecycle failed inside an otherwise green behavioral contract suite.
+   `scripts/behavioral-contracts.sh` stays blocking and skips only this
+   independently registered loaded job.
+
+For both: the mechanism #457 found in the shortcut sheet is the first
+hypothesis to test — a wait reading the LIVE emulator via `snapshot()`
+instead of a completed synchronized frame. Do not widen a budget.

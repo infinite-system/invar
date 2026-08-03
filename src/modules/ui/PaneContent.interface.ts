@@ -55,8 +55,6 @@ export interface PaneContent {
   readonly keybindingContext?: string;
   /** Rows the host reserves above this content for controls owned by the pane frame. */
   readonly frameHeaderRows?: number;
-  /** Create another independently configured instance when this pane kind supports parallel use. */
-  createInstance?(identifier: string, label: string): PaneContent;
   /** Optional veto on an action resolved in this content's own keybinding context. A content that
    *  declines lets the keystroke fall through to `handleKey` as raw input — that is how a terminal
    *  selection owns Ctrl+C while an empty selection still sends SIGINT to the child. Absent means

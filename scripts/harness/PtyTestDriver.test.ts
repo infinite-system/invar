@@ -200,6 +200,27 @@ describe('PtyTestDriver.awaitGridCondition', () => {
     }
   });
 
+  test('refuses a pre-satisfied condition when the caller requires false now', async () => {
+    const driver = createRecordedStreamDriver(['ALREADY READY']);
+    try {
+      await driver.awaitScreenChange();
+      await expect(
+        driver.awaitGridCondition(
+          'the recorded grid changes to READY',
+          (candidateSnapshot) => candidateSnapshot.findText('READY') !== null,
+          100,
+          undefined,
+          true,
+        ),
+      ).rejects.toThrow(
+        'Cannot await grid condition already satisfied before the wait: ' +
+          'the recorded grid changes to READY',
+      );
+    } finally {
+      await driver.dispose();
+    }
+  });
+
   test('checks each completed recorded frame until the condition is satisfied', async () => {
     const driver = createRecordedStreamDriver([
       'FIRST',
@@ -384,6 +405,48 @@ describe('PtyTestDriver completed-frame observations', () => {
       expect(
         completedFrames[1]?.snapshot.findText('SECOND FRAME'),
       ).not.toBeNull();
+    } finally {
+      await driver.dispose();
+    }
+  });
+
+  test('completed-grid waits do not expose an incomplete synchronized frame', async () => {
+    const incompleteFrameText = 'INCOMPLETE NEXT FRAME';
+    const recordedStreamProgram = `
+      process.stdin.setRawMode?.(true);
+      process.stdin.resume();
+      process.stdout.write(${JSON.stringify(recordedFrame('COMPLETE FRAME'))});
+      await Bun.sleep(80);
+      process.stdout.write(
+        ${JSON.stringify(beginSynchronizedOutput + '\x1b[2J\x1b[H' + incompleteFrameText)},
+      );
+      await Bun.sleep(1_000);
+    `;
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: process.cwd(),
+      repositoryRoot: process.cwd(),
+      columns: 40,
+      rows: 4,
+      command: [process.execPath, '-e', recordedStreamProgram],
+    });
+    try {
+      expect(driver.outputSequenceCount(incompleteFrameText)).toBe(0);
+      await driver.awaitGridCondition(
+        'the recorded stream reaches its complete frame',
+        (snapshot) => snapshot.findText('COMPLETE FRAME') !== null,
+      );
+      await driver.awaitOutputCondition(
+        'the incomplete next frame bytes reach the harness',
+        () => driver.outputSequenceCount(incompleteFrameText) === 1,
+      );
+      const snapshot = await driver.awaitCompletedGridCondition(
+        'the completed grid remains at the last completed synchronized frame',
+        (candidate) => candidate.findText('COMPLETE FRAME') !== null,
+        100,
+      );
+      expect(snapshot.findText(incompleteFrameText)).toBeNull();
+      expect(driver.snapshot().findText(incompleteFrameText)).not.toBeNull();
+      expect(driver.completedFrameObservationCount).toBe(1);
     } finally {
       await driver.dispose();
     }

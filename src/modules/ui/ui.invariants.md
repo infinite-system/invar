@@ -2550,6 +2550,80 @@ scripts/harness/smoke-paste-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### The add control keeps one button appearance
+
+**Invariant:** If a panel instances list is visible, then its add control paints in one button
+form, whether or not the list holds rows, and the content area beside it states what to do when
+it holds none.
+
+**Scope:** `PanelContentsList` header projection and the panel content area's empty notice.
+
+**Mechanism:** The header renders `+ <label> ▾` on a full-width accent bar at the list's own
+first column, with no leading pad, so the control reads as a target AND every row control below
+it keeps its column arithmetic. When the panel resolves no cells, `RootView` mounts a dim notice
+in the content area rather than leaving a void, in the same shape the editor column uses when no
+editor is installed.
+
+**Generates:** An emptied panel a user can recover from without guessing: the button is where it
+always was, and the empty area names the gesture.
+
+**Rejected alternatives:** Swapping the button for the bare words `Add Terminal` when the list
+empties — the user reported this exact behaviour as the defect: the only way back looked like a
+label. Padding the button on its left — a one-cell leading pad shifts the anchor every row
+control resolves from, which silently moved the close target one column off.
+
+**Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/RootView.ts`
+(`panelEmptyNotice`); `src/modules/ui/PanelContentsList.test.ts`, whose assertion was inverted
+when this contract changed.
+
+**Impossible if true:** An instances list showing no add control, or showing it as plain text; a
+panel with zero instances painting an unexplained empty region.
+
+**Verification:** `bun test src/modules/ui/PanelContentsList.test.ts` and
+`bun scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-03
+
+### An emptied space survives its last instance
+
+**Invariant:** If the last instance of a panel space closes, then the space itself remains, stays
+active, and offers to add another instance. Only the space's own close gesture removes it.
+
+**Scope:** `PanelHost.detachContent` pruning and last-cell fallback, for every workspace-local
+space regardless of kind. `closeSpace` is the deliberate container-close path and is unaffected.
+
+**Mechanism:** Closing an instance and closing a container are different gestures with different
+blast radius. Two seams enforce it. The space list keeps a space that is active even when its
+content list empties, so the panel cannot silently adopt another plugin's space. The last-cell
+fallback searches only the ACTIVE SPACE's content identifiers, so it can never promote a pane
+belonging to another space into the space the user is looking at.
+
+**Generates:** The empty-panel Add row — an emptied terminal space still knows it is a terminal
+space, so its Add control offers terminals. It also generates the rule that a plugin's pane can
+never appear under another plugin's tab.
+
+**Rejected alternatives:** Pruning an emptied space and letting the panel fall back to the first
+remaining space — that is the defect this record forbids: closing the last terminal surfaced a
+Database pane the user never opened, in the tab they opened for terminals. Promoting
+`orderedContents[0]` on the last close — the registry spans every space, so the fallback reached
+outside the space that owned the gesture.
+
+**Evidence:** `src/modules/ui/PanelHost.ts` (`detachContent` space retention and space-scoped
+fallback); `src/modules/ui/PanelHost.test.ts`, whose two arms both fail when either half is
+reverted: the space must survive AND a same-space survivor must still be promoted.
+
+**Impossible if true:** A user closing the last instance of one space can never be shown content
+belonging to a different space, and can never lose the tab they opened.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts`. Delete either half of the fix in
+`detachContent`; the suite must go red.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-02
+
 ### Every registered panel content is reachable
 
 **Invariant:** If a panel content identifier is registered in a workspace, then it belongs to
@@ -2576,17 +2650,20 @@ after a user has already seen a pane they cannot close. Rendering registered-but
 as a cell — that invents membership the persisted state never expressed, and is how a Database pane
 nobody added became visible.
 
-**Evidence:** `src/modules/ui/PanelContentFactories.ts` and its test; `PanelHost.test.ts` restore
-cases; `.invar/tasks/active/459-empty-right-pane-has-no-add-affordance/probe-459-empty-dock.ts`,
-which printed the defect before the repair: `panelContentIds` held `database` while `panelCellIds`
+**Evidence:** `src/modules/ui/PanelContentFactories.ts` and
+`src/modules/ui/PanelContentFactories.test.ts`; `src/modules/ui/PanelHost.test.ts` restore
+cases; `scripts/harness/smoke-panel-split-harness.ts`, which drives the empty panel and the
+registered-but-unreachable guard. The probe that printed the defect before the repair is
+`probe-459-empty-dock.ts` in this task's folder: `panelContentIds` held `database` while `panelCellIds`
 and the list rows did not, and it survived closing every terminal.
 
 **Impossible if true:** No registered content identifier may be absent from every panel space and
 group. A user can never observe a pane with no row and no way to close it.
 
 **Verification:** Restore a workspace whose persisted panel state names a content belonging to no
-space; the registration must be rejected rather than surfaced. Then drive
-`probe-459-empty-dock.ts`: `panelContentIds` and the projected rows must name the same set.
+space; the registration must be rejected rather than surfaced. Then run
+`bun scripts/harness/smoke-panel-split-harness.ts`: `panelContentIds` and the projected rows
+must name the same set, and an emptied panel must keep its Add row.
 
 **Status:** provisional
 

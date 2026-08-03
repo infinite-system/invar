@@ -131,7 +131,7 @@ class $Drive {
       await driver.awaitScreenChange(options.timeoutMilliseconds);
 
       if (target.filePath) {
-        await this.openFile(
+        await HarnessSmoke.Class.openFileThroughQuickOpen(
           driver,
           statusPath,
           target.filePath,
@@ -269,8 +269,6 @@ class $Drive {
         );
       } else if (argument === '--cells') {
         cellDumps.push(this.parseCellDump(value));
-      } else if (argument === '--gesture') {
-        actions.push(...this.gestureActions(value));
       } else if (argument === '--timeout') {
         timeoutMilliseconds = this.parsePositiveInteger(value, '--timeout');
       } else if (argument === '--home') {
@@ -320,41 +318,6 @@ class $Drive {
     if (to < from)
       throw new Error(`Invalid --cells ${value}: COLUMN_TO < COLUMN_FROM`);
     return { row, from, to };
-  }
-
-  /** Named user gestures with their condition waits built in — the fluent verbs. */
-  protected static gestureActions(name: string): DriveAction[] {
-    const gestures: Record<string, DriveAction[]> = {
-      openPanel: [
-        {
-          kind: 'key',
-          keyName: 'Control+j',
-          completion: {
-            kind: 'status',
-            fieldName: 'panelVisible',
-            expectedValue: true,
-          },
-        },
-      ],
-      closePanel: [
-        {
-          kind: 'key',
-          keyName: 'Control+j',
-          completion: {
-            kind: 'status',
-            fieldName: 'panelVisible',
-            expectedValue: false,
-          },
-        },
-      ],
-    };
-    const actionsForGesture = gestures[name];
-    if (!actionsForGesture) {
-      throw new Error(
-        `Unknown --gesture ${JSON.stringify(name)}; known: ${Object.keys(gestures).join(', ')}`,
-      );
-    }
-    return actionsForGesture;
   }
 
   protected static defaultKeyCompletion(
@@ -537,17 +500,8 @@ class $Drive {
     options: DriveOptions,
   ): Promise<DriveTarget> {
     if (options.fixtureSize !== null) {
-      const workspaceRoot = mkdtempSync(
-        join(tmpdir(), `invar-drive-fixture-${options.fixtureSize}-`),
-      );
-      const filePath = join(workspaceRoot, `scale-${options.fixtureSize}.txt`);
-      const fixtureLines = Array.from(
-        { length: options.fixtureSize },
-        (_unused, lineIndex) =>
-          `DRIVE-LINE-${String(lineIndex + 1).padStart(6, '0')} ` +
-          `content at scale ${options.fixtureSize}`,
-      );
-      await Bun.write(filePath, fixtureLines.join('\n'));
+      const { workspaceRoot, filePath } =
+        await HarnessSmoke.Class.createDriveScaleFixture(options.fixtureSize);
       return {
         workspaceRoot,
         filePath,
@@ -637,74 +591,6 @@ class $Drive {
       .map((rule) => rule.pendingName);
   }
 
-  protected static async openFile(
-    driver: PtyTestDriver.Model,
-    statusPath: string,
-    filePath: string,
-    timeoutMilliseconds: number,
-  ): Promise<void> {
-    driver.sendKeys('Control+p');
-    await driver.awaitGridCondition(
-      'Quick Open to become visible for the requested file',
-      () => {
-        try {
-          return (
-            HarnessSmoke.Class.readStatus(statusPath).quickOpenOpen === true
-          );
-        } catch {
-          return false;
-        }
-      },
-      timeoutMilliseconds,
-    );
-    driver.sendText(basename(filePath));
-    await driver.awaitGridCondition(
-      `Quick Open to rank the requested file: ${filePath}`,
-      (snapshot) => {
-        try {
-          const status = HarnessSmoke.Class.readStatus(statusPath);
-          return (
-            status.quickOpenQuery === basename(filePath) &&
-            Number(status.quickOpenMatches) >= 1 &&
-            snapshot.findText(basename(filePath)) !== null
-          );
-        } catch {
-          return false;
-        }
-      },
-      timeoutMilliseconds,
-    );
-    driver.sendKeys('Enter');
-    await driver.awaitGridCondition(
-      `the requested file to open: ${filePath}`,
-      () => {
-        try {
-          return (
-            HarnessSmoke.Class.readStatus(statusPath).activeBuffer === filePath
-          );
-        } catch {
-          return false;
-        }
-      },
-      timeoutMilliseconds,
-    );
-    if (HarnessSmoke.Class.readStatus(statusPath).focus !== 'editor') {
-      driver.sendKeys('Tab');
-      await driver.awaitGridCondition(
-        'the opened file editor to receive focus',
-        () => {
-          try {
-            return HarnessSmoke.Class.readStatus(statusPath).focus === 'editor';
-          } catch {
-            return false;
-          }
-        },
-        timeoutMilliseconds,
-      );
-    }
-    await driver.awaitScreenChange(timeoutMilliseconds);
-  }
-
   protected static async performAction(
     driver: PtyTestDriver.Model,
     statusPath: string,
@@ -728,8 +614,7 @@ class $Drive {
       resolvedAction.target.kind !== 'coordinates'
     ) {
       console.error(
-        `drive resolved ${resolvedAction.target.kind} ` +
-          `${JSON.stringify(resolvedAction.target.text)} to ` +
+        `drive resolved ${this.clickTargetDescription(resolvedAction.target)} to ` +
           `${resolvedAction.resolvedPosition.column},` +
           `${resolvedAction.resolvedPosition.row}`,
       );
@@ -793,6 +678,32 @@ class $Drive {
       );
       return;
     }
+    if (completion.kind === 'status-excludes') {
+      const beforeStatus = HarnessSmoke.Class.readStatus(statusPath);
+      const beforeList = beforeStatus[completion.fieldName];
+      if (
+        !Array.isArray(beforeList) ||
+        !beforeList.includes(completion.value)
+      ) {
+        throw new Error(
+          `Cannot wait for ${completion.fieldName} to drop ` +
+            `${JSON.stringify(completion.value)} before ` +
+            `${this.actionDescription(resolvedAction)}: it is not there now`,
+        );
+      }
+      this.sendAction(driver, resolvedAction, columns, rows);
+      await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        driver,
+        statusPath,
+        `${this.actionDescription(resolvedAction)} drops ` +
+          `${JSON.stringify(completion.value)} from ${completion.fieldName}`,
+        (status) => {
+          const list = status[completion.fieldName];
+          return Array.isArray(list) && !list.includes(completion.value);
+        },
+      );
+      return;
+    }
     if (completion.kind === 'status') {
       const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
       if (
@@ -820,7 +731,11 @@ class $Drive {
           ),
         timeoutMilliseconds,
       );
-      await driver.awaitScreenChange(timeoutMilliseconds);
+      await this.awaitSettledObservation(
+        driver,
+        statusPath,
+        timeoutMilliseconds,
+      );
       return;
     }
     this.sendAction(driver, resolvedAction, columns, rows);
@@ -870,6 +785,14 @@ class $Drive {
       `No fold-control role precedes visible text: ${target.text}\n` +
         snapshot.rowText(textPosition.row),
     );
+  }
+
+  /** One name for a click target, whatever kind it is — used in logs and waits. */
+  protected static clickTargetDescription(target: DriveClickTarget): string {
+    if (target.kind === 'coordinates') {
+      return `${target.column},${target.row}`;
+    }
+    return `${target.kind}=${JSON.stringify(target.text)}`;
   }
 
   protected static editorClampTarget(
@@ -998,15 +921,10 @@ class $Drive {
     if (action.kind === 'key') return `key ${action.keyName}`;
     if (action.kind === 'type') return `type ${JSON.stringify(action.text)}`;
     if (action.kind === 'hover') {
-      return action.target.kind === 'coordinates'
-        ? `hover ${action.target.column},${action.target.row}`
-        : `hover ${action.target.kind}=${JSON.stringify(action.target.text)}`;
+      return `hover ${this.clickTargetDescription(action.target)}`;
     }
     if (action.kind === 'wheel') return `wheel ${action.direction}`;
-    if (action.target.kind === 'coordinates') {
-      return `click ${action.target.column},${action.target.row}`;
-    }
-    return `click ${action.target.kind}=${JSON.stringify(action.target.text)}`;
+    return `click ${this.clickTargetDescription(action.target)}`;
   }
 
   protected static printObservation(
@@ -1067,7 +985,6 @@ class $Drive {
       '  --frame-silent      declare the preceding action needs no repaint',
       '  --wait-for-text TEXT make the preceding action wait for new visible text',
       '  --wait-for-status FIELD=JSON',
-      '  --gesture NAME       a named user gesture with its wait built in (openPanel, closePanel)',
       '  --home DIR           persistent home directory (kept after the run; state carries across runs)',
       '  --env KEY=VALUE      extra app environment variable; repeatable',
       '  --cells ROW,C1-C2    print chars + bg/fg for a cell range with every observation',
@@ -1144,6 +1061,11 @@ type DriveActionCompletion =
       readonly kind: 'status';
       readonly fieldName: string;
       readonly expectedValue: unknown;
+    }
+  | {
+      readonly kind: 'status-excludes';
+      readonly fieldName: string;
+      readonly value: string;
     };
 
 type DriveClickTarget =

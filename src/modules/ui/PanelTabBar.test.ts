@@ -101,7 +101,7 @@ test('the editor frame owns actions while the panel rows own tabs and frame cont
   expect(projection.editorActions).toEqual([]);
   expect(projection.splitterLeadingWidth).toBe(0);
   expect(projection.tabs[0]?.startColumn).toBe(0);
-  expect(projection.instancesToggle?.endColumn).toBe(78);
+  expect(projection.instancesToggle?.endColumn).toBe(80);
   expect(
     PanelTabBar.Class.spaceAddAtColumn(
       projection,
@@ -128,7 +128,7 @@ test('each container tab pads both sides of its close glyph and shares that hit 
 test('narrow container labels use ellipses without changing painted hit bounds', () => {
   const projection = project(1, 30);
   const text = projection.tabText.chunks.map((chunk) => chunk.text).join('');
-  expect(text).toBe(' Te… ×  Dat… × ');
+  expect(text).toBe(' Ter… ×  Data… × ');
   expect(projection.tabs.at(-1)?.endColumn).toBe(text.length);
   expect(projection.spaceAdd?.startColumn).toBe(text.length);
 });
@@ -141,7 +141,7 @@ test('the splitter keeps only frame controls and the tab row always exposes inst
   ]);
   expect(projection.spaceAdd?.tooltip).toBe('Add Plugin');
   expect(projection.instancesToggle?.tooltip).toBe('Show Instances');
-  expect(projection.instancesToggle?.endColumn).toBe(78);
+  expect(projection.instancesToggle?.endColumn).toBe(80);
 });
 
 test('the drag span paints from the first cell inside its full hit width', () => {
@@ -159,18 +159,18 @@ test('the drag span paints from the first cell inside its full hit width', () =>
   ).toBe(26);
 });
 
-test('the instances toggle owns its right pad and uses bounded superscript counts', () => {
+test('the instances toggle ends the row flush and uses bounded superscript counts', () => {
   const projection = project(12);
   const text = projection.tabControlText.chunks
     .map((chunk) => chunk.text)
     .join('');
 
   expect(text).toContain('≡ ¹² ');
-  expect(projection.instancesToggle?.endColumn).toBe(78);
+  expect(projection.instancesToggle?.endColumn).toBe(80);
   expect(
-    PanelTabBar.Class.instancesToggleAtColumn(projection, 77),
+    PanelTabBar.Class.instancesToggleAtColumn(projection, 79),
   ).toBeDefined();
-  expect(PanelTabBar.Class.instancesToggleAtColumn(projection, 78)).toBeNull();
+  expect(PanelTabBar.Class.instancesToggleAtColumn(projection, 80)).toBeNull();
 
   const capped = project(1000)
     .tabControlText.chunks.map((chunk) => chunk.text)

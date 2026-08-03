@@ -14,6 +14,8 @@
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
 // invariant: A split panel renders every visible cell into its own sub-region (src/modules/ui/ui.invariants.md)
 // invariant: A focused split panel routes keystrokes to the focused cell (src/modules/ui/ui.invariants.md)
+// invariant: The panel contents list mirrors open content (src/modules/ui/ui.invariants.md)
+// invariant: Every registered panel content is reachable (src/modules/ui/ui.invariants.md)
 // invariant: Split arrangement follows panel content order (src/modules/layout/layout.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
@@ -28,7 +30,6 @@ class $PanelHost {
   }
   protected readonly unregisterFromFocusSet: () => void;
   protected readonly contentSets = new Set<PanelContentSet>();
-  protected readonly sharedContents = new Map<string, PaneContent>();
   protected readonly initialContentOrder: string[];
   protected nextPanelGroupNumber = 1;
   protected selectedContentSet: PanelContentSet;
@@ -96,12 +97,11 @@ class $PanelHost {
   get panelListVisible(): boolean {
     return (
       this.visible.value &&
-      this.panelListExpanded.value &&
-      this.activeSpaceContents.length >= 1
+      (this.panelListExpanded.value || this.activeSpaceContents.length === 0)
     );
   }
   get panelCountChipVisible(): boolean {
-    return this.visible.value && this.activeSpaceContents.length >= 1;
+    return this.visible.value;
   }
   get activeSpace(): PanelSpace | null {
     const identifier = this.activeSpaceId.value;
@@ -127,39 +127,18 @@ class $PanelHost {
       ]),
     );
     const contentSet: PanelContentSet = {
-      contents: new Map(this.sharedContents),
-      order: [
-        ...this.initialContentOrder.filter(
-          (identifier) => !ownedIdentifiers.has(identifier),
-        ),
-        ...[...this.sharedContents.keys()].filter(
-          (identifier) => !this.initialContentOrder.includes(identifier),
-        ),
-      ],
+      contents: new Map(),
+      order: this.initialContentOrder.filter(
+        (identifier) => !ownedIdentifiers.has(identifier),
+      ),
       visible: false,
       focused: false,
       expanded: false,
       activeId: null,
       layout: [],
       focusedIndex: 0,
-      spaces: [...this.sharedContents.values()].map((content, index) => ({
-        identifier: `database-space-${index + 1}`,
-        label: index === 0 ? 'Database' : `Database ${index + 1}`,
-        kind: 'database',
-        contentIds: [content.id],
-        activeId: content.id,
-        layout: [],
-        focusedIndex: 0,
-        groups: [
-          {
-            identifier: `database-space-${index + 1}-group-1`,
-            contentIds: [content.id],
-            ratios: [1],
-          },
-        ],
-        activeGroupId: `database-space-${index + 1}-group-1`,
-      })),
-      activeSpaceId: this.sharedContents.size > 0 ? 'database-space-1' : null,
+      spaces: [],
+      activeSpaceId: null,
       panelListExpanded: false,
       panelListWidth: 20,
     };
@@ -191,9 +170,7 @@ class $PanelHost {
     const contentSetIsSelected = contentSet === this.selectedContentSet;
     const focusedContent =
       contentSetIsSelected && this.focused.value ? this.focusedContent : null;
-    const contentInstances = [...contentSet.contents.values()].filter(
-      (content) => !this.sharedContents.has(content.id),
-    );
+    const contentInstances = [...contentSet.contents.values()];
     contentSet.contents.clear();
     contentSet.order = [];
     contentSet.visible = false;
@@ -235,6 +212,17 @@ class $PanelHost {
         this.removeContentFromHiddenSet(contentSet, identifier);
       }
       return;
+    }
+  }
+  /** Remove every pane of one kind from every workspace panel world. */
+  removeContentsOfKindFromEverySet(kind: string): void {
+    const identifiers = [...this.contentSets].flatMap((contentSet) =>
+      [...contentSet.contents.values()]
+        .filter((content) => (content.kind ?? content.id) === kind)
+        .map((content) => content.id),
+    );
+    for (const identifier of identifiers) {
+      this.removeContentFromAnySet(identifier);
     }
   }
   protected synchronizeSelectedContentSet(): void {
@@ -384,6 +372,7 @@ class $PanelHost {
     panelListWidth: number;
     visible: boolean;
   }): void {
+    this.assertRegisteredContentsReachable(options.spaces);
     this.spaces.value = this.cloneSpaces(options.spaces);
     const activeSpace =
       this.spaces.value[
@@ -398,6 +387,21 @@ class $PanelHost {
     this.visible.value = options.visible && activeSpace !== null;
     this.loadActiveSpace();
     this.synchronizeSelectedContentSet();
+  }
+  protected assertRegisteredContentsReachable(
+    spaces: readonly PanelSpace[],
+  ): void {
+    const reachableIdentifiers = new Set(
+      spaces.flatMap((space) => space.contentIds),
+    );
+    const unreachableIdentifiers = [...this.contents.keys()].filter(
+      (identifier) => !reachableIdentifiers.has(identifier),
+    );
+    if (unreachableIdentifiers.length > 0) {
+      throw new Error(
+        `Registered panel content has no reachable row: ${unreachableIdentifiers.join(', ')}`,
+      );
+    }
   }
   groupForContent(identifier: string): PanelGroup | null {
     const space = this.activeSpace;
@@ -468,35 +472,33 @@ class $PanelHost {
     if (!content) return null;
     this.commitActiveSpace();
     const spaceKind = kind ?? this.contentSpaceKind(content);
-    if (spaceKind !== 'database') {
-      for (const space of this.spaces.value) {
-        space.contentIds = space.contentIds.filter(
-          (identifier) => identifier !== contentId,
-        );
-        space.layout = space.layout.filter((cell) => cell.id !== contentId);
-        if (space.groups) {
-          space.groups = space.groups
-            .map((group) => ({
-              ...group,
-              contentIds: group.contentIds.filter(
-                (identifier) => identifier !== contentId,
-              ),
-              ratios: group.contentIds
-                .filter((identifier) => identifier !== contentId)
-                .map(() => 1),
-            }))
-            .filter((group) => group.contentIds.length > 0);
-        }
-        if (space.layout.length < 2) space.layout = [];
-        if (space.activeId === contentId) {
-          space.activeId = space.contentIds[0] ?? null;
-          space.focusedIndex = 0;
-        }
-      }
-      this.spaces.value = this.spaces.value.filter(
-        (space) => space.contentIds.length > 0,
+    for (const space of this.spaces.value) {
+      space.contentIds = space.contentIds.filter(
+        (identifier) => identifier !== contentId,
       );
+      space.layout = space.layout.filter((cell) => cell.id !== contentId);
+      if (space.groups) {
+        space.groups = space.groups
+          .map((group) => ({
+            ...group,
+            contentIds: group.contentIds.filter(
+              (identifier) => identifier !== contentId,
+            ),
+            ratios: group.contentIds
+              .filter((identifier) => identifier !== contentId)
+              .map(() => 1),
+          }))
+          .filter((group) => group.contentIds.length > 0);
+      }
+      if (space.layout.length < 2) space.layout = [];
+      if (space.activeId === contentId) {
+        space.activeId = space.contentIds[0] ?? null;
+        space.focusedIndex = 0;
+      }
     }
+    this.spaces.value = this.spaces.value.filter(
+      (space) => space.contentIds.length > 0,
+    );
     const identifier = this.nextSpaceIdentifier(spaceKind);
     const space: PanelSpace = {
       identifier,
@@ -649,11 +651,6 @@ class $PanelHost {
         remainingVisibleIdentifiers[0] ??
         null;
     }
-    if (contentSet.contents.size === 0) {
-      contentSet.visible = false;
-      contentSet.focused = false;
-      contentSet.expanded = false;
-    }
     if (disposeContent) {
       content.dispose();
       this.options.onContentRemoved?.(content);
@@ -744,62 +741,6 @@ class $PanelHost {
     // dock-style host without stealing keyboard focus from the pane the user is actively driving.
     if (this.options.showWhenContentRegistered) this.visible.value = true;
   }
-  /** Register one application-owned content in every workspace panel world. */
-  registerShared(content: PaneContent): void {
-    if (this.sharedContents.has(content.id)) return;
-    this.sharedContents.set(content.id, content);
-    this.register(content);
-    for (const contentSet of this.contentSets) {
-      if (contentSet === this.selectedContentSet) continue;
-      contentSet.contents.set(content.id, content);
-      if (!contentSet.order.includes(content.id)) {
-        contentSet.order.push(content.id);
-      }
-      if (
-        !contentSet.spaces.some((space) =>
-          space.contentIds.includes(content.id),
-        )
-      ) {
-        const number =
-          contentSet.spaces.filter((space) => space.kind === 'database')
-            .length + 1;
-        contentSet.spaces.push({
-          identifier: `database-space-${contentSet.spaces.length + 1}`,
-          label: number === 1 ? 'Database' : `Database ${number}`,
-          kind: 'database',
-          contentIds: [content.id],
-          activeId: content.id,
-          layout: [],
-          focusedIndex: 0,
-          groups: [
-            {
-              identifier: `database-space-${contentSet.spaces.length + 1}-group-1`,
-              contentIds: [content.id],
-              ratios: [1],
-            },
-          ],
-          activeGroupId: `database-space-${contentSet.spaces.length + 1}-group-1`,
-        });
-        contentSet.activeSpaceId ??= contentSet.spaces[0]?.identifier ?? null;
-      }
-    }
-  }
-  /** Withdraw one application-owned content from every workspace and dispose it once. */
-  removeSharedContent(identifier: string): void {
-    const content = this.sharedContents.get(identifier);
-    if (!content) return;
-    this.sharedContents.delete(identifier);
-    for (const contentSet of this.contentSets) {
-      if (!contentSet.contents.has(identifier)) continue;
-      if (contentSet === this.selectedContentSet) {
-        this.detachContent(identifier);
-      } else {
-        this.removeContentFromHiddenSet(contentSet, identifier, false);
-      }
-    }
-    content.dispose();
-    this.options.onContentRemoved?.(content);
-  }
   /** Whether a content id is registered. */
   has(id: string): boolean {
     return this.contents.has(id);
@@ -810,23 +751,23 @@ class $PanelHost {
   content(id: string): PaneContent | null {
     return this.contents.get(id) ?? null;
   }
-  /** Every registered instance of a shared content kind, in persisted panel order. */
+  /** Every registered instance of one content kind, in persisted panel order. */
   contentsOfKind(kind: string): readonly PaneContent[] {
     return this.orderedContents.filter(
       (content) => (content.kind ?? content.id) === kind,
     );
   }
-  /** First registered instance of a shared content kind, in persisted panel order. */
+  /** First registered instance of one content kind, in persisted panel order. */
   contentOfKind(kind: string): PaneContent | null {
     return this.contentsOfKind(kind)[0] ?? null;
   }
-  /** Every currently visible instance of a shared content kind, in cell order. */
+  /** Every currently visible instance of one content kind, in cell order. */
   visibleContentsOfKind(kind: string): readonly PaneContent[] {
     return this.resolvedCells.flatMap((cell) =>
       (cell.content.kind ?? cell.content.id) === kind ? [cell.content] : [],
     );
   }
-  /** The currently visible instance of a shared content kind. */
+  /** The currently visible instance of one content kind. */
   visibleContentOfKind(kind: string): PaneContent | null {
     return this.visibleContentsOfKind(kind)[0] ?? null;
   }
@@ -1140,10 +1081,7 @@ class $PanelHost {
       (candidate) => candidate.identifier === identifier,
     );
     if (!space) return;
-    const ownedIdentifiers = space.contentIds.filter(
-      (contentIdentifier) => !this.sharedContents.has(contentIdentifier),
-    );
-    for (const contentIdentifier of ownedIdentifiers) {
+    for (const contentIdentifier of space.contentIds) {
       this.removeContent(contentIdentifier);
     }
     const nextSpaces = this.spaces.value.filter(
@@ -1154,8 +1092,22 @@ class $PanelHost {
       this.activeSpaceId.value = nextSpaces[0]?.identifier ?? null;
       this.loadActiveSpace();
     }
-    if (nextSpaces.length === 0) this.hide();
     this.options.persistWorkspaceState?.();
+  }
+  /** Ask before closing one outer content container and all of its instances. */
+  closeOpenSpace(identifier: string): void {
+    const space = this.spaces.value.find(
+      (candidate) => candidate.identifier === identifier,
+    );
+    if (!space) return;
+    const instanceCount = space.contentIds.filter((contentIdentifier) =>
+      this.contents.has(contentIdentifier),
+    ).length;
+    if (this.options.requestCloseSpace) {
+      this.options.requestCloseSpace(identifier, instanceCount);
+      return;
+    }
+    this.closeSpace(identifier);
   }
   /** Make one registered content the visible single-pane occupant WITHOUT taking the keyboard —
    *  the reveal a default-visibility policy performs. `showContent` stays the user's own gesture
@@ -1240,10 +1192,6 @@ class $PanelHost {
   }
   /** Close affordance shared by the dock-list mouse row and keyboard command. */
   closeOpenContent(id: string): void {
-    if (this.options.requestCloseContent) {
-      this.options.requestCloseContent(id);
-      return;
-    }
     this.removeContent(id);
   }
 
@@ -1358,7 +1306,21 @@ class $PanelHost {
           (candidate): candidate is PaneContent => candidate !== undefined,
         );
       if (remainingVisibleCells.length === 0) {
-        const fallback = this.orderedContents[0] ?? null;
+        // invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
+        // The fallback may only promote content the ACTIVE SPACE owns. Promoting
+        // orderedContents[0] reaches across the whole registry, so closing the last
+        // terminal surfaced the Database plugin's pane inside the terminal space.
+        const activeSpaceContentIdentifiers = new Set(
+          this.spaces.value.find(
+            (space) => space.identifier === this.activeSpaceId.value,
+          )?.contentIds ?? [],
+        );
+        const fallback =
+          this.orderedContents.find(
+            (candidate) =>
+              candidate.id !== id &&
+              activeSpaceContentIdentifiers.has(candidate.id),
+          ) ?? null;
         this.layout.value = [];
         this.activeId.value = fallback?.id ?? null;
         this.focusedIndex.value = 0;
@@ -1382,11 +1344,6 @@ class $PanelHost {
           null;
       }
     });
-    if (this.contents.size === 0) {
-      this.visible.value = false;
-      this.focused.value = false;
-      this.expanded.value = false;
-    }
     if (!this.options.retainUnregisteredContentOrder) {
       this.options.persistContentOrder?.();
     }
@@ -1408,7 +1365,16 @@ class $PanelHost {
           .filter((group) => group.contentIds.length > 0),
         activeId: space.activeId === id ? null : space.activeId,
       }))
-      .filter((space) => space.contentIds.length > 0);
+      // invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
+      // Closing the last INSTANCE of a space must not close the space. A space is a
+      // container the user opened; only closeSpace, the tab's own gesture, removes it.
+      // Pruning the emptied space here made the panel adopt the next plugin's space, so
+      // closing the last terminal surfaced a Database pane the user never opened.
+      .filter(
+        (space) =>
+          space.contentIds.length > 0 ||
+          space.identifier === this.activeSpaceId.value,
+      );
     this.spaces.value = nextSpaces;
     if (
       !nextSpaces.some((space) => space.identifier === this.activeSpaceId.value)
@@ -1654,18 +1620,12 @@ class $PanelHost {
     this.unregisterFromFocusSet();
     for (const contentSet of this.contentSets) {
       for (const content of contentSet.contents.values()) {
-        if (this.sharedContents.has(content.id)) continue;
         content.dispose();
         this.options.onContentRemoved?.(content);
       }
       contentSet.contents.clear();
     }
     this.contentSets.clear();
-    for (const content of this.sharedContents.values()) {
-      content.dispose();
-      this.options.onContentRemoved?.(content);
-    }
-    this.sharedContents.clear();
     if (!this.options.contentOrder) this.setOrder([]);
     this.activeId.value = null;
     this.layout.value = [];
@@ -1709,7 +1669,7 @@ export interface PanelHostOptions {
   persistContentOrder?: () => void;
   retainUnregisteredContentOrder?: boolean;
   onContentRemoved?: (content: PaneContent) => void;
-  requestCloseContent?: (identifier: string) => void;
+  requestCloseSpace?: (identifier: string, instanceCount: number) => void;
   persistWorkspaceState?: () => void;
 }
 

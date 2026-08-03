@@ -175,6 +175,17 @@ class $GitWorkspace
   get repository() {
     return shallowRef<GitRepository.Instance | null>(null);
   }
+  get changedCount(): number {
+    const repository = this.repository.value;
+    return repository
+      ? repository.staged.value.length +
+          repository.unstaged.value.length +
+          repository.untracked.value.length
+      : 0;
+  }
+  get repositoryScanCompleted(): boolean {
+    return this.repository.value?.lastRefreshAt.value != null;
+  }
 
   get commitLog() {
     return shallowRef<CommitLog.Instance | null>(null);

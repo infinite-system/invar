@@ -6,13 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/in-progress/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/459-empty-right-pane-has-no-add-affordance`
-- #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [building]
+## IN-PROGRESS (1)
+- #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
-## USER-DIRECTED (14)
+## USER-DIRECTED (15)
+- #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -29,7 +28,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (29)
-- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/active/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md)
+- #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)
@@ -59,7 +58,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (30)
+## FLAKE-EVIDENCE (32)
+- #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
+- #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
 - #455 [agent-composer-never-activates](.invar/tasks/active/455-agent-composer-never-activates/task-455-agent-composer-never-activates.md)
 - #454 [agent-pane-invalid-grid-region](.invar/tasks/active/454-agent-pane-invalid-grid-region/task-454-agent-pane-invalid-grid-region.md)
@@ -104,7 +105,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (36)
+## ARCHITECTURE-HYGIENE (38)
+- #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
+- #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
 - #434 [gate-glance-null-render-branch-dead](.invar/tasks/active/434-gate-glance-null-render-branch-dead/task-434-gate-glance-null-render-branch-dead.md)
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
@@ -146,19 +149,19 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 177 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 191 — full log: project.tasks-completed.md)
+- #481 [shared-machinery-waits-and-drive-gesture-deletion](.invar/tasks/completed/481-shared-machinery-waits-and-drive-gesture-deletion/task-481-shared-machinery-waits-and-drive-gesture-deletion.md) — e3e3316a — Landed: honest shell settle, gesture layer deleted, 11 delays declared. The census migration is now COMPLETE except declared remainders.
+- #480 [migrate-the-quick-open-idiom](.invar/tasks/completed/480-migrate-the-quick-open-idiom/task-480-migrate-the-quick-open-idiom.md) — 04ea99ab — Landed: the Quick Open idiom retired across the suite. Migration remainder: shared machinery + agent/terminal + panel/layout + shell sites, per the #479 table.
+- #479 [migrate-the-census-tail](.invar/tasks/completed/479-migrate-the-census-tail/task-479-migrate-the-census-tail.md) — c5316ddf — Round 1 landed: the two live gate-flake files migrated site-complete. Remainder (Quick Open idiom files, shared machinery, agent/terminal files, shell sites) stays honestly tabled for the next round.
+- #478 [migrate-the-pre-satisfied-waits](.invar/tasks/completed/478-migrate-the-pre-satisfied-waits/task-478-migrate-the-pre-satisfied-waits.md) — 655c0db0 — Round 1 landed: five unfalsifiable positive controls + panel-chrome drag-span converted with planted-defect proof. Remainder (plugin-manifest, scrollbars, the census tail) queued for round 2.
+- #477 [copy-from-agent-pane-does-not-work](.invar/tasks/completed/477-copy-from-agent-pane-does-not-work/task-477-copy-from-agent-pane-does-not-work.md) — 08ab9d46 — Landed: shared-drag hover fix + assistant-reply copy smoke, no production change. Morning item for the user: confirm whether cmux forwards Cmd+C/kitty Ctrl+C over ssh — the app side is proven.
+- #476 [reload-keeps-a-disposed-session-on-boot-failure](.invar/tasks/completed/476-reload-keeps-a-disposed-session-on-boot-failure/task-476-reload-keeps-a-disposed-session-on-boot-failure.md) — 305185c5 — Landed: boot-before-dispose reload with both arms proven; MCP sizeLines closes the last builder ask from #473.
+- #475 [quick-open-leaves-focus-behind](.invar/tasks/completed/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md) — f10ebd13 — Landed: Quick Open focus follows the opened file; smoke asserts it directly.
+- #474 [dispose-order-renderable-warnings](.invar/tasks/completed/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md) — 7b8b889d — Landed: single-action teardown + zero-warnings quit ratchet.
+- #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
+- #471 [graph-reaches-the-whole-app](.invar/tasks/completed/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md) — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
+- #470 [harness-wait-defect-census](.invar/tasks/completed/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md) — 5136cdfa — Slice 1 landed: quiescence reset with publication parity, pre-satisfaction guard, model-count panel waits, settled Drive join, activitybar needles. Round 2 was forced by the conductor gate: the request-time flush published half-frame snapshots. The ~125-site migration remains open behind 471.
+- #469 [drive-reads-the-app-class-graph](.invar/tasks/completed/469-drive-reads-the-app-class-graph/task-469-drive-reads-the-app-class-graph.md) — 7f72091a
+- #459 [empty-right-pane-has-no-add-affordance](.invar/tasks/completed/459-empty-right-pane-has-no-add-affordance/task-459-empty-right-pane-has-no-add-affordance.md) — bc367e17 — Unreachable panel registration made impossible at the factory seam; empty panel keeps its Add row; instance close no longer confirms. Phantom pane had been silently satisfying a layout-isolation wait.
+- #457 [serial-tail-lacks-quiet-retry](.invar/tasks/completed/457-serial-tail-lacks-quiet-retry/task-457-serial-tail-lacks-quiet-retry.md) — 687dc80f — Gate verdict is now a function of the commit: 5 identical verdicts on one commit, unchanged at 3 and 6 workers, planted defect red 5/5. Real defect was a live-emulator read in the shortcut sheet, not a missing retry.
 - #452 [pane-identity-collides-by-name](.invar/tasks/completed/452-pane-identity-collides-by-name/task-452-pane-identity-collides-by-name.md) — da584da4 — Pane identity separated from presentation; original all-terminal incident remains unexplained.
-- #448 [static-reads-that-can-block-overrides](.invar/tasks/completed/448-static-reads-that-can-block-overrides/task-448-static-reads-that-can-block-overrides.md) — eec0e5ea — The census the cleanup produced became the gate that holds it. User-raised: AppLoader's own-name self-references, and the pair rule. Bycatch became #451.
-- #444 [history-is-editor-area-view-states](.invar/tasks/completed/444-history-is-editor-area-view-states/task-444-history-is-editor-area-view-states.md) — 61fd213e — History as editor-area view states landed as part of the stack.
-- #443 [static-read-indirection-defeats-override](.invar/tasks/completed/443-static-read-indirection-defeats-override/task-443-static-read-indirection-defeats-override.md) — 3d9fdca6 — Six classes cleaned; five deleted their statics outright. Bycatch became #448 (55-site census) and the Drive.ts type error the conductor had introduced.
-- #442 [panel-editor-tree-chrome-polish](.invar/tasks/completed/442-panel-editor-tree-chrome-polish/task-442-panel-editor-tree-chrome-polish.md) — 334add87 — Panel editor chrome polish landed as part of the stack.
-- #439 [notice-persistence-restored-state-defects](.invar/tasks/completed/439-notice-persistence-restored-state-defects/task-439-notice-persistence-restored-state-defects.md) — ed401644 — Cascade cause found: folderOpen before restore; fixed by ordering. Notices non-persistent + legacy sanitization; Displaced suppressed for redeclared labels; my two probe findings refuted (pre-satisfied toggle). Landed over pre-existing #436 red.
-- #435 [folder-open-task-launch-hygiene](.invar/tasks/completed/435-folder-open-task-launch-hygiene/task-435-folder-open-task-launch-hygiene.md) — 69886b7e — Once-per-root launch memory + restored-identity adoption; issues are notice panes, not pseudo-terminals; Terminal space restores with contents. Contracts refined in-branch. Bycatch converted: #437, #438; drive --home stale-status fix landed mid-task.
-- #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/completed/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md) — 7a33c34b — Filed diagnosis refuted by driving: red was a stale predicate + host-registry coupling. Glance and smoke isolated via INVAR_FLEET_GATE_REGISTRY; three registry states driven; new invariant record. Landed over pre-existing #436 red.
-- #432 [panel-editor-actions-instances-overhaul](.invar/tasks/completed/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md) — 7d2cc879 — All 21 brief items landed in one round; generic Dialog + DragReorder seams; design.invariants.md seeded; markdown preview actions fixed; landed over documented pre-existing 417084fa red (#433)
-- #430 [bottom-panel-absorbs-dock-remainders](.invar/tasks/completed/430-bottom-panel-absorbs-dock-remainders/task-430-bottom-panel-absorbs-dock-remainders.md) — 483725e4 — The user's layout complaint is closed at the composition seam with the four-combination proof. Bycatch converted to #431 before landing.
-- #429 [layout-switcher-icon-tooltip](.invar/tasks/completed/429-layout-switcher-icon-tooltip/task-429-layout-switcher-icon-tooltip.md) — 441ee8d9 — Switcher is a theme icon + tooltip. Semantic merge conflict with #391's smoke wait caught by the combined gate, repaired, layout smoke green in-gate. Gate red was #428's known zero-margin fold-dense floor (995 vs 1000, FPS healthy) — pre-existing, filed.
-- #428 [fold-dense-rows-zero-margin-floor](.invar/tasks/completed/428-fold-dense-rows-zero-margin-floor/task-428-fold-dense-rows-zero-margin-floor.md) — d5c4ec0c — The contract that blocked two landings today is now genuinely count-based. No bycatch.
-- #427 [quickopen-ranking-contract-record](.invar/tasks/completed/427-quickopen-ranking-contract-record/task-427-quickopen-ranking-contract-record.md) — dbe86131 — Ranking tiers now contract-recorded with annotation. Bycatch: only known punctuation notes.
-- #426 [tabbar-hardcoded-glyph-breach](.invar/tasks/completed/426-tabbar-hardcoded-glyph-breach/task-426-tabbar-hardcoded-glyph-breach.md) — 5b761903 — Theme contract's one known breach closed; vocabulary slot at three tiers, driven at each; no visual change at the default tier. Bycatch: none actionable (single unreproduced keystroke drop; known checker notes).
-- #425 [monitoring-lsp-contract-records](.invar/tasks/completed/425-monitoring-lsp-contract-records/task-425-monitoring-lsp-contract-records.md) — db19dec4 — Two proven disciplines now recorded with annotations at enforcement points; scope refine applied. Bycatch (stale drive-command paths) fixed as follow-up doc commit on main.

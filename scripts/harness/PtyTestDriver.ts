@@ -36,6 +36,10 @@ export interface PtyTestDriverOptions {
   workspaceRoot: string;
   repositoryRoot?: string;
   columns?: number;
+  /** Emulate a terminal WITHOUT kitty text sizing (OSC 66 swallowed whole).
+   *  Mirror mode sets false so the inner app never emits wrapped glyphs a
+   *  less capable watching terminal would delete. Default true. */
+  textSizingSupported?: boolean;
   rows?: number;
   homeDirectory?: string;
   environment?: Record<string, string | undefined>;
@@ -109,6 +113,16 @@ class $PtyTestDriver {
   private readonly terminalOutputAudit = new TerminalOutputAudit.Class();
   private readonly child: ReturnType<typeof Bun.spawn>;
   private readonly outputDecoder = new TextDecoder();
+  private readonly outputTaps: Array<(bytes: Uint8Array) => void> = [];
+
+  /** Observe the RAW byte stream the app writes, before any harness
+   *  processing — the mirror feed. A tap is a pure observer: the emulator,
+   *  quiescence accounting, and frame attribution behave identically with
+   *  zero or many taps (the drive server's --mirror relays these bytes to its
+   *  own stdout so a human can WATCH the driven app live). */
+  tapOutput(listener: (bytes: Uint8Array) => void): void {
+    this.outputTaps.push(listener);
+  }
   private readonly outputSequenceCounters = new Map<
     string,
     {
@@ -122,6 +136,7 @@ class $PtyTestDriver {
   private outputOverflowed = false;
   private expectedScreenChangeBaseline: ScreenChangeBaseline | undefined;
   private emulatorObservationChain: Promise<void> = Promise.resolve();
+  private completedSnapshotValue: HarnessSnapshot.Model;
   private readonly completedFrameObservationsValue: CompletedFrameObservation[] =
     [];
   private readonly completedFrameObservers = new Set<
@@ -151,9 +166,13 @@ class $PtyTestDriver {
     const rows = options.rows ?? 40;
     const repositoryRoot = options.repositoryRoot ?? process.cwd();
     this.openPty = new OpenPty.Class(columns, rows);
-    this.emulator = new TerminalEmulator.Class(columns, rows);
+    this.emulator = new TerminalEmulator.Class(columns, rows, {
+      textSizingSupported: options.textSizingSupported ?? true,
+    });
+    this.completedSnapshotValue = this.captureEmulatorSnapshot();
     this.emulator.onReply((data) => this.openPty.write(data));
     this.openPty.onData((bytes) => {
+      for (const outputTap of this.outputTaps) outputTap(bytes);
       this.recordOutput(this.outputDecoder.decode(bytes, { stream: true }));
       const observedByteCountBeforeChunk = this.quiescence.observedByteCount;
       const completedFrames = this.quiescence.observe(bytes);
@@ -412,9 +431,16 @@ class $PtyTestDriver {
     predicate: (snapshot: HarnessSnapshot.Model) => boolean,
     timeoutMilliseconds = 30_000,
     diagnosticRegion?: Partial<HarnessGridRegion>,
+    mustBeFalseNow = false,
   ): Promise<HarnessSnapshot.Model> {
     const deadline = performance.now() + timeoutMilliseconds;
     await this.flushObservedOutput();
+    if (mustBeFalseNow && predicate(this.snapshot())) {
+      throw new Error(
+        `Cannot await grid condition already satisfied before the wait: ` +
+          predicateDescription,
+      );
+    }
     while (true) {
       const snapshot = this.snapshot();
       if (predicate(snapshot)) {
@@ -429,6 +455,30 @@ class $PtyTestDriver {
           snapshot,
           diagnosticRegion,
         );
+      }
+      this.quiescence.throwIfFailed();
+      await Bun.sleep(Math.min(10, remainingMilliseconds));
+      await this.flushObservedOutput();
+    }
+  }
+
+  async awaitCompletedGridCondition(
+    predicateDescription: string,
+    predicate: (snapshot: HarnessSnapshot.Model) => boolean,
+    timeoutMilliseconds = 30_000,
+  ): Promise<HarnessSnapshot.Model> {
+    const deadline = performance.now() + timeoutMilliseconds;
+    await this.flushObservedOutput();
+    while (true) {
+      const snapshot = this.completedSnapshotValue;
+      if (predicate(snapshot)) {
+        this.expectedScreenChangeBaseline = undefined;
+        return snapshot;
+      }
+      const remainingMilliseconds = deadline - performance.now();
+      if (remainingMilliseconds <= 0) {
+        this.expectedScreenChangeBaseline = undefined;
+        throw this.gridConditionTimeoutError(predicateDescription, snapshot);
       }
       this.quiescence.throwIfFailed();
       await Bun.sleep(Math.min(10, remainingMilliseconds));
@@ -549,6 +599,10 @@ class $PtyTestDriver {
   }
 
   snapshot(): HarnessSnapshot.Model {
+    return this.captureEmulatorSnapshot();
+  }
+
+  private captureEmulatorSnapshot(): HarnessSnapshot.Model {
     const copiedCells: HarnessSnapshotCell[] = [];
     for (let row = 0; row < this.emulator.rows; row++) {
       for (let column = 0; column < this.emulator.columns; column++) {
@@ -718,9 +772,11 @@ class $PtyTestDriver {
         this.emulator.write(bytes);
         await this.emulator.flush();
         if (completedFrame) {
+          const completedSnapshot = this.captureEmulatorSnapshot();
+          this.completedSnapshotValue = completedSnapshot;
           const observation = {
             completedFrame,
-            snapshot: this.snapshot(),
+            snapshot: completedSnapshot,
           };
           this.completedFrameObservationsValue.push(observation);
           for (const observer of this.completedFrameObservers) {

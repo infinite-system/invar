@@ -1,6 +1,9 @@
-import { readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 import { Static } from 'ivue/extras';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { GraphClient } from './GraphClient';
 import type { HarnessRectangle, HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 import {
@@ -28,6 +31,116 @@ class $HarnessSmoke {
   static requireCondition(condition: unknown, label: string): void {
     if (!condition) throw new Error(`FAIL ${label}`);
     this.pass(label);
+  }
+
+  /** The one generated scale fixture shared by Drive and DriveSession. */
+  static async createDriveScaleFixture(lineCount: number): Promise<{
+    workspaceRoot: string;
+    filePath: string;
+  }> {
+    if (!Number.isSafeInteger(lineCount) || lineCount < 1) {
+      throw new Error(
+        `Drive fixture line count must be a positive integer, got ${lineCount}`,
+      );
+    }
+    const workspaceRoot = mkdtempSync(
+      join(tmpdir(), `invar-drive-fixture-${lineCount}-`),
+    );
+    const filePath = join(workspaceRoot, `scale-${lineCount}.txt`);
+    const writer = Bun.file(filePath).writer();
+    try {
+      const chunkLineCount = 20_000;
+      for (
+        let chunkStart = 0;
+        chunkStart < lineCount;
+        chunkStart += chunkLineCount
+      ) {
+        const chunkEnd = Math.min(chunkStart + chunkLineCount, lineCount);
+        const fixtureLines: string[] = [];
+        for (let lineIndex = chunkStart; lineIndex < chunkEnd; lineIndex += 1) {
+          fixtureLines.push(
+            `DRIVE-LINE-${String(lineIndex + 1).padStart(6, '0')} ` +
+              `content at scale ${lineCount}`,
+          );
+        }
+        writer.write(
+          `${chunkStart === 0 ? '' : '\n'}${fixtureLines.join('\n')}`,
+        );
+        await writer.flush();
+      }
+      await writer.end();
+      return { workspaceRoot, filePath };
+    } catch (thrown) {
+      await writer.end();
+      await this.removeTemporaryDirectory(workspaceRoot);
+      throw thrown;
+    }
+  }
+
+  /** Open one file through Quick Open, using the same real keys in every drive. */
+  static async openFileThroughQuickOpen(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    filePath: string,
+    timeoutMilliseconds = 15_000,
+  ): Promise<void> {
+    const fileName = basename(filePath);
+    driver.sendKeys('Control+p');
+    await driver.awaitGridCondition(
+      'Quick Open to become visible for the requested file',
+      () => {
+        try {
+          return this.readStatus(statusPath).quickOpenOpen === true;
+        } catch {
+          return false;
+        }
+      },
+      timeoutMilliseconds,
+    );
+    driver.sendText(fileName);
+    await driver.awaitGridCondition(
+      `Quick Open to rank the requested file: ${filePath}`,
+      (snapshot) => {
+        try {
+          const status = this.readStatus(statusPath);
+          return (
+            status.quickOpenQuery === fileName &&
+            Number(status.quickOpenMatches) >= 1 &&
+            snapshot.findText(fileName) !== null
+          );
+        } catch {
+          return false;
+        }
+      },
+      timeoutMilliseconds,
+    );
+    driver.sendKeys('Enter');
+    await driver.awaitGridCondition(
+      `the requested file to open: ${filePath}`,
+      () => {
+        try {
+          return this.readStatus(statusPath).activeBuffer === filePath;
+        } catch {
+          return false;
+        }
+      },
+      timeoutMilliseconds,
+    );
+    if (this.readStatus(statusPath).focus !== 'editor') {
+      driver.sendKeys('Tab');
+      await driver.awaitGridCondition(
+        'the opened file editor to receive focus',
+        () => {
+          try {
+            return this.readStatus(statusPath).focus === 'editor';
+          } catch {
+            return false;
+          }
+        },
+        timeoutMilliseconds,
+      );
+    }
+    await driver.awaitScreenChange(timeoutMilliseconds);
   }
 
   static runGit(
@@ -235,10 +348,25 @@ class $HarnessSmoke {
     if (targetRow < 0) {
       throw new Error(`The pinned panel list did not paint ${visibleTitle}`);
     }
-    const targetColumn = headerPosition.column + geometry.width - 2;
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'move',
+      column: headerPosition.column + 1,
+      row: targetRow,
+      button: 'none',
+    });
+    const rowControlsSnapshot = await driver.awaitGridCondition(
+      `${visibleTitle} reveals its row controls on hover`,
+      (candidate) => candidate.rowText(targetRow).includes('×'),
+    );
+    const revealedCloseColumn = rowControlsSnapshot
+      .rowText(targetRow)
+      .lastIndexOf('×');
+    if (revealedCloseColumn < 0) {
+      throw new Error(`${visibleTitle} did not paint its close glyph`);
+    }
     for (
       let column = headerPosition.column + 1;
-      column <= targetColumn;
+      column <= revealedCloseColumn;
       column += 1
     ) {
       driver.sendMouseWithoutFrameExpectation({
@@ -252,12 +380,21 @@ class $HarnessSmoke {
       `${visibleTitle} reveals its close control on hover`,
       (candidate) => candidate.findText('Close instance') !== null,
     );
-    const revealedCloseColumn = hoveredSnapshot
-      .rowText(targetRow)
-      .lastIndexOf('×');
-    if (revealedCloseColumn < 0) {
+    if (hoveredSnapshot.rowText(targetRow).lastIndexOf('×') < 0) {
       throw new Error(`${visibleTitle} did not paint its close glyph`);
     }
+    const panelContentsCountBeforeClose =
+      expectedRemainingCount > 0
+        ? Number(
+            (
+              await GraphClient.Class.query(
+                statusPath,
+                'panelHost.orderedContents.length',
+                'settle',
+              )
+            ).value,
+          )
+        : null;
     driver.sendMouseWithoutFrameExpectation({
       kind: 'move',
       column: revealedCloseColumn,
@@ -287,16 +424,77 @@ class $HarnessSmoke {
         ).length === expectedRemainingCount,
     );
     if (expectedRemainingCount === 0) {
-      await driver.awaitGridCondition(
+      const closedSnapshot = await driver.awaitGridCondition(
         `${visibleTitle} is no longer painted after its row close`,
-        (candidate) => candidate.findText(visibleTitle) === null,
+        (candidate) =>
+          candidate.findText(visibleTitle) === null &&
+          candidate.findText(`Close ${visibleTitle}?`) === null,
+      );
+      this.requireCondition(
+        closedSnapshot.findText(`Close ${visibleTitle}?`) === null,
+        `${visibleTitle} closes without a confirmation dialog`,
       );
     } else {
-      await driver.awaitGridCondition(
-        `${visibleTitle} remains painted after one matching row closes`,
-        (candidate) => candidate.findText(visibleTitle) !== null,
+      if (panelContentsCountBeforeClose === null) {
+        throw new Error(
+          'The panel contents count was not measured before close',
+        );
+      }
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'panelHost.orderedContents.length',
+        panelContentsCountBeforeClose - 1,
       );
     }
+  }
+
+  static async requestPanelContainerClose(
+    driver: PtyTestDriver.Model,
+    visibleLabel: string,
+    instanceCount: number,
+    closeGlyph = '×',
+  ): Promise<HarnessSnapshot.Model> {
+    const marker = `${visibleLabel} ${closeGlyph}`;
+    const snapshot = await driver.awaitGridCondition(
+      `the ${visibleLabel} container paints its close control`,
+      (candidate) => candidate.findText(marker) !== null,
+    );
+    const markerPosition = snapshot.findText(marker);
+    if (!markerPosition) {
+      throw new Error(`${visibleLabel} did not paint its container close`);
+    }
+    const closeColumn = markerPosition.column + Array.from(marker).length - 1;
+    for (
+      let column = markerPosition.column;
+      column <= closeColumn;
+      column += 1
+    ) {
+      driver.sendMouseWithoutFrameExpectation({
+        kind: 'move',
+        column,
+        row: markerPosition.row,
+        button: 'none',
+      });
+    }
+    driver.sendMouse({
+      kind: 'press',
+      column: closeColumn,
+      row: markerPosition.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: closeColumn,
+      row: markerPosition.row,
+      button: 'left',
+    });
+    const message =
+      `Close ${visibleLabel} and its ${instanceCount} ` +
+      `${instanceCount === 1 ? 'instance' : 'instances'}?`;
+    return driver.awaitGridCondition(
+      `${visibleLabel} container close confirms its ${instanceCount} instances`,
+      (candidate) => candidate.findText(message) !== null,
+    );
   }
 
   static async awaitScrollPosition(

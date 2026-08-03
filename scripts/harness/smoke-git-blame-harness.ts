@@ -4,9 +4,11 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -88,8 +90,11 @@ try {
     (snapshot) => snapshot.findText('Go to File') !== null,
   );
   driver.sendText('tracked');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('tracked.txt') !== null,
+  await GraphClient.Class.awaitValue(statusPath, 'quickOpen.query', 'tracked');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'quickOpen.matches.0.path',
+    'tracked.txt',
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
@@ -126,8 +131,15 @@ try {
     (snapshot) => snapshot.findText('Go to File') !== null,
   );
   driver.sendText('untracked');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('untracked.txt') !== null,
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'quickOpen.query',
+    'untracked',
+  );
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'quickOpen.matches.0.path',
+    'untracked.txt',
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(

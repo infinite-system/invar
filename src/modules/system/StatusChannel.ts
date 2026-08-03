@@ -56,6 +56,12 @@ class $StatusChannel {
     return this.statusPath;
   }
 
+  /** The one observability enablement, shared by every side channel (the
+   *  graph channel keys off this too — one flag arms or disarms the family). */
+  static get observing(): boolean {
+    return this.observingEnabled;
+  }
+
   static get snapshot(): StatusSnapshot {
     return this.$state;
   }
@@ -82,6 +88,12 @@ class $StatusChannel {
     } catch {
       /* never crash the app over observability */
     }
+  }
+
+  /** Mark a requested frame pending in memory; the completed frame owns publication. */
+  static markRenderRequested(): void {
+    if (!this.observingEnabled || !this.$state.renderQuiescent) return;
+    this.$state.renderQuiescent = false;
   }
 
   /** Mark the frame settled and flush — called after a render quiesces. */

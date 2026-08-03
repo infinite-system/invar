@@ -12,6 +12,8 @@ import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import { TextFieldPainter } from '../../src/modules/ui/TextFieldPainter';
 import { DiagnosticLog } from './DiagnosticLog';
+import { GraphClient } from './GraphClient';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -23,6 +25,12 @@ interface ScrollbarDiagnostic {
   readonly row: number;
   readonly width: number;
   readonly height: number;
+}
+
+function selectedExtensionsRowText(
+  snapshot: HarnessSnapshot.Model,
+): string | undefined {
+  return snapshot.textRows().find((rowText) => rowText.includes('› ['));
 }
 
 // The geometry source is this driven instance's OWN diagnostic log, guarded by instance
@@ -53,22 +61,37 @@ function latestRightDockScrollbarDiagnostic(
   };
 }
 
+async function awaitRightDockScrollbarDiagnostic(
+  driver: PtyTestDriver.Model,
+  conditionDescription: string,
+): Promise<ScrollbarDiagnostic> {
+  const deadline = performance.now() + 15_000;
+  while (performance.now() < deadline) {
+    const diagnostic = latestRightDockScrollbarDiagnostic(driver);
+    if (diagnostic && diagnostic.height > 1) return diagnostic;
+    await Bun.sleep(5);
+  }
+  throw new Error(`Timed out waiting for ${conditionDescription}`);
+}
+
 async function selectSetting(
   driver: PtyTestDriver.Model,
   statusPath: string,
   label: string,
-): Promise<void> {
+): Promise<HarnessSnapshot.Model> {
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the settings selection publishes its current label',
     (candidate) => typeof candidate.settingsSelectedLabel === 'string',
   );
+  let selectionMoved = false;
   for (
     let navigationStep = 0;
     navigationStep < 50 && status.settingsSelectedLabel !== label;
     navigationStep += 1
   ) {
+    selectionMoved = true;
     const previousLabel = status.settingsSelectedLabel;
     driver.sendKeys('Down');
     status = await HarnessSmoke.Class.awaitStatus(
@@ -82,10 +105,76 @@ async function selectSetting(
     status.settingsSelectedLabel === label,
     `${label} is contributed to the live settings schema`,
   );
-  await driver.awaitGridCondition(
+  const selectedSnapshot = selectionMoved
+    ? await driver.awaitGridCondition(
+        `${label} becomes visible and selected in Settings`,
+        (snapshot) => snapshot.findText(`› ${label}`) !== null,
+      )
+    : driver.snapshot();
+  HarnessSmoke.Class.requireCondition(
+    selectedSnapshot.findText(`› ${label}`) !== null,
     `${label} is visible and selected in Settings`,
-    (snapshot) => snapshot.findText(`› ${label}`) !== null,
   );
+  return selectedSnapshot;
+}
+
+async function selectExtensionsRowFromFirst(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  rowLabel: string,
+): Promise<HarnessSnapshot.Model> {
+  driver.sendKeysWithoutFrameExpectation(
+    ...Array.from({ length: 12 }, () => 'Up'),
+  );
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.activeContent.selectedIndex',
+    0,
+  );
+  const firstRowSnapshot =
+    driver.snapshot().findText('› [x] File Tree') !== null ||
+    driver.snapshot().findText('› [ ] File Tree') !== null
+      ? driver.snapshot()
+      : await driver.awaitGridCondition(
+          'the first Extensions row paints after the selection reaches index zero',
+          (candidate) =>
+            candidate.findText('› [x] File Tree') !== null ||
+            candidate.findText('› [ ] File Tree') !== null,
+        );
+  HarnessSmoke.Class.requireCondition(
+    firstRowSnapshot.findText('› [x] File Tree') !== null ||
+      firstRowSnapshot.findText('› [ ] File Tree') !== null,
+    'the Extensions selection is anchored on its first row',
+  );
+
+  let selectedIndex = 0;
+  for (
+    let selectionStep = 0;
+    selectionStep < 12 && driver.snapshot().findText(`› ${rowLabel}`) === null;
+    selectionStep += 1
+  ) {
+    const selectedRowBeforeNavigation = selectedExtensionsRowText(
+      driver.snapshot(),
+    );
+    selectedIndex += 1;
+    driver.sendKeys('Down');
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'primaryDockHost.activeContent.selectedIndex',
+      selectedIndex,
+    );
+    await driver.awaitGridCondition(
+      `Extensions paints selection index ${selectedIndex}`,
+      (candidate) =>
+        selectedExtensionsRowText(candidate) !== selectedRowBeforeNavigation,
+    );
+  }
+  const selectedSnapshot = driver.snapshot();
+  HarnessSmoke.Class.requireCondition(
+    selectedSnapshot.findText(`› ${rowLabel}`) !== null,
+    `Extensions row is reachable: ${rowLabel}`,
+  );
+  return selectedSnapshot;
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-plugin-manifest-'));
@@ -269,12 +358,15 @@ try {
     'Settings opens over the contributed plugin schema',
     (status) => status.settingsOpen === true,
   );
-  await selectSetting(driver, statusPath, 'Show hidden files');
-  await driver.awaitGridCondition(
+  const fileTreeSettingSnapshot = await selectSetting(
+    driver,
+    statusPath,
+    'Show hidden files',
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(fileTreeSettingSnapshot.findText('File Tree')?.row) <
+      Number(fileTreeSettingSnapshot.findText('Show hidden files')?.row),
     'the File Tree heading is painted above its contributed setting',
-    (snapshot) =>
-      snapshot.findText('File Tree') !== null &&
-      snapshot.findText('Show hidden files') !== null,
   );
   driver.sendKeys('Right');
   await HarnessSmoke.Class.awaitStatus(
@@ -294,21 +386,27 @@ try {
   // the current schema happens to put there. #340 (opening a file reveals it in the file tree) added
   // a second File Tree row, `Reveal open file`, directly below `Show hidden files`, and that one
   // insertion turned this drive into a deterministic gate red without touching any product promise.
-  await selectSetting(driver, statusPath, 'Changes/log split');
-  await driver.awaitGridCondition(
+  const gitSettingSnapshot = await selectSetting(
+    driver,
+    statusPath,
+    'Changes/log split',
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(gitSettingSnapshot.findText('Git')?.row) <
+      Number(gitSettingSnapshot.findText('Changes/log split')?.row),
     'the Git heading is painted above its contributed setting',
-    (snapshot) =>
-      snapshot.findText('Git') !== null &&
-      snapshot.findText('Changes/log split') !== null,
   );
   await selectSetting(driver, statusPath, 'Previous/current split');
   await selectSetting(driver, statusPath, 'Markdown view');
-  await selectSetting(driver, statusPath, 'Source/preview split');
-  await driver.awaitGridCondition(
+  const markdownSettingSnapshot = await selectSetting(
+    driver,
+    statusPath,
+    'Source/preview split',
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(markdownSettingSnapshot.findText('Markdown')?.row) <
+      Number(markdownSettingSnapshot.findText('Source/preview split')?.row),
     'the Markdown heading is painted above its contributed setting',
-    (snapshot) =>
-      snapshot.findText('Markdown') !== null &&
-      snapshot.findText('Source/preview split') !== null,
   );
   HarnessSmoke.Class.pass(
     'Git and Markdown settings render under their contributed headings',
@@ -545,11 +643,25 @@ try {
     button: 'none',
   });
   driver.sendKeys('Control+Shift+x');
-  await driver.awaitGridCondition(
-    'the later Extensions action proves the inert gestures and hover left the app live',
-    (snapshot) => snapshot.findText('› [ ] Language Intelligence') !== null,
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
   );
-  const unavailableGestureStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const unavailableGestureStatus =
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'the later Extensions focus proves the inert gestures and hover left the app live',
+      (candidate) =>
+        candidate.primaryDockFocused === true &&
+        candidate.completionOpen === false &&
+        JSON.stringify(candidate.cursor) ===
+          JSON.stringify(cursorBeforeUnavailableGestures) &&
+        Number(candidate.bufferRevision) ===
+          revisionBeforeUnavailableGestures &&
+        String(candidate.activeBuffer).endsWith('/z-language.ts'),
+    );
   HarnessSmoke.Class.requireCondition(
     unavailableGestureStatus.completionOpen === false &&
       JSON.stringify(unavailableGestureStatus.cursor) ===
@@ -605,26 +717,7 @@ try {
   // Walk to the row by LOOKING for it, not by counting keypresses: the extension list grows as
   // plugins are contributed, and an ordinal Down would silently land on a neighbour.
   driver.sendKeys('Control+Shift+x');
-  driver.sendKeysWithoutFrameExpectation(
-    ...Array.from({ length: 12 }, () => 'Up'),
-  );
-  await driver.awaitGridCondition(
-    'the Extensions selection is anchored on its first row',
-    (snapshot) => snapshot.findText('› [x] File Tree') !== null,
-  );
-  for (
-    let selectionStep = 0;
-    selectionStep < 12 &&
-    driver.snapshot().findText('› [x] Inline Rewrite') === null;
-    selectionStep++
-  ) {
-    driver.sendKeys('Down');
-    await driver.awaitScreenChange();
-  }
-  await driver.awaitGridCondition(
-    'Inline Rewrite is selected in Extensions',
-    (snapshot) => snapshot.findText('› [x] Inline Rewrite') !== null,
-  );
+  await selectExtensionsRowFromFirst(driver, statusPath, '[x] Inline Rewrite');
   driver.sendKeys('Space');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -653,9 +746,14 @@ try {
   );
 
   driver.sendKeys('Control+Shift+x');
-  await driver.awaitGridCondition(
-    'the disabled Inline Rewrite row remains selected for reinstall',
-    (snapshot) => snapshot.findText('› [ ] Inline Rewrite') !== null,
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('› [ ] Inline Rewrite') !== null,
+    'the disabled Inline Rewrite row is selected for reinstall',
   );
   driver.sendKeys('Space');
   await HarnessSmoke.Class.awaitStatus(
@@ -696,25 +794,7 @@ try {
   driver.sendKeys('Control+j', 'Control+Shift+x');
   // Anchor on the FIRST row (repeated Up saturates at the top), then walk down until the Terminal
   // row is the selected one — every step then moves toward it, so each wait observes a real change.
-  driver.sendKeysWithoutFrameExpectation(
-    ...Array.from({ length: 12 }, () => 'Up'),
-  );
-  await driver.awaitGridCondition(
-    'the Extensions selection is anchored on its first row',
-    (snapshot) => snapshot.findText('› [x] File Tree') !== null,
-  );
-  for (
-    let selectionStep = 0;
-    selectionStep < 12 && driver.snapshot().findText('› [x] Terminal') === null;
-    selectionStep++
-  ) {
-    driver.sendKeys('Down');
-    await driver.awaitScreenChange();
-  }
-  await driver.awaitGridCondition(
-    'Terminal is selected in Extensions',
-    (snapshot) => snapshot.findText('› [x] Terminal') !== null,
-  );
+  await selectExtensionsRowFromFirst(driver, statusPath, '[x] Terminal');
   driver.sendKeys('Space');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -760,9 +840,14 @@ try {
   );
 
   driver.sendKeys('Control+Shift+x');
-  await driver.awaitGridCondition(
-    'the disabled Terminal row remains selected for reinstall',
-    (snapshot) => snapshot.findText('› [ ] Terminal') !== null,
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('› [ ] Terminal') !== null,
+    'the disabled Terminal row is selected for reinstall',
   );
   driver.sendKeys('Space');
   driver.sendKeys('Control+Shift+j');
@@ -841,31 +926,16 @@ try {
     Number(editorInstalledStatus.matchingBracketLine) === -1,
     'the editor contribution projects its bracket-match keys while installed',
   );
-  await driver.awaitGridCondition(
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('manifest-line') !== null,
     'the installed editor paints the fixture text',
-    (snapshot) => snapshot.findText('manifest-line') !== null,
   );
 
   driver.sendKeys('Control+Shift+x');
-  driver.sendKeysWithoutFrameExpectation(
-    ...Array.from({ length: 12 }, () => 'Up'),
-  );
-  await driver.awaitGridCondition(
-    'the Extensions selection is anchored on its first row',
-    (snapshot) => snapshot.findText('› [x] File Tree') !== null,
-  );
-  for (
-    let selectionStep = 0;
-    selectionStep < 12 &&
-    driver.snapshot().findText('› [x] Source Text Editor') === null;
-    selectionStep++
-  ) {
-    driver.sendKeys('Down');
-    await driver.awaitScreenChange();
-  }
-  await driver.awaitGridCondition(
-    'Source Text Editor is selected in Extensions',
-    (snapshot) => snapshot.findText('› [x] Source Text Editor') !== null,
+  await selectExtensionsRowFromFirst(
+    driver,
+    statusPath,
+    '[x] Source Text Editor',
   );
   driver.sendKeys('Space');
   const editorUninstalledStatus = await HarnessSmoke.Class.awaitStatus(
@@ -911,9 +981,14 @@ try {
   );
 
   driver.sendKeys('Control+Shift+x');
-  await driver.awaitGridCondition(
-    'the disabled Source Text Editor row remains selected for reinstall',
-    (snapshot) => snapshot.findText('› [ ] Source Text Editor') !== null,
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('› [ ] Source Text Editor') !== null,
+    'the disabled Source Text Editor row is selected for reinstall',
   );
   driver.sendKeys('Space');
   await HarnessSmoke.Class.awaitStatus(
@@ -985,27 +1060,7 @@ try {
       row: extensionsHeading.row,
       button: 'left',
     });
-    driver.sendKeysWithoutFrameExpectation(
-      ...Array.from({ length: 12 }, () => 'Up'),
-    );
-    await driver.awaitGridCondition(
-      'the Extensions selection is anchored on its first row',
-      (snapshot) =>
-        snapshot.findText('› [x] File Tree') !== null ||
-        snapshot.findText('› [ ] File Tree') !== null,
-    );
-    for (
-      let selectionStep = 0;
-      selectionStep < 12 &&
-      driver.snapshot().findText(`› ${rowLabel}`) === null;
-      selectionStep++
-    ) {
-      driver.sendKeys('Down');
-      await driver.awaitScreenChange();
-    }
-    if (driver.snapshot().findText(`› ${rowLabel}`) === null) {
-      throw new Error(`Extensions row is not reachable: ${rowLabel}`);
-    }
+    await selectExtensionsRowFromFirst(driver, statusPath, rowLabel);
   };
 
   driver.sendKeys('Control+p');
@@ -1065,18 +1120,14 @@ try {
   );
 
   const initialStructureRows = Number(outlineReadyStatus.structureRows);
-  await driver.awaitGridCondition(
+  const scrollbarDiagnostic = await awaitRightDockScrollbarDiagnostic(
+    driver,
     'the structure scrollbar publishes its settled dock-height geometry',
-    () => (latestRightDockScrollbarDiagnostic(driver)?.height ?? 0) > 1,
   );
-  const scrollbarDiagnostic = latestRightDockScrollbarDiagnostic(driver);
   HarnessSmoke.Class.requireCondition(
-    scrollbarDiagnostic !== null,
+    scrollbarDiagnostic.height > 1,
     'the overflowing structure outline publishes right-dock scrollbar geometry',
   );
-  if (!scrollbarDiagnostic) {
-    throw new Error('The checked structure scrollbar diagnostic is absent');
-  }
   HarnessSmoke.Class.requireCondition(
     scrollbarDiagnostic.scrollSize === initialStructureRows &&
       scrollbarDiagnostic.scrollSize > scrollbarDiagnostic.viewportSize &&
@@ -1200,15 +1251,15 @@ try {
     ThemePalettes.Class.DARK,
     'focused',
   );
-  await driver.awaitGridCondition(
-    'the focused structure filter has one leading cell in the shared active tone',
-    (snapshot) => {
-      const searchPosition = snapshot.findTextInRectangle(
+  const structureFilterSnapshot = driver.snapshot();
+  HarnessSmoke.Class.requireCondition(
+    (() => {
+      const searchPosition = structureFilterSnapshot.findTextInRectangle(
         structureSearchGlyph,
         structureRectangle,
       );
       if (!searchPosition || searchPosition.column === 0) return false;
-      const leadingCell = snapshot.cell(
+      const leadingCell = structureFilterSnapshot.cell(
         searchPosition.row,
         searchPosition.column - 1,
       );
@@ -1220,7 +1271,8 @@ try {
             16,
           )
       );
-    },
+    })(),
+    'the focused structure filter has one leading cell in the shared active tone',
   );
   driver.sendText('alpha beta');
   await HarnessSmoke.Class.awaitStatus(
@@ -1881,7 +1933,7 @@ try {
     statusPath,
     'uninstall removes the database pane and all consumer projections',
     (status) =>
-      !(status.panelContentIds as string[]).includes('database') &&
+      !(status.panelContentKinds as string[]).includes('database') &&
       status.databaseConsumerStatus === undefined &&
       status.databaseConsumerVersion === undefined &&
       status.databaseProviderIdentifier === undefined &&
@@ -1908,7 +1960,7 @@ try {
     'the removed database chord cannot switch away before Settings opens',
     (status) =>
       status.settingsOpen === true &&
-      !(status.panelContentIds as string[]).includes('database'),
+      !(status.panelContentKinds as string[]).includes('database'),
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
@@ -1921,8 +1973,10 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'reinstall restores the database pane registration',
-    (status) => (status.panelContentIds as string[]).includes('database'),
+    'reinstall restores the database factory without creating a pane',
+    (status) =>
+      status.databaseConsumerStatus === 'idle' &&
+      !(status.panelContentKinds as string[]).includes('database'),
   );
   driver.sendKeys('Control+Shift+y');
   const finalDatabaseStatus = await HarnessSmoke.Class.awaitStatus(

@@ -1,0 +1,18 @@
+{
+  "task": 478,
+  "slug": "migrate-the-pre-satisfied-waits",
+  "branch": "fleet/478-migrate-the-pre-satisfied-waits",
+  "worktree": ".invar/worktrees/478-migrate-the-pre-satisfied-waits",
+  "tmuxSession": "invar/478-migrate-the-pre-satisfied-waits",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-478-migrate-the-pre-satisfied-waits.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "2c2b43b2b92b67b2eee973308d56fad45c687a59",
+  "startedAt": "2026-08-03T03:38:02-04:00",
+  "landedAt": "2026-08-03T04:10:17-04:00",
+  "durationMinutes": 32,
+  "mergeCommit": "655c0db0"
+}

@@ -16,6 +16,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -76,14 +77,21 @@ interface MarkRun {
 function splitterMarkRun(
   snapshot: HarnessSnapshot.Model,
   row: number,
+  startColumn: number,
+  width: number,
 ): MarkRun {
-  const text = Array.from(snapshot.rowText(row));
-  const firstColumn = text.indexOf('\u2500');
-  const lastColumn = text.lastIndexOf('\u2500');
-  if (firstColumn < 0) {
+  const dragSpan = Array.from(
+    snapshot.rowText(row).slice(startColumn, startColumn + width),
+  );
+  const firstColumnWithinSpan = dragSpan.indexOf('\u2500');
+  const lastColumnWithinSpan = dragSpan.lastIndexOf('\u2500');
+  if (firstColumnWithinSpan < 0) {
     throw new Error(`No splitter mark painted on row ${row}`);
   }
-  return { firstColumn, lastColumn };
+  return {
+    firstColumn: startColumn + firstColumnWithinSpan,
+    lastColumn: startColumn + lastColumnWithinSpan,
+  };
 }
 
 function clickSegment(
@@ -178,6 +186,179 @@ async function driveLegacyPersistedPaneRestore(): Promise<void> {
   } finally {
     driver.dispose();
     await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
+async function driveEmptyPanelRecovery(
+  columns: number,
+  rows: number,
+): Promise<void> {
+  const workspaceRoot = mkdtempSync(
+    join(tmpdir(), 'invar-panel-empty-workspace-'),
+  );
+  await Bun.write(join(workspaceRoot, 'alpha.ts'), 'export const alpha = 1;\n');
+  const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-panel-empty-home-'));
+  const settingsDirectory = join(homeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    `${JSON.stringify({
+      panelWorkspaceStates: {
+        [workspaceRoot]: {
+          spaces: [
+            {
+              kind: 'terminal',
+              label: 'Terminal',
+              groups: [
+                [
+                  { kind: 'terminal', label: 'Terminal One' },
+                  { kind: 'terminal', label: 'Terminal Two' },
+                ],
+              ],
+              activeGroupIndex: 0,
+            },
+          ],
+          activeSpaceIndex: 0,
+          panelListExpanded: true,
+          panelListWidth: 24,
+          visible: true,
+        },
+      },
+    })}\n`,
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot,
+    columns,
+    rows,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+
+  try {
+    const initialStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column restored panel has two reachable terminal rows and no Database pane`,
+      (candidate) =>
+        candidate.panelVisible === true &&
+        candidate.panelListVisible === true &&
+        JSON.stringify(candidate.panelContentLabels) ===
+          JSON.stringify(['Terminal One', 'Terminal Two']) &&
+        JSON.stringify(candidate.panelCellLabels) ===
+          JSON.stringify(['Terminal One', 'Terminal Two']),
+    );
+    HarnessSmoke.Class.requireCondition(
+      !(initialStatus.panelContentKinds as string[]).includes('database') &&
+        driver.snapshot().findText('No Terminal instances') === null,
+      'a nonempty restored panel has no phantom Database pane or empty notice',
+    );
+
+    await HarnessSmoke.Class.requestPanelContainerClose(driver, 'Terminal', 2);
+    driver.sendKeys('Enter');
+    await driver.awaitGridCondition(
+      `${columns}-column Terminal container dialog defaults to No`,
+      (candidate) =>
+        candidate.findText('Close Terminal and its 2 instances?') === null,
+    );
+    const preservedStatus = HarnessSmoke.Class.readStatus(statusPath);
+    HarnessSmoke.Class.requireCondition(
+      Array.isArray(preservedStatus.panelContentKinds) &&
+        preservedStatus.panelContentKinds.filter((kind) => kind === 'terminal')
+          .length === 2,
+      `${columns}-column container dialog defaults to No and preserves both instances`,
+    );
+
+    const promptSnapshot = await driver.awaitGridCondition(
+      'the first restored terminal paints a prompt before foreground work starts',
+      (candidate) => candidate.findText('$') !== null,
+    );
+    HarnessSmoke.Class.clickText(driver, promptSnapshot, '$');
+    driver.sendText('sleep 30');
+    driver.sendKeys('Enter');
+    await driver.awaitGridCondition(
+      'the first terminal paints its live foreground command',
+      (candidate) => candidate.findText('sleep 30') !== null,
+    );
+
+    await HarnessSmoke.Class.closePanelContentsListRow(
+      driver,
+      statusPath,
+      'Terminal One',
+    );
+    // Graph wait for the MODEL condition (registry down to one), then a
+    // screen assertion for what the user sees — graph sequences, screen
+    // asserts (task #469).
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.orderedContents.length',
+      1,
+    );
+    const oneRemainingSnapshot = await driver.awaitGridCondition(
+      'one remaining terminal keeps the empty notice absent',
+      (candidate) =>
+        candidate.findText('Terminal Two') !== null &&
+        candidate.findText('No Terminal instances') === null,
+    );
+    HarnessSmoke.Class.requireCondition(
+      oneRemainingSnapshot.findText('No Terminal instances') === null,
+      'the empty notice does not paint while one terminal remains',
+    );
+
+    await HarnessSmoke.Class.closePanelContentsListRow(
+      driver,
+      statusPath,
+      'Terminal Two',
+    );
+    const emptyStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the last instance leaves one visible empty panel list',
+      (candidate) =>
+        candidate.panelVisible === true &&
+        candidate.panelListVisible === true &&
+        Array.isArray(candidate.panelContentIds) &&
+        candidate.panelContentIds.length === 0 &&
+        Array.isArray(candidate.panelCellIds) &&
+        candidate.panelCellIds.length === 0,
+    );
+    // The #465 invariant, observable only through the graph: the emptied
+    // SPACE survives its last instance — the container is not destroyed.
+    // invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.spaces.length',
+      1,
+    );
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.activeSpace.contentIds.length',
+      0,
+    );
+    // Screen contract: the empty panel offers the one-form add button and
+    // the notice (the #467 shape).
+    const emptySnapshot = await driver.awaitGridCondition(
+      'the empty panel paints the add button and the notice',
+      (candidate) =>
+        candidate.findText('+ Terminal ▾') !== null &&
+        candidate.findText('No Terminal instances') !== null,
+    );
+    HarnessSmoke.Class.requireCondition(
+      emptyStatus.panelVisible === true &&
+        emptyStatus.panelListVisible === true &&
+        emptySnapshot.findText('+ Terminal ▾') !== null,
+      'the empty panel stays open and offers the + Terminal button',
+    );
+    HarnessSmoke.Class.pass(
+      `${columns}-column instance rows close without dialogs and the empty panel offers + Terminal`,
+    );
+  } finally {
+    await driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+    await HarnessSmoke.Class.removeTemporaryDirectory(workspaceRoot);
   }
 }
 
@@ -354,15 +535,43 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
     let status = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      `${columns}-column tab bar shows Terminal and Database spaces`,
+      `${columns}-column tab bar starts with no unrequested Database space`,
       (candidate) =>
         candidate.panelVisible === true &&
         JSON.stringify(candidate.panelSpaceLabels) ===
-          JSON.stringify(['Terminal', 'Database']) &&
+          JSON.stringify(['Terminal']) &&
+        Array.isArray(candidate.panelContentKinds) &&
+        !candidate.panelContentKinds.includes('database') &&
         Array.isArray(candidate.panelHeadingGeometry) &&
         candidate.panelHeadingGeometry.some(
           (geometry: { contentId?: string }) => geometry.contentId === 'panel',
         ),
+    );
+    const initialSpaceAdd = tabBar(status).spaceAdd;
+    if (!initialSpaceAdd) throw new Error('Missing initial Add geometry');
+    clickSegment(driver, tabBar(status).tabRow, initialSpaceAdd);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column container Add offers Database only after a user gesture`,
+      (candidate) =>
+        candidate.boundedListPopupOpen === true &&
+        Array.isArray(candidate.boundedListPopupItemIdentifiers) &&
+        JSON.stringify(candidate.boundedListPopupItemIdentifiers) ===
+          JSON.stringify(['terminal', 'database']),
+    );
+    driver.sendKeys('Down');
+    driver.sendKeys('Enter');
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${columns}-column user Add creates the first Database container`,
+      (candidate) =>
+        JSON.stringify(candidate.panelSpaceLabels) ===
+          JSON.stringify(['Terminal', 'Database']) &&
+        Array.isArray(candidate.panelContentKinds) &&
+        candidate.panelContentKinds.filter((kind) => kind === 'database')
+          .length === 1,
     );
     const panelSlot = HarnessSmoke.Class.layoutSlotRectangle(
       status,
@@ -496,6 +705,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
     // Both ends of the flush drag span must grab. The two drags move in opposite directions so
     // neither asks the panel to push past a bound it already occupies.
     if (initialTabBar.drag.width > 1) {
+      let currentTabBar = initialTabBar;
+      let currentEdgeSnapshot = tabRowSnapshot;
       for (const [edgeName, edgeColumnOf, rowDelta] of [
         ['the first painted cell', (run: MarkRun) => run.firstColumn, 1],
         [
@@ -504,17 +715,14 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           -1,
         ],
       ] as const) {
-        const rowBeforeEdgeDrag = tabBar(
-          HarnessSmoke.Class.readStatus(statusPath),
-        ).row;
-        const edgeSnapshot = await driver.awaitGridCondition(
-          `${columns}-column splitter mark is painted before the ${edgeName} drag`,
-          (snapshot) =>
-            Array.from(snapshot.rowText(rowBeforeEdgeDrag)).indexOf('\u2500') >=
-            0,
-        );
+        const rowBeforeEdgeDrag = currentTabBar.row;
         const edgeColumn = edgeColumnOf(
-          splitterMarkRun(edgeSnapshot, rowBeforeEdgeDrag),
+          splitterMarkRun(
+            currentEdgeSnapshot,
+            rowBeforeEdgeDrag,
+            currentTabBar.drag.left,
+            currentTabBar.drag.width,
+          ),
         );
         const edgeTargetRow = Math.max(0, rowBeforeEdgeDrag + rowDelta);
         driver.sendMouse({
@@ -535,12 +743,32 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           row: edgeTargetRow,
           button: 'left',
         });
-        await HarnessSmoke.Class.awaitStatus(
+        const resizedStatus = await HarnessSmoke.Class.awaitStatus(
           driver,
           statusPath,
           `${columns}-column a drag begun on ${edgeName} still resizes the panel`,
           (candidate) => tabBar(candidate).row !== rowBeforeEdgeDrag,
         );
+        const nextTabBar = tabBar(resizedStatus);
+        const previousDragCells = '\u2500'.repeat(currentTabBar.drag.width);
+        const nextDragCells = '\u2500'.repeat(nextTabBar.drag.width);
+        currentEdgeSnapshot = await driver.awaitGridCondition(
+          `${columns}-column relayout paints the current splitter before the next drag`,
+          (candidate) =>
+            candidate
+              .rowText(nextTabBar.row)
+              .slice(
+                nextTabBar.drag.left,
+                nextTabBar.drag.left + nextTabBar.drag.width,
+              ) === nextDragCells &&
+            candidate
+              .rowText(rowBeforeEdgeDrag)
+              .slice(
+                currentTabBar.drag.left,
+                currentTabBar.drag.left + currentTabBar.drag.width,
+              ) !== previousDragCells,
+        );
+        currentTabBar = nextTabBar;
         HarnessSmoke.Class.pass(
           `${columns}-column a drag begun on ${edgeName} still resizes the panel`,
         );
@@ -707,16 +935,19 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
 
     const instancesToggle = tabBar(status).instancesToggle;
     if (!instancesToggle) throw new Error('Missing Instances geometry');
+    // The toggle ends the row flush (trailing pad removed, user request
+    // 2026-08-02): its hit target reaches the row edge, and its own one-space
+    // margin is the last painted cell.
     const instancesToggleSnapshot = await driver.awaitGridCondition(
-      `${columns}-column instances button paints its pad before the panel border`,
+      `${columns}-column instances toggle margin is the last cell of the row`,
       (snapshot) =>
-        snapshot.cell(tabBar(status).tabRow, columns - 3)?.characters === ' ',
+        snapshot.cell(tabBar(status).tabRow, columns - 1)?.characters === ' ',
     );
     HarnessSmoke.Class.requireCondition(
-      instancesToggle.endColumnExclusive === columns - 2 &&
-        instancesToggleSnapshot.cell(tabBar(status).tabRow, columns - 3)
+      instancesToggle.endColumnExclusive === columns &&
+        instancesToggleSnapshot.cell(tabBar(status).tabRow, columns - 1)
           ?.characters === ' ',
-      `${columns}-column instances button owns the pad before the panel border`,
+      `${columns}-column instances toggle ends the row flush`,
     );
     clickSegment(driver, tabBar(status).tabRow, instancesToggle);
     status = await HarnessSmoke.Class.awaitStatus(
@@ -824,10 +1055,35 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       };
       status = await addDatabaseInstance('Database 2');
       status = await addDatabaseInstance('Database 3');
+      // The close removes a list row, so every geometry below it MOVES. The
+      // next add locates its control by findText, and "+ Database" is painted
+      // both before and after the relayout — a wait on it is pre-satisfied and
+      // hands back the stale frame, so the click lands on the old row. Wait for
+      // the relayout itself: the model count at a settled frame, then the
+      // screen actually dropping the row. Under load this was the #464 flake.
+      // The expected count is MEASURED, never invented: one fewer than now.
+      const contentsBeforeClose = Number(
+        (
+          await GraphClient.Class.query(
+            statusPath,
+            'panelHost.orderedContents.length',
+            'settle',
+          )
+        ).value,
+      );
       await HarnessSmoke.Class.closePanelContentsListRow(
         driver,
         statusPath,
         'Database 2',
+      );
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'panelHost.orderedContents.length',
+        contentsBeforeClose - 1,
+      );
+      await driver.awaitGridCondition(
+        'the closed Database 2 row leaves the instances list',
+        (candidate) => candidate.findText('Database 2') === null,
       );
       status = await addDatabaseInstance('Database 3', 2);
       const duplicateLabelIdentifiers = (
@@ -885,6 +1141,51 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
             tabBar(status).instancesToggle?.endColumnExclusive,
         'the superscript count and right pad stay inside the instances toggle hit area',
       );
+
+      const containerConfirmation =
+        await HarnessSmoke.Class.requestPanelContainerClose(
+          driver,
+          'Database',
+          2,
+        );
+      HarnessSmoke.Class.requireCondition(
+        containerConfirmation.findText(
+          'Close Database and its 2 instances?',
+        ) !== null,
+        'a two-instance container close confirms with its exact count',
+      );
+      driver.sendKeys('Enter');
+      await driver.awaitGridCondition(
+        'the container dialog defaults to No and preserves both instances',
+        (candidate) =>
+          candidate.findText('Close Database and its 2 instances?') === null,
+      );
+      status = HarnessSmoke.Class.readStatus(statusPath);
+      HarnessSmoke.Class.requireCondition(
+        Array.isArray(status.panelSpaceLabels) &&
+          status.panelSpaceLabels.includes('Database') &&
+          Array.isArray(status.panelContentKinds) &&
+          status.panelContentKinds.filter((kind) => kind === 'database')
+            .length === 2,
+        'the container dialog defaults to No and preserves both instances',
+      );
+      await HarnessSmoke.Class.requestPanelContainerClose(
+        driver,
+        'Database',
+        2,
+      );
+      driver.sendKeys('Left');
+      driver.sendKeys('Enter');
+      status = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'confirming the container close removes both Database instances',
+        (candidate) =>
+          Array.isArray(candidate.panelSpaceLabels) &&
+          !candidate.panelSpaceLabels.includes('Database') &&
+          Array.isArray(candidate.panelContentKinds) &&
+          !candidate.panelContentKinds.includes('database'),
+      );
     }
 
     const close = tabBar(status).controls.find(
@@ -929,7 +1230,7 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       (candidate) =>
         candidate.panelExpanded === true &&
         Array.isArray(candidate.panelSpaceLabels) &&
-        candidate.panelSpaceLabels.includes('Database'),
+        candidate.panelSpaceLabels.includes('Terminal 2'),
     );
     if (columns === 120) {
       driver.sendKeys('Control+j');
@@ -1050,6 +1351,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
 }
 
 await driveLegacyPersistedPaneRestore();
+await driveEmptyPanelRecovery(120, 40);
+await driveEmptyPanelRecovery(88, 24);
 await driveRightDockCrossing();
 await driveAtSize(120, 40);
 await driveAtSize(88, 24);

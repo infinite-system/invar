@@ -157,3 +157,17 @@ test('an already-satisfied scroll position resolves with a zero timeout', async 
     rmSync(statusPath, { force: true });
   }
 });
+
+test('the shared drive scale fixture has the requested first and last rows', async () => {
+  const fixture = await HarnessSmoke.Class.createDriveScaleFixture(3);
+  try {
+    const lines = (await Bun.file(fixture.filePath).text()).split('\n');
+    expect(lines).toEqual([
+      'DRIVE-LINE-000001 content at scale 3',
+      'DRIVE-LINE-000002 content at scale 3',
+      'DRIVE-LINE-000003 content at scale 3',
+    ]);
+  } finally {
+    await HarnessSmoke.Class.removeTemporaryDirectory(fixture.workspaceRoot);
+  }
+});

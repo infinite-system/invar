@@ -1,3 +1,741 @@
+# RESUME ANCHOR 49 — 2026-08-03 ~06:15 EDT — ELEVEN LANDINGS; THE NIGHT IS DONE
+
+## STATE: main green and clean; dist/iv rebuilt at e3e3316a.
+Waves 1-3 (anchor 48) + #480 Quick Open idiom (04ea99ab) + #481 shared
+machinery + Drive gesture deletion (e3e3316a) + the GraphClient timeout-vs-
+miss fix (53344f6b). The census migration is COMPLETE except remainders
+DECLARED with reasons (11 shell delays; two contention-tier residuals:
+plugin-manifest SHELL focus wait, scrollbars wrap-off layout wait).
+
+## USER MORNING ITEMS (unchanged from anchor 48, plus):
+1. cmux Cmd+C / kitty Ctrl+C forwarding test — the only open copy hop.
+2. #481 round 1 was a conductor brief mistake (template substitution
+   silently failed); the builder's NO-CHANGE + conflict note was exemplary.
+   Lesson: verify a templated brief's substitutions before dispatch.
+3. Conductor decisions pending: #451 review-or-retire; #460-#464 re-read.
+
+## STANDING: crons :07/:37; fleet-watch armed; only the dormant 451 codex
+remains in tmux; no experiments; goal MET in full.
+
+---
+
+# RESUME ANCHOR 48b — 2026-08-03 ~05:30 EDT — ONE LANDING IN FLIGHT
+
+READ ANCHOR 48 BELOW FIRST (nine landings sealed). Delta since:
+
+- #480 (Quick Open idiom five files, all six sites) is READY at ad6d5038 in
+  .invar/worktrees/480-migrate-the-quick-open-idiom; its gate runs at
+  /tmp/gate-480.log with a death-reporting monitor. ON GREEN: land via
+  GATE_LOG=/tmp/gate-480.log BYCATCH_TRIAGED=1 bash scripts/fleet/land.sh
+  480 migrate-the-quick-open-idiom <msg-file> "<summary>"; convert bycatch
+  from the report FIRST (read its ## Bycatch + ## PTY usability).
+- After 480: remaining queue per anchor 48 (shared-machinery migration
+  round, Drive.ts deletion, 451 review, 460-464 re-read). NO experiments.
+- Builders: only 480's codex (idle-READY) + the dormant 451 codex.
+
+---
+
+# RESUME ANCHOR 48 — 2026-08-03 ~05:15 EDT — THE FULL NIGHT IS LANDED
+
+## STATE: main green and clean; dist/iv rebuilt. NINE landings tonight:
+Wave 1: 470-slice(5136cdfa) 471(1d03a604) 473(da9f70f2)
+Wave 2: 477(08ab9d46) 478-r1(655c0db0) 476(305185c5)
+Wave 3: 474(7b8b889d) 475(f10ebd13) 479-r1(c5316ddf)
+Plus: reach-completeness record (f23bba4b), modifier clicks, mirror
+auto-pacing, gauge budget file, gate-death rerun discipline (474's first
+gate died silently mid-tests — reran, landed on the second's own sentinel).
+
+## USER MORNING ITEMS
+1. #477: the app copies agent-pane selections (proven, 5 chord forms); test
+   whether cmux forwards Cmd+C / kitty Ctrl+C over ssh — the only open hop.
+2. #475 landed a REAL bug the demo agent found: Quick Open now focuses the
+   editor. The demo loop is already paying for itself.
+3. Quit is silent now (#474) and reload cannot strand a dead session (#476).
+
+## OPEN QUEUE (nothing in flight, no builders live)
+- Migration remainder: the #479 report's table names every remaining file
+  (Quick Open idiom five, shared machinery, agent/terminal, shell sites).
+  Next round dispatches from that table verbatim.
+- Drive.ts --gesture deletion (now unblocked; conflicts cleared).
+- #451 dormant codex: review-or-retire, conductor decision.
+- #460-#464 old bycatch: re-read before any dispatch.
+- Residual contention flakes (remainder-tier, named): plugin-manifest SHELL
+  smoke focus wait; scrollbars wrap-off layout wait.
+
+## STANDING: crons :07/:37 armed; fleet-watch armed; no experiments (user
+order); the goal ("470,477,475,476,474 and the rest in smart order") is MET
+except the migration remainder + Drive.ts deletion, which are next-round
+work by the honest-boundary rule.
+
+---
+
+# RESUME ANCHOR 47 — 2026-08-03 ~04:30 EDT — OVERNIGHT WAVE 2 LANDED
+
+## STATE: main green and clean. Tonight's landings, in order:
+470-slice(5136cdfa) 471(1d03a604) 473(da9f70f2) — wave 1 (goal 1, met)
+477(08ab9d46) 478-r1(655c0db0) 476(305185c5) — wave 2 (goal 2, in progress)
+Plus: reach-completeness record CONFIRMED+landed (f23bba4b); modifier clicks;
+mirrored-pace default; gauge budget file.
+
+## USER MORNING ITEMS
+- #477 verdict: the APP copies agent-pane selections fine (5 chord forms
+  proven). The failure is the cmux/ssh hop — user must test whether cmux
+  forwards Cmd+C / kitty Ctrl+C at all. Nothing left on our side.
+- The invar-builds-invar live demo works (user drove it via MCP); pacing now
+  automatic on mirrors.
+
+## WAVE 3 (dispatching now, user-authorized "and the rest in smart order")
+- #479 (to file): migration round 2 — plugin-manifest + scrollbars contention
+  files, then the census tail. Work list unchanged: the census + 471's path map.
+- #475 Quick Open focus (reproduce-first).
+- #474 dispose-order warnings.
+- HELD for wave 4 (conflicts with 479): Drive.ts --gesture deletion.
+- #451 dormant codex: review-or-retire, conductor decision, pending.
+
+## STANDING: crons :07/:37 armed; fleet-watch armed; no experiments
+(user order); cap 3 builders; land serially; gate per landing.
+
+---
+
+# RESUME ANCHOR 46 — 2026-08-03 ~03:00 EDT — THE OVERNIGHT GOAL IS MET
+
+## STATE: all three pipeline tasks LANDED, main green, tree clean.
+
+- #470 slice 1 -> 5136cdfa (wait generators: quiescence reset with
+  publication parity after a round-2 conductor-gate catch, pre-satisfaction
+  guard, model-count panel waits, settled Drive join, activitybar needles).
+- #471 -> 1d03a604 (composition-rooted graph, automatic contributor reach,
+  shortcut getters; 26 of 34 census facts now migratable with named paths).
+- #473 -> da9f70f2 (the MCP doorway: agents drive Invar through MCP; seven
+  instrument fixes; MCP-client-verified at 10 and 100k lines).
+- dist/iv rebuilt from da9f70f2. Crons at :07/:37 armed; fleet-watch armed.
+- User constraint honored: no experiments, no other tasks.
+
+## For the user's morning — PTY usability tracking (their question)
+
+Three builders used the drive loop overnight. Verdict: IT WORKS — all three
+verified real behavior through warm servers without hand-rolled probes.
+Collected friction, ALL NOW FIXED in #473's landing: labeled show, --size
+fixtures, loud attach exits, stop-command docs, status-vs-graph split
+documented, SIGWINCH forwarding. Remaining asks: MCP server_start has no
+line-count option (workspace prep still manual for MCP-only callers).
+AWAITING THE USER: the proposed reach-completeness invariant record
+("the composition graph reaches every installed contributor").
+
+## Open queue (nothing in flight)
+
+#470 remainder (the ~125-site migration, now unblocked by #471) · #475
+(Quick Open focus bycatch) · #476 (reload boot-failure) · #474 (dispose
+warnings) · Drive.ts --gesture deletion · #451 dormant codex · #460-#464.
+The invar-builds-invar DEMO LOOP waits for the user to watch it live.
+
+---
+
+# RESUME ANCHOR 45 — 2026-08-03 ~00:55 EDT — START HERE
+
+## STATE: gate GREEN at 7654e61d (ALL-PASS, GATE_EXIT=0, clean tree, log
+/tmp/gate-final-clean2.log). Everything the marathon built is landed and gated.
+
+The user is PRESENT and directing. Crons stay DISARMED (standing order).
+fleet-watch Monitor is the only watcher; re-arm on restart:
+`Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+
+## What exists now (all gated)
+
+- The graph channel (#469): get/waitFor(parked)/set(experiment)/awaitTransition.
+- The drive server (#472 case 1): --serve/--attach/--reload/--stop, rendezvous
+  KEYED TO THE CHECKOUT (each worktree its own server), --mirror for humans
+  (trail, click rings, scroll marks, humanPace Fitts model).
+- The drive-pty SKILL (.claude/skills/drive-pty/SKILL.md) — LEADS with the
+  agent's headless primary loop; encoded demos in scripts/harness/drives/.
+- Census #470 complete (all 77+ files), panel-chrome fixed, conductor
+  families 15-17 recorded.
+
+## Open queue (order decided by the user)
+
+1. #472 remainder: NONE (case 2 deprioritized by measurement — 5% of gate).
+2. #471 graph completeness (contributor state; shortcut getters) — accumulating
+   tangents, DO NOT LAUNCH without the user.
+3. #470 wait repairs — blocked on #471; renderQuiescent fix + PtyTestDriver
+   guard could land independently.
+4. #473 remainder: the MCP doorway (agents drive via MCP) + resize forwarding.
+5. Drive.ts --gesture layer deletion (#466 rejected direction) — STILL OPEN.
+6. #474 dispose-order warnings; #451 dormant codex in its worktree (steer or
+   retire); #460-#464 bycatch backlog.
+
+## The night's lessons live in project.conductor.md families 15-17 and the
+drive-pty skill; the census is durable in task #470's folder.
+
+
+---
+
+# RESUME ANCHOR 44 — 2026-08-02 ~19:53 EDT — START HERE
+
+## STATE: #469 is DONE and landed. Main is f1dd6a31, tree clean.
+
+The user is PRESENT and directing. Crons stay DISARMED (standing order).
+fleet-watch Monitor is the only watcher; re-arm with
+`Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+
+## THE NEXT ACTION: the user owes a DECISION. Do not fix anything until they answer.
+
+Census batch 1 IS DELIVERED — `tmp/harness-wait-census.md` (43 of 77 files).
+Batch 2 (the 34 deferred files, contention tier first) is in flight and
+APPENDS to that same file. The user's exact words were "give me a report
+before we do the fixes", and the report has been given; they were then asked
+which fixes they want and in what order, and have NOT answered. Wait.
+
+### THE BIGGEST FINDING — carry this even if everything else is lost
+`renderQuiescent` is initialized false at StatusChannel.ts:33, set true at
+StatusChannel.ts:97, and NEVER SET BACK TO FALSE ANYWHERE. Verified directly.
+So after the first completed frame it is permanently true, and every `settle`
+wait and every `renderQuiescent === true` check is pre-satisfied for the life
+of the process. `scripts/tui-harness.sh`'s `settle` is therefore a no-op, and
+the ~258 sleeps in the shell suite are the SYMPTOM of people papering over a
+primitive that never worked. Also reaches perf-baselines.sh:100,
+smoke-activitybar-harness.ts:260, smoke-tree-scroll-harness.ts:95/151/375,
+Drive.ts:703.
+
+Recommended order given to the user (awaiting their ruling):
+1. Fix renderQuiescent (reset to false when a frame is requested).
+2. PtyTestDriver.ts:412-439 — add the pre-satisfaction guard its own sibling
+   already has at :277-282. The only fix that stops class 1 recurring.
+3. HarnessSmoke.ts:313-316 — the surviving half of #464, in a SHARED helper
+   on the contention tier.
+4. Finish/act on the census; 5. the individual class-1 sites.
+
+Census counts, batch 1: class 1 pre-satisfied 53 · class 2 proxy 22 · class 3
+sleep-as-sync ~258 (needs triage, not 258 defects) · class 4 stale needle 2 ·
+class 5 blink 13.
+
+## (superseded) the census brief, kept only to re-run if the file is lost
+
+A background subagent is auditing every `scripts/harness/smoke-*.ts` for
+flake-prone waits. The user asked, verbatim: "scout the app harness
+smokes/tests for where we can implement the same to reduce tests,smokes
+flakiness and give me a report before we do the fixes".
+
+**REPORT FIRST. FIX NOTHING until the user approves.** If the agent's result
+was lost to compaction, re-run the census (the brief is reproduced below).
+
+### The census brief, to re-run if lost
+Defect classes, priority order:
+1. PRE-SATISFIED WAIT — a wait already true when issued, so it returns a
+   stale frame. This caused the real gate red (#464). Signature: an
+   awaitGridCondition/findText wait on text painted BOTH before and after the
+   change. Ask of every wait: "is this FALSE right now?"
+2. PROXY WAIT — waiting on a repaint or row-text diff when a model condition
+   exists.
+3. SLEEP used as synchronization rather than as a deadline.
+4. STALE NEEDLE — literal screen text the app no longer paints.
+5. TRANSIENT/BLINK — needs awaitTransition, not awaitValue.
+Scope: all scripts/harness/smoke-*.ts + PTY-waiting scripts/smoke-*.sh (~70
+registered jobs); note which are on the CONTENTION tier (grep
+`contention_smoke` in scripts/merge-gate.sh) since contention widens the
+model-to-paint window. Output: file:line, class, the wait as written, why,
+and a proposed graph path WITH EVIDENCE it exists (cite the defining
+file:line) or "no model path". Then counts per class and the top 5 fixes.
+
+## What shipped today (all on main, all gated by hand — see each commit)
+
+- **#469 the graph channel.** `src/modules/system/GraphChannel.ts` answers
+  path queries against the LIVE ivue graph; root is the existing
+  `statusProjectionPorts` object in Bootstrap (~line 1402), so the path
+  namespace is `panelHost`, `workspaceSet`, `view`, `settings`, `quickOpen`,
+  `layoutSlotSizes`, `mouse`, … (25 roots). Same enablement as StatusChannel
+  (`TUI_OBSERVE=1` or `TUI_STATUS_PATH`), so a shipped binary exposes nothing.
+  Driver side: `scripts/harness/GraphClient.ts` (shared by DriveSession AND
+  the smokes — one protocol, do not fork it).
+  - `get(path)` — mode 'now'.
+  - `waitFor/awaitValue(path, value)` — mode 'await': the condition is PARKED
+    IN THE APP and evaluated in the frame-settle hook. One request buys every
+    sample. The app owns the deadline and answers with the last settled value.
+  - `set(path, value)` — EXPERIMENT only, user decision 2026-08-02. Never in
+    verification: it bypasses the user's input path.
+  - `awaitTransition(path, value)` — mode 'transition': subscribes (Vue watch,
+    sync flush) for BLINKS only. Reports mid-update states and adds an edge to
+    the reactive graph. Limits are documented at the definition.
+  - Record: `Graph observation reads and never mutates` in
+    src/modules/system/system.invariants.md.
+- **Panel tab bar**: trailing pad after the instances toggle removed (user
+  request); the toggle now ends the row flush and its hit target reaches the
+  edge. `src/modules/ui/PanelTabBar.ts` + geometry contracts (endColumn 78→80
+  at width 80).
+- **panel-chrome smoke migrated** (97c89a44): the #464 contention red was a
+  PRE-SATISFIED WAIT, not load — see the census brief above. Also repaired
+  three stale needles left by #465/#467.
+
+## Open threads, honestly stated
+
+- **The drag flake is DIAGNOSED** (was open earlier in this anchor). The named
+  wait at smoke-panel-chrome-harness.ts:740-745 is INNOCENT — its predicate is
+  genuinely false at issue. The defect is the PRECONDITION at :712-717, class
+  1: it waits for `─` on the splitter row and the splitter always paints `─`,
+  so it returns the pre-relayout frame; splitterMarkRun then reads a stale
+  edgeColumn, the press misses the new grab band, and the later wait times
+  out. Today's work is exonerated. NOT YET FIXED — it is in the gated set.
+- **The gate is GREEN.** `/tmp/gate-469-final.log` — `GATE_EXIT=0`, ALL-PASS,
+  zero FAIL lines, on the tree at 72cf4613. `OK contention: panel-chrome
+  harness` in 20.1s: independent confirmation that the #464 gate red is gone.
+  Verification debt from the SKIP_GATE=1 landings is CLEARED.
+- #451 READY at a80c75c0, never gated. #460-#464 filed from bycatch. The
+  #466 `--gesture`/panel-role layer in Drive.ts should be DELETED (superseded
+  by DriveSession; the user rejected that direction).
+
+## Lessons captured today (already written to project.conductor.md family 16)
+
+
+---
+
+# RESUME ANCHOR 43 — 2026-08-02 ~19:10 EDT — START HERE, DO #469 DIRECTLY
+
+## THE NEXT ACTION: implement #469 YOURSELF. Do NOT dispatch.
+The user was explicit: "no, don't dispatch" then "i will compact you and we
+start". A builder WAS dispatched and stopped; branch tagged
+retired/fleet/469-drive-reads-the-app-class-graph, worktree removed, task
+folder moved back to .invar/tasks/active/469-drive-reads-the-app-class-graph/
+with brief-469-1 already written. READ THAT BRIEF AND THE TASK FILE FIRST —
+they are complete and were reviewed; do not re-derive them.
+
+### The user's direction, verbatim
+"also maybe you should be able to access the whole app graph, since our whole
+app is just a class graph, do not rely on status projection"
+and earlier: "you can use lodash.get/set" (lodash.get is NOT a dependency;
+only lodash.throttle is — a local resolver was chosen and already exists).
+
+### What is already known — do not spend context rediscovering
+- The seam is `src/modules/system/StatusChannel.ts` (130 lines). It already
+  owns the observation channel, enabled by `TUI_OBSERVE=1` OR the presence of
+  `TUI_STATUS_PATH`, and it writes the atomic status file. The graph bridge
+  belongs beside it under the SAME enablement, so a shipped binary never
+  exposes its object graph. Do not invent a second channel concept.
+- The app runs in a SEPARATE PROCESS (the PTY child), so the driver cannot
+  touch the objects in memory. A request/response channel is required.
+- `scripts/harness/DriveSession.ts` is the surface to extend (landed today,
+  #468). Its `resolvePath` is the segment walk to mirror over live objects; it
+  already handles `a.b[0]` and returns a PATH_MISS symbol so "absent" and
+  "published as undefined" stay distinguishable. `show()` already fails loudly
+  with near-match suggestions — hold that same discipline for `get`.
+- ivue getters evaluate on read, so a walk returns live values. Unwrap
+  Ref/Computed IN THE RESOLVER, never at the call site.
+
+### The one question to settle BY DRIVING, not by argument
+Conductor's claim: keep the status projection alongside graph reads, because
+it is published atomically at a frame boundary so a wait on it cannot observe
+a half-updated app, whereas a live graph read can catch the app mid-update and
+return a value that never existed (the torn-frame class #457 removed from the
+gate). Therefore graph reads for ASKING, projection for WAITING.
+TEST IT. If a graph read can tear, `waitFor` on a graph path is a flake
+generator and must sample only at a safe point — name the point. If it cannot
+tear, say what makes it safe and the caution was wrong.
+
+### Boundaries
+READ ONLY. A `set` bypasses the user's own input path, which is the premise of
+the whole harness. If setting seems needed, argue it separately; do not ship
+it. Bridge inert unless the harness enables it.
+
+## LANDED ON MAIN TODAY
+#457 gate determinism 687dc80f · #459 panel reachability bc367e17 ·
+#465 emptied space survives ecc13a44 · #466 Drive roles/gestures f7212535 ·
+#467 add control keeps one button appearance 72a6f7f3 ·
+#468 DriveSession fluent + loud show + paths 4326e2cc, 50a79127, ee80a561.
+dist/iv rebuilt 18:18 (from 72a6f7f3 — REBUILD after any user-facing change;
+the user tests the BINARY and tested stale code once tonight).
+The user CONFIRMED the panel work: "finally fuck, tested it works".
+
+## ALSO OPEN (lower priority than #469)
+- DELETE the `--gesture`/panel-role layer in Drive.ts (#466). The user
+  rejected that direction as too app-specific; DriveSession supersedes it.
+  Leaving both is drift. Keep the generic `status-excludes` completion.
+- Gate on main RED: /tmp/gate-main-465.log GATE_EXIT=1 while printing
+  "blocking verdict unchanged"; failing check is contention panel-chrome
+  (#464), pre-existing. #457's report-only tier did not hold the exit code
+  there though it did on gate-457 and gate-459e.
+- #451 READY at a80c75c0, never gated. #460-#464 filed from bycatch.
+
+## STANDING
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor only.
+NEVER write to ~/.config/invar (the user's real config; theirs is damaged —
+its terminal space was persisted away by the pre-fix binary; Ctrl+J restores).
+ui-task skill governs UI work. project.conductor.md family 15: never write the
+second probe — fix the instrument.
+
+# RESUME ANCHOR 42 — 2026-08-02 ~18:25 EDT (85% gauge) — DO THIS FIRST
+
+## LANDED ON MAIN THIS SESSION (all verified by driving, not by reading)
+- #457 gate determinism -> 687dc80f
+- #459 panel reachability -> bc367e17
+- #465 An emptied space survives its last instance -> ecc13a44
+- #466 Drive panel roles + gestures -> f7212535
+- #467 The add control keeps one button appearance -> 72a6f7f3
+dist/iv rebuilt at 18:18 from 72a6f7f3. The user tests the BINARY: rebuild
+after every user-facing change or they test stale code (cost one round tonight).
+
+## USE THE INSTRUMENT, NEVER HAND-WRITE A PROBE (user-directed, 2026-08-02)
+"drive.ts should be sophisticated enough that you can drive the terminal app
+without hand coding the probes each time."
+  bun run drive --open <ws> --gesture openPanel --gesture openInstances \
+    --gesture addInstance=Terminal --gesture closeInstance="Terminal 2"
+Roles: instances-toggle · instance-add · instance-row · instance-row-close ·
+popup-entry. Completion status-excludes waits for a label to LEAVE a list.
+When a drive is fiddly, FIX THE INSTRUMENT ONCE — do not write probe #5.
+
+## OPEN — mine, in priority order
+1. closeInstance's close-control fallback uses `snapshot.columns - 2`. That
+   assumes the list ends at the screen edge; it broke the moment the layout
+   shifted. It needs the list's REAL width (status panelListGeometry.width is
+   the natural source but publishes left=-24, see #463). Reproduce:
+   ... --gesture closeInstance=Terminal --gesture closeInstance="Terminal 2"
+   with the #467 header — the second close resolves a column off.
+2. Gate on main red: /tmp/gate-main-465.log GATE_EXIT=1 while printing
+   "blocking verdict unchanged". Failing check is contention panel-chrome
+   (#464), pre-existing. #457's report-only tier did NOT hold the exit code
+   here though it did on gate-457 and gate-459e. Hole in what I landed.
+3. #451 READY at a80c75c0, never gated.
+4. #460 contention evidence asymmetry · #461 scrollbar deep-wheel · #462 empty
+   slowest row · #463 panelListGeometry left=-24 · #464 panel contention.
+
+## THE USER'S OWN CONFIG IS DAMAGED (not a live bug)
+~/.config/invar/settings.json panelWorkspaceStates["/home/parallels/dev/invar"]
+holds ONLY a database space; the terminal space was destroyed and persisted by
+the pre-fix binary. Ctrl+J restores it. NEVER write to their real config.
+
+## STANDING
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor only.
+The user is ACTIVELY PRESENT: their direction IS the backlog. ui-task skill
+governs UI work — SEE by driving before speaking, batch items, confirm before
+dispatch.
+
+# RESUME ANCHOR 41 — 2026-08-02 ~18:40 EDT (85% gauge) — DO THIS FIRST
+
+## USER-DIRECTED UI TASK, stated verbatim (do not paraphrase away)
+"Add Terminal thing is not just a text, it's a button... but that's not
+fucking clear, also my point was, it SHOULD not be like that, it should
+LEAVE the right pane to exist with the existing btn on top, not switch me to
+use Add Terminal in the left pane which doesn't look like a button, the left
+Pane should have nice description like Database left pane when no database is
+connected, or should have proper spacing and Add Terminal should clearly look
+like a button, but I also want to show right pane still, if no one closed the
+right pane via the toggle, it should still be there with 0 instances but a
++ Terminal button should give me the choices and be able to add new terminal"
+
+### The three requirements
+1. At 0 instances the INSTANCES LIST (the "right pane") must REMAIN, with its
+   `+ Terminal ▾` button on top. It disappears ONLY via its own toggle.
+2. The CONTENT area (the "left pane") shows a real empty state: description +
+   proper spacing, modelled on the DATABASE pane's not-connected state.
+   GO LOOK AT THAT FIRST — it is the reference the user named.
+3. The add affordance must LOOK like a button. Today the list header silently
+   degrades from `+ Terminal ▾` to the bare text `Add Terminal`, which reads
+   as a label. Conductor wrongly reported "Add Terminal paints: yes" as if
+   that closed the question.
+
+### ui-task skill governs: SEE, CONFIRM, ACCUMULATE, ask before dispatch.
+Do NOT dispatch on the three items above alone — batch 10-20 items for the
+panel-chrome surface, each with driven before/after values.
+
+## LANDED THIS SESSION
+- #457 gate determinism -> 687dc80f. Five identical verdicts on one commit,
+  unchanged at 3 and 6 workers, planted defect red 5/5.
+- #459 panel reachability -> bc367e17.
+- #465 An emptied space survives its last instance -> ecc13a44 (ON MAIN).
+  PanelHost.detachContent: (a) keep a space that is active even when emptied,
+  (b) last-cell fallback searches only the ACTIVE SPACE. Both load-bearing,
+  proven by deletion. Record in ui.invariants.md. dist/iv rebuilt 17:59.
+- #466 Drive panel roles + gestures -> f7212535 (ON MAIN).
+  Roles: instances-toggle, instance-add, instance-row, instance-row-close,
+  popup-entry. Gestures: openInstances, addInstance[=KIND], closeInstance=LABEL.
+  New completion: status-excludes. USE THESE. Do not hand-write probes.
+  Whole scenario:
+    bun run drive --open <ws> --gesture openPanel --gesture openInstances \
+      --gesture addInstance=Terminal --gesture closeInstance=Terminal
+  Proven: panelContentLabels=[] with panelVisible=true, list still open.
+
+## THE USER'S OWN STATE IS DAMAGED (not a live bug)
+~/.config/invar/settings.json panelWorkspaceStates["/home/parallels/dev/invar"]
+has ONLY a database space — the terminal space was destroyed and PERSISTED by
+the pre-fix binary. Ctrl+J restores it (verified against a copy). NEVER write
+to their real config.
+
+## OPEN, MINE TO CHASE
+- Gate on main /tmp/gate-main-465.log GATE_EXIT=1 while printing "blocking
+  verdict unchanged". The failing check is contention panel-chrome (#464),
+  pre-existing. So #457's report-only tier did NOT hold the exit code on that
+  run though it did on gate-457 and gate-459e. Hole in what I just landed.
+- #464 panel surfaces under contention · #460 contention evidence asymmetry
+  (git-watch moved on one unreproduced retry; bounded-list popup refused on
+  identical evidence) · #461 scrollbar deep-wheel · #462 empty slowest row ·
+  #463 panelListGeometry publishes left=-24.
+- #451 READY at a80c75c0, never gated.
+
+## STANDING
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor only.
+The user is ACTIVELY PRESENT and directing: their direction IS the backlog.
+
+# RESUME ANCHOR 40 — 2026-08-02 ~15:50 EDT (100.5% gauge) — DO THIS FIRST
+
+## #457 IS READY AND IT DELIVERED. Gate and land it FIRST.
+
+Branch `fleet/457-serial-tail-lacks-quiet-retry`, tip `246405c3`.
+Report: `.invar/tasks/in-progress/457-serial-tail-lacks-quiet-retry/report-457-serial-tail-lacks-quiet-retry.md`
+(READ IN FULL — this anchor is a summary, not a substitute).
+
+The three-part acceptance criterion was MET, with the runs reported:
+
+| Run | Workers | Blocking verdict | Contention | Load |
+| 1 | 3 | all-pass | 4/4 | 0.77 |
+| 2 | 6 | all-pass | 4/4 | 1.40 |
+| 3 | 3 | all-pass (one retry) | 4/4 | 1.23 |
+| 4 | 6 | all-pass | panel-chrome failed | 1.07 |
+| 5 | 3 | all-pass | panel-chrome failed | 0.88 |
+
+Five identical blocking verdicts on one unchanged commit. Verdict unchanged
+at 3 and 6 workers. Planted defect (the real pre-fix form) went red 5/5.
+
+### What it actually found — the mechanism
+NOT a missing retry. The founding premise stayed false. `PtyTestDriver`
+already retained every completed frame; `scrollUntilVisible` in
+`smoke-shortcut-help-harness.ts` read the LIVE emulator via `snapshot()`,
+which can hold the start of the next synchronized frame. It removed the
+three-delivery chord retry and the fixed 200 ms sleep. Shortcut contention
+went 3/6 fail -> 6/6 pass.
+
+### Four checks moved to the report-only contention tier
+`panel-chrome`, `scrollbars`, `git-watch`, `plugin-manifest lifecycle`.
+70 jobs registered, 67 pooled, 3 serial tail. No coverage deleted. It
+explicitly did NOT move `shortcut-help` (deterministic consumer error) or
+`bounded-list popup` (one unreproduced retry).
+
+### CONDUCTOR CHECK BEFORE LANDING — do not skip
+1. The moved-to-contention list is a DOWNGRADE class. Four blocking checks
+   stopped being able to block. Each has a named reason in the report; read
+   them and say whether you accept each one. This is the exact place a gate
+   goes quiet.
+2. `panel-chrome` moving to contention DIRECTLY BEARS ON #459's one red
+   (anchor 39). If #457 lands first, #459's blocker may cease to block.
+   Land #457, THEN re-gate #459 on the new gate. Anchor 39's A/B may be moot.
+3. Proposed invariant: it found `Blocking gate verdicts use ordering and
+   counts` ALREADY EXISTS in `scripts/harness/harness.invariants.md` and
+   proposes REFINING it rather than adding a record. My brief said the
+   invariant was written nowhere — that is a Family 14 repeat (conductor
+   asserts repo facts from memory). Accept the refinement; record the miss.
+
+### Bycatch to convert BEFORE merging (six items, all in the report)
+panel-chrome load defect (-> #459) · plugin-manifest panel geometry (-> #459)
+· scrollbar deep-wheel · git-watch timeout · bounded-list popup timeout
+· FAST slowest-table empty row `1. 0m00.000s —`.
+
+### Landing recipe
+Cut a clean integration tree (NOT /tmp/integration-459b, it held an
+unresolved conflict), merge main forward, gate, READ `GATE_EXIT` from the
+log, then `land.sh` from the MAIN checkout with `GATE_LOG=` and
+`BYCATCH_TRIAGED=1`. Docs commits use `SKIP_GATE=1`.
+
+## Then, in order
+- #459 — re-gate after #457 lands (see check 2 above).
+- #451 — READY at `a80c75c0`, was HELD for #457's measurements. Unblocked now.
+- #458 — all-terminals-dead-after-idle, unexplained, must not close quietly.
+- Queue: #445, #446, #447, #450, #453–#456.
+
+## Standing
+Crons DISARMED by user order — never re-arm. fleet-watch Monitor is the
+only watcher: `Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+Goal: make gate solid, deterministic, hard to flake.
+
+# RESUME ANCHOR 39 — 2026-08-02 ~15:20 EDT (99% gauge) — DO THIS FIRST
+
+## #459 clean-tree gate: GATE_EXIT=1, ONE red
+Tree `/tmp/integration-459d` (`080231be`), log `/tmp/gate-459d.log`:
+
+```
+FAIL smoke: panel-chrome harness
+error: Timed out waiting for
+  120-column Database add offers only another Database instance before Database 3
+```
+
+**NEXT ACTION — A/B this before blaming anything.** It is a TIMEOUT, not
+an assertion failure, and this exact wait has a history: #452's builder
+reported it timing out on an UNCHANGED tree (`4222e760`) and called it
+pre-existing. So the live hypotheses are (a) known contention flake, or
+(b) #459's factory seam genuinely changed contextual Database add.
+Run it quiet on `/tmp/integration-459d` AND on plain `main`, twice each.
+- passes quiet on both -> contention; land #459 with a WRITTEN
+  GATE_OVERRIDE naming this red and its A/B evidence.
+- fails quiet on the 459 tree only -> real; round 6 to the builder.
+Do NOT re-run the gate hoping for green.
+
+## Landing command once cleared
+`GATE_LOG=/tmp/gate-459d.log BYCATCH_TRIAGED=1 bash scripts/fleet/land.sh 459 empty-right-pane-has-no-add-affordance <msg-file> "<summary>"`
+Run from the MAIN checkout. Bycatch already triaged (two contract items,
+both ACCEPTED and already committed to main).
+
+## ABANDONED: `/tmp/integration-459b` — unresolved merge conflict made it
+hold a stale coverage declaration; two gates judged a tree that did not
+match the branch. Verify a merge SUCCEEDED before gating.
+
+## Fleet
+- **#457 gate determinism — THE PRIORITY** (user hook goal: solid,
+  deterministic, hard to flake). Rounds 1+2 filed, no commits yet.
+  Acceptance: 5 identical verdicts on one commit · unchanged at 3 and 6
+  workers · planted defect red all 5 times. Design: deterministic
+  BLOCKING tier + reported CONTENTION tier.
+- **#451** READY `a80c75c0`, HELD from gating until #457 measurements
+  finish.
+- **#459** one red from landing, see above.
+
+## Standing
+- Crons DISARMED. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`. File the brief BEFORE the steer.
+- A gate names a COMMIT, not a branch.
+- shortcut-help passes 10/10 quiet on main, fails only in loaded gates.
+- project.conductor.md family 14: derive brief facts mechanically.
+
+---
+
+# RESUME ANCHOR 38 — 2026-08-02 ~15:00 EDT (98% gauge)
+
+## #459 — gating on a CLEAN tree, `/tmp/integration-459d` (`080231be`)
+Log: `/tmp/gate-459d.log`. If GATE_EXIT=0 -> land #459 from the MAIN
+checkout with `GATE_LOG=/tmp/gate-459d.log BYCATCH_TRIAGED=1`.
+
+**Why the earlier gates kept failing identically:** `/tmp/integration-459b`
+had an UNRESOLVED CONFLICT from a `git merge main`, so it held the OLD
+coverage declaration (35->27/33->29) while the branch had the corrected
+one (35->29/33->31). Two gate runs judged a tree that did not match the
+branch. ABANDON `/tmp/integration-459b`. Lesson: after any merge into an
+integration tree, verify the merge SUCCEEDED before gating — a gate on a
+conflicted tree reports a stale verdict that looks like a real red.
+
+Round 5 is otherwise complete: every declaration re-measured, all six
+round-4 smokes pass, only the ratchet was outstanding.
+
+## Fleet
+- **#457 gate determinism — THE PRIORITY** (user hook goal). Rounds 1+2
+  filed. Acceptance: 5 identical verdicts on one commit · unchanged at
+  3 and 6 workers · planted defect red all 5 times. Blocking tier
+  deterministic + contention tier reported.
+- **#451** READY `a80c75c0`, HELD from gating until #457's measurements
+  are done.
+- **#459** gating now.
+
+## New doctrine committed
+`project.conductor.md` family 14 — briefs assert repo facts from
+memory; derive the invariants list mechanically, never name an un-ls-ed
+script, never derive a filename from a gate label, grep before claiming
+no record governs X.
+
+## Standing
+- Crons DISARMED. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`.
+- File the brief BEFORE the steer.
+- A gate names a COMMIT, not a branch — re-merge and re-gate if the
+  branch moved.
+- shortcut-help passes 10/10 on plain main; fails only in a loaded
+  gate. Contention, not a product defect. #457 owns it.
+
+---
+
+# RESUME ANCHOR 37 — 2026-08-02 ~14:30 EDT (95% gauge)
+
+## USER GOAL (hook): make the gate SOLID, DETERMINISTIC, hard to flake.
+Gate work outranks feature work.
+
+## #459 — ONE failure left, fix in flight
+`/tmp/gate-459b.log` GATE_EXIT=1 with exactly ONE red:
+coverage ratchet. All six round-4 smokes now PASS.
+```
+coverage declaration: scripts/harness/smoke-panel-split-harness.ts
+project.coverage-deltas.md:41 declares 35->27 / 33->29
+actual                                  35->29 / 33->31
+```
+Round 5 filed (`brief-459-5-tmp-brief-459-5.md`) + steered: correct it
+and RE-MEASURE every declaration after the final edit (the ratchet
+names only the first mismatch). When the report lands: re-gate
+`/tmp/integration-459b` (merge branch + main first), then land.
+
+### #459 root cause — my hypothesis was WRONG
+Not `detachContent` promotion. The DATABASE PLUGIN registered a live
+pane during boot while restore replaced spaces. Repair = a factory
+seam: `PanelContentFactories` owns one factory per kind; a pane is
+created only on a user Add or a saved-pane restore; restore THROWS on a
+registered id with no space row. Round-4 census: 84 status-field reads,
+7 stale reachability assumptions across 4 smokes.
+One prized find: the phantom had been SILENTLY SATISFYING a wait in
+`workspace layout isolation` — a pre-satisfied wait exposed by removal.
+
+## Fleet
+- **#457 gate determinism — PRIORITY.** Rounds 1+2 filed, no commits
+  yet. Acceptance: 5 identical verdicts on one commit · verdict
+  unchanged at 3 and 6 workers · planted defect red all 5 times.
+  Design call: deterministic BLOCKING tier + reported CONTENTION tier.
+  Round 2: gate labels must resolve (merge-gate.sh:1231 labels
+  `smoke-media-harness.ts` as `animated-media harness`).
+- **#451** READY at `a80c75c0`, HELD from gating on purpose so it does
+  not perturb #457's measurements. Land after #457 reports.
+- **#459** round 5 in flight.
+
+## shortcut-help — sharpest evidence yet it is contention, not a bug
+#459's builder ran it on plain main 10 of 10 times: PASS. It fails only
+inside a loaded gate. That is #457's territory.
+
+## Standing
+- Crons DISARMED. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`.
+- File the brief BEFORE the steer — I inverted that once today; the
+  round-brief was refused for a dead link while the steer landed.
+- Never dispatch a builder into a running measurement sweep.
+- Sweep consumers when behaviour changes (missed on #452 AND #459).
+- A 1-in-5 green looks exactly like a fixed tree.
+
+---
+
+# RESUME ANCHOR 36 — 2026-08-02 ~14:10 EDT (90% gauge)
+
+## USER GOAL (session hook): make the gate SOLID, DETERMINISTIC, hard to flake.
+Gate work outranks feature work. The user said gate fixes affect
+everything downstream.
+
+## Fleet — 3 builders live
+
+- **#457 GATE DETERMINISM — THE PRIORITY.** Dispatched with a rewritten
+  brief. Deliverable is a PROPERTY: the gate's verdict is a function of
+  the commit alone. Acceptance = (1) five consecutive runs on one commit
+  give five identical verdicts; (2) verdict unchanged at 3 AND 6
+  workers; (3) a planted defect goes red all five times (guards against
+  determinism-by-deleting-coverage). Key design call in the brief:
+  a deterministic BLOCKING tier plus a deliberately-loaded CONTENTION
+  tier that is reported, never blocking. `shortcut-help` is its open
+  defect (self-generated output, no convergence cover).
+  Its task FILE NAME is stale (`serial-tail-lacks-quiet-retry`) — the
+  original premise was FALSE, the tail does retry. Body is rewritten.
+- **#459** panels — gated RED (`/tmp/gate-459.log`, GATE_EXIT=1, six
+  failures). Round 4 filed+steered: mechanical CONSUMER CENSUS, not six
+  patches. Two reds are consumers of removed behaviour (panel-split
+  wants the deleted confirm dialog; settings-applied expects the
+  phantom `agent,terminal,database` registration). Two need A/B
+  (workspace-tabs, tasks). shortcut-help is the #457 flake.
+- **#451** ffmpeg statics — READY, unread, ungated.
+
+## Contract records ACCEPTED + committed to main (not yet gated)
+`Every registered panel content is reachable` (ui.invariants.md) and
+`One dialog component serves confirms and prompts` Scope refined to
+`panel-container close` (design.invariants.md).
+
+## Flake numbers (measured, do not re-derive)
+Baseline `9f158472`: 1 green/5. After #436 convergence fix `c5dc3057`:
+**4 green/5**; `terminal harness` 2/5 -> **0/5**; `shortcut-help`
+2/5 -> 1/5. Pre-landing sweep proved both INHERITED.
+
+## Standing
+- Crons DISARMED. Never re-arm. One watcher: fleet-watch Monitor.
+- Docs commits need `SKIP_GATE=1`.
+- Never dispatch a builder into a running measurement sweep.
+- A 1-in-5 green looks exactly like a fixed tree.
+- Sweep consumers when behaviour changes — missed twice in two days
+  (#452, #459).
+
+---
+
 # RESUME ANCHOR 35 — 2026-08-02 ~13:45 EDT (85% gauge, CHECKPOINT)
 
 ## #459 — gated RED, NOT landed. Round 4 filed and steered.

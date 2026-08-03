@@ -8,6 +8,7 @@
 // invariant: SDK extraction cleanup stays bounded (src/modules/agent/agent.invariants.md)
 import {
   createCliRenderer,
+  RGBA,
   type CliRenderer,
   type KeyEvent,
 } from '@opentui/core';
@@ -38,6 +39,7 @@ import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
 import { Files } from '../system/Files';
 import { StatusChannel } from '../system/StatusChannel';
+import { GraphChannel } from '../system/GraphChannel';
 import { FrameProbe } from '../system/FrameProbe';
 import { ScrollPhysics } from '../ui/ScrollPhysics';
 import { Clipboard } from '../system/Clipboard';
@@ -64,6 +66,7 @@ import type {
   PaneTextSelectionPort,
 } from '../ui/PaneContent.interface';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
+import { PanelContentFactories } from '../ui/PanelContentFactories';
 import type { PaneRuntimeRequest } from '../ui/PaneRuntime.interface';
 import { AgentFactory } from '../agent/AgentFactory';
 import { SdkBinaryExtraction } from '../agent/SdkBinaryExtraction';
@@ -115,6 +118,79 @@ class $Bootstrap {
     Logging.Class.info('Boot start');
     this.reapSdkBinaryExtractions();
 
+    // Pointer trail (observability, TUI_POINTER_TRAIL=1): paints the pointer
+    // cell, a fading wake of recent positions, and click rings as a render
+    // POST-PROCESS — over everything, touching no layout, fed by the app's
+    // own received mouse events, so what it shows is exactly the gestures
+    // that ARRIVED, never a reconstruction. Built for the mirror: a human
+    // watching an agent drive needs to see the agent's hand. Inert without
+    // the env flag; the mirror server enables it by default.
+    const pointerTrailEnabled =
+      Environment.Class.env('TUI_POINTER_TRAIL') === '1';
+    const pointerTrailEvents: Array<{
+      x: number;
+      y: number;
+      atMs: number;
+      kind: 'move' | 'click' | 'scroll';
+    }> = [];
+    // The fade needs FRAMES to fade through: after the last mouse event no
+    // reactive state changes, so nothing would repaint and the wake freezes
+    // on screen. While any trail cell remains, the painter itself asks for
+    // the next frame; it stops asking when the trail drains — self-limiting.
+    let pointerTrailRenderer: { requestRender: () => void } | null = null;
+    const paintPointerTrail = (buffer: {
+      setCell: (x: number, y: number, char: string, fg: RGBA, bg: RGBA) => void;
+    }): void => {
+      const now = Date.now();
+      // Prune the wake; click rings and scroll marks linger so a tap reads.
+      const lifespanMs = { move: 650, click: 900, scroll: 800 };
+      while (
+        pointerTrailEvents.length > 0 &&
+        now - pointerTrailEvents[0]!.atMs >
+          lifespanMs[pointerTrailEvents[0]!.kind]
+      ) {
+        pointerTrailEvents.shift();
+      }
+      const trailBackground = RGBA.fromInts(122, 162, 247, 255);
+      const trailInk = RGBA.fromInts(22, 22, 30, 255);
+      for (const event of pointerTrailEvents) {
+        const age = now - event.atMs;
+        if (event.kind === 'click') {
+          buffer.setCell(
+            event.x,
+            event.y,
+            age < 300 ? '◉' : '◎',
+            RGBA.fromInts(255, 200, 120, 255),
+            trailInk,
+          );
+          continue;
+        }
+        if (event.kind === 'scroll') {
+          buffer.setCell(
+            event.x,
+            event.y,
+            '⇅',
+            RGBA.fromInts(158, 206, 106, 255),
+            trailInk,
+          );
+          continue;
+        }
+        buffer.setCell(
+          event.x,
+          event.y,
+          age < 250 ? '•' : '·',
+          trailBackground,
+          trailInk,
+        );
+      }
+      const pointer = pointerTrailEvents.at(-1);
+      if (pointer && pointer.kind === 'move') {
+        buffer.setCell(pointer.x, pointer.y, '✛', trailInk, trailBackground);
+      }
+      if (pointerTrailEvents.length > 0) {
+        pointerTrailRenderer?.requestRender();
+      }
+    };
     const renderer = await createCliRenderer({
       exitOnCtrlC: false,
       targetFps: 30,
@@ -123,7 +199,14 @@ class $Bootstrap {
       // Kitty keyboard protocol where available: super-modifier fidelity for the mac overlay
       // (Cmd chords); legacy terminals silently stay at base fidelity.
       useKittyKeyboard: {},
+      postProcessFns: pointerTrailEnabled ? [paintPointerTrail] : [],
     });
+    const requestRendererFrame = renderer.requestRender.bind(renderer);
+    renderer.requestRender = () => {
+      StatusChannel.Class.markRenderRequested();
+      requestRendererFrame();
+    };
+    pointerTrailRenderer = renderer;
 
     // Ctrl+click routing guard. OpenTUI treats Ctrl+left-down as "extend the current native
     // selection" and CONSUMES the event whenever `currentSelection` exists — and an ordinary
@@ -297,6 +380,8 @@ class $Bootstrap {
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
     // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
     const paneRuntimes = new PaneRuntimes.Class();
+    const panelContentFactories = new PanelContentFactories.Class();
+    let openPanelContent = (_kind: string): boolean => false;
     let openRuntimePane = (
       _runtimeKind: string,
       _request: PaneRuntimeRequest,
@@ -313,19 +398,23 @@ class $Bootstrap {
       persistContentOrder: () => settings.save(),
       persistWorkspaceState: () => persistPanelWorkspaceState(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
-      requestCloseContent: (identifier) => {
-        const content = panelHost.content(identifier);
-        if (content?.kind !== 'terminal' && content?.kind !== 'agent') {
-          panelHost.removeContent(identifier);
+      requestCloseSpace: (identifier, instanceCount) => {
+        const space = panelHost.spaces.value.find(
+          (candidate) => candidate.identifier === identifier,
+        );
+        if (!space || instanceCount === 0) {
+          panelHost.closeSpace(identifier);
           return;
         }
         overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
           quitConfirmation.show({
-            identifier: 'terminal-close',
-            message: `Close ${content.instanceLabel ?? content.title}?`,
+            identifier: 'panel-container-close',
+            message:
+              `Close ${space.label} and its ${instanceCount} ` +
+              `${instanceCount === 1 ? 'instance' : 'instances'}?`,
             confirmLabel: 'Yes',
             cancelLabel: 'No',
-            onConfirm: () => panelHost.removeContent(identifier),
+            onConfirm: () => panelHost.closeSpace(identifier),
           }),
         );
       },
@@ -454,6 +543,8 @@ class $Bootstrap {
         editorSurfaceContents,
         editorColumnDefault,
         paneRuntimes,
+        panelContentFactories,
+        openPanelContent: (kind) => openPanelContent(kind),
         openRuntimePane: (runtimeKind, request) =>
           openRuntimePane(runtimeKind, request),
         currentPaneOfKind,
@@ -548,10 +639,12 @@ class $Bootstrap {
       } else {
         quickOpen.close();
         // Resolve against the workspace root — openFileInTab (like the tree) reads an ABSOLUTE path.
-        if (path)
+        if (path) {
           workspaceSet.active.openFileInTab(
             Files.Class.join(workspaceSet.active.root, path),
           );
+          workspaceSet.active.focusEditor();
+        }
       }
     };
     const submitGoToLine = (): void => {
@@ -1011,31 +1104,28 @@ class $Bootstrap {
       connectTerminalFollow();
     };
 
-    const databasePaneFactory = (): PaneContent | null =>
-      panelHost
-        .contentsOfKind('database')
-        .find((content) => content.createInstance !== undefined) ?? null;
-    const createDatabaseInstance = (
+    const createContributedPaneInstance = (
+      kind: string,
       labelOverride?: string,
       persistedIdentifier?: string,
     ): PaneContent | null => {
-      const databaseContent = databasePaneFactory();
-      if (!databaseContent?.createInstance) return databaseContent;
-      const label = labelOverride ?? nextWindowLabel('Database');
+      const factory = panelContentFactories.factory(kind);
+      if (!factory) return null;
+      const label = labelOverride ?? nextWindowLabel(factory.instanceLabel);
       const identifier = persistedIdentifier
         ? paneRuntimes.claimPersistedInstanceIdentifier(persistedIdentifier)
           ? persistedIdentifier
           : null
         : paneRuntimes.allocateInstanceIdentifier();
       if (!identifier) return null;
-      const instance = databaseContent.createInstance(identifier, label);
+      const instance = factory.createPane(identifier, label);
       panelHost.register(instance);
       return instance;
     };
     const addPanelContent = (kind: string): void => {
       const content =
         kind === 'database'
-          ? createDatabaseInstance()
+          ? createContributedPaneInstance(kind)
           : kind === 'agent'
             ? createAgent(true)
             : createRuntimePane(kind, true);
@@ -1045,6 +1135,13 @@ class $Bootstrap {
           kind === 'database' ? 'database' : 'terminal',
         );
       }
+    };
+    openPanelContent = (kind: string): boolean => {
+      const content =
+        createContributedPaneInstance(kind) ?? createRuntimePane(kind, true);
+      if (!content) return false;
+      panelHost.createSpaceForContent(content.id, kind);
+      return true;
     };
     panelAddPopup = new PanelAddPopup.Class({
       popup: boundedListPopup,
@@ -1074,7 +1171,7 @@ class $Bootstrap {
                 nextWindowLabel('Terminal (Agent)'),
               )
             : kind === 'database-instance'
-              ? createDatabaseInstance()
+              ? createContributedPaneInstance('database')
               : createRuntimePane('terminal', true);
       if (!content) return;
       const splitTargetIdentifier = pendingPanelSplitTargetIdentifier;
@@ -1148,9 +1245,11 @@ class $Bootstrap {
         }
       }
       if (pane.kind === 'database') {
-        const databaseContent = databasePaneFactory();
-        if (pane.identifier === databaseContent?.id) return databaseContent;
-        return createDatabaseInstance(pane.label, pane.identifier);
+        return createContributedPaneInstance(
+          pane.kind,
+          pane.label,
+          pane.identifier,
+        );
       }
       if (pane.kind === 'invar-agent') {
         return createAgent(true, pane.label, pane.identifier);
@@ -1384,10 +1483,26 @@ class $Bootstrap {
 
     // Last mouse event seen (for the observability side channel — proves the mouse path is live).
     let lastMouse: AppStatusMouseEvent | null = null;
-    const statusProjectionPorts: AppStatusProjectionPorts = {
+    let renderApplication: () => Promise<void>;
+    const render = (): Promise<void> => renderApplication();
+    let shutdownApplication: () => Promise<void>;
+    const shutdown = (): Promise<void> => shutdownApplication();
+
+    // One real composition object owns every graph root and is also what boot returns.
+    // Contributor membership comes from ApplicationContributions itself, so installing a
+    // contributor cannot create a new observation gap.
+    const applicationComposition: BootedApp = {
+      app,
+      get workspace() {
+        return workspaceSet.active;
+      },
       workspaceSet,
+      bufferTabStrip,
+      workspaceTabStrip,
       settings,
+      theme,
       commands,
+      keybindings,
       findBar,
       quickOpen,
       goToLinePrompt,
@@ -1402,10 +1517,24 @@ class $Bootstrap {
       panelHost,
       primaryDockHost,
       rightDockHost,
+      overlayCoordinator,
+      activitySurface,
+      statusBarSegments,
       statusProjectionContributions,
+      editorSurfaceContents,
+      editorColumnDefault,
+      paneRuntimes,
+      panelContentFactories,
+      applicationContributions,
+      get contributors() {
+        return applicationContributions.contributors;
+      },
       layoutSlotSizes: layoutSlots,
       pluginPrimaryDockContentIdentifiers,
       view,
+      renderer,
+      render,
+      shutdown,
       get mouse() {
         return lastMouse;
       },
@@ -1419,6 +1548,11 @@ class $Bootstrap {
         return currentPaneOfKind('terminal');
       },
     };
+    GraphChannel.Class.arm({
+      roots: applicationComposition as unknown as Record<string, unknown>,
+      requestRender: () => renderer.requestRender(),
+    });
+    app.onDispose(() => GraphChannel.Class.disarm());
 
     // Pull current state into the renderables and request a frame. READ-ONLY over model state
     // (no ref writes), so it is safe to run inside the reactive effect with no feedback loop.
@@ -1432,7 +1566,7 @@ class $Bootstrap {
       boundedListPopup.update();
       completionPopup.update();
       agentSkillPopup.update();
-      AppStatusProjection.Class.publish(statusProjectionPorts);
+      AppStatusProjection.Class.publish(applicationComposition);
       renderer.requestRender();
     };
     // A trackpad can publish about 150 wheel events per second. Each pane consumes every event as
@@ -1745,6 +1879,10 @@ class $Bootstrap {
         }
       }
       StatusChannel.Class.settle(frame);
+      // Settle-mode graph answers fire HERE — the same boundary the status
+      // projection publishes at, so a graph wait never observes a state no
+      // completed frame had.
+      GraphChannel.Class.settle();
       // Exact per-cell visual snapshot for tests (env-gated; no-op otherwise).
       FrameProbe.Class.dump(renderer, framePath);
     };
@@ -1763,14 +1901,14 @@ class $Bootstrap {
     // Awaitable render for boot/resize/harness determinism: sync size, paint, then observe the
     // completed frame requested for that projection. Renderer-wide idle also waits for unrelated
     // terminal capability work, so it is broader than the first-paint condition boot requires.
-    const render = async (): Promise<void> => {
+    renderApplication = async (): Promise<void> => {
       syncSize();
       paint();
       await this.awaitProjectedFrame(renderer);
     };
 
     let shuttingDown = false;
-    const shutdown = async (): Promise<void> => {
+    shutdownApplication = async (): Promise<void> => {
       if (shuttingDown) return;
       shuttingDown = true;
       Logging.Class.info('Shutdown start');
@@ -1791,6 +1929,7 @@ class $Bootstrap {
     confirmQuit = () => {
       void shutdown();
     };
+
     // invariant: Quit requires explicit confirmation (src/modules/app/app.invariants.md)
     const requestQuit = (): void => {
       // PTY harnesses use Ctrl+Q as their teardown protocol. The shared driver sets this flag by
@@ -3166,6 +3305,23 @@ class $Bootstrap {
             y: event.y,
             button: event.button,
           };
+          if (pointerTrailEnabled && event.type !== 'up') {
+            pointerTrailEvents.push({
+              x: event.x,
+              y: event.y,
+              atMs: Date.now(),
+              kind:
+                event.type === 'down'
+                  ? 'click'
+                  : event.type === 'scroll'
+                    ? 'scroll'
+                    : 'move',
+            });
+            if (pointerTrailEvents.length > 64) pointerTrailEvents.shift();
+            // A bare move may change nothing reactive; the wake still needs
+            // frames to fade through.
+            renderer.requestRender();
+          }
           // Focus-follows-click for the bottom panel: a down OUTSIDE the visible panel blurs it (a down
           // inside is handled by the panel box, which focuses it). Keeps typing from going to a shell you
           // clicked away from.
@@ -3288,18 +3444,7 @@ class $Bootstrap {
     });
 
     Logging.Class.info('Boot complete');
-    return {
-      app,
-      get workspace() {
-        return workspaceSet.active;
-      },
-      workspaceSet,
-      theme,
-      renderer,
-      view,
-      render,
-      shutdown,
-    };
+    return applicationComposition;
   }
 
   protected static reapSdkBinaryExtractions(): void {
@@ -3327,13 +3472,45 @@ export interface BootOptions {
   plugins?: readonly ApplicationContributor[];
 }
 
-export interface BootedApp {
+export interface BootedApp extends AppStatusProjectionPorts {
   app: App.Instance;
   workspace: Workspace.Instance;
   workspaceSet: WorkspaceSet.Instance;
+  bufferTabStrip: TabStrip.Instance;
+  workspaceTabStrip: TabStrip.Instance;
+  settings: Settings.Instance;
   theme: Theme.Instance;
-  renderer: CliRenderer;
+  commands: CommandRegistry.Instance;
+  keybindings: KeybindingRegistry.Instance;
+  findBar: FindBar.Instance;
+  quickOpen: QuickOpen.Instance;
+  goToLinePrompt: GoToLinePrompt.Model;
+  quitConfirmation: Dialog.Model;
+  settingsPanel: SettingsPanel.Instance;
+  contextMenu: ContextMenu.Instance;
+  boundedListPopup: BoundedListPopup.Instance;
+  completionPopup: CompletionPopup.Instance;
+  agentSkillPopup: AgentSkillPopup.Model;
+  shortcutHelp: ShortcutHelp.Instance;
+  tooltip: Tooltip.Instance;
+  panelHost: PanelHost.Instance;
+  primaryDockHost: PanelHost.Instance;
+  rightDockHost: PanelHost.Instance;
+  overlayCoordinator: OverlayCoordinator.Instance;
+  activitySurface: ActivitySurface.Model;
+  statusBarSegments: StatusBarSegments.Model;
+  statusProjectionContributions: StatusProjectionContributions.Model;
+  editorSurfaceContents: EditorSurfaceContents.Model;
+  editorColumnDefault: EditorColumnDefault.Model;
+  paneRuntimes: PaneRuntimes.Model;
+  panelContentFactories: PanelContentFactories.Model;
+  applicationContributions: ApplicationContributions.Instance;
+  contributors: Readonly<Record<string, ApplicationContributor>>;
+  layoutSlotSizes: LayoutSlots.Instance;
   view: RootView;
+  agentPaneContent: AgentPaneContent.Model | null;
+  terminalPaneContent: PaneContent | null;
+  renderer: CliRenderer;
   render(): Promise<void>;
   shutdown(): Promise<void>;
 }

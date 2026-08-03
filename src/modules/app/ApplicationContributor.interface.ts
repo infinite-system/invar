@@ -7,6 +7,7 @@ import type { ContextMenu } from '../ui/ContextMenu';
 import type { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import type { PanelHost } from '../ui/PanelHost';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import type { PanelContentFactory } from '../ui/PanelContentFactory.interface';
 import type {
   PaneRuntime,
   PaneRuntimeHostPort,
@@ -77,9 +78,11 @@ export interface ApplicationContributionContext {
   ) => RegisteredDockContent;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
   readonly registerRightDockContent: (content: PaneContent) => void;
-  /** Register one application-owned content in every workspace's bottom-panel spaces. */
-  readonly registerPanelContent: (content: PaneContent) => void;
+  /** Register a non-runtime bottom-panel pane factory without creating a pane. */
+  readonly registerPanelContentFactory: (factory: PanelContentFactory) => void;
   readonly bottomPanelHost: PanelHost.Instance;
+  /** Open one non-runtime bottom-panel pane through its contributed factory. */
+  readonly openPanelContent: (kind: string) => boolean;
   /** Register a RUNTIME: the owner of one bottom-panel pane kind and the processes behind it. The
    *  host answers only which of that kind is visible; everything else stays inside the runtime. */
   readonly registerPaneRuntime: (runtime: PaneRuntime) => PaneRuntimeHostPort;

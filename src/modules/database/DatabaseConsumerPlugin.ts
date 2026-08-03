@@ -11,22 +11,26 @@ import type {
 } from '../workspace/WorkspaceContributor.interface';
 import { DatabaseConsumerWorkspace } from './DatabaseConsumerWorkspace';
 import { DatabasePaneContent } from './DatabasePaneContent';
+import type { PaneContent } from '../ui/PaneContent.interface';
+import type { PanelContentFactory } from '../ui/PanelContentFactory.interface';
 
 // invariant: Provider rendezvous is host carried (src/modules/plugins/plugins.invariants.md)
 // invariant: Database files are user selected (src/modules/database/database.invariants.md)
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
 class $DatabaseConsumerPlugin
-  implements ApplicationContributor, WorkspaceContributor
+  implements ApplicationContributor, WorkspaceContributor, PanelContentFactory
 {
   readonly identifier = 'database-consumer';
   readonly name = 'Database Explorer';
   readonly primaryDockContentIdentifiers = [] as const;
+  readonly kind = 'database';
+  readonly instanceLabel = 'Database';
   readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
     DatabaseConsumerWorkspace.Model
   >();
   protected application: ApplicationContributionContext | null = null;
-  protected paneContent: DatabasePaneContent.Model | null = null;
   protected disposeCommands: (() => void) | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
 
@@ -70,10 +74,7 @@ class $DatabaseConsumerPlugin
       },
       ...KeybindingDefaults.Class.textInputBindings('database'),
     ]);
-    this.paneContent = new DatabasePaneContent.Class(context, () =>
-      this.activeWorkspace(),
-    );
-    context.registerPanelContent(this.paneContent);
+    context.registerPanelContentFactory(this);
     this.disposeCommands = context.commands.registerAll([
       {
         id: 'view.showDatabase',
@@ -181,7 +182,6 @@ class $DatabaseConsumerPlugin
   }
 
   disposeApplication(): void {
-    this.paneContent = null;
     this.disposeCommands?.();
     this.disposeCommands = null;
     this.disposeStatusProjection?.();
@@ -192,7 +192,9 @@ class $DatabaseConsumerPlugin
   protected showDatabase(): void {
     const application = this.application;
     if (!application) return;
-    application.bottomPanelHost.showContent('database');
+    const content = application.bottomPanelHost.contentsOfKind(this.kind)[0];
+    if (content) application.bottomPanelHost.showContent(content.id);
+    else application.openPanelContent(this.kind);
   }
 
   protected databaseOwnsFocus(): boolean {
@@ -208,7 +210,7 @@ class $DatabaseConsumerPlugin
     const content = this.application?.bottomPanelHost.focusedContent;
     return content instanceof DatabasePaneContent.Class
       ? (content as DatabasePaneContent.Model)
-      : this.paneContent;
+      : null;
   }
 
   protected activeWorkspace(): DatabaseConsumerWorkspace.Model {
@@ -231,8 +233,21 @@ class $DatabaseConsumerPlugin
     const application = this.application;
     if (!application) return false;
     return (
-      application.bottomPanelHost.isContentVisible('database') &&
+      application.bottomPanelHost.visibleContentsOfKind(this.kind).length > 0 &&
       application.workspaceSet.active === workspace
+    );
+  }
+
+  createPane(identifier: string, label: string): PaneContent {
+    const application = this.application;
+    if (!application) {
+      throw new Error('The database content factory is not activated');
+    }
+    return new DatabasePaneContent.Class(
+      application,
+      () => this.activeWorkspace(),
+      identifier,
+      label,
     );
   }
 

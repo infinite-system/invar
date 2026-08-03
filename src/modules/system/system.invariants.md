@@ -163,6 +163,88 @@ status channel or logger.
 
 **Last refined:** 2026-07-21
 
+### Graph observation reads and never mutates
+
+**Invariant:** If the harness OBSERVES the app through the graph channel (get, waitFor, a miss's
+discovery list), then no observed state changes as a consequence — resolving a path never calls
+behavior, only reads state. Mutation exists only as the separate explicit `set` request shape,
+never as a side effect of a read.
+
+**Scope:** `GraphChannel` (`src/modules/system/GraphChannel.ts`): the resolver walk, the
+discovery list on a miss, and the serializer. Applies equally to every future observation
+surface: an observation that mutates is an input in disguise. The `set` shape is OUT of this
+record's scope by design — it is an experiment primitive (user decision 2026-08-02), and it is
+excluded from verification: smokes and gates drive real PTY gestures only.
+
+**Mechanism:** a read request carries `{id, path, mode}` and its handling path (`resolve`)
+performs property reads only (ivue getters evaluate on read by design); `availableKeys`
+classifies by descriptor without evaluating; class instances serialize as name-plus-keys
+instead of mass-evaluating their getters, so only the getters a path names ever run. A write
+requires the distinct `set: {value}` field — absent that field, no code path can assign. All
+write outcomes (readonly accessor, frozen object, throwing setter) answer as loud errors, never
+crashes. The channel is inert unless `StatusChannel.observing`.
+
+**Generates:** the harness split — graph reads for asking, graph set for hypothesis experiments,
+real PTY input for acting and verifying; `DriveSession.get`/`waitFor`/`set` staying primitive.
+
+**Rejected alternatives:** mutation implied by the read protocol (a path that assigns on
+resolve) — makes every read a potential write and kills the observation guarantee. Full
+read-only (no set at all) — rejected by the user 2026-08-02: agents need quick hypothesis
+confirmation; the boundary moved from "no writes" to "no writes through reads, no writes in
+verification".
+
+**Evidence:** `GraphChannel.ts` — `respond` branches on `request.set`; `resolve`/`walk` assign
+nothing; `availableKeys` descriptor-only; serializer's instance guard; `write` wraps assignment
+in try/catch. `GraphChannel.test.ts` covers both arms of read and write.
+
+**Impossible if true:** a drive script changing app state through `app.get`/`app.waitFor`; a
+graph request WITHOUT a `set` field that causes any state transition beyond answering; a failed
+set crashing the app instead of answering with an error.
+
+**Verification:** `bun test src/modules/system/GraphChannel.test.ts`; inspect `resolve`/`walk`
+in `GraphChannel.ts` for any assignment into walked nodes.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-02
+
+### The composition graph reaches every installed contributor
+
+**Invariant:** If a contributor is installed in the running app, then its state is reachable
+through the observation graph by path, rooted at the composition object — with no per-contributor
+membership decision anywhere.
+
+**Scope:** `GraphChannel` roots (`src/modules/app/Bootstrap.ts` BootedApp composition) and
+`src/modules/app/ApplicationContributions.ts`. Applies to every current and future contributor.
+
+**Mechanism:** ApplicationContributions exposes every installed contributor by its own
+identifier automatically; Bootstrap builds one BootedApp composition object owning the
+contributors, tab strips, and renderer; GraphChannel roots at that object. A membership list is
+a future gap, so none exists — reach follows installation.
+
+**Generates:** graph paths for contributor state (`contributors.file-tree.activeWorkspace.rowCount`,
+`contributors.git.activeWorkspace.changedCount`); the #470 wait migration's model conditions;
+the drive-pty discovery loop over contributors.
+
+**Rejected alternatives:** a curated ports list — rebuilt the publish tax at root granularity
+(the pre-#471 gap: file tree and git state unreachable because their instances were Bootstrap
+locals).
+
+**Evidence:** `src/modules/app/ApplicationContributions.ts`; contributor paths locked by
+`scripts/harness/smoke-tree-scroll-harness.ts` and `scripts/harness/smoke-git-watch-harness.ts`
+(driven: a real click moved rowCount 3 to 4; a saved edit moved changedCount 0 to 1 to 0).
+
+**Impossible if true:** an installed contributor whose state the graph cannot reach; a
+contributor that becomes reachable only after someone edits a membership list.
+
+**Verification:** `bun scripts/harness/smoke-tree-scroll-harness.ts` and
+`bun scripts/harness/smoke-git-watch-harness.ts`; or drive `app.get('contributors.<id>...')`
+against a warm server for any installed identifier.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-03
+
 ### Copy reaches the host terminal
 
 **Invariant:** If the user copies selected text from Settings, a `TextInputModel` field, the terminal

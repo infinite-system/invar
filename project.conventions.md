@@ -130,8 +130,8 @@ a mechanical checker should not be able to see.
 
 ## Verification (authoritative channels)
 - Quick UI sightings → `bun run drive` (scripts/harness/drive.md): ordered input flags with
-  per-action completion waits, `--gesture` verbs, `--cells ROW,C1-C2` color dumps. One command
-  before any bespoke probe file.
+  per-action completion waits and `--cells ROW,C1-C2` color dumps. Use primitive
+  `DriveSession` chains for longer drives. Neither front door defines app-specific gestures.
 - Semantic state → the session's `status-<session>.json` (harness `field <session> <name>`);
   NEVER pane-scrape state. Visual → FrameProbe (`TUI_FRAME_DUMP=1`, 4 RGBA lanes/cell,
   frame-diff with a no-action control). Native caret → the PTY harness's cursor position from the

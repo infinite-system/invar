@@ -25,13 +25,11 @@ skipping those is the exact failure two resurrection drills caught.**
 Your inner loop is **driving the real app in your own PTY** (`scripts/harness/PtyTestDriver.ts`
 + FrameProbe) and LOOKING at what it does. Seconds per turn. No gate, no suite. Start with
 [`bun run drive`](scripts/harness/drive.md) for a settled grid, published probes, scale fixtures,
-and repeatable key, wheel, or click input — plus `--gesture` verbs (named user actions with
-their condition waits built in) and `--cells ROW,C1-C2` per-cell color dumps. Most sightings
-are ONE drive command; write a probe .ts only for logic a flag chain cannot express. New
-gestures land in BOTH layers: the gesture's mechanics (travel, hover, waits) go into the
-shared driver layer (`PtyTestDriver`/harness helpers) so smokes drive the identical gesture,
-and `Drive.ts`'s table entry is only the CLI binding to that helper. A gesture inlined in the
-CLI table alone re-forks the definition of "what the user does".
+and repeatable key, wheel, or click input, condition flags, and `--cells ROW,C1-C2` per-cell
+color dumps. Most sightings are ONE drive command; use primitive `DriveSession` chains when
+the flag sequence cannot express the drive. Keep both front doors primitive: coordinates,
+visible text, keys, and published state. App-specific gesture verbs encode the app into its
+instrument and are forbidden.
 
 1. **REPRODUCE BY DRIVING FIRST.** Write no assertion yet. If you cannot see the problem, you
    cannot fix it. If you truly cannot see it, say so and report what you tried.
@@ -224,6 +222,7 @@ already written, amend that rule in place. Do not add a section beside it.
 - **`.claude/skills/conductor/SKILL.md`** — fleet orchestration doctrine (conductor sessions; builders may read the clearance/verification sections to understand the gate protocol they operate under).
 - **`.claude/skills/context-usage/SKILL.md`** — the conductor context speedometer. Load when verifying a context percentage, a CTX or CHECKPOINT event, or the UI gauge calibration.
 - **`.claude/skills/manage-tasks/SKILL.md`** — the task-system protocol: one folder per task under `.invar/tasks/` (active/in-progress/completed/retired), the seven-step lifecycle, number-first file naming, and the tracker (`bun scripts/tasks/tasks-status.ts`). Load when filing, dispatching, landing, or auditing tasks.
+- **`.claude/skills/drive-pty/SKILL.md`** — driving the running app itself: the fluent DriveSession (real-PTY gestures + graph waits), the warm drive server (`--serve`/`--attach` — one boot, many probes, state survives), `--mirror` (a human watches the agent's hand live: pointer trail, click rings, humanPace), and the live app graph (`get`/`waitFor`/`set` by path — no publish tax). Load before probing the app, writing drive snippets, or choosing between graph waits and screen waits. Core rules inside: ask the screen instead of hardcoding cells; graph sequences, screen asserts; set is experiment-only.
 - **`.claude/skills/ui-task/SKILL.md`** — the UI work-session protocol: drive the PTY and SEE before briefing, converse over shared pixels, cell-mockup illustrations as specification, accumulate 10-20 confirmed items into one brief per surface, dispatch only on the user's explicit conclusion. Load when a UI bug/feature/refinement conversation starts.
 - **`.claude/skills/ste-expression/SKILL.md`** — plain prose rules (Simplified Technical English, adapted). Applies to replies, briefs, task files, reports, and script messages — never to code or invariant records. Linter: `python3 .claude/skills/ste-expression/scripts/ste-lint.py <file.md>`.
 

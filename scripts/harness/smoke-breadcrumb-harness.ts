@@ -7,6 +7,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,6 +16,7 @@ import {
   ThemePalettes,
   type Palette,
 } from '../../src/modules/theme/ThemePalettes';
+import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -326,7 +328,16 @@ async function driveBreadcrumbAtScale(lineCount: number): Promise<void> {
       (snapshot) => snapshot.findText('Go to File') !== null,
     );
     driver.sendText('huge.ts');
-    await driver.awaitScreenChange();
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quickOpen.query',
+      'huge.ts',
+    );
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quickOpen.matches.0.path',
+      'huge.ts',
+    );
     driver.sendKeys('Enter');
     const darkSnapshot = await driver.awaitGridCondition(
       `${lineCount}-line breadcrumb paints in the dark theme`,

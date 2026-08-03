@@ -20,10 +20,10 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 `bun run drive` boots the real app in the PTY harness, runs ordered input
 flags each with a completion rule, and prints the numbered grid + published
-status keys after every action. `--gesture NAME` runs a named user action
-with its condition wait built in (openPanel, closePanel — extend the table
-in `scripts/harness/Drive.ts`); `--cells ROW,C1-C2` prints chars + bg/fg
-for a cell range, the color evidence a text grid hides. Gotcha: a named
+status keys after every action. `--cells ROW,C1-C2` prints chars + bg/fg for
+a cell range, the color evidence a text grid hides. Compose longer drives
+from the primitive `DriveSession` vocabulary; neither instrument accepts
+app-specific gesture verbs. Gotcha: a named
 status condition already true before its action is REJECTED (no laundered
 no-ops); probe .ts files are for logic a flag chain cannot express — and
 never wrap a wait in a catch-all (a thrown wait is instrument failure, not

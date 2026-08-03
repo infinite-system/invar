@@ -48,7 +48,6 @@ class $ModalOverlayDismissal {
   dispose(): void {
     this.hide();
     try {
-      this.dependencies.renderer.root.remove(this.backdrop);
       this.backdrop.destroyRecursively();
       this.closeButton.dispose();
     } catch {

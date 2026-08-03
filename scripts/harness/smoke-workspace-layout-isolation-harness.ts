@@ -309,8 +309,10 @@ try {
   await awaitStatus(
     driver,
     statusPath,
-    'workspace A adds an agent container beside its terminal one',
-    (status) => (status.panelSpaceIds as unknown[]).length >= 2,
+    'workspace A adds an agent pane to its terminal container',
+    (status) =>
+      Array.isArray(status.panelContentKinds) &&
+      status.panelContentKinds.includes('agent'),
   );
   driver.sendKeys('Control+Shift+s');
   const groupedStatus = await awaitStatus(

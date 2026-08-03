@@ -544,8 +544,8 @@ try {
     (status) =>
       status.activeWorkspaceRoot === secondRoot &&
       Array.isArray(status.panelContentKinds) &&
-      status.panelContentKinds.includes(secondTaskIdentifier) &&
-      status.panelContentKinds.includes('database') &&
+      JSON.stringify(status.panelContentKinds) ===
+        JSON.stringify([secondTaskIdentifier]) &&
       Array.isArray(status.panelContentIds) &&
       !status.panelContentIds.includes(firstTaskIdentifier),
   );

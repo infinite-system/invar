@@ -5,6 +5,7 @@ import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Settings } from '../settings/Settings';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import type { PaneRuntimes } from '../ui/PaneRuntimes';
+import type { PanelContentFactories } from '../ui/PanelContentFactories';
 import type { PanelHost } from '../ui/PanelHost';
 import type { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import type {
@@ -16,6 +17,7 @@ import type {
 } from './ApplicationContributor.interface';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
+// invariant: The composition graph reaches every installed contributor (src/modules/system/system.invariants.md)
 class $ApplicationContributions implements ApplicationContributionCatalog {
   protected readonly activeContributions = new Map<
     string,
@@ -24,7 +26,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   protected readonly failures = new Map<string, string>();
 
   constructor(
-    protected readonly contributors: readonly ApplicationContributor[],
+    protected readonly orderedContributors: readonly ApplicationContributor[],
     protected readonly options: ApplicationContributionsOptions,
   ) {}
 
@@ -32,9 +34,19 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     return ref(0);
   }
 
+  /** Every installed contributor, keyed by its own stable identity. */
+  get contributors(): Readonly<Record<string, ApplicationContributor>> {
+    return Object.fromEntries(
+      this.orderedContributors.map((contributor) => [
+        contributor.identifier,
+        contributor,
+      ]),
+    );
+  }
+
   entries(): readonly ApplicationContributionEntry[] {
     void this.revision.value;
-    return this.contributors.map((contributor) => ({
+    return this.orderedContributors.map((contributor) => ({
       identifier: contributor.identifier,
       name: contributor.name,
       enabled: this.activeContributions.has(contributor.identifier),
@@ -47,7 +59,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   }
 
   activateAll(): void {
-    for (const contributor of this.contributors) {
+    for (const contributor of this.orderedContributors) {
       try {
         this.activate(contributor);
       } catch (error) {
@@ -58,7 +70,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   }
 
   setEnabled(identifier: string, enabled: boolean): void {
-    const contributor = this.contributors.find(
+    const contributor = this.orderedContributors.find(
       (candidate) => candidate.identifier === identifier,
     );
     if (!contributor) return;
@@ -164,11 +176,15 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
           this.options.rightDockHost.removeContent(content.id),
         );
       },
-      registerPanelContent: (content) => {
-        this.options.bottomPanelHost.registerShared(content);
-        registrationDisposers.push(() =>
-          this.options.bottomPanelHost.removeSharedContent(content.id),
-        );
+      registerPanelContentFactory: (factory) => {
+        const unregisterFactory =
+          this.options.panelContentFactories.register(factory);
+        registrationDisposers.push(() => {
+          this.options.bottomPanelHost.removeContentsOfKindFromEverySet(
+            factory.kind,
+          );
+          unregisterFactory();
+        });
       },
       registerEditorColumnDefault: (provider) => {
         const port = this.options.editorColumnDefault.register(provider);
@@ -249,7 +265,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   }
 
   dispose(): void {
-    for (const contributor of [...this.contributors].reverse()) {
+    for (const contributor of [...this.orderedContributors].reverse()) {
       this.deactivate(contributor);
     }
   }
@@ -270,7 +286,7 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerDockContent'
   | 'registerPrimaryDockContent'
   | 'registerRightDockContent'
-  | 'registerPanelContent'
+  | 'registerPanelContentFactory'
   | 'registerPaneRuntime'
   | 'registerEditorColumnDefault'
 > & {
@@ -280,6 +296,8 @@ export type ApplicationContributionsOptions = Omit<
   editorColumnDefault: EditorColumnDefault.Model;
   /** The host's registry of contributed pane runtimes. */
   paneRuntimes: PaneRuntimes.Model;
+  /** The host's registry of contributed non-runtime pane factories. */
+  panelContentFactories: PanelContentFactories.Model;
   /** The active workspace's current pane for a kind, whether its projection is visible or hidden. */
   currentPaneOfKind: (kind: string) => PaneContent | null;
   /** Take a runtime-owned pane out of the panel, so uninstall leaves no orphan behind. */

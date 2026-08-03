@@ -282,8 +282,6 @@ class $SourceTextPaneContent
    *  a withdrawn source-text pane must leave no live view and no renderable still painting. */
   dispose(): void {
     this.deps.releaseSourceTextViews();
-    this.deps.slot.remove(this.gutterBody);
-    this.deps.slot.remove(this.codeBody);
     this.gutterBody.destroyRecursively();
     this.codeBody.destroyRecursively();
   }
