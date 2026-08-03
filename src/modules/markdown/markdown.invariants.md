@@ -751,7 +751,7 @@ source editor keeps its own selection and remains the only paste target.
 paste without a third selection model.
 
 **Evidence:** `src/modules/markdown/MarkdownSplitView.ts` (`previewTextBuffer`);
-`src/modules/editor/ReadOnlyTextBuffer.ts`; shared behavior tests in
+`src/modules/text/ReadOnlyTextBuffer.ts`; shared behavior tests in
 `src/modules/ui/SelectionDragBehavior.test.ts`; `scripts/smoke-markdown.sh`.
 
 **Impossible if true:** a preview drag highlight disappearing on repaint; a held edge drag leaving
@@ -780,7 +780,7 @@ renderer reads only its own retained engine, and each target owns match reveal.
 queries and match counters; find-only behavior in the read-only preview.
 
 **Evidence:** `src/modules/search/FindBar.ts`; `src/modules/ui/RootView.ts` (`findTarget`);
-`src/modules/editor/ReadOnlyTextBuffer.ts` (`findTarget`);
+`src/modules/text/ReadOnlyTextBuffer.ts` (`findTarget`);
 `src/modules/markdown/MarkdownSplitView.ts` (`findTarget`); `scripts/smoke-markdown.sh`.
 
 **Impossible if true:** searching the preview replacing the source query or match list; a preview

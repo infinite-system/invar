@@ -197,7 +197,7 @@ function wrapIndexArrayEscapeCensusLabel(
   node: ts.Node,
   sourceFile: ts.SourceFile,
 ): string | null {
-  if (sourceFile.fileName === 'src/modules/editor/EditorWrap.ts') return null;
+  if (sourceFile.fileName === 'src/modules/text/EditorWrap.ts') return null;
   if (
     ts.isPropertyAccessExpression(node) &&
     (node.name.text === 'rowCounts' || node.name.text === 'blockRowCounts')

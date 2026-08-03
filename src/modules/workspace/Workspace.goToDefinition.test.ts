@@ -9,7 +9,7 @@ import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { Workspace } from './Workspace';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 import { LanguageClient } from '../lsp/LanguageClient';
 import { LspWorkspaceProvider } from '../lsp/LspWorkspaceProvider';
 import { FakeLspProcess, FakeProvider, flush } from '../lsp/lsp.fakes.test';
@@ -51,7 +51,10 @@ class $GoToDefinitionWorkspace extends Workspace.$Class {
   readonly fakeLanguageServerProcess = new FakeLspProcess();
 
   constructor() {
-    super({ createSourceTextViews: () => new EditorSourceTextViews.Class() });
+    super({
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
+    });
     const contributor: WorkspaceContributor = {
       attachWorkspace: (workspace) =>
         new GoToDefinitionLanguageProvider(

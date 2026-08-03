@@ -116,8 +116,9 @@ cost N live documents*.
   withdrawal of one pane would silently unregister contributions that pane does not own.
 
 **Mechanism:** `WorkspaceOptions.createSourceTextViews` supplies the provider, lazily, on first
-use; `src/modules/editor/EditorSourceTextViews` is the one implementation, and `Bootstrap` is the
-one place that names it. `Workspace.editor` returns the `SourceTextView` seam, so a host site that
+use. Core `src/modules/text/EditorSourceTextViews` owns the generic provider lifecycle. The default
+plugin composition uses `src/modules/editor/EditorSourceTextViewProviderFactory` to supply the
+concrete editor view. `Workspace.editor` returns the `SourceTextView` seam, so a host site that
 needs more than the contract fails to compile instead of reaching through it.
 
 **Generates:** A workspace that serves language requests with no view built; a source-text view
@@ -131,7 +132,9 @@ only move the type — the construction IS the coupling.
 
 **Evidence:** `Workspace.ts` (`sourceTextViews`, `createSourceTextView`, `viewsByLiveBuffer`,
 `languageRequestDocument`); `SourceTextView.interface.ts`;
-`src/modules/editor/EditorSourceTextViews.ts` + `EditorSourceTextViews.test.ts`;
+`src/modules/text/EditorSourceTextViews.ts` + `EditorSourceTextViews.test.ts`;
+`src/modules/editor/EditorSourceTextViewProviderFactory.ts` +
+`EditorSourceTextViewProviderFactory.test.ts`;
 `Workspace.test.ts` ("language requests read the document on the handle, never a view", "a
 workspace with NO view provider is legal until a view is actually needed", "one creator, one
 disposer", "one releaser frees every view the provider made"); conventions-gate rule 1.53.
@@ -141,7 +144,7 @@ buffer view the workspace did not create or does not release; two contribution r
 workspace.
 
 **Verification:** `bun test src/modules/workspace/Workspace.test.ts
-src/modules/editor/EditorSourceTextViews.test.ts && bash scripts/conventions-gate.sh`
+src/modules/text/EditorSourceTextViews.test.ts && bash scripts/conventions-gate.sh`
 
 **Status:** provisional
 

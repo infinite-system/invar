@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { TextDocument } from '../text/TextDocument';
 import { Workspace } from '../workspace/Workspace';
 import type { StructureSource } from '../structure/StructureSource.interface';
+import type { LanguageServerProcessSource } from '../monitoring/LanguageServerProcessSource.interface';
 import { LspWorkspaceProvider } from './LspWorkspaceProvider';
 
 test('the LSP workspace contribution registers one document service', async () => {
@@ -65,5 +66,24 @@ test('the contribution registers a structure source and withdraws it symmetrical
     reinstalled,
   );
   reinstalled.disposed();
+  workspace.dispose();
+});
+
+test('the contribution publishes its process source through the host and withdraws it', () => {
+  const workspace = new Workspace.Class();
+  const contribution = new LspWorkspaceProvider.Class(workspace, {
+    preferredTypeScriptServer: ref('tsgo'),
+    fileSizeLimitKb: ref(2048),
+  });
+
+  expect(
+    workspace.providers.resolve<LanguageServerProcessSource>(
+      'language-server-processes',
+    ),
+  ).toBe(contribution);
+  expect(contribution.languageServerProcesses()).toEqual([]);
+
+  contribution.disposed();
+  expect(workspace.providers.resolve('language-server-processes')).toBeNull();
   workspace.dispose();
 });

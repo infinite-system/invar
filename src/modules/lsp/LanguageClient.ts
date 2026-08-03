@@ -33,7 +33,10 @@ import type {
 import { TypeScriptProvider } from './TypeScriptProvider';
 import { LspProcess, type LspProcessLike } from './LspProcess';
 import { LspTransport } from './LspTransport';
-import { LanguageServerProcessRegistry } from './LanguageServerProcessRegistry';
+import {
+  LanguageServerProcessRegistry,
+  type LanguageServerProcessRegistration,
+} from './LanguageServerProcessRegistry';
 
 class $LanguageClient {
   protected static get $noCapabilities(): LanguageCapabilities {
@@ -172,6 +175,11 @@ class $LanguageClient {
             typeof triggerCharacter === 'string' && triggerCharacter.length > 0,
         )
       : [];
+  }
+
+  /** The process this client owns, when one has been published for host-carried monitoring. */
+  registeredLanguageServerProcess(): LanguageServerProcessRegistration | null {
+    return this.LanguageServerProcessRegistry.entry(this);
   }
   get diagnosticCount(): number {
     void this.diagnosticsRevision.value;
