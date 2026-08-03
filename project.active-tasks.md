@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #471 [graph-reaches-the-whole-app](.invar/tasks/in-progress/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)  [building]
   `tmux attach -t invar/471-graph-reaches-the-whole-app`
+- #470 [harness-wait-defect-census](.invar/tasks/in-progress/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [building]
+  `tmux attach -t invar/470-harness-wait-defect-census`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
@@ -30,8 +32,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (30)
-- #470 [harness-wait-defect-census](.invar/tasks/active/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [ACTIVE — generator-fix slice dispatchable now; full migration follows #471]
+## VERIFICATION-INTEGRITY (29)
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)

@@ -1,7 +1,7 @@
 # Task 470 — harness wait-defect census and repair
 
 Priority: verification-integrity
-State: ACTIVE — generator-fix slice dispatchable now; full migration follows #471
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol

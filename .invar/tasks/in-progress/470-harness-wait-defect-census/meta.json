@@ -1,0 +1,15 @@
+{
+  "task": 470,
+  "slug": "harness-wait-defect-census",
+  "branch": "fleet/470-harness-wait-defect-census",
+  "worktree": ".invar/worktrees/470-harness-wait-defect-census",
+  "tmuxSession": "invar/470-harness-wait-defect-census",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-470-harness-wait-defect-census.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "27add72e87fea0107186d47626eb9568e4a523aa",
+  "startedAt": "2026-08-03T00:54:40-04:00"
+}
