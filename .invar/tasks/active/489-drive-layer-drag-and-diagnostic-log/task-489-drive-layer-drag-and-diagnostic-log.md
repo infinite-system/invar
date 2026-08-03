@@ -25,3 +25,10 @@ structured-log probes should be first-class.
 3. Also from #487: a note in the skill that broad findText needles
    (like the composer prompt glyph) can match other surfaces first —
    prefer narrow visible text.
+
+## Additional ask from #458 (2026-08-03)
+
+CONFUSING: chaining type() with waitForRepaint() can miss the repaint
+type() already caused (pre-satisfied class). Document in the drive-pty
+skill: prefer a visible-text condition (waitForText('$ xy')) over a
+bare repaint wait after input.
