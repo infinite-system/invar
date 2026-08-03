@@ -10,7 +10,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
-## USER-DIRECTED (15)
+## USER-DIRECTED (16)
+- #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 being built inline by the conductor (user: "build case 1 right now")]
 - #471 [graph-reaches-the-whole-app](.invar/tasks/active/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -28,7 +29,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (30)
-- #470 [harness-wait-defect-census](.invar/tasks/active/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [ACTIVE — AWAITING USER PRIORITIZATION, DO NOT START]
+- #470 [harness-wait-defect-census](.invar/tasks/active/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [ACTIVE — BLOCKED ON #471 (graph completeness precedes the migration)]
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)
