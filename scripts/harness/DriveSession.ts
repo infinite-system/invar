@@ -580,6 +580,29 @@ class $DriveScriptRunner {
     const homeDirectory =
       options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
     mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+    if (options.mirror && !options.homeDirectory) {
+      // The watching human compares the mirrored app against the Invar they
+      // use daily, which runs on THEIR settings (glyph tier, theme). A scratch
+      // home with defaults renders a different app and reads as "malformed".
+      // Seed by COPY, never by sharing: the inner app's writes stay in the
+      // sandbox and the real config stays untouchable (the #465 damaged-config
+      // incident is why this is a hard line).
+      const realSettingsPath = join(
+        process.env.HOME ?? '',
+        '.config',
+        'invar',
+        'settings.json',
+      );
+      try {
+        writeFileSync(
+          join(homeDirectory, '.config', 'invar', 'settings.json'),
+          readFileSync(realSettingsPath),
+        );
+        console.log(`drive-server: seeded settings from ${realSettingsPath}`);
+      } catch {
+        // No real config to inherit — defaults are correct then.
+      }
+    }
     const statusPath = join(homeDirectory, 'status.json');
     // Mirroring means a human is WATCHING in a real terminal (often an Invar
     // terminal pane — the app inside the app), so the inner app inherits the
