@@ -1,7 +1,7 @@
 # Task 482 — agent-pane copy fails when focus is in the composer
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 03fc43fe — Landed: composer-focus arm added to the smoke; hypothesis eliminated; user-side highlight question is the last differential.
 Engine: codex
 Environment: any
 Model: 5.6-sol
