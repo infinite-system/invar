@@ -15,7 +15,8 @@
 #   - "source" = src/**/*.ts excluding *.test.ts
 #   - "tests"  = src/**/*.test.ts
 #   - "harness" = scripts/**/*.{sh,ts,mjs}
-#   - discipline greps exclude test files unless noted
+#   - discipline greps exclude test files EXCEPT eslint-disable and type
+#     suppressions, where a suppression in a test is still a suppression
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -104,7 +105,7 @@ cycle_hacks=$(all_re 'break.*circular|circular.*break|to break.*cycle|await impo
 memo_calls=$(all_re 'useMemo|useCallback|React[.]memo')
 lint_disables=$(all_fixed 'eslint-disable')
 type_suppressions=$(all_re '@ts-ignore|@ts-expect-error')
-hand_caches=$(all_fixed 'Object.defineProperty(this')
+hand_caches=$(src_fixed 'Object.defineProperty(this')
 computeds_raw=$(grep -rnF --include='*.ts' -- 'computed(' src 2>/dev/null | grep -v '\.test\.' | grep -vE ':[0-9]+:[[:space:]]*([*]|//)' || true)
 computeds=$(nlines "$computeds_raw")
 
