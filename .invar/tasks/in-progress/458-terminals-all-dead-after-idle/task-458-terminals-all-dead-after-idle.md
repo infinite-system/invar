@@ -1,7 +1,7 @@
 # #458 — every terminal in every workspace went blank at once after idling
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol

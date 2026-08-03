@@ -1,0 +1,15 @@
+{
+  "task": 458,
+  "slug": "terminals-all-dead-after-idle",
+  "branch": "fleet/458-terminals-all-dead-after-idle",
+  "worktree": ".invar/worktrees/458-terminals-all-dead-after-idle",
+  "tmuxSession": "invar/458-terminals-all-dead-after-idle",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-458-terminals-all-dead-after-idle.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "69051cd72b549b8a36617227afcd4b9ef76ed878",
+  "startedAt": "2026-08-03T11:57:50-04:00"
+}
