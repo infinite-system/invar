@@ -74,6 +74,7 @@ class $BoundedListPopup {
   protected searchVisibleValue = true;
   protected backdropVisibleValue = true;
   protected itemsAlreadyFilteredValue = false;
+  protected capturesKeyboardValue = true;
   protected availableBottomExclusiveValue: number | undefined = undefined;
   protected filteredMatchesValue: readonly BoundedListPopupMatch[] = [];
   protected enabledNavigationValue: BoundedListPopupEnabledNavigation = {
@@ -116,6 +117,10 @@ class $BoundedListPopup {
 
   get acceptsQueryInput(): boolean {
     return this.open.value && this.searchEnabled;
+  }
+
+  get capturesKeyboard(): boolean {
+    return this.open.value && this.capturesKeyboardValue;
   }
 
   get filteredMatches(): readonly BoundedListPopupMatch[] {
@@ -364,6 +369,7 @@ class $BoundedListPopup {
     this.searchVisibleValue = options.searchVisible ?? true;
     this.backdropVisibleValue = options.showBackdrop ?? true;
     this.itemsAlreadyFilteredValue = options.itemsAlreadyFiltered ?? false;
+    this.capturesKeyboardValue = options.capturesKeyboard ?? true;
     this.availableBottomExclusiveValue = options.availableBottomExclusive;
     this.minimumWidthValue =
       options.minimumWidth ??
@@ -1008,6 +1014,7 @@ export interface BoundedListPopupOpenOptions {
   searchVisible?: boolean;
   showBackdrop?: boolean;
   itemsAlreadyFiltered?: boolean;
+  capturesKeyboard?: boolean;
   availableBottomExclusive?: number;
   navigateBackwardHandler?: () => void;
 }

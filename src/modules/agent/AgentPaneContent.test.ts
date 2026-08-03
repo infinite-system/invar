@@ -44,6 +44,46 @@ function chunkTexts(styled: StyledText): string[] {
   );
 }
 
+describe('AgentPaneContent — skill popup input ownership', () => {
+  test('composer edits keep filtering while popup navigation stays open', () => {
+    const { pane } = makePane();
+    const open = ref(false);
+    const synchronizedPrefixes: string[] = [];
+    pane.attachSkillPopupPort({
+      popup: {
+        open,
+        synchronize: (
+          _ownerIdentifier: string,
+          _workspaceRoot: string,
+          invocation: { prefix: string } | null,
+        ) => {
+          if (invocation) synchronizedPrefixes.push(invocation.prefix);
+          open.value = invocation !== null;
+        },
+        dismiss: () => {
+          open.value = false;
+        },
+        moveSelection: () => {},
+        runSelected: () => {},
+        close: () => {
+          open.value = false;
+        },
+      } as never,
+      workspaceDirectory: () => '/workspace',
+      caretAnchor: () => ({ column: 2, row: 12 }),
+    });
+
+    pane.handleKey({ name: '/', sequence: '/' } as never);
+    pane.handleKey({ name: 'i', sequence: 'i' } as never);
+    pane.handleKey({ name: 'v', sequence: 'v' } as never);
+
+    expect(synchronizedPrefixes).toEqual(['', 'i', 'iv']);
+    expect(pane.claimsContextAction('agent.cancelTurn')).toBe(false);
+    expect(pane.handleKey({ name: 'escape' } as never)).toBe(true);
+    expect(open.value).toBe(false);
+  });
+});
+
 describe('AgentPaneContent — collapsible tool rows', () => {
   test('a tool call renders COLLAPSED by default and EXPANDS on a click of its row', () => {
     const { pane, backend } = makePane();

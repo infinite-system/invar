@@ -77,7 +77,7 @@ class $OverlayLayer {
       this.dependencies.goToLinePrompt.open.value ||
       this.dependencies.quickOpen.open.value ||
       this.dependencies.contextMenu.open.value ||
-      this.dependencies.boundedListPopup.open.value ||
+      this.dependencies.boundedListPopup.capturesKeyboard ||
       this.dependencies.settingsPanel.open.value ||
       this.dependencies.shortcutHelp.open.value ||
       this.dependencies.quitConfirmation.open.value ||

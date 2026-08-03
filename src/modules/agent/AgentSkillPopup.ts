@@ -126,6 +126,7 @@ class $AgentSkillPopup {
         searchVisible: false,
         showBackdrop: false,
         itemsAlreadyFiltered: true,
+        capturesKeyboard: false,
         minimumWidth: popupGeometry.boxWidth,
         availableBottomExclusive: anchor.row,
         selectedItemIdentifier: this.selectedIdentifier ?? undefined,

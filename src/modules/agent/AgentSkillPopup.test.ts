@@ -146,6 +146,7 @@ describe('AgentSkillPopup', () => {
         searchVisible: false,
         showBackdrop: false,
         itemsAlreadyFiltered: true,
+        capturesKeyboard: false,
         availableBottomExclusive: 30,
       });
       popup.moveSelection(1);

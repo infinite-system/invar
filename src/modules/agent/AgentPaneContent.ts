@@ -722,11 +722,22 @@ class $AgentPaneContent implements PaneContent {
 
   handleKey(key: KeyEvent): boolean {
     if (this.skillPopupPort?.popup.open.value) {
-      if (key.name === 'escape') this.skillPopupPort.popup.dismiss();
-      else if (key.name === 'up') this.skillPopupPort.popup.moveSelection(-1);
-      else if (key.name === 'down') this.skillPopupPort.popup.moveSelection(1);
-      else if (key.name === 'return') this.skillPopupPort.popup.runSelected();
-      return true;
+      if (key.name === 'escape') {
+        this.skillPopupPort.popup.dismiss();
+        return true;
+      }
+      if (key.name === 'up') {
+        this.skillPopupPort.popup.moveSelection(-1);
+        return true;
+      }
+      if (key.name === 'down') {
+        this.skillPopupPort.popup.moveSelection(1);
+        return true;
+      }
+      if (key.name === 'return') {
+        this.skillPopupPort.popup.runSelected();
+        return true;
+      }
     }
     if (key.ctrl && (key.name === 'f' || key.name === 'h')) {
       this.transcriptSearchPort?.open();
@@ -1176,6 +1187,12 @@ class $AgentPaneContent implements PaneContent {
   }
 
   claimsContextAction(action: string): boolean {
+    if (
+      action === 'agent.cancelTurn' &&
+      this.skillPopupPort?.popup.open.value
+    ) {
+      return false;
+    }
     return action === 'agent.copy' ? this.hasSelection() : true;
   }
 
