@@ -1,0 +1,15 @@
+{
+  "task": 491,
+  "slug": "editor-shared-generators-move-home",
+  "branch": "fleet/491-editor-shared-generators-move-home",
+  "worktree": ".invar/worktrees/491-editor-shared-generators-move-home",
+  "tmuxSession": "invar/491-editor-shared-generators-move-home",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-491-editor-shared-generators-move-home.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "6d5d75390850abdb51d369f8e93d4456cfb61944",
+  "startedAt": "2026-08-03T13:16:22-04:00"
+}

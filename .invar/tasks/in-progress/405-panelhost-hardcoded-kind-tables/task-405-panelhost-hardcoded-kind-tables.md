@@ -1,6 +1,6 @@
 # #405 — PanelHost hard-codes the database/terminal kind tables
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: architecture-hygiene
 Engine: codex
 Environment: linux
