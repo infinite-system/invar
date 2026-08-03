@@ -753,6 +753,29 @@ try {
     'transcript copy emits selected bytes through raw OSC 52',
   );
 
+  const composerFocusRow = composerScreenRows(
+    driver.snapshot(),
+    panelRectangle,
+  )[0];
+  if (!composerFocusRow) throw new Error('Composer focus row disappeared');
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: composerFocusRow.contentStartColumn,
+    row: composerFocusRow.row,
+    button: 'none',
+  });
+  driver.sendMouseClick({
+    column: composerFocusRow.contentStartColumn,
+    row: composerFocusRow.row,
+    button: 'left',
+  });
+  const composerFocusDraft = 'COMPOSERFOCUS';
+  driver.sendText(composerFocusDraft);
+  snapshot = await driver.awaitGridCondition(
+    'the clicked composer paints its focus-state draft',
+    (candidate) => candidate.findText(composerFocusDraft) !== null,
+  );
+
   const assistantReplyPosition = snapshot.findText(
     'You said: “gamma-newest-prompt”',
   );
@@ -769,6 +792,13 @@ try {
     assistantReplyPosition.column + 18,
     assistantReplyPosition.row,
   );
+  const legacyControlClipboardCount = emittedClipboardTexts(driver).length;
+  driver.sendRawInputWithoutFrameExpectation('\x03');
+  await awaitClipboardEmission(
+    driver,
+    legacyControlClipboardCount,
+    'You said:',
+  );
   const kittyControlClipboardCount = emittedClipboardTexts(driver).length;
   driver.sendRawInputWithoutFrameExpectation('\x1b[99;5u');
   await awaitClipboardEmission(driver, kittyControlClipboardCount, 'You said:');
@@ -776,7 +806,15 @@ try {
   driver.sendRawInputWithoutFrameExpectation('\x1b[99;9u');
   await awaitClipboardEmission(driver, kittySuperClipboardCount, 'You said:');
   HarnessSmoke.Class.pass(
-    'assistant reply selection copies through Kitty Ctrl+C and Cmd+C',
+    'composer-focused assistant reply copies through legacy and Kitty Ctrl+C and Cmd+C',
+  );
+
+  for (let deletion = 0; deletion < composerFocusDraft.length; deletion += 1) {
+    driver.sendKeysWithoutFrameExpectation('Backspace');
+  }
+  snapshot = await driver.awaitGridCondition(
+    'the composer focus-state draft clears before composer selection checks',
+    (candidate) => candidate.findText(composerFocusDraft) === null,
   );
 
   driver.sendText('COPYCOMPOSER text');
