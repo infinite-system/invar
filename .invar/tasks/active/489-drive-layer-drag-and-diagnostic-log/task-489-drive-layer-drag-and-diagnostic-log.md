@@ -37,3 +37,10 @@ bare repaint wait after input.
 
 MISSING: a drive primitive `--setting KEY=VALUE` that holds one user
 setting fixed without hand-building a temporary home + settings file.
+
+## Additional ask from #356 (2026-08-03)
+
+MISSING: a first-class negative screen condition — wait until text or
+a control is ABSENT (builders currently improvise with final snapshots
+and missing status keys). Also document: panelActiveContentKind
+persists while hidden; the close condition is panelVisible === false.
