@@ -173,38 +173,61 @@ class $DriveSession {
 
   /** Click where the pointer is, or at an explicit cell. Under humanPace the
    *  pointer glides to the target, dwells like a settling hand, presses,
-   *  releases, and rests — so a watcher can follow cause to effect. */
-  click(column?: number, row?: number): this {
-    return this.step(`click ${column ?? 'pointer'},${row ?? ''}`, async () => {
-      const targetColumn = column ?? this.pointerColumn;
-      const targetRow = row ?? this.pointerRow;
-      this.requireCellInsideScreen(targetColumn, targetRow);
-      if (this.paced) {
-        await this.glideTo(targetColumn, targetRow);
-        await this.tempo(220);
-      }
-      this.pointerColumn = targetColumn;
-      this.pointerRow = targetRow;
-      this.driver.sendMouse({
-        kind: 'press',
-        column: targetColumn,
-        row: targetRow,
-        button: 'left',
-      });
-      await this.tempo(90);
-      this.driver.sendMouse({
-        kind: 'release',
-        column: targetColumn,
-        row: targetRow,
-        button: 'left',
-      });
-      await this.tempo(260);
-    });
+   *  releases, and rests — so a watcher can follow cause to effect.
+   *  Modifier clicks (Alt+click = LSP jump, Shift+click, Ctrl+click) pass the
+   *  modifiers on BOTH press and release — surfaced by the first MCP demo,
+   *  where the agent had to drop to raw sendMouse for Alt+click navigation. */
+  click(
+    column?: number,
+    row?: number,
+    modifiers: { alt?: boolean; shift?: boolean; control?: boolean } = {},
+  ): this {
+    const modifierNames = [
+      modifiers.control ? 'Control' : '',
+      modifiers.alt ? 'Alt' : '',
+      modifiers.shift ? 'Shift' : '',
+    ]
+      .filter((name) => name !== '')
+      .join('+');
+    return this.step(
+      `${modifierNames ? `${modifierNames}+` : ''}click ${column ?? 'pointer'},${row ?? ''}`,
+      async () => {
+        const targetColumn = column ?? this.pointerColumn;
+        const targetRow = row ?? this.pointerRow;
+        this.requireCellInsideScreen(targetColumn, targetRow);
+        if (this.paced) {
+          await this.glideTo(targetColumn, targetRow);
+          await this.tempo(220);
+        }
+        this.pointerColumn = targetColumn;
+        this.pointerRow = targetRow;
+        this.driver.sendMouse({
+          kind: 'press',
+          column: targetColumn,
+          row: targetRow,
+          button: 'left',
+          ...modifiers,
+        });
+        await this.tempo(90);
+        this.driver.sendMouse({
+          kind: 'release',
+          column: targetColumn,
+          row: targetRow,
+          button: 'left',
+          ...modifiers,
+        });
+        await this.tempo(260);
+      },
+    );
   }
 
   /** Click the first cell of some visible text — the user points at what they
    *  can read, so the script says what they read. */
-  clickText(text: string, columnOffset = 0): this {
+  clickText(
+    text: string,
+    columnOffset = 0,
+    modifiers: { alt?: boolean; shift?: boolean; control?: boolean } = {},
+  ): this {
     return this.step(`click text ${JSON.stringify(text)}`, async () => {
       const snapshot = await this.driver.awaitGridCondition(
         `${JSON.stringify(text)} is visible to click`,
@@ -231,6 +254,7 @@ class $DriveSession {
         column,
         row: position.row,
         button: 'left',
+        ...modifiers,
       });
       await this.tempo(90);
       this.driver.sendMouse({
@@ -238,6 +262,7 @@ class $DriveSession {
         column,
         row: position.row,
         button: 'left',
+        ...modifiers,
       });
       await this.tempo(260);
     });

@@ -70,7 +70,7 @@ was rejected: they encode the implementation into the instrument until the
 driver is a second copy of the app. Do not add app verbs.
 
 - `moveMouse(column, row)` — a real move; hover states are real state.
-- `click(column?, row?)` / `clickText(text, columnOffset?)`
+- `click(column?, row?, {alt, shift, control}?)` / `clickText(text, columnOffset?, modifiers?)` — modifier clicks (Alt+click = LSP jump) pass modifiers on press AND release
 - `key('Control+p', ...)` / `type('text')`
 - `scroll('up'|'down', ticks?, column?, row?)`
 - Waits: `waitFor(graphPath, value)` (the workhorse), `waitForStatus(field,
