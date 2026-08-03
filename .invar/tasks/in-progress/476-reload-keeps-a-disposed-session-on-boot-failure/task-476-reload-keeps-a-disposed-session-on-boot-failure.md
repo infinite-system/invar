@@ -1,7 +1,7 @@
 # Task 476 — a failed reload keeps serving a disposed session
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol
