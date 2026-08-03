@@ -1933,6 +1933,7 @@ class $Bootstrap {
       if (!copyPathTelemetryEnabled) return;
       Logging.Class.info(`COPY_PATH_TELEMETRY ${JSON.stringify(attempt)}`);
     };
+    let clipboardCopyCompletionCount = 0;
     const publishCopyResult = (
       copyPromise: Promise<number>,
       telemetryContext?: CopyPathTelemetryContext,
@@ -1943,10 +1944,12 @@ class $Bootstrap {
             `Copied ${copiedCharacters} chars ` +
             `(${Clipboard.Class.lastBackend ?? 'no backend'})`;
         }
+        clipboardCopyCompletionCount += 1;
         StatusChannel.Class.update({
           lastCopyChars: copiedCharacters,
           lastCopyHash: Clipboard.Class.lastCopiedTextHash,
           clipboardBackend: Clipboard.Class.lastBackend,
+          clipboardCopyCompletionCount,
         });
         StatusChannel.Class.flush();
         if (telemetryContext) {
@@ -2403,6 +2406,7 @@ class $Bootstrap {
 
     const keyTick = (key: KeyEvent): void => {
       const workspace = workspaceSet.active;
+      applicationContributions.observeKey(key);
       tooltip.clear(); // any keypress hides the tooltip (display-only affordance)
       // Escape always closes the hover card; any other key closes it too UNLESS the pointer is engaged
       // with it (over the card / dragging a selection) — so a sticky card lets Ctrl+C copy its selection.

@@ -1,4 +1,4 @@
-import type { CliRenderer } from '@opentui/core';
+import type { CliRenderer, KeyEvent } from '@opentui/core';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
@@ -69,6 +69,7 @@ export interface ApplicationContributionContext {
   ) => EditorColumnDefaultHostPort;
   readonly applicationContributions: ApplicationContributionCatalog;
   readonly registerKeybindings: (bindings: readonly Keybinding[]) => void;
+  readonly registerKeyObserver: (observer: (key: KeyEvent) => void) => void;
   readonly registerKeybindingGuard: (
     name: string,
     predicate: () => boolean,

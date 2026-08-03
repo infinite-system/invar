@@ -91,21 +91,21 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
     }
     SdkBinaryExtraction.Class.reapStaleSiblings();
     this.provider = context.registerSetting({
-      identifier: 'provider',
+      identifier: 'agentProvider',
       label: 'Agent engine',
       section: 'Agent',
       defaultValue: 'auto',
       spec: { kind: 'enum', options: ['auto', 'claude', 'codex'] },
     });
     this.skipPermissions = context.registerSetting({
-      identifier: 'skipPermissions',
+      identifier: 'agentSkipPermissions',
       label: 'Agent bypasses permissions (off = ask interactively)',
       section: 'Agent',
       defaultValue: true,
       spec: { kind: 'boolean' },
     });
     this.terminalFollowMode = context.registerSetting({
-      identifier: 'terminalFollowMode',
+      identifier: 'agentTerminalFollowMode',
       label: 'Agent terminal follow mode',
       section: 'Agent',
       defaultValue: 'off',
@@ -115,21 +115,21 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       },
     });
     this.model = context.registerSetting({
-      identifier: 'model',
+      identifier: 'agentModel',
       label: 'Agent model override',
       section: 'Agent',
       defaultValue: '',
       spec: SettingSpecs.Class.dynamicEnum(() => ['']),
     });
     this.audioNarration = context.registerSetting({
-      identifier: 'audioNarration',
+      identifier: 'agentAudioNarration',
       label: 'Speak agent replies aloud (needs a TTS engine)',
       section: 'Narration',
       defaultValue: false,
       spec: { kind: 'boolean' },
     });
     this.narrationVoice = context.registerSetting({
-      identifier: 'narrationVoice',
+      identifier: 'agentNarrationVoice',
       label: 'Narration voice',
       section: 'Narration',
       defaultValue: '',
@@ -138,7 +138,7 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       ),
     });
     this.narrationRate = context.registerSetting({
-      identifier: 'narrationRate',
+      identifier: 'agentNarrationRate',
       label: 'Narration speed (higher = faster; 1.0 = normal)',
       section: 'Narration',
       defaultValue: 1,
@@ -158,6 +158,11 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       popup: context.boundedListPopup,
     });
     context.registerKeybindings(this.keybindings());
+    context.registerKeyObserver((key) => {
+      if (key.name !== 'escape') return;
+      const pane = this.currentPane();
+      if (pane) this.narrations.get(pane.id)?.bargeIn();
+    });
     this.disposeCommands = context.commands.registerAll([
       {
         id: 'panel.toggleAgent',
@@ -445,6 +450,11 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       },
       {
         chord: { key: 'c', ctrl: true },
+        action: 'agent.copy',
+        context: 'agent',
+      },
+      {
+        chord: { key: 'c', super: true },
         action: 'agent.copy',
         context: 'agent',
       },

@@ -763,10 +763,12 @@ class $AgentPaneContent implements PaneContent {
     const pendingPermission = this.session.pendingPermission;
     if (pendingPermission) {
       if (key.name === 'pageup') {
+        this.haltScrollMomentum();
         this.scrollRowsBy(-(this.lastBodyHeight - 1));
         return true;
       }
       if (key.name === 'pagedown') {
+        this.haltScrollMomentum();
         this.scrollRowsBy(this.lastBodyHeight - 1);
         return true;
       }
@@ -807,10 +809,12 @@ class $AgentPaneContent implements PaneContent {
     }
     // Transcript paging always works (the composer keeps the arrow keys for cursor motion).
     if (key.name === 'pageup') {
+      this.haltScrollMomentum();
       this.scrollRowsBy(-(this.lastBodyHeight - 1));
       return true;
     }
     if (key.name === 'pagedown') {
+      this.haltScrollMomentum();
       this.scrollRowsBy(this.lastBodyHeight - 1);
       return true;
     }
@@ -840,11 +844,13 @@ class $AgentPaneContent implements PaneContent {
     // through to transcript scroll (an empty single-line composer therefore scrolls, as before).
     if (key.name === 'up') {
       if (this.composer.moveUp()) return this.composerHandled();
+      this.haltScrollMomentum();
       this.scrollRowsBy(-1);
       return true;
     }
     if (key.name === 'down') {
       if (this.composer.moveDown()) return this.composerHandled();
+      this.haltScrollMomentum();
       this.scrollRowsBy(1);
       return true;
     }
@@ -1193,7 +1199,7 @@ class $AgentPaneContent implements PaneContent {
     ) {
       return false;
     }
-    return action === 'agent.copy' ? this.hasSelection() : true;
+    return true;
   }
 
   /** A paste into the composer: insert at the caret (newlines flatten to spaces). */

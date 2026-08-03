@@ -793,18 +793,51 @@ try {
     assistantReplyPosition.row,
   );
   const legacyControlClipboardCount = emittedClipboardTexts(driver).length;
+  const legacyCopyCompletionCount = Number(
+    HarnessSmoke.Class.readStatus(statusPath).clipboardCopyCompletionCount ?? 0,
+  );
   driver.sendRawInputWithoutFrameExpectation('\x03');
   await awaitClipboardEmission(
     driver,
     legacyControlClipboardCount,
     'You said:',
   );
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'the legacy Ctrl+C clipboard operation completes',
+    (candidate) =>
+      Number(candidate.clipboardCopyCompletionCount) >
+      legacyCopyCompletionCount,
+  );
   const kittyControlClipboardCount = emittedClipboardTexts(driver).length;
+  const kittyControlCopyCompletionCount = Number(
+    HarnessSmoke.Class.readStatus(statusPath).clipboardCopyCompletionCount ?? 0,
+  );
   driver.sendRawInputWithoutFrameExpectation('\x1b[99;5u');
   await awaitClipboardEmission(driver, kittyControlClipboardCount, 'You said:');
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'the Kitty Ctrl+C clipboard operation completes',
+    (candidate) =>
+      Number(candidate.clipboardCopyCompletionCount) >
+      kittyControlCopyCompletionCount,
+  );
   const kittySuperClipboardCount = emittedClipboardTexts(driver).length;
+  const kittySuperCopyCompletionCount = Number(
+    HarnessSmoke.Class.readStatus(statusPath).clipboardCopyCompletionCount ?? 0,
+  );
   driver.sendRawInputWithoutFrameExpectation('\x1b[99;9u');
   await awaitClipboardEmission(driver, kittySuperClipboardCount, 'You said:');
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'the Kitty Super+C clipboard operation completes',
+    (candidate) =>
+      Number(candidate.clipboardCopyCompletionCount) >
+      kittySuperCopyCompletionCount,
+  );
   HarnessSmoke.Class.pass(
     'composer-focused assistant reply copies through legacy and Kitty Ctrl+C and Cmd+C',
   );

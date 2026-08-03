@@ -146,6 +146,30 @@ describe('AgentPaneContent — scroll owns one generic pane extent', () => {
     expect(pane.tickScroll(1 / 60)).toBe(true);
   });
 
+  test('a keyboard page gesture halts an earlier wheel impulse', () => {
+    const { pane, backend } = makePane();
+    for (let index = 0; index < 40; index += 1)
+      backend.emit({ kind: 'text-delta', text: `line ${index}\n` });
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    pane.render(context());
+    pane.attachViewportScrollPort({
+      momentumOptions: () => ({
+        impulse: 100,
+        max: 220,
+        decayPerSec: 0.015,
+        stopVelocity: 0.05,
+        maximumGlideDurationMilliseconds: 900,
+      }),
+      requestRender: () => {},
+    });
+
+    pane.onWheel(-3);
+    pane.handleKey({ name: 'pagedown' } as never);
+
+    expect(pane.tickScroll(1 / 60)).toBe(false);
+    expect(pane.stuckToBottom).toBe(true);
+  });
+
   test('PageUp/PageDown/arrows move the pane; Enter re-anchors to the bottom', () => {
     const { pane, backend } = makePane();
     for (let index = 0; index < 40; index += 1)
