@@ -696,3 +696,36 @@ reading truth and from skipping the read, equally.
 cannot see paint. A smoke that waits AND asserts on the graph goes green while
 the screen is broken. The standing split: **graph to sequence, screen to
 assert.**
+
+## Family 17 — two oracles, one byte stream (2026-08-02)
+
+**The account.** The mirrored app showed blank activity-bar icons on the
+user's terminal while the harness emulator showed them present. The
+disagreement between the two oracles WAS the diagnostic: same bytes, two
+interpreters, so the defect had to live in interpretation or outside the
+stream. Round one: outside the stream (the server's own logs clobbering
+cells the app never repaints — fixed by giving the mirror exclusive stdout).
+Round two: interpretation (the app wrapped glyphs in kitty OSC 66 because
+its capability probe PASSED against the emulator, which faithfully
+implements the protocol, while the user's terminal deletes unknown OSC
+wholesale — glyph included).
+
+**The rules, operative:**
+
+1. **A shared byte stream with two renderers is a differential oracle.**
+   When human eyes and the emulator disagree, do not debug the app — diff
+   the interpreters. What only one of them shows locates the defect class in
+   one step: outside-the-stream writes, or capability-dependent encoding.
+2. **A faithful emulator is the wrong terminal to negotiate against when a
+   less capable one is watching.** Any relay that lets an app negotiate with
+   interpreter A while rendering on interpreter B must force negotiation to
+   the least capable link, or the app emits what B cannot draw. This
+   defect class is STRUCTURALLY invisible to the gate: every smoke passes,
+   because the oracle that grades the output is the same one that answered
+   the probe.
+3. **A stream owner owns the stream exclusively.** One log line written to a
+   terminal mid-frame clobbers cells that damage-tracked repaint will never
+   repair. Diagnostics of a mirrored/relayed UI go to a file, never stdout.
+4. **Read the bytes before modeling the renderer.** Four hypotheses about
+   env, settings, fonts, and color died politely; sixty bytes of hexdump
+   around one missing glyph ended the argument (`\x1b]66;w=1;≡\x1b\\`).

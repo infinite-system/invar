@@ -1,7 +1,7 @@
 # Task 473 — invar builds invar
 
 Priority: user-directed
-State: ACTIVE — accumulating; mirror mode already SHIPPED
+State: ACTIVE — accumulating; mirror SHIPPED and HARDENED (user-verified <3)
 Engine: claude
 Environment: any
 Model: fable-5
@@ -28,6 +28,18 @@ graph access?" and then: "Make invar build invar".
   geometry — run `bun scripts/harness/DriveSession.ts --serve --mirror` inside
   an Invar terminal pane and the pane SHOWS the driven app live. Verified:
   an attached Ctrl+J pushed 4.6KB of ANSI to the mirror.
+
+## Mirror hardening shipped after live sessions with the user (2026-08-02)
+
+- Stdout exclusivity: server chatter goes to server.log (log lines were
+  clobbering cells the app never repaints — blanked the activity bar).
+- Watch-only stdin: raw mode + swallow; Ctrl+C files a stop request.
+- cwd workspace default and settings seeded BY COPY from the real config.
+- Host terminal identity (TERM family) forwarded to the inner app.
+- Least-capable-link negotiation: TerminalEmulator textSizingSupported=false
+  in mirror mode, so the OSC 66 probe fails as it does on the real terminal
+  and glyphs travel plain. Verified by the user: icons visible.
+- Conductor family 17 (two oracles, one byte stream) records the method.
 
 ## Remaining work
 
