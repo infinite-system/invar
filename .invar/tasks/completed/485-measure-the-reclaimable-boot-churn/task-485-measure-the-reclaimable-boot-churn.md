@@ -1,7 +1,7 @@
 # Task 485 — measure the reclaimable boot churn
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
 Engine: codex
 Environment: linux
 Model: 5.6-sol

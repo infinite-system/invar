@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #485 [measure-the-reclaimable-boot-churn](.invar/tasks/in-progress/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/485-measure-the-reclaimable-boot-churn`
-
 ## USER-DIRECTED (15)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
@@ -150,7 +146,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 195 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 196 — full log: project.tasks-completed.md)
+- #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
 - #484 [per-file-smoke-reuse-experiment](.invar/tasks/completed/484-per-file-smoke-reuse-experiment/task-484-per-file-smoke-reuse-experiment.md) — 4e9d13d1 — Landed: instruments + the blocked-premise finding. Rollout re-scope awaits the user.
 - #483 [shortcut-getters-replace-the-chains](.invar/tasks/completed/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md) — 7330851c — Landed: both phases of the conversion; the codebase now speaks activeEditor/activeDocument.
 - #482 [agent-pane-copy-fails-with-composer-focus](.invar/tasks/completed/482-agent-pane-copy-fails-with-composer-focus/task-482-agent-pane-copy-fails-with-composer-focus.md) — 03fc43fe — Landed: composer-focus arm added to the smoke; hypothesis eliminated; user-side highlight question is the last differential.
@@ -165,4 +162,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
 - #471 [graph-reaches-the-whole-app](.invar/tasks/completed/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md) — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
 - #470 [harness-wait-defect-census](.invar/tasks/completed/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md) — 5136cdfa — Slice 1 landed: quiescence reset with publication parity, pre-satisfaction guard, model-count panel waits, settled Drive join, activitybar needles. Round 2 was forced by the conductor gate: the request-time flush published half-frame snapshots. The ~125-site migration remains open behind 471.
-- #469 [drive-reads-the-app-class-graph](.invar/tasks/completed/469-drive-reads-the-app-class-graph/task-469-drive-reads-the-app-class-graph.md) — 7f72091a

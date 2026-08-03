@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
 - #484 [per-file-smoke-reuse-experiment](.invar/tasks/completed/484-per-file-smoke-reuse-experiment/task-484-per-file-smoke-reuse-experiment.md) — 4e9d13d1 — Landed: instruments + the blocked-premise finding. Rollout re-scope awaits the user.
 - #483 [shortcut-getters-replace-the-chains](.invar/tasks/completed/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md) — 7330851c — Landed: both phases of the conversion; the codebase now speaks activeEditor/activeDocument.
 - #482 [agent-pane-copy-fails-with-composer-focus](.invar/tasks/completed/482-agent-pane-copy-fails-with-composer-focus/task-482-agent-pane-copy-fails-with-composer-focus.md) — 03fc43fe — Landed: composer-focus arm added to the smoke; hypothesis eliminated; user-side highlight question is the last differential.
