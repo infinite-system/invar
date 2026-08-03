@@ -670,6 +670,11 @@ class $DriveScriptRunner {
         ...hostIdentity,
         TUI_STATUS_PATH: statusPath,
         INVAR_AGENT_BACKEND: 'echo',
+        // The watcher needs to SEE the agent's hand: pointer cell, fading
+        // wake, click rings. Override with TUI_POINTER_TRAIL=0.
+        ...(options.mirror
+          ? { TUI_POINTER_TRAIL: process.env.TUI_POINTER_TRAIL ?? '1' }
+          : {}),
       },
     });
     if (options.mirror) {

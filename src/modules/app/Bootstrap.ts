@@ -8,6 +8,7 @@
 // invariant: SDK extraction cleanup stays bounded (src/modules/agent/agent.invariants.md)
 import {
   createCliRenderer,
+  RGBA,
   type CliRenderer,
   type KeyEvent,
 } from '@opentui/core';
@@ -117,6 +118,60 @@ class $Bootstrap {
     Logging.Class.info('Boot start');
     this.reapSdkBinaryExtractions();
 
+    // Pointer trail (observability, TUI_POINTER_TRAIL=1): paints the pointer
+    // cell, a fading wake of recent positions, and click rings as a render
+    // POST-PROCESS — over everything, touching no layout, fed by the app's
+    // own received mouse events, so what it shows is exactly the gestures
+    // that ARRIVED, never a reconstruction. Built for the mirror: a human
+    // watching an agent drive needs to see the agent's hand. Inert without
+    // the env flag; the mirror server enables it by default.
+    const pointerTrailEnabled =
+      Environment.Class.env('TUI_POINTER_TRAIL') === '1';
+    const pointerTrailEvents: Array<{
+      x: number;
+      y: number;
+      atMs: number;
+      click: boolean;
+    }> = [];
+    const paintPointerTrail = (buffer: {
+      setCell: (x: number, y: number, char: string, fg: RGBA, bg: RGBA) => void;
+    }): void => {
+      const now = Date.now();
+      // Prune the wake; keep click rings a little longer so a tap reads.
+      while (
+        pointerTrailEvents.length > 0 &&
+        now - pointerTrailEvents[0]!.atMs >
+          (pointerTrailEvents[0]!.click ? 900 : 650)
+      ) {
+        pointerTrailEvents.shift();
+      }
+      const trailBackground = RGBA.fromInts(122, 162, 247, 255);
+      const trailInk = RGBA.fromInts(22, 22, 30, 255);
+      for (const event of pointerTrailEvents) {
+        const age = now - event.atMs;
+        if (event.click) {
+          buffer.setCell(
+            event.x,
+            event.y,
+            age < 300 ? '◉' : '◎',
+            RGBA.fromInts(255, 200, 120, 255),
+            trailInk,
+          );
+          continue;
+        }
+        buffer.setCell(
+          event.x,
+          event.y,
+          age < 250 ? '•' : '·',
+          trailBackground,
+          trailInk,
+        );
+      }
+      const pointer = pointerTrailEvents.at(-1);
+      if (pointer && !pointer.click) {
+        buffer.setCell(pointer.x, pointer.y, '✛', trailInk, trailBackground);
+      }
+    };
     const renderer = await createCliRenderer({
       exitOnCtrlC: false,
       targetFps: 30,
@@ -125,6 +180,7 @@ class $Bootstrap {
       // Kitty keyboard protocol where available: super-modifier fidelity for the mac overlay
       // (Cmd chords); legacy terminals silently stay at base fidelity.
       useKittyKeyboard: {},
+      postProcessFns: pointerTrailEnabled ? [paintPointerTrail] : [],
     });
 
     // Ctrl+click routing guard. OpenTUI treats Ctrl+left-down as "extend the current native
@@ -3195,6 +3251,18 @@ class $Bootstrap {
             y: event.y,
             button: event.button,
           };
+          if (pointerTrailEnabled && event.type !== 'up') {
+            pointerTrailEvents.push({
+              x: event.x,
+              y: event.y,
+              atMs: Date.now(),
+              click: event.type === 'down',
+            });
+            if (pointerTrailEvents.length > 64) pointerTrailEvents.shift();
+            // A bare move may change nothing reactive; the wake still needs
+            // frames to fade through.
+            renderer.requestRender();
+          }
           // Focus-follows-click for the bottom panel: a down OUTSIDE the visible panel blurs it (a down
           // inside is handled by the panel box, which focuses it). Keeps typing from going to a shell you
           // clicked away from.
