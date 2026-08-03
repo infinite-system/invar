@@ -1,7 +1,7 @@
 # #458 — every terminal in every workspace went blank at once after idling
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — a3fb876e — terminals died after idle: file-worker starvation fixed, readiness-driven PTY reads
 Engine: codex
 Environment: any
 Model: 5.6-sol
