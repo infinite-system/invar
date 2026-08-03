@@ -20,3 +20,9 @@ Find whether this is a product defect under load or a harness wait that
 reads a live grid (the mechanism #457 found in the shortcut sheet: reading
 `snapshot()` instead of a completed synchronized frame). The shortcut fix is
 the model — do not widen any budget.
+
+## Sighting 2026-08-03 (#493 accidental pre-commit gate, contention pool)
+
+FAIL contention: scrollbars harness, HORIZONTAL-THUMB-STABILITY named
+in its log. Diff could not reach it (tooling-only change). Counts
+toward recurrence.
