@@ -705,7 +705,7 @@ try {
       status.quickOpenQuery === 'manifest.ts' &&
       Number(status.quickOpenMatches) > 0,
   );
-  driver.sendKeys('Enter', 'Control+Shift+j');
+  driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
