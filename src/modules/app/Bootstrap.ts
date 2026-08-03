@@ -133,6 +133,11 @@ class $Bootstrap {
       atMs: number;
       click: boolean;
     }> = [];
+    // The fade needs FRAMES to fade through: after the last mouse event no
+    // reactive state changes, so nothing would repaint and the wake freezes
+    // on screen. While any trail cell remains, the painter itself asks for
+    // the next frame; it stops asking when the trail drains — self-limiting.
+    let pointerTrailRenderer: { requestRender: () => void } | null = null;
     const paintPointerTrail = (buffer: {
       setCell: (x: number, y: number, char: string, fg: RGBA, bg: RGBA) => void;
     }): void => {
@@ -171,6 +176,9 @@ class $Bootstrap {
       if (pointer && !pointer.click) {
         buffer.setCell(pointer.x, pointer.y, '✛', trailInk, trailBackground);
       }
+      if (pointerTrailEvents.length > 0) {
+        pointerTrailRenderer?.requestRender();
+      }
     };
     const renderer = await createCliRenderer({
       exitOnCtrlC: false,
@@ -182,6 +190,7 @@ class $Bootstrap {
       useKittyKeyboard: {},
       postProcessFns: pointerTrailEnabled ? [paintPointerTrail] : [],
     });
+    pointerTrailRenderer = renderer;
 
     // Ctrl+click routing guard. OpenTUI treats Ctrl+left-down as "extend the current native
     // selection" and CONSUMES the event whenever `currentSelection` exists — and an ordinary

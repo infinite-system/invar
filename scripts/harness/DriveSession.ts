@@ -50,6 +50,64 @@ class $DriveSession {
   protected pointerColumn = 0;
   protected pointerRow = 0;
   protected quiet = false;
+  protected humanPaceCellsPerSecond = 0;
+
+  /** HUMAN PACE: every gesture moves at eye speed — the pointer GLIDES cell
+   *  by cell instead of teleporting, clicks dwell before pressing, typing
+   *  lands character by character. For a WATCHED session (the mirror), so an
+   *  observing human can follow the agent's hand.
+   *
+   *  The tempo delays here are DELIBERATE ANIMATION, not synchronization:
+   *  no step's correctness depends on them, every wait-for-state remains a
+   *  real condition. Pacing a gesture is allowed; pacing a VERIFICATION is
+   *  the sleep-as-sync defect. Default speed ~28 cells/second reads
+   *  comfortably at typical pane sizes; pass 0 to switch back to machine
+   *  speed. */
+  humanPace(cellsPerSecond = 28): this {
+    this.humanPaceCellsPerSecond = Math.max(0, cellsPerSecond);
+    return this;
+  }
+
+  protected get paced(): boolean {
+    return this.humanPaceCellsPerSecond > 0;
+  }
+
+  /** Tempo only — never used to wait for app state. */
+  protected async tempo(milliseconds: number): Promise<void> {
+    if (!this.paced) return;
+    await new Promise((resolve) => setTimeout(resolve, milliseconds));
+  }
+
+  /** The glide: interpolate from the current pointer to the target, one real
+   *  move event per cell-ish step, timed to the configured speed. */
+  protected async glideTo(column: number, row: number): Promise<void> {
+    const fromColumn = this.pointerColumn;
+    const fromRow = this.pointerRow;
+    const distance = Math.max(
+      Math.abs(column - fromColumn),
+      Math.abs(row - fromRow),
+    );
+    const stepCount = Math.max(1, Math.round(distance / 2));
+    const stepDelayMilliseconds = Math.max(
+      16,
+      1000 / (this.humanPaceCellsPerSecond / 2),
+    );
+    for (let step = 1; step <= stepCount; step += 1) {
+      const stepColumn = Math.round(
+        fromColumn + ((column - fromColumn) * step) / stepCount,
+      );
+      const stepRow = Math.round(
+        fromRow + ((row - fromRow) * step) / stepCount,
+      );
+      this.driver.sendMouseWithoutFrameExpectation({
+        kind: 'move',
+        column: stepColumn,
+        row: stepRow,
+        button: 'none',
+      });
+      await this.tempo(stepDelayMilliseconds);
+    }
+  }
 
   constructor(
     public readonly driver: PtyTestDriver.Model,
@@ -78,41 +136,54 @@ class $DriveSession {
     }
   }
 
-  /** Move the pointer. Hover states are real state, so this is a real move. */
+  /** Move the pointer. Hover states are real state, so this is a real move.
+   *  Under humanPace the pointer GLIDES there instead of teleporting. */
   moveMouse(column: number, row: number): this {
-    this.pointerColumn = column;
-    this.pointerRow = row;
     return this.step(`move to ${column},${row}`, async () => {
       this.requireCellInsideScreen(column, row);
-      this.driver.sendMouseWithoutFrameExpectation({
-        kind: 'move',
-        column,
-        row,
-        button: 'none',
-      });
+      if (this.paced) {
+        await this.glideTo(column, row);
+      } else {
+        this.driver.sendMouseWithoutFrameExpectation({
+          kind: 'move',
+          column,
+          row,
+          button: 'none',
+        });
+      }
+      this.pointerColumn = column;
+      this.pointerRow = row;
     });
   }
 
-  /** Click where the pointer is, or at an explicit cell. */
+  /** Click where the pointer is, or at an explicit cell. Under humanPace the
+   *  pointer glides to the target, dwells like a settling hand, presses,
+   *  releases, and rests — so a watcher can follow cause to effect. */
   click(column?: number, row?: number): this {
-    const targetColumn = column ?? this.pointerColumn;
-    const targetRow = row ?? this.pointerRow;
-    if (column !== undefined) this.pointerColumn = column;
-    if (row !== undefined) this.pointerRow = row;
-    return this.step(`click ${targetColumn},${targetRow}`, async () => {
+    return this.step(`click ${column ?? 'pointer'},${row ?? ''}`, async () => {
+      const targetColumn = column ?? this.pointerColumn;
+      const targetRow = row ?? this.pointerRow;
       this.requireCellInsideScreen(targetColumn, targetRow);
+      if (this.paced) {
+        await this.glideTo(targetColumn, targetRow);
+        await this.tempo(220);
+      }
+      this.pointerColumn = targetColumn;
+      this.pointerRow = targetRow;
       this.driver.sendMouse({
         kind: 'press',
         column: targetColumn,
         row: targetRow,
         button: 'left',
       });
+      await this.tempo(90);
       this.driver.sendMouse({
         kind: 'release',
         column: targetColumn,
         row: targetRow,
         button: 'left',
       });
+      await this.tempo(260);
     });
   }
 
@@ -127,32 +198,40 @@ class $DriveSession {
       const position = snapshot.findText(text);
       if (!position) throw new Error(`${text} vanished before the click`);
       const column = position.column + columnOffset;
+      if (this.paced) {
+        await this.glideTo(column, position.row);
+        await this.tempo(220);
+      } else {
+        this.driver.sendMouseWithoutFrameExpectation({
+          kind: 'move',
+          column,
+          row: position.row,
+          button: 'none',
+        });
+      }
       this.pointerColumn = column;
       this.pointerRow = position.row;
-      this.driver.sendMouseWithoutFrameExpectation({
-        kind: 'move',
-        column,
-        row: position.row,
-        button: 'none',
-      });
       this.driver.sendMouse({
         kind: 'press',
         column,
         row: position.row,
         button: 'left',
       });
+      await this.tempo(90);
       this.driver.sendMouse({
         kind: 'release',
         column,
         row: position.row,
         button: 'left',
       });
+      await this.tempo(260);
     });
   }
 
   key(...keyNames: string[]): this {
     return this.step(`key ${keyNames.join(' ')}`, async () => {
       this.driver.sendKeysWithoutFrameExpectation(...keyNames);
+      await this.tempo(180);
     });
   }
 
@@ -160,6 +239,7 @@ class $DriveSession {
     return this.step(`type ${JSON.stringify(text)}`, async () => {
       for (const character of text) {
         this.driver.sendKeysWithoutFrameExpectation(character);
+        await this.tempo(70);
       }
     });
   }
@@ -988,6 +1068,9 @@ class $DriveScriptRunner {
       "  app.key('Control+j').waitForStatus('panelVisible', true)",
       "     .clickText('+ Plugin').waitForRepaint()",
       "     .show('panelContentLabels')",
+      '',
+      'Watched sessions: app.humanPace() makes every gesture eye-speed —',
+      'the pointer glides, clicks dwell, typing lands per character.',
       '',
       'Live graph access (any app state, no publish tax):',
       '',
