@@ -21,6 +21,7 @@
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 import {
+  appendFileSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -571,6 +572,27 @@ class $DriveScriptRunner {
     const serverDirectory =
       options.serverDirectory ?? this.DEFAULT_SERVER_DIRECTORY;
     mkdirSync(serverDirectory, { recursive: true });
+    if (options.mirror) {
+      // THE MIRROR OWNS STDOUT EXCLUSIVELY. Any server log written there
+      // lands at the inner app's live cursor position and clobbers cells —
+      // and since the app repaints only damage IT knows about, the clobbered
+      // cells stay wrong forever (this blanked the activity bar in the first
+      // live session: the boot-time ready line scribbled over it). All server
+      // chatter goes to server.log in the rendezvous dir instead.
+      const serverLogPath = join(serverDirectory, 'server.log');
+      const logToFile = (...parts: unknown[]) => {
+        try {
+          appendFileSync(
+            serverLogPath,
+            `${parts.map((part) => String(part)).join(' ')}\n`,
+          );
+        } catch {
+          /* logging must never break serving */
+        }
+      };
+      console.log = logToFile;
+      console.error = logToFile;
+    }
     // A mirrored server has a human WATCHING — they almost certainly mean the
     // project they are standing in, not an empty scratch dir. Headless serves
     // keep the isolated temp workspace.
