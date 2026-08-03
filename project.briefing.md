@@ -1,3 +1,37 @@
+# RESUME ANCHOR 46 — 2026-08-03 ~03:00 EDT — THE OVERNIGHT GOAL IS MET
+
+## STATE: all three pipeline tasks LANDED, main green, tree clean.
+
+- #470 slice 1 -> 5136cdfa (wait generators: quiescence reset with
+  publication parity after a round-2 conductor-gate catch, pre-satisfaction
+  guard, model-count panel waits, settled Drive join, activitybar needles).
+- #471 -> 1d03a604 (composition-rooted graph, automatic contributor reach,
+  shortcut getters; 26 of 34 census facts now migratable with named paths).
+- #473 -> da9f70f2 (the MCP doorway: agents drive Invar through MCP; seven
+  instrument fixes; MCP-client-verified at 10 and 100k lines).
+- dist/iv rebuilt from da9f70f2. Crons at :07/:37 armed; fleet-watch armed.
+- User constraint honored: no experiments, no other tasks.
+
+## For the user's morning — PTY usability tracking (their question)
+
+Three builders used the drive loop overnight. Verdict: IT WORKS — all three
+verified real behavior through warm servers without hand-rolled probes.
+Collected friction, ALL NOW FIXED in #473's landing: labeled show, --size
+fixtures, loud attach exits, stop-command docs, status-vs-graph split
+documented, SIGWINCH forwarding. Remaining asks: MCP server_start has no
+line-count option (workspace prep still manual for MCP-only callers).
+AWAITING THE USER: the proposed reach-completeness invariant record
+("the composition graph reaches every installed contributor").
+
+## Open queue (nothing in flight)
+
+#470 remainder (the ~125-site migration, now unblocked by #471) · #475
+(Quick Open focus bycatch) · #476 (reload boot-failure) · #474 (dispose
+warnings) · Drive.ts --gesture deletion · #451 dormant codex · #460-#464.
+The invar-builds-invar DEMO LOOP waits for the user to watch it live.
+
+---
+
 # RESUME ANCHOR 45 — 2026-08-03 ~00:55 EDT — START HERE
 
 ## STATE: gate GREEN at 7654e61d (ALL-PASS, GATE_EXIT=0, clean tree, log
