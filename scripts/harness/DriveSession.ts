@@ -99,7 +99,7 @@ class $DriveSession {
     );
     if (distance === 0) return;
     // Fitts-shaped: mostly constant, gently longer for long throws.
-    const gestureMilliseconds = Math.min(700, 260 + distance * 4);
+    const gestureMilliseconds = Math.min(950, 260 + distance * 6);
     const stepCount = Math.max(3, Math.min(22, Math.round(distance / 2)));
     const sliceMilliseconds = gestureMilliseconds / stepCount;
     let lastColumn = fromColumn;
@@ -257,6 +257,41 @@ class $DriveSession {
         // never synchronization.
         await this.tempo(105 + Math.random() * 45);
       }
+    });
+  }
+
+  /** Scroll the wheel at the pointer (or glide to a cell first). Paced mode
+   *  spaces the ticks so the watcher can follow the content move; the app
+   *  paints a green scroll mark at the pointer while ticks arrive. */
+  scroll(
+    direction: 'up' | 'down',
+    ticks = 3,
+    column?: number,
+    row?: number,
+  ): this {
+    return this.step(`scroll ${direction} x${ticks}`, async () => {
+      const targetColumn = column ?? this.pointerColumn;
+      const targetRow = row ?? this.pointerRow;
+      this.requireCellInsideScreen(targetColumn, targetRow);
+      if (
+        this.paced &&
+        (targetColumn !== this.pointerColumn || targetRow !== this.pointerRow)
+      ) {
+        await this.glideTo(targetColumn, targetRow);
+        await this.tempo(160);
+      }
+      this.pointerColumn = targetColumn;
+      this.pointerRow = targetRow;
+      for (let tick = 0; tick < ticks; tick += 1) {
+        this.driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: targetColumn,
+          row: targetRow,
+          direction,
+        });
+        await this.tempo(150);
+      }
+      await this.tempo(200);
     });
   }
 

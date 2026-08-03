@@ -131,7 +131,7 @@ class $Bootstrap {
       x: number;
       y: number;
       atMs: number;
-      click: boolean;
+      kind: 'move' | 'click' | 'scroll';
     }> = [];
     // The fade needs FRAMES to fade through: after the last mouse event no
     // reactive state changes, so nothing would repaint and the wake freezes
@@ -142,11 +142,12 @@ class $Bootstrap {
       setCell: (x: number, y: number, char: string, fg: RGBA, bg: RGBA) => void;
     }): void => {
       const now = Date.now();
-      // Prune the wake; keep click rings a little longer so a tap reads.
+      // Prune the wake; click rings and scroll marks linger so a tap reads.
+      const lifespanMs = { move: 650, click: 900, scroll: 800 };
       while (
         pointerTrailEvents.length > 0 &&
         now - pointerTrailEvents[0]!.atMs >
-          (pointerTrailEvents[0]!.click ? 900 : 650)
+          lifespanMs[pointerTrailEvents[0]!.kind]
       ) {
         pointerTrailEvents.shift();
       }
@@ -154,12 +155,22 @@ class $Bootstrap {
       const trailInk = RGBA.fromInts(22, 22, 30, 255);
       for (const event of pointerTrailEvents) {
         const age = now - event.atMs;
-        if (event.click) {
+        if (event.kind === 'click') {
           buffer.setCell(
             event.x,
             event.y,
             age < 300 ? '◉' : '◎',
             RGBA.fromInts(255, 200, 120, 255),
+            trailInk,
+          );
+          continue;
+        }
+        if (event.kind === 'scroll') {
+          buffer.setCell(
+            event.x,
+            event.y,
+            '⇅',
+            RGBA.fromInts(158, 206, 106, 255),
             trailInk,
           );
           continue;
@@ -173,7 +184,7 @@ class $Bootstrap {
         );
       }
       const pointer = pointerTrailEvents.at(-1);
-      if (pointer && !pointer.click) {
+      if (pointer && pointer.kind === 'move') {
         buffer.setCell(pointer.x, pointer.y, '✛', trailInk, trailBackground);
       }
       if (pointerTrailEvents.length > 0) {
@@ -3265,7 +3276,12 @@ class $Bootstrap {
               x: event.x,
               y: event.y,
               atMs: Date.now(),
-              click: event.type === 'down',
+              kind:
+                event.type === 'down'
+                  ? 'click'
+                  : event.type === 'scroll'
+                    ? 'scroll'
+                    : 'move',
             });
             if (pointerTrailEvents.length > 64) pointerTrailEvents.shift();
             // A bare move may change nothing reactive; the wake still needs
