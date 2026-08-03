@@ -27,6 +27,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -692,8 +693,35 @@ class $DriveScriptRunner {
   // One attach at a time: a second writer before the server reads simply
   // replaces the request, and ids are time-monotone so nothing stale wins.
 
-  protected static readonly DEFAULT_SERVER_DIRECTORY =
-    '/tmp/invar-drive-server';
+  /** One server PER CHECKOUT by default: the rendezvous dir is keyed to the
+   *  git toplevel of the cwd (or the cwd itself outside git), so agents in
+   *  different worktrees each get their own server and their attaches find
+   *  the right one automatically — a shared singleton would make two agents
+   *  fight over one app. --server-dir overrides for deliberate sharing. */
+  protected static get DEFAULT_SERVER_DIRECTORY(): string {
+    let probe = process.cwd();
+    for (;;) {
+      try {
+        if (
+          statSync(join(probe, '.git')).isDirectory() ||
+          statSync(join(probe, '.git')).isFile()
+        )
+          break;
+      } catch {
+        /* keep walking */
+      }
+      const parent = join(probe, '..');
+      if (resolve(parent) === resolve(probe)) {
+        probe = process.cwd();
+        break;
+      }
+      probe = resolve(parent);
+    }
+    const slug = resolve(probe)
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return `/tmp/invar-drive-server-${slug}`;
+  }
 
   static async serve(options: {
     workspaceRoot?: string;
@@ -733,33 +761,6 @@ class $DriveScriptRunner {
     const workspaceRoot =
       options.workspaceRoot ??
       (options.mirror ? process.cwd() : this.temporaryWorkspaceRoot());
-    const homeDirectory =
-      options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
-    mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
-    if (options.mirror && !options.homeDirectory) {
-      // The watching human compares the mirrored app against the Invar they
-      // use daily, which runs on THEIR settings (glyph tier, theme). A scratch
-      // home with defaults renders a different app and reads as "malformed".
-      // Seed by COPY, never by sharing: the inner app's writes stay in the
-      // sandbox and the real config stays untouchable (the #465 damaged-config
-      // incident is why this is a hard line).
-      const realSettingsPath = join(
-        process.env.HOME ?? '',
-        '.config',
-        'invar',
-        'settings.json',
-      );
-      try {
-        writeFileSync(
-          join(homeDirectory, '.config', 'invar', 'settings.json'),
-          readFileSync(realSettingsPath),
-        );
-        console.log(`drive-server: seeded settings from ${realSettingsPath}`);
-      } catch {
-        // No real config to inherit — defaults are correct then.
-      }
-    }
-    const statusPath = join(homeDirectory, 'status.json');
     // Mirroring means a human is WATCHING in a real terminal (often an Invar
     // terminal pane — the app inside the app), so the inner app inherits the
     // hosting terminal's geometry and the mirror fills the pane exactly.
@@ -789,69 +790,78 @@ class $DriveScriptRunner {
         if (value !== undefined) hostIdentity[key] = value;
       }
     }
-    const driver = new PtyTestDriver.Class({
-      workspaceRoot,
-      columns: options.columns ?? hostColumns ?? 220,
-      rows: options.rows ?? hostRows ?? 60,
-      homeDirectory,
-      // Mirroring: negotiate as the LEAST capable link in the chain. The
-      // emulator swallows OSC 66 whole, so the inner app's text-sizing probe
-      // fails and it emits plain glyphs the watching terminal can draw
-      // (a wrapped glyph on a terminal without the protocol is DELETED whole
-      // — the invisible activity-bar-icons defect).
-      textSizingSupported: !options.mirror,
-      environment: {
-        ...hostIdentity,
-        TUI_STATUS_PATH: statusPath,
-        INVAR_AGENT_BACKEND: 'echo',
-        // The watcher needs to SEE the agent's hand: pointer cell, fading
-        // wake, click rings. Override with TUI_POINTER_TRAIL=0.
-        ...(options.mirror
-          ? { TUI_POINTER_TRAIL: process.env.TUI_POINTER_TRAIL ?? '1' }
-          : {}),
-      },
-    });
-    if (options.mirror) {
-      // The WATCH feed: every byte the app writes, relayed verbatim. The
-      // human sees exactly what the agent's gestures cause, live — dropdowns
-      // opening, state changing — because this IS the app's own output, not
-      // a reconstruction.
-      driver.tapOutput((bytes) => process.stdout.write(bytes));
-      // The mirrored enable-sequences make the HOSTING terminal start
-      // reporting its own mouse and answering the inner app's capability
-      // queries — into OUR stdin. Cooked mode would ECHO all of that as
-      // gibberish (the `35;66;…` class), so: raw mode, swallow everything,
-      // keep only Ctrl+C (0x03 arrives as a byte in raw mode) as the local
-      // "stop watching" gesture. Watch-only is the v1 contract — the human's
-      // input deliberately does NOT reach the inner app.
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode?.(true);
-        process.stdin.resume();
-        process.stdin.on('data', (bytes: Buffer) => {
-          if (bytes.includes(0x03)) {
-            this.writeServerFile(
-              join(serverDirectory, 'snippet-request.json'),
-              {
-                id: Date.now(),
-                stop: true,
-              },
-            );
-          }
-        });
-      }
-    }
-    const session = new DriveSession.Class(driver, statusPath);
     const requestPath = join(serverDirectory, 'snippet-request.json');
     const responsePath = join(serverDirectory, 'snippet-response.json');
     const manifestPath = join(serverDirectory, 'server.json');
-    // A stale request from a PREVIOUS server session must never replay into
-    // this one — the last one standing is usually {stop:true}, which would
-    // stop a fresh server the instant it boots. Anything already on disk at
-    // startup is by definition not addressed to this server.
-    const staleRequest = this.readServerFile(requestPath);
-    let lastServicedId =
-      staleRequest && typeof staleRequest.id === 'number' ? staleRequest.id : 0;
-    try {
+    let reloadCount = 0;
+
+    /** ONE boot of the inner app — used at startup and by every `--reload`.
+     *  A reload means "start fresh": a new scratch home (unless the caller
+     *  pinned --home, which means state persistence BY CHOICE), settings
+     *  re-seeded by copy, a new app process, manifest rewritten. The server
+     *  and its rendezvous files stay put, so attaches never re-target. */
+    const bootInnerApp = async (): Promise<{
+      driver: PtyTestDriver.Model;
+      session: DriveSession.Model;
+      statusPath: string;
+    }> => {
+      const homeDirectory =
+        options.homeDirectory ?? mkdtempSync(join(tmpdir(), 'drive-home-'));
+      mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+      if (options.mirror && !options.homeDirectory) {
+        // The watching human compares the mirrored app against the Invar they
+        // use daily, which runs on THEIR settings (glyph tier, theme). A
+        // scratch home with defaults renders a different app and reads as
+        // "malformed". Seed by COPY, never by sharing: the inner app's writes
+        // stay in the sandbox and the real config stays untouchable (the #465
+        // damaged-config incident is why this is a hard line).
+        const realSettingsPath = join(
+          process.env.HOME ?? '',
+          '.config',
+          'invar',
+          'settings.json',
+        );
+        try {
+          writeFileSync(
+            join(homeDirectory, '.config', 'invar', 'settings.json'),
+            readFileSync(realSettingsPath),
+          );
+          console.log(`drive-server: seeded settings from ${realSettingsPath}`);
+        } catch {
+          // No real config to inherit — defaults are correct then.
+        }
+      }
+      const statusPath = join(homeDirectory, 'status.json');
+      const driver = new PtyTestDriver.Class({
+        workspaceRoot,
+        columns: options.columns ?? hostColumns ?? 220,
+        rows: options.rows ?? hostRows ?? 60,
+        homeDirectory,
+        // Mirroring: negotiate as the LEAST capable link in the chain. The
+        // emulator swallows OSC 66 whole, so the inner app's text-sizing probe
+        // fails and it emits plain glyphs the watching terminal can draw
+        // (a wrapped glyph on a terminal without the protocol is DELETED whole
+        // — the invisible activity-bar-icons defect).
+        textSizingSupported: !options.mirror,
+        environment: {
+          ...hostIdentity,
+          TUI_STATUS_PATH: statusPath,
+          INVAR_AGENT_BACKEND: 'echo',
+          // The watcher needs to SEE the agent's hand: pointer cell, fading
+          // wake, click rings. Override with TUI_POINTER_TRAIL=0.
+          ...(options.mirror
+            ? { TUI_POINTER_TRAIL: process.env.TUI_POINTER_TRAIL ?? '1' }
+            : {}),
+        },
+      });
+      if (options.mirror) {
+        // The WATCH feed: every byte the app writes, relayed verbatim. The
+        // human sees exactly what the agent's gestures cause, live — dropdowns
+        // opening, state changing — because this IS the app's own output, not
+        // a reconstruction.
+        driver.tapOutput((bytes) => process.stdout.write(bytes));
+      }
+      const session = new DriveSession.Class(driver, statusPath);
       await HarnessSmoke.Class.awaitStatus(
         driver,
         statusPath,
@@ -867,11 +877,43 @@ class $DriveScriptRunner {
             workspaceRoot,
             homeDirectory,
             startedAtMs: Date.now(),
+            reloadCount,
           },
           null,
           2,
         ),
       );
+      return { driver, session, statusPath };
+    };
+
+    if (options.mirror && process.stdin.isTTY) {
+      // The mirrored enable-sequences make the HOSTING terminal start
+      // reporting its own mouse and answering the inner app's capability
+      // queries — into OUR stdin. Cooked mode would ECHO all of that as
+      // gibberish (the `35;66;…` class), so: raw mode, swallow everything,
+      // keep only Ctrl+C (0x03 arrives as a byte in raw mode) as the local
+      // "stop watching" gesture. Watch-only is the v1 contract — the human's
+      // input deliberately does NOT reach the inner app.
+      process.stdin.setRawMode?.(true);
+      process.stdin.resume();
+      process.stdin.on('data', (bytes: Buffer) => {
+        if (bytes.includes(0x03)) {
+          this.writeServerFile(join(serverDirectory, 'snippet-request.json'), {
+            id: Date.now(),
+            stop: true,
+          });
+        }
+      });
+    }
+    // A stale request from a PREVIOUS server session must never replay into
+    // this one — the last one standing is usually {stop:true}, which would
+    // stop a fresh server the instant it boots. Anything already on disk at
+    // startup is by definition not addressed to this server.
+    const staleRequest = this.readServerFile(requestPath);
+    let lastServicedId =
+      staleRequest && typeof staleRequest.id === 'number' ? staleRequest.id : 0;
+    let active = await bootInnerApp();
+    try {
       console.log(
         `drive-server: ready on ${serverDirectory} (workspace ${workspaceRoot})`,
       );
@@ -891,6 +933,29 @@ class $DriveScriptRunner {
             });
             break;
           }
+          if (request.reload === true) {
+            // START FRESH: dispose the app, boot a new one (new scratch home
+            // unless --home pinned persistence), same server, same rendezvous
+            // — attaches never re-target.
+            try {
+              await active.driver.dispose();
+              reloadCount += 1;
+              active = await bootInnerApp();
+              this.writeServerFile(responsePath, {
+                id: request.id,
+                ok: true,
+                output: `drive-server: reloaded (fresh app #${reloadCount})`,
+              });
+            } catch (thrown) {
+              this.writeServerFile(responsePath, {
+                id: request.id,
+                ok: false,
+                error:
+                  thrown instanceof Error ? thrown.message : String(thrown),
+              });
+            }
+            continue;
+          }
           const captured: string[] = [];
           const originalLog = console.log;
           console.log = (...parts: unknown[]) => {
@@ -906,8 +971,8 @@ class $DriveScriptRunner {
               app: DriveSession.Model,
               driver: PtyTestDriver.Model,
             ) => Promise<void>;
-            await snippet(session, driver);
-            await session.flush();
+            await snippet(active.session, active.driver);
+            await active.session.flush();
             this.writeServerFile(responsePath, {
               id: request.id,
               ok: true,
@@ -916,7 +981,7 @@ class $DriveScriptRunner {
           } catch (thrown) {
             // The server SURVIVES a bad snippet: abandon the queued steps the
             // snippet left behind, answer with the error, keep serving.
-            session.abandonQueue();
+            active.session.abandonQueue();
             this.writeServerFile(responsePath, {
               id: request.id,
               ok: false,
@@ -935,7 +1000,7 @@ class $DriveScriptRunner {
       } catch {
         /* the manifest is advisory; a stale one is caught by the pid check */
       }
-      await driver.dispose();
+      await active.driver.dispose();
       if (options.mirror && process.stdin.isTTY) {
         // Hand the hosting terminal back the way we found it: cooked stdin,
         // and the inner app's own shutdown bytes (already mirrored) have
@@ -950,6 +1015,7 @@ class $DriveScriptRunner {
     source: string;
     serverDirectory?: string;
     stop?: boolean;
+    reload?: boolean;
     timeoutMilliseconds?: number;
   }): Promise<void> {
     const serverDirectory =
@@ -974,7 +1040,11 @@ class $DriveScriptRunner {
     const responsePath = join(serverDirectory, 'snippet-response.json');
     this.writeServerFile(requestPath, {
       id,
-      ...(options.stop === true ? { stop: true } : { source: options.source }),
+      ...(options.stop === true
+        ? { stop: true }
+        : options.reload === true
+          ? { reload: true }
+          : { source: options.source }),
     });
     const deadline = Date.now() + (options.timeoutMilliseconds ?? 60_000);
     while (Date.now() < deadline) {
@@ -1027,6 +1097,7 @@ class $DriveScriptRunner {
     let mirror = false;
     let attachSource: string | undefined;
     let stop = false;
+    let reload = false;
     for (let index = 0; index < argumentsList.length; index += 1) {
       const argument = argumentsList[index];
       const value = argumentsList[index + 1] ?? '';
@@ -1054,6 +1125,8 @@ class $DriveScriptRunner {
         index += 1;
       } else if (argument === '--stop') {
         stop = true;
+      } else if (argument === '--reload') {
+        reload = true;
       } else if (argument === '--server-dir') {
         serverDirectory = resolve(value);
         index += 1;
@@ -1079,11 +1152,12 @@ class $DriveScriptRunner {
       });
       return;
     }
-    if (stop || attachSource !== undefined) {
+    if (stop || reload || attachSource !== undefined) {
       await this.attach({
         source: attachSource ?? '',
         serverDirectory,
         stop,
+        reload,
       });
       return;
     }
@@ -1113,8 +1187,10 @@ class $DriveScriptRunner {
       '                       an attached agent drive the app inside the app',
       "  --attach CODE        run a snippet against the RUNNING server's session",
       '  --attach-script FILE the same, from a file',
+      '  --reload             start a FRESH app (new scratch home) on the same server',
       '  --stop               shut the server down',
-      '  --server-dir DIR     rendezvous dir (default /tmp/invar-drive-server)',
+      '  --server-dir DIR     rendezvous dir (default: keyed to this checkout,',
+      '                       so each worktree gets its own server)',
       '',
       'The snippet gets `app` (fluent, awaitable) and `driver` (the raw PTY).',
       'Example snippet:',

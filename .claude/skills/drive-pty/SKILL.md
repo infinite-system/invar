@@ -15,6 +15,32 @@ description: >-
 
 # drive-pty — driving the app like a hand, observing it like a debugger
 
+## THE AGENT'S PRIMARY LOOP — read this first
+
+You are usually driving HEADLESS: no mirror, no human watching, no humanPace.
+The pattern is ONE warm instance per checkout, probed many times:
+
+```
+bun scripts/harness/DriveSession.ts --serve &          # once: boots the app
+bun scripts/harness/DriveSession.ts --attach "…"       # probe (state persists)
+bun scripts/harness/DriveSession.ts --attach "…"       # probe again, ~100ms
+bun scripts/harness/DriveSession.ts --reload           # start FRESH when state is dirty
+bun scripts/harness/DriveSession.ts --stop             # done: kill your server
+```
+
+- The rendezvous dir is KEYED TO YOUR CHECKOUT (git toplevel of cwd), so an
+  agent in a worktree gets its own server and its attaches find it — you
+  never share an app with another agent. `--server-dir` only for deliberate
+  sharing.
+- `--reload` boots a fresh app (new scratch home) on the same server: use it
+  when accumulated state would contaminate the next question. With an
+  explicit `--home` the home is REUSED — persistence by choice.
+- Do not boot per probe (`--eval` cold-runs are for one-shots); do not leave
+  servers running when your task ends; a `timeout`-killed server LEAKS its
+  inner app — always `--stop`.
+- Mirror, trail, and humanPace exist for HUMAN-WATCHED sessions only — skip
+  them headless; they cost time and change nothing you can assert.
+
 Two instruments, one contract. INPUT always travels through the real PTY as
 bytes a real terminal could produce — the founding harness invariant; there
 is no teleport path and none may be added. OBSERVATION has two eyes: the
