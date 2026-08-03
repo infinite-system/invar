@@ -1,7 +1,7 @@
 # Task 482 — agent-pane copy fails when focus is in the composer
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol

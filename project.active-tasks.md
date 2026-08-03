@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #482 [agent-pane-copy-fails-with-composer-focus](.invar/tasks/in-progress/482-agent-pane-copy-fails-with-composer-focus/task-482-agent-pane-copy-fails-with-composer-focus.md)  [building]
+  `tmux attach -t invar/482-agent-pane-copy-fails-with-composer-focus`
+
 ## USER-DIRECTED (15)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
