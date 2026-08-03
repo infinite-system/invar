@@ -1,3 +1,37 @@
+# RESUME ANCHOR 48 — 2026-08-03 ~05:15 EDT — THE FULL NIGHT IS LANDED
+
+## STATE: main green and clean; dist/iv rebuilt. NINE landings tonight:
+Wave 1: 470-slice(5136cdfa) 471(1d03a604) 473(da9f70f2)
+Wave 2: 477(08ab9d46) 478-r1(655c0db0) 476(305185c5)
+Wave 3: 474(7b8b889d) 475(f10ebd13) 479-r1(c5316ddf)
+Plus: reach-completeness record (f23bba4b), modifier clicks, mirror
+auto-pacing, gauge budget file, gate-death rerun discipline (474's first
+gate died silently mid-tests — reran, landed on the second's own sentinel).
+
+## USER MORNING ITEMS
+1. #477: the app copies agent-pane selections (proven, 5 chord forms); test
+   whether cmux forwards Cmd+C / kitty Ctrl+C over ssh — the only open hop.
+2. #475 landed a REAL bug the demo agent found: Quick Open now focuses the
+   editor. The demo loop is already paying for itself.
+3. Quit is silent now (#474) and reload cannot strand a dead session (#476).
+
+## OPEN QUEUE (nothing in flight, no builders live)
+- Migration remainder: the #479 report's table names every remaining file
+  (Quick Open idiom five, shared machinery, agent/terminal, shell sites).
+  Next round dispatches from that table verbatim.
+- Drive.ts --gesture deletion (now unblocked; conflicts cleared).
+- #451 dormant codex: review-or-retire, conductor decision.
+- #460-#464 old bycatch: re-read before any dispatch.
+- Residual contention flakes (remainder-tier, named): plugin-manifest SHELL
+  smoke focus wait; scrollbars wrap-off layout wait.
+
+## STANDING: crons :07/:37 armed; fleet-watch armed; no experiments (user
+order); the goal ("470,477,475,476,474 and the rest in smart order") is MET
+except the migration remainder + Drive.ts deletion, which are next-round
+work by the honest-boundary rule.
+
+---
+
 # RESUME ANCHOR 47 — 2026-08-03 ~04:30 EDT — OVERNIGHT WAVE 2 LANDED
 
 ## STATE: main green and clean. Tonight's landings, in order:
