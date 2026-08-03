@@ -1,7 +1,7 @@
 # Task 477 — copying agent output from the agent pane does not work
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 08ab9d46 — Landed: shared-drag hover fix + assistant-reply copy smoke, no production change. Morning item for the user: confirm whether cmux forwards Cmd+C/kitty Ctrl+C over ssh — the app side is proven.
 Engine: codex
 Environment: any
 Model: 5.6-sol
