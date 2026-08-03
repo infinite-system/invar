@@ -14,6 +14,7 @@ import {
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
+import { GraphClient } from './GraphClient';
 
 function badgePosition(
   textRows: readonly string[],
@@ -195,8 +196,17 @@ try {
     'the all-buffers popup is published as open',
     (status) => status.boundedListPopupOpen === true,
   );
+  await driver.awaitGridCondition(
+    'the open-buffers popup paints its title before Escape closes it',
+    (candidate) => candidate.findText('Open Buffers') !== null,
+  );
   pass('badge click opened the all-buffers dropdown');
   driver.sendKeys('Escape');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'boundedListPopup.open',
+    false,
+  );
   await driver.awaitGridCondition(
     'Escape closes the all-buffers dropdown',
     (candidate) => candidate.findText('Open Buffers') === null,
@@ -212,15 +222,38 @@ try {
       (status) => typeof status.activeBufferIndex === 'number',
     );
     if (cycleStatus.activeBufferIndex === 0) break;
+    const expectedActiveBufferIndex =
+      (Number(cycleStatus.activeBufferIndex) - 1 + tabCount) % tabCount;
     driver.sendKeys('Control+PageUp');
-    await driver.awaitScreenChange();
+    await awaitStatusPublication(
+      statusPath,
+      'Ctrl+PageUp publishes the previous active buffer index before strip panning',
+      (status) => status.activeBufferIndex === expectedActiveBufferIndex,
+    );
   }
-  const arrowBaselineStatus = await awaitStatusPublication(
-    statusPath,
-    'the active buffer index is published before panning the strip',
-    (status) => typeof status.activeBufferIndex === 'number',
+  const scrollOffsetBeforeArrow = Number(
+    (
+      await GraphClient.Class.query(
+        statusPath,
+        'bufferTabStrip.scrollOffset',
+        'settle',
+      )
+    ).value,
   );
-  const activeIndexBeforeArrow = arrowBaselineStatus.activeBufferIndex;
+  const activeIndexBeforeArrow = Number(
+    (
+      await GraphClient.Class.query(
+        statusPath,
+        'bufferTabStrip.activeIndex',
+        'settle',
+      )
+    ).value,
+  );
+  requireCondition(
+    Number.isFinite(scrollOffsetBeforeArrow) &&
+      scrollOffsetBeforeArrow < tabCount - 1,
+    'the right pan arrow starts before the final strip offset',
+  );
   snapshot = await driver.awaitGridCondition(
     'the buffer count badge remains visible beside the tab pan arrows',
     (candidate) => badgePosition(candidate.textRows(), tabCount) !== null,
@@ -242,12 +275,24 @@ try {
     row: refreshedBadge.row,
     button: 'left',
   });
-  await awaitStatusPublication(
+  await GraphClient.Class.awaitValue(
     statusPath,
-    'the strip pan preserves the active buffer index',
-    (status) => status.activeBufferIndex === activeIndexBeforeArrow,
+    'bufferTabStrip.scrollOffset',
+    scrollOffsetBeforeArrow + 1,
   );
-  pass('right arrow pans the strip without changing the active tab');
+  const activeIndexAfterArrow = Number(
+    (
+      await GraphClient.Class.query(
+        statusPath,
+        'bufferTabStrip.activeIndex',
+        'settle',
+      )
+    ).value,
+  );
+  requireCondition(
+    activeIndexAfterArrow === activeIndexBeforeArrow,
+    'right arrow pans the strip without changing the active tab',
+  );
 
   driver.sendKeys('Control+q');
   console.log('smoke-tabs-harness: ALL-PASS');
