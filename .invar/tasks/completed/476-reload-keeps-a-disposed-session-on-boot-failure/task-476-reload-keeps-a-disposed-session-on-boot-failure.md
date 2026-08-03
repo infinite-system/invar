@@ -1,7 +1,7 @@
 # Task 476 — a failed reload keeps serving a disposed session
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — 305185c5 — Landed: boot-before-dispose reload with both arms proven; MCP sizeLines closes the last builder ask from #473.
 Engine: codex
 Environment: any
 Model: 5.6-sol
