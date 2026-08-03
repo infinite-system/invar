@@ -31,7 +31,7 @@ The permanent smokes assert model end state. They do not assert travel timing or
 
 ## Census recheck
 
-I rechecked all 34 lines that match “no model path” or “no graph path” in [#470 (harness wait-defect census)](../470-harness-wait-defect-census/census-470-harness-wait-defect-census.md). The census repeats some findings in its batch summaries. This table folds those repeats by missing fact.
+I rechecked all 34 lines that match “no model path” or “no graph path” in [#470 (harness wait-defect census)](../../completed/470-harness-wait-defect-census/census-470-harness-wait-defect-census.md). The census repeats some findings in its batch summaries. This table folds those repeats by missing fact.
 
 | Census fact | Result after this change | Live path or remaining reason |
 |---|---|---|

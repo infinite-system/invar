@@ -1,7 +1,7 @@
 # Task 471 — the graph reaches the whole app
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
 Engine: codex
 Environment: any
 Model: 5.6-sol
