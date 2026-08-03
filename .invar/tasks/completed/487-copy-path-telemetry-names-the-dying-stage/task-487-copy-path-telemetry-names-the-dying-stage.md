@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 9f132d18 — copy telemetry: one record per attempt names surface, route, OSC 52 result
 
 ## In plain words
 

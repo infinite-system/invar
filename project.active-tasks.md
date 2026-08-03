@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/in-progress/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/487-copy-path-telemetry-names-the-dying-stage`
-
 ## USER-DIRECTED (14)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -58,7 +54,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (32)
+## FLAKE-EVIDENCE (33)
+- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/active/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
@@ -154,8 +151,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 198 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 199 — full log: project.tasks-completed.md)
 - #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
+- #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/completed/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md) — 9f132d18 — copy telemetry: one record per attempt names surface, route, OSC 52 result
 - #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
 - #484 [per-file-smoke-reuse-experiment](.invar/tasks/completed/484-per-file-smoke-reuse-experiment/task-484-per-file-smoke-reuse-experiment.md) — 4e9d13d1 — Landed: instruments + the blocked-premise finding. Rollout re-scope awaits the user.
 - #483 [shortcut-getters-replace-the-chains](.invar/tasks/completed/483-shortcut-getters-replace-the-chains/task-483-shortcut-getters-replace-the-chains.md) — 7330851c — Landed: both phases of the conversion; the codebase now speaks activeEditor/activeDocument.
@@ -169,4 +167,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #475 [quick-open-leaves-focus-behind](.invar/tasks/completed/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md) — f10ebd13 — Landed: Quick Open focus follows the opened file; smoke asserts it directly.
 - #474 [dispose-order-renderable-warnings](.invar/tasks/completed/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md) — 7b8b889d — Landed: single-action teardown + zero-warnings quit ratchet.
 - #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
-- #471 [graph-reaches-the-whole-app](.invar/tasks/completed/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md) — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
