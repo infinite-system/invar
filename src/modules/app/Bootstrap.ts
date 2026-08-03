@@ -1476,10 +1476,26 @@ class $Bootstrap {
 
     // Last mouse event seen (for the observability side channel — proves the mouse path is live).
     let lastMouse: AppStatusMouseEvent | null = null;
-    const statusProjectionPorts: AppStatusProjectionPorts = {
+    let renderApplication: () => Promise<void>;
+    const render = (): Promise<void> => renderApplication();
+    let shutdownApplication: () => Promise<void>;
+    const shutdown = (): Promise<void> => shutdownApplication();
+
+    // One real composition object owns every graph root and is also what boot returns.
+    // Contributor membership comes from ApplicationContributions itself, so installing a
+    // contributor cannot create a new observation gap.
+    const applicationComposition: BootedApp = {
+      app,
+      get workspace() {
+        return workspaceSet.active;
+      },
       workspaceSet,
+      bufferTabStrip,
+      workspaceTabStrip,
       settings,
+      theme,
       commands,
+      keybindings,
       findBar,
       quickOpen,
       goToLinePrompt,
@@ -1494,10 +1510,24 @@ class $Bootstrap {
       panelHost,
       primaryDockHost,
       rightDockHost,
+      overlayCoordinator,
+      activitySurface,
+      statusBarSegments,
       statusProjectionContributions,
+      editorSurfaceContents,
+      editorColumnDefault,
+      paneRuntimes,
+      panelContentFactories,
+      applicationContributions,
+      get contributors() {
+        return applicationContributions.contributors;
+      },
       layoutSlotSizes: layoutSlots,
       pluginPrimaryDockContentIdentifiers,
       view,
+      renderer,
+      render,
+      shutdown,
       get mouse() {
         return lastMouse;
       },
@@ -1511,12 +1541,8 @@ class $Bootstrap {
         return currentPaneOfKind('terminal');
       },
     };
-
-    // Live graph reads for the harness (task #469): the ports object above already
-    // names every root the projection reads, so it IS the graph's namespace — one
-    // object, no second registry. Inert unless observing is enabled.
     GraphChannel.Class.arm({
-      roots: statusProjectionPorts as unknown as Record<string, unknown>,
+      roots: applicationComposition as unknown as Record<string, unknown>,
       requestRender: () => renderer.requestRender(),
     });
     app.onDispose(() => GraphChannel.Class.disarm());
@@ -1533,7 +1559,7 @@ class $Bootstrap {
       boundedListPopup.update();
       completionPopup.update();
       agentSkillPopup.update();
-      AppStatusProjection.Class.publish(statusProjectionPorts);
+      AppStatusProjection.Class.publish(applicationComposition);
       renderer.requestRender();
     };
     // A trackpad can publish about 150 wheel events per second. Each pane consumes every event as
@@ -1868,14 +1894,14 @@ class $Bootstrap {
     // Awaitable render for boot/resize/harness determinism: sync size, paint, then observe the
     // completed frame requested for that projection. Renderer-wide idle also waits for unrelated
     // terminal capability work, so it is broader than the first-paint condition boot requires.
-    const render = async (): Promise<void> => {
+    renderApplication = async (): Promise<void> => {
       syncSize();
       paint();
       await this.awaitProjectedFrame(renderer);
     };
 
     let shuttingDown = false;
-    const shutdown = async (): Promise<void> => {
+    shutdownApplication = async (): Promise<void> => {
       if (shuttingDown) return;
       shuttingDown = true;
       Logging.Class.info('Shutdown start');
@@ -1896,6 +1922,7 @@ class $Bootstrap {
     confirmQuit = () => {
       void shutdown();
     };
+
     // invariant: Quit requires explicit confirmation (src/modules/app/app.invariants.md)
     const requestQuit = (): void => {
       // PTY harnesses use Ctrl+Q as their teardown protocol. The shared driver sets this flag by
@@ -3410,18 +3437,7 @@ class $Bootstrap {
     });
 
     Logging.Class.info('Boot complete');
-    return {
-      app,
-      get workspace() {
-        return workspaceSet.active;
-      },
-      workspaceSet,
-      theme,
-      renderer,
-      view,
-      render,
-      shutdown,
-    };
+    return applicationComposition;
   }
 
   protected static reapSdkBinaryExtractions(): void {
@@ -3449,13 +3465,45 @@ export interface BootOptions {
   plugins?: readonly ApplicationContributor[];
 }
 
-export interface BootedApp {
+export interface BootedApp extends AppStatusProjectionPorts {
   app: App.Instance;
   workspace: Workspace.Instance;
   workspaceSet: WorkspaceSet.Instance;
+  bufferTabStrip: TabStrip.Instance;
+  workspaceTabStrip: TabStrip.Instance;
+  settings: Settings.Instance;
   theme: Theme.Instance;
-  renderer: CliRenderer;
+  commands: CommandRegistry.Instance;
+  keybindings: KeybindingRegistry.Instance;
+  findBar: FindBar.Instance;
+  quickOpen: QuickOpen.Instance;
+  goToLinePrompt: GoToLinePrompt.Model;
+  quitConfirmation: Dialog.Model;
+  settingsPanel: SettingsPanel.Instance;
+  contextMenu: ContextMenu.Instance;
+  boundedListPopup: BoundedListPopup.Instance;
+  completionPopup: CompletionPopup.Instance;
+  agentSkillPopup: AgentSkillPopup.Model;
+  shortcutHelp: ShortcutHelp.Instance;
+  tooltip: Tooltip.Instance;
+  panelHost: PanelHost.Instance;
+  primaryDockHost: PanelHost.Instance;
+  rightDockHost: PanelHost.Instance;
+  overlayCoordinator: OverlayCoordinator.Instance;
+  activitySurface: ActivitySurface.Model;
+  statusBarSegments: StatusBarSegments.Model;
+  statusProjectionContributions: StatusProjectionContributions.Model;
+  editorSurfaceContents: EditorSurfaceContents.Model;
+  editorColumnDefault: EditorColumnDefault.Model;
+  paneRuntimes: PaneRuntimes.Model;
+  panelContentFactories: PanelContentFactories.Model;
+  applicationContributions: ApplicationContributions.Instance;
+  contributors: Readonly<Record<string, ApplicationContributor>>;
+  layoutSlotSizes: LayoutSlots.Instance;
   view: RootView;
+  agentPaneContent: AgentPaneContent.Model | null;
+  terminalPaneContent: PaneContent | null;
+  renderer: CliRenderer;
   render(): Promise<void>;
   shutdown(): Promise<void>;
 }

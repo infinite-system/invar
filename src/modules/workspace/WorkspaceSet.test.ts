@@ -97,6 +97,27 @@ describe('WorkspaceSet project-layer flyweight', () => {
     expect(workspaceSet.active.editor.codeFoldingEnabled).toBe(true);
   });
 
+  test('active editor and document shortcuts follow the selected workspace', () => {
+    const documentPath = join(workspaceRoots[0]!, 'active.txt');
+    writeFileSync(documentPath, 'active document\n');
+    const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
+    workspaceSet.open(workspaceRoots[0]!);
+
+    expect(workspaceSet.activeEditor).toBe(workspaceSet.active.editor);
+    expect(workspaceSet.activeDocument).toBeNull();
+
+    workspaceSet.active.openFileInTab(documentPath);
+    expect(workspaceSet.activeDocument).toBe(
+      workspaceSet.active.activeDocumentHandle?.document ?? null,
+    );
+    expect(workspaceSet.activeLanguageProviderNotice).toBe(
+      workspaceSet.active.languageProviderNotice(),
+    );
+    workspaceSet.dispose();
+  });
+
   test('N open workspaces keep exactly one live GitWatcher', () => {
     const plugin = new GitPlugin.Class();
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {

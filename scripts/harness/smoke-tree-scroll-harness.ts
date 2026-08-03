@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+import { GraphClient } from './GraphClient';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tree-scroll-harness-'));
@@ -154,6 +155,15 @@ try {
   HarnessSmoke.Class.requireCondition(
     openingStatus.treeRows === 61,
     'the settled model contains the scale directory and all 60 file rows',
+  );
+  const openingGraphTreeRows = await GraphClient.Class.query(
+    statusPath,
+    'contributors.file-tree.activeWorkspace.rowCount',
+    'settle',
+  );
+  HarnessSmoke.Class.requireCondition(
+    openingGraphTreeRows.value === 61,
+    'the composition graph reaches the file-tree contributor row count',
   );
   HarnessSmoke.Class.requireCondition(
     Array.isArray(openingStatus.settingsLabels) &&
@@ -337,6 +347,11 @@ try {
   HarnessSmoke.Class.requireCondition(
     revealedStatus.treeRows === scaleBranchCount + 62,
     `reveal materializes only the ${scaleBranchCount} branch rows and the target`,
+  );
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'contributors.file-tree.activeWorkspace.rowCount',
+    scaleBranchCount + 62,
   );
   const sidebarHeight = Number(
     (

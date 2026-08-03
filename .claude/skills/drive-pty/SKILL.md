@@ -162,11 +162,14 @@ mark, graph-verified). Both geometry-agnostic — copy their style.
 
 The app answers path queries against its LIVE ivue object graph
 (src/modules/system/GraphChannel.ts; enabled only under harness env — a
-shipped binary exposes nothing). Roots are the ports object (Bootstrap
-~1402): `panelHost`, `workspaceSet`, `view`, `settings`, `quickOpen`,
-`findBar`, `completionPopup`, `boundedListPopup`, `contextMenu`, `tooltip`,
-`layoutSlotSizes`, `mouse`, … Refs/Computeds unwrap in the resolver — a path
-never contains `.value`.
+shipped binary exposes nothing). The root is the real `BootedApp` composition
+object. Its `contributors` property contains every installed contributor by
+identifier, with no second membership list. Other roots include `panelHost`,
+`workspaceSet`, `bufferTabStrip`, `workspaceTabStrip`, `view`, `settings`,
+`quickOpen`, `findBar`,
+`completionPopup`, `boundedListPopup`, `contextMenu`, `tooltip`,
+`layoutSlotSizes`, and `mouse`. Refs and Computeds unwrap in the resolver, so
+a path never contains `.value`.
 
 - `await app.get('workspaceSet.active.editor.viewport.firstVisible')` — mode
   'now': one consistent event-loop read (possibly a between-frames transient).
@@ -185,8 +188,9 @@ never contains `.value`.
 - **Misses are teachers.** A wrong path fails loudly with the dead node,
   did-you-mean, and everything addressable there. Explore the app by poking:
   `app.get('nope')` prints the root namespace.
-- Known gap (task #471): contributor state (file-tree rows, git counts) has
-  no graph path yet — those waits stay on the screen for now.
+- Contributor state starts at paths such as
+  `contributors.file-tree.activeWorkspace.rowCount` and
+  `contributors.git.activeWorkspace.changedCount`.
 
 Smokes use the same protocol through `GraphClient.Class.awaitValue(statusPath,
 path, value)` — one client, shared with DriveSession; never fork it.
