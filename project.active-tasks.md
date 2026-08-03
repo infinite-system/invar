@@ -6,13 +6,15 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
-- #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/in-progress/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md)  [building]
+## IN-PROGRESS (5)
+- #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/in-progress/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/495-terminal-copy-selection-empty-at-chord-time`
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/in-progress/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/493-ast-query-imports-and-literal-census-modes`
 - #491 [editor-shared-generators-move-home](.invar/tasks/in-progress/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md)  [building]
   `tmux attach -t invar/491-editor-shared-generators-move-home`
+- #405 [panelhost-hardcoded-kind-tables](.invar/tasks/in-progress/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)  [building]
+  `tmux attach -t invar/405-panelhost-hardcoded-kind-tables`
 - #356 [agent-pane-is-a-decoupled-module](.invar/tasks/in-progress/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)  [building]
   `tmux attach -t invar/356-agent-pane-is-a-decoupled-module`
 
@@ -112,7 +114,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (41)
+## ARCHITECTURE-HYGIENE (40)
 - #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/active/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)
 - #490 [chord-and-command-relocation-sweep](.invar/tasks/active/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/active/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)
@@ -123,7 +125,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
-- #405 [panelhost-hardcoded-kind-tables](.invar/tasks/active/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)
 - #401 [idle-cost-convention-needs-scheduler-count](.invar/tasks/active/401-idle-cost-convention-needs-scheduler-count/task-401-idle-cost-convention-needs-scheduler-count.md)
 - #400 [script-to-src-seam-governance](.invar/tasks/active/400-script-to-src-seam-governance/task-400-script-to-src-seam-governance.md)
 - #394 [panel-contract-refinements-apply](.invar/tasks/active/394-panel-contract-refinements-apply/task-394-panel-contract-refinements-apply.md)
