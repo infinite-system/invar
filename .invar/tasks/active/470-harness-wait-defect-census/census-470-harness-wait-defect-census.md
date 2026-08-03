@@ -1659,3 +1659,367 @@ No wait in this batch is keyed on `renderQuiescent`. All bare `Bun.sleep` calls 
 - Class 6 (unsynchronized): 2
 
 Coverage: all 18 assigned files opened and read in full (smoke-audio-narration, smoke-bracket-match, smoke-breadcrumb, smoke-clipboard-frame-boundary, smoke-comment-styling, smoke-database, smoke-diagnostics, smoke-diff-overview, smoke-dirty-marker, smoke-find, smoke-git-blame, smoke-git-log, smoke-go-to-line, smoke-goto-definition, smoke-gutter-diff, smoke-horizontal-extent, smoke-hover, smoke-image-preview). 0 files not opened.
+
+## Batch 5 — editor, popup, settings
+
+Files (9): smoke-bounded-list-popup-harness.ts, smoke-code-folding-harness.ts,
+smoke-pixel-preview-harness.ts, smoke-settings-applied-harness.ts,
+smoke-navigation-history-harness.ts, smoke-workspace-tabs-harness.ts,
+smoke-editor-harness.ts, smoke-completion-harness.ts, smoke-field-caret-harness.ts.
+No wait in this set keys on `renderQuiescent`.
+
+### Findings
+
+1. scripts/harness/smoke-field-caret-harness.ts:254-259 — CLASS 1 (PRE-SATISFIED
+   POSITIVE CONTROL, most severe form). Wait as written:
+   `awaitStatus(... 'copy without a popup query selection publishes zero characters',
+   (candidate) => candidate.lastCopyChars === 0)` right after `sendKeys('Control+c')`.
+   `lastCopyChars` is 0 in the never-copied initial state, so the wait is TRUE before
+   Ctrl+C is sent — it cannot fail and cannot prove the copy path ran at all.
+   Proposal: no model path distinguishes "copy ran and copied 0" from "copy never
+   dispatched" (only lastCopyChars/lastCopyHash exist in AppStatusProjection); needs a
+   copy-attempt counter in the projection, then awaitValue on its increment.
+
+2. scripts/harness/smoke-pixel-preview-harness.ts:669-672 — CLASS 1 (PRE-SATISFIED
+   POSITIVE CONTROL). After `driver.resize(96, 30)`:
+   `awaitGridCondition('Settings remains painted after resize',
+   (candidate) => candidate.findText('Settings') !== null)`. 'Settings' was painted
+   before the resize (waited at :654); the wait is TRUE at issue and cannot prove the
+   resize was processed. It is the only anchor for the negative window below it.
+   Proposal: wait on a resize-reflecting condition — the snapshot's column count
+   becoming 96, or a layout leaf under the `layoutSlotSizes` root
+   (`layoutSlotSizes: layoutSlots`, src/modules/app/Bootstrap.ts:1424) via
+   `GraphClient.Class.awaitValue` (scripts/harness/GraphClient.ts:83).
+
+3. scripts/harness/smoke-pixel-preview-harness.ts:673-679 — CLASS 3. The 100 ms
+   `requireOutputSequenceCountRemainsUnchangedFor` window (helper :168-188) asserts
+   "no kitty placement during resize" but its start is anchored only by the
+   pre-satisfied wait in finding 2 — the window can open and close before the resize
+   lands, passing vacuously. Fix: anchor the window start to the real
+   resize-processed condition from finding 2; the bounded window itself is then fine.
+
+4. scripts/harness/smoke-pixel-preview-harness.ts:777-779 — CLASS 1 (minor).
+   `awaitGridCondition('the shortcut-help status control is visible ...',
+   (candidate) => candidate.rowText(candidate.rows - 1).includes('?'))` — the '?'
+   status-bar control is painted continuously; TRUE at issue. Locator only; harmless
+   coordinates, but a stale frame satisfies it. Proposal: take the position from the
+   current snapshot after the preceding real wait; no new wait needed.
+
+5. scripts/harness/smoke-bounded-list-popup-harness.ts:585-588 — CLASS 1.
+   `awaitGridCondition('the buffer badge remains available',
+   (candidate) => badgePosition(candidate, totalFixtureBufferCount) !== null)` after
+   the Enter-closes-popup status wait (:573). The badge chrome is painted before,
+   during, and after the popup, so the wait is TRUE on a stale frame that may still
+   show the popup. Proposal: the model close is already proven at :573
+   (`boundedListPopupOpen === false`; graph path `boundedListPopup.open`,
+   src/modules/app/Bootstrap.ts:1412 + src/modules/app/AppStatusProjection.ts:203);
+   make the grid wait key on popup ABSENCE plus badge presence (e.g. themed search
+   glyph gone) so the frame is provably post-close.
+
+6. scripts/harness/smoke-bounded-list-popup-harness.ts:631-634 — CLASS 1. Same badge
+   idiom ('remains available for outside-dismiss coverage') after :622 close wait.
+   Same proposal as finding 5.
+
+7. scripts/harness/smoke-code-folding-harness.ts:425-428 — CLASS 1.
+   `awaitGridCondition('deep.ts remains visible in the file tree',
+   (candidate) => candidate.findText('deep.ts') !== null)` — 'deep.ts' has been
+   painted since the boot wait (:199); TRUE at issue, returns any stale frame.
+   Locator only. Proposal: drop the wait and locate on the snapshot returned by the
+   previous real wait (:414-417 collapsedGrid).
+
+8. scripts/harness/smoke-navigation-history-harness.ts:396-398 — CLASS 1.
+   `awaitGridCondition('the breadcrumb row renders both fat history controls',
+   (candidate) => candidate.findText(' ❮  ❯ ') !== null)` — the history control has
+   been painted since :86; TRUE at issue. Locator only; needle verified live
+   (src/modules/ui/TabBarRenderer). Proposal: locate on the snapshot from the
+   preceding real wait (:315-318 beta content).
+
+9. scripts/harness/smoke-navigation-history-harness.ts:181 — CLASS 2.
+   `await driver.awaitScreenChange();` after the cursor status wait, guarding
+   nothing named. Either the cursor repaint already happened (wait consumes an
+   unrelated later blink) or it stalls to timeout. Proposal: delete it — the model
+   condition (:174-179 cursor === 3,0) is already the fact the section needs.
+
+10. scripts/harness/smoke-editor-harness.ts:79,81,90,92,107,189,297,351,445,447,505,
+    649,669 — CLASS 2 (13 sites, one idiom). `sendKeys(...)` then
+    `await driver.awaitScreenChange()` as the only synchronization for tree
+    navigation, caret movement, undo, Escape/Home, click-to-move-caret, and the
+    Ctrl+W/y confirmation. A repaint is a proxy: any unrelated frame (cursor blink,
+    status-bar clock) satisfies it while the model may not have moved. Proposal:
+    replace each with the model condition the next step depends on via
+    awaitStatusPublication (already imported) or
+    `GraphClient.Class.awaitValue(statusPath, '<workspaceSet leaf>', v)`
+    (root `workspaceSet`, src/modules/app/Bootstrap.ts:1404): treeSelected for
+    :79/:81/:90/:92, cursor column for :107/:297/:351/:445/:447/:505, dirty/revision
+    for :189, pendingCloseTab/bufferTabCount for :649/:669.
+
+11. scripts/harness/smoke-editor-harness.ts:83-87 — CLASS 1. Loop-pacing wait
+    `(status) => Object.hasOwn(status, 'activeBuffer')` is permanently TRUE once the
+    field is first published; each loop turn reads a possibly stale activeBuffer and
+    can send extra Enter/Down keys. Proposal: wait on the state the key should
+    produce (activeBuffer non-empty, or treeSelected advanced) per attempt.
+
+12. scripts/harness/smoke-editor-harness.ts:182-186 — CLASS 1. Undo loop paced by
+    `(status) => typeof status.dirty === 'boolean'` — permanently TRUE; a stale
+    dirty=true sends surplus Ctrl+Z. Proposal: per-iteration wait on
+    `bufferRevision` decreasing or `dirty === false`, timeout-guarded.
+
+13. scripts/harness/smoke-editor-harness.ts:564-566 — CLASS 1 (minor).
+    `awaitSnapshot((candidate) => candidate.findText('⚙') !== null)` — the gear is
+    permanent status-bar chrome; TRUE at issue (palette may still be painted on the
+    stale frame). Locator only, fixed chrome, low risk. Proposal: locate on the
+    snapshot following the overlay-null status wait (:556-560) — needs that wait to
+    return/anchor a frame, or key the grid wait on 'Command Palette' ABSENCE plus
+    the gear.
+
+14. scripts/harness/smoke-settings-applied-harness.ts:198-234 (helper
+    `awaitSettledPublishedNumber`, used at :283, :342, :818) plus the same inline
+    idiom at :403-416 and :455-467 — CLASS 2. A STATUS condition
+    (editorScrollTop settle + workspaceScrollMomentumAtRest) is polled inside
+    `awaitGridCondition`, so the wait wakes on FRAMES: if the final glide value is
+    published without one more repaint the wait hangs to timeout; conversely it
+    burns a frame subscription to watch a file. Proposal:
+    `HarnessSmoke.Class.awaitStatus` on the same predicate, or
+    `GraphClient.Class.awaitValue(statusPath, '<workspaceSet scroll leaf>', v)`
+    (root `workspaceSet`, src/modules/app/Bootstrap.ts:1404).
+
+15. scripts/harness/smoke-settings-applied-harness.ts:161 — CLASS 3 (borderline).
+    `await Bun.sleep(100)` paces the openOnlyFile retry loop between condition
+    waits. Bounded by 4 attempts and each attempt is a real condition, so it is
+    pacing rather than synchronization; noted for completeness.
+
+16. scripts/harness/smoke-workspace-tabs-harness.ts:173 and :206 — CLASS 2. In
+    `openLanguageFixture`: hover move then `await driver.awaitScreenChange()`
+    (:173) before the real hover-content wait, and Escape then awaitScreenChange
+    (:206) with nothing checking the hover actually dismissed. Proposal: delete
+    :173 (the :174 awaitSnapshot is the real condition); for :206 wait on the hover
+    content DISAPPEARING from the grid (both polarities).
+
+17. scripts/harness/smoke-workspace-tabs-harness.ts:553-557 — CLASS 6 (negative arm
+    unanchored). `driver.snapshot()` read directly, asserting the FIRST workspace
+    terminal marker is ABSENT after switching to the second workspace; no grid wait
+    ties that frame to the switched state at this point. A late frame would pass a
+    stale positive through. Proposal: fold into one awaitGridCondition:
+    `findText('SECOND_TREE_ONLY.txt') !== null && findText(firstTerminalMarker) === null`.
+
+18. scripts/harness/smoke-workspace-tabs-harness.ts:825-833 — CLASS 5 (transient)
+    plus a CLASS 2 lead-in. :825 `awaitScreenChange` is a frame proxy; :826-833
+    waits for `gitWatcherActivationCompleted === false` after the tab click — a
+    state that EXISTS ONLY until the wide walk finishes. If activation completes
+    between status samples the false state is never observed and the wait times
+    out. Proposal: `GraphClient.Class.awaitTransition`
+    (scripts/harness/GraphClient.ts:120) through false→true; note the watcher
+    activation fields are contributor-published — if no graph path exists for them,
+    record "no model path — contributor state" and subscribe the transition inside
+    the app.
+
+19. scripts/harness/smoke-workspace-tabs-harness.ts:874 and :910 — CLASS 2.
+    `sendKeys('Right'/'Left')` on the Workspace tabs setting then
+    `awaitScreenChange` as the only proof the setting applied before Escape.
+    Proposal: `GraphClient.Class.awaitValue(statusPath,
+    'settings.workspaceTabPosition', <value>)` — root `settings` exists
+    (src/modules/app/Bootstrap.ts:1405) and the field is a Settings schema default
+    (Settings.$Class.DEFAULTS includes workspaceTabPosition).
+
+20. scripts/harness/smoke-field-caret-harness.ts:464-469 — CLASS 1 (minor).
+    `awaitStatus('the focused popup publishes its box geometry',
+    (candidate) => popupGeometry(candidate) !== null)` — geometry has been non-null
+    since the popup opened; TRUE at issue, returns a stale status. Fetch only.
+    Proposal: read the last condition-waited status (from :452-458) instead of
+    issuing a new pre-satisfied wait.
+
+Clean file: scripts/harness/smoke-completion-harness.ts — every wait is a model
+condition false at issue; the bare `readStatus` calls (:446, :467, :622, :634) are
+pre-input baselines, not post-input reads. No findings.
+
+### Class 4 verification (stale needles) — none rotted
+
+Checked against painting sources: 'history: main'
+(src/modules/git/GitPaneRenderer.ts:285), '(binary file not shown)'
+(src/modules/text/TextDocument.ts:91), ' ❮  ❯ ' (src/modules/ui/TabBarRenderer),
+'Go to File' / 'Settings' / 'Command Palette' / 'Keyboard Shortcuts'
+(src/modules/ui/OverlayLayer.ts, CommandBar.ts, ShortcutHelp.ts), '⚙'
+(src/modules/theme/ThemeIcons). All still painted. Class 4 count: 0.
+
+### Batch 5 counts per class
+
+- Class 1 (pre-satisfied): 11 — of which 2 are pre-satisfied POSITIVE CONTROLS
+  (field-caret :254 copy-zero; pixel-preview :669 resize anchor) and 2 are
+  loop-pacing waits that send surplus keys (editor :83, :182).
+- Class 2 (proxy wait): 24 sites — editor 13 (finding 10), navigation-history 1
+  (finding 9), settings-applied 5 (finding 14: helper at :283/:342/:818 plus inline
+  :403 and :455), workspace-tabs 5 (findings 16, 18 lead-in, 19: :173, :206, :825,
+  :874, :910).
+- Class 3 (sleep as synchronization): 2 (pixel-preview :673 window; settings-applied
+  :161 borderline pacing).
+- Class 4 (stale needle): 0.
+- Class 5 (transient/blink): 1 (workspace-tabs :826-833).
+- Class 6 (unsynchronized read): 1 (workspace-tabs :553).
+
+### COVERAGE STATEMENT — batch 5
+
+Read end to end, every line, by this agent, no delegation:
+smoke-bounded-list-popup-harness.ts (1-1314), smoke-code-folding-harness.ts (1-560),
+smoke-pixel-preview-harness.ts (1-1027), smoke-settings-applied-harness.ts (1-1197),
+smoke-navigation-history-harness.ts (1-472), smoke-workspace-tabs-harness.ts (1-961),
+smoke-editor-harness.ts (1-693), smoke-completion-harness.ts (1-726),
+smoke-field-caret-harness.ts (1-666). All 9 of 9 assigned files opened in full;
+none skipped. Opened for evidence only (not audited): src/modules/app/Bootstrap.ts
+(:1395-1435), scripts/harness/GraphClient.ts (grep), src/modules/app/AppStatusProjection.ts
+(grep), painting sources listed under Class 4.
+
+## Batch 6 — smaller harnesses A-J
+
+### Class 1 — pre-satisfied waits
+
+- scripts/harness/smoke-bracket-match-harness.ts:60-62 — class 1. Wait: `driver.awaitSnapshot((snapshot) => snapshot.findText('sample.ts') !== null)` after typing `sample` into Quick Open. `sample.ts` is already painted by the file tree (the boot wait at line 51 proved it), so the wait is TRUE when issued and does not prove the filter applied. Proposal: `await GraphClient.Class.awaitValue(statusPath, 'quickOpen...', ...)` — the `quickOpen` port exists (src/modules/app/Bootstrap.ts:1408); the status fields `quickOpenQuery`/`quickOpenMatches` are proven live at scripts/harness/smoke-comment-styling-harness.ts:221-227.
+- scripts/harness/smoke-git-blame-harness.ts:91-93 — class 1. Wait: `findText('tracked.txt') !== null` after typing `tracked` into Quick Open. `tracked.txt` is already in the file tree (waited at line 82). Same proposal as above (quickOpen port, Bootstrap.ts:1408).
+- scripts/harness/smoke-git-blame-harness.ts:129-131 — class 1. Wait: `findText('untracked.txt') !== null` after typing `untracked`. `untracked.txt` is already in the tree; note also that `findText('tracked.txt')` elsewhere matches inside `untracked.txt`. Same proposal.
+- scripts/harness/smoke-git-blame-harness.ts:102-108 — class 1, pre-satisfied POSITIVE CONTROL candidate. Wait: `status.currentLineBlameAuthor === 'Blame Tester'` after `Down`. Line 0 (`first line`) is committed by the same author, so the condition can already be TRUE before the Down — the wait cannot prove the cursor moved or the blame refreshed. Proposal: add the cursor to the predicate — `status.cursorLineIndex === 1 && status.currentLineBlameAuthor === 'Blame Tester'` (`cursorLineIndex` is a proven field, scripts/harness/smoke-go-to-line-harness.ts:31).
+- scripts/harness/smoke-image-preview-harness.ts:79-81 (helper `openThroughQuickOpen`; call sites 245, 272, 289, 326) — class 1. Wait: any row `includes(query)` after typing the query. Every query (`picture`, `sample`, `photo`, `data`) is a substring of a file-tree row painted before Quick Open filters, so all four waits are TRUE when issued. Proposal: quickOpen model wait (port at Bootstrap.ts:1408; fields proven at smoke-horizontal-extent-harness.ts:58-64).
+- scripts/harness/smoke-git-log-harness.ts:252-258 and 273-279 — class 1, the MOST SEVERE form: pre-satisfied POSITIVE CONTROLS. Wait after `Down`: `status.focus === 'git' && status.showingDiff === true` — both were already TRUE and asserted before the keypress (lines 244-249), so these two waits can never fail and prove nothing about the selection advancing. Proposal: no model path — contributor state (the git-log selected row is not published); key the wait on the preview grid text that the Down changes (as lines 241 and 262 already do), and drop these two status waits or turn them into one-shot assertions.
+- scripts/harness/smoke-hover-harness.ts:164-167 — class 1 (with a class-5 shadow). Wait: `hoverCardTextSpan(candidate) !== null` after Ctrl+C — the card was visible BEFORE the copy, so the wait is pre-satisfied; a blink-dismiss-and-reopen would also be missed. Proposal: the copy is already synchronized by the `lastCopyChars` wait at line 158; take one snapshot after it and `requireCondition` the card span (assertion, not a wait).
+- scripts/harness/smoke-horizontal-extent-harness.ts:177-181 — class 1 (mild). Wait: `status.editorScrollLeft === openingViewportClamp` after vertical scrolling — the equality was TRUE before the scroll (published at lines 139-143); a persistence claim written as a wait returns instantly on stale state. Proposal: read status once after the frame-collection wait at 153-168 and `requireCondition` the equality.
+
+### Class 2 — proxy waits
+
+- scripts/harness/smoke-breadcrumb-harness.ts:328-329 — class 2. `driver.sendText('huge.ts'); await driver.awaitScreenChange();` then Enter. Any repaint (the first echoed character) satisfies it while the filter result is still pending; Enter can accept a stale list. Proposal: quickOpen model wait (port at Bootstrap.ts:1408; fields proven at smoke-horizontal-extent-harness.ts:58-64).
+- scripts/harness/smoke-clipboard-frame-boundary-harness.ts:295 — class 2. `driver.sendKeys('Enter'); await driver.awaitScreenChange();` per transcript-fill turn — any repaint stands in for "the turn was submitted". Proposal: no graph path — agent transcript contributor state; use `awaitStatus` on the `agentBusy` transition (true after Enter, then false), or `awaitTransition`.
+- scripts/harness/smoke-clipboard-frame-boundary-harness.ts:404 and 434 — class 2. `sendText(...)` then `awaitScreenChange()` before Enter — the first echoed character's repaint satisfies the wait while the rest of the command is in flight. Line 434's comment acknowledges it as staging. Proposal for 404: `awaitGridCondition(findText('printf IDLE-TERMINAL'))` (single-row text); no model path — terminal contributor state.
+- scripts/harness/smoke-clipboard-frame-boundary-harness.ts:424, 426, 469, 471 — class 2; 469/471 are the SEVERE form: during the active loop the shell repaints every 20 ms, so `awaitScreenChange()` after the deselect click (469) and after Ctrl+C (471) is satisfied by loop output — a positive control that cannot fail. Proposal: for the click, the `mouse` port exists (Bootstrap.ts:1425, "proves the mouse path is live"); for the Ctrl+C effect, no model path — terminal contributor state (wait on the loop output row STOPPING, e.g. a grid condition that the numbered row no longer advances is still frame sampling — the honest wait is on selection-cleared state if published).
+- scripts/harness/smoke-git-log-harness.ts:226-231 — class 2. Wait: row-cells JSON diff (`JSON.stringify(candidate.rowCells(...)) !== before`) as a proxy for "the clicked file becomes the selected log row". No model path — contributor state (git log selection is not in status).
+- scripts/harness/smoke-comment-styling-harness.ts:77-78 — class 2. `driver.sendKeys('Right'); await driver.awaitScreenChange();` — any repaint proxies the cursor move. Proposal: `awaitStatusPublication` on `status.cursor` col === 1 (`cursor` is a proven field, scripts/harness/smoke-dirty-marker-harness.ts:160-162).
+- scripts/harness/smoke-comment-styling-harness.ts:282-289 — class 2 (plus a bare `driver.snapshot()` in the loop guard). `Down` + `awaitScreenChange()` per step proxies "the Extensions selection advanced". No model path — extensions-list selection is contributor state; the closing grid wait at 290-293 is the real condition, so replace the per-step proxy with the `› [x] Vue` grid condition and drop the screen-change steps.
+- scripts/harness/smoke-hover-harness.ts:136 — class 2. `await driver.awaitScreenChange()` after the mouse move — any repaint proxies "the move registered", and the REAL condition (the hover card span) is the very next wait at 137-140. Proposal: delete line 136; the card wait is the condition. (If a model wait is wanted, the `tooltip` port exists, Bootstrap.ts:1417.)
+
+### Class 6 — unsynchronized reads / actions
+
+- scripts/harness/smoke-diagnostics-harness.ts:266-267 — class 6. `driver.sendText('far.ts'); driver.sendKeys('Enter');` with no wait between — Quick Open filtering is asynchronous, so Enter can accept a stale list even though PTY bytes are ordered. Sibling harnesses deliberately await the filter first (smoke-horizontal-extent-harness.ts:58-64, smoke-comment-styling-harness.ts:221-227). Proposal: `awaitValue` on the quickOpen port (Bootstrap.ts:1408) for query === 'far.ts' with matches > 0 before Enter.
+- scripts/harness/smoke-git-log-harness.ts:298 — class 6. `snapshot = driver.snapshot()` right after Ctrl+g with only a STATUS wait (focus === 'git') between — the grid can lag the status flip, and the following `findText('root-subject-A')` then throws on a stale frame. Proposal: `await driver.awaitGridCondition(... findText('root-subject-A') !== null)`.
+
+### Clean files (no findings)
+
+smoke-audio-narration-harness.ts, smoke-database-harness.ts, smoke-dirty-marker-harness.ts (exemplary: revision-carried waits), smoke-find-harness.ts, smoke-go-to-line-harness.ts, smoke-goto-definition-harness.ts, smoke-gutter-diff-harness.ts (its comment at lines 178-182 records a past fix of exactly this defect class).
+
+No wait in this batch is keyed on `renderQuiescent`. All bare `Bun.sleep` calls found (audio poll 5 ms, dirty-marker 10 ms, gutter-diff 10 ms, clipboard 5/50 ms) are poll intervals inside deadline-bounded condition loops — not class 3. No stale needles found: every literal checked is either defined by the fixture the harness writes or was proven painted in the same run.
+
+### Batch 6 counts
+
+- Class 1 (pre-satisfied): 8 findings (10 wait sites; 3 are pre-satisfied positive controls: git-blame:102, git-log:252, git-log:273 — plus clipboard:469/471 counted under class 2)
+- Class 2 (proxy): 8 findings (12 wait sites)
+- Class 3 (sleep as sync): 0
+- Class 4 (stale needle): 0
+- Class 5 (transient/blink): 0 standalone (one shadow noted at hover:164)
+- Class 6 (unsynchronized): 2
+
+Coverage: all 18 assigned files opened and read in full (smoke-audio-narration, smoke-bracket-match, smoke-breadcrumb, smoke-clipboard-frame-boundary, smoke-comment-styling, smoke-database, smoke-diagnostics, smoke-diff-overview, smoke-dirty-marker, smoke-find, smoke-git-blame, smoke-git-log, smoke-go-to-line, smoke-goto-definition, smoke-gutter-diff, smoke-horizontal-extent, smoke-hover, smoke-image-preview). 0 files not opened.
+
+## Batch 7 — smaller harnesses K-Z
+
+All paths under scripts/harness/. Graph-path evidence: status roots at src/modules/app/Bootstrap.ts:1403-1425; `commands.query`/`commands.open`/`commands.filtered` at src/modules/app/AppStatusProjection.ts:138-142; `workspaceSet.active.focus` at src/modules/app/AppStatusProjection.ts:165-168.
+
+### Findings
+
+1. smoke-tabs-harness.ts:245-249 — CLASS 1, PRE-SATISFIED POSITIVE CONTROL (most severe form). `awaitStatusPublication('the strip pan preserves the active buffer index', (status) => status.activeBufferIndex === activeIndexBeforeArrow)` after clicking the pan arrow. The index is unchanged before AND after a pan, so the wait is TRUE when issued and can never fail — nothing anywhere in the smoke proves the pan happened; the "right arrow pans the strip" pass is unfalsifiable. No model path — the tab-strip pan offset is not published (grep of AppStatusProjection.ts and src/modules/ui/TabBar.ts found no panOffset/stripOffset/firstVisibleTab). Proposal: publish the pan offset and `await GraphClient.Class.awaitValue(statusPath, '<new path>', ...)`, or wait for a grid change in the tab-strip row (leftmost visible filename changes), THEN assert the index is preserved.
+2. smoke-selection-harness.ts:197-199 — CLASS 1 (pre-satisfied, positive-control shaped). After a wheel event: `awaitSnapshot((c) => markerHasBackground(c, 'directory-15', focusedSelectionColor))`. The marker already had that background before the wheel; a stale pre-wheel frame passes "wheel moves the viewport while the highlight travels" with no scroll having happened. No model path — contributor state (file-tree rows). Proposal: also require evidence the viewport moved (top tree row text changed) in the same predicate.
+3. smoke-selection-harness.ts:315-317 — CLASS 1. Same wheel pattern on 'commit-14' (commit-log list). Pre-satisfied; cannot see a no-op scroll. No model path — contributor state. Same proposal as (2).
+4. smoke-selection-harness.ts:185-188 — CLASS 1. After a hover move: wait 'directory-15' still has focusedSelectionColor — true before the hover, and no fence proves the hover was processed, so "hover leaves the item selection anchored" can pass before the hover arrives. No model path — contributor state. Proposal: first wait for the hover decoration to paint on 'directory-05', then assert the selection background.
+5. smoke-selection-harness.ts:266-268 — CLASS 1. After `clickMarker(driver, snapshot, 'file-10.txt')`: wait `markerHasBackground('file-10.txt', unfocusedSelectionColor)` — the identical condition was already awaited at lines 233-237 before the click, so it is true when issued; the click's effect (the file opening) is never observed. This harness has no TUI_STATUS_PATH; adding one enables `awaitValue(statusPath, 'workspaceSet.active...', ...)` waits on the opened buffer.
+6. smoke-selection-harness.ts:209 and 284 — CLASS 2 (proxy). `driver.sendKeys('Control+Shift+j'); await driver.awaitScreenChange();` (and the same after 'Control+g') — any repaint satisfies the fence for a focus change. Proposal: `await GraphClient.Class.awaitValue(statusPath, 'workspaceSet.active.focus', <target>)` (path evidence AppStatusProjection.ts:165-168); needs the status env added to this harness.
+7. smoke-move-line-harness.ts:46-48 — CLASS 1. In `runCommand`: after `sendText(commandTitle)`, `awaitSnapshot((s) => s.findText(commandTitle) !== null)` — the palette INPUT ECHO paints the same title, so the wait passes before the command list filters; the following Enter can activate whatever row is still selected. Proposal: `await GraphClient.Class.awaitValue(statusPath, 'commands.query', commandTitle)` (evidence AppStatusProjection.ts:139) — harness needs TUI_STATUS_PATH.
+8. smoke-move-line-harness.ts:92-93 — CLASS 2. `driver.sendKeys('Tab'); await driver.awaitScreenChange();` — repaint proxy for a focus move. Proposal: `awaitValue(statusPath, 'workspaceSet.active.focus', 'editor')` (AppStatusProjection.ts:165-168).
+9. smoke-media-harness.ts:227-230 — CLASS 1. `openCommand` waits `snapshot.text().toLowerCase().includes(query)` after typing the query — satisfied by the input echo before the list filters; Enter races the filter. Proposal: `awaitValue(statusPath, 'commands.query', query)` (AppStatusProjection.ts:139); statusPath already exists in this harness's arms.
+10. smoke-search-mouse-harness.ts:302-305 — CLASS 1. `sendText('Open Folder')` then wait `findText('Open Folder')` — input echo pre-satisfies (and the resting list may show 'Workspace: Open Folder', src/modules/commands/CommandDefaults.ts:21). Proposal: `awaitValue(statusPath, 'commands.query', 'Open Folder')`.
+11. smoke-text-input-harness.ts:292-295 — CLASS 1. Same 'Open Folder' echo pattern. Same proposal.
+12. smoke-openproject-harness.ts:74-81 — CLASS 1. Same 'Open Folder' echo pattern (sendText then findText('Open Folder')). Same proposal.
+13. smoke-text-input-harness.ts:83-89 — CLASS 1 (pre-satisfied positive control on its first use). `exerciseSharedInput` sends an inert Ctrl+C then waits `status.lastCopyChars === 0` — on the first surface lastCopyChars is already 0 (nothing ever copied), so the wait is true when issued and cannot prove the copy attempt was processed; "unselected copy is inert" is unfalsifiable there. (Later surfaces get a real 2→0 transition only if the app publishes 0 on inert copies.) Proposal: publish a copy-ATTEMPT counter beside lastCopyChars (set at src/modules/app/Bootstrap.ts:2134) and wait on its increment.
+14. smoke-search-mouse-harness.ts:154-159 — CLASS 1 (low). Wait `status.quickOpenSelected === 0` to prove hover left the selection unchanged — true before the hover; cannot fail. Saved in practice by the grid wait at 150-153 that fences hover processing; keep that fence mandatory or fold both into one predicate.
+15. smoke-mode-coherence-harness.ts:34-36 (call site 233-238) — CLASS 1. `assertOnlyOverlay(..., 'boundedListPopup', 'document.txt')` waits `findText('document.txt')` — that text is painted in the file tree and the buffer tab BOTH before and after the popup opens; the grid arm is pre-satisfied (the status arm in the same helper does the real work). Proposal: key the grid wait on popup-only text, or drop it — `status.inputOverlay === 'boundedListPopup'` already covers it.
+16. smoke-word-delete-harness.ts:51-53 — CLASS 1. After Enter on the tree row: `awaitSnapshot((s) => s.text().includes('word-delete.txt'))` — the exact needle the PREVIOUS wait (lines 46-48) used for the tree row; pre-satisfied, returns a stale frame. Proposal: wait `String(status.activeBuffer).endsWith('/word-delete.txt')` (the file is empty, so no content needle exists).
+17. smoke-word-delete-harness.ts:60-64 — CLASS 1 (weak polarity). 'the opened word-delete buffer is published' waits `typeof status.activeBuffer === 'string'` — pre-satisfiable by any prior string value; existence checked, identity not. Proposal: `endsWith('/word-delete.txt')`.
+18. smoke-quickopen-harness.ts:173-175 — CLASS 1 (candidate). After typing 'widget': wait `findText('src/widget.txt')` — with the empty query Quick Open lists all files, so the needle can be painted before the filter applies (small fixture, 60x15 dialog); Enter races the filter. Proposal: wait `status.quickOpenQuery === 'widget'` plus the selected identifier, as the later arms of this same smoke already do (lines 205-213).
+19. smoke-quickopen-harness.ts:214-219 — CLASS 1 (candidate). Grid wait for 'TASK.md' and 'project.tasks.md' — both basenames are also file-tree rows painted before and after; the wait can pass on tree text even if the dialog never painted them (occlusion at 60x15 uncertain). The preceding status wait carries the arm; scope the grid read to the dialog bounds (`status.overlayDialogBounds.quickOpen`, used elsewhere in this file at lines 99-136).
+20. smoke-tabs-harness.ts:200-203 — CLASS 1 (vacuous negative). Escape-close wait keys on `findText('Open Buffers') === null`, but no wait ever proved 'Open Buffers' painted while open (open was proven via status only). The needle is real (src/modules/ui/TabBar.ts:217), but if the title regressed this wait passes instantly — a check that can only fail toward pass. Proposal: wait `status.boundedListPopupOpen === false` (field exists; awaited true at lines 193-197).
+21. smoke-tabs-harness.ts:216 — CLASS 2. Ctrl+PageUp cycle loop fenced by `awaitScreenChange()` — the model states the condition. Proposal: wait `status.activeBufferIndex === expectedIndex` each step (field already used at lines 149-167).
+22. smoke-paste-harness.ts:197, 209, 287, 430, 481 — CLASS 2. `awaitScreenChange()` after Ctrl+C as a stand-in for "the shell prompt reset" — any repaint (e.g. an unrelated blink) satisfies it. No model path — contributor state (child-PTY shell output). Proposal: grid condition on the fresh prompt (e.g. prompt-glyph count increases in the terminal pane window).
+23. smoke-paste-harness.ts:229 — CLASS 2 (documented tradeoff). `awaitScreenChange()` after a chunked paste; the comment claims quiescence but first-change is not quiescence. Low priority: byte-exactness is separately proven by the gated `wc -c` wait at 231-236.
+24. smoke-paste-harness.ts:468-471 — CLASS 5 (transient). Waits for the MID-animation state (`findText('printf ANI') !== null && findText('ANIMATING_x…full') === null`) — a state that appears and disappears; if the staged typing completes between sampled frames the condition is never observed and the wait times out. Proposal: `awaitTransition` on the pane text (partial-then-full).
+25. smoke-search-mouse-harness.ts:201 and 264 — CLASS 6. Bare `driver.snapshot()` for Find-bar button geometry right after status-only waits; the counter repaint may not have landed and the geometry read can be stale. Proposal: take the snapshot from an `awaitGridCondition` that names the widget and counter text.
+26. smoke-voice-picker-harness.ts:52 (clickWidget, used at 207/234/264) and 216/246 — CLASS 6. Bare `driver.snapshot()` for widget/row geometry, at 216/246 directly after `awaitStatusWithoutFrame` (model can lead the grid). Proposal: derive geometry from an `awaitGridCondition` naming the row label AND the widget glyph.
+27. smoke-workspace-layout-isolation-harness.ts:381-385 — CLASS 6. Bare `driver.snapshot()` to locate the '+' workspace button on row 0 after status-only waits (right after hiding the primary dock, whose repaint may not have landed). Proposal: `awaitGridCondition` for '+' present in row 0, use that snapshot.
+28. smoke-workspace-layout-isolation-harness.ts:104-131 — CLASS 6 (adjacent). Activity-bar clicks use HARD-CODED rows "on a settled 120x40 boot grid" with no wait proving those rows paint those items; a layout change silently clicks the wrong item (the following status waits would then time out — loud, so low severity).
+29. smoke-sdk-extraction-harness.ts:77-80 — CLASS 6 (adjacent). One-shot `!existsSync(staleExtractionDirectory)` right after the ready wait; if reaping is asynchronous relative to ready publication this races. Proposal: bounded poll on non-existence (condition, not one sample).
+30. smoke-wrap-harness.ts:367 — CLASS 2. `awaitScreenChange()` after the continuation-row click, before typing 'X' — repaint proxy for caret placement. Proposal: grid condition `snapshot.cursorRow === continuationRow` (the native cursor is already the oracle two lines later).
+31. smoke-reserved-chord-harness.ts:170-172 — CLASS 1 (locate-only, low). `awaitSnapshot(findText('RESERVED-CHORD-TASK'))` — painted since boot (awaited at 87-91), pre-satisfied; used only for click coordinates, and can hand back a frame from before the Settings overlay finished closing. Proposal: gate on `status.settingsOpen === false` AND the text visible in one predicate (the status wait exists at 159-162; fold them).
+
+Notes, not counted: smoke-paste-harness.ts:66-74 `Bun.sleep(1)` between paste chunks is pacing to force chunk boundaries, not a wait for a condition — left alone. Stale-needle checks done: 'Open Buffers' (src/modules/ui/TabBar.ts:217), 'Open Project Folder' (src/modules/ui/OverlayLayer.ts:1298), 'Workspace: Open Folder' (src/modules/commands/CommandDefaults.ts:21) — all still painted; no rot found. No `renderQuiescent` waits exist in this set (grep clean).
+
+### Batch 7 counts per class
+
+- Class 1 (pre-satisfied): 18 — of which 4 are pre-satisfied positive controls (tabs:245, selection:197, selection:315, text-input:83; search-mouse:154 is a fifth, fenced in practice)
+- Class 2 (proxy/repaint): 7 findings (selection x2 lines, move-line, tabs, paste x5 lines counted as one + the documented one, wrap)
+- Class 3 (sleep as sync): 0
+- Class 4 (stale needle): 0 (three literals verified live)
+- Class 5 (transient/blink): 1 (paste:468)
+- Class 6 (unsynchronized read): 5 (+2 adjacent noted)
+
+### Coverage
+
+All 19 assigned files opened and read in full: smoke-indent-guides, smoke-media, smoke-mode-coherence, smoke-move-line, smoke-openproject, smoke-paste, smoke-quickopen, smoke-quit-confirmation, smoke-reserved-chord, smoke-sdk-extraction, smoke-search-mouse, smoke-selection, smoke-shortcut-help, smoke-tabs, smoke-text-input, smoke-voice-picker, smoke-word-delete, smoke-workspace-layout-isolation, smoke-wrap. 0 files not opened. Clean (no findings): smoke-indent-guides, smoke-quit-confirmation, smoke-shortcut-help.
+## Batch 4 — overlay, markdown, tasks, remaining shell
+
+### scripts/harness/smoke-overlay-dialog-harness.ts
+
+- smoke-overlay-dialog-harness.ts:1184-1185 (same shape at 1207+1212) — class 1 (PRE-SATISFIED WAIT). As written: `driver.resize(120, 40); await clickStatusMarker(driver, '?')` — clickStatusMarker's `awaitGridCondition('status control ? is visible', ...)` (lines 83-86) keys on status-bar chrome painted BOTH before and after the resize, so it can return the pre-resize frame and compute a stale click column/row. Why: the condition is already TRUE when issued; the awaited change is the resize, which the condition never observes. Proposal: gate on the published size first — the file's own idiom at lines 1089-1099 (`awaitStatusPublication(... status.width === 120 && status.height === 40)`) — or add `candidate.columns === expectedColumns` to the grid condition. No graph path for terminal size: the `view` port exposes only panelViewportColumns/Rows (src/modules/app/AppStatusProjection.ts:556-560).
+- smoke-overlay-dialog-harness.ts:1308-1309 — class 2 (PROXY WAIT). As written: `driver.resize(100, 32); await driver.awaitScreenChange();` — waits for any repaint when the model states the actual thing. Proposal: `awaitStatusPublication(statusPath, ..., (s) => s.width === 100 && s.height === 32)` exactly as this file already does after its other resizes (e.g. lines 1089-1099).
+- smoke-overlay-dialog-harness.ts:1339-1344 — class 1 (PRE-SATISFIED WAIT). As written: `awaitGridCondition('the changed status action settles before its restoring press', rowText includes ' ❯ ' or ' ✦ ')` — both glyphs are standing status-bar content icons (src/modules/terminal/TerminalPaneContent.ts:63 `readonly icon = '❯'`, src/modules/agent/AgentPaneContent.ts:82 `readonly icon = '✦'`) painted before AND after the visibility change awaited at 1332; the wait can hand a stale frame to discoveredOutsideActionPosition. Why: the condition cannot distinguish the settled post-change frame from the frame before the click. Proposal: key the settle wait on what the visibility change actually moves (panel region border present/absent in the frame), the model half being already covered by the preceding awaitStatusPublication; no additional graph path needed.
+- smoke-overlay-dialog-harness.ts:1652-1655 — class 1 (PRE-SATISFIED WAIT). As written: `awaitGridCondition('the confirmation paints its single-token close anchor', sharedCloseGlyphs.some((glyph) => candidate.findText(glyph) !== null))` — the shared panelClose glyphs paint on standing chrome (tab/panel close controls) before the confirmation opens, so the whole-screen findText is TRUE on a stale frame; discoveredClosePosition('Confirm') then throws on a frame without the dialog. Proposal: scope the scan to the published confirmation bounds exactly as dismissOutsideAndRequireConsumed does at lines 580-589, or wait on `candidate.findText('Confirm') !== null`.
+
+### scripts/harness/smoke-markdown-harness.ts
+
+- smoke-markdown-harness.ts:1744-1747 — class 6 (UNSYNCHRONIZED READ). As written: `requireCondition(readStatus(statusPath).markdownPaneFocus === 'source', 'auto-open keeps the keyboard on the source pane')` — a bare readStatus assert on a field no prior wait covered (the open wait at 1693-1701 checks activeBuffer/previewOpen/side only). Why: if the paneFocus publication lags the grid wait, the assert reads a stale value and fails red. Proposal: `awaitStatus(... status.markdownPaneFocus === 'source')` — the same field is awaited elsewhere in this file (e.g. line 2239-2244).
+- Note (not a defect): the wheel-settle waits on `workspaceScrollMomentumAtRest`/`contributedSurfaceAnimationAtRest` (1474-1481, 1513-1520, 2660-2667, 2694-2701) are sound — both flags derive live from activity (`!...IsActive`, src/modules/app/Bootstrap.ts:1660,1670), unlike renderQuiescent.
+
+### scripts/harness/smoke-markdown-view-mode-harness.ts
+
+- No findings. Every wait is a model-condition awaitStatus or a grid condition FALSE before its action.
+
+### scripts/harness/smoke-tasks-dashboard-harness.ts
+
+- smoke-tasks-dashboard-harness.ts:846-848 — class 6 (UNSYNCHRONIZED READ). As written: `const cycleStopPosition = driver.snapshot().findText('■')` immediately after `awaitStatus(... status.tasksLens === 'live')` — the stop glyph replaces '▷' only when cycling starts, and no grid wait orders the paint before the read; a lagging frame throws 'The cycle stop control disappeared after start'. Proposal: `await driver.awaitGridCondition(..., (s) => s.findText('■') !== null)` and take the position from that snapshot (the tooltip wait at 855-858 arrives too late to protect the position read). The glyph is live vocabulary (Stop/Start strings and controls in src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts).
+
+### scripts/harness/smoke-tasks-harness.ts
+
+- No findings. All waits are model conditions or first-appearance grid needles; the post-close readStatus at line 296 is ordered by closePanelContentsListRow's own terminal awaitStatus (scripts/harness/HarnessSmoke.ts:291-300).
+
+### scripts/smoke-markdown.sh
+
+- smoke-markdown.sh:38 (used at 99, 118, 163, 177, 190, 252) — class 1 (PRE-SATISFIED POSITIVE CONTROL, the known defective idiom). As written: `settle() { "$HARNESS" settle "$SESSION_NAME" 8 ...; }` — tui-harness.sh's settle verb waits on `renderQuiescent=true` (scripts/tui-harness.sh:107), a flag set true at src/modules/system/StatusChannel.ts:97 and never reset; after the first frame every settle returns instantly and cannot fail. The instrument proves nothing.
+- smoke-markdown.sh:98,114,117,127,138,146,162,176,187,189,208,209,212,214,223,234,245,251 — class 3 (SLEEP as synchronization), 18 sites. As written: `sleep 0.4..1.2` between an input and a `field ...` read, for conditions the status file states exactly (markdownPreviewOpen, markdownHoveredReference, activeBuffer, markdownSplitRatio, markdownPreviewSelectionChars, lastCopyChars, bufferRevision, markdownPaneFocus, sourceFindQuery/markdownPreviewFindQuery/findMatchCount). Why: each field read after a fixed sleep is a race; under gate load these are the flake class. Proposal: replace each sleep+read with a bounded poll of the same status field until the expected value (or port the script onto the TS harness's awaitStatus, which its sibling smoke-markdown-harness.ts already does for every one of these conditions).
+
+### scripts/smoke-tasks-dashboard.sh
+
+- No findings. Three-line exec wrapper around the TS harness; no waits of its own.
+
+### scripts/smoke-panel-split.sh
+
+- smoke-panel-split.sh:49,59,81,95,118,129 — class 1 (PRE-SATISFIED POSITIVE CONTROL, known defective idiom) collapsing into class 6. As written: `"$H" settle "$S"` is the renderQuiescent no-op (scripts/tui-harness.sh:107; flag set once at src/modules/system/StatusChannel.ts:97), and it is the ONLY ordering between each chord/click/drag and the `chk`/`f` field reads that follow (panelCellIds at 51/60/130, panelFocusedIndex at 52/61/96/131, panelCellColumns at 53/62/119/132) — so every one of those reads is effectively unsynchronized. Proposal: `await GraphClient.Class.awaitValue(statusPath, 'panelHost.orderedContents.length', <n>)` and sibling panelHost paths — path evidence: scripts/harness/smoke-panel-chrome-harness.ts:288-333 uses 'panelHost.orderedContents.length', 'panelHost.spaces.length', 'panelHost.activeSpace.contentIds.length'; root evidence: panelHost in statusProjectionPorts near src/modules/app/Bootstrap.ts:1402. For a shell script, the minimal fix is a bounded poll of the same status fields.
+- smoke-panel-split.sh:55,98 — class 3 (SLEEP as synchronization). As written: `sleep 0.6` to "let the shell print its first prompt" and after `stty size` before grepping the capture. Both stand in for a screen condition (prompt painted; `<rows> <cols>` output painted). Proposal: poll `"$H" capture` for the expected pattern with a deadline.
+
+### scripts/smoke-activitybar.sh
+
+- smoke-activitybar.sh:35 (13 call sites) — class 1 + class 3 combined. As written: `settle() { sleep 0.35; "$harness" settle "$session_name" 12 ...; }` — the settle half is the renderQuiescent no-op (scripts/tui-harness.sh:107; src/modules/system/StatusChannel.ts:97), so the real synchronization is the bare 0.35s sleep; every field/frame assertion in the script rides it. Proposal: poll the status field named by each following assertion (sidebarView, showActivityBar) and, for frame claims, re-dump and poll the frame for the expected glyph/accent.
+- smoke-activitybar.sh:47 — class 3 (SLEEP as synchronization). `send_kitty` embeds `sleep 0.3` after each chord (6 uses) in place of the sidebarView condition the very next line reads. Same proposal.
+- smoke-activitybar.sh:155,177 — class 4 (STALE NEEDLE), CONFIRMED. As written: `expect_frame_contains 'Space/Enter installs or' ...` — the app paints '   Space/Enter changes state · Enter again restarts to apply' (src/modules/plugins/ExtensionsPaneContent.ts:76). Both sites fail on every run (they increment failure_count, so this smoke cannot ALL-PASS until the needle is updated). Proposal: change the needle to 'Space/Enter changes state'.
+- Needle audit for the rest of the batch found no other rot — verified live: 'Preview' pane title (src/modules/markdown/MarkdownSplitView.ts:100), 'External link — not opened here' and 'Link target not found' (src/modules/markdown/MarkdownPreviewContent.ts), 'Keyboard Shortcuts' (src/modules/ui/OverlayLayer.ts), 'history:' (src/modules/git/GitPaneRenderer.ts), tasks-dashboard strings 'No task system', 'Start/Stop automatic lens cycling', 'Open the latest report', 'Builder tmux session is missing' (src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts), 'Ask Claude' (src/modules/agent/AgentTranscriptProjection.ts:28).
+
+### Batch 4 per-class counts
+
+- Class 1 (pre-satisfied): 6 findings — 3 in smoke-overlay-dialog-harness.ts, plus the renderQuiescent settle idiom in all 3 wait-bearing shell scripts (smoke-markdown.sh, smoke-panel-split.sh, smoke-activitybar.sh); the shell settle verb is a pre-satisfied POSITIVE CONTROL that cannot fail.
+- Class 2 (proxy wait): 1 (smoke-overlay-dialog-harness.ts:1309 awaitScreenChange after resize)
+- Class 3 (sleep as synchronization): 4 findings covering 27 sleep sites (smoke-markdown.sh x18, smoke-panel-split.sh x2, smoke-activitybar.sh settle-sleep x13 uses + send_kitty x6 uses)
+- Class 4 (stale needle): 1 (smoke-activitybar.sh:155,177 — the known finding, confirmed; no others found)
+- Class 5 (transient/blink): 0
+- Class 6 (unsynchronized read): 2 standalone (smoke-markdown-harness.ts:1745, smoke-tasks-dashboard-harness.ts:846) + the smoke-panel-split.sh field reads folded into its settle finding
+
+Coverage: all 9 assigned files opened and read in full (smoke-overlay-dialog-harness.ts, smoke-markdown-harness.ts, smoke-markdown-view-mode-harness.ts, smoke-tasks-dashboard-harness.ts, smoke-tasks-harness.ts, smoke-markdown.sh, smoke-tasks-dashboard.sh, smoke-panel-split.sh, smoke-activitybar.sh). Supporting sources consulted for verification only: tui-harness.sh, HarnessSmoke.ts, GraphClient.ts, smoke-panel-chrome-harness.ts, StatusChannel.ts, Bootstrap.ts, AppStatusProjection.ts, and the painting sources named above. 0 files not opened.

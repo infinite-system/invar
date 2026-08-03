@@ -58,17 +58,31 @@ PtyTestDriver guard do not depend on #471 and could land alongside it.
 4. Finish the census (see coverage below), contention tier first.
 5. The individual class-1 sites, unfalsifiable positive controls first.
 
-## Coverage — PARTIAL, state this honestly to anyone who picks it up
+## Coverage — COMPLETE (2026-08-02, batches 1-7)
 
-Audited: 47 of 77 files (batch 1: 43 shared/contention/agent/terminal/shell;
-batch 2: plugin-manifest pair; batch 3: panel-split, layout, activitybar,
-tree-scroll). Roughly 30 files remain, named in the report's coverage section:
-the overlay/markdown/tasks set, the editor/popup/settings set, and ~24 smaller
-harnesses. The class counts are a FLOOR, not a total.
+Every registered smoke source was audited: batch 1 (shared machinery,
+contention tier, agent/terminal family, 36 shell smokes), batch 2
+(plugin-manifest pair), batch 3 (panel-split, layout, activitybar,
+tree-scroll), batch 4 (overlay/markdown/tasks + remaining shell), batch 5
+(editor/popup/settings), batch 6 (smaller harnesses A-J), batch 7 (smaller
+harnesses K-Z). Every batch reports "opened in full, 0 skipped".
 
-Running counts: class 1 pre-satisfied 82 · class 2 proxy 40 · class 3
-sleep-as-sync ~261 (needs triage, not 261 defects) · class 4 stale needle 2 ·
-class 5 blink 13 · class 6 unsynchronized read 15.
+Final counts: class 1 pre-satisfied ~125 (of which 15+ are PRE-SATISFIED
+POSITIVE CONTROLS — checks that cannot fail, so the claims they guard are
+unfalsifiable) · class 2 proxy ~80 · class 3 sleep-as-sync ~290 sites (the
+bulk are tui-harness.sh scar tissue around the broken settle; needs triage,
+not 290 fixes) · class 4 stale needle 2 (only smoke-activitybar.sh:155,177 —
+every other literal checked verified live; needle rot is NOT widespread) ·
+class 5 blink 14 · class 6 unsynchronized read ~25.
+
+Cross-batch patterns worth fixing ONCE:
+- The Quick Open idiom (6+ sites, 4 files): after typing a query, waiting for
+  findText(filename) that the file tree already paints — one fix shape.
+- The shell `settle` verb: pre-satisfied for every caller via renderQuiescent;
+  in smoke-panel-split.sh it is the ONLY ordering before the assertions.
+- Model paths MISSING for real fixes (feed #471): pan offset (smoke-tabs),
+  copy-attempt counter (smoke-field-caret), contributor state (file tree rows,
+  git counts).
 
 ## A limitation of the graph instrument, found by this census
 
