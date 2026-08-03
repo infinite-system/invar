@@ -1,3 +1,24 @@
+# RESUME ANCHOR 49 — 2026-08-03 ~06:15 EDT — ELEVEN LANDINGS; THE NIGHT IS DONE
+
+## STATE: main green and clean; dist/iv rebuilt at e3e3316a.
+Waves 1-3 (anchor 48) + #480 Quick Open idiom (04ea99ab) + #481 shared
+machinery + Drive gesture deletion (e3e3316a) + the GraphClient timeout-vs-
+miss fix (53344f6b). The census migration is COMPLETE except remainders
+DECLARED with reasons (11 shell delays; two contention-tier residuals:
+plugin-manifest SHELL focus wait, scrollbars wrap-off layout wait).
+
+## USER MORNING ITEMS (unchanged from anchor 48, plus):
+1. cmux Cmd+C / kitty Ctrl+C forwarding test — the only open copy hop.
+2. #481 round 1 was a conductor brief mistake (template substitution
+   silently failed); the builder's NO-CHANGE + conflict note was exemplary.
+   Lesson: verify a templated brief's substitutions before dispatch.
+3. Conductor decisions pending: #451 review-or-retire; #460-#464 re-read.
+
+## STANDING: crons :07/:37; fleet-watch armed; only the dormant 451 codex
+remains in tmux; no experiments; goal MET in full.
+
+---
+
 # RESUME ANCHOR 48b — 2026-08-03 ~05:30 EDT — ONE LANDING IN FLIGHT
 
 READ ANCHOR 48 BELOW FIRST (nine landings sealed). Delta since:
