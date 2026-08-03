@@ -44,3 +44,11 @@ MISSING: a first-class negative screen condition — wait until text or
 a control is ABSENT (builders currently improvise with final snapshots
 and missing status keys). Also document: panelActiveContentKind
 persists while hidden; the close condition is panelVisible === false.
+
+## Additional ask from #356 round 2 (2026-08-03)
+
+MISSING: the one-shot drive CLI needs a narrow-output option for
+selected status fields (a two-key probe prints hundreds of status
+lines; the fluent driver has show, the CLI has nothing). Also note:
+status waits use JSON quoting — panelActiveContentKind="agent", not
+'agent'.
