@@ -6,14 +6,15 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #478 [migrate-the-pre-satisfied-waits](.invar/tasks/in-progress/478-migrate-the-pre-satisfied-waits/task-478-migrate-the-pre-satisfied-waits.md)  [building]
+## IN-PROGRESS (3)
+- #478 [migrate-the-pre-satisfied-waits](.invar/tasks/in-progress/478-migrate-the-pre-satisfied-waits/task-478-migrate-the-pre-satisfied-waits.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/478-migrate-the-pre-satisfied-waits`
+- #476 [reload-keeps-a-disposed-session-on-boot-failure](.invar/tasks/in-progress/476-reload-keeps-a-disposed-session-on-boot-failure/task-476-reload-keeps-a-disposed-session-on-boot-failure.md)  [building]
+  `tmux attach -t invar/476-reload-keeps-a-disposed-session-on-boot-failure`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
-## USER-DIRECTED (16)
-- #477 [copy-from-agent-pane-does-not-work](.invar/tasks/active/477-copy-from-agent-pane-does-not-work/task-477-copy-from-agent-pane-does-not-work.md)
+## USER-DIRECTED (15)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -109,8 +110,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (40)
-- #476 [reload-keeps-a-disposed-session-on-boot-failure](.invar/tasks/active/476-reload-keeps-a-disposed-session-on-boot-failure/task-476-reload-keeps-a-disposed-session-on-boot-failure.md)
+## ARCHITECTURE-HYGIENE (39)
 - #474 [dispose-order-renderable-warnings](.invar/tasks/active/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
@@ -155,7 +155,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 183 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 184 — full log: project.tasks-completed.md)
+- #477 [copy-from-agent-pane-does-not-work](.invar/tasks/completed/477-copy-from-agent-pane-does-not-work/task-477-copy-from-agent-pane-does-not-work.md) — 08ab9d46 — Landed: shared-drag hover fix + assistant-reply copy smoke, no production change. Morning item for the user: confirm whether cmux forwards Cmd+C/kitty Ctrl+C over ssh — the app side is proven.
 - #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.
 - #471 [graph-reaches-the-whole-app](.invar/tasks/completed/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md) — 1d03a604 — Landed: composition-rooted graph, automatic contributor reach, shortcut getters; 26 census facts now migratable. Bycatch converted: #475 filed (Quick Open focus), attach exit-code bug + PTY gaps accumulated in #473, reach-completeness record proposed for the user.
 - #470 [harness-wait-defect-census](.invar/tasks/completed/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md) — 5136cdfa — Slice 1 landed: quiescence reset with publication parity, pre-satisfaction guard, model-count panel waits, settled Drive join, activitybar needles. Round 2 was forced by the conductor gate: the request-time flush published half-frame snapshots. The ~125-site migration remains open behind 471.
@@ -170,4 +171,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #439 [notice-persistence-restored-state-defects](.invar/tasks/completed/439-notice-persistence-restored-state-defects/task-439-notice-persistence-restored-state-defects.md) — ed401644 — Cascade cause found: folderOpen before restore; fixed by ordering. Notices non-persistent + legacy sanitization; Displaced suppressed for redeclared labels; my two probe findings refuted (pre-satisfied toggle). Landed over pre-existing #436 red.
 - #435 [folder-open-task-launch-hygiene](.invar/tasks/completed/435-folder-open-task-launch-hygiene/task-435-folder-open-task-launch-hygiene.md) — 69886b7e — Once-per-root launch memory + restored-identity adoption; issues are notice panes, not pseudo-terminals; Terminal space restores with contents. Contracts refined in-branch. Bycatch converted: #437, #438; drive --home stale-status fix landed mid-task.
 - #433 [tasks-dashboard-auto-reveal-priced-out](.invar/tasks/completed/433-tasks-dashboard-auto-reveal-priced-out/task-433-tasks-dashboard-auto-reveal-priced-out.md) — 7a33c34b — Filed diagnosis refuted by driving: red was a stale predicate + host-registry coupling. Glance and smoke isolated via INVAR_FLEET_GATE_REGISTRY; three registry states driven; new invariant record. Landed over pre-existing #436 red.
-- #432 [panel-editor-actions-instances-overhaul](.invar/tasks/completed/432-panel-editor-actions-instances-overhaul/task-432-panel-editor-actions-instances-overhaul.md) — 7d2cc879 — All 21 brief items landed in one round; generic Dialog + DragReorder seams; design.invariants.md seeded; markdown preview actions fixed; landed over documented pre-existing 417084fa red (#433)

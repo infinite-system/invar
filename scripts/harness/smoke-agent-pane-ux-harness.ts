@@ -753,6 +753,32 @@ try {
     'transcript copy emits selected bytes through raw OSC 52',
   );
 
+  const assistantReplyPosition = snapshot.findText(
+    'You said: “gamma-newest-prompt”',
+  );
+  HarnessSmoke.Class.requireCondition(
+    assistantReplyPosition !== null,
+    'the newest assistant reply is visible for selection',
+  );
+  if (!assistantReplyPosition)
+    throw new Error('Assistant reply selection target disappeared');
+  await dragBetweenCells(
+    driver,
+    assistantReplyPosition.column,
+    assistantReplyPosition.row,
+    assistantReplyPosition.column + 18,
+    assistantReplyPosition.row,
+  );
+  const kittyControlClipboardCount = emittedClipboardTexts(driver).length;
+  driver.sendRawInputWithoutFrameExpectation('\x1b[99;5u');
+  await awaitClipboardEmission(driver, kittyControlClipboardCount, 'You said:');
+  const kittySuperClipboardCount = emittedClipboardTexts(driver).length;
+  driver.sendRawInputWithoutFrameExpectation('\x1b[99;9u');
+  await awaitClipboardEmission(driver, kittySuperClipboardCount, 'You said:');
+  HarnessSmoke.Class.pass(
+    'assistant reply selection copies through Kitty Ctrl+C and Cmd+C',
+  );
+
   driver.sendText('COPYCOMPOSER text');
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('COPYCOMPOSER') !== null,
