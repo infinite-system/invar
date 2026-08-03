@@ -1,3 +1,41 @@
+# RESUME ANCHOR 45 — 2026-08-03 ~00:55 EDT — START HERE
+
+## STATE: gate GREEN at 7654e61d (ALL-PASS, GATE_EXIT=0, clean tree, log
+/tmp/gate-final-clean2.log). Everything the marathon built is landed and gated.
+
+The user is PRESENT and directing. Crons stay DISARMED (standing order).
+fleet-watch Monitor is the only watcher; re-arm on restart:
+`Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)`.
+
+## What exists now (all gated)
+
+- The graph channel (#469): get/waitFor(parked)/set(experiment)/awaitTransition.
+- The drive server (#472 case 1): --serve/--attach/--reload/--stop, rendezvous
+  KEYED TO THE CHECKOUT (each worktree its own server), --mirror for humans
+  (trail, click rings, scroll marks, humanPace Fitts model).
+- The drive-pty SKILL (.claude/skills/drive-pty/SKILL.md) — LEADS with the
+  agent's headless primary loop; encoded demos in scripts/harness/drives/.
+- Census #470 complete (all 77+ files), panel-chrome fixed, conductor
+  families 15-17 recorded.
+
+## Open queue (order decided by the user)
+
+1. #472 remainder: NONE (case 2 deprioritized by measurement — 5% of gate).
+2. #471 graph completeness (contributor state; shortcut getters) — accumulating
+   tangents, DO NOT LAUNCH without the user.
+3. #470 wait repairs — blocked on #471; renderQuiescent fix + PtyTestDriver
+   guard could land independently.
+4. #473 remainder: the MCP doorway (agents drive via MCP) + resize forwarding.
+5. Drive.ts --gesture layer deletion (#466 rejected direction) — STILL OPEN.
+6. #474 dispose-order warnings; #451 dormant codex in its worktree (steer or
+   retire); #460-#464 bycatch backlog.
+
+## The night's lessons live in project.conductor.md families 15-17 and the
+drive-pty skill; the census is durable in task #470's folder.
+
+
+---
+
 # RESUME ANCHOR 44 — 2026-08-02 ~19:53 EDT — START HERE
 
 ## STATE: #469 is DONE and landed. Main is f1dd6a31, tree clean.
