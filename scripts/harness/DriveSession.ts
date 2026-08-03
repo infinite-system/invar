@@ -660,6 +660,12 @@ class $DriveScriptRunner {
       columns: options.columns ?? hostColumns ?? 120,
       rows: options.rows ?? hostRows ?? 40,
       homeDirectory,
+      // Mirroring: negotiate as the LEAST capable link in the chain. The
+      // emulator swallows OSC 66 whole, so the inner app's text-sizing probe
+      // fails and it emits plain glyphs the watching terminal can draw
+      // (a wrapped glyph on a terminal without the protocol is DELETED whole
+      // — the invisible activity-bar-icons defect).
+      textSizingSupported: !options.mirror,
       environment: {
         ...hostIdentity,
         TUI_STATUS_PATH: statusPath,

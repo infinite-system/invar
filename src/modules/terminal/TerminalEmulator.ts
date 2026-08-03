@@ -42,8 +42,22 @@ class $TerminalEmulator {
   protected lastShellIntegrationEventValue: TerminalShellIntegrationEvent | null =
     null;
   protected readonly paletteOverrides = new Map<number, string>();
+  protected readonly textSizingSupported: boolean;
 
-  constructor(columns: number, rows: number) {
+  constructor(
+    columns: number,
+    rows: number,
+    options: TerminalEmulatorOptions = {},
+  ) {
+    // When false, OSC 66 (kitty text sizing) is swallowed WHOLE — payload
+    // included — the way a terminal without the protocol treats an unknown
+    // OSC. The default (true) keeps the faithful kitty emulation the harness
+    // conformance corpus asserts. The false mode exists for the mirror: the
+    // inner app must negotiate against the LEAST capable link in the chain
+    // (the human's real terminal may not support text sizing), or it emits
+    // wrapped glyphs the watcher's terminal deletes wholesale — the invisible
+    // activity-bar-icons defect of 2026-08-02.
+    this.textSizingSupported = options.textSizingSupported ?? true;
     this.terminal = new Terminal({
       cols: Math.max(1, columns),
       rows: Math.max(1, rows),
@@ -131,7 +145,11 @@ class $TerminalEmulator {
         this.pendingTextSizingProtocolBytes = bytes.slice(protocolStart);
         break;
       }
-      outputBytes.push(...bytes.slice(metadataEnd + 1, terminator.offset));
+      if (this.textSizingSupported) {
+        outputBytes.push(...bytes.slice(metadataEnd + 1, terminator.offset));
+      }
+      // Unsupported: the whole sequence — payload included — vanishes, which
+      // is exactly what a probe measuring cursor movement must observe.
       readOffset = terminator.offset + terminator.length;
     }
     return new Uint8Array(outputBytes);
@@ -664,6 +682,14 @@ export namespace TerminalEmulator {
 }
 
 /** One cell, flattened to what a cell-grid renderer needs — no xterm types leak past this seam. */
+export interface TerminalEmulatorOptions {
+  /** Emulate a terminal WITHOUT the kitty text-sizing protocol: OSC 66 is
+   *  swallowed whole, payload included, so capability probes fail and the
+   *  app under test never emits wrapped glyphs. Mirror mode uses this so the
+   *  inner app matches what the watcher's real terminal can draw. */
+  readonly textSizingSupported?: boolean;
+}
+
 export interface TerminalCell {
   characters: string;
   foreground: number;

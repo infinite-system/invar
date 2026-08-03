@@ -36,6 +36,10 @@ export interface PtyTestDriverOptions {
   workspaceRoot: string;
   repositoryRoot?: string;
   columns?: number;
+  /** Emulate a terminal WITHOUT kitty text sizing (OSC 66 swallowed whole).
+   *  Mirror mode sets false so the inner app never emits wrapped glyphs a
+   *  less capable watching terminal would delete. Default true. */
+  textSizingSupported?: boolean;
   rows?: number;
   homeDirectory?: string;
   environment?: Record<string, string | undefined>;
@@ -162,7 +166,9 @@ class $PtyTestDriver {
     const rows = options.rows ?? 40;
     const repositoryRoot = options.repositoryRoot ?? process.cwd();
     this.openPty = new OpenPty.Class(columns, rows);
-    this.emulator = new TerminalEmulator.Class(columns, rows);
+    this.emulator = new TerminalEmulator.Class(columns, rows, {
+      textSizingSupported: options.textSizingSupported ?? true,
+    });
     this.completedSnapshotValue = this.captureEmulatorSnapshot();
     this.emulator.onReply((data) => this.openPty.write(data));
     this.openPty.onData((bytes) => {
