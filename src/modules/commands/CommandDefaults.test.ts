@@ -20,6 +20,9 @@ test('go-to-line is a guarded palette command that opens the shared prompt', () 
       active: {
         editor: { hasDocument: { value: true } },
       },
+      get activeEditor() {
+        return this.active.editor;
+      },
     },
     openGoToLine: () => {
       openCount += 1;
@@ -56,6 +59,9 @@ test('navigation history commands remain discoverable and dispatch through the w
         navigateForward: () => {
           forwardCount += 1;
         },
+      },
+      get activeEditor() {
+        return this.active.editor;
       },
       count: 1,
     },

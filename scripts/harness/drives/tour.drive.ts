@@ -41,7 +41,7 @@ await app.key('Control+p').waitFor('quickOpen.open', true, 8000);
 await app.type('GraphChannel');
 await app.waitFor('quickOpen.query', 'GraphChannel');
 await app.key('Enter').waitFor('quickOpen.open', false);
-await app.waitFor('workspaceSet.active.editor.hasDocument', true);
+await app.waitFor('workspaceSet.activeEditor.hasDocument', true);
 
 // Curtain — a slow diagonal bow, then the trail fades to nothing.
 await app
@@ -50,5 +50,5 @@ await app
   .moveMouse(Math.round(screen.columns * 0.5), Math.round(screen.rows * 0.5));
 console.log(
   'tour complete:',
-  await app.get('workspaceSet.active.editor.document.path'),
+  await app.get('workspaceSet.activeDocument.path'),
 );

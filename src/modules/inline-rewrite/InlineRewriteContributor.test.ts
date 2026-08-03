@@ -93,7 +93,7 @@ function createFixture() {
 test('Extensions disable owns every rewrite registration', async () => {
   const fixture = createFixture();
   fixture.manager.activateAll();
-  const editor = fixture.workspaceSet.active.editor;
+  const editor = fixture.workspaceSet.activeEditor;
   editor.document.loadFromText('value', '/tmp/value.ts');
   editor.hasDocument.value = true;
   editor.document.insertInline(0, 5, 'x');

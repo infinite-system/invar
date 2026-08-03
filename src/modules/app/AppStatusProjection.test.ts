@@ -259,11 +259,11 @@ describe('AppStatusProjection', () => {
       },
     };
 
-    workspaceSet.active.editor.document.loadFromText(
+    workspaceSet.activeEditor.document.loadFromText(
       Array.from({ length: 50 }, () => 'x'.repeat(90)).join('\n'),
     );
-    workspaceSet.active.editor.hasDocument.value = true;
-    workspaceSet.active.editor.viewport.setSize(30, 20);
+    workspaceSet.activeEditor.hasDocument.value = true;
+    workspaceSet.activeEditor.viewport.setSize(30, 20);
     const initialSnapshot = AppStatusProjection.Class.snapshot(ports);
     expect(initialSnapshot.mouse).toBeNull();
     expect(initialSnapshot.agentTitle).toBe('');

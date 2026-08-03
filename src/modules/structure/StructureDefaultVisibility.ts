@@ -61,8 +61,7 @@ class $StructureDefaultVisibility {
   }
 
   protected get activeDocument(): StructureDocument | null {
-    const document =
-      this.options.workspaceSet.active.activeDocumentHandle?.document ?? null;
+    const document = this.options.workspaceSet.activeDocument;
     if (!document || !document.path) return null;
     return document;
   }
@@ -156,6 +155,7 @@ export interface StructureDefaultVisibilityOptions {
   readonly dockContent: RegisteredDockContent;
   readonly workspaceSet: {
     readonly active: Workspace.Model;
+    readonly activeDocument: StructureDocument | null;
     readonly activeWorkspaceIndex: Ref<number>;
   };
   /** The contributed `structureShowByDefault` setting, read late so a live change applies. */

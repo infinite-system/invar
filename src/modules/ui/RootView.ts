@@ -1655,7 +1655,7 @@ class $RootView {
         1;
       editorFrameActionRenderable.width = editorFrameActionProjection.width;
       editorFrameActionRenderable.visible =
-        workspaceSet.active.editor.hasDocument.value &&
+        workspaceSet.activeEditor.hasDocument.value &&
         editorFrameActionProjection.width > 0;
       editorFrameActionRenderable.content = editorFrameActionProjection.text;
     };
@@ -1793,7 +1793,7 @@ class $RootView {
       const contributedSurfaceTarget =
         editorContentMount.contributedSurface?.findTarget();
       if (contributedSurfaceTarget) return contributedSurfaceTarget;
-      const editor = workspaceSet.active.editor;
+      const editor = workspaceSet.activeEditor;
       if (!editor.hasDocument.value) return null;
       return {
         identifier: `source:${editor.document.path}`,
@@ -2271,11 +2271,13 @@ class $RootView {
       settings,
       requestHover: (position) => workspaceSet.active.hoverAt(position),
       diagnosticsAt: (position) => workspaceSet.active.diagnosticsAt(position),
-      languageForActive: () =>
-        workspaceSet.active.documentSyntax.languageAtLine(
-          workspaceSet.active.editor.document,
-          workspaceSet.active.editor.cursor.line.value,
-        ),
+      languageForActive: () => {
+        const workspace = workspaceSet.active;
+        return workspace.documentSyntax.languageAtLine(
+          workspace.editor.document,
+          workspace.editor.cursor.line.value,
+        );
+      },
     });
     // Half-block image preview for the active buffer when it is an image file. Memoises decode + render
     // so the frame effect that reads it pays a map lookup, never a re-decode.
@@ -2342,12 +2344,13 @@ class $RootView {
     const rasterProjection = (
       region: PaneSurfaceRegion,
     ): StyledText | string | null => {
-      if (!workspaceSet.active.activeFileIsImage) {
+      const workspace = workspaceSet.active;
+      if (!workspace.activeFileIsImage) {
         pixelMount.clear();
         return null;
       }
       const palette = readPalette();
-      const imagePath = workspaceSet.active.editor.document.path;
+      const imagePath = workspace.editor.document.path;
       const graphicsTier = resolvedGraphicsTier();
       const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
       const decodedImage = pixelEncoder

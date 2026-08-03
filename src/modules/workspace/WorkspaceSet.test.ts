@@ -91,10 +91,10 @@ describe('WorkspaceSet project-layer flyweight', () => {
       codeFoldingEnabled,
     });
     workspaceSet.open(workspaceRoots[0]!);
-    expect(workspaceSet.active.editor.codeFoldingEnabled).toBe(false);
+    expect(workspaceSet.activeEditor.codeFoldingEnabled).toBe(false);
 
     codeFoldingEnabled.value = true;
-    expect(workspaceSet.active.editor.codeFoldingEnabled).toBe(true);
+    expect(workspaceSet.activeEditor.codeFoldingEnabled).toBe(true);
   });
 
   test('active editor and document shortcuts follow the selected workspace', () => {
@@ -158,12 +158,12 @@ describe('WorkspaceSet project-layer flyweight', () => {
     workspaceSet.open(workspaceRoots[1]!);
     workspaceSet.active.openFileInTab(secondFilePath);
 
-    expect(workspaceSet.active.editor.document.path).toBe(secondFilePath);
+    expect(workspaceSet.activeDocument?.path).toBe(secondFilePath);
     workspaceSet.activate(0);
     expect(workspaceSet.active.root).toBe(workspaceRoots[0]!);
-    expect(workspaceSet.active.editor.document.path).toBe(firstFilePath);
+    expect(workspaceSet.activeDocument?.path).toBe(firstFilePath);
     workspaceSet.activate(1);
-    expect(workspaceSet.active.editor.document.path).toBe(secondFilePath);
+    expect(workspaceSet.activeDocument?.path).toBe(secondFilePath);
     workspaceSet.dispose();
   });
 

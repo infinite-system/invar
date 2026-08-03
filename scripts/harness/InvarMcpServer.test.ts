@@ -74,7 +74,7 @@ class $InvarMcpServerTest {
       expect(startResult.isError).not.toBe(true);
 
       const graphResult = await this.callTool(client, 'graph_get', {
-        path: 'workspaceSet.active.editor.document.lineCount',
+        path: 'workspaceSet.activeDocument.lineCount',
       });
       expect(graphResult.isError).not.toBe(true);
       expect(JSON.parse(this.text(graphResult)).value).toBe(lineCount);
@@ -91,7 +91,7 @@ class $InvarMcpServerTest {
       );
 
       const awaitResult = await this.callTool(client, 'graph_await', {
-        path: 'workspaceSet.active.editor.document.lineCount',
+        path: 'workspaceSet.activeDocument.lineCount',
         value: lineCount,
         timeoutMs: 5_000,
       });

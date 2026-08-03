@@ -387,9 +387,13 @@ class $TabBar {
       commands,
       renderer,
     } = this.dependencies;
-    const controlsShown = (): boolean =>
-      workspaceSet.active.editor.hasDocument.value &&
-      workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
+    const controlsShown = (): boolean => {
+      const workspace = workspaceSet.active;
+      return (
+        workspace.editor.hasDocument.value &&
+        workspace.editorSurfaces.activeDocumentIsPresented
+      );
+    };
     breadcrumbBar.onMouseDown = (event) => {
       tooltip.clear();
       const localColumn = event.x - Number(breadcrumbBar.x);

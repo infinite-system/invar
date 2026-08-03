@@ -406,7 +406,7 @@ class $DriveSession {
    *  these only at a frame-settle boundary — the same point the status
    *  projection publishes at — so this wait never observes a state no
    *  completed frame had. The path walks the app's ports object
-   *  (panelHost.spaces[0].kind, workspaceSet.active.editor.…); Refs unwrap in
+   *  (panelHost.spaces[0].kind, workspaceSet.activeEditor.…); Refs unwrap in
    *  the app's resolver, so a path never contains `.value`. */
   waitFor(
     path: string,

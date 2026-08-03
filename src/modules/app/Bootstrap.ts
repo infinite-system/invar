@@ -303,7 +303,7 @@ class $Bootstrap {
     const keybindings = new KeybindingRegistry.Class();
     keybindings.registerGuard(
       'editorHasSelection',
-      () => workspaceSet.active.editor.cursor.hasSelection,
+      () => workspaceSet.activeEditor.cursor.hasSelection,
     );
     keybindings.registerLayer(
       'canonical',
@@ -1467,7 +1467,7 @@ class $Bootstrap {
     // file, wheel does nothing / can't leave the top" bug: cursor at line 0 pinned the viewport at 0).
     app.$watch(
       () => settings.wordWrap.value,
-      () => workspaceSet.active.editor.revealCursor(),
+      () => workspaceSet.activeEditor.revealCursor(),
     );
     // Language-provider document sync: every edit bumps document.revision; this targeted watch pushes
     // the new text as a revision-idempotent update (providers skip versions they
@@ -1475,7 +1475,7 @@ class $Bootstrap {
     // signal only, never on the other state syncActiveDocumentWithLanguageProviders reads.
     app.$watch(
       () => {
-        const editor = workspaceSet.active.editor;
+        const editor = workspaceSet.activeEditor;
         return editor.hasDocument.value ? editor.document.revision.value : -1;
       },
       () => workspaceSet.active.syncActiveDocumentWithLanguageProviders(),
@@ -1584,7 +1584,7 @@ class $Bootstrap {
     // projection→model write feeding the effect it observes.
     // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
     const syncSize = (): void => {
-      workspaceSet.active.editor.viewport.setSize(
+      workspaceSet.activeEditor.viewport.setSize(
         view.editorViewportWidth(),
         view.editorViewportHeight(),
       );
@@ -1595,7 +1595,8 @@ class $Bootstrap {
     // diagnostic repaint the screen without a keypress.
     // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
     app.$watchEffect(() => {
-      const editor = workspaceSet.active.editor;
+      const workspace = workspaceSet.active;
+      const editor = workspace.editor;
       // The whole paint pass is exception-isolated: a throw while projecting model→renderables must
       // degrade this one frame (logged to file) and request a repaint, never wedge the demand-driven
       // loop. The signal reads stay first so reactive dependency tracking is unaffected by the guard.
@@ -1625,10 +1626,10 @@ class $Bootstrap {
       void workspaceSet.activeWorkspaceIndex.value;
       void workspaceTabStrip.scrollOffset.value;
       void bufferTabStrip.scrollOffset.value;
-      void workspaceSet.active.focus.value;
+      void workspace.focus.value;
       // The breadcrumb's ‹ › history buttons re-colour (enabled/disabled) as the trail moves.
-      void workspaceSet.active.navigationHistory.currentIndex.value;
-      void workspaceSet.active.navigationHistory.entries.value;
+      void workspace.navigationHistory.currentIndex.value;
+      void workspace.navigationHistory.entries.value;
       // Overlay models: the context menu and tooltip repaint on any of their display state.
       void contextMenu.open.value;
       void contextMenu.items.value;
@@ -1834,7 +1835,7 @@ class $Bootstrap {
       // Converge the viewport size with the LAID-OUT layout (gutter width changes when a file opens
       // or its line count crosses a digit boundary; boot/resize alone goes stale). Mutating outside
       // the reactive effect: the write triggers one repaint and converges — no feedback loop.
-      const editorViewport = workspaceSet.active.editor.viewport;
+      const editorViewport = workspaceSet.activeEditor.viewport;
       const laidOutWidth = view.editorViewportWidth();
       const laidOutHeight = view.editorViewportHeight();
       if (
@@ -1967,33 +1968,36 @@ class $Bootstrap {
           goToLinePrompt.show(),
         ),
       toggleWordWrap: () => {
+        const workspace = workspaceSet.active;
         const contributedSurface = view.contributedEditorSurface();
         if (
           contributedSurface?.toggleWordWrap &&
-          !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+          !workspace.editorSurfaces.activeDocumentIsKeyboardTarget
         ) {
           contributedSurface.toggleWordWrap();
           return;
         }
-        workspaceSet.active.editor.toggleWordWrap();
+        workspace.editor.toggleWordWrap();
       },
       wordWrapEnabled: () => {
+        const workspace = workspaceSet.active;
         const contributedSurface = view.contributedEditorSurface();
         return contributedSurface?.wordWrapEnabled !== undefined &&
-          !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+          !workspace.editorSurfaces.activeDocumentIsKeyboardTarget
           ? contributedSurface.wordWrapEnabled
-          : workspaceSet.active.editor.wordWrap.value;
+          : workspace.editor.wordWrap.value;
       },
       goToBottom: () => {
+        const workspace = workspaceSet.active;
         const contributedSurface = view.contributedEditorSurface();
         if (
           contributedSurface?.goToBottom &&
-          !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+          !workspace.editorSurfaces.activeDocumentIsKeyboardTarget
         ) {
           contributedSurface.goToBottom();
           return;
         }
-        workspaceSet.active.editor.gotoBottom();
+        workspace.editor.gotoBottom();
       },
       quit: requestQuit,
       requestRender: () => app.requestRender(),
@@ -2038,7 +2042,7 @@ class $Bootstrap {
         end: { line: number; column: number };
       };
     } => {
-      const editor = workspaceSet.active.editor;
+      const editor = workspaceSet.activeEditor;
       const line = editor.cursor.line.value;
       const endColumn = editor.cursor.col.value;
       const lineText = editor.document.line(line);
@@ -2062,11 +2066,9 @@ class $Bootstrap {
       triggerKind: 'invoked' | 'triggerCharacter',
       triggerCharacter?: string,
     ): void => {
-      const editor = workspaceSet.active.editor;
-      if (
-        !editor.hasDocument.value ||
-        workspaceSet.active.focus.value !== 'editor'
-      )
+      const workspace = workspaceSet.active;
+      const editor = workspace.editor;
+      if (!editor.hasDocument.value || workspace.focus.value !== 'editor')
         return;
       const document = editor.document;
       const path = document.path;
@@ -2078,10 +2080,10 @@ class $Bootstrap {
       const requestPrefix = completionPrefix();
       const requestGeneration = ++completionRequestGeneration;
       completionRequestPending = true;
-      void workspaceSet.active
+      void workspace
         .completionAt(position, { triggerKind, triggerCharacter })
         .then((completionList) => {
-          const activeEditor = workspaceSet.active.editor;
+          const activeEditor = workspaceSet.activeEditor;
           if (requestGeneration !== completionRequestGeneration) return;
           completionRequestPending = false;
           const currentPrefix = completionPrefix();
@@ -2145,7 +2147,7 @@ class $Bootstrap {
                       },
                     }
                   : item;
-              workspaceSet.active.editor.applyCompletion(
+              workspaceSet.activeEditor.applyCompletion(
                 acceptedItem,
                 currentPrefix.range,
               );
@@ -2376,136 +2378,162 @@ class $Bootstrap {
       // Movement arrives through the REBINDABLE command, not a raw-key intercept, so a remapped
       // chord still drives whichever surface owns the keyboard.
       'editor.moveUp': (key) => {
-        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
           view
             .contributedEditorSurface()
             ?.scrollFocusedPaneByRows(
               -movementAcceleration(key, 'editorSurface'),
             );
         else
-          workspaceSet.active.editor.moveVertical(
+          workspace.editor.moveVertical(
             -movementAcceleration(key, 'editor'),
             key.shift,
           );
       },
       'editor.completion': () => requestCompletion('invoked'),
       'editor.moveDown': (key) => {
-        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
           view
             .contributedEditorSurface()
             ?.scrollFocusedPaneByRows(
               movementAcceleration(key, 'editorSurface'),
             );
         else
-          workspaceSet.active.editor.moveVertical(
+          workspace.editor.moveVertical(
             movementAcceleration(key, 'editor'),
             key.shift,
           );
       },
       'editor.moveLeft': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget) {
-          workspaceSet.active.editor.moveHorizontal(
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget) {
+          workspace.editor.moveHorizontal(
             -movementAcceleration(key, 'editor'),
             key.shift,
           );
         }
       },
       'editor.moveRight': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget) {
-          workspaceSet.active.editor.moveHorizontal(
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget) {
+          workspace.editor.moveHorizontal(
             movementAcceleration(key, 'editor'),
             key.shift,
           );
         }
       },
       'editor.pageUp': (key) => {
-        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
           view.contributedEditorSurface()?.pageFocusedPane(-1);
-        else workspaceSet.active.editor.pageUp(key.shift);
+        else workspace.editor.pageUp(key.shift);
       },
       'editor.pageDown': (key) => {
-        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
           view.contributedEditorSurface()?.pageFocusedPane(1);
-        else workspaceSet.active.editor.pageDown(key.shift);
+        else workspace.editor.pageDown(key.shift);
       },
       'editor.lineStart': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.moveToLineStart(key.shift);
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.moveToLineStart(key.shift);
       },
       'editor.lineEnd': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.moveToLineEnd(key.shift);
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.moveToLineEnd(key.shift);
       },
-      'editor.jumpUp': (key) =>
-        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
-          ? view
-              .contributedEditorSurface()
-              ?.scrollFocusedPaneByRows(
-                -scrollPhysics.jumpRowsFor(`editorSurface:${key.name}`),
-              )
-          : workspaceSet.active.editor.moveVertical(
-              -scrollPhysics.jumpRowsFor(`editor:${key.name}`),
-              key.shift,
-            ),
-      'editor.jumpDown': (key) =>
-        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
-          ? view
-              .contributedEditorSurface()
-              ?.scrollFocusedPaneByRows(
-                scrollPhysics.jumpRowsFor(`editorSurface:${key.name}`),
-              )
-          : workspaceSet.active.editor.moveVertical(
-              scrollPhysics.jumpRowsFor(`editor:${key.name}`),
-              key.shift,
-            ),
+      'editor.jumpUp': (key) => {
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget) {
+          view
+            .contributedEditorSurface()
+            ?.scrollFocusedPaneByRows(
+              -scrollPhysics.jumpRowsFor(`editorSurface:${key.name}`),
+            );
+          return;
+        }
+        workspace.editor.moveVertical(
+          -scrollPhysics.jumpRowsFor(`editor:${key.name}`),
+          key.shift,
+        );
+      },
+      'editor.jumpDown': (key) => {
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget) {
+          view
+            .contributedEditorSurface()
+            ?.scrollFocusedPaneByRows(
+              scrollPhysics.jumpRowsFor(`editorSurface:${key.name}`),
+            );
+          return;
+        }
+        workspace.editor.moveVertical(
+          scrollPhysics.jumpRowsFor(`editor:${key.name}`),
+          key.shift,
+        );
+      },
       'editor.wordLeft': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.moveWordHorizontal(-1, key.shift);
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.moveWordHorizontal(-1, key.shift);
       },
       'editor.wordRight': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.moveWordHorizontal(1, key.shift);
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.moveWordHorizontal(1, key.shift);
       },
       'editor.documentStart': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.moveDocumentStart(key.shift);
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.moveDocumentStart(key.shift);
       },
       'editor.documentEnd': (key) => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.moveDocumentEnd(key.shift);
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.moveDocumentEnd(key.shift);
       },
       'editor.newline': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.insertNewline();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.insertNewline();
       },
       'editor.backspace': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.backspace();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.backspace();
       },
       'editor.delete': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.deleteChar();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.deleteChar();
       },
       'editor.deleteToLineStart': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.deleteToLineStart();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.deleteToLineStart();
       },
       'edit.deletePreviousWord': () => {
         if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           commands.run('edit.deletePreviousWord');
       },
       'editor.escape': () => {
-        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
           view.contributedEditorSurface()?.yieldKeyboardToSourceEditor();
-        else if (workspaceSet.active.editor.hasSelection)
-          workspaceSet.active.editor.cursor.clearSelection();
-        else workspaceSet.active.focusPrimaryPane();
+        else if (workspace.editor.hasSelection)
+          workspace.editor.cursor.clearSelection();
+        else workspace.focusPrimaryPane();
       },
       'editor.save': () => workspaceSet.active.saveActiveFile(),
       'editor.selectAll': () => {
-        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+        const workspace = workspaceSet.active;
+        if (!workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
           view.contributedEditorSurface()?.selectAllInFocusedPane();
-        else workspaceSet.active.editor.selectAll();
+        else workspace.editor.selectAll();
       },
       'editor.copy': () => {
         // Publish how many characters landed on the clipboard — the observable proof that copy
@@ -2518,7 +2546,7 @@ class $Bootstrap {
         const copyPromise = view.hoverHasSelection()
           ? view.hoverCopySelection()
           : (contributedSurfaceCopy ??
-            workspaceSet.active.editor.copySelection());
+            workspaceSet.activeEditor.copySelection());
         publishCopyResult(copyPromise);
       },
       // The focused agent pane owns Ctrl+C / Cmd+C: copy its transcript OR composer selection (whichever is
@@ -2553,26 +2581,30 @@ class $Bootstrap {
       'terminal.wordRight': (key) => panelHost.handleKey(key),
       'terminal.deletePreviousWord': (key) => panelHost.handleKey(key),
       'editor.cut': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          void workspaceSet.active.editor.cutSelection();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          void workspace.editor.cutSelection();
       },
       'editor.paste': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          void workspaceSet.active.editor.pasteClipboard();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          void workspace.editor.pasteClipboard();
       },
       'editor.undo': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.performUndo();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.performUndo();
       },
       'editor.redo': () => {
-        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspaceSet.active.editor.performRedo();
+        const workspace = workspaceSet.active;
+        if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+          workspace.editor.performRedo();
       },
-      'editor.moveLineUp': () => workspaceSet.active.editor.moveLineUp(),
-      'editor.moveLineDown': () => workspaceSet.active.editor.moveLineDown(),
-      'editor.duplicateLine': () => workspaceSet.active.editor.duplicateLine(),
-      'editor.indent': () => workspaceSet.active.editor.indent(),
-      'editor.outdent': () => workspaceSet.active.editor.outdent(),
+      'editor.moveLineUp': () => workspaceSet.activeEditor.moveLineUp(),
+      'editor.moveLineDown': () => workspaceSet.activeEditor.moveLineDown(),
+      'editor.duplicateLine': () => workspaceSet.activeEditor.duplicateLine(),
+      'editor.indent': () => workspaceSet.activeEditor.indent(),
+      'editor.outdent': () => workspaceSet.activeEditor.outdent(),
       // Toggle the bottom panel (terminal). Reserved so it fires from ANY mode — including from within a
       // focused terminal (to hide it) — exactly like the quit escape hatch. Same closure the status-bar
       // terminal button runs, so chord and click are one action.
@@ -2685,6 +2717,7 @@ class $Bootstrap {
     };
 
     const keyTick = (key: KeyEvent): void => {
+      const workspace = workspaceSet.active;
       tooltip.clear(); // any keypress hides the tooltip (display-only affordance)
       if (key.name === 'escape') currentNarration()?.bargeIn(); // Escape is the EXPLICIT "stop narration"; ordinary typing/paste/navigation lets it play on, so you can read/compose/work while listening (barge-in should be intentional, not a side effect of every keystroke)
       // Escape always closes the hover card; any other key closes it too UNLESS the pointer is engaged
@@ -2717,9 +2750,9 @@ class $Bootstrap {
         return;
       }
       // Same MODAL contract for closing a tab with unsaved edits.
-      if (workspaceSet.active.pendingCloseTabIndex.value >= 0) {
-        if (key.name === 'y') workspaceSet.active.confirmCloseTab();
-        else workspaceSet.active.cancelCloseTab();
+      if (workspace.pendingCloseTabIndex.value >= 0) {
+        if (key.name === 'y') workspace.confirmCloseTab();
+        else workspace.cancelCloseTab();
         return;
       }
 
@@ -3006,10 +3039,7 @@ class $Bootstrap {
 
       // Completion is deliberately non-modal: the editor retains focus and continues mutating the
       // document while this adapter consumes only its navigation/acceptance keys.
-      if (
-        completionPopup.open &&
-        workspaceSet.active.focus.value === 'editor'
-      ) {
+      if (completionPopup.open && workspace.focus.value === 'editor') {
         const completionKeyIsUnmodified =
           !key.ctrl && !key.shift && !key.option && !key.meta && !key.super;
         if (completionKeyIsUnmodified && key.name === 'escape') {
@@ -3031,17 +3061,16 @@ class $Bootstrap {
           return;
         }
         if (completionKeyIsUnmodified && key.name === 'backspace') {
-          workspaceSet.active.editor.backspace();
+          workspace.editor.backspace();
           const prefix = completionPrefix();
           if (completionPopup.sourceIsIncomplete) requestCompletion('invoked');
           else completionPopup.narrow(prefix.text);
           return;
         }
         if (isTypedCharacter(key)) {
-          workspaceSet.active.editor.insertText(key.sequence);
+          workspace.editor.insertText(key.sequence);
           const prefix = completionPrefix();
-          const triggerCharacters =
-            workspaceSet.active.completionTriggerCharacters();
+          const triggerCharacters = workspace.completionTriggerCharacters();
           const isTriggerCharacter = triggerCharacters.includes(key.sequence);
           if (isTriggerCharacter) {
             requestCompletion('triggerCharacter', key.sequence);
@@ -3070,7 +3099,7 @@ class $Bootstrap {
                 ? 'quickopen'
                 : findBar.open.value
                   ? 'find'
-                  : workspaceSet.active.focus.value;
+                  : workspace.focus.value;
 
       // Ctrl+H is the ASCII Backspace control byte (0x08); OpenTUI correctly decodes that legacy byte
       // as {name:'backspace', ctrl:false}. A physical Backspace is DEL (0x7f), so the byte sequences are
@@ -3156,13 +3185,13 @@ class $Bootstrap {
       // which is harmless because Ctrl+E was unbound.) Driven-verified against the real byte streams.
       if (
         context === 'editor' &&
-        workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
+        workspace.editorSurfaces.activeDocumentIsKeyboardTarget &&
         renderer.useKittyKeyboard &&
         key.ctrl &&
         key.name === 'a' &&
         key.sequence === '\u0001'
       ) {
-        workspaceSet.active.editor.moveToLineStart(key.shift);
+        workspace.editor.moveToLineStart(key.shift);
         return;
       }
 
@@ -3171,7 +3200,7 @@ class $Bootstrap {
       // know which keys those are — the surface answers true when it handled one.
       if (
         context === 'editor' &&
-        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
+        !workspace.editorSurfaces.activeDocumentIsKeyboardTarget &&
         view.contributedEditorSurface()?.handleKey(key)
       ) {
         return;
@@ -3196,11 +3225,11 @@ class $Bootstrap {
       else if (
         context === 'editor' &&
         isTypedCharacter(key) &&
-        workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
+        workspace.editorSurfaces.activeDocumentIsKeyboardTarget
       ) {
-        workspaceSet.active.editor.insertText(key.sequence);
+        workspace.editor.insertText(key.sequence);
         const prefix = completionPrefix();
-        const isTriggerCharacter = workspaceSet.active
+        const isTriggerCharacter = workspace
           .completionTriggerCharacters()
           .includes(key.sequence);
         if (isTriggerCharacter)
@@ -3274,8 +3303,9 @@ class $Bootstrap {
         contextMenu.open.value
       )
         return;
-      if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
-        workspaceSet.active.editor.pasteText(text);
+      const workspace = workspaceSet.active;
+      if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
+        workspace.editor.pasteText(text);
     };
     const onPaste = (event: { bytes: Uint8Array }): void => {
       HandlerGuard.Class.run(

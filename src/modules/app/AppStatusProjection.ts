@@ -33,9 +33,10 @@ class $AppStatusProjection {
   }
 
   static snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
-    const editor = ports.workspaceSet.active.editor;
+    const workspace = ports.workspaceSet.active;
+    const editor = workspace.editor;
     const editorColumnContentIdentifier =
-      ports.workspaceSet.active.editorSurfaces.occupyingClaim?.identifier ??
+      workspace.editorSurfaces.occupyingClaim?.identifier ??
       ports.view.editorColumnContentIdentifier();
     const panelViewportColumns = ports.view.panelViewportColumns();
     const panelViewportRows = ports.view.panelViewportRows();
@@ -66,19 +67,18 @@ class $AppStatusProjection {
     ];
     return {
       mouse: ports.mouse,
-      activeWorkspace: ports.workspaceSet.active.name.value,
+      activeWorkspace: workspace.name.value,
       workspaces: ports.workspaceSet
         .tabs()
         .map((workspaceTab) => workspaceTab.name),
       activeWorkspaceIndex: ports.workspaceSet.activeWorkspaceIndex.value,
-      activeWorkspaceRoot: ports.workspaceSet.active.root,
+      activeWorkspaceRoot: workspace.root,
       workspaceCount: ports.workspaceSet.count,
       workspaceTabPosition: ports.settings.workspaceTabPosition.value,
       activeBuffer: editor.hasDocument.value ? editor.document.path : null,
       // The active file's LSP size-suppression state — the authoritative channel a driven gate reads
       // to assert a large file was NOT attached to the language server (the guard is never silent).
-      lspSizeSuppressed:
-        ports.workspaceSet.active.languageSizeNotice() !== null,
+      lspSizeSuppressed: workspace.languageSizeNotice() !== null,
       bufferRevision: editor.document.revision.value,
       dirty: editor.document.dirty,
       cursor: editor.hasDocument.value
@@ -163,9 +163,9 @@ class $AppStatusProjection {
       narrationVoice: ports.settings.agentNarrationVoice.value,
       narrationRate: ports.settings.agentNarrationRate.value,
       focus:
-        ports.workspaceSet.active.focus.value === 'primaryPane'
+        workspace.focus.value === 'primaryPane'
           ? (ports.primaryDockHost.activeId.value ?? 'primaryPane')
-          : ports.workspaceSet.active.focus.value,
+          : workspace.focus.value,
       sidebarView: ports.primaryDockHost.activeId.value,
       pluginPrimaryDockContentIdentifiers: [
         ...ports.pluginPrimaryDockContentIdentifiers,
@@ -239,8 +239,7 @@ class $AppStatusProjection {
       // empty while the active buffer's editor owns it. A surface's OWN projection fields come from
       // its plugin's status snapshot; the app core no longer knows what those surfaces are.
       editorSurfaceIdentifier:
-        ports.workspaceSet.active.editorSurfaces.occupyingClaim?.identifier ??
-        '',
+        workspace.editorSurfaces.occupyingClaim?.identifier ?? '',
       settingsOpen: ports.settingsPanel.open.value,
       settingsSelected: ports.settingsPanel.selectedIndex.value,
       shortcutHelpOpen: ports.shortcutHelp.open.value,
@@ -259,10 +258,10 @@ class $AppStatusProjection {
       rightDockWidth: ports.layoutSlotSizes.rightDockColumns.value,
       // Editor buffer tabs (item 10a). liveBufferCount proves the FLYWEIGHT: it must stay far below
       // tabCount (the two-document recent set + any dirty background buffer stay live).
-      bufferTabCount: ports.workspaceSet.active.buffers.count,
-      bufferLiveCount: ports.workspaceSet.active.buffers.liveCount,
-      activeBufferIndex: ports.workspaceSet.active.buffers.activeIndex.value,
-      pendingCloseTab: ports.workspaceSet.active.pendingCloseTabIndex.value,
+      bufferTabCount: workspace.buffers.count,
+      bufferLiveCount: workspace.buffers.liveCount,
+      activeBufferIndex: workspace.buffers.activeIndex.value,
+      pendingCloseTab: workspace.pendingCloseTabIndex.value,
       panelVisible: ports.panelHost.visible.value,
       panelFocused: ports.panelHost.focused.value,
       panelColumns: ports.panelHost.visible.value ? panelViewportColumns : 0,
@@ -341,7 +340,7 @@ class $AppStatusProjection {
       splitterRegions: ports.view.splitterRegions(),
       splitterSizes: ports.view.splitterSizes(),
       // Active buffer is an image the editor renders as half-block cells (drives smoke-image-preview).
-      activeFileIsImage: ports.workspaceSet.active.activeFileIsImage,
+      activeFileIsImage: workspace.activeFileIsImage,
       // Bracket match is an EDITOR question, so the editor contributes it (matchingBracketLine /
       // matchingBracketColumn arrive through statusProjectionContributions below). With no editor
       // installed the keys are absent, which is honest — nothing paints a match nobody can see.

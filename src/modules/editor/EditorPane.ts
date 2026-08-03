@@ -60,23 +60,24 @@ class $EditorPane {
       settings,
       theme,
     } = this.deps;
-    const editor = workspaceSet.active.editor;
+    const workspace = workspaceSet.active;
+    const editor = workspace.editor;
     // Bracket match: computed ONCE per frame here (reading cursor + document makes the frame effect
     // track them, so it recomputes on a move/edit and clears when the cursor leaves a bracket). The
     // renderer paints only the cells that fall in a visible line.
     const bracketMatch =
       editor.hasDocument.value &&
-      workspaceSet.active.editorSurfaces.activeDocumentIsPresented
+      workspace.editorSurfaces.activeDocumentIsPresented
         ? BracketMatch.Class.findInDocument(
             editor.document,
             editor.cursor.line.value,
             editor.cursor.col.value,
-            workspaceSet.active.documentSyntax,
+            workspace.documentSyntax,
             this.deps.frameAttribution,
           )
         : null;
     const result = EditorPaneRenderer.Class.render({
-      workspace: workspaceSet.active,
+      workspace,
       palette: readPalette(),
       viewportHeight: editorViewportHeight(),
       viewportWidth: editorViewportWidth(),
@@ -115,20 +116,17 @@ class $EditorPane {
       }
     | 'before'
     | 'after' {
-    const { workspaceSet } = this.deps;
+    const editor = this.deps.workspaceSet.activeEditor;
     const firstRow = this.visualRowsWindow[0];
     const lastRow = this.visualRowsWindow[this.visualRowsWindow.length - 1];
     if (!firstRow || !lastRow) return 'before';
     const lineText = this.deps.frameAttribution.documentLine(
-      workspaceSet.active.editor.document,
+      editor.document,
       line,
     );
     this.deps.frameAttribution.recordWrapProjectionLookup();
-    const segments = workspaceSet.active.editor.wordWrap.value
-      ? EditorWrap.Class.wrapLine(
-          lineText,
-          workspaceSet.active.editor.wrapWidth(),
-        )
+    const segments = editor.wordWrap.value
+      ? EditorWrap.Class.wrapLine(lineText, editor.wrapWidth())
       : [
           {
             startGrapheme: 0,
@@ -160,9 +158,7 @@ class $EditorPane {
       column:
         TextCoordinates.Class.displayColumn(lineText, column) -
         (segment?.startDisplayColumn ?? 0) -
-        (workspaceSet.active.editor.wordWrap.value
-          ? 0
-          : workspaceSet.active.editor.viewport.scrollLeft.value),
+        (editor.wordWrap.value ? 0 : editor.viewport.scrollLeft.value),
     };
   }
   // Drive OpenTUI's native selection on the code renderable from the model selection, mapped into
@@ -170,7 +166,7 @@ class $EditorPane {
   // invariant: The selected range renders with a background (src/modules/ui/ui.invariants.md)
   applySelection(): void {
     const { workspaceSet, codeBody, editorViewportWidth } = this.deps;
-    const editor = workspaceSet.active.editor;
+    const editor = workspaceSet.activeEditor;
     const selection = editor.hasDocument.value
       ? editor.cursor.selectionRange()
       : null;
@@ -217,7 +213,8 @@ class $EditorPane {
     column: number;
   } | null {
     const { workspaceSet, codeBody } = this.deps;
-    if (!workspaceSet.active.editor.hasDocument.value) return null;
+    const editor = workspaceSet.activeEditor;
+    if (!editor.hasDocument.value) return null;
     if (this.visualRowsWindow.length === 0) return null;
     const rowIndex = Math.max(
       0,
@@ -226,24 +223,19 @@ class $EditorPane {
     const row = this.visualRowsWindow[rowIndex];
     if (!row) return null;
     const lineText = this.deps.frameAttribution.documentLine(
-      workspaceSet.active.editor.document,
+      editor.document,
       row.lineIndex,
     );
     this.deps.frameAttribution.recordWrapProjectionLookup();
-    const segments = workspaceSet.active.editor.wordWrap.value
-      ? EditorWrap.Class.wrapLine(
-          lineText,
-          workspaceSet.active.editor.wrapWidth(),
-        )
+    const segments = editor.wordWrap.value
+      ? EditorWrap.Class.wrapLine(lineText, editor.wrapWidth())
       : [row.segment];
     const lastSegmentOfLine = row.segmentIndex === segments.length - 1;
     const hitColumn = TextCoordinates.Class.graphemeAtDisplayColumn(
       lineText,
       row.segment.startDisplayColumn +
         Math.max(0, cellX - codeBody.x) +
-        (workspaceSet.active.editor.wordWrap.value
-          ? 0
-          : workspaceSet.active.editor.viewport.scrollLeft.value),
+        (editor.wordWrap.value ? 0 : editor.viewport.scrollLeft.value),
     );
     const maxColumn = lastSegmentOfLine
       ? row.segment.endGrapheme
@@ -267,7 +259,7 @@ class $EditorPane {
       column: number;
     },
   ): boolean {
-    const editor = this.deps.workspaceSet.active.editor;
+    const editor = this.deps.workspaceSet.activeEditor;
     const lineText = this.deps.frameAttribution.documentLine(
       editor.document,
       position.line,
@@ -285,7 +277,7 @@ class $EditorPane {
     return grapheme != null && grapheme.trim().length > 0;
   }
   protected scrollEditorVertically(delta: number): void {
-    const editor = this.deps.workspaceSet.active.editor;
+    const editor = this.deps.workspaceSet.activeEditor;
     const editorViewport = editor.viewport;
     const maxTop = Math.max(
       0,
@@ -316,43 +308,45 @@ class $EditorPane {
       positionAtCell: (cellX, cellY) =>
         this.documentPositionAtCell(cellX, cellY),
       horizontalScrollPosition: () =>
-        workspaceSet.active.editor.viewport.scrollLeft.value,
+        workspaceSet.activeEditor.viewport.scrollLeft.value,
       horizontalScrollingEnabled: () =>
-        !workspaceSet.active.editor.wordWrap.value,
+        !workspaceSet.activeEditor.wordWrap.value,
       lineGraphemeCount: (lineIndex) =>
         TextCoordinates.Class.graphemeCount(
           this.deps.frameAttribution.documentLine(
-            workspaceSet.active.editor.document,
+            workspaceSet.activeEditor.document,
             lineIndex,
           ),
         ),
       beginSelection: (position) => {
-        workspaceSet.active.focusEditor();
-        workspaceSet.active.editor.placeCursor(position.line, position.column);
-        workspaceSet.active.editor.cursor.setAnchorHere();
+        const workspace = workspaceSet.active;
+        workspace.focusEditor();
+        workspace.editor.placeCursor(position.line, position.column);
+        workspace.editor.cursor.setAnchorHere();
       },
       extendSelection: (position, pointerDisplayColumn) => {
         // Direct Cursor.set preserves the pointer's display-column goal while short lines clamp the
         // landing column; placeCursor would reveal/yank the viewport during a diagonal drag.
-        workspaceSet.active.editor.cursor.set(
+        workspaceSet.activeEditor.cursor.set(
           position.line,
           position.column,
           pointerDisplayColumn,
         );
       },
       finishSelection: () => {
-        if (!workspaceSet.active.editor.cursor.hasSelection)
-          workspaceSet.active.editor.cursor.clearSelection();
+        const editor = workspaceSet.activeEditor;
+        if (!editor.cursor.hasSelection) editor.cursor.clearSelection();
       },
       scrollColumns: (columnDelta) => {
-        workspaceSet.active.editor.viewport.scrollByColumns(
+        const editor = workspaceSet.activeEditor;
+        editor.viewport.scrollByColumns(
           columnDelta,
-          workspaceSet.active.editor.document.maximumLineWidth,
+          editor.document.maximumLineWidth,
         );
       },
       scrollRows: (delta) => this.scrollEditorVertically(delta),
       haltCompetingScroll: () =>
-        workspaceSet.active.editor.viewport.haltScrollMomentum(),
+        workspaceSet.activeEditor.viewport.haltScrollMomentum(),
     });
   }
   protected wireHandlers(): void {
@@ -367,7 +361,9 @@ class $EditorPane {
       tooltip,
     } = this.deps;
     editorArea.onMouseScroll = (event) => {
-      if (!workspaceSet.active.editor.hasDocument.value) return;
+      const workspace = workspaceSet.active;
+      const editor = workspace.editor;
+      if (!editor.hasDocument.value) return;
       focusSourceEditor();
       // Scrolling the DOCUMENT dismisses any open hover card — its anchored symbol is moving away; a
       // new dwell on the newly-hovered symbol re-shows one. (A wheel over the card's OWN box scrolls
@@ -376,13 +372,11 @@ class $EditorPane {
       // Horizontal scroll arrives by SEVERAL terminal-dependent encodings; route them ALL to columns.
       const direction = event.scroll?.direction;
       const step = ScrollGesture.Class.wheelStep(event, settings);
-      if (workspaceSet.active.editor.wordWrap.value) {
+      if (editor.wordWrap.value) {
         // Wrap mode: ONE scroll axis (horizontal gestures route to the vertical window), fed through the
         // SAME momentum engine as non-wrap so a wheel notch GLIDES then decays.
         const backward = direction === 'left' || direction === 'up';
-        workspaceSet.active.impulseEditorVerticalScroll(
-          (backward ? -1 : 1) * step,
-        );
+        workspace.impulseEditorVerticalScroll((backward ? -1 : 1) * step);
       } else {
         const modifierHorizontal = ScrollGesture.Class.modifierHeld(
           event,
@@ -392,17 +386,16 @@ class $EditorPane {
           direction === 'left' || direction === 'right' || modifierHorizontal;
         if (horizontal) {
           const backward = direction === 'left' || direction === 'up';
-          workspaceSet.active.impulseEditorHorizontalScroll(
-            (backward ? -1 : 1) * step,
-          );
+          workspace.impulseEditorHorizontalScroll((backward ? -1 : 1) * step);
         } else {
-          workspaceSet.active.impulseEditorVerticalScroll(
+          workspace.impulseEditorVerticalScroll(
             (direction === 'up' ? -1 : 1) * step,
           );
         }
       }
     };
     codeBody.onMouseDown = (event) => {
+      const workspace = workspaceSet.active;
       focusSourceEditor();
       if (process.env.TUI_DEBUG_MOUSE === '1') {
         Logging.Class.info(
@@ -419,8 +412,8 @@ class $EditorPane {
           event.y,
         );
         if (definitionPosition) {
-          workspaceSet.active.focusEditor();
-          void workspaceSet.active.goToDefinition(definitionPosition);
+          workspace.focusEditor();
+          void workspace.goToDefinition(definitionPosition);
           return;
         }
       }
@@ -443,16 +436,13 @@ class $EditorPane {
         this.lastClickLine = clickPosition.line;
         this.lastClickColumn = clickPosition.column;
         if (this.clickCount === 2) {
-          workspaceSet.active.focusEditor();
-          workspaceSet.active.editor.selectWord(
-            clickPosition.line,
-            clickPosition.column,
-          );
+          workspace.focusEditor();
+          workspace.editor.selectWord(clickPosition.line, clickPosition.column);
           return;
         }
         if (this.clickCount >= 3) {
-          workspaceSet.active.focusEditor();
-          workspaceSet.active.editor.selectLine(clickPosition.line);
+          workspace.focusEditor();
+          workspace.editor.selectLine(clickPosition.line);
           return;
         }
       }
@@ -472,7 +462,7 @@ class $EditorPane {
     // the language server's type/docs). Moving off any document, or over an empty cell, clears it.
     // invariant: A hover card reflects the language server type at the pointed symbol (src/modules/ui/ui.invariants.md)
     codeBody.onMouseMove = (event) => {
-      if (!workspaceSet.active.editor.hasDocument.value) {
+      if (!workspaceSet.activeEditor.hasDocument.value) {
         hover.clear();
         return;
       }
@@ -490,17 +480,17 @@ class $EditorPane {
     // signal — a shown card idles out rather than hanging around, but is not hard-killed mid-move.
     codeBody.onMouseOut = () => hover.pointerOffSymbol();
     gutterBody.onMouseDown = (event) => {
-      if (event.button !== 0 || !workspaceSet.active.editor.hasDocument.value)
-        return;
-      const lineNumberWidth =
-        String(workspaceSet.active.editor.document.lineCount).length + 1;
+      const workspace = workspaceSet.active;
+      const editor = workspace.editor;
+      if (event.button !== 0 || !editor.hasDocument.value) return;
+      const lineNumberWidth = String(editor.document.lineCount).length + 1;
       const foldControlColumn = Number(gutterBody.x) + lineNumberWidth;
       if (event.x !== foldControlColumn) return;
       const visibleRowIndex = event.y - Number(gutterBody.y);
       const row = this.visualRowsWindow[visibleRowIndex];
       if (!row?.firstOfLine) return;
-      if (workspaceSet.active.editor.toggleFoldAtLine(row.lineIndex)) {
-        workspaceSet.active.focusEditor();
+      if (editor.toggleFoldAtLine(row.lineIndex)) {
+        workspace.focusEditor();
         tooltip.clear();
       }
     };
