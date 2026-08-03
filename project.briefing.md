@@ -1,3 +1,31 @@
+# RESUME ANCHOR 47 — 2026-08-03 ~04:30 EDT — OVERNIGHT WAVE 2 LANDED
+
+## STATE: main green and clean. Tonight's landings, in order:
+470-slice(5136cdfa) 471(1d03a604) 473(da9f70f2) — wave 1 (goal 1, met)
+477(08ab9d46) 478-r1(655c0db0) 476(305185c5) — wave 2 (goal 2, in progress)
+Plus: reach-completeness record CONFIRMED+landed (f23bba4b); modifier clicks;
+mirrored-pace default; gauge budget file.
+
+## USER MORNING ITEMS
+- #477 verdict: the APP copies agent-pane selections fine (5 chord forms
+  proven). The failure is the cmux/ssh hop — user must test whether cmux
+  forwards Cmd+C / kitty Ctrl+C at all. Nothing left on our side.
+- The invar-builds-invar live demo works (user drove it via MCP); pacing now
+  automatic on mirrors.
+
+## WAVE 3 (dispatching now, user-authorized "and the rest in smart order")
+- #479 (to file): migration round 2 — plugin-manifest + scrollbars contention
+  files, then the census tail. Work list unchanged: the census + 471's path map.
+- #475 Quick Open focus (reproduce-first).
+- #474 dispose-order warnings.
+- HELD for wave 4 (conflicts with 479): Drive.ts --gesture deletion.
+- #451 dormant codex: review-or-retire, conductor decision, pending.
+
+## STANDING: crons :07/:37 armed; fleet-watch armed; no experiments
+(user order); cap 3 builders; land serially; gate per landing.
+
+---
+
 # RESUME ANCHOR 46 — 2026-08-03 ~03:00 EDT — THE OVERNIGHT GOAL IS MET
 
 ## STATE: all three pipeline tasks LANDED, main green, tree clean.
