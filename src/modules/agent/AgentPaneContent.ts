@@ -958,28 +958,45 @@ class $AgentPaneContent implements PaneContent {
       this.composer.hasSelection() || this.transcriptSelection.hasSelection()
     );
   }
+  /** Name the selected agent surface and its exact UTF-16 character count without exposing text. */
+  selectionTelemetry(): AgentPaneSelectionTelemetry {
+    if (this.composer.hasSelection()) {
+      return {
+        owner: 'agent-composer',
+        characterLength: this.composer.selectedText().length,
+      };
+    }
+    const transcriptText = this.selectedTranscriptText();
+    return transcriptText
+      ? {
+          owner: 'agent-transcript',
+          characterLength: transcriptText.length,
+        }
+      : { owner: 'none', characterLength: 0 };
+  }
   /** Copy whichever surface has a selection (composer wins when both, but only one is ever set at a
    *  time). Resolves to the character count copied — the observable proof channel. */
   async copySelection(): Promise<number> {
     if (this.composer.hasSelection()) return this.composer.copySelection();
-    if (!this.transcriptSelection.hasSelection()) return 0;
-    // Surface-owned reconstruction: transcript rows are separate visual lines joined with newlines;
-    // each line slice is grapheme-safe over DISPLAY cells through the shared WrapText slicer.
-    const text = this.transcriptSelection.selectedText(
-      (line, startCell, endCell) => {
-        const rowText = this.lastProjectedLines[line]?.text;
-        if (rowText === undefined) return null;
-        return WrapText.Class.sliceByDisplayCells(
-          rowText,
-          startCell,
-          endCell ?? Number.MAX_SAFE_INTEGER,
-        );
-      },
-      '\n',
-    );
+    const text = this.selectedTranscriptText();
     if (!text) return 0;
     await Clipboard.Class.copy(text);
     return text.length;
+  }
+
+  protected selectedTranscriptText(): string {
+    if (!this.transcriptSelection.hasSelection()) return '';
+    // Surface-owned reconstruction: transcript rows are separate visual lines joined with newlines;
+    // each line slice is grapheme-safe over DISPLAY cells through the shared WrapText slicer.
+    return this.transcriptSelection.selectedText((line, startCell, endCell) => {
+      const rowText = this.lastProjectedLines[line]?.text;
+      if (rowText === undefined) return null;
+      return WrapText.Class.sliceByDisplayCells(
+        rowText,
+        startCell,
+        endCell ?? Number.MAX_SAFE_INTEGER,
+      );
+    }, '\n');
   }
   /** Drop any selection on either surface. */
   clearSelection(): void {
@@ -1021,6 +1038,11 @@ export namespace AgentPaneContent {
   export const $Class = Static($AgentPaneContent);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface AgentPaneSelectionTelemetry {
+  readonly owner: 'agent-composer' | 'agent-transcript' | 'none';
+  readonly characterLength: number;
 }
 
 export interface AgentPaneIdentity {
