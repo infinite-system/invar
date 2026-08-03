@@ -23,3 +23,9 @@ one night across unrelated diffs.
 
 A wait must be a condition: find the git-watch wait that load can starve
 and bind it to its real publisher. Do not widen timeouts.
+
+## Sighting 2026-08-03 (gate-487 round 2, contention tier)
+
+FAIL contention: git-watch harness; log preserved at
+/tmp/merge-gate-failures.736e0d6511a85855.148088/. Non-blocking tier;
+gate exited 0. Counts toward this task's recurrence evidence.
