@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: medium
-State: IN-PROGRESS
+State: COMPLETED — 367e4458 — Landed after a day idle: the fleet is now fully drained — zero open lanes.
 
 ## In plain words
 
