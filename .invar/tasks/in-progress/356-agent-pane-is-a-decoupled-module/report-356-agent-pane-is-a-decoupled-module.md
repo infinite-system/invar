@@ -1,79 +1,74 @@
 ## In plain words
 
-Moving Agent into a plugin made its shortcut behave like terminal input. A focused Terminal pane swallowed `Ctrl+Shift+A`, so no Agent pane opened. The shortcut now carries a generic app-level flag through the keybinding registry, while all other panel keys still go to the focused pane.
+The smoke reused old pane names, while my earlier check used an empty home. Those old names made Terminal appear before Agent and hid Agent's follow shortcut. I now reserve every saved pane name before a plugin creates a pane, so the bare smoke keeps Agent first and all restored panel actions work.
 
 ## Outcome
 
-Round 2 is READY on merged tip `b307c839`. Commit `153c582b` contains the repair. The worktree is clean.
+Round 4 is READY at branch tip `8c97e44a`. Commit `8c97e44a` contains the repair. The worktree is clean.
 
-The main Round 1 plugin change remains in commits `34e0641d`, `cb26b682`, and `a16806e1`. Round 2 does not restore any Agent branch in core.
+The bare keyboard smoke now paints `agent | terminal`, changes Agent follow mode, and closes Agent. The panel-split smoke passes its nerd and Unicode icon arms, contextual Add menus, copy routes, divider drag, and exact-slot `/exit` replacement.
 
-## Regression and repair
+## Environment difference
 
-I reproduced the gate regression before editing:
+The Round 3 green did not use the smoke's environment. I set `INVAR_HARNESS_HOME` to a new empty directory. A bare run of [the keyboard smoke](../../../../scripts/smoke-keyboard-invariant.sh) instead uses the tracked and reused `artifacts/home` through [tui-harness.sh](../../../../scripts/tui-harness.sh).
 
-- `bun scripts/harness/smoke-workspace-tabs-harness.ts` timed out at `a new agent belongs only to the second workspace`.
-- `bun scripts/harness/smoke-workspace-layout-isolation-harness.ts` timed out at `workspace A adds an agent pane to its terminal container`.
-- A direct default drive opened Terminal, kept Terminal focused, and sent `Ctrl+Shift+A`. The final state still had `panelActiveContentKind="terminal"`, `panelFocused=true`, and no Agent pane.
+That home held a mixed saved `panelContentOrder`, including `agent` and old names such as `pane-instance-1`, `pane-instance-2`, and `pane-instance-3`. Terminal registers before Agent at runtime. The allocator gave Agent `pane-instance-1` and Terminal `pane-instance-2`, even though those names already existed in the saved order. Registration then treated both names as known and did not replace the legacy `agent` entry. Filtering the saved sequence produced `Terminal,Agent`.
 
-[AgentPlugin.ts](../../../../src/modules/agent/AgentPlugin.ts) now marks `panel.toggleAgent` as `applicationGlobal`. [KeybindingRegistry.ts](../../../../src/modules/keybindings/KeybindingRegistry.ts) carries that generic binding property. The registry accepts it only on one modified, context-free plugin chord. Its stateless lookup respects guards, plugin withdrawal, and layer shadowing. A higher user binding on the same chord blocks the plugin pass-through.
+An empty home had no collision. It therefore produced the false Round 3 green. The difference was saved pane identity, not timing or key delivery.
 
-[Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) asks for one application-global action after modal ownership is known and before any focused pane receives the key. The route names no Agent type or action. Modal overlays still own their keys. A focused pane receives every key that is not reserved or application-global.
+## Repair
 
-This tier differs from `reserved`. Reserved chords run before every mode and remain host-only. Application-global chords run only outside modal overlays and can belong to a plugin.
+- [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) collects every pane identity in the saved panel order and every saved workspace panel state before plugin registration.
+- [PaneRuntimes.ts](../../../../src/modules/ui/PaneRuntimes.ts) reserves those identities before allocation. Reservation prevents reuse but still lets workspace restoration claim the exact saved identity later.
+- [PanelWorkspaceState.ts](../../../../src/modules/ui/PanelWorkspaceState.ts) supplies the saved pane identities through one generic traversal.
+- [AgentPlugin.ts](../../../../src/modules/agent/AgentPlugin.ts) uses the semantic theme Agent icon. The nerd arm no longer waits for a Unicode-only `✦`.
+- Runtime and factory contributions now declare contextual pane Add entries through [PaneRuntime.interface.ts](../../../../src/modules/ui/PaneRuntime.interface.ts) and [PanelContentFactory.interface.ts](../../../../src/modules/ui/PanelContentFactory.interface.ts). Terminal, Agent, and Database provide their own profiles. The application core only reads the shared entry shape.
+- [ApplicationContributor.interface.ts](../../../../src/modules/app/ApplicationContributor.interface.ts) exposes generic copy-selection and replace-pane operations. Agent copy telemetry and `/exit` use these pane operations. No application-core branch names Agent.
 
-I added a pointer to this seam in [#498 (global chords blocked by a focused panel)](../../active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md). That task still owns the wider policy for existing app chords and pane consumption.
-
-## File grammar
-
-The conventions gate reported six enforced findings. All six are fixed.
-
-- `AgentPlugin.ts` now has a colocated test. It proves Agent declares the shared Terminal panel space added on merged tip `b307c839`.
-- `SettingSpecs.ts` now has a colocated test. It proves a dynamic enum reads current options when the view asks, instead of freezing its first result.
-- [AgentProviderRegistry.ts](../../../../src/modules/agent/AgentProviderRegistry.ts) now places its eponymous class first after imports. Exported types follow the namespace manifest.
-- [NarrationProjection.ts](../../../../src/modules/narration/NarrationProjection.ts) now places its namespace manifest directly after the class. Its exported transcript interface follows the manifest.
-
-The full conventions gate passes. It reports 0 enforced violations. Its 20 reported legacy violations are outside the enforced modules and were present on the merged tip.
+The panel-split smoke exposed the menu, copy, and `/exit` losses only after its icon arm became green. I drove each newly exposed failure before changing its seam.
 
 ## Driven evidence
 
-The repaired default drive opens Terminal, keeps it focused, sends `Ctrl+Shift+A`, and reaches `panelActiveContentKind="agent"`. I repeated the same gesture with the shared 100,000-line fixture. It reaches the same Agent state.
+- Bare [keyboard smoke](../../../../scripts/smoke-keyboard-invariant.sh): pass. `Ctrl+Shift+S` paints `agent | terminal`; `Ctrl+Shift+M` changes `follow-all` to `on-error`; `Ctrl+Shift+A` leaves one Terminal pane.
+- [Panel-split smoke](../../../../scripts/harness/smoke-panel-split-harness.ts): `smoke-panel-split-harness: ALL-PASS`.
+- [Activity bar smoke](../../../../scripts/harness/smoke-activitybar-harness.ts): `smoke-activitybar-harness: ALL-PASS`. Its fresh profile paints Agent before Terminal, and its planted terminal-first profile keeps that order.
+- [Clipboard frame-boundary smoke](../../../../scripts/harness/smoke-clipboard-frame-boundary-harness.ts): `smoke-clipboard-frame-boundary-harness: ALL-PASS`.
+- [Workspace tabs smoke](../../../../scripts/harness/smoke-workspace-tabs-harness.ts): `smoke-workspace-tabs-harness: ALL-PASS`.
+- [Workspace layout isolation smoke](../../../../scripts/harness/smoke-workspace-layout-isolation-harness.ts): `ALL PASS: workspace layout isolation`.
 
-Both gate-reported smokes now run to completion:
-
-- Workspace tabs: `smoke-workspace-tabs-harness: ALL-PASS`.
-- Workspace layout isolation: `ALL PASS: workspace layout isolation`.
-
-The red runs on `b307c839` are the positive control. The same commands failed at the exact Agent waits before `applicationGlobal` existed and passed after the flag and route were present.
+The exact bare keyboard failure and the panel-split icon timeout were the positive controls. The panel-split run then supplied red controls for contextual Add, selection telemetry, forwarded selection telemetry, and exact-slot replacement before it reached `ALL-PASS`.
 
 ## Invariant verdicts
 
-- [Focus owns the keystroke](../../../../src/modules/keybindings/keybindings.invariants.md): needs a refinement. The present record permits only reserved pass-through. Proposed wording: “If a pane holds keyboard focus, it owns every keystroke except a reserved chord or one modified, single-chord, effective binding marked `applicationGlobal`. An application-global binding must name a frame-scoped action, runs only when no modal overlay owns the screen, and remains subject to layer shadowing.” I did not edit the record.
-- [A focused panel routes keystrokes to its active pane content](../../../../src/modules/ui/ui.invariants.md): preserved. The generic application tier gets one bounded chance first. Every other key continues through the pane context and `handleKey` route. The two workspace smokes prove Terminal stays live while the Agent toggle reaches the app.
-- [Bindings are intent addressed](../../../../src/modules/keybindings/keybindings.invariants.md): satisfied. The chord remains binding data that resolves to `panel.toggleAgent`. Bootstrap contains no inline chord or Agent action check.
-- [The agent pane is a PaneContent citizen, not a special case](../../../../src/modules/agent/agent.invariants.md): satisfied. Agent declares the generic flag in its plugin binding. Core routing knows only the keybinding capability and focused pane state.
+- [Focus owns the keystroke](../../../../src/modules/keybindings/keybindings.invariants.md): the Round 2 refinement is still needed. Proposed wording remains: “If a pane holds keyboard focus, it owns every keystroke except a reserved chord or one modified, single-chord, effective binding marked `applicationGlobal`. An application-global binding must name a frame-scoped action, runs only when no modal overlay owns the screen, and remains subject to layer shadowing.” I did not edit the record.
+- [A focused panel routes keystrokes to its active pane content](../../../../src/modules/ui/ui.invariants.md): satisfied. Agent receives its follow chord. Terminal receives the non-reserved byte sweep.
+- [Bindings are intent addressed](../../../../src/modules/keybindings/keybindings.invariants.md): satisfied. The repair uses existing action identifiers. It does not compare raw Agent chords.
+- [The agent pane is a PaneContent citizen, not a special case](../../../../src/modules/agent/agent.invariants.md): satisfied. Agent contributes menu, icon, copy, exit, and runtime behavior through generic contracts.
+- [Panel content order is one persisted sequence](../../../../src/modules/ui/ui.invariants.md): satisfied. The saved sequence remains the order generator. The allocator can no longer counterfeit one of its identities.
+- [Pane identity is separate from presentation](../../../../src/modules/ui/ui.invariants.md): satisfied. Saved opaque identities are reserved independently of labels and plugin registration order.
+- [Status text is assembled from ordered contributions](../../../../src/modules/ui/ui.invariants.md): satisfied. Agent asks the theme contribution for its semantic icon instead of hard-coding one tier's glyph.
+- [Seams are drawn at the shared generator](../../../../project.invariants.md): satisfied. Contextual menu entries, selection proof, and pane replacement each have one generic seam used by their consumers.
 
-The brief did not name the existing “Plugin bindings cannot reserve chords” record. It remains true because `applicationGlobal` is not reservation and cannot outrank a modal overlay. The new tier does create a contract gap. The proposed Focus wording above should own it. A separate record would split one focus-ownership policy across two places.
+The identity record does not say that an identity found in any loaded persisted panel state must not be reissued before restoration. I propose adding that guarantee in a later contract task. I did not edit an invariant record in this repair.
 
 ## Verification
 
-- `bash scripts/conventions-gate.sh`: pass. The file grammar inspected 656 source files and found 0 enforced violations.
-- `bun scripts/harness/smoke-workspace-tabs-harness.ts`: all pass.
-- `bun scripts/harness/smoke-workspace-layout-isolation-harness.ts`: all pass.
-- Targeted keybinding, AgentPlugin, and SettingSpecs tests: 29 pass, 0 fail, 120 expectations.
-- `bun test`: 2,367 pass, 0 fail, 72,134 expectations across 356 files.
+- Targeted runtime, workspace-state, factory, Terminal, Agent, Media, and Database tests: 21 pass, 0 fail, 111 expectations.
 - `bunx tsc --noEmit`: pass.
-- `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`: 1,379 annotations, 266 lattice links, 0 problems.
-- `bun scripts/check-coverage-ratchet.ts`: 392 files inspected, no undeclared decrease against `a9700d9`.
+- `bash scripts/conventions-gate.sh`: pass. File grammar inspected 656 source files and found 0 enforced violations. It reported 20 legacy violations outside enforced modules.
+- `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`: 0 problems.
+- `bun scripts/check-coverage-ratchet.ts`: 392 files inspected, with no undeclared decrease against `a9700d9`.
+- `bun test`: 2,372 pass, 0 fail, 72,151 expectations across 356 files.
+- `git diff --check`: pass.
 
-I did not run `scripts/merge-gate.sh`. I used `SKIP_GATE=1` for the commit, as the [Round 2 brief](brief-356-2-2.md) requires.
+I did not run [the merge gate](../../../../scripts/merge-gate.sh). I used `SKIP_GATE=1` for commit `8c97e44a`, as the [Round 4 brief](brief-356-4-4.md) requires.
 
 ## Bycatch
 
-None observed in Round 2.
+- The gate's [panel-chrome contention log](/tmp/merge-gate-failures.8bee3f81d3ec34aa.1050976/contention-panel-chrome-harness-scripts-harness-smoke-panel-chrome-harness-ts-.log) failed while waiting for the container Add menu. After the generic menu repair, that condition passed in a standalone run. The same run then timed out when clicking Database Add for `Database 2`. A temporary condition showed that `boundedListPopupOpen` never became true, so the click did not open a popup. This is a pointer-hit problem, not a menu-label or wait-vocabulary problem. It reproduced twice. I removed the temporary probe and did not change the unrelated pointer path.
 
 ## Instrument feedback
 
-- EASY: the two smokes stopped at the same semantic Agent condition. The direct `--key` and `--wait-for-status` drive reproduced the same route without a custom probe.
-- CONFUSING: the CLI status value uses JSON quoting. My first command asked for the literal value `'agent'` with embedded apostrophes and timed out even though the syntax looked quoted. The corrected value was `panelActiveContentKind="agent"`.
-- MISSING: the one-shot drive CLI needs an output filter for selected status fields. A successful two-key probe currently prints hundreds of unrelated status lines. The fluent drive has `show`, but the direct CLI has no matching narrow-output option.
+- EASY: the bare keyboard smoke publishes its panel labels and follow mode. Those values exposed the saved-identity collision without a visual guess.
+- CONFUSING: the smoke silently reuses `artifacts/home`, while an explicit `INVAR_HARNESS_HOME` changes the starting state. The two runs look equivalent until saved pane identities affect allocation.
+- MISSING: print the resolved harness home and starting `panelContentOrder` at the top of the keyboard smoke. That would make profile-dependent failures self-describing.
