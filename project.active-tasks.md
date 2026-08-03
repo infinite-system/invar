@@ -6,14 +6,15 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #471 [graph-reaches-the-whole-app](.invar/tasks/in-progress/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)  [building]
+  `tmux attach -t invar/471-graph-reaches-the-whole-app`
 - #451 [ffmpeg-source-publishes-raw-anchor](.invar/tasks/in-progress/451-ffmpeg-source-publishes-raw-anchor/task-451-ffmpeg-source-publishes-raw-anchor.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/451-ffmpeg-source-publishes-raw-anchor`
 
-## USER-DIRECTED (17)
-- #473 [invar-builds-invar](.invar/tasks/active/473-invar-builds-invar/task-473-invar-builds-invar.md)  [ACTIVE — accumulating; mirror mode already SHIPPED]
+## USER-DIRECTED (16)
+- #473 [invar-builds-invar](.invar/tasks/active/473-invar-builds-invar/task-473-invar-builds-invar.md)  [ACTIVE — accumulating; mirror SHIPPED and HARDENED (user-verified <3)]
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
-- #471 [graph-reaches-the-whole-app](.invar/tasks/active/471-graph-reaches-the-whole-app/task-471-graph-reaches-the-whole-app.md)
 - #458 [terminals-all-dead-after-idle](.invar/tasks/active/458-terminals-all-dead-after-idle/task-458-terminals-all-dead-after-idle.md)
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -30,7 +31,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (30)
-- #470 [harness-wait-defect-census](.invar/tasks/active/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [ACTIVE — BLOCKED ON #471 (graph completeness precedes the migration)]
+- #470 [harness-wait-defect-census](.invar/tasks/active/470-harness-wait-defect-census/task-470-harness-wait-defect-census.md)  [ACTIVE — generator-fix slice dispatchable now; full migration follows #471]
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)

@@ -1,0 +1,15 @@
+{
+  "task": 471,
+  "slug": "graph-reaches-the-whole-app",
+  "branch": "fleet/471-graph-reaches-the-whole-app",
+  "worktree": ".invar/worktrees/471-graph-reaches-the-whole-app",
+  "tmuxSession": "invar/471-graph-reaches-the-whole-app",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-471-graph-reaches-the-whole-app.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "bf50b97e0414d755b22fc10bdcfd53e91d38900b",
+  "startedAt": "2026-08-03T00:53:56-04:00"
+}

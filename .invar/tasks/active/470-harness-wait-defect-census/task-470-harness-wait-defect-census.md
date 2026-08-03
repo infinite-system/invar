@@ -1,10 +1,10 @@
 # Task 470 — harness wait-defect census and repair
 
 Priority: verification-integrity
-State: ACTIVE — BLOCKED ON #471 (graph completeness precedes the migration)
-Engine: claude
+State: ACTIVE — generator-fix slice dispatchable now; full migration follows #471
+Engine: codex
 Environment: any
-Model: fable-5
+Model: 5.6-sol
 Effort: high
 
 ## Why this exists
