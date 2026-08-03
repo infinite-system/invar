@@ -1,3 +1,19 @@
+# RESUME ANCHOR 48b — 2026-08-03 ~05:30 EDT — ONE LANDING IN FLIGHT
+
+READ ANCHOR 48 BELOW FIRST (nine landings sealed). Delta since:
+
+- #480 (Quick Open idiom five files, all six sites) is READY at ad6d5038 in
+  .invar/worktrees/480-migrate-the-quick-open-idiom; its gate runs at
+  /tmp/gate-480.log with a death-reporting monitor. ON GREEN: land via
+  GATE_LOG=/tmp/gate-480.log BYCATCH_TRIAGED=1 bash scripts/fleet/land.sh
+  480 migrate-the-quick-open-idiom <msg-file> "<summary>"; convert bycatch
+  from the report FIRST (read its ## Bycatch + ## PTY usability).
+- After 480: remaining queue per anchor 48 (shared-machinery migration
+  round, Drive.ts deletion, 451 review, 460-464 re-read). NO experiments.
+- Builders: only 480's codex (idle-READY) + the dormant 451 codex.
+
+---
+
 # RESUME ANCHOR 48 — 2026-08-03 ~05:15 EDT — THE FULL NIGHT IS LANDED
 
 ## STATE: main green and clean; dist/iv rebuilt. NINE landings tonight:
