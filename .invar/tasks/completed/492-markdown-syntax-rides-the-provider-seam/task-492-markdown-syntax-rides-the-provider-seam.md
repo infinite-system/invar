@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: medium
-State: IN-PROGRESS
+State: COMPLETED — 86a01a2c — markdown syntax through the provider seam; core vocabulary zero
 
 ## In plain words
 
