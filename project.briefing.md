@@ -1,3 +1,16 @@
+# RESUME ANCHOR 53 — 2026-08-03 ~09:35 EDT — GOAL MET; 484 EXPERIMENT IN FLIGHT
+
+483 LANDED (7330851c): both conversion phases, 112->0 non-test chains,
+AST-census-proven. The user's "get both done intelligently" goal is MET.
+#484 (per-file smoke reuse churn experiment) DISPATCHED — ON READY: read the
+measurement table, convert bycatch/instrument feedback, gate with a
+death-reporting monitor, land — but the ROLLOUT DECISION IS THE USER'S; the
+report ends with numbers, not a rollout. User RESTING. Copy saga: app proven
+under all arms; ask the user which selection highlight they see when they
+return. Fourteen landings this session.
+
+---
+
 # RESUME ANCHOR 52 — 2026-08-03 ~09:10 EDT — 483 IN FLIGHT, 484 STAGED
 
 Chain: 482 LANDED (03fc43fe: composer-focus eliminated, smoke arm added;
