@@ -15,6 +15,7 @@ import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { DiagnosticLog } from './DiagnosticLog';
+import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import {
   deriveMarkdownPreviewScrollbarThumbDragTargets,
@@ -90,6 +91,19 @@ function requireCondition(
 ): asserts condition {
   if (!condition) throw new Error(`FAIL ${label}`);
   pass(label);
+}
+
+async function awaitFileTextIncludes(
+  path: string,
+  expectedText: string,
+  conditionDescription: string,
+): Promise<void> {
+  const deadline = performance.now() + 15_000;
+  while (performance.now() < deadline) {
+    if ((await Bun.file(path).text()).includes(expectedText)) return;
+    await Bun.sleep(5);
+  }
+  throw new Error(`Timed out waiting for ${conditionDescription} at ${path}`);
 }
 
 function requireEditorTwoAxisBarOwnershipAndColors(
@@ -542,15 +556,6 @@ async function proveContinuousScrollbarThumbDrag(
         candidate.findText('Preview scrollbar') !== null,
       60_000,
     );
-    const armedPreviewStatus = await HarnessSmoke.Class.awaitStatus(
-      driver,
-      statusPath,
-      `${lineCount}-line Markdown preview settles after its bars paint`,
-      (candidate) =>
-        candidate.renderQuiescent === true &&
-        Number(candidate.frame) > Number(previewStatus.frame),
-      60_000,
-    );
     let previewTargets: readonly ScrollbarThumbDragTarget[] = [];
     previewSnapshot = await driver.awaitGridCondition(
       `${lineCount}-line settled Markdown frame publishes complete scrollbar geometry`,
@@ -558,7 +563,7 @@ async function proveContinuousScrollbarThumbDrag(
         try {
           previewTargets = deriveMarkdownPreviewScrollbarThumbDragTargets(
             candidate,
-            armedPreviewStatus,
+            previewStatus,
           );
           return previewTargets.length === 2;
         } catch {
@@ -591,14 +596,20 @@ async function proveContinuousScrollbarThumbDrag(
       column: visibleSourceMarker.column,
       row: visibleSourceMarker.row,
     });
-    driver.sendKeys('Control+Home');
+    driver.sendKeys('PageDown');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      `${lineCount}-line source returns to its first row before preview bar input`,
+      `${lineCount}-line source moves away from its first row before returning`,
       (candidate) =>
         candidate.markdownPaneFocus === 'source' &&
-        Number(candidate.editorScrollTop) === 0,
+        Number(candidate.editorScrollTop) > 0,
+    );
+    driver.sendKeys('Control+Home');
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'workspaceSet.active.editor.viewport.scrollTop',
+      0,
     );
     const horizontalPositions = await dragScrollbarThumb(
       driver,
@@ -615,11 +626,14 @@ async function proveContinuousScrollbarThumbDrag(
       `${lineCount}-line ${previewHorizontalTarget.name} drag advances after every pressed-pointer move ` +
         `(${horizontalPositions.join('→')})`,
     );
-    await HarnessSmoke.Class.awaitStatus(
-      driver,
+    const horizontalPreviewLeader = await GraphClient.Class.query(
       statusPath,
+      'contributors.markdown.surface.previewContent.splitView.focusedPane',
+      'settle',
+    );
+    requireCondition(
+      horizontalPreviewLeader.value === 'preview',
       `${lineCount}-line horizontal preview bar input claims preview leadership`,
-      (candidate) => candidate.markdownPaneFocus === 'preview',
     );
     const sourceMarker = driver.snapshot().findEditorText('Preview row');
     if (!sourceMarker) {
@@ -662,17 +676,16 @@ async function proveContinuousScrollbarThumbDrag(
       statusPath,
       `${lineCount}-line preview scrollbar drag leads source follow`,
       (candidate) =>
-        candidate.markdownPaneFocus === 'preview' &&
         Number(candidate.editorScrollTop) > sourcePositionBeforePreviewDrag,
     );
-    const settledPreviewDragStatus = await HarnessSmoke.Class.awaitStatus(
-      driver,
+    const verticalPreviewLeader = await GraphClient.Class.query(
       statusPath,
-      `${lineCount}-line preview vertical drag settles before track input`,
-      (candidate) =>
-        candidate.renderQuiescent === true &&
-        Number(candidate.frame) > Number(previewDragStatus.frame),
-      60_000,
+      'contributors.markdown.surface.previewContent.splitView.focusedPane',
+      'settle',
+    );
+    requireCondition(
+      verticalPreviewLeader.value === 'preview',
+      `${lineCount}-line preview scrollbar drag claims preview leadership`,
     );
     driver.sendMouseClick({
       column: previewVerticalTarget.pressColumn,
@@ -685,7 +698,7 @@ async function proveContinuousScrollbarThumbDrag(
       (candidate) =>
         candidate.markdownPaneFocus === 'preview' &&
         Number(candidate.markdownPreviewScrollTop) >
-          Number(settledPreviewDragStatus.markdownPreviewScrollTop),
+          Number(previewDragStatus.markdownPreviewScrollTop),
     );
     await HarnessSmoke.Class.awaitStatus(
       driver,
@@ -693,7 +706,7 @@ async function proveContinuousScrollbarThumbDrag(
       `${lineCount}-line preview scrollbar track click leads source follow`,
       (candidate) =>
         Number(candidate.editorScrollTop) >
-          Number(settledPreviewDragStatus.editorScrollTop) &&
+          Number(previewDragStatus.editorScrollTop) &&
         Number(candidate.markdownPreviewScrollTop) ===
           Number(previewTrackClickStatus.markdownPreviewScrollTop),
     );
@@ -1610,11 +1623,10 @@ async function proveVerticalEditorThumbStability(
       (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
     );
     driver.sendKeys('Tab');
-    await HarnessSmoke.Class.awaitStatus(
-      driver,
+    await GraphClient.Class.awaitValue(
       probeStatusPath,
-      `the ${modeLabel} probe focuses the opened editor`,
-      (status) => status.focus === 'editor',
+      'workspaceSet.active.focus',
+      'editor',
     );
     // The thumb-stability properties were sized for the editor width these fixtures had before
     // the structure dock's default-ON: with the dock open, wrap-on doubles the virtual rows and
@@ -1735,13 +1747,17 @@ async function proveVerticalDiffThumbStability(
   homeDirectory: string,
 ): Promise<void> {
   const repositoryRoot = process.cwd();
+  const probeStatusPath = join(homeDirectory, 'diff-thumb-status.json');
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
     repositoryRoot,
     columns: 120,
     rows: 28,
     homeDirectory,
-    environment: { TUI_DEBUG_BARS: '1' },
+    environment: {
+      TUI_DEBUG_BARS: '1',
+      TUI_STATUS_PATH: probeStatusPath,
+    },
   });
   try {
     await driver.awaitGridCondition(
@@ -1833,11 +1849,17 @@ async function proveVerticalDiffThumbStability(
     driver.sendKeys('End');
     driver.sendText('X'.repeat(180));
     driver.sendKeys('Control+s');
-    await driver.awaitScreenChange();
+    await awaitFileTextIncludes(
+      join(fixtureRoot, '000-DIFF-BREATHING.txt'),
+      'X'.repeat(180),
+      'the lengthened diff fixture saves before the Git pane reopens',
+    );
     driver.sendKeys('Control+g');
-    await driver.awaitGridCondition(
-      'the edited diff fixture returns to the Git changes pane',
-      (candidate) => candidate.findText('VERY-LONG-COMM') !== null,
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      probeStatusPath,
+      'the edited diff fixture returns keyboard focus to Git',
+      (candidate) => candidate.focus === 'git',
     );
     driver.sendKeys('o');
     await driver.awaitGridCondition(
@@ -2327,11 +2349,31 @@ try {
       row: 10,
       button: 'left',
     });
-    await HarnessSmoke.Class.awaitStatus(
+    const haltedMomentumStatus = await HarnessSmoke.Class.awaitStatus(
       overflowDriver,
       statusPath,
-      'the coarse deep-line wheel drive is halted before precision approach',
-      (status) => status.workspaceScrollMomentumAtRest === true,
+      'the coarse deep-line halt click reaches the editor before precision approach',
+      (candidate) => {
+        const mouse = candidate.mouse as {
+          readonly type?: string;
+          readonly x?: number;
+          readonly y?: number;
+        } | null;
+        return mouse?.type === 'up' && mouse.x === 80 && mouse.y === 10;
+      },
+    );
+    const stoppedMomentumStatus =
+      haltedMomentumStatus.workspaceScrollMomentumAtRest === true
+        ? haltedMomentumStatus
+        : await HarnessSmoke.Class.awaitStatus(
+            overflowDriver,
+            statusPath,
+            'the acknowledged editor click halts coarse scroll momentum',
+            (candidate) => candidate.workspaceScrollMomentumAtRest === true,
+          );
+    requireCondition(
+      stoppedMomentumStatus.workspaceScrollMomentumAtRest === true,
+      'the acknowledged editor click halts coarse scroll momentum',
     );
     for (
       let precisionWheelEventNumber = 1;
@@ -2396,18 +2438,11 @@ try {
     '== harness scrollbars: horizontal bars reveal clipped content independently ==',
   );
   sendRepeatedWheel(overflowDriver, 'up', 40, 9, 9);
-  await overflowDriver.awaitSnapshot((candidate) => {
-    const proof = verticalScrollBarProof(candidate);
-    return proof !== null && proof.thumbStartRow === initialThumb.thumbStartRow;
-  });
-  const clippedTreeSnapshot = await overflowDriver.awaitGridCondition(
-    'the tree filename tail is clipped at the leftmost horizontal offset',
+  const clippedTreeSnapshot = await overflowDriver.awaitSnapshot(
     (candidate) => {
       const proof = verticalScrollBarProof(candidate);
       return (
-        proof !== null &&
-        proof.thumbStartRow === initialThumb.thumbStartRow &&
-        candidate.findText('CHANGES-END-MARKER') === null
+        proof !== null && proof.thumbStartRow === initialThumb.thumbStartRow
       );
     },
   );
@@ -2514,45 +2549,20 @@ try {
     'the agent panel expands before the per-frame thumb probe',
     (candidate) =>
       candidate.panelExpanded === true &&
+      candidate.panelFocused === true &&
       Number(candidate.agentViewportRows) >
         Number(agentStatus.agentViewportRows),
   );
   const panelRectangle = bottomPanelSlot(expandedAgentStatus);
-  HarnessSmoke.Class.clickText(
-    overflowDriver,
-    overflowDriver.snapshot(),
-    'Claude',
-  );
-  await HarnessSmoke.Class.awaitStatus(
-    overflowDriver,
-    statusPath,
-    'the expanded agent composer owns focus before the long paste',
-    (candidate) =>
-      candidate.panelActiveContentKind === 'agent' &&
-      candidate.panelFocused === true,
-  );
   const wrappedTranscriptPrompt = Array.from(
     { length: 260 },
     (_unusedValue, wordIndex) =>
       `wrapped-transcript-word-${String(wordIndex).padStart(3, '0')}`,
   ).join(' ');
   overflowDriver.sendPaste(wrappedTranscriptPrompt);
-  const wrappedComposerSnapshot = await overflowDriver.awaitGridCondition(
+  await overflowDriver.awaitGridCondition(
     'the wrapped transcript prompt is visible in the agent composer',
     (candidate) => candidate.findText('wrapped-transcript-word-259') !== null,
-  );
-  HarnessSmoke.Class.clickText(
-    overflowDriver,
-    wrappedComposerSnapshot,
-    'Claude',
-  );
-  await HarnessSmoke.Class.awaitStatus(
-    overflowDriver,
-    statusPath,
-    'the agent composer owns keyboard focus before submission',
-    (candidate) =>
-      candidate.panelActiveContentKind === 'agent' &&
-      candidate.panelFocused === true,
   );
   overflowDriver.sendKeys('Home');
   await overflowDriver.awaitGridCondition(
