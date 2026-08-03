@@ -52,3 +52,11 @@ selected status fields (a two-key probe prints hundreds of status
 lines; the fluent driver has show, the CLI has nothing). Also note:
 status waits use JSON quoting — panelActiveContentKind="agent", not
 'agent'.
+
+## Additional ask from #356 round 3 (2026-08-03)
+
+MISSING: timeout messages for motion waits should print the short
+momentum/scroll-top sequence so "no impulse" vs "one-frame
+cancellation" vs "at a bound" is readable without a second probe.
+Also: the direct keyboard harness reuses artifacts/home — manual
+drives poison fresh-profile assertions; prefer per-run homes.
