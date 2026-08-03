@@ -74,6 +74,22 @@ async function awaitRightDockScrollbarDiagnostic(
   throw new Error(`Timed out waiting for ${conditionDescription}`);
 }
 
+async function clickStatusMarker(
+  driver: PtyTestDriver.Model,
+  marker: string,
+): Promise<void> {
+  const snapshot = await driver.awaitGridCondition(
+    `the ${marker.trim()} status control paints`,
+    (candidate) => candidate.rowText(candidate.rows - 1).includes(marker),
+  );
+  const row = snapshot.rows - 1;
+  const column = snapshot.rowText(row).indexOf(marker);
+  if (column < 0)
+    throw new Error(`The ${marker.trim()} status control is not visible`);
+  driver.sendMouse({ kind: 'press', column, row, button: 'left' });
+  driver.sendMouse({ kind: 'release', column, row, button: 'left' });
+}
+
 async function selectSetting(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -123,8 +139,9 @@ async function selectExtensionsRowFromFirst(
   statusPath: string,
   rowLabel: string,
 ): Promise<HarnessSnapshot.Model> {
+  const maximumExtensionRows = 24;
   driver.sendKeysWithoutFrameExpectation(
-    ...Array.from({ length: 12 }, () => 'Up'),
+    ...Array.from({ length: maximumExtensionRows }, () => 'Up'),
   );
   await GraphClient.Class.awaitValue(
     statusPath,
@@ -150,7 +167,8 @@ async function selectExtensionsRowFromFirst(
   let selectedIndex = 0;
   for (
     let selectionStep = 0;
-    selectionStep < 12 && driver.snapshot().findText(`› ${rowLabel}`) === null;
+    selectionStep < maximumExtensionRows &&
+    driver.snapshot().findText(`› ${rowLabel}`) === null;
     selectionStep += 1
   ) {
     const selectedRowBeforeNavigation = selectedExtensionsRowText(
@@ -884,7 +902,19 @@ try {
       (status.settingsSections as string[] | undefined)?.includes('Agent') ===
         true,
   );
+  await clickStatusMarker(driver, ' ✦ ');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the agent panel closes before the Extensions drive',
+    (status) => status.panelVisible === false && status.focus === 'editor',
+  );
   driver.sendKeys('Control+Shift+x');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'primaryDockHost.focused',
+    true,
+  );
   await selectExtensionsRowFromFirst(driver, statusPath, '[x] Invar Agent');
   driver.sendKeys('Space');
   const agentDisabledStatus = await HarnessSmoke.Class.awaitStatus(
@@ -954,15 +984,15 @@ try {
   console.log(
     '== plugin manifest: the source-text editor uninstalls and reinstalls ==',
   );
-  // Close the terminal panel before driving anything the host must answer. With the panel OPEN and
+  // Close the agent panel before driving anything the host must answer. With the panel OPEN and
   // the workspace focus back on the editor, Ctrl+P never reaches Quick Open — a pre-existing defect
   // (see the #220 report's bycatch), reproduced on the unmodified tree, and not this arm's subject.
-  driver.sendKeys('Control+j');
+  await clickStatusMarker(driver, ' ✦ ');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the terminal panel closes before the editor-contribution drive',
-    (status) => status.terminalVisible === false,
+    'the agent panel closes before the editor-contribution drive',
+    (status) => status.panelVisible === false,
   );
   driver.sendKeys('Control+p');
   await HarnessSmoke.Class.awaitStatus(
