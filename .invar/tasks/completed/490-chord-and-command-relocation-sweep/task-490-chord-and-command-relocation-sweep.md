@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — c343b38f — plugin chords and labels relocated; ShortcutHelp reads live layers
 
 ## In plain words
 

@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #490 [chord-and-command-relocation-sweep](.invar/tasks/in-progress/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)  [building]
-  `tmux attach -t invar/490-chord-and-command-relocation-sweep`
-
 ## USER-DIRECTED (14)
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -153,12 +149,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 206 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 207 — full log: project.tasks-completed.md)
 - #500 [database-add-click-misses-popup](.invar/tasks/completed/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md) — ACTIVE
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
 - #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/completed/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md) — 86a01a2c — markdown syntax through the provider seam; core vocabulary zero
 - #491 [editor-shared-generators-move-home](.invar/tasks/completed/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md) — cf1befd4 — editor generators move to core text; monitoring rides the provider seam
+- #490 [chord-and-command-relocation-sweep](.invar/tasks/completed/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md) — c343b38f — plugin chords and labels relocated; ShortcutHelp reads live layers
 - #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
 - #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/completed/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md) — 9f132d18 — copy telemetry: one record per attempt names surface, route, OSC 52 result
 - #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
@@ -168,4 +165,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #481 [shared-machinery-waits-and-drive-gesture-deletion](.invar/tasks/completed/481-shared-machinery-waits-and-drive-gesture-deletion/task-481-shared-machinery-waits-and-drive-gesture-deletion.md) — e3e3316a — Landed: honest shell settle, gesture layer deleted, 11 delays declared. The census migration is now COMPLETE except declared remainders.
 - #480 [migrate-the-quick-open-idiom](.invar/tasks/completed/480-migrate-the-quick-open-idiom/task-480-migrate-the-quick-open-idiom.md) — 04ea99ab — Landed: the Quick Open idiom retired across the suite. Migration remainder: shared machinery + agent/terminal + panel/layout + shell sites, per the #479 table.
 - #479 [migrate-the-census-tail](.invar/tasks/completed/479-migrate-the-census-tail/task-479-migrate-the-census-tail.md) — c5316ddf — Round 1 landed: the two live gate-flake files migrated site-complete. Remainder (Quick Open idiom files, shared machinery, agent/terminal files, shell sites) stays honestly tabled for the next round.
-- #478 [migrate-the-pre-satisfied-waits](.invar/tasks/completed/478-migrate-the-pre-satisfied-waits/task-478-migrate-the-pre-satisfied-waits.md) — 655c0db0 — Round 1 landed: five unfalsifiable positive controls + panel-chrome drag-span converted with planted-defect proof. Remainder (plugin-manifest, scrollbars, the census tail) queued for round 2.

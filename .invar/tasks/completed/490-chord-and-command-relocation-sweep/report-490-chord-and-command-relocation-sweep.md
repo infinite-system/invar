@@ -4,7 +4,7 @@ The app kept some terminal keys and plugin names in core files. I moved those fa
 
 ## Result
 
-READY on branch `fleet/490-chord-and-command-relocation-sweep` at commit `cfc4de60d8672971b62112cd4866db378d317378` (`Relocate plugin shortcuts and labels`). The worktree is clean.
+READY on branch `fleet/490-chord-and-command-relocation-sweep`. The implementation commit is `cfc4de60d8672971b62112cd4866db378d317378` (`Relocate plugin shortcuts and labels`). The worktree is clean.
 
 - [TerminalPlugin](../../../../src/modules/terminal/TerminalPlugin.ts) now owns the macOS copy chord and the four terminal command records. Disable removes the chords, commands, panes, and status projection together.
 - [TerminalPaneContent](../../../../src/modules/terminal/TerminalPaneContent.ts) owns the word-left, word-right, and delete-previous-word byte operations used by palette commands.
@@ -79,4 +79,4 @@ I did not run `scripts/merge-gate.sh` or `behavioral-contracts.sh`.
 
 ## Handoff
 
-The branch is committed and clean. The conductor can gate and land commit `cfc4de60d8672971b62112cd4866db378d317378`.
+The branch is committed and clean. The conductor can gate the current branch and land the implementation from `cfc4de60d8672971b62112cd4866db378d317378`.
