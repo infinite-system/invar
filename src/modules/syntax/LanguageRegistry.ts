@@ -23,8 +23,6 @@ class $LanguageRegistry {
       cjs: 'javascript',
       json: 'json',
       jsonc: 'json',
-      md: 'markdown',
-      markdown: 'markdown',
       html: 'html',
       htm: 'html',
       xml: 'html',

@@ -8,6 +8,7 @@ import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 import type { NavigationHistoryContributor } from '../navigation/NavigationHistory';
 import { Files } from '../system/Files';
 import { MarkdownStructureSource } from './MarkdownStructureSource';
+import { MarkdownSyntaxSource } from './MarkdownSyntaxSource';
 
 // Markdown's per-workspace contribution: which tabs are showing the source | preview split, and the
 // claim that answers the host's capability questions while one is.
@@ -73,10 +74,17 @@ class $MarkdownWorkspace
   protected readonly disposeNavigationHistory: () => void;
   protected readonly structureSource: MarkdownStructureSource.Model;
   protected readonly disposeStructureSource: () => void;
+  protected readonly syntaxSource = this.createSyntaxSource();
+  readonly providers = [this.syntaxSource];
 
   // invariant: Construction goes through overridable seams (project.invariants.md)
   protected createStructureSource(): MarkdownStructureSource.Model {
     return new MarkdownStructureSource.Class();
+  }
+
+  // invariant: Construction goes through overridable seams (project.invariants.md)
+  protected createSyntaxSource(): MarkdownSyntaxSource.Model {
+    return new MarkdownSyntaxSource.Class();
   }
 
   /** File paths whose tabs show the compatibility source-preview split. */
