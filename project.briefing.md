@@ -4,7 +4,17 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
-# RESUME ANCHOR 57 — 2026-08-03 ~13:15 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
+# RESUME ANCHOR 57 — 2026-08-03 ~14:05 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
+
+LANDING PLAN (once #492 reports; it is the last live builder): land
+serially with merge-main + fresh gate each — 493, 405, 491, 495, 356,
+492 — then dispatch #490 (brief at /tmp/brief-490-1.md; it REQUIRES
+356 landed first: same keybinding files), land it, then wire
+census-488-imports.ts into the conventions gate with an allowlist
+(the ratchet; also author the coupling invariant record as a
+PROPOSAL). READY reports all triaged; conversions committed through
+6f71e8c2. User decisions queued: Shift+drag gesture (#495), pointer
+record refinement (#495), readiness-driven PTY record (#458).
 
 User is resting; /goal active: "get the decoupling done fully". The wave =
 #356 (agent plugin, IN FLIGHT, codex), #493 (ast-query modes, IN FLIGHT,

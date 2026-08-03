@@ -70,10 +70,12 @@ class $BoundedListPopup {
   protected anchorValue: BoundedListPopupAnchor = { column: 0, row: 0 };
   protected pointerPressedFilteredIndex = -1;
   protected pointerDragged = false;
+  protected ownerIdentifierValue: string | null = null;
   protected searchHovered = false;
   protected searchVisibleValue = true;
   protected backdropVisibleValue = true;
   protected itemsAlreadyFilteredValue = false;
+  protected capturesKeyboardValue = true;
   protected availableBottomExclusiveValue: number | undefined = undefined;
   protected filteredMatchesValue: readonly BoundedListPopupMatch[] = [];
   protected enabledNavigationValue: BoundedListPopupEnabledNavigation = {
@@ -116,6 +118,10 @@ class $BoundedListPopup {
 
   get acceptsQueryInput(): boolean {
     return this.open.value && this.searchEnabled;
+  }
+
+  get capturesKeyboard(): boolean {
+    return this.open.value && this.capturesKeyboardValue;
   }
 
   get filteredMatches(): readonly BoundedListPopupMatch[] {
@@ -359,11 +365,13 @@ class $BoundedListPopup {
     this.replaceItemSet(items);
     this.anchorValue = anchor;
     this.selectionHandler = selectionHandler;
+    this.ownerIdentifierValue = options.ownerIdentifier ?? null;
     this.searchThresholdValue =
       options.searchThreshold ?? $BoundedListPopup.DEFAULT_SEARCH_THRESHOLD;
     this.searchVisibleValue = options.searchVisible ?? true;
     this.backdropVisibleValue = options.showBackdrop ?? true;
     this.itemsAlreadyFilteredValue = options.itemsAlreadyFiltered ?? false;
+    this.capturesKeyboardValue = options.capturesKeyboard ?? true;
     this.availableBottomExclusiveValue = options.availableBottomExclusive;
     this.minimumWidthValue =
       options.minimumWidth ??
@@ -399,6 +407,7 @@ class $BoundedListPopup {
 
   close(): void {
     this.open.value = false;
+    this.ownerIdentifierValue = null;
     this.items.value = [];
     this.filteredMatchesValue = [];
     this.enabledNavigationValue = {
@@ -424,6 +433,10 @@ class $BoundedListPopup {
     this.searchInput.visible = false;
     this.list.visible = false;
     this.requestPaint();
+  }
+
+  closeIfOwned(ownerIdentifier: string): void {
+    if (this.ownerIdentifierValue === ownerIdentifier) this.close();
   }
 
   appendQuery(text: string): void {
@@ -1001,6 +1014,7 @@ export interface BoundedListPopupAnchor {
 }
 
 export interface BoundedListPopupOpenOptions {
+  ownerIdentifier?: string;
   title?: string;
   searchThreshold?: number;
   minimumWidth?: number;
@@ -1008,6 +1022,7 @@ export interface BoundedListPopupOpenOptions {
   searchVisible?: boolean;
   showBackdrop?: boolean;
   itemsAlreadyFiltered?: boolean;
+  capturesKeyboard?: boolean;
   availableBottomExclusive?: number;
   navigateBackwardHandler?: () => void;
 }

@@ -1,5 +1,6 @@
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
+import type { KeyEvent } from '@opentui/core';
 import { RenderLoadLedger } from '../system/RenderLoadLedger';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Settings } from '../settings/Settings';
@@ -24,6 +25,7 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     ActiveContribution
   >();
   protected readonly failures = new Map<string, string>();
+  protected readonly keyObservers = new Set<(key: KeyEvent) => void>();
 
   constructor(
     protected readonly orderedContributors: readonly ApplicationContributor[],
@@ -80,6 +82,10 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     this.options.requestRender();
   }
 
+  observeKey(key: KeyEvent): void {
+    for (const observer of this.keyObservers) observer(key);
+  }
+
   protected activate(contributor: ApplicationContributor): void {
     if (this.activeContributions.has(contributor.identifier)) return;
     const registrationDisposers: (() => void)[] = [];
@@ -100,6 +106,10 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
             bindings,
           ),
         );
+      },
+      registerKeyObserver: (observer) => {
+        this.keyObservers.add(observer);
+        registrationDisposers.push(() => this.keyObservers.delete(observer));
       },
       registerKeybindingGuard: (name, predicate) => {
         registrationDisposers.push(
@@ -177,6 +187,10 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         );
       },
       registerPanelContentFactory: (factory) => {
+        this.options.bottomPanelHost.registerPaneKind(
+          factory.kind,
+          factory.panelSpace,
+        );
         const unregisterFactory =
           this.options.panelContentFactories.register(factory);
         registrationDisposers.push(() => {
@@ -194,6 +208,10 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         return port;
       },
       registerPaneRuntime: (runtime) => {
+        this.options.bottomPanelHost.registerPaneKind(
+          runtime.kind,
+          runtime.panelSpace,
+        );
         const unregister = this.options.paneRuntimes.register(runtime);
         registrationDisposers.push(unregister);
         return {
@@ -281,6 +299,7 @@ export type ApplicationContributionsOptions = Omit<
   ApplicationContributionContext,
   | 'applicationContributions'
   | 'registerKeybindings'
+  | 'registerKeyObserver'
   | 'registerKeybindingGuard'
   | 'registerSetting'
   | 'registerDockContent'

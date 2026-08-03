@@ -94,12 +94,6 @@ class $CommandDefaults {
         run: () => getEditor().duplicateLine(),
       },
       {
-        id: 'narration.testVoice',
-        title: 'Narration: Test Voice',
-        category: 'Narration',
-        run: context.testNarrationVoice,
-      },
-      {
         id: 'view.focusEditor',
         title: 'View: Focus Editor',
         category: 'View',
@@ -154,14 +148,8 @@ class $CommandDefaults {
         run: context.toggleTerminal,
       },
       {
-        id: 'panel.toggleAgent',
-        title: 'Panel: Toggle Agent',
-        category: 'Panel',
-        run: context.toggleAgent,
-      },
-      {
         id: 'panel.toggleSplit',
-        title: 'Panel: Toggle Terminal and Agent Split',
+        title: 'Panel: Toggle Split',
         category: 'Panel',
         run: context.togglePanelSplit,
       },
@@ -206,12 +194,6 @@ class $CommandDefaults {
         title: 'Panel: Close Active Content',
         category: 'Panel',
         run: context.closeActivePanelContent,
-      },
-      {
-        id: 'agent.cycleTerminalFollowMode',
-        title: 'Agent: Cycle Terminal Follow Mode',
-        category: 'Agent',
-        run: context.cycleTerminalFollowMode,
       },
       {
         id: 'go.definition',
@@ -289,7 +271,6 @@ export interface CommandContext {
   toggleActivityBar: () => void;
   toggleRightDock: () => void;
   toggleTerminal: () => void;
-  toggleAgent: () => void;
   togglePanelSplit: () => void;
   focusPreviousPanelContent: () => void;
   focusNextPanelContent: () => void;
@@ -298,9 +279,7 @@ export interface CommandContext {
   moveActivityItemUp: () => void;
   moveActivityItemDown: () => void;
   closeActivePanelContent: () => void;
-  cycleTerminalFollowMode: () => void;
   openShortcutHelp: () => void;
   /** Speak a fixed sample line through the REAL TTS backend in the currently-selected voice — the
    *  audition affordance for the voice picker (legit user-triggered audio, never in the gate). */
-  testNarrationVoice: () => void;
 }

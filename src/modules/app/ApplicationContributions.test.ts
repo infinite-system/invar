@@ -21,6 +21,7 @@ class SampleContributor implements ApplicationContributor {
   readonly identifier = 'sample';
   readonly name = 'Sample';
   disposed = false;
+  readonly observedKeys: string[] = [];
 
   activateApplication(context: ApplicationContributionContext): void {
     context.registerSetting({
@@ -35,6 +36,7 @@ class SampleContributor implements ApplicationContributor {
       { chord: { key: 'u' }, action: 'sample.pluginDefault' },
     ]);
     context.registerKeybindingGuard('sampleAllowed', () => true);
+    context.registerKeyObserver((key) => this.observedKeys.push(key.name));
   }
 
   disposeApplication(): void {
@@ -78,6 +80,7 @@ class PanelFactoryContributor
   readonly name = 'Panel Factory';
   readonly kind = 'database';
   readonly instanceLabel = 'Database';
+  readonly panelSpace = { kind: 'database', label: 'Database' } as const;
 
   activateApplication(context: ApplicationContributionContext): void {
     context.registerPanelContentFactory(this);
@@ -171,6 +174,17 @@ describe('ApplicationContributions', () => {
     manager.setEnabled('sample', false);
 
     expect(keybindings.hasGuard('sampleAllowed')).toBe(false);
+  });
+
+  test('key observers receive decoded keys only while their contribution is active', () => {
+    const { contributor, manager } = createManager();
+    manager.activateAll();
+
+    manager.observeKey({ name: 'escape' } as never);
+    manager.setEnabled('sample', false);
+    manager.observeKey({ name: 'c' } as never);
+
+    expect(contributor.observedKeys).toEqual(['escape']);
   });
 
   test('a failed contributor is recorded while later contributors activate', () => {
@@ -361,6 +375,8 @@ describe('ApplicationContributions', () => {
     } as unknown as ApplicationContributionsOptions);
 
     manager.activateAll();
+    expect(bottomPanelHost.spaceKindForPaneKind('database')).toBe('database');
+    expect(bottomPanelHost.spaceLabel('database')).toBe('Database');
     bottomPanelHost.register(database);
     expect(panelContentFactories.factory('database')).toBe(contributor);
 

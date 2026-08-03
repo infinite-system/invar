@@ -6,6 +6,7 @@ import { StatusProjectionContributions } from '../app/StatusProjectionContributi
 import { Theme } from '../theme/Theme';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import { PanelHost } from '../ui/PanelHost';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import { MockBackend } from './MockBackend';
 import { TerminalEmulator } from './TerminalEmulator';
@@ -63,6 +64,7 @@ function activatedTerminalPlugin(currentPane: () => PaneContent | null) {
     workspaceSet,
     theme: new Theme.Class(),
     paneRuntimes,
+    bottomPanelHost: new PanelHost.Class(),
     statusProjectionContributions,
     currentPaneOfKind: () => currentPane(),
     releasePane: (identifier: string) => {
@@ -92,6 +94,24 @@ test('the terminal registers as a runtime and withdraws it symmetrically', () =>
   expect(context.paneRuntimes.runtime('terminal')?.kind).toBe('terminal');
   expect(context.paneRuntimes.addableKinds()).toEqual([
     { kind: 'terminal', label: 'Terminal' },
+  ]);
+  expect(context.paneRuntimes.spaceAddableKinds()).toEqual([
+    { kind: 'terminal', label: 'Terminal' },
+  ]);
+  expect(context.paneRuntimes.paneAddMenuEntries('terminal')).toEqual([
+    {
+      identifier: 'terminal',
+      label: 'Terminal',
+      instanceLabel: 'Terminal',
+      spaceKind: 'terminal',
+    },
+    {
+      identifier: 'terminal-agent',
+      label: 'Terminal (Agent)',
+      instanceLabel: 'Terminal (Agent)',
+      spaceKind: 'terminal',
+      process: { command: 'claude' },
+    },
   ]);
   expect(
     context.keybindings.resolve(

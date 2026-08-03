@@ -15,6 +15,7 @@ import {
   type Palette,
 } from '../../src/modules/theme/ThemePalettes';
 import { tasksTreeStamp } from '../tasks/tasks-status';
+import { DiagnosticLog } from './DiagnosticLog';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -741,6 +742,7 @@ const driver = new PtyTestDriver.Class({
     TUI_STATUS_PATH: statusPath,
     TUI_FRAME_PATH: framePath,
     TUI_FRAME_DUMP: '1',
+    INVAR_COPY_PATH_TELEMETRY: '1',
   },
 });
 
@@ -1183,6 +1185,90 @@ try {
   const scrollContentRowsBeforeChildWheel = Number(
     childModeStatus.terminalScrollContentRows,
   );
+  const selectionBackgroundBeforeShiftDrag = driver
+    .snapshot()
+    .cell(mouseTarget.row, mouseTarget.column)?.background;
+  const clipboardEmissionCountBeforeShiftDrag =
+    driver.clipboardEmissions().length;
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'press',
+    column: mouseTarget.column,
+    row: mouseTarget.row,
+    button: 'left',
+    shift: true,
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: mouseTarget.column + 4,
+    row: mouseTarget.row,
+    button: 'left',
+    shift: true,
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'release',
+    column: mouseTarget.column + 4,
+    row: mouseTarget.row,
+    button: 'left',
+    shift: true,
+  });
+  await driver.awaitGridCondition(
+    'Shift drag paints a host selection over the mouse-tracking child',
+    (candidate) =>
+      candidate.cell(mouseTarget.row, mouseTarget.column)?.background !==
+      selectionBackgroundBeforeShiftDrag,
+  );
+  driver.sendKeys('Control+c');
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'Shift-dragged terminal text reaches the copy result channel',
+    (status) => status.lastCopyChars === 5,
+  );
+  await driver.awaitOutputCondition(
+    'Shift-dragged terminal text emits one exact OSC 52 payload',
+    () =>
+      driver.clipboardEmissions().length >
+      clipboardEmissionCountBeforeShiftDrag,
+  );
+  const shiftDragClipboardEmission = driver.clipboardEmissions().at(-1);
+  HarnessSmoke.Class.requireCondition(
+    shiftDragClipboardEmission?.decodedText === 'MOUSE',
+    `Shift drag copied exact terminal text ${JSON.stringify(shiftDragClipboardEmission?.decodedText)}`,
+  );
+  await driver.awaitOutputCondition(
+    'Shift-dragged terminal copy writes terminal-owned telemetry',
+    () => {
+      const telemetryLine = DiagnosticLog.Class.latestLineContaining(
+        driver,
+        'COPY_PATH_TELEMETRY ',
+      );
+      return (
+        telemetryLine?.includes('"focusedSurface":"terminal"') === true &&
+        telemetryLine.includes('"selectionOwner":"terminal"') &&
+        telemetryLine.includes('"selectionLength":5') &&
+        telemetryLine.includes('"routeTaken":"copy-handler"') &&
+        telemetryLine.includes('"osc52Emitted":true') &&
+        telemetryLine.includes('"osc52ByteLength":5')
+      );
+    },
+  );
+  HarnessSmoke.Class.pass(
+    'Shift drag copied mouse-tracking child text and named the terminal selection',
+  );
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'press',
+    column: mouseTarget.column,
+    row: mouseTarget.row,
+    button: 'left',
+    shift: true,
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'release',
+    column: mouseTarget.column,
+    row: mouseTarget.row,
+    button: 'left',
+    shift: true,
+  });
   driver.sendMouseClick({
     column: mouseTarget.column + 3,
     row: mouseTarget.row,

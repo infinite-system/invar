@@ -19,7 +19,9 @@ import {
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 class $AgentSkillPopup {
+  protected readonly ownerIdentifier = 'agent-skill-popup';
   protected readonly popup: BoundedListPopup.Model;
+  protected readonly ownsPopup: boolean;
   protected readonly skillCache = new Map<
     string,
     readonly AgentPromptSkill[]
@@ -28,16 +30,25 @@ class $AgentSkillPopup {
   protected dismissedInvocationKey: string | null = null;
 
   constructor(protected readonly dependencies: AgentSkillPopupDependencies) {
-    this.popup = this.createPopup({
-      ...dependencies,
-      identifier: 'agent-skill-popup',
-    });
+    this.ownsPopup = dependencies.popup === undefined;
+    this.popup = dependencies.popup ?? this.createPopup(dependencies);
   }
 
   protected createPopup(
-    dependencies: ConstructorParameters<typeof BoundedListPopup.Class>[0],
+    dependencies: AgentSkillPopupDependencies,
   ): BoundedListPopup.Model {
-    return new BoundedListPopup.Class(dependencies);
+    if (!dependencies.scrollPhysics) {
+      throw new Error(
+        'Agent skill popup needs scroll physics when no shared popup is supplied',
+      );
+    }
+    return new BoundedListPopup.Class({
+      renderer: dependencies.renderer,
+      settings: dependencies.settings,
+      theme: dependencies.theme,
+      scrollPhysics: dependencies.scrollPhysics,
+      identifier: 'agent-skill-popup',
+    });
   }
 
   get open() {
@@ -82,7 +93,7 @@ class $AgentSkillPopup {
     ].join(':');
     this.activeInvocationKey = invocationKey;
     if (invocationKey === this.dismissedInvocationKey) {
-      this.popup.close();
+      this.popup.closeIfOwned(this.ownerIdentifier);
       return;
     }
     const matchingSkills = this.skills(workspaceRoot).filter((skill) =>
@@ -102,7 +113,7 @@ class $AgentSkillPopup {
       this.item(skill, maximumLabelWidth),
     );
     if (items.length === 0) {
-      this.popup.close();
+      this.popup.closeIfOwned(this.ownerIdentifier);
       return;
     }
     this.popup.openAt(
@@ -116,16 +127,18 @@ class $AgentSkillPopup {
         searchVisible: false,
         showBackdrop: false,
         itemsAlreadyFiltered: true,
+        capturesKeyboard: false,
         minimumWidth: popupGeometry.boxWidth,
         availableBottomExclusive: anchor.row,
         selectedItemIdentifier: this.selectedIdentifier ?? undefined,
+        ownerIdentifier: this.ownerIdentifier,
       },
     );
   }
 
   dismiss(): void {
     this.dismissedInvocationKey = this.activeInvocationKey;
-    this.popup.close();
+    this.popup.closeIfOwned(this.ownerIdentifier);
   }
 
   moveSelection(direction: 1 | -1): void {
@@ -149,7 +162,8 @@ class $AgentSkillPopup {
   }
 
   dispose(): void {
-    this.popup.dispose();
+    this.popup.closeIfOwned(this.ownerIdentifier);
+    if (this.ownsPopup) this.popup.dispose();
     this.skillCache.clear();
   }
 
@@ -214,7 +228,7 @@ class $AgentSkillPopup {
   protected closeAndResetDismissal(): void {
     this.activeInvocationKey = null;
     this.dismissedInvocationKey = null;
-    this.popup.close();
+    this.popup.closeIfOwned(this.ownerIdentifier);
   }
 }
 
@@ -228,5 +242,6 @@ export interface AgentSkillPopupDependencies {
   readonly renderer: CliRenderer;
   readonly settings: Settings.Instance;
   readonly theme: Theme.Instance;
-  readonly scrollPhysics: ScrollPhysics.Model;
+  readonly scrollPhysics?: ScrollPhysics.Model;
+  readonly popup?: BoundedListPopup.Model;
 }

@@ -29,13 +29,15 @@ class $StatusBar {
   protected readonly shortcutHelpButton: TextRenderable;
   protected readonly settingsButton: TextRenderable;
   protected readonly terminalButton: TextRenderable;
-  protected readonly agentButton: TextRenderable;
+  protected readonly contributionButton: TextRenderable;
   protected readonly rightDockButton: TextRenderable;
   protected readonly clock: TextRenderable;
   protected hover = false;
   protected settingsHover = false;
   protected terminalHover = false;
-  protected agentHover = false;
+  protected contributionHover = false;
+  protected contributedControl:
+    ReturnType<StatusBarSegments.Model['controls']>[number] | null = null;
   protected rightDockHover = false;
   // The clock's single re-armed minute-boundary timer (NOT a per-second interval): the only periodic
   // wake at rest, once/min, so it forces the demand-driven loop to repaint the new minute without
@@ -80,16 +82,14 @@ class $StatusBar {
       height: 1,
       selectable: false,
     });
-    // Agent-pane affordance: a hit-tested single-cell glyph, LEFT of the terminal button. Click runs the
-    // SAME toggleAgent closure the panel.toggleAgent chord runs (lazy-init + show/activate the agent pane
-    // in the bottom panel); it lights accent while the agent pane is the visible one — a click-to-open
-    // path that does not depend on a modifier chord the host terminal may swallow.
-    this.agentButton = new TextRenderable(renderer, {
-      id: 'status-agent-button',
-      content: ` ${deps.theme.agentIcon} `,
+    // A contributor may publish one compact panel control without teaching this host its identity.
+    this.contributionButton = new TextRenderable(renderer, {
+      id: 'status-contribution-button',
+      content: '',
       width: 3,
       height: 1,
       selectable: false,
+      visible: false,
     });
     this.rightDockButton = new TextRenderable(renderer, {
       id: 'status-right-dock-button',
@@ -116,7 +116,7 @@ class $StatusBar {
       selectable: false, // a click must only toggle the sheet, never start a text selection
     });
     this.bar.add(spacer);
-    this.bar.add(this.agentButton);
+    this.bar.add(this.contributionButton);
     this.bar.add(this.terminalButton);
     this.bar.add(this.settingsButton);
     this.bar.add(this.shortcutHelpButton);
@@ -153,28 +153,21 @@ class $StatusBar {
       }
       deps.tooltip.clear();
     };
-    this.agentButton.onMouseDown = () => {
-      deps.toggleAgent();
+    this.contributionButton.onMouseDown = () => {
+      this.contributedControl?.run();
       renderer.requestRender();
     };
-    this.agentButton.onMouseMove = (event) => {
-      if (!this.agentHover) {
-        this.agentHover = true;
+    this.contributionButton.onMouseMove = (event) => {
+      if (!this.contributionHover) {
+        this.contributionHover = true;
         renderer.requestRender();
       }
-      const openChordHint = deps.keybindings.bindingHint(
-        'panel.toggleAgent',
-        'global',
-      );
-      deps.tooltip.point(
-        `Agent (Claude)${openChordHint ? ` (${openChordHint})` : ''}`,
-        event.x,
-        event.y,
-      );
+      if (this.contributedControl)
+        deps.tooltip.point(this.contributedControl.label, event.x, event.y);
     };
-    this.agentButton.onMouseOut = () => {
-      if (this.agentHover) {
-        this.agentHover = false;
+    this.contributionButton.onMouseOut = () => {
+      if (this.contributionHover) {
+        this.contributionHover = false;
         renderer.requestRender();
       }
       deps.tooltip.clear();
@@ -303,7 +296,8 @@ class $StatusBar {
   panelControlContainsPoint(column: number, row: number): boolean {
     return (
       this.renderableContainsPoint(this.terminalButton, column, row) ||
-      this.renderableContainsPoint(this.agentButton, column, row)
+      (this.contributionButton.visible &&
+        this.renderableContainsPoint(this.contributionButton, column, row))
     );
   }
   rightDockControlContainsPoint(column: number, row: number): boolean {
@@ -348,8 +342,7 @@ class $StatusBar {
       this.hover || this.deps.shortcutHelp.open.value
         ? palette.accent
         : palette.dim;
-    // The terminal + agent affordances: current-tier glyph, accent while HOVERED or while THAT
-    // independently headed region is visible. A split lights both controls.
+    // The terminal affordance uses its built-in runtime action.
     const visibleContentKinds = new Set(
       this.deps.panelHost
         .visibleContents()
@@ -360,9 +353,20 @@ class $StatusBar {
       this.terminalHover || visibleContentKinds.has('terminal')
         ? palette.accent
         : palette.dim;
-    this.agentButton.content = ` ${this.deps.theme.agentIcon} `;
-    this.agentButton.fg =
-      this.agentHover || visibleContentKinds.has('agent')
+    const statusContext = {
+      workspaceSet: this.deps.workspaceSet,
+      app: this.deps.app,
+      primaryDockHost: this.deps.primaryDockHost,
+      focusedSurfaceTitle,
+    };
+    this.contributedControl =
+      this.deps.statusBarSegments.controls(statusContext)[0] ?? null;
+    this.contributionButton.visible = this.contributedControl !== null;
+    this.contributionButton.content = this.contributedControl
+      ? ` ${this.contributedControl.icon} `
+      : '';
+    this.contributionButton.fg =
+      this.contributionHover || this.contributedControl?.active
         ? palette.accent
         : palette.dim;
     this.rightDockButton.content = ` ${this.deps.theme.rightDockIcon} `;
@@ -409,8 +413,5 @@ export interface StatusBarDeps {
   /** Lazy-inits the terminal + toggles the bottom panel — the SAME closure the panel.toggleTerminal
    *  keybinding runs, so the button and the chord are one action (no divergent toggle paths). */
   toggleTerminal: () => void;
-  /** Lazy-inits the agent pane + shows/activates it in the bottom panel — the SAME closure the
-   *  panel.toggleAgent keybinding runs, so the button and the chord are one action. */
-  toggleAgent: () => void;
   toggleRightDock: () => void;
 }

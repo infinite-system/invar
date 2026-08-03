@@ -128,6 +128,27 @@ test('mouse-tracking gives child cells exact SGR clicks while pane gutters stay 
   expect(backend.writes).toHaveLength(writesBeforeGutterClick);
 });
 
+test('Shift drag keeps selection host-owned while child mouse tracking stays active', async () => {
+  const { backend, instance, pane } = makePane();
+  backend.feed('SHIFT-TARGET\x1b[?1003h\x1b[?1006h');
+  await instance.flush();
+  const writesBeforePointer = backend.writes.length;
+  const pointerContext = {
+    screenColumn: 40,
+    screenRow: 20,
+    button: 0,
+    modifiers: { alt: false, shift: true, ctrl: false },
+  };
+
+  pane.onPointerDown(2, 1, pointerContext);
+  pane.onPointerMove(5, 1, pointerContext);
+  pane.onPointerDrag(5, 1, pointerContext);
+  pane.onPointerUp(5, 1, pointerContext);
+
+  expect(backend.writes).toHaveLength(writesBeforePointer);
+  expect(pane.hasSelection()).toBe(true);
+});
+
 test('mouse-tracking off keeps terminal selection local and writes no pointer bytes', () => {
   const { backend, instance, pane } = makePane();
   const writesBeforePointer = backend.writes.length;

@@ -16,6 +16,12 @@ class $StatusBarSegments {
       contribution.segments(context),
     );
   }
+
+  controls(context: StatusBarSegmentContext): StatusBarControl[] {
+    return [...this.contributions].flatMap(
+      (contribution) => contribution.controls?.(context) ?? [],
+    );
+  }
 }
 
 export namespace StatusBarSegments {
@@ -26,6 +32,15 @@ export namespace StatusBarSegments {
 
 export interface StatusBarSegmentContribution {
   segments(context: StatusBarSegmentContext): readonly string[];
+  controls?(context: StatusBarSegmentContext): readonly StatusBarControl[];
+}
+
+export interface StatusBarControl {
+  readonly identifier: string;
+  readonly icon: string;
+  readonly label: string;
+  readonly active: boolean;
+  readonly run: () => void;
 }
 
 export interface StatusBarSegmentContext {

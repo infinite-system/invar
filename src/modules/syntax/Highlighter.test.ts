@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test';
 import { TextCoordinates } from '../text/TextCoordinates';
-import { EditorWrap } from '../editor/EditorWrap';
+import { EditorWrap } from '../text/EditorWrap';
 import { Highlighter, type LangId } from './Highlighter';
 
 const roles = (line: string, language: LangId) =>

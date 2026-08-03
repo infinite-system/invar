@@ -8,7 +8,7 @@ import { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import type { EditorColumnDefaultContext } from '../ui/EditorColumnDefault';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
-import { EditorSourceTextViews } from './EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from './EditorSourceTextViewProviderFactory';
 import { EditorPlugin } from './EditorPlugin';
 
 /** The contribution with its ONE construction seam pointed at a recording stub. The pane content it
@@ -60,7 +60,8 @@ function hostContext(
 function activatedEditorPlugin() {
   const settings = new Settings.Class();
   const workspaceSet = new WorkspaceSet.Class(settings, {
-    createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    createSourceTextViews: () =>
+      EditorSourceTextViewProviderFactory.Class.create(),
   });
   workspaceSet.open('/tmp');
   const editorColumnDefault = new EditorColumnDefault.Class();

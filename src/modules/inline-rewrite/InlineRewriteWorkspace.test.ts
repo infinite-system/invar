@@ -8,7 +8,7 @@ import type {
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { Workspace } from '../workspace/Workspace';
 import { InlineRewriteWorkspace } from './InlineRewriteWorkspace';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 
 class DeferredRewriteProvider implements RewriteProvider {
   readonly available = true;
@@ -34,7 +34,8 @@ class DeferredRewriteProvider implements RewriteProvider {
 
 function createFixture(enabled: boolean) {
   const workspace = new Workspace.Class({
-    createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    createSourceTextViews: () =>
+      EditorSourceTextViewProviderFactory.Class.create(),
   });
   const editor = workspace.editor;
   editor.document.loadFromText('const value = calculate()', 'test.ts');

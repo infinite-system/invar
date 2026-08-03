@@ -1,4 +1,4 @@
-import type { CliRenderer } from '@opentui/core';
+import type { CliRenderer, KeyEvent } from '@opentui/core';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
@@ -29,6 +29,10 @@ import type {
   SettingValue,
 } from '../settings/SettingContribution.interface';
 import type { Ref } from 'vue';
+import type { FindBarTarget } from '../search/FindBar';
+import type { FindBar } from '../search/FindBar';
+import type { SystemNoteContributions } from './SystemNoteContributions';
+import type { PanelContentLifecycle } from './PanelContentLifecycle';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 export interface ApplicationContributor {
@@ -54,9 +58,14 @@ export interface ApplicationContributionContext {
   readonly rightDockHost: PanelHost.Instance;
   readonly contextMenu: ContextMenu.Instance;
   readonly boundedListPopup: BoundedListPopup.Instance;
+  readonly findBar: FindBar.Instance;
   readonly overlayCoordinator: OverlayCoordinator.Instance;
   readonly statusBarSegments: StatusBarSegments.Model;
   readonly statusProjectionContributions: StatusProjectionContributions.Model;
+  /** Human-readable pane activity reaches contributed display surfaces through this registry. */
+  readonly systemNoteContributions: SystemNoteContributions.Model;
+  /** Observe generic bottom-panel content after it becomes resolvable through the host. */
+  readonly panelContentLifecycle: PanelContentLifecycle.Model;
   /** Register an occupant of the editor column (a comparison, a rendered preview). */
   readonly editorSurfaceContents: EditorSurfaceContents.Model;
   /** Register the editor column's DEFAULT occupant — what sits there when nothing claims it. The
@@ -66,6 +75,7 @@ export interface ApplicationContributionContext {
   ) => EditorColumnDefaultHostPort;
   readonly applicationContributions: ApplicationContributionCatalog;
   readonly registerKeybindings: (bindings: readonly Keybinding[]) => void;
+  readonly registerKeyObserver: (observer: (key: KeyEvent) => void) => void;
   readonly registerKeybindingGuard: (
     name: string,
     predicate: () => boolean,
@@ -91,6 +101,20 @@ export interface ApplicationContributionContext {
   readonly openRuntimePane: (
     runtimeKind: string,
     request: PaneRuntimeRequest,
+  ) => boolean;
+  readonly currentPaneOfKind: (kind: string) => PaneContent | null;
+  readonly ensureRuntimePane: (kind: string) => PaneContent | null;
+  readonly openFindTarget: (target: FindBarTarget) => void;
+  readonly focusedPanelCaretAnchor: () => {
+    column: number;
+    row: number;
+  } | null;
+  /** Copy through a pane's generic text-selection capability and publish the shared result proof. */
+  readonly copyPaneSelection: (content: PaneContent) => void;
+  /** Replace one pane in place with a fresh pane from another contributed runtime. */
+  readonly replacePaneWithRuntime: (
+    identifier: string,
+    runtimeKind: string,
   ) => boolean;
   readonly editorInteractionIsAvailable: () => boolean;
   readonly dismissEditorSuggestions: () => void;

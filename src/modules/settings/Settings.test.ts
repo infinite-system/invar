@@ -58,9 +58,8 @@ describe('Settings', () => {
     expect(settings.rightDockVerticalSpan.value).toBe('ends-at-panel');
     expect(settings.sidebarWidth.value).toBe(32);
     expect(settings.rightDockWidth.value).toBe(28);
-    expect(settings.agentTerminalFollowMode.value).toBe('off');
     expect(settings.primaryDockContentOrder.value).toEqual([]);
-    expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
+    expect(settings.panelContentOrder.value).toEqual(['terminal']);
     expect(settings.panelTabCycleSeconds.value).toBe(10);
     expect(settings.panelTabCycling.value).toBe(false);
   });
@@ -121,7 +120,6 @@ describe('Settings', () => {
         sidebarPosition: 'middle',
         panelAlignment: 'stretch',
         leftDockVerticalSpan: 'sometimes',
-        agentTerminalFollowMode: 'sometimes',
         primaryDockContentOrder: [],
         panelContentOrder: [],
         unknownKey: 99, // unknown, ignored
@@ -135,9 +133,8 @@ describe('Settings', () => {
     expect(settings.sidebarPosition.value).toBe('left');
     expect(settings.panelAlignment.value).toBe('center');
     expect(settings.leftDockVerticalSpan.value).toBe('full-height');
-    expect(settings.agentTerminalFollowMode.value).toBe('off');
     expect(settings.primaryDockContentOrder.value).toEqual([]);
-    expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
+    expect(settings.panelContentOrder.value).toEqual(['terminal']);
   });
 
   test('save preserves unrecognized user settings verbatim', () => {
@@ -219,7 +216,14 @@ describe('Settings', () => {
       },
     });
     contributedRatio.value.value = 0.65;
-    settings.set('agentTerminalFollowMode', 'on-request');
+    const terminalFollowMode = settings.registerSetting({
+      identifier: 'agent.terminalFollowMode',
+      label: 'Terminal follow mode',
+      section: 'Agent',
+      defaultValue: 'off' as string,
+      spec: { kind: 'enum', options: ['off', 'on-request'] },
+    });
+    terminalFollowMode.value.value = 'on-request';
     settings.set('primaryDockContentOrder', ['extensions', 'files', 'git']);
     settings.set('panelContentOrder', ['terminal', 'agent']);
     settings.save();
@@ -231,7 +235,7 @@ describe('Settings', () => {
     expect(JSON.parse(written as string).graphicsTier).toBe('halfblock');
     expect(JSON.parse(written as string).sidebarWidth).toBe(48);
     expect(JSON.parse(written as string).samplePluginRatio).toBe(0.65);
-    expect(JSON.parse(written as string).agentTerminalFollowMode).toBe(
+    expect(JSON.parse(written as string)['agent.terminalFollowMode']).toBe(
       'on-request',
     );
     expect(JSON.parse(written as string).primaryDockContentOrder).toEqual([
@@ -271,7 +275,14 @@ describe('Settings', () => {
     expect(reloaded.graphicsTier.value).toBe('halfblock');
     expect(reloaded.sidebarWidth.value).toBe(48);
     expect(reloadedRatio.value.value).toBe(0.65);
-    expect(reloaded.agentTerminalFollowMode.value).toBe('on-request');
+    const reloadedTerminalFollowMode = reloaded.registerSetting({
+      identifier: 'agent.terminalFollowMode',
+      label: 'Terminal follow mode',
+      section: 'Agent',
+      defaultValue: 'off' as string,
+      spec: { kind: 'enum', options: ['off', 'on-request'] },
+    });
+    expect(reloadedTerminalFollowMode.value.value).toBe('on-request');
     expect(reloaded.primaryDockContentOrder.value).toEqual([
       'extensions',
       'files',

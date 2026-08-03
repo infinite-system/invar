@@ -103,8 +103,7 @@ function clickSegment(
     segment.startColumn +
     Math.floor((segment.endColumnExclusive - segment.startColumn) / 2);
   driver.sendMouse({ kind: 'move', column, row, button: 'none' });
-  driver.sendMouse({ kind: 'press', column, row, button: 'left' });
-  driver.sendMouse({ kind: 'release', column, row, button: 'left' });
+  driver.sendMouseClick({ column, row, button: 'left' });
 }
 
 function clickCell(
@@ -113,8 +112,7 @@ function clickCell(
   row: number,
 ): void {
   driver.sendMouse({ kind: 'move', column, row, button: 'none' });
-  driver.sendMouse({ kind: 'press', column, row, button: 'left' });
-  driver.sendMouse({ kind: 'release', column, row, button: 'left' });
+  driver.sendMouseClick({ column, row, button: 'left' });
 }
 
 async function driveLegacyPersistedPaneRestore(): Promise<void> {

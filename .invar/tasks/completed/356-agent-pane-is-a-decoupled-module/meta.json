@@ -1,0 +1,20 @@
+{
+  "task": 356,
+  "slug": "agent-pane-is-a-decoupled-module",
+  "branch": "fleet/356-agent-pane-is-a-decoupled-module",
+  "worktree": ".invar/worktrees/356-agent-pane-is-a-decoupled-module",
+  "tmuxSession": "invar/356-agent-pane-is-a-decoupled-module",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-356-agent-pane-is-a-decoupled-module.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "5a75689d1bc10e23ad9b01111c777da1f2b02ea7",
+  "startedAt": "2026-08-03T13:06:39-04:00",
+  "round": 8,
+  "roundBriefedAtMs": 1785794717446,
+  "landedAt": "2026-08-03T18:18:20-04:00",
+  "durationMinutes": 311,
+  "mergeCommit": "94ec7eac"
+}

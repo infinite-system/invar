@@ -591,7 +591,7 @@ input) — drifts.
 all adopted fields; `TextEditing.deletePreviousWord` and `deleteNextWord` supply both word
 boundaries; the composer refused `ScrollableTextViewport` because it would suppress momentum + the
 scrollbar, and split to a shared wrap seam instead (agent-pane-scroll build, 2026-07-23);
-`src/modules/editor/ReadOnlyTextBuffer.ts` is consumed
+`src/modules/text/ReadOnlyTextBuffer.ts` is consumed
 by `Editor`, `DiffView`, and `MarkdownSplitView` without exposing editing or undo.
 
 **Impossible if true:** A behavior implemented more than once across consumers that share its generator;
@@ -629,17 +629,17 @@ profile differences without duplicated scanners.
 **Rejected alternatives:** A wrapper-specific boundary predicate — the agent and editor drift as
 soon as either surface adds a new break rule.
 
-**Evidence:** `src/modules/editor/WrapBreakOpportunity.ts`;
-`src/modules/editor/WrapBreakOpportunity.test.ts`; consumers in
-`src/modules/editor/EditorWrap.ts` and `src/modules/agent/AgentWordWrap.ts`;
+**Evidence:** `src/modules/text/WrapBreakOpportunity.ts`;
+`src/modules/text/WrapBreakOpportunity.test.ts`; consumers in
+`src/modules/text/EditorWrap.ts` and `src/modules/agent/AgentWordWrap.ts`;
 `scripts/harness/smoke-wrap-harness.ts`.
 
 **Impossible if true:** The editor and agent owning independent lists of legal break characters; a
 semantic wrapper adding a boundary rule without expressing it as a shared profile; prose and code
 using different scanners for the same boundary profile.
 
-**Verification:** `bun test src/modules/editor/WrapBreakOpportunity.test.ts
-src/modules/editor/EditorWrap.test.ts src/modules/agent/AgentWordWrap.test.ts && bun
+**Verification:** `bun test src/modules/text/WrapBreakOpportunity.test.ts
+src/modules/text/EditorWrap.test.ts src/modules/agent/AgentWordWrap.test.ts && bun
 scripts/harness/smoke-wrap-harness.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
 
 **Status:** provisional

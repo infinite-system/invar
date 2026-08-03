@@ -2,7 +2,7 @@ import { Static } from 'ivue/extras';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { Highlighter, type LangId, type Span } from '../syntax/Highlighter';
 import type { TextDocument } from '../text/TextDocument';
-import type { EditorFrameAttribution } from './EditorFrameAttribution';
+import type { EditorFrameAttribution } from '../text/EditorFrameAttribution';
 import type {
   DocumentSyntaxReader,
   SyntaxRevision,

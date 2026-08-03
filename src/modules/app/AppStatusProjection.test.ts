@@ -6,11 +6,9 @@ import {
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 import { ref } from 'vue';
-import { AgentPaneContent } from '../agent/AgentPaneContent';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { LayoutSlots } from '../layout/LayoutSlots';
-import { NarrationProjection } from '../narration/NarrationProjection';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
@@ -28,7 +26,7 @@ import {
   type AppStatusMouseEvent,
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { Dialog } from '../ui/Dialog';
 
@@ -73,7 +71,8 @@ describe('AppStatusProjection', () => {
   test('reads optional live ports on every snapshot and publishes the active agent title', () => {
     const settings = createSettings();
     workspaceSet = new WorkspaceSet.Class(settings, {
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
     });
     workspaceSet.open(temporaryRoot);
     const commands = new CommandRegistry.Class();
@@ -97,12 +96,6 @@ describe('AppStatusProjection', () => {
       itemCount: 0,
       geometry: null,
     };
-    const agentSkillPopup = {
-      open: ref(false),
-      items: [],
-      selectedIdentifier: null,
-      geometry: null,
-    };
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const goToLinePrompt = new GoToLinePrompt.Class();
     const quitConfirmation = new Dialog.Class();
@@ -121,10 +114,14 @@ describe('AppStatusProjection', () => {
     const statusProjectionContributions = {
       snapshot: () => contributedStatus,
     };
-    let contributedStatus: Partial<StatusSnapshot> = {};
+    let contributedStatus: Partial<StatusSnapshot> = {
+      agentTitle: '',
+      agentEngine: '',
+      agentAssistantEntryCount: 0,
+      agentLastAssistantText: '',
+      terminalFollowMode: 'off',
+    };
     let mouse: AppStatusMouseEvent | null = null;
-    let narration: InstanceType<typeof NarrationProjection.Class> | null = null;
-    let agentPaneContent: AgentPaneContent.Model | null = null;
     let terminalPaneContent: PaneContent | null = null;
     const ports: AppStatusProjectionPorts = {
       workspaceSet,
@@ -138,7 +135,6 @@ describe('AppStatusProjection', () => {
       contextMenu,
       boundedListPopup,
       completionPopup,
-      agentSkillPopup,
       shortcutHelp,
       tooltip,
       panelHost,
@@ -247,12 +243,6 @@ describe('AppStatusProjection', () => {
       },
       get mouse() {
         return mouse;
-      },
-      get narration() {
-        return narration;
-      },
-      get agentPaneContent() {
-        return agentPaneContent;
       },
       get terminalPaneContent() {
         return terminalPaneContent;
@@ -422,25 +412,17 @@ describe('AppStatusProjection', () => {
     );
 
     mouse = { type: 'down', x: 12, y: 7, button: 1 };
-    narration = {
-      spokenCount: ref(3),
-      lastSpoken: ref('Finished'),
-      bargeInCount: ref(1),
-    } as unknown as InstanceType<typeof NarrationProjection.Class>;
-    agentPaneContent = {
-      agentSession: {
-        busy: true,
-        pendingPermission: { toolName: 'Write' },
-      },
-      stuckToBottom: false,
-      expandedCount: 2,
-      scrollTop: 9,
-      viewportRows: 12,
-      contentLineCount: 38,
-      currentEngine: 'codex',
-      title: 'Codex (working…)',
-    } as unknown as AgentPaneContent.Model;
     contributedStatus = {
+      narrationSpokenCount: 3,
+      narrationLastSpoken: 'Finished',
+      narrationBargeInCount: 1,
+      agentPendingPermissionTool: 'Write',
+      agentEngine: 'codex',
+      agentTitle: 'Codex (working…)',
+      agentViewportRows: 12,
+      agentContentLineCount: 38,
+      agentAssistantEntryCount: 0,
+      agentLastAssistantText: '',
       terminalObservedEventCount: 7,
       terminalExited: true,
       terminalExitCode: 17,

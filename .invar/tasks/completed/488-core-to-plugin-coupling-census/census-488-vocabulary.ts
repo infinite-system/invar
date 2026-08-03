@@ -26,8 +26,8 @@
 //   bun .invar/tasks/in-progress/488-core-to-plugin-coupling-census/census-488-vocabulary.ts
 //
 // Both arms are proven inside the run:
-//   POSITIVE control — the seeds must be found: 'git.togglePanel' in ShortcutHelp.ts and
-//     'Terminal (Agent)' in Bootstrap.ts. Missing either exits 1.
+//   POSITIVE control — 'git.togglePanel' must still be found in ShortcutHelp.ts, and the agent
+//     command family must be harvested from its plugin while producing no core hit.
 //   NEGATIVE control — 'media.showTorus' is registered by the media plugin and used by no core
 //     file; it must be harvested yet produce zero core hits. A fabricated term
 //     'no-such-plugin-term-488' must also produce zero hits. Either firing exits 1.
@@ -270,13 +270,12 @@ const positiveOne = hits.some(
     hit.file.endsWith('ui/ShortcutHelp.ts') &&
     hit.literal === 'git.togglePanel',
 );
-const positiveTwo = hits.some(
-  (hit) =>
-    hit.file.endsWith('app/Bootstrap.ts') && hit.literal === 'Terminal (Agent)',
-);
+const positiveTwo =
+  termOwners.has('panel.toggleAgent') &&
+  !hits.some((hit) => hit.literal === 'panel.toggleAgent');
 if (!positiveOne || !positiveTwo) {
   console.error(
-    `POSITIVE CONTROL FAILED: ShortcutHelp git.togglePanel=${positiveOne}, Bootstrap 'Terminal (Agent)'=${positiveTwo}.`,
+    `POSITIVE CONTROL FAILED: ShortcutHelp git.togglePanel=${positiveOne}, agent command harvested and core-quiet=${positiveTwo}.`,
   );
   process.exit(1);
 }
@@ -292,5 +291,5 @@ if (!negativeHarvested || !negativeQuietOne || !negativeQuietTwo) {
   process.exit(1);
 }
 console.log(
-  "controls: positive OK (both seeds found), negative OK ('media.showTorus' harvested, zero core hits)",
+  "controls: positive OK (core hit and plugin-owned quiet term found), negative OK ('media.showTorus' harvested, zero core hits)",
 );

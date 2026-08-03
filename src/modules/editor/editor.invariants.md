@@ -1,8 +1,9 @@
 # Editor — Invariants
 
-Load-bearing rules for `src/modules/editor/` — the SOURCE-TEXT VIEW (`Editor`, `EditorWrap`,
-`EditorPane`, `EditorPaneRenderer`, `BracketMatch`, `CodeFolding`, `Cursor`, `Viewport`,
-`ReadOnlyTextBuffer`) and the `storage` undo store it drives. Stands on `project.invariants.md`;
+Load-bearing rules for `src/modules/editor/` — the SOURCE-TEXT VIEW (`Editor`, `EditorPane`,
+`EditorPaneRenderer`, `BracketMatch`, and `CodeFolding`) and the `storage` undo store it drives.
+The shared `EditorWrap`, `ReadOnlyTextBuffer`, and `EditorFrameAttribution` generators live in
+`src/modules/text/`. Stands on `project.invariants.md`;
 references are by name. Several records are `provisional` because the fast-built M3 code partially
 violates them — those violations are the coordinate/selection rework backlog, and each record's
 Verification is what promotes it to `established` as the rework lands.
@@ -64,10 +65,12 @@ invariant above).
 **Generates:** shift+arrow / mouse-drag selection; selection-aware editing; copy/cut/paste; the
 selection highlight in `RootView`.
 
-**Evidence:** `Cursor.ts` `anchor` + `selectionRange()`; `ReadOnlyTextBuffer.ts`
+**Evidence:** `src/modules/text/TextCursor.ts` `anchor` + `selectionRange()`;
+`src/modules/text/ReadOnlyTextBuffer.ts`
 `selectionText`/`copySelection`/`selectAll`; `Editor.ts` selection-aware
 `insertText`/`insertNewline`/`backspace`/`deleteChar` and `cutSelection`/`pasteClipboard`;
-`ReadOnlyTextBuffer.test.ts`; `EditorSelection.test.ts`; `scripts/smoke-editor.sh`.
+`src/modules/text/ReadOnlyTextBuffer.test.ts`; `EditorSelection.test.ts`;
+`scripts/smoke-editor.sh`.
 
 **Impossible if true:** typing over a selection that leaves the selected text in place; a copy
 that returns text split mid-grapheme; a paste that inserts without removing the selection.
@@ -97,14 +100,14 @@ without dead mutation paths in Diff or Markdown.
 **Rejected alternatives:** Construct `Editor` and set `readOnly` — every read-only consumer
 inherits mutation, undo, persistence, and viewport behavior it must suppress.
 
-**Evidence:** `src/modules/editor/ReadOnlyTextBuffer.ts`;
-`src/modules/editor/ReadOnlyTextBuffer.test.ts`; `src/modules/editor/Editor.ts`;
+**Evidence:** `src/modules/text/ReadOnlyTextBuffer.ts`;
+`src/modules/text/ReadOnlyTextBuffer.test.ts`; `src/modules/editor/Editor.ts`;
 `src/modules/diff/DiffView.ts`; `src/modules/markdown/MarkdownSplitView.ts`.
 
 **Impossible if true:** `DiffView` or `MarkdownSplitView` importing or constructing `Editor`; a
 `ReadOnlyTextBuffer` exposing insert, delete, undo, redo, save, or viewport state.
 
-**Verification:** `bun test src/modules/editor/ReadOnlyTextBuffer.test.ts && ! rg "new Editor\\.Class|from '../editor/Editor'" src/modules/diff src/modules/markdown`
+**Verification:** `bun test src/modules/text/ReadOnlyTextBuffer.test.ts && ! rg "new Editor\\.Class|from '../editor/Editor'" src/modules/diff src/modules/markdown`
 
 **Status:** established
 
@@ -153,8 +156,8 @@ slice, while the mapping expands tabs on the logical line's continuous column ax
 crosses a wrap boundary can render a different width than the mapping assumes (same class of edge
 as the wrap-off column-virtualization slice; revisit if human QA hits it).
 
-**Verification:** `bun test src/modules/editor/WrapBreakOpportunity.test.ts
-src/modules/editor/EditorWrap.test.ts` (profile boundaries, segment partition/width/cluster-safety,
+**Verification:** `bun test src/modules/text/WrapBreakOpportunity.test.ts
+src/modules/text/EditorWrap.test.ts` (profile boundaries, segment partition/width/cluster-safety,
 CJK/emoji/tab boundaries, exact-width lines, 500-char unbroken runs, O(height) reveal walk, mode
 toggling purity) plus `bun scripts/harness/smoke-wrap-harness.ts`: every fixture line exceeds the
 observed viewport, readable tokens stay whole, the final visual row reaches the logical end, the
@@ -199,8 +202,8 @@ flat no-fold gutter globally discovering absent ranges; a wrapper dropping the c
 index array escaping `EditorWrap`.
 
 **Verification:** `bun test src/modules/editor/CodeFolding.test.ts
-src/modules/editor/EditorFrameAttribution.test.ts
-src/modules/editor/EditorWrapIndex.test.ts`; the three zero-match AST censuses in
+src/modules/text/EditorFrameAttribution.test.ts
+src/modules/text/EditorWrapIndex.test.ts`; the three zero-match AST censuses in
 `scripts/conventions-gate.sh`; `INPUT_BYTE_FLUSH_MODE=scale-edit bun
 scripts/harness/measure-input-byte-flush.ts`; `INPUT_BYTE_FLUSH_MODE=nested-fold-edit bun
 scripts/harness/measure-input-byte-flush.ts`.
@@ -229,8 +232,8 @@ frame between its 2,000-line and 100,000-line fixtures.
 **Generates:** A machine-independent ratio contract on editor scroll work;
 wall-clock FPS retained only as one secondary canary per surface.
 
-**Evidence:** `src/modules/editor/EditorFrameAttribution.ts`;
-`src/modules/ui/EditorPaneRenderer.ts`;
+**Evidence:** `src/modules/text/EditorFrameAttribution.ts`;
+`src/modules/editor/EditorPaneRenderer.ts`;
 `scripts/harness/measure-scroll-smoothness.ts`; the
 `glide-smoothness` behavioral contract.
 
@@ -315,7 +318,7 @@ change a whole-cell extent even though viewport and total rows are constant.
 scroll exposed different-width lines. The 2026-07-25 `JpegDecoder.test.ts` regression stopped
 Alt-wheel at the opening viewport width before the deep widest line's true end.
 `src/modules/editor/TextDocument.ts`; `src/modules/editor/Editor.ts`;
-`src/modules/editor/EditorWrap.ts`; `src/modules/workspace/Workspace.ts`;
+`src/modules/text/EditorWrap.ts`; `src/modules/workspace/Workspace.ts`;
 the `wrap-scroll` behavioral contract.
 
 **Impossible if true:** Alt-wheel stopping before the true end of a deep widest line; a horizontal

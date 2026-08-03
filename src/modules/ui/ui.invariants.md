@@ -274,7 +274,9 @@ a browsing row that leads the empty-query list and is never scored; `icon` fills
 column; the optional `navigateBackwardHandler` receives Left and the activation of a pinned parent
 row; and `replaceItems` atomically re-roots items, selection, title, viewport, and query.
 `BreadcrumbPicker` only maps filesystem entries into those options — resolving each row's mark
-through the same `Theme.icon` the file tree uses — and opens a selected file.
+through the same `Theme.icon` the file tree uses — and opens a selected file. An adapter that keeps
+independent dismissal state supplies an `ownerIdentifier`; `closeIfOwned` then prevents that adapter
+from closing a different consumer's live popup session.
 
 **Generates:** One modal input route; one query editor; one wrapped selection model; hierarchical
 drill navigation that any list adapter can opt into without another popup or input branch.
@@ -289,7 +291,8 @@ drift.
 
 **Impossible if true:** A hierarchical list consumer implementing its own popup, query editor,
 wrapped selection, or dismissal rules; Right and pointer activation reaching different selected
-items; a keep-open activation resetting items without resetting the requested query and viewport.
+items; a keep-open activation resetting items without resetting the requested query and viewport;
+an inactive adapter closing the live list opened by another consumer.
 
 **Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts
 src/modules/ui/BreadcrumbPicker.test.ts && bun

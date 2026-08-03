@@ -1,6 +1,6 @@
 import { Static } from 'ivue/extras';
 import type { Ref } from 'vue';
-import type { AgentTerminalFollowMode } from '../settings/Settings';
+import type { AgentTerminalFollowMode } from './AgentPaneContent';
 import type { AgentSession } from './AgentSession';
 
 // invariant: Terminal follow obeys the live user mode (src/modules/agent/agent.invariants.md)

@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { Settings } from '../settings/Settings';
 import { Workspace } from './Workspace';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 
 describe('Workspace scroll animation', () => {
   test('keeps frames live while sub-cell editor momentum remains', () => {
     const workspace = new Workspace.Class({
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
     });
     workspace.editor.viewport.verticalScrollMomentum.value = {
       velocity: 4,
@@ -21,7 +22,8 @@ describe('Workspace scroll animation', () => {
 
   test('word wrap leaves horizontal editor momentum untouched', () => {
     const workspace = new Workspace.Class({
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
     });
     workspace.editor.document.loadFromText('x'.repeat(100));
     workspace.editor.hasDocument.value = true;
@@ -37,7 +39,8 @@ describe('Workspace scroll animation', () => {
 
   test('live-applies the settings momentum ceiling', () => {
     const workspace = new Workspace.Class({
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
     });
     const store: Record<string, string> = {};
     const settings = new Settings.Class({

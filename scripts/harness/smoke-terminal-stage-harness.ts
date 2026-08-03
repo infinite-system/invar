@@ -116,7 +116,7 @@ async function driveAnimatedTerminalTools(
     settingsPath,
     JSON.stringify({
       agentSkipPermissions: true,
-      agentTypingSpeed: 40,
+      terminalTypingSpeed: 40,
       reducedMotion: false,
       terminalCleanPrompt: true,
     }),
@@ -550,7 +550,7 @@ async function driveReducedMotion(
     settingsPath,
     JSON.stringify({
       agentSkipPermissions: true,
-      agentTypingSpeed: 10,
+      terminalTypingSpeed: 10,
       reducedMotion: true,
       terminalCleanPrompt: true,
     }),
@@ -655,13 +655,13 @@ async function countAgentTypingFrames(
   homeDirectory: string,
   settingsPath: string,
   label: string,
-  agentTypingSpeed: number,
+  terminalTypingSpeed: number,
 ): Promise<number> {
   writeFileSync(
     settingsPath,
     JSON.stringify({
       agentSkipPermissions: true,
-      agentTypingSpeed,
+      terminalTypingSpeed,
       reducedMotion: false,
       terminalCleanPrompt: true,
     }),
@@ -708,7 +708,7 @@ async function driveAgentTypingSpeed(
   settingsPath: string,
 ): Promise<void> {
   console.log(
-    '== harness terminal-stage: agentTypingSpeed controls visible typing frames ==',
+    '== harness terminal-stage: terminalTypingSpeed controls visible typing frames ==',
   );
   const slowCompletedFrameCount = await countAgentTypingFrames(
     homeDirectory,
@@ -737,7 +737,7 @@ async function driveAgentTypingSpeed(
   HarnessSmoke.Class.requireCondition(
     orderingFailure === null,
     orderingFailure ??
-      'agentTypingSpeed 10 spans more completed frames than 240',
+      'terminalTypingSpeed 10 spans more completed frames than 240',
   );
 }
 
@@ -747,7 +747,7 @@ function typingFrameOrderingFailure(
 ): string | null {
   if (slowCompletedFrameCount > fastCompletedFrameCount) return null;
   return (
-    `agentTypingSpeed frame ordering failed: slow=` +
+    `terminalTypingSpeed frame ordering failed: slow=` +
     `${slowCompletedFrameCount}, fast=${fastCompletedFrameCount}; ` +
     `expected slow > fast`
   );
@@ -762,7 +762,7 @@ async function driveTerminalCleanPromptDisabled(
     settingsPath,
     JSON.stringify({
       agentSkipPermissions: true,
-      agentTypingSpeed: 40,
+      terminalTypingSpeed: 40,
       reducedMotion: false,
       terminalCleanPrompt: false,
     }),

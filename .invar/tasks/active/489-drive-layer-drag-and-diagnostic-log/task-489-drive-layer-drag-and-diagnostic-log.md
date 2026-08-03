@@ -37,3 +37,26 @@ bare repaint wait after input.
 
 MISSING: a drive primitive `--setting KEY=VALUE` that holds one user
 setting fixed without hand-building a temporary home + settings file.
+
+## Additional ask from #356 (2026-08-03)
+
+MISSING: a first-class negative screen condition — wait until text or
+a control is ABSENT (builders currently improvise with final snapshots
+and missing status keys). Also document: panelActiveContentKind
+persists while hidden; the close condition is panelVisible === false.
+
+## Additional ask from #356 round 2 (2026-08-03)
+
+MISSING: the one-shot drive CLI needs a narrow-output option for
+selected status fields (a two-key probe prints hundreds of status
+lines; the fluent driver has show, the CLI has nothing). Also note:
+status waits use JSON quoting — panelActiveContentKind="agent", not
+'agent'.
+
+## Additional ask from #356 round 3 (2026-08-03)
+
+MISSING: timeout messages for motion waits should print the short
+momentum/scroll-top sequence so "no impulse" vs "one-frame
+cancellation" vs "at a bound" is readable without a second probe.
+Also: the direct keyboard harness reuses artifacts/home — manual
+drives poison fresh-profile assertions; prefer per-run homes.

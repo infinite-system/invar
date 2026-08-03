@@ -729,3 +729,23 @@ wholesale — glyph included).
 4. **Read the bytes before modeling the renderer.** Four hypotheses about
    env, settings, fonts, and color died politely; sixty bytes of hexdump
    around one missing glyph ended the argument (`\x1b]66;w=1;≡\x1b\\`).
+
+## 2026-08-03 — file-before-steer violated by batching (family 0 adjacent)
+
+Batched round-brief.sh and steer.sh in ONE command block; the filing
+REFUSED (missing section) while the steer had already landed, so for
+one minute the builder held a pointer to a brief that did not exist.
+The doctrine line "filed BEFORE the steer" forbids exactly this;
+batching made the order a race. Rule restated operationally: never
+put round-brief.sh and steer.sh in the same command block — file,
+READ THE FILING RESULT, then steer.
+
+## 2026-08-03 — feed the surface, not the symptom (family 4 applied to rounds)
+
+Rounds 2-5 of #356 each fixed exactly the smoke the gate named, and
+each next gate found the next broken agent surface. The conductor fed
+partial coverage one symptom at a time — family 4 in round-brief
+form. When a change decouples/moves a whole SURFACE, the round brief
+enumerates that surface's full smoke inventory up front and demands
+one sweep, not the gate's latest sample. The gate is the sieve, not
+the work list.

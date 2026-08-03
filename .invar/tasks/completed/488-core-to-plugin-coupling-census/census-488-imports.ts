@@ -15,8 +15,8 @@
 // A rise in that count means new coupling; zero means the import arm is clean.
 //
 // Both arms are proven inside the run:
-//   POSITIVE control — the known seed (Bootstrap.ts imports ../agent/AgentFactory) must be
-//     found, or the script exits 1: a silent scanner is not an instrument.
+//   POSITIVE control — the sanctioned composition root imports AgentPlugin. The scanner must find
+//     it even after the original Bootstrap coupling is removed.
 //   NEGATIVE control — core files import the `vue` PACKAGE; the scanner must see those lines
 //     and stay silent about them (the package is not src/modules/vue). If it cannot tell the
 //     two apart, it exits 1.
@@ -163,15 +163,15 @@ for (const finding of offending.sort(
 }
 console.log(`offending count: ${offending.length}`);
 
-// POSITIVE control: the seed from the task file must be present.
-const seedFound = offending.some(
+// POSITIVE control: the composition root must remain visible to the scanner.
+const seedFound = sanctioned.some(
   (finding) =>
-    finding.file === 'src/modules/app/Bootstrap.ts' &&
-    finding.specifier === '../agent/AgentFactory',
+    finding.file === 'src/modules/plugins/DefaultPlugins.ts' &&
+    finding.specifier === '../agent/AgentPlugin',
 );
 if (!seedFound) {
   console.error(
-    'POSITIVE CONTROL FAILED: the known seed (Bootstrap.ts -> ../agent/AgentFactory) was not found.',
+    'POSITIVE CONTROL FAILED: DefaultPlugins.ts -> ../agent/AgentPlugin was not found.',
   );
   process.exit(1);
 }
@@ -187,5 +187,5 @@ if (vuePackageImportLinesSeen === 0 || vuePackageMisfire) {
 }
 console.log('');
 console.log(
-  `controls: positive OK (seed found), negative OK (${vuePackageImportLinesSeen} vue-package import lines seen, zero reported)`,
+  `controls: positive OK (composition import found), negative OK (${vuePackageImportLinesSeen} vue-package import lines seen, zero reported)`,
 );

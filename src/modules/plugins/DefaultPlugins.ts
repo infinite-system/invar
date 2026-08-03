@@ -1,6 +1,8 @@
 import { Static } from 'ivue/extras';
 import type { ApplicationContributor } from '../app/ApplicationContributor.interface';
 import { EditorPlugin } from '../editor/EditorPlugin';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
+import type { SourceTextViewProvider } from '../workspace/SourceTextView.interface';
 import { FileTreeContributor } from '../filetree/FileTreeContributor';
 import { GitPlugin } from '../git/GitPlugin';
 import { MarkdownPlugin } from '../markdown/MarkdownPlugin';
@@ -18,8 +20,13 @@ import { ExtensionsPlugin } from './ExtensionsPlugin';
 import { DatabaseProviderPlugin } from '../database/DatabaseProviderPlugin';
 import { DatabaseConsumerPlugin } from '../database/DatabaseConsumerPlugin';
 import { VuePlugin } from '../vue/VuePlugin';
+import { AgentPlugin } from '../agent/AgentPlugin';
 
 class $DefaultPlugins {
+  static createSourceTextViews(): SourceTextViewProvider {
+    return EditorSourceTextViewProviderFactory.Class.create();
+  }
+
   static create(): ApplicationContributor[] {
     return [
       new FileTreeContributor.Class(),
@@ -30,6 +37,7 @@ class $DefaultPlugins {
       new DatabaseProviderPlugin.Class(),
       new MediaPlugin.Class(),
       new TerminalPlugin.Class(),
+      new AgentPlugin.Class(),
       new InlineRewriteContributor.Class(),
       new EditorPlugin.Class(),
       new StructurePlugin.Class(),

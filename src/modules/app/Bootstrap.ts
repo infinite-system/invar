@@ -5,7 +5,6 @@
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
-// invariant: SDK extraction cleanup stays bounded (src/modules/agent/agent.invariants.md)
 import {
   createCliRenderer,
   RGBA,
@@ -68,31 +67,15 @@ import type {
 import { PaneRuntimes } from '../ui/PaneRuntimes';
 import { PanelContentFactories } from '../ui/PanelContentFactories';
 import type { PaneRuntimeRequest } from '../ui/PaneRuntime.interface';
-import { AgentFactory } from '../agent/AgentFactory';
-import { SdkBinaryExtraction } from '../agent/SdkBinaryExtraction';
-import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { TextInputKey } from '../text/TextInputKey';
 import type { TextInputAction } from '../text/TextInputModel';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
-import {
-  AgentPaneContent,
-  type AgentEnginePort,
-  type AgentTranscriptSearchPort,
-} from '../agent/AgentPaneContent';
-import { AgentProviderRegistry } from '../agent/AgentProviderRegistry';
-import {
-  AgentTerminalFollow,
-  type AgentTerminalObservationPort,
-} from '../agent/AgentTerminalFollow';
-import { AgentSkillPopup } from '../agent/AgentSkillPopup';
-import { TtsFactory } from '../narration/TtsFactory';
-import type { TtsBackend } from '../narration/TtsBackend.interface';
-import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
 import type { ApplicationContributor } from './ApplicationContributor.interface';
 import { StatusProjectionContributions } from './StatusProjectionContributions';
+import { SystemNoteContributions } from './SystemNoteContributions';
+import { PanelContentLifecycle } from './PanelContentLifecycle';
 import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
@@ -103,6 +86,7 @@ import { TaskNoticePaneContent } from '../tasks/TaskNoticePaneContent';
 import { Tasks } from '../tasks/Tasks';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { Dialog } from '../ui/Dialog';
+import type { SourceTextViewProvider } from '../workspace/SourceTextView.interface';
 
 class $Bootstrap {
   protected static awaitProjectedFrame(
@@ -116,7 +100,6 @@ class $Bootstrap {
 
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
     Logging.Class.info('Boot start');
-    this.reapSdkBinaryExtractions();
 
     // Pointer trail (observability, TUI_POINTER_TRAIL=1): paints the pointer
     // cell, a fading wake of recent positions, and click rings as a render
@@ -250,7 +233,6 @@ class $Bootstrap {
       kernelExtensions: Kernel.Class.instance.registeredExtensions(),
       appClassExtended: App.Class !== App.$Class,
     });
-    app.onDispose(() => this.reapSdkBinaryExtractions());
     app.attach(renderer);
     // OpenTUI owns stdout and may flush frames from a native render thread. Its OSC 52 writer shares
     // that serialization authority, so clipboard bytes can only land between complete frame writes.
@@ -297,7 +279,7 @@ class $Bootstrap {
           renderer.once('frame', () => resolve());
         }),
       codeFoldingEnabled: codeFoldingEnabled.value,
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: options.createSourceTextViews,
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
@@ -348,12 +330,6 @@ class $Bootstrap {
       theme,
       scrollPhysics,
     });
-    const agentSkillPopup = new AgentSkillPopup.Class({
-      renderer,
-      settings,
-      theme,
-      scrollPhysics,
-    });
     let completionRequestGeneration = 0;
     let completionRequestPending = false;
     let identifierCompletionRequestScheduled = false;
@@ -380,14 +356,35 @@ class $Bootstrap {
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
     // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
     const paneRuntimes = new PaneRuntimes.Class();
+    for (const persistedIdentifier of [
+      ...settings.panelContentOrder.value,
+      ...Object.values(settings.panelWorkspaceStates.value).flatMap((state) =>
+        PanelWorkspaceState.Class.paneIdentifiers(state),
+      ),
+    ]) {
+      paneRuntimes.reservePersistedInstanceIdentifier(persistedIdentifier);
+    }
     const panelContentFactories = new PanelContentFactories.Class();
     let openPanelContent = (_kind: string): boolean => false;
     let openRuntimePane = (
       _runtimeKind: string,
       _request: PaneRuntimeRequest,
     ): boolean => false;
+    let ensureRuntimePane = (_kind: string): PaneContent | null => null;
+    let openFindTarget = (
+      _target: import('../search/FindBar').FindBarTarget,
+    ): void => {};
+    let focusedPanelCaretAnchor = (): {
+      column: number;
+      row: number;
+    } | null => null;
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
     let persistPanelWorkspaceState = (): void => {};
+    let copyPaneSelection = (_content: PaneContent): void => {};
+    let replacePaneWithRuntime = (
+      _identifier: string,
+      _runtimeKind: string,
+    ): boolean => false;
     let restorePanelWorkspaceState = (
       _workspace: Workspace.Instance,
     ): void => {};
@@ -438,7 +435,6 @@ class $Bootstrap {
     const initialWorkspacePanelWorld: WorkspacePanelWorld = {
       contentSet: panelHost.activeContentSet,
       identityScope: '',
-      agentInstanceCount: 0,
     };
     workspacePanelWorlds.set(workspaceSet.active, initialWorkspacePanelWorld);
     let activeWorkspacePanelWorld = initialWorkspacePanelWorld;
@@ -452,7 +448,6 @@ class $Bootstrap {
       const workspacePanelWorld: WorkspacePanelWorld = {
         contentSet: panelHost.createContentSet(),
         identityScope: String(nextWorkspacePanelWorldNumber),
-        agentInstanceCount: 0,
       };
       workspacePanelWorlds.set(workspace, workspacePanelWorld);
       return workspacePanelWorld;
@@ -508,6 +503,8 @@ class $Bootstrap {
     const statusBarSegments = new StatusBarSegments.Class();
     const statusProjectionContributions =
       new StatusProjectionContributions.Class();
+    const systemNoteContributions = new SystemNoteContributions.Class();
+    const panelContentLifecycle = new PanelContentLifecycle.Class();
     // Contributed occupants of the editor column register here. Created BEFORE plugin activation
     // (which runs before buildRootView), so a provider registers early and its content is built
     // lazily at mount time from a view-supplied context.
@@ -537,9 +534,12 @@ class $Bootstrap {
         bottomPanelHost: panelHost,
         contextMenu,
         boundedListPopup,
+        findBar,
         overlayCoordinator,
         statusBarSegments,
         statusProjectionContributions,
+        systemNoteContributions,
+        panelContentLifecycle,
         editorSurfaceContents,
         editorColumnDefault,
         paneRuntimes,
@@ -548,6 +548,12 @@ class $Bootstrap {
         openRuntimePane: (runtimeKind, request) =>
           openRuntimePane(runtimeKind, request),
         currentPaneOfKind,
+        ensureRuntimePane: (kind) => ensureRuntimePane(kind),
+        openFindTarget: (target) => openFindTarget(target),
+        focusedPanelCaretAnchor: () => focusedPanelCaretAnchor(),
+        copyPaneSelection: (content) => copyPaneSelection(content),
+        replacePaneWithRuntime: (identifier, runtimeKind) =>
+          replacePaneWithRuntime(identifier, runtimeKind),
         releasePane: (identifier) =>
           panelHost.removeContentFromAnySet(identifier),
         editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
@@ -583,11 +589,8 @@ class $Bootstrap {
     let panelPaneAddPopup: PanelAddPopup.Instance | null = null;
     let pendingPanelSplitTargetIdentifier: string | null = null;
 
-    // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J / Ctrl+backtick)
-    // AND the status-bar terminal button. Opening it beside an existing agent region creates the
-    // visible split; closing it leaves the agent region intact.
+    // The terminal action is shared by its chord and status-bar control.
     const toggleTerminal = (): void => {
-      agentSkillPopup.close();
       const visibleTerminal = visiblePaneOfKind('terminal');
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
       else {
@@ -598,19 +601,7 @@ class $Bootstrap {
       }
     };
 
-    // The native agent pane owns its own headed region in the bottom-panel layout. Opening it while the
-    // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
-    const toggleAgent = (): void => {
-      agentSkillPopup.close();
-      const visibleAgent = visiblePaneOfKind('agent');
-      if (visibleAgent) panelHost.toggleContent(visibleAgent.id);
-      else {
-        const agent = ensureAgent();
-        if (agent) panelHost.showContent(agent.id);
-      }
-    };
     const toggleRightDock = (): void => {
-      agentSkillPopup.close();
       // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
       rightDockHost.toggle();
       if (rightDockHost.visible.value) panelHost.blur();
@@ -689,7 +680,6 @@ class $Bootstrap {
       editorSurfaceContents,
       editorColumnDefault,
       toggleTerminal,
-      toggleAgent,
       (anchor) => panelAddPopup?.show(anchor),
       (anchor, splitTargetIdentifier) => {
         pendingPanelSplitTargetIdentifier = splitTargetIdentifier ?? null;
@@ -700,6 +690,13 @@ class $Bootstrap {
       revealFindMatch,
       layoutSlots,
     );
+    focusedPanelCaretAnchor = () => view.focusedPanelCaretAnchor();
+    openFindTarget = (target): void => {
+      overlayCoordinator.openExclusiveOverlay('findBar', () =>
+        findBar.openForTarget(target, 'find'),
+      );
+      revealFindMatch();
+    };
     // Every workspace keeps its own dock widths, dock visibility, right-dock content, and bottom
     // panel height. The layout module owns those values; this is only the wiring that tells it
     // which live cells they are. Registered after the view exists, so the defaults it captures are
@@ -759,68 +756,17 @@ class $Bootstrap {
     // true size. The host names no runtime: it passes a KIND to the registry and registers whatever
     // comes back.
     const runtimePanes = new Map<string, PaneContent>();
-    const currentAgentPane = (): AgentPaneContent.Model | null => {
-      const content = currentPaneOfKind('agent');
-      return content instanceof AgentPaneContent.Class ? content : null;
-    };
-    const synchronizeAgentSkillPopup = (
-      pane: AgentPaneContent.Model | null = panelHost.focusedContent instanceof
-      AgentPaneContent.Class
-        ? panelHost.focusedContent
-        : null,
-    ): void => {
-      if (!pane || !panelHost.visible.value || !panelHost.focused.value) {
-        agentSkillPopup.close();
-        return;
-      }
-      agentSkillPopup.synchronize(
-        pane.id,
-        pane.agentSession.workspaceDirectory,
-        pane.skillInvocation(),
-        view.focusedPanelCaretAnchor(),
-        (invocation, skillName) =>
-          pane.acceptSkillInvocation(invocation, skillName),
+    const runtimeSystemNoteDisposers = new Map<string, () => void>();
+    const registerRuntimePaneContent = (content: PaneContent): void => {
+      runtimePanes.set(content.id, content);
+      const disposeSystemNote = content.onSystemNote?.((note) =>
+        systemNoteContributions.publish(note),
       );
-    };
-    let terminalFollowController: AgentTerminalFollow.Model | null = null;
-    const cycleTerminalFollowMode = (): void => {
-      settings.agentTerminalFollowMode.value =
-        AgentTerminalFollow.Class.nextMode(
-          settings.agentTerminalFollowMode.value,
-        );
-      settings.save();
-    };
-    const terminalFollowPort = {
-      mode: settings.agentTerminalFollowMode,
-      label: () =>
-        AgentTerminalFollow.Class.labelFor(
-          settings.agentTerminalFollowMode.value,
-        ),
-      cycle: () => {
-        cycleTerminalFollowMode();
-        return settings.agentTerminalFollowMode.value;
-      },
-    };
-    const connectTerminalFollow = (): void => {
-      const observationPort = currentPaneOfKind(
-        'terminal',
-      )?.capability?.<AgentTerminalObservationPort>('terminal-observation');
-      const agentPane = currentAgentPane();
-      if (terminalFollowController || !observationPort || !agentPane) {
-        return;
+      if (disposeSystemNote) {
+        runtimeSystemNoteDisposers.set(content.id, disposeSystemNote);
       }
-      terminalFollowController = new AgentTerminalFollow.Class(
-        agentPane.agentSession,
-        observationPort,
-        settings.agentTerminalFollowMode,
-        () => settings.save(),
-      );
-    };
-    reconnectPanelWorldDependencies = (): void => {
-      agentSkillPopup.close();
-      terminalFollowController?.dispose();
-      terminalFollowController = null;
-      connectTerminalFollow();
+      panelHost.register(content);
+      panelContentLifecycle.publishRegistered(content);
     };
     // Build a pane through its contributed runtime. The host supplies identity and the laid-out
     // geometry; the runtime decides what — if anything — it starts behind them.
@@ -862,18 +808,17 @@ class $Bootstrap {
         process,
       });
       if (!content) return null;
-      runtimePanes.set(content.id, content);
-      // A pane's own notes reach whatever surface shows them; the host neither composes nor reads
-      // them.
-      content.onSystemNote?.((note) =>
-        currentAgentPane()?.agentSession.appendSystemNote(note),
-      );
-      panelHost.register(content);
-      connectTerminalFollow();
+      registerRuntimePaneContent(content);
       return content;
     };
-    const ensureRuntimePane = (kind: string): PaneContent | null =>
+    ensureRuntimePane = (kind: string): PaneContent | null =>
       currentPaneOfKind(kind) ?? createRuntimePane(kind);
+    replacePaneWithRuntime = (identifier, runtimeKind): boolean => {
+      const replacement = createRuntimePane(runtimeKind, true);
+      return replacement
+        ? panelHost.replaceContent(identifier, replacement.id)
+        : false;
+    };
     openRuntimePane = (
       runtimeKind: string,
       request: PaneRuntimeRequest,
@@ -890,218 +835,16 @@ class $Bootstrap {
       }
       const content = paneRuntimes.createPane(runtimeKind, request);
       if (!content) return false;
-      runtimePanes.set(content.id, content);
-      panelHost.register(content);
+      registerRuntimePaneContent(content);
       panelHost.showContent(content.id);
       return true;
     };
 
-    // The native agent pane — a second PaneContent with its OWN headed region in the bottom layout,
-    // registered lazily on first toggle (idle cost zero). The host still supplies the shared layout and
-    // splitter primitives, while terminal and agent identity remain separate.
-    // The audio narration projection over the agent transcript (the third projection: text→pane,
-    // visual→decorations, audio→speech). Created alongside the agent pane so it subscribes to the SAME
-    // AgentSession; null until the agent pane is ensured. Barge-in + dispose route through it.
-    const narrationsByAgentIdentifier = new Map<
-      string,
-      NarrationProjection.Instance
-    >();
-    const currentNarration = (): NarrationProjection.Instance | null => {
-      const agentPane = currentAgentPane();
-      return agentPane
-        ? (narrationsByAgentIdentifier.get(agentPane.id) ?? null)
-        : null;
-    };
-    // The agent pane instance once ensured — the frame dump reads its view state (scroll/collapse) so the
-    // driving smoke asserts the UX without pane-scraping. Null until the pane is first toggled.
-    // ONE transcript-search action, shared by Ctrl+F and the pane's clickable search icon. Overlay
-    // exclusivity stays host-owned; the pane only invokes this port.
-    const openAgentTranscriptSearch = (): void => {
-      agentSkillPopup.close();
-      const targetAgent = currentAgentPane();
-      if (!targetAgent) return;
-      const transcriptFindTarget = targetAgent.findTarget();
-      overlayCoordinator.openExclusiveOverlay('findBar', () =>
-        findBar.openForTarget(transcriptFindTarget, 'find'),
-      );
-      revealFindMatch();
-    };
-    const agentTranscriptSearchPort: AgentTranscriptSearchPort = {
-      findBar,
-      open: openAgentTranscriptSearch,
-    };
-    // A one-shot TTS backend for the "Narration: Test Voice" audition — recreated per test in the current
-    // selected voice; the previous one is disposed so repeated tests never pile up. Under
-    // INVAR_TTS_BACKEND=mock (the gate) this is silent.
-    let testVoiceBackend: TtsBackend | null = null;
-    const testNarrationVoice = (): void => {
-      testVoiceBackend?.dispose();
-      testVoiceBackend = TtsFactory.Class.createBackend({
-        voice: settings.agentNarrationVoice.value,
-        rate: settings.agentNarrationRate.value,
-      });
-      testVoiceBackend.speak(
-        'Narration voice test — the quick brown fox jumps over the lazy dog.',
-      );
-    };
-
-    // The agent's declared terminal-tool dependency, resolved through the pane capability the
-    // CONSUMER names. The host relays the identifier and never learns what backs the port; with no
-    // runtime for the kind the tools report the absence instead of crashing.
-    const terminalCommandPort = (): AgentTerminalToolPort => {
-      const port =
-        ensureRuntimePane('terminal')?.capability?.<AgentTerminalToolPort>(
-          'terminal-commands',
-        );
-      if (!port) throw new Error('No terminal runtime is installed');
-      return port;
-    };
-    const revealTerminalForAgentCommand = (): AgentTerminalToolPort => {
-      const terminalPane = ensureRuntimePane('terminal');
-      const port =
-        terminalPane?.capability?.<AgentTerminalToolPort>('terminal-commands');
-      if (!terminalPane || !port) {
-        throw new Error('No terminal runtime is installed');
-      }
-      panelHost.showContent(terminalPane.id);
-      const terminalIndex = panelHost.resolvedCells.findIndex(
-        (cell) => cell.content.id === terminalPane.id,
-      );
-      if (terminalIndex >= 0) panelHost.focusCell(terminalIndex);
-      return port;
-    };
-    const terminalToolPort: AgentTerminalToolPort = {
-      readTerminalInput: () => terminalCommandPort().readTerminalInput(),
-      readTerminalScrollback: (request) =>
-        terminalCommandPort().readTerminalScrollback(request),
-      stageTerminalCommand: (command) =>
-        revealTerminalForAgentCommand().stageTerminalCommand(command),
-      replaceTerminalInput: (command) =>
-        revealTerminalForAgentCommand().replaceTerminalInput(command),
-      runTerminalCommand: (command) =>
-        revealTerminalForAgentCommand().runTerminalCommand(command),
-    };
-
-    // --- Live engine switcher (claude ⇄ codex) --------------------------------------------------------
-    // ONE provider authority: label, availability, cycling, and construction all read the SAME
-    // AgentProviderRegistry resolution, so the mode line can never claim an engine the factory didn't
-    // build (the reviewed dual-authority bug: configured codex with codex missing labeled "codex" while
-    // claude silently ran; with neither installed it labeled "claude" while the echo ran).
-    // Swap the backend behind the SAME AgentSession (transcript preserved), then write the setting back.
-    const cycleEngine = (pane: AgentPaneContent.Model): boolean => {
-      const current = pane.agentSession.activeEngine;
-      const next = AgentProviderRegistry.Class.nextEngine(current);
-      if (!next) return false;
-      const nextBackend = AgentFactory.Class.createBackend({
-        cwd: workspaceSet.active.root,
-        provider: next === 'echo' ? 'auto' : next,
-        skipPermissions: () => settings.agentSkipPermissions.value,
-        model: settings.agentModel.value,
-        terminalTools: terminalToolPort,
-      });
-      if (pane.agentSession.swapBackend(nextBackend, next)) {
-        if (next !== 'echo') settings.agentProvider.value = next;
-        settings.save(); // persist the write-back (a bare ref write live-applies but does not persist)
-        return true;
-      }
-      nextBackend.dispose(); // swap refused (busy) — don't leak the backend we built
-      return false;
-    };
-
-    const createAgent = (
-      additionalInstance = false,
-      labelOverride?: string,
-      persistedIdentifier?: string,
-    ): AgentPaneContent.Model | null => {
-      const anyExisting = panelHost.contentsOfKind('agent').length > 0;
-      const instanceNumber =
-        additionalInstance || anyExisting
-          ? activeWorkspacePanelWorld.agentInstanceCount + 1
-          : 1;
-      activeWorkspacePanelWorld.agentInstanceCount = Math.max(
-        activeWorkspacePanelWorld.agentInstanceCount,
-        instanceNumber,
-      );
-      const identifier = persistedIdentifier
-        ? paneRuntimes.claimPersistedInstanceIdentifier(persistedIdentifier)
-          ? persistedIdentifier
-          : null
-        : paneRuntimes.allocateInstanceIdentifier();
-      if (!identifier) return null;
-      const label =
-        labelOverride ??
-        (instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`);
-      // Real Claude (when `claude` is on PATH) runs in the workspace root so it operates in the project.
-      const agentPane = AgentFactory.Class.create({
-        identifier,
-        label,
-        onExit: (agentIdentifier) => {
-          const terminalPane = createRuntimePane(
-            'terminal',
-            true,
-            undefined,
-            nextWindowLabel('Terminal'),
-          );
-          if (terminalPane) {
-            panelHost.replaceContent(agentIdentifier, terminalPane.id);
-          }
-        },
-        cwd: workspaceSet.active.root,
-        provider: settings.agentProvider.value,
-        skipPermissions: () => settings.agentSkipPermissions.value, // LIVE getter — Shift+Tab toggle applies next turn
-        model: settings.agentModel.value,
-        terminalTools: terminalToolPort,
-      });
-      if (
-        agentPane instanceof AgentPaneContent.Class &&
-        narrationsByAgentIdentifier.has(agentPane.id)
-      ) {
-        throw new Error(
-          `Agent pane identifier already owns narration: ${agentPane.id}`,
-        );
-      }
-      panelHost.register(agentPane);
-      if (agentPane instanceof AgentPaneContent.Class) {
-        agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
-        const enginePort: AgentEnginePort = {
-          get provider() {
-            return agentPane.agentSession.activeEngine;
-          },
-          get canCycle() {
-            return AgentProviderRegistry.Class.availableEngines().length >= 2;
-          },
-          cycle: () => cycleEngine(agentPane),
-        };
-        agentPane.attachEnginePort(enginePort); // mode-line engine segment + click/Ctrl+E cycle
-        agentPane.attachTerminalFollowPort(terminalFollowPort);
-        agentPane.attachTranscriptSearchPort(agentTranscriptSearchPort); // icon + Ctrl+F share ONE action
-        const agentNarration = new NarrationProjection.Class(
-          agentPane.agentSession,
-          settings.agentAudioNarration,
-          // LIVE voice + rate: read per utterance so changing them in settings applies to ongoing narration
-          // without recreating the backend or restarting.
-          TtsFactory.Class.createBackend({
-            voiceProvider: () => settings.agentNarrationVoice.value,
-            rateProvider: () => settings.agentNarrationRate.value,
-          }),
-        );
-        narrationsByAgentIdentifier.set(agentPane.id, agentNarration);
-        connectTerminalFollow();
-      }
-      return agentPane;
-    };
-    const ensureAgent = (): AgentPaneContent.Model | null =>
-      currentAgentPane() ?? createAgent();
     handlePanelContentRemoved = (content): void => {
-      if (runtimePanes.delete(content.id)) paneRuntimes.paneRemoved(content);
-      if (content instanceof AgentPaneContent.Class) {
-        const removedNarration = narrationsByAgentIdentifier.get(content.id);
-        removedNarration?.dispose();
-        narrationsByAgentIdentifier.delete(content.id);
-      }
-      terminalFollowController?.dispose();
-      terminalFollowController = null;
-      connectTerminalFollow();
+      if (!runtimePanes.delete(content.id)) return;
+      runtimeSystemNoteDisposers.get(content.id)?.();
+      runtimeSystemNoteDisposers.delete(content.id);
+      paneRuntimes.paneRemoved(content);
     };
 
     const createContributedPaneInstance = (
@@ -1124,16 +867,9 @@ class $Bootstrap {
     };
     const addPanelContent = (kind: string): void => {
       const content =
-        kind === 'database'
-          ? createContributedPaneInstance(kind)
-          : kind === 'agent'
-            ? createAgent(true)
-            : createRuntimePane(kind, true);
+        createContributedPaneInstance(kind) ?? createRuntimePane(kind, true);
       if (content) {
-        panelHost.createSpaceForContent(
-          content.id,
-          kind === 'database' ? 'database' : 'terminal',
-        );
+        panelHost.createSpaceForContent(content.id, kind);
       }
     };
     openPanelContent = (kind: string): boolean => {
@@ -1147,8 +883,8 @@ class $Bootstrap {
       popup: boundedListPopup,
       overlayCoordinator,
       addableKinds: () => [
-        { kind: 'terminal', label: 'Terminal' },
-        { kind: 'database', label: 'Database' },
+        ...paneRuntimes.spaceAddableKinds(),
+        ...panelContentFactories.addableKinds(),
       ],
       addContent: addPanelContent,
     });
@@ -1159,20 +895,23 @@ class $Bootstrap {
       }).length;
       return count === 0 ? baseLabel : `${baseLabel} ${count + 1}`;
     };
-    const addPaneWindow = (kind: string): void => {
-      const content =
-        kind === 'invar-agent'
-          ? createAgent(true, nextWindowLabel('Terminal (Invar agent)'))
-          : kind === 'terminal-agent'
-            ? createRuntimePane(
-                'terminal',
-                true,
-                { command: 'claude' },
-                nextWindowLabel('Terminal (Agent)'),
-              )
-            : kind === 'database-instance'
-              ? createContributedPaneInstance('database')
-              : createRuntimePane('terminal', true);
+    const addPaneWindow = (entryIdentifier: string): void => {
+      const runtimeMenuEntry = paneRuntimes.paneAddMenuEntry(entryIdentifier);
+      const factoryMenuEntry =
+        panelContentFactories.paneAddMenuEntry(entryIdentifier);
+      const content = runtimeMenuEntry
+        ? createRuntimePane(
+            runtimeMenuEntry.runtimeKind,
+            true,
+            runtimeMenuEntry.entry.process,
+            nextWindowLabel(runtimeMenuEntry.entry.instanceLabel),
+          )
+        : factoryMenuEntry
+          ? createContributedPaneInstance(
+              factoryMenuEntry.factoryKind,
+              nextWindowLabel(factoryMenuEntry.entry.instanceLabel),
+            )
+          : null;
       if (!content) return;
       const splitTargetIdentifier = pendingPanelSplitTargetIdentifier;
       pendingPanelSplitTargetIdentifier = null;
@@ -1188,17 +927,17 @@ class $Bootstrap {
       popup: boundedListPopup,
       overlayCoordinator,
       title: () =>
-        panelHost.activeSpace?.kind === 'database'
-          ? 'Add Database'
-          : 'Add Terminal',
-      addableKinds: () =>
-        panelHost.activeSpace?.kind === 'database'
-          ? [{ kind: 'database-instance', label: 'Database' }]
-          : [
-              { kind: 'terminal', label: 'Terminal' },
-              { kind: 'terminal-agent', label: 'Terminal (Agent)' },
-              { kind: 'invar-agent', label: 'Terminal (Invar agent)' },
-            ],
+        `Add ${panelHost.activeSpace ? panelHost.spaceLabel(panelHost.activeSpace.kind) : 'Pane'}`,
+      addableKinds: () => {
+        const spaceKind = panelHost.activeSpace?.kind;
+        if (!spaceKind) return [];
+        return [
+          ...paneRuntimes.paneAddMenuEntries(spaceKind),
+          ...panelContentFactories
+            .paneAddMenuEntries(spaceKind)
+            .map(({ entry }) => entry),
+        ].map((entry) => ({ kind: entry.identifier, label: entry.label }));
+      },
       addContent: addPaneWindow,
     });
     let restoringPanelWorkspaceState = false;
@@ -1206,13 +945,7 @@ class $Bootstrap {
     const persistedPaneKind = (content: PaneContent): string | null =>
       content instanceof TaskNoticePaneContent.Class
         ? null
-        : content instanceof AgentPaneContent.Class
-          ? 'invar-agent'
-          : (content.kind ?? content.id) === 'database'
-            ? 'database'
-            : (content.instanceLabel ?? '').startsWith('Terminal (Agent)')
-              ? 'terminal-agent'
-              : 'terminal';
+        : (content.kind ?? content.id);
     persistPanelWorkspaceState = (): void => {
       if (restoringPanelWorkspaceState) return;
       const workspaceRoot = workspaceSet.active.root;
@@ -1244,32 +977,16 @@ class $Bootstrap {
           return taskContent;
         }
       }
-      if (pane.kind === 'database') {
-        return createContributedPaneInstance(
-          pane.kind,
-          pane.label,
-          pane.identifier,
-        );
-      }
-      if (pane.kind === 'invar-agent') {
-        return createAgent(true, pane.label, pane.identifier);
-      }
-      if (pane.kind === 'terminal-agent') {
-        return createRuntimePane(
-          'terminal',
-          true,
-          { command: 'claude' },
-          pane.label,
-          pane.identifier,
-        );
-      }
       if (pane.kind === 'task-notice') return null;
-      return createRuntimePane(
-        'terminal',
-        true,
-        undefined,
-        pane.label,
-        pane.identifier,
+      return (
+        createContributedPaneInstance(pane.kind, pane.label, pane.identifier) ??
+        createRuntimePane(
+          pane.kind,
+          true,
+          undefined,
+          pane.label,
+          pane.identifier,
+        )
       );
     };
     restorePanelWorkspaceState = (workspace): void => {
@@ -1280,7 +997,11 @@ class $Bootstrap {
       restoringPanelWorkspaceState = true;
       try {
         panelHost.restoreWorkspaceState(
-          PanelWorkspaceState.Class.restore(state, (pane) => restorePane(pane)),
+          PanelWorkspaceState.Class.restore(
+            state,
+            (pane) => restorePane(pane),
+            (kind) => panelHost.spaceKindForPaneKind(kind),
+          ),
         );
       } finally {
         restoringPanelWorkspaceState = false;
@@ -1311,10 +1032,21 @@ class $Bootstrap {
               environment: request.environment,
             },
           });
-          if (content) panelHost.register(content);
+          if (content) registerRuntimePaneContent(content);
         },
         notice: (request) => {
-          panelHost.register(new TaskNoticePaneContent.Class(request));
+          const activeSpace = panelHost.activeSpace;
+          panelHost.register(
+            new TaskNoticePaneContent.Class(
+              request,
+              activeSpace
+                ? {
+                    kind: activeSpace.kind,
+                    label: panelHost.spaceLabel(activeSpace.kind),
+                  }
+                : undefined,
+            ),
+          );
         },
         // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
         present: (identifiers, transferFocus) => {
@@ -1346,27 +1078,25 @@ class $Bootstrap {
     app.onDispose(disposeTasksStatus);
     app.onDispose(disposeTasksContribution);
     app.onDispose(() => {
-      testVoiceBackend?.dispose();
-      terminalFollowController?.dispose();
-      terminalFollowController = null;
       panelHost.dispose();
       primaryDockHost.dispose();
       rightDockHost.dispose();
     });
 
-    // Ctrl+Shift+S is the accelerator for the same visible action as opening the second status-bar content item:
-    // add the missing terminal/agent region beside the current one, or collapse a split back to the
-    // focused region.
+    // Split the two first available runtime panes, or collapse the current split.
     const togglePanelSplit = (): void => {
-      const terminal = ensureRuntimePane('terminal');
-      const agent = ensureAgent();
       if (panelHost.isSplit) {
         panelHost.unsplit();
         return;
       }
-      if (!agent) return;
+      const contents = paneRuntimes
+        .defaultSplitKinds()
+        .map(({ kind }) => ensureRuntimePane(kind))
+        .filter((content): content is PaneContent => content !== null)
+        .slice(0, 2);
+      if (contents.length === 0) return;
       if (!panelHost.visible.value) panelHost.show();
-      panelHost.split(terminal ? [agent.id, terminal.id] : [agent.id]);
+      panelHost.split(contents.map((content) => content.id));
     };
     const focusPanelContent = (direction: -1 | 1): void => {
       panelHost.cycle(direction);
@@ -1511,7 +1241,6 @@ class $Bootstrap {
       contextMenu,
       boundedListPopup,
       completionPopup,
-      agentSkillPopup,
       shortcutHelp,
       tooltip,
       panelHost,
@@ -1521,6 +1250,8 @@ class $Bootstrap {
       activitySurface,
       statusBarSegments,
       statusProjectionContributions,
+      systemNoteContributions,
+      panelContentLifecycle,
       editorSurfaceContents,
       editorColumnDefault,
       paneRuntimes,
@@ -1537,12 +1268,6 @@ class $Bootstrap {
       shutdown,
       get mouse() {
         return lastMouse;
-      },
-      get narration() {
-        return currentNarration();
-      },
-      get agentPaneContent() {
-        return currentAgentPane();
       },
       get terminalPaneContent() {
         return currentPaneOfKind('terminal');
@@ -1565,7 +1290,6 @@ class $Bootstrap {
       }
       boundedListPopup.update();
       completionPopup.update();
-      agentSkillPopup.update();
       AppStatusProjection.Class.publish(applicationComposition);
       renderer.requestRender();
     };
@@ -1644,7 +1368,6 @@ class $Bootstrap {
       void boundedListPopup.hoveredIndex.value;
       void boundedListPopup.paintRevision.value;
       void completionPopup.paintRevision.value;
-      void agentSkillPopup.paintRevision.value;
       void tooltip.visible.value;
       void tooltip.text.value;
       void tooltip.anchorX.value;
@@ -1795,7 +1518,6 @@ class $Bootstrap {
       });
       animating = boundedListPopup.tick(deltaTimeSeconds) || animating;
       animating = completionPopup.tick(deltaTimeSeconds) || animating;
-      animating = agentSkillPopup.tick(deltaTimeSeconds) || animating;
       animating = view.tickOverlayScroll(deltaTimeSeconds) || animating;
       if (!animating) stopAnimationFrameCadence();
       return animating;
@@ -1917,7 +1639,6 @@ class $Bootstrap {
       view.dispose();
       boundedListPopup.dispose();
       completionPopup.dispose();
-      agentSkillPopup.dispose();
       app.dispose();
       if (restartRequested) options.onRestart?.();
       else options.onQuit?.();
@@ -2007,7 +1728,6 @@ class $Bootstrap {
       },
       toggleRightDock,
       toggleTerminal,
-      toggleAgent,
       togglePanelSplit,
       focusPreviousPanelContent: () => focusPanelContent(-1),
       focusNextPanelContent: () => focusPanelContent(1),
@@ -2016,12 +1736,10 @@ class $Bootstrap {
       moveActivityItemUp: () => moveActivityItem(-1),
       moveActivityItemDown: () => moveActivityItem(1),
       closeActivePanelContent,
-      cycleTerminalFollowMode,
       openShortcutHelp: () =>
         overlayCoordinator.openExclusiveOverlay('shortcutHelp', () =>
           shortcutHelp.show(),
         ),
-      testNarrationVoice,
     });
 
     // --- input: handlers MUTATE model state only; the frame effect repaints. -----------------
@@ -2218,10 +1936,9 @@ class $Bootstrap {
         return rightDockTextInput;
       }
       const focusedContent = panelHost.focusedContent;
-      if (focusedContent instanceof AgentPaneContent.Class) {
-        return focusedContent;
-      }
-      return null;
+      return (
+        focusedContent?.capability?.<PaneTextInputPort>('text-input') ?? null
+      );
     };
 
     const applyTextInputAction = (action: TextInputAction): void => {
@@ -2229,10 +1946,6 @@ class $Bootstrap {
       if (!inputPort) return;
       inputPort.applyInputAction(action);
       if (inputPort === findBar) revealFindMatch();
-      if (inputPort instanceof AgentPaneContent.Class) {
-        const focusedContent = inputPort;
-        synchronizeAgentSkillPopup(focusedContent);
-      }
     };
 
     const copyPathTelemetryEnabled =
@@ -2241,6 +1954,7 @@ class $Bootstrap {
       if (!copyPathTelemetryEnabled) return;
       Logging.Class.info(`COPY_PATH_TELEMETRY ${JSON.stringify(attempt)}`);
     };
+    let clipboardCopyCompletionCount = 0;
     const publishCopyResult = (
       copyPromise: Promise<number>,
       telemetryContext?: CopyPathTelemetryContext,
@@ -2251,10 +1965,12 @@ class $Bootstrap {
             `Copied ${copiedCharacters} chars ` +
             `(${Clipboard.Class.lastBackend ?? 'no backend'})`;
         }
+        clipboardCopyCompletionCount += 1;
         StatusChannel.Class.update({
           lastCopyChars: copiedCharacters,
           lastCopyHash: Clipboard.Class.lastCopiedTextHash,
           clipboardBackend: Clipboard.Class.lastBackend,
+          clipboardCopyCompletionCount,
         });
         StatusChannel.Class.flush();
         if (telemetryContext) {
@@ -2270,6 +1986,18 @@ class $Bootstrap {
               copiedCharacters > 0 ? Clipboard.Class.lastOsc52ByteLength : 0,
           });
         }
+      });
+    };
+    copyPaneSelection = (content): void => {
+      const selection =
+        content.capability?.<PaneTextSelectionPort>('text-selection');
+      if (!selection) return;
+      const telemetry = selection.selectionTelemetry?.();
+      publishCopyResult(selection.copySelection(), {
+        focusedSurface: content.kind ?? content.id,
+        selectionOwner: telemetry?.owner ?? content.kind ?? content.id,
+        selectionLength: telemetry?.characterLength ?? null,
+        routeTaken: 'copy-handler',
       });
     };
 
@@ -2303,15 +2031,12 @@ class $Bootstrap {
           quickOpen.showWorkspacePath(workspaceSet.active.root),
         ),
       'workspace.close': () => {
-        agentSkillPopup.close();
         workspaceSet.closeActive();
       },
       'workspace.next': () => {
-        agentSkillPopup.close();
         workspaceSet.cycle(1);
       },
       'workspace.previous': () => {
-        agentSkillPopup.close();
         workspaceSet.cycle(-1);
       },
       'palette.open': () =>
@@ -2571,30 +2296,6 @@ class $Bootstrap {
             workspaceSet.activeEditor.copySelection());
         publishCopyResult(copyPromise);
       },
-      // The focused agent pane owns Ctrl+C / Cmd+C: copy its transcript OR composer selection (whichever is
-      // set) to the clipboard, publishing the same character-count proof channel as editor.copy.
-      'agent.copy': () => {
-        const focusedContent = panelHost.focusedContent;
-        const pane =
-          focusedContent instanceof AgentPaneContent.Class
-            ? focusedContent
-            : currentAgentPane();
-        if (!pane) return;
-        const selectionTelemetry = pane.selectionTelemetry();
-        publishCopyResult(pane.copySelection(), {
-          focusedSurface: focusedContent?.kind ?? focusedContent?.id ?? 'none',
-          selectionOwner: selectionTelemetry.owner,
-          selectionLength: selectionTelemetry.characterLength,
-          routeTaken: 'copy-handler',
-        });
-      },
-      'agent.cancelTurn': () => {
-        const focusedContent = panelHost.focusedContent;
-        if (focusedContent instanceof AgentPaneContent.Class) {
-          focusedContent.cancelTurn();
-        }
-      },
-      'agent.cycleTerminalFollowMode': cycleTerminalFollowMode,
       // Copy from whichever focused pane publishes a text-selection port; the host never learns
       // which pane that is. The word actions exist so the terminal context claims those chords —
       // handling is the pane's own, reached by forwarding the original key.
@@ -2602,16 +2303,7 @@ class $Bootstrap {
         const focusedContent =
           panelHost.focusedContent ?? currentPaneOfKind('terminal');
         if (!focusedContent) return;
-        const selection =
-          focusedContent.capability?.<PaneTextSelectionPort>('text-selection');
-        if (!selection) return;
-        publishCopyResult(selection.copySelection(), {
-          focusedSurface:
-            focusedContent.kind ?? focusedContent.id ?? 'unknown-pane',
-          selectionOwner: 'focused-pane-selection',
-          selectionLength: null,
-          routeTaken: 'copy-handler',
-        });
+        copyPaneSelection(focusedContent);
       },
       'terminal.wordLeft': (key) => panelHost.handleKey(key),
       'terminal.wordRight': (key) => panelHost.handleKey(key),
@@ -2645,31 +2337,12 @@ class $Bootstrap {
       // focused terminal (to hide it) — exactly like the quit escape hatch. Same closure the status-bar
       // terminal button runs, so chord and click are one action.
       'panel.toggleTerminal': toggleTerminal,
-      'panel.toggleAgent': toggleAgent,
-      'panel.toggleSplit': () => {
-        agentSkillPopup.close();
-        togglePanelSplit();
-      },
-      'panel.contentsPrevious': () => {
-        agentSkillPopup.close();
-        focusPanelContent(-1);
-      },
-      'panel.contentsNext': () => {
-        agentSkillPopup.close();
-        focusPanelContent(1);
-      },
-      'panel.contentsMoveUp': () => {
-        agentSkillPopup.close();
-        movePanelContent(-1);
-      },
-      'panel.contentsMoveDown': () => {
-        agentSkillPopup.close();
-        movePanelContent(1);
-      },
-      'panel.contentsClose': () => {
-        agentSkillPopup.close();
-        closeActivePanelContent();
-      },
+      'panel.toggleSplit': togglePanelSplit,
+      'panel.contentsPrevious': () => focusPanelContent(-1),
+      'panel.contentsNext': () => focusPanelContent(1),
+      'panel.contentsMoveUp': () => movePanelContent(-1),
+      'panel.contentsMoveDown': () => movePanelContent(1),
+      'panel.contentsClose': closeActivePanelContent,
       'menu.previous': () => contextMenu.moveSelection(-1),
       'menu.next': () => contextMenu.moveSelection(1),
       'menu.run': () => contextMenu.runSelected(),
@@ -2754,8 +2427,8 @@ class $Bootstrap {
 
     const keyTick = (key: KeyEvent): void => {
       const workspace = workspaceSet.active;
+      applicationContributions.observeKey(key);
       tooltip.clear(); // any keypress hides the tooltip (display-only affordance)
-      if (key.name === 'escape') currentNarration()?.bargeIn(); // Escape is the EXPLICIT "stop narration"; ordinary typing/paste/navigation lets it play on, so you can read/compose/work while listening (barge-in should be intentional, not a side effect of every keystroke)
       // Escape always closes the hover card; any other key closes it too UNLESS the pointer is engaged
       // with it (over the card / dragging a selection) — so a sticky card lets Ctrl+C copy its selection.
       if (key.name === 'escape') view.dismissHover();
@@ -2802,6 +2475,21 @@ class $Bootstrap {
       const dockOwnsKeyboard =
         (primaryDockHost.visible.value && primaryDockHost.focused.value) ||
         (rightDockHost.visible.value && rightDockHost.focused.value);
+      const panelOwnsKeyboard =
+        panelHost.visible.value && panelHost.focused.value;
+      if (!modalOverlayOwnsScreen && (dockOwnsKeyboard || panelOwnsKeyboard)) {
+        const applicationGlobalAction = keybindings.resolveApplicationGlobal({
+          name: key.name,
+          ctrl: key.ctrl,
+          shift: key.shift,
+          option: key.option || key.meta,
+          super: key.super,
+        });
+        if (applicationGlobalAction) {
+          dispatchAction(applicationGlobalAction, key);
+          return;
+        }
+      }
       if (!modalOverlayOwnsScreen && dockOwnsKeyboard) {
         const activityResolution = keybindings.resolve(
           {
@@ -2847,16 +2535,11 @@ class $Bootstrap {
         if (content?.handleKey(key)) return;
       }
 
-      // A focused bottom panel (the terminal) owns the keyboard: every non-reserved key is encoded to
-      // terminal bytes and delivered to the active PaneContent's handleKey. Reserved globals (quit, panel
-      // toggle) already fired above, so Ctrl+Q / F10 still quit and the toggle still hides the panel; an
-      // unencodable key is swallowed so it never drives the hidden editor beneath.
+      // A focused bottom panel owns the keyboard: every key not claimed by a reserved or
+      // application-global binding is delivered to the active PaneContent's handleKey. An unencodable
+      // key is swallowed so it never drives the hidden editor beneath.
       // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
-      if (
-        !modalOverlayOwnsScreen &&
-        panelHost.visible.value &&
-        panelHost.focused.value
-      ) {
+      if (!modalOverlayOwnsScreen && panelOwnsKeyboard) {
         const panelResolution = keybindings.resolve(
           {
             name: key.name,
@@ -2871,74 +2554,6 @@ class $Bootstrap {
         if (panelResolution.action?.startsWith('panel.contents')) {
           dispatchAction(panelResolution.action, key);
           return;
-        }
-        // The focused agent pane resolves a FEW bindings before its composer swallows the key: Ctrl+C /
-        // Cmd+C copies its selection, and the global find chords open TRANSCRIPT SEARCH — the same
-        // FindBar every searchable pane shares, bound to the pane's transcript target (replace is
-        // read-only-declined by the target, so Ctrl+H also lands in find mode). While that bar is open
-        // on the transcript, it owns the keyboard through the SAME shared handler the 'find' context
-        // uses; Esc closes it and keys fall back to the composer. Everything else goes to the pane.
-        const focusedContent = panelHost.focusedContent;
-        if (focusedContent instanceof AgentPaneContent.Class) {
-          if (agentSkillPopup.open.value) {
-            if (key.name === 'escape') {
-              agentSkillPopup.dismiss();
-              return;
-            }
-            if (key.name === 'up') {
-              agentSkillPopup.moveSelection(-1);
-              return;
-            }
-            if (key.name === 'down') {
-              agentSkillPopup.moveSelection(1);
-              return;
-            }
-            if (key.name === 'return') {
-              agentSkillPopup.runSelected();
-              return;
-            }
-          }
-          if (
-            findBar.open.value &&
-            findBar.target?.identifier ===
-              AgentPaneContent.Class.TRANSCRIPT_FIND_TARGET_IDENTIFIER
-          ) {
-            handleFindBarKey(key);
-            return;
-          }
-          const agentResolution = keybindings.resolve(
-            {
-              name: key.name,
-              ctrl: key.ctrl,
-              shift: key.shift,
-              option: key.option || key.meta,
-              super: key.super,
-            },
-            'agent',
-            Date.now(),
-          );
-          if (
-            agentResolution.action === 'agent.copy' &&
-            focusedContent.hasSelection()
-          ) {
-            dispatchAction('agent.copy', key);
-            return;
-          }
-          if (
-            agentResolution.action === 'find.open' ||
-            agentResolution.action === 'find.replace'
-          ) {
-            openAgentTranscriptSearch();
-            return;
-          }
-          if (
-            agentResolution.action?.startsWith('agent.') ||
-            agentResolution.action?.startsWith('textInput.')
-          ) {
-            dispatchAction(agentResolution.action, key);
-            synchronizeAgentSkillPopup(focusedContent);
-            return;
-          }
         }
         // A focused pane that declares its own keybinding context resolves in it, and the PANE says
         // whether it claims the resolved action right now. A declined action falls through to raw
@@ -2965,36 +2580,54 @@ class $Bootstrap {
             Date.now(),
           );
           const paneContextAction = paneContextResolution.action;
+          const paneContextActionBelongsToFocusedPane =
+            paneContextAction !== null &&
+            paneContextResolution.context === paneKeybindingContext;
+          const paneClaimsContextAction =
+            paneContextAction !== null &&
+            (contextOwningPane.claimsContextAction?.(paneContextAction) ??
+              true);
           if (
+            paneContextActionBelongsToFocusedPane &&
             paneContextAction &&
-            paneContextResolution.context === paneKeybindingContext &&
-            (contextOwningPane.claimsContextAction?.(paneContextAction) ?? true)
+            paneClaimsContextAction
           ) {
             dispatchAction(paneContextAction, key);
             return;
           }
-          if (paneContextAction === 'terminal.copy') {
-            const agentSelectionTelemetry =
-              currentAgentPane()?.selectionTelemetry() ?? {
-                owner: 'none' as const,
-                characterLength: 0,
-              };
-            logCopyAttempt({
-              focusedSurface: contextOwningPane.kind ?? contextOwningPane.id,
-              selectionOwner: agentSelectionTelemetry.owner,
-              selectionLength: agentSelectionTelemetry.characterLength,
-              routeTaken: 'forwarded-to-child-pty',
-              osc52Emitted: false,
-              osc52ByteLength: 0,
-            });
+          if (
+            paneContextActionBelongsToFocusedPane &&
+            !paneClaimsContextAction
+          ) {
+            const backgroundSelection = panelHost
+              .visibleContents()
+              .filter((content) => content !== contextOwningPane)
+              .map((content) => ({
+                content,
+                selection:
+                  content.capability?.<PaneTextSelectionPort>(
+                    'text-selection',
+                  ) ?? null,
+              }))
+              .find(({ selection }) => selection?.hasSelection());
+            const selectionTelemetry =
+              backgroundSelection?.selection?.selectionTelemetry?.();
+            if (backgroundSelection?.selection) {
+              logCopyAttempt({
+                focusedSurface: contextOwningPane.kind ?? contextOwningPane.id,
+                selectionOwner:
+                  selectionTelemetry?.owner ??
+                  backgroundSelection.content.kind ??
+                  backgroundSelection.content.id,
+                selectionLength: selectionTelemetry?.characterLength ?? 0,
+                routeTaken: 'forwarded-to-child-pty',
+                osc52Emitted: false,
+                osc52ByteLength: 0,
+              });
+            }
           }
         }
         panelHost.handleKey(key);
-        if (focusedContent instanceof AgentPaneContent.Class) {
-          synchronizeAgentSkillPopup(focusedContent);
-        } else {
-          agentSkillPopup.close();
-        }
         return;
       }
       if (
@@ -3307,19 +2940,13 @@ class $Bootstrap {
     // A framed paste yields NO keypresses, so OpenTUI's paste event is the ONLY delivery path.
     // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
     // invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
-    // Route a paste to the same target the keyboard has: the focused panel pane (terminal PTY / agent
-    // composer), else a focused single-line modal input (quick-open / find), else the editor. Mirrors
+    // Route a paste to the same target the keyboard has: the focused panel pane,
+    // else a focused single-line modal input (quick-open / find), else the editor. Mirrors
     // keyTick's dispatch order so paste lands exactly where typing would.
     const pasteTick = (text: string): void => {
       if (!text) return;
       if (panelHost.visible.value && panelHost.focused.value) {
         panelHost.handlePaste(text);
-        const focusedContent = panelHost.focusedContent;
-        if (focusedContent instanceof AgentPaneContent.Class) {
-          synchronizeAgentSkillPopup(focusedContent);
-        } else {
-          agentSkillPopup.close();
-        }
         return; // a focused panel owns paste even if its pane has no sink — never leak to the editor
       }
       if (rightDockHost.visible.value && rightDockHost.focused.value) {
@@ -3432,16 +3059,6 @@ class $Bootstrap {
               event.y < geometry.boxTop + geometry.boxHeight;
             if (!insideCompletion) dismissCompletion();
           }
-          if (event.type === 'down' && agentSkillPopup.open.value) {
-            const geometry = agentSkillPopup.geometry;
-            const insideAgentSkillPopup =
-              geometry !== null &&
-              event.x >= geometry.boxLeft &&
-              event.x < geometry.boxLeft + geometry.boxWidth &&
-              event.y >= geometry.boxTop &&
-              event.y < geometry.boxTop + geometry.boxHeight;
-            if (!insideAgentSkillPopup) agentSkillPopup.close();
-          }
           // A click hides the hover card UNLESS it lands ON the card (engaged): a down on the card begins a
           // drag-select and must not dismiss it; a down anywhere else closes it.
           if (event.type === 'down') view.dismissHoverSoft();
@@ -3503,7 +3120,6 @@ class $Bootstrap {
             height: renderer.height,
           });
           TerminalSession.Class.enterAppModes(writeSequence);
-          agentSkillPopup.close();
           void render();
         },
         () => renderer.requestRender(),
@@ -3527,18 +3143,6 @@ class $Bootstrap {
     Logging.Class.info('Boot complete');
     return applicationComposition;
   }
-
-  protected static reapSdkBinaryExtractions(): void {
-    const result = SdkBinaryExtraction.Class.reapStaleSiblings();
-    if (result.processScanFailed || result.failedDirectories.length > 0) {
-      Logging.Class.error(
-        `SDK extraction cleanup skipped ${result.failedDirectories.length} path(s)` +
-          (result.processScanFailed
-            ? ' because the process census failed'
-            : ''),
-      );
-    }
-  }
 }
 
 export namespace Bootstrap {
@@ -3551,6 +3155,7 @@ export interface BootOptions {
   onQuit?: () => void;
   onRestart?: () => void;
   plugins?: readonly ApplicationContributor[];
+  createSourceTextViews?: () => SourceTextViewProvider;
 }
 
 export interface BootedApp extends AppStatusProjectionPorts {
@@ -3571,7 +3176,6 @@ export interface BootedApp extends AppStatusProjectionPorts {
   contextMenu: ContextMenu.Instance;
   boundedListPopup: BoundedListPopup.Instance;
   completionPopup: CompletionPopup.Instance;
-  agentSkillPopup: AgentSkillPopup.Model;
   shortcutHelp: ShortcutHelp.Instance;
   tooltip: Tooltip.Instance;
   panelHost: PanelHost.Instance;
@@ -3581,6 +3185,8 @@ export interface BootedApp extends AppStatusProjectionPorts {
   activitySurface: ActivitySurface.Model;
   statusBarSegments: StatusBarSegments.Model;
   statusProjectionContributions: StatusProjectionContributions.Model;
+  systemNoteContributions: SystemNoteContributions.Model;
+  panelContentLifecycle: PanelContentLifecycle.Model;
   editorSurfaceContents: EditorSurfaceContents.Model;
   editorColumnDefault: EditorColumnDefault.Model;
   paneRuntimes: PaneRuntimes.Model;
@@ -3589,7 +3195,6 @@ export interface BootedApp extends AppStatusProjectionPorts {
   contributors: Readonly<Record<string, ApplicationContributor>>;
   layoutSlotSizes: LayoutSlots.Instance;
   view: RootView;
-  agentPaneContent: AgentPaneContent.Model | null;
   terminalPaneContent: PaneContent | null;
   renderer: CliRenderer;
   render(): Promise<void>;
@@ -3599,7 +3204,6 @@ export interface BootedApp extends AppStatusProjectionPorts {
 interface WorkspacePanelWorld {
   readonly contentSet: PanelContentSet;
   readonly identityScope: string;
-  agentInstanceCount: number;
 }
 
 interface CopyPathTelemetryContext {

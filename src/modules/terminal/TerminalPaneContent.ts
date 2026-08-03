@@ -318,6 +318,7 @@ class $TerminalPaneContent implements PaneContent {
     context?: PanePointerContext,
   ): boolean {
     if (
+      context?.modifiers.shift ||
       this.instance.mouseTrackingMode !== 'any' ||
       !this.isChildCell(column, row)
     ) {
@@ -333,6 +334,7 @@ class $TerminalPaneContent implements PaneContent {
     context?: PanePointerContext,
   ): boolean {
     if (
+      !context?.modifiers.shift &&
       this.instance.mouseTrackingMode !== 'none' &&
       this.isChildCell(column, row)
     ) {

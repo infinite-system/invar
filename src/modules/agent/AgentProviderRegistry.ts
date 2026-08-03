@@ -1,5 +1,4 @@
 import { Static } from 'ivue/extras';
-import type { AgentProvider } from '../settings/Settings';
 
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 
@@ -82,6 +81,8 @@ export namespace AgentProviderRegistry {
   export const $Class = Static($AgentProviderRegistry);
   export let Class = $Class;
 }
+
+export type AgentProvider = 'auto' | 'claude' | 'codex';
 
 /** A concrete, runnable engine (the echo is the always-available hermetic fallback). */
 export type ResolvedEngine = 'claude' | 'codex' | 'echo';

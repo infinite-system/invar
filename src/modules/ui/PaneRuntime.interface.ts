@@ -6,7 +6,11 @@
 // shape — only the runtime knows a pseudo-terminal exists.
 //
 // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
-import type { PaneContent } from './PaneContent.interface';
+import type {
+  PaneAddMenuEntry,
+  PaneContent,
+  PaneContentSpace,
+} from './PaneContent.interface';
 
 /** A plugin-contributed owner of one pane kind and the processes behind it. */
 export interface PaneRuntime {
@@ -14,8 +18,17 @@ export interface PaneRuntime {
   readonly kind: string;
   /** User-facing name of one instance — the host derives `Terminal`, `Terminal 2`, … from it. */
   readonly instanceLabel: string;
+  /** The space kind and base label this runtime's panes join. */
+  readonly panelSpace: PaneContentSpace;
   /** True when the panel Add menu offers this kind to the user. */
   readonly offeredInPanelAddMenu: boolean;
+  /** True when the container Add menu offers this runtime as a new panel space. */
+  readonly offeredAsPanelSpace?: boolean;
+  /** Choices this runtime contributes when the user adds a pane inside an existing space. */
+  readonly paneAddMenuEntries?: readonly PaneRuntimeAddMenuEntry[];
+  /** Optional ordering for the pane kinds created by the panel's default split action. Lower values
+   *  appear first. A runtime without this declaration stays available through the Add menu only. */
+  readonly defaultSplitPriority?: number;
   /** Build a ready pane for the given request. The host registers whatever comes back. */
   createPane(request: PaneRuntimeRequest): PaneContent;
   /** One of this runtime's panes was removed from its host; release the session behind it. */
@@ -61,4 +74,8 @@ export interface PaneRuntimeProcess {
   readonly command: string;
   readonly arguments?: readonly string[];
   readonly environment?: Readonly<Record<string, string>>;
+}
+
+export interface PaneRuntimeAddMenuEntry extends PaneAddMenuEntry {
+  readonly process?: PaneRuntimeProcess;
 }
