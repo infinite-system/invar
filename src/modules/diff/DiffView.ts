@@ -17,7 +17,7 @@ import {
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { TextCoordinates } from '../text/TextCoordinates';
-import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
+import { ReadOnlyTextBuffer } from '../text/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
 import { SplitterElement } from '../ui/SplitterElement';
 import {

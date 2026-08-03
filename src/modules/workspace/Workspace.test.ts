@@ -11,11 +11,12 @@ import {
 } from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 
 function createWorkspace() {
   return new Workspace.Class({
-    createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    createSourceTextViews: () =>
+      EditorSourceTextViewProviderFactory.Class.create(),
   });
 }
 
@@ -183,7 +184,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     const disposedViewCount = { value: 0 };
     const workspace = new Workspace.Class({
       createSourceTextViews: () => {
-        const provider = new EditorSourceTextViews.Class();
+        const provider = EditorSourceTextViewProviderFactory.Class.create();
         return {
           contributions: provider.contributions,
           createView: () => {
@@ -214,7 +215,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     let builtViewCount = 0;
     const workspace = new Workspace.Class({
       createSourceTextViews: () => {
-        const provider = new EditorSourceTextViews.Class();
+        const provider = EditorSourceTextViewProviderFactory.Class.create();
         return {
           contributions: provider.contributions,
           createView: () => {
@@ -262,7 +263,8 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
   // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
   test('a release keeps the view of a buffer holding unsaved edits', () => {
     const workspace = new Workspace.Class({
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
     });
     workspace.openFileInTab(filePaths[0]!);
     workspace.editor.insertText('unsaved');

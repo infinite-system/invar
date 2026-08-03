@@ -6,6 +6,7 @@ import { StatusProjectionContributions } from '../app/StatusProjectionContributi
 import { Theme } from '../theme/Theme';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import { PanelHost } from '../ui/PanelHost';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import { MockBackend } from './MockBackend';
 import { TerminalEmulator } from './TerminalEmulator';
@@ -63,6 +64,7 @@ function activatedTerminalPlugin(currentPane: () => PaneContent | null) {
     workspaceSet,
     theme: new Theme.Class(),
     paneRuntimes,
+    bottomPanelHost: new PanelHost.Class(),
     statusProjectionContributions,
     currentPaneOfKind: () => currentPane(),
     releasePane: (identifier: string) => {

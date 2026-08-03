@@ -4,7 +4,9 @@ Load-bearing rules for `src/modules/text/` — the shared text primitives every 
 app stands on: `TextCoordinates` (grapheme / UTF-16 / display-column conversion), `TextEditing`
 (word-edit generator), `TextInputModel` (the one editable single-line field model),
 `WrapBreakOpportunity` (the one break generator), and `TextDocument` (a loaded document with
-revision stamping). Stands on `project.invariants.md`; references are by name.
+revision stamping). It also owns the shared source-text generators: `EditorWrap`,
+`ReadOnlyTextBuffer`, `EditorFrameAttribution`, and `EditorSourceTextViews`. Stands on
+`project.invariants.md`; references are by name.
 
 These records moved here from `src/modules/editor/editor.invariants.md` when the shared text
 primitives left the source-text view. The rules did not change. Their home did: each one governs a

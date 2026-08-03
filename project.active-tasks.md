@@ -6,17 +6,21 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/in-progress/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md)  [building]
+## IN-PROGRESS (3)
+- #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/in-progress/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/495-terminal-copy-selection-empty-at-chord-time`
+- #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/in-progress/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/492-markdown-syntax-rides-the-provider-seam`
+- #356 [agent-pane-is-a-decoupled-module](.invar/tasks/in-progress/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/356-agent-pane-is-a-decoupled-module`
 
 ## USER-DIRECTED (14)
+- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
 - #361 [terminal-buffer-crash-on-tasks-icon-click](.invar/tasks/active/361-terminal-buffer-crash-on-tasks-icon-click/task-361-terminal-buffer-crash-on-tasks-icon-click.md)
 - #357 [video-frame-shears-at-odd-pane-widths](.invar/tasks/active/357-video-frame-shears-at-odd-pane-widths/task-357-video-frame-shears-at-odd-pane-widths.md)
-- #356 [agent-pane-is-a-decoupled-module](.invar/tasks/active/356-agent-pane-is-a-decoupled-module/task-356-agent-pane-is-a-decoupled-module.md)
 - #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/active/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)
 - #352 [markdown-code-preview-border-theme](.invar/tasks/active/352-markdown-code-preview-border-theme/task-352-markdown-code-preview-border-theme.md)
 - #349 [extensions-pane-visual-refinements](.invar/tasks/active/349-extensions-pane-visual-refinements/task-349-extensions-pane-visual-refinements.md)
@@ -26,7 +30,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (30)
+## VERIFICATION-INTEGRITY (32)
+- #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/active/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)
+- #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
@@ -58,7 +64,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (33)
+## FLAKE-EVIDENCE (34)
+- #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/active/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
@@ -106,10 +113,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (43)
-- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/active/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md)
-- #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/active/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md)
-- #491 [editor-shared-generators-move-home](.invar/tasks/active/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md)
+## ARCHITECTURE-HYGIENE (39)
 - #490 [chord-and-command-relocation-sweep](.invar/tasks/active/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md)
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/active/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
@@ -119,7 +123,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #431 [layout-dead-alignment-and-remainder](.invar/tasks/active/431-layout-dead-alignment-and-remainder/task-431-layout-dead-alignment-and-remainder.md)
 - #410 [merge-gate-scratch-cleanup](.invar/tasks/active/410-merge-gate-scratch-cleanup/task-410-merge-gate-scratch-cleanup.md)
 - #406 [settingspec-free-text-kind](.invar/tasks/active/406-settingspec-free-text-kind/task-406-settingspec-free-text-kind.md)
-- #405 [panelhost-hardcoded-kind-tables](.invar/tasks/active/405-panelhost-hardcoded-kind-tables/task-405-panelhost-hardcoded-kind-tables.md)
 - #401 [idle-cost-convention-needs-scheduler-count](.invar/tasks/active/401-idle-cost-convention-needs-scheduler-count/task-401-idle-cost-convention-needs-scheduler-count.md)
 - #400 [script-to-src-seam-governance](.invar/tasks/active/400-script-to-src-seam-governance/task-400-script-to-src-seam-governance.md)
 - #394 [panel-contract-refinements-apply](.invar/tasks/active/394-panel-contract-refinements-apply/task-394-panel-contract-refinements-apply.md)
@@ -155,7 +158,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 199 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 202 — full log: project.tasks-completed.md)
+- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
+- #491 [editor-shared-generators-move-home](.invar/tasks/completed/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md) — cf1befd4 — editor generators move to core text; monitoring rides the provider seam
 - #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
 - #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/completed/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md) — 9f132d18 — copy telemetry: one record per attempt names surface, route, OSC 52 result
 - #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
@@ -169,5 +174,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #477 [copy-from-agent-pane-does-not-work](.invar/tasks/completed/477-copy-from-agent-pane-does-not-work/task-477-copy-from-agent-pane-does-not-work.md) — 08ab9d46 — Landed: shared-drag hover fix + assistant-reply copy smoke, no production change. Morning item for the user: confirm whether cmux forwards Cmd+C/kitty Ctrl+C over ssh — the app side is proven.
 - #476 [reload-keeps-a-disposed-session-on-boot-failure](.invar/tasks/completed/476-reload-keeps-a-disposed-session-on-boot-failure/task-476-reload-keeps-a-disposed-session-on-boot-failure.md) — 305185c5 — Landed: boot-before-dispose reload with both arms proven; MCP sizeLines closes the last builder ask from #473.
 - #475 [quick-open-leaves-focus-behind](.invar/tasks/completed/475-quick-open-leaves-focus-behind/task-475-quick-open-leaves-focus-behind.md) — f10ebd13 — Landed: Quick Open focus follows the opened file; smoke asserts it directly.
-- #474 [dispose-order-renderable-warnings](.invar/tasks/completed/474-dispose-order-renderable-warnings/task-474-dispose-order-renderable-warnings.md) — 7b8b889d — Landed: single-action teardown + zero-warnings quit ratchet.
-- #473 [invar-builds-invar](.invar/tasks/completed/473-invar-builds-invar/task-473-invar-builds-invar.md) — da9f70f2 — Landed: the MCP doorway + seven instrument fixes, MCP-client-verified at both scales. Bycatch converted: #476 filed (reload keeps a disposed session on boot failure); reach-completeness record still awaits the user. Remaining in the invar-builds-invar vision: the live demo loop with the user watching.

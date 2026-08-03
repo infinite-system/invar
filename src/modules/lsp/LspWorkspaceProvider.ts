@@ -26,6 +26,10 @@ import type {
   StructureOutlineResult,
   StructureSource,
 } from '../structure/StructureSource.interface';
+import type {
+  LanguageServerProcessSource,
+  MonitoredLanguageServerProcess,
+} from '../monitoring/LanguageServerProcessSource.interface';
 import { LanguageClient } from './LanguageClient';
 import { CodexRewriteProviderFactory } from './CodexRewriteProviderFactory';
 
@@ -38,7 +42,8 @@ class $LspWorkspaceProvider
     WorkspaceContribution,
     DocumentLanguageService,
     GutterDecorationContribution,
-    StructureSource
+    StructureSource,
+    LanguageServerProcessSource
 {
   readonly identifier = 'document-language-service' as const;
   readonly providers: readonly WorkspaceProvider[] = [this];
@@ -47,6 +52,7 @@ class $LspWorkspaceProvider
   protected disposeDocumentLifecycle: (() => void) | null = null;
   protected disposeGutterDecorations: (() => void) | null = null;
   protected disposeStructureSource: (() => void) | null = null;
+  protected disposeLanguageServerProcessSource: (() => void) | null = null;
   protected disposeRewriteProviderFactory: (() => void) | null = null;
 
   constructor(
@@ -63,6 +69,10 @@ class $LspWorkspaceProvider
     // Language Intelligence withdraws the outline source symmetrically.
     this.disposeStructureSource = workspace.providers.register(
       'structure',
+      this,
+    );
+    this.disposeLanguageServerProcessSource = workspace.providers.register(
+      'language-server-processes',
       this,
     );
     this.disposeRewriteProviderFactory = workspace.providers.register(
@@ -96,6 +106,8 @@ class $LspWorkspaceProvider
     this.disposeGutterDecorations = null;
     this.disposeStructureSource?.();
     this.disposeStructureSource = null;
+    this.disposeLanguageServerProcessSource?.();
+    this.disposeLanguageServerProcessSource = null;
     this.disposeRewriteProviderFactory?.();
     this.disposeRewriteProviderFactory = null;
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
@@ -156,6 +168,11 @@ class $LspWorkspaceProvider
   /** StructureSource: the stated reason symbols are withheld (today: the size budget). */
   structureNotice(document: LanguageDocument): string | null {
     return this.statusNotice(document);
+  }
+
+  languageServerProcesses(): readonly MonitoredLanguageServerProcess[] {
+    const process = this.client?.registeredLanguageServerProcess();
+    return process ? [process] : [];
   }
 
   diagnosticsAt(

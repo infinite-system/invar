@@ -1,7 +1,7 @@
 import { Static } from 'ivue/extras';
-import type { FoldRange } from './CodeFolding';
-import { TextCoordinates } from '../text/TextCoordinates';
-import { WrapBreakOpportunity } from '../text/WrapBreakOpportunity';
+import type { DocumentFoldRange } from './DocumentFoldState.interface';
+import { TextCoordinates } from './TextCoordinates';
+import { WrapBreakOpportunity } from './WrapBreakOpportunity';
 
 // Word-wrap mapping layer — a PURE logical↔visual projection over the coordinate model.
 // When word wrap is ON, one logical line renders as one or more VISUAL rows; this module is the
@@ -47,8 +47,8 @@ class $EditorWrap {
     return wrapIndexByDocument;
   }
 
-  protected static get $emptyFoldRanges(): readonly FoldRange[] {
-    const emptyFoldRanges: readonly FoldRange[] = [];
+  protected static get $emptyFoldRanges(): readonly DocumentFoldRange[] {
+    const emptyFoldRanges: readonly DocumentFoldRange[] = [];
     return emptyFoldRanges;
   }
 
@@ -210,7 +210,7 @@ class $EditorWrap {
     goalVisualColumn: number,
     deltaRows: number,
     wrapWidth: number | null,
-    foldedRanges: readonly FoldRange[] = [],
+    foldedRanges: readonly DocumentFoldRange[] = [],
   ): { line: number; col: number } {
     const lineIndex = Math.max(
       0,
@@ -364,7 +364,7 @@ class $EditorWrap {
   protected static buildDocumentWrapIndex(
     document: WrappableDocument,
     width: number | null,
-    foldedRanges: readonly FoldRange[],
+    foldedRanges: readonly DocumentFoldRange[],
     revision: number,
   ): DocumentWrapIndex {
     const lineCount = document.lineCount;
@@ -426,7 +426,7 @@ class $EditorWrap {
   protected static syncWrapIndex(
     document: WrappableDocument,
     wrapWidth: number | null,
-    foldedRanges: readonly FoldRange[] = [],
+    foldedRanges: readonly DocumentFoldRange[] = [],
   ): DocumentWrapIndex {
     const width =
       wrapWidth === null ? null : Math.max(1, Math.floor(wrapWidth));
@@ -570,7 +570,7 @@ class $EditorWrap {
   static totalVisualRows(
     document: WrappableDocument,
     wrapWidth: number | null,
-    foldedRanges: readonly FoldRange[] = [],
+    foldedRanges: readonly DocumentFoldRange[] = [],
   ): number {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     return Math.max(1, index.totalRowCount);
@@ -586,7 +586,7 @@ class $EditorWrap {
     document: WrappableDocument,
     lineIndex: number,
     wrapWidth: number | null,
-    foldedRanges: readonly FoldRange[] = [],
+    foldedRanges: readonly DocumentFoldRange[] = [],
   ): number {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     const clamped = Math.max(0, Math.min(lineIndex, document.lineCount));
@@ -602,7 +602,7 @@ class $EditorWrap {
     document: WrappableDocument,
     lineIndex: number,
     wrapWidth: number | null,
-    foldedRanges: readonly FoldRange[] = [],
+    foldedRanges: readonly DocumentFoldRange[] = [],
   ): number {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     const clampedLineIndex = Math.max(
@@ -624,7 +624,7 @@ class $EditorWrap {
     document: WrappableDocument,
     visualOffset: number,
     wrapWidth: number | null,
-    foldedRanges: readonly FoldRange[] = [],
+    foldedRanges: readonly DocumentFoldRange[] = [],
   ): { lineIndex: number; segmentIndex: number } {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     const total = index.totalRowCount;
@@ -688,7 +688,7 @@ class $EditorWrap {
     visualOffset: number,
     wrapWidth: number | null,
     height: number,
-    foldedRanges: readonly FoldRange[] = [],
+    foldedRanges: readonly DocumentFoldRange[] = [],
   ): VisualRow[] {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     const start = this.lineSegmentAtVisualRow(
@@ -735,7 +735,7 @@ class $EditorWrap {
     document: WrappableDocument,
     width: number | null,
     index: DocumentWrapIndex,
-    foldedRanges: readonly FoldRange[],
+    foldedRanges: readonly DocumentFoldRange[],
   ): void {
     const lineCount = index.rowCounts.length;
     const visibleFoldRanges = this.visibleFoldRanges(lineCount, foldedRanges);
@@ -823,8 +823,8 @@ class $EditorWrap {
 
   protected static visibleFoldRanges(
     lineCount: number,
-    foldedRanges: readonly FoldRange[],
-  ): readonly FoldRange[] {
+    foldedRanges: readonly DocumentFoldRange[],
+  ): readonly DocumentFoldRange[] {
     const orderedRanges = [...foldedRanges]
       .filter((range) => range.startLine >= 0 && range.startLine < lineCount)
       .sort(
@@ -832,7 +832,7 @@ class $EditorWrap {
           firstRange.startLine - secondRange.startLine ||
           secondRange.endLine - firstRange.endLine,
       );
-    const visibleRanges: FoldRange[] = [];
+    const visibleRanges: DocumentFoldRange[] = [];
     let visibleBodyStartLine = -1;
     let visibleBodyEndLine = -1;
     for (const range of orderedRanges) {
@@ -855,13 +855,13 @@ class $EditorWrap {
 
   protected static buildFoldProjection(
     lineCount: number,
-    foldedRanges: readonly FoldRange[],
+    foldedRanges: readonly DocumentFoldRange[],
   ): FoldProjection {
     const visibleLineByLine = this.allocateVisibleLineByLine(lineCount);
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
       this.writeVisibleLine(visibleLineByLine, lineIndex, lineIndex);
     }
-    const foldedRangeByStartLine = new Map<number, FoldRange>();
+    const foldedRangeByStartLine = new Map<number, DocumentFoldRange>();
     for (const range of this.visibleFoldRanges(lineCount, foldedRanges)) {
       foldedRangeByStartLine.set(range.startLine, range);
       for (
@@ -922,13 +922,13 @@ export interface VisualRow {
   /** True on a logical line's FIRST visual row (the only row that shows the line number). */
   firstOfLine: boolean;
   /** Present on every visual segment of a collapsed range's visible first line. */
-  foldedRange?: FoldRange;
+  foldedRange?: DocumentFoldRange;
 }
 
 export interface DocumentWrapIndex {
   width: number | null;
   /** Stable collapsed-range identity; compared in O(1) on unchanged frames. */
-  foldedRanges: readonly FoldRange[];
+  foldedRanges: readonly DocumentFoldRange[];
   /** The document revision this index was synced at (-1 = unknown, resync on every query). */
   revision: number;
   /** Visual rows per line, aligned with the document's compact line storage. */
@@ -940,13 +940,13 @@ export interface DocumentWrapIndex {
   /** O(1) line lookup: a hidden line maps to its visible collapsed header. */
   visibleLineByLine: Uint32Array;
   /** Only visible collapsed headers; nested hidden starts are absent. */
-  foldedRangeByStartLine: ReadonlyMap<number, FoldRange>;
+  foldedRangeByStartLine: ReadonlyMap<number, DocumentFoldRange>;
   /** O(1) past-end clamp even when a fold hides the document's physical final line. */
   lastVisibleLineIndex: number;
 }
 
 export interface FoldProjection {
   visibleLineByLine: Uint32Array;
-  foldedRangeByStartLine: ReadonlyMap<number, FoldRange>;
+  foldedRangeByStartLine: ReadonlyMap<number, DocumentFoldRange>;
   lastVisibleLineIndex: number;
 }

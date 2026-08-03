@@ -25,6 +25,7 @@ class $DatabaseConsumerPlugin
   readonly primaryDockContentIdentifiers = [] as const;
   readonly kind = 'database';
   readonly instanceLabel = 'Database';
+  readonly panelSpace = { kind: 'database', label: 'Database' } as const;
   readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,

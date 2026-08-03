@@ -7,7 +7,7 @@ import {
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 import { Workspace } from '../workspace/Workspace';
-import { EditorSourceTextViews } from './EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from './EditorSourceTextViewProviderFactory';
 import { EditorNavigationHistoryContribution } from './EditorNavigationHistoryContribution';
 
 let workspaceDirectory = '';
@@ -28,7 +28,8 @@ test('the source editor restores its document and cursor through opaque history'
   writeFileSync(alphaPath, 'zero\none\ntwo\n');
   writeFileSync(betaPath, 'beta\n');
   const workspace = new Workspace.Class({
-    createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    createSourceTextViews: () =>
+      EditorSourceTextViewProviderFactory.Class.create(),
   });
   const contribution = new EditorNavigationHistoryContribution.Class(workspace);
   workspace.openFileInTab(alphaPath);

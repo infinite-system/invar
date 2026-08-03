@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import { Clipboard } from '../system/Clipboard';
-import { Editor } from './Editor';
 import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
 
 test('read-only text buffer composes grapheme-safe selection copy and find targeting', async () => {
@@ -52,14 +51,10 @@ test('read-only text buffer composes grapheme-safe selection copy and find targe
   expect(revealState.match).toEqual(expectedMatch);
 });
 
-test('read-only text buffer excludes editing and undo while Editor extends it', () => {
+test('read-only text buffer excludes editing and undo', () => {
   const textBuffer = new ReadOnlyTextBuffer.Class();
-  const editor = new Editor.Class();
 
   expect('insertText' in textBuffer).toBe(false);
   expect('performUndo' in textBuffer).toBe(false);
   expect('save' in textBuffer).toBe(false);
-  expect(editor).toBeInstanceOf(ReadOnlyTextBuffer.$Class);
-  expect('insertText' in editor).toBe(true);
-  expect('performUndo' in editor).toBe(true);
 });

@@ -71,7 +71,6 @@ import type { PaneRuntimeRequest } from '../ui/PaneRuntime.interface';
 import { AgentFactory } from '../agent/AgentFactory';
 import { SdkBinaryExtraction } from '../agent/SdkBinaryExtraction';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { TextInputKey } from '../text/TextInputKey';
 import type { TextInputAction } from '../text/TextInputModel';
@@ -103,6 +102,7 @@ import { TaskNoticePaneContent } from '../tasks/TaskNoticePaneContent';
 import { Tasks } from '../tasks/Tasks';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { Dialog } from '../ui/Dialog';
+import type { SourceTextViewProvider } from '../workspace/SourceTextView.interface';
 
 class $Bootstrap {
   protected static awaitProjectedFrame(
@@ -297,7 +297,7 @@ class $Bootstrap {
           renderer.once('frame', () => resolve());
         }),
       codeFoldingEnabled: codeFoldingEnabled.value,
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: options.createSourceTextViews,
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
@@ -1280,7 +1280,11 @@ class $Bootstrap {
       restoringPanelWorkspaceState = true;
       try {
         panelHost.restoreWorkspaceState(
-          PanelWorkspaceState.Class.restore(state, (pane) => restorePane(pane)),
+          PanelWorkspaceState.Class.restore(
+            state,
+            (pane) => restorePane(pane),
+            (kind) => panelHost.spaceKindForPaneKind(kind),
+          ),
         );
       } finally {
         restoringPanelWorkspaceState = false;
@@ -1314,7 +1318,18 @@ class $Bootstrap {
           if (content) panelHost.register(content);
         },
         notice: (request) => {
-          panelHost.register(new TaskNoticePaneContent.Class(request));
+          const activeSpace = panelHost.activeSpace;
+          panelHost.register(
+            new TaskNoticePaneContent.Class(
+              request,
+              activeSpace
+                ? {
+                    kind: activeSpace.kind,
+                    label: panelHost.spaceLabel(activeSpace.kind),
+                  }
+                : undefined,
+            ),
+          );
         },
         // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
         present: (identifiers, transferFocus) => {
@@ -3552,6 +3567,7 @@ export interface BootOptions {
   onQuit?: () => void;
   onRestart?: () => void;
   plugins?: readonly ApplicationContributor[];
+  createSourceTextViews?: () => SourceTextViewProvider;
 }
 
 export interface BootedApp extends AppStatusProjectionPorts {

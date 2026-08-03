@@ -22,7 +22,7 @@ import {
 import { computed, type Ref } from 'vue';
 import { SelectableText } from '../ui/SelectableText';
 import { EditorPane } from './EditorPane';
-import type { EditorFrameAttribution } from './EditorFrameAttribution';
+import type { EditorFrameAttribution } from '../text/EditorFrameAttribution';
 import type {
   PaneContent,
   PaneNativeSurfacePort,

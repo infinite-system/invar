@@ -8,7 +8,7 @@ import type { Workspace } from '../workspace/Workspace';
 import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import { NavigationHistory } from '../navigation/NavigationHistory';
 import { Workspace as RealWorkspace } from '../workspace/Workspace';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 import { EditorNavigationHistoryContribution } from '../editor/EditorNavigationHistoryContribution';
 import {
   mkdtempSync as makeTemporaryDirectorySync,
@@ -314,7 +314,8 @@ it('restores a rendered Markdown view between source editor states', () => {
     writeFileSync(notesPath, '# Notes\n');
     writeFileSync(sourcePath, 'const source = true;\n');
     const workspace = new RealWorkspace.Class({
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
     });
     const editorContribution = new EditorNavigationHistoryContribution.Class(
       workspace,

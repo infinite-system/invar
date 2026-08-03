@@ -5,7 +5,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: low
-State: ACTIVE
+State: COMPLETED — bc6ad755 — ast-query: imports-of + literals census modes with self-test
 
 ## In plain words
 

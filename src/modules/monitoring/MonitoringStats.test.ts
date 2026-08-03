@@ -7,7 +7,7 @@ import type {
   ProcessResourceSample,
   ProcessSampler,
 } from './ProcessSampler.interface';
-import type { LanguageServerProcessRegistration } from '../lsp/LanguageServerProcessRegistry';
+import type { MonitoredLanguageServerProcess } from './LanguageServerProcessSource.interface';
 import type { MonitoredLanguageServerRow } from './MonitoringStats';
 
 function documentRow(
@@ -87,7 +87,7 @@ describe('MonitoringStats', () => {
   let observed = false;
   let renderRequests = 0;
   let ledgers: MonitoredWorkspaceLedger[] = [];
-  let languageServerProcesses: LanguageServerProcessRegistration[] = [];
+  let languageServerProcesses: MonitoredLanguageServerProcess[] = [];
   let processSampler: ProcessSampler = { sample: () => null };
   let stats: InstanceType<ReturnType<typeof buildClass>>;
 

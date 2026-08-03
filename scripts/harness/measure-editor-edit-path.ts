@@ -8,7 +8,7 @@
 import { loadavg } from 'node:os';
 import { join } from 'node:path';
 import { Static } from 'ivue/extras';
-import { EditorWrap } from '../../src/modules/editor/EditorWrap';
+import { EditorWrap } from '../../src/modules/text/EditorWrap';
 import { TextDocument } from '../../src/modules/text/TextDocument';
 import { QuietLock } from './QuietLock';
 
