@@ -1,7 +1,7 @@
 # Task 470 — harness wait-defect census and repair
 
 Priority: verification-integrity
-State: ACTIVE — AWAITING USER PRIORITIZATION, DO NOT START
+State: ACTIVE — BLOCKED ON #471 (graph completeness precedes the migration)
 Engine: claude
 Environment: any
 Model: fable-5
@@ -40,6 +40,12 @@ the first completed frame it is permanently true, so `scripts/tui-harness.sh`'s
 `settle` is a no-op and every `renderQuiescent === true` wait is pre-satisfied.
 The ~258 sleeps in the shell suite are the SYMPTOM: people papered over a
 primitive that never worked.
+
+## Ordering decided by the user (2026-08-02): #471 FIRST
+
+The graph-completeness work (task 471) precedes this task, so waits migrate
+once, onto a complete graph — not twice. The renderQuiescent fix and the
+PtyTestDriver guard do not depend on #471 and could land alongside it.
 
 ## Recommended order (offered, not approved)
 

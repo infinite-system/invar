@@ -1613,3 +1613,49 @@ skipped or sampled. Denominators: 63 `awaitStatus`/`awaitStatusWithoutFrame` cal
 11 bare `snapshot()`/`readStatus()` reads across the four files.
 Not opened (out of scope, referenced only for evidence):
 `HarnessSmoke.ts`, `PtyTestDriver.ts`, `HarnessSnapshot.ts`, `HarnessSmokeSupport.ts`.
+
+## Batch 6 — smaller harnesses A-J
+
+### Class 1 — pre-satisfied waits
+
+- scripts/harness/smoke-bracket-match-harness.ts:60-62 — class 1. Wait: `driver.awaitSnapshot((snapshot) => snapshot.findText('sample.ts') !== null)` after typing `sample` into Quick Open. `sample.ts` is already painted by the file tree (the boot wait at line 51 proved it), so the wait is TRUE when issued and does not prove the filter applied. Proposal: `await GraphClient.Class.awaitValue(statusPath, 'quickOpen...', ...)` — the `quickOpen` port exists (src/modules/app/Bootstrap.ts:1408); the status fields `quickOpenQuery`/`quickOpenMatches` are proven live at scripts/harness/smoke-comment-styling-harness.ts:221-227.
+- scripts/harness/smoke-git-blame-harness.ts:91-93 — class 1. Wait: `findText('tracked.txt') !== null` after typing `tracked` into Quick Open. `tracked.txt` is already in the file tree (waited at line 82). Same proposal as above (quickOpen port, Bootstrap.ts:1408).
+- scripts/harness/smoke-git-blame-harness.ts:129-131 — class 1. Wait: `findText('untracked.txt') !== null` after typing `untracked`. `untracked.txt` is already in the tree; note also that `findText('tracked.txt')` elsewhere matches inside `untracked.txt`. Same proposal.
+- scripts/harness/smoke-git-blame-harness.ts:102-108 — class 1, pre-satisfied POSITIVE CONTROL candidate. Wait: `status.currentLineBlameAuthor === 'Blame Tester'` after `Down`. Line 0 (`first line`) is committed by the same author, so the condition can already be TRUE before the Down — the wait cannot prove the cursor moved or the blame refreshed. Proposal: add the cursor to the predicate — `status.cursorLineIndex === 1 && status.currentLineBlameAuthor === 'Blame Tester'` (`cursorLineIndex` is a proven field, scripts/harness/smoke-go-to-line-harness.ts:31).
+- scripts/harness/smoke-image-preview-harness.ts:79-81 (helper `openThroughQuickOpen`; call sites 245, 272, 289, 326) — class 1. Wait: any row `includes(query)` after typing the query. Every query (`picture`, `sample`, `photo`, `data`) is a substring of a file-tree row painted before Quick Open filters, so all four waits are TRUE when issued. Proposal: quickOpen model wait (port at Bootstrap.ts:1408; fields proven at smoke-horizontal-extent-harness.ts:58-64).
+- scripts/harness/smoke-git-log-harness.ts:252-258 and 273-279 — class 1, the MOST SEVERE form: pre-satisfied POSITIVE CONTROLS. Wait after `Down`: `status.focus === 'git' && status.showingDiff === true` — both were already TRUE and asserted before the keypress (lines 244-249), so these two waits can never fail and prove nothing about the selection advancing. Proposal: no model path — contributor state (the git-log selected row is not published); key the wait on the preview grid text that the Down changes (as lines 241 and 262 already do), and drop these two status waits or turn them into one-shot assertions.
+- scripts/harness/smoke-hover-harness.ts:164-167 — class 1 (with a class-5 shadow). Wait: `hoverCardTextSpan(candidate) !== null` after Ctrl+C — the card was visible BEFORE the copy, so the wait is pre-satisfied; a blink-dismiss-and-reopen would also be missed. Proposal: the copy is already synchronized by the `lastCopyChars` wait at line 158; take one snapshot after it and `requireCondition` the card span (assertion, not a wait).
+- scripts/harness/smoke-horizontal-extent-harness.ts:177-181 — class 1 (mild). Wait: `status.editorScrollLeft === openingViewportClamp` after vertical scrolling — the equality was TRUE before the scroll (published at lines 139-143); a persistence claim written as a wait returns instantly on stale state. Proposal: read status once after the frame-collection wait at 153-168 and `requireCondition` the equality.
+
+### Class 2 — proxy waits
+
+- scripts/harness/smoke-breadcrumb-harness.ts:328-329 — class 2. `driver.sendText('huge.ts'); await driver.awaitScreenChange();` then Enter. Any repaint (the first echoed character) satisfies it while the filter result is still pending; Enter can accept a stale list. Proposal: quickOpen model wait (port at Bootstrap.ts:1408; fields proven at smoke-horizontal-extent-harness.ts:58-64).
+- scripts/harness/smoke-clipboard-frame-boundary-harness.ts:295 — class 2. `driver.sendKeys('Enter'); await driver.awaitScreenChange();` per transcript-fill turn — any repaint stands in for "the turn was submitted". Proposal: no graph path — agent transcript contributor state; use `awaitStatus` on the `agentBusy` transition (true after Enter, then false), or `awaitTransition`.
+- scripts/harness/smoke-clipboard-frame-boundary-harness.ts:404 and 434 — class 2. `sendText(...)` then `awaitScreenChange()` before Enter — the first echoed character's repaint satisfies the wait while the rest of the command is in flight. Line 434's comment acknowledges it as staging. Proposal for 404: `awaitGridCondition(findText('printf IDLE-TERMINAL'))` (single-row text); no model path — terminal contributor state.
+- scripts/harness/smoke-clipboard-frame-boundary-harness.ts:424, 426, 469, 471 — class 2; 469/471 are the SEVERE form: during the active loop the shell repaints every 20 ms, so `awaitScreenChange()` after the deselect click (469) and after Ctrl+C (471) is satisfied by loop output — a positive control that cannot fail. Proposal: for the click, the `mouse` port exists (Bootstrap.ts:1425, "proves the mouse path is live"); for the Ctrl+C effect, no model path — terminal contributor state (wait on the loop output row STOPPING, e.g. a grid condition that the numbered row no longer advances is still frame sampling — the honest wait is on selection-cleared state if published).
+- scripts/harness/smoke-git-log-harness.ts:226-231 — class 2. Wait: row-cells JSON diff (`JSON.stringify(candidate.rowCells(...)) !== before`) as a proxy for "the clicked file becomes the selected log row". No model path — contributor state (git log selection is not in status).
+- scripts/harness/smoke-comment-styling-harness.ts:77-78 — class 2. `driver.sendKeys('Right'); await driver.awaitScreenChange();` — any repaint proxies the cursor move. Proposal: `awaitStatusPublication` on `status.cursor` col === 1 (`cursor` is a proven field, scripts/harness/smoke-dirty-marker-harness.ts:160-162).
+- scripts/harness/smoke-comment-styling-harness.ts:282-289 — class 2 (plus a bare `driver.snapshot()` in the loop guard). `Down` + `awaitScreenChange()` per step proxies "the Extensions selection advanced". No model path — extensions-list selection is contributor state; the closing grid wait at 290-293 is the real condition, so replace the per-step proxy with the `› [x] Vue` grid condition and drop the screen-change steps.
+- scripts/harness/smoke-hover-harness.ts:136 — class 2. `await driver.awaitScreenChange()` after the mouse move — any repaint proxies "the move registered", and the REAL condition (the hover card span) is the very next wait at 137-140. Proposal: delete line 136; the card wait is the condition. (If a model wait is wanted, the `tooltip` port exists, Bootstrap.ts:1417.)
+
+### Class 6 — unsynchronized reads / actions
+
+- scripts/harness/smoke-diagnostics-harness.ts:266-267 — class 6. `driver.sendText('far.ts'); driver.sendKeys('Enter');` with no wait between — Quick Open filtering is asynchronous, so Enter can accept a stale list even though PTY bytes are ordered. Sibling harnesses deliberately await the filter first (smoke-horizontal-extent-harness.ts:58-64, smoke-comment-styling-harness.ts:221-227). Proposal: `awaitValue` on the quickOpen port (Bootstrap.ts:1408) for query === 'far.ts' with matches > 0 before Enter.
+- scripts/harness/smoke-git-log-harness.ts:298 — class 6. `snapshot = driver.snapshot()` right after Ctrl+g with only a STATUS wait (focus === 'git') between — the grid can lag the status flip, and the following `findText('root-subject-A')` then throws on a stale frame. Proposal: `await driver.awaitGridCondition(... findText('root-subject-A') !== null)`.
+
+### Clean files (no findings)
+
+smoke-audio-narration-harness.ts, smoke-database-harness.ts, smoke-dirty-marker-harness.ts (exemplary: revision-carried waits), smoke-find-harness.ts, smoke-go-to-line-harness.ts, smoke-goto-definition-harness.ts, smoke-gutter-diff-harness.ts (its comment at lines 178-182 records a past fix of exactly this defect class).
+
+No wait in this batch is keyed on `renderQuiescent`. All bare `Bun.sleep` calls found (audio poll 5 ms, dirty-marker 10 ms, gutter-diff 10 ms, clipboard 5/50 ms) are poll intervals inside deadline-bounded condition loops — not class 3. No stale needles found: every literal checked is either defined by the fixture the harness writes or was proven painted in the same run.
+
+### Batch 6 counts
+
+- Class 1 (pre-satisfied): 8 findings (10 wait sites; 3 are pre-satisfied positive controls: git-blame:102, git-log:252, git-log:273 — plus clipboard:469/471 counted under class 2)
+- Class 2 (proxy): 8 findings (12 wait sites)
+- Class 3 (sleep as sync): 0
+- Class 4 (stale needle): 0
+- Class 5 (transient/blink): 0 standalone (one shadow noted at hover:164)
+- Class 6 (unsynchronized): 2
+
+Coverage: all 18 assigned files opened and read in full (smoke-audio-narration, smoke-bracket-match, smoke-breadcrumb, smoke-clipboard-frame-boundary, smoke-comment-styling, smoke-database, smoke-diagnostics, smoke-diff-overview, smoke-dirty-marker, smoke-find, smoke-git-blame, smoke-git-log, smoke-go-to-line, smoke-goto-definition, smoke-gutter-diff, smoke-horizontal-extent, smoke-hover, smoke-image-preview). 0 files not opened.
