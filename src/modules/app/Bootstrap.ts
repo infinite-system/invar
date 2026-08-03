@@ -74,6 +74,8 @@ import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { dirname, join } from 'node:path';
 import type { ApplicationContributor } from './ApplicationContributor.interface';
 import { StatusProjectionContributions } from './StatusProjectionContributions';
+import { SystemNoteContributions } from './SystemNoteContributions';
+import { PanelContentLifecycle } from './PanelContentLifecycle';
 import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
@@ -501,6 +503,8 @@ class $Bootstrap {
     const statusBarSegments = new StatusBarSegments.Class();
     const statusProjectionContributions =
       new StatusProjectionContributions.Class();
+    const systemNoteContributions = new SystemNoteContributions.Class();
+    const panelContentLifecycle = new PanelContentLifecycle.Class();
     // Contributed occupants of the editor column register here. Created BEFORE plugin activation
     // (which runs before buildRootView), so a provider registers early and its content is built
     // lazily at mount time from a view-supplied context.
@@ -534,6 +538,8 @@ class $Bootstrap {
         overlayCoordinator,
         statusBarSegments,
         statusProjectionContributions,
+        systemNoteContributions,
+        panelContentLifecycle,
         editorSurfaceContents,
         editorColumnDefault,
         paneRuntimes,
@@ -750,6 +756,18 @@ class $Bootstrap {
     // true size. The host names no runtime: it passes a KIND to the registry and registers whatever
     // comes back.
     const runtimePanes = new Map<string, PaneContent>();
+    const runtimeSystemNoteDisposers = new Map<string, () => void>();
+    const registerRuntimePaneContent = (content: PaneContent): void => {
+      runtimePanes.set(content.id, content);
+      const disposeSystemNote = content.onSystemNote?.((note) =>
+        systemNoteContributions.publish(note),
+      );
+      if (disposeSystemNote) {
+        runtimeSystemNoteDisposers.set(content.id, disposeSystemNote);
+      }
+      panelHost.register(content);
+      panelContentLifecycle.publishRegistered(content);
+    };
     // Build a pane through its contributed runtime. The host supplies identity and the laid-out
     // geometry; the runtime decides what — if anything — it starts behind them.
     const createRuntimePane = (
@@ -790,8 +808,7 @@ class $Bootstrap {
         process,
       });
       if (!content) return null;
-      runtimePanes.set(content.id, content);
-      panelHost.register(content);
+      registerRuntimePaneContent(content);
       return content;
     };
     ensureRuntimePane = (kind: string): PaneContent | null =>
@@ -818,14 +835,16 @@ class $Bootstrap {
       }
       const content = paneRuntimes.createPane(runtimeKind, request);
       if (!content) return false;
-      runtimePanes.set(content.id, content);
-      panelHost.register(content);
+      registerRuntimePaneContent(content);
       panelHost.showContent(content.id);
       return true;
     };
 
     handlePanelContentRemoved = (content): void => {
-      if (runtimePanes.delete(content.id)) paneRuntimes.paneRemoved(content);
+      if (!runtimePanes.delete(content.id)) return;
+      runtimeSystemNoteDisposers.get(content.id)?.();
+      runtimeSystemNoteDisposers.delete(content.id);
+      paneRuntimes.paneRemoved(content);
     };
 
     const createContributedPaneInstance = (
@@ -1013,7 +1032,7 @@ class $Bootstrap {
               environment: request.environment,
             },
           });
-          if (content) panelHost.register(content);
+          if (content) registerRuntimePaneContent(content);
         },
         notice: (request) => {
           const activeSpace = panelHost.activeSpace;
@@ -1231,6 +1250,8 @@ class $Bootstrap {
       activitySurface,
       statusBarSegments,
       statusProjectionContributions,
+      systemNoteContributions,
+      panelContentLifecycle,
       editorSurfaceContents,
       editorColumnDefault,
       paneRuntimes,
@@ -3164,6 +3185,8 @@ export interface BootedApp extends AppStatusProjectionPorts {
   activitySurface: ActivitySurface.Model;
   statusBarSegments: StatusBarSegments.Model;
   statusProjectionContributions: StatusProjectionContributions.Model;
+  systemNoteContributions: SystemNoteContributions.Model;
+  panelContentLifecycle: PanelContentLifecycle.Model;
   editorSurfaceContents: EditorSurfaceContents.Model;
   editorColumnDefault: EditorColumnDefault.Model;
   paneRuntimes: PaneRuntimes.Model;

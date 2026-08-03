@@ -68,6 +68,8 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
   protected disposeCommands: (() => void) | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeStatusBar: (() => void) | null = null;
+  protected disposeSystemNotes: (() => void) | null = null;
+  protected disposePanelContentLifecycle: (() => void) | null = null;
   protected skillPopup: AgentSkillPopup.Model | null = null;
   protected testVoiceBackend: TtsBackend | null = null;
   protected provider: RegisteredSetting<AgentProvider> | null = null;
@@ -216,6 +218,16 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
       });
+    this.disposeSystemNotes = context.systemNoteContributions.register((note) =>
+      this.currentPane()?.agentSession.appendSystemNote(note),
+    );
+    this.disposePanelContentLifecycle =
+      context.panelContentLifecycle.onRegistered((content) => {
+        if ((content.kind ?? content.id) !== 'terminal') return;
+        for (const pane of this.panes.values()) {
+          this.connectTerminalFollow(pane);
+        }
+      });
   }
 
   createPane(request: PaneRuntimeRequest): PaneContent {
@@ -294,6 +306,10 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
     this.disposeStatusProjection = null;
     this.disposeStatusBar?.();
     this.disposeStatusBar = null;
+    this.disposeSystemNotes?.();
+    this.disposeSystemNotes = null;
+    this.disposePanelContentLifecycle?.();
+    this.disposePanelContentLifecycle = null;
     for (const identifier of [...this.panes.keys()]) {
       this.hostPort?.releasePane(identifier);
     }
@@ -384,6 +400,7 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
       .currentPaneOfKind('terminal')
       ?.capability?.<AgentTerminalObservationPort>('terminal-observation');
     if (!observation) return;
+    this.terminalFollowers.get(pane.id)?.dispose();
     this.terminalFollowers.set(
       pane.id,
       new AgentTerminalFollow.Class(

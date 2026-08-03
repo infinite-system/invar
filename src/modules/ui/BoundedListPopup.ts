@@ -70,6 +70,7 @@ class $BoundedListPopup {
   protected anchorValue: BoundedListPopupAnchor = { column: 0, row: 0 };
   protected pointerPressedFilteredIndex = -1;
   protected pointerDragged = false;
+  protected ownerIdentifierValue: string | null = null;
   protected searchHovered = false;
   protected searchVisibleValue = true;
   protected backdropVisibleValue = true;
@@ -364,6 +365,7 @@ class $BoundedListPopup {
     this.replaceItemSet(items);
     this.anchorValue = anchor;
     this.selectionHandler = selectionHandler;
+    this.ownerIdentifierValue = options.ownerIdentifier ?? null;
     this.searchThresholdValue =
       options.searchThreshold ?? $BoundedListPopup.DEFAULT_SEARCH_THRESHOLD;
     this.searchVisibleValue = options.searchVisible ?? true;
@@ -405,6 +407,7 @@ class $BoundedListPopup {
 
   close(): void {
     this.open.value = false;
+    this.ownerIdentifierValue = null;
     this.items.value = [];
     this.filteredMatchesValue = [];
     this.enabledNavigationValue = {
@@ -430,6 +433,10 @@ class $BoundedListPopup {
     this.searchInput.visible = false;
     this.list.visible = false;
     this.requestPaint();
+  }
+
+  closeIfOwned(ownerIdentifier: string): void {
+    if (this.ownerIdentifierValue === ownerIdentifier) this.close();
   }
 
   appendQuery(text: string): void {
@@ -1007,6 +1014,7 @@ export interface BoundedListPopupAnchor {
 }
 
 export interface BoundedListPopupOpenOptions {
+  ownerIdentifier?: string;
   title?: string;
   searchThreshold?: number;
   minimumWidth?: number;

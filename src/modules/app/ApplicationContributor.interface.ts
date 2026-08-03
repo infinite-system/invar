@@ -31,6 +31,8 @@ import type {
 import type { Ref } from 'vue';
 import type { FindBarTarget } from '../search/FindBar';
 import type { FindBar } from '../search/FindBar';
+import type { SystemNoteContributions } from './SystemNoteContributions';
+import type { PanelContentLifecycle } from './PanelContentLifecycle';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 export interface ApplicationContributor {
@@ -60,6 +62,10 @@ export interface ApplicationContributionContext {
   readonly overlayCoordinator: OverlayCoordinator.Instance;
   readonly statusBarSegments: StatusBarSegments.Model;
   readonly statusProjectionContributions: StatusProjectionContributions.Model;
+  /** Human-readable pane activity reaches contributed display surfaces through this registry. */
+  readonly systemNoteContributions: SystemNoteContributions.Model;
+  /** Observe generic bottom-panel content after it becomes resolvable through the host. */
+  readonly panelContentLifecycle: PanelContentLifecycle.Model;
   /** Register an occupant of the editor column (a comparison, a rendered preview). */
   readonly editorSurfaceContents: EditorSurfaceContents.Model;
   /** Register the editor column's DEFAULT occupant — what sits there when nothing claims it. The

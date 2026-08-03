@@ -24,6 +24,7 @@ class FakeBoundedListPopup {
   moveDirection: 1 | -1 | null = null;
   protected selectionHandler: ((item: BoundedListPopupItem) => void) | null =
     null;
+  protected ownerIdentifier: string | null = null;
 
   openAt(
     items: readonly BoundedListPopupItem[],
@@ -40,11 +41,17 @@ class FakeBoundedListPopup {
     this.selectedIndex.value = 0;
     this.selectionHandler = selectionHandler;
     this.lastOptions = options;
+    this.ownerIdentifier = options.ownerIdentifier ?? null;
     this.open.value = true;
   }
 
   close(): void {
     this.open.value = false;
+    this.ownerIdentifier = null;
+  }
+
+  closeIfOwned(ownerIdentifier: string): void {
+    if (this.ownerIdentifier === ownerIdentifier) this.close();
   }
 
   moveSelection(direction: 1 | -1): void {
@@ -93,6 +100,21 @@ function createPopup(
 }
 
 describe('AgentSkillPopup', () => {
+  test('closing an inactive skill adapter preserves another bounded popup owner', () => {
+    const { popup, fakePopup } = createPopup();
+    fakePopup.openAt(
+      [{ identifier: 'database-instance', label: 'Database' }],
+      { column: 10, row: 10 },
+      () => {},
+      { ownerIdentifier: 'panel-add' },
+    );
+
+    popup.close();
+
+    expect(fakePopup.open.value).toBe(true);
+    expect(fakePopup.items.value[0]?.identifier).toBe('database-instance');
+  });
+
   test('adapts filtered workspace skills to the bounded popup', () => {
     const workspaceRoot = Files.Class.createTemporaryDirectory(
       'invar-agent-skill-popup-',

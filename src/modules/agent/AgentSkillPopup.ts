@@ -19,6 +19,7 @@ import {
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 class $AgentSkillPopup {
+  protected readonly ownerIdentifier = 'agent-skill-popup';
   protected readonly popup: BoundedListPopup.Model;
   protected readonly ownsPopup: boolean;
   protected readonly skillCache = new Map<
@@ -92,7 +93,7 @@ class $AgentSkillPopup {
     ].join(':');
     this.activeInvocationKey = invocationKey;
     if (invocationKey === this.dismissedInvocationKey) {
-      this.popup.close();
+      this.popup.closeIfOwned(this.ownerIdentifier);
       return;
     }
     const matchingSkills = this.skills(workspaceRoot).filter((skill) =>
@@ -112,7 +113,7 @@ class $AgentSkillPopup {
       this.item(skill, maximumLabelWidth),
     );
     if (items.length === 0) {
-      this.popup.close();
+      this.popup.closeIfOwned(this.ownerIdentifier);
       return;
     }
     this.popup.openAt(
@@ -130,13 +131,14 @@ class $AgentSkillPopup {
         minimumWidth: popupGeometry.boxWidth,
         availableBottomExclusive: anchor.row,
         selectedItemIdentifier: this.selectedIdentifier ?? undefined,
+        ownerIdentifier: this.ownerIdentifier,
       },
     );
   }
 
   dismiss(): void {
     this.dismissedInvocationKey = this.activeInvocationKey;
-    this.popup.close();
+    this.popup.closeIfOwned(this.ownerIdentifier);
   }
 
   moveSelection(direction: 1 | -1): void {
@@ -160,7 +162,7 @@ class $AgentSkillPopup {
   }
 
   dispose(): void {
-    this.popup.close();
+    this.popup.closeIfOwned(this.ownerIdentifier);
     if (this.ownsPopup) this.popup.dispose();
     this.skillCache.clear();
   }
@@ -226,7 +228,7 @@ class $AgentSkillPopup {
   protected closeAndResetDismissal(): void {
     this.activeInvocationKey = null;
     this.dismissedInvocationKey = null;
-    this.popup.close();
+    this.popup.closeIfOwned(this.ownerIdentifier);
   }
 }
 

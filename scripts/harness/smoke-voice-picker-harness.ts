@@ -160,7 +160,14 @@ try {
     'a settings selection is published before voice-row navigation',
     (candidate) => typeof candidate.settingsSelectedLabel === 'string',
   );
-  for (let navigationStep = 0; navigationStep < 30; navigationStep++) {
+  const settingsRowCount = Array.isArray(status.settingsLabels)
+    ? status.settingsLabels.length
+    : 0;
+  for (
+    let navigationStep = 0;
+    navigationStep < settingsRowCount;
+    navigationStep++
+  ) {
     if (status.settingsSelectedLabel === 'Narration voice') break;
     const previousSelectedLabel = status.settingsSelectedLabel;
     driver.sendKeys('Down');
