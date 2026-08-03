@@ -1,3 +1,16 @@
+# RESUME ANCHOR 52 — 2026-08-03 ~09:10 EDT — 483 IN FLIGHT, 484 STAGED
+
+Chain: 482 LANDED (03fc43fe: composer-focus eliminated, smoke arm added;
+user-side question = which selection highlight they see). #483 DISPATCHED
+(shortcut-getter conversion, two phases, judgment rules in the brief).
+ON READY: convert bycatch + instrument feedback, merge main, gate with a
+death-reporting monitor, land. THEN dispatch #484 (per-file smoke reuse
+churn experiment — task file has the full design; user redirected the axis
+from latency to churn; 236MB/instance measured). Goal hook: "get both done
+intelligently" = 483's two phases landed. User RESTING. No experiments.
+
+---
+
 # RESUME ANCHOR 51 — 2026-08-03 ~08:20 EDT — #482 IN FLIGHT; USER PRESENT
 
 Delta over 50c: the user's Ctrl+C observation ("claude flinches") pointed at
