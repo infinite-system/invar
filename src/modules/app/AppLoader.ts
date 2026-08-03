@@ -44,6 +44,7 @@ class $AppLoader {
     return Bootstrap.Class.boot({
       root: this.rootArgument(),
       plugins: [...DefaultPlugins.Class.create(), ...vendorPlugins],
+      createSourceTextViews: () => DefaultPlugins.Class.createSourceTextViews(),
       // Give the renderer a tick to restore the terminal, then exit.
       onQuit: () => setTimeout(() => this.exitProcess(0), 20),
       onRestart: () => this.relaunch(),

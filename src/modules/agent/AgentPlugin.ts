@@ -41,6 +41,9 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
   readonly name = 'Invar Agent';
   readonly kind = 'agent';
   readonly instanceLabel = 'Agent';
+  // Agent panes share the Terminal space (the #405 declaration seam) — same
+  // grouping the hand-wired pane had before the plugin move.
+  readonly panelSpace = { kind: 'terminal', label: 'Terminal' } as const;
   readonly offeredInPanelAddMenu = true;
   protected application: ApplicationContributionContext | null = null;
   protected hostPort: PaneRuntimeHostPort | null = null;

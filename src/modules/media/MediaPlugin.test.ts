@@ -6,6 +6,7 @@ import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { Settings } from '../settings/Settings';
 import { Theme } from '../theme/Theme';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import { PanelHost } from '../ui/PanelHost';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import { MediaPlugin } from './MediaPlugin';
@@ -34,6 +35,7 @@ function activatedMediaPlugin(currentPane: () => PaneContent | null) {
     workspaceSet,
     theme: new Theme.Class(),
     paneRuntimes,
+    bottomPanelHost: new PanelHost.Class(),
     statusProjectionContributions,
     currentPaneOfKind: () => currentPane(),
     releasePane: (identifier: string) => {
@@ -71,6 +73,7 @@ test('media runtime, commands, keys, and status withdraw together', () => {
   context.manager.activateAll();
 
   expect(context.paneRuntimes.runtime('media')).toBe(context.plugin);
+  expect(context.plugin.panelSpace).toEqual({ kind: 'media', label: 'Media' });
   expect(context.paneRuntimes.addableKinds()).toEqual([
     { kind: 'media', label: '3D Demo' },
   ]);

@@ -36,6 +36,9 @@ export interface PaneContent {
   readonly id: string;
   /** Shared-generator kind. Multiple independently owned instances may have the same kind. */
   readonly kind?: string;
+  /** The panel space this kind belongs to. Kinds can share one space, while a new kind can declare
+   *  its own without teaching the host its name. */
+  readonly panelSpace?: PaneContentSpace;
   /** Stable user-facing instance name (Terminal, Terminal 2, Agent 2). */
   readonly instanceLabel?: string;
   /** Human-readable name shown in this content region's own heading. */
@@ -143,6 +146,13 @@ export interface PaneContent {
   onVisibilityChange?(visible: boolean): void;
   /** Release owned resources. */
   dispose(): void;
+}
+
+export interface PaneContentSpace {
+  /** Stable kind used by workspace persistence and space membership. */
+  readonly kind: string;
+  /** User-facing base label. The host adds a number for later spaces of the same kind. */
+  readonly label: string;
 }
 
 /** The `native-surface` capability: a pane content that owns OpenTUI renderables and paints them

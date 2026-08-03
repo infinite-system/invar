@@ -111,7 +111,7 @@ cross-multiplication.
 the actively observed set*; a 100,000-line document that costs the same per
 frame as a 2,000-line document. This is the invariant Invar is named for.
 
-**Evidence:** `src/modules/editor/EditorFrameAttribution.ts`;
+**Evidence:** `src/modules/text/EditorFrameAttribution.ts`;
 `scripts/harness/measure-scroll-smoothness.ts`; commits `84bb97b` and
 `d61124d` plus the fold-cost work; `project.tools.md`. The current default
 drive measured exactly 65 document reads, 33 fold lookups, 2 wrap lookups,

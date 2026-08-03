@@ -14,8 +14,8 @@ import type {
 } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { TextCoordinates } from '../text/TextCoordinates';
-import type { EditorFrameAttribution } from './EditorFrameAttribution';
-import { EditorWrap, type VisualRow } from './EditorWrap';
+import type { EditorFrameAttribution } from '../text/EditorFrameAttribution';
+import { EditorWrap, type VisualRow } from '../text/EditorWrap';
 import { EditorPaneRenderer } from './EditorPaneRenderer';
 import { BracketMatch } from './BracketMatch';
 import { ScrollGesture } from '../ui/ScrollGesture';

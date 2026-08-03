@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 import { EditorPlugin } from '../editor/EditorPlugin';
 
 let workspaceDirectory = '';
@@ -21,7 +21,8 @@ const filePaths: string[] = [];
 function createWorkspace(): Workspace.Model {
   return new Workspace.Class({
     contributors: [new EditorPlugin.Class()],
-    createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    createSourceTextViews: () =>
+      EditorSourceTextViewProviderFactory.Class.create(),
   });
 }
 

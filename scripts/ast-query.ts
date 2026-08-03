@@ -16,12 +16,20 @@
 //   bun scripts/ast-query.ts wrap-index-array-escape-census # index-array reads outside EditorWrap
 //   bun scripts/ast-query.ts document-change-fact-boundary-census # document wrappers missing lastLineChange
 //   bun scripts/ast-query.ts static-self-read-census # own-class static reads that pin the base class
+//   bun scripts/ast-query.ts imports-of <target>  # who imports from a module folder or package
+//       <target> is a repo-relative path prefix ('src/modules/git') for relative imports, or a
+//       bare package name ('vue') for package imports. Re-exports (`export … from`) count too.
+//   bun scripts/ast-query.ts literals <term[,term,…]> # string literals exactly matching a term
+//       Matches '…' and `…` (no-substitution) literals; import/export specifiers are excluded,
+//       so a term that is also a module path never misfires on the import line.
+//   bun scripts/ast-query.ts self-test            # prove imports-of and literals fire AND stay
+//       silent against a built-in fixture (positive + negative arm per mode); exits 1 on failure
 // Flags: --tests (include *.test.ts)  --path <glob-root under repo, default src/modules>
 //        --require-zero (exit 1 when structural matches remain)
 //        --allowlist <file> (static-self-read-census only; allow named instance reads to shrink)
 import * as ts from 'typescript';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const repositoryRoot = new URL('..', import.meta.url).pathname;
 
@@ -60,7 +68,8 @@ if (!queryMode) {
       '<calls|named-calls|news|identifiers|members|classes|module-functions|' +
       'private-members|hash-private-members|text-input-census|' +
       'wrap-index-edit-loop-census|wrap-index-array-escape-census|' +
-      'document-change-fact-boundary-census|static-self-read-census> ' +
+      'document-change-fact-boundary-census|static-self-read-census|' +
+      'imports-of|literals|self-test> ' +
       '[name] [--tests] [--path <root>] [--require-zero] [--allowlist <file>]',
   );
   process.exit(2);
@@ -188,7 +197,7 @@ function wrapIndexArrayEscapeCensusLabel(
   node: ts.Node,
   sourceFile: ts.SourceFile,
 ): string | null {
-  if (sourceFile.fileName === 'src/modules/editor/EditorWrap.ts') return null;
+  if (sourceFile.fileName === 'src/modules/text/EditorWrap.ts') return null;
   if (
     ts.isPropertyAccessExpression(node) &&
     (node.name.text === 'rowCounts' || node.name.text === 'blockRowCounts')
@@ -352,6 +361,69 @@ function staticSelfReadCensusLabel(node: ts.Node): string | null {
   return `${population} ${className}.${node.name.text}`;
 }
 
+// imports-of: does this import (or re-export) pull from the queried target? The target is
+// matched two ways, following the specifier's own form: a RELATIVE specifier is resolved
+// against the importing file and compared to the target as a repo-relative path prefix; a
+// BARE specifier is compared to the target as a package name (exact or subpath). This is the
+// two-channel shape the #488 import census proved: a `vue` PACKAGE import must never count as
+// a hit on the `src/modules/vue` FOLDER, and the other way around.
+function importsOfLabel(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  targetSpecifier: string,
+): string | null {
+  const isImport =
+    ts.isImportDeclaration(node) &&
+    node.moduleSpecifier !== undefined &&
+    ts.isStringLiteral(node.moduleSpecifier);
+  const isReExport =
+    ts.isExportDeclaration(node) &&
+    node.moduleSpecifier !== undefined &&
+    ts.isStringLiteral(node.moduleSpecifier);
+  if (!isImport && !isReExport) return null;
+  const specifier = (node.moduleSpecifier as ts.StringLiteral).text;
+  const typeOnly = ts.isImportDeclaration(node)
+    ? (node.importClause?.isTypeOnly ?? false)
+    : node.isTypeOnly;
+  const verb = isImport ? 'import' : 'export-from';
+  const kind = typeOnly ? 'type-only' : 'value';
+  if (specifier.startsWith('.')) {
+    const resolvedRepoRelative = relative(
+      repositoryRoot,
+      resolve(repositoryRoot, dirname(sourceFile.fileName), specifier),
+    );
+    return resolvedRepoRelative === targetSpecifier ||
+      resolvedRepoRelative.startsWith(targetSpecifier + '/')
+      ? `${verb} '${specifier}' -> ${targetSpecifier} (${kind})`
+      : null;
+  }
+  return specifier === targetSpecifier ||
+    specifier.startsWith(targetSpecifier + '/')
+    ? `${verb} '${specifier}' -> ${targetSpecifier} (${kind})`
+    : null;
+}
+
+// literals: does this string literal exactly match one of the queried terms? Covers '…' and
+// `…` (no-substitution template) literals. Import/export module specifiers are EXCLUDED, the
+// negative arm the #488 vocabulary census proved: a term that also appears as a module path
+// must not misfire on the import line.
+function literalsLabel(node: ts.Node, terms: Set<string>): string | null {
+  if (!ts.isStringLiteral(node) && !ts.isNoSubstitutionTemplateLiteral(node)) {
+    return null;
+  }
+  if (
+    node.parent !== undefined &&
+    (ts.isImportDeclaration(node.parent) || ts.isExportDeclaration(node.parent))
+  ) {
+    return null;
+  }
+  return terms.has(node.text) ? `'${node.text}'` : null;
+}
+
+const literalTerms = new Set(
+  (queryName ?? '').split(',').filter((term) => term.length > 0),
+);
+
 const predicateByMode: Record<string, MatchPredicate> = {
   calls: (node) =>
     ts.isCallExpression(node) &&
@@ -423,7 +495,115 @@ const predicateByMode: Record<string, MatchPredicate> = {
   'document-change-fact-boundary-census': (node) =>
     documentChangeFactBoundaryCensusLabel(node),
   'static-self-read-census': (node) => staticSelfReadCensusLabel(node),
+  'imports-of': (node, sourceFile) =>
+    importsOfLabel(node, sourceFile, queryName!),
+  literals: (node) => literalsLabel(node, literalTerms),
 };
+
+// self-test: prove the parameterized modes can FIRE and can STAY SILENT against a built-in
+// fixture, before anyone trusts their zero on real code. A scanner that cannot go red on a
+// planted defect is a decoration (project.tools.md, the rule every instrument obeys).
+function collectLabels(
+  sourceFile: ts.SourceFile,
+  matcher: (node: ts.Node) => string | null,
+): string[] {
+  const labels: string[] = [];
+  const visit = (node: ts.Node): void => {
+    const label = matcher(node);
+    if (label !== null) labels.push(label);
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return labels;
+}
+
+function runSelfTest(): never {
+  const fixture = ts.createSourceFile(
+    'src/modules/app/AstQuerySelfTestFixture.ts',
+    [
+      "import { GitPanel } from '../git/GitPanel';",
+      "import { ref } from 'vue';",
+      "export { GitHistory } from '../git/GitHistory';",
+      "const commandIdentifier = 'git.togglePanel';",
+      'const templateLiteral = `template-only-term-493`;',
+    ].join('\n'),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const checks: Array<{ name: string; pass: boolean; detail: string }> = [];
+  const check = (name: string, pass: boolean, detail: string): void => {
+    checks.push({ name, pass, detail });
+  };
+
+  const folderHits = collectLabels(fixture, (node) =>
+    importsOfLabel(node, fixture, 'src/modules/git'),
+  );
+  check(
+    'imports-of fires on a relative import into the target folder',
+    folderHits.some((label) => label.includes("'../git/GitPanel'")),
+    `hits: ${JSON.stringify(folderHits)}`,
+  );
+  check(
+    'imports-of fires on a re-export from the target folder',
+    folderHits.some((label) => label.startsWith('export-from')),
+    `hits: ${JSON.stringify(folderHits)}`,
+  );
+  check(
+    'imports-of stays silent about the vue PACKAGE when asked for a folder',
+    !folderHits.some((label) => label.includes("'vue'")) &&
+      folderHits.length === 2,
+    `hits: ${JSON.stringify(folderHits)}`,
+  );
+  const packageHits = collectLabels(fixture, (node) =>
+    importsOfLabel(node, fixture, 'vue'),
+  );
+  check(
+    'imports-of fires on the vue package and ONLY on it',
+    packageHits.length === 1 && packageHits[0]!.includes("'vue'"),
+    `hits: ${JSON.stringify(packageHits)}`,
+  );
+
+  const literalHits = collectLabels(fixture, (node) =>
+    literalsLabel(
+      node,
+      new Set(['git.togglePanel', 'no-such-term-493', 'vue']),
+    ),
+  );
+  check(
+    'literals fires on a matching string literal',
+    literalHits.includes("'git.togglePanel'"),
+    `hits: ${JSON.stringify(literalHits)}`,
+  );
+  check(
+    'literals stays silent about absent terms and import specifiers',
+    !literalHits.includes("'no-such-term-493'") &&
+      !literalHits.includes("'vue'") &&
+      literalHits.length === 1,
+    `hits: ${JSON.stringify(literalHits)}`,
+  );
+  const templateHits = collectLabels(fixture, (node) =>
+    literalsLabel(node, new Set(['template-only-term-493'])),
+  );
+  check(
+    'literals fires on a no-substitution template literal',
+    templateHits.length === 1,
+    `hits: ${JSON.stringify(templateHits)}`,
+  );
+
+  let failed = 0;
+  for (const result of checks) {
+    console.log(
+      `${result.pass ? 'PASS' : 'FAIL'}  ${result.name}  (${result.detail})`,
+    );
+    if (!result.pass) failed += 1;
+  }
+  console.log(
+    `ast-query self-test: ${checks.length - failed}/${checks.length} checks passed`,
+  );
+  process.exit(failed > 0 ? 1 : 0);
+}
+
+if (queryMode === 'self-test') runSelfTest();
 
 const predicate = predicateByMode[queryMode];
 
@@ -433,9 +613,15 @@ if (!predicate) {
 }
 
 if (
-  ['calls', 'named-calls', 'news', 'identifiers', 'members'].includes(
-    queryMode,
-  ) &&
+  [
+    'calls',
+    'named-calls',
+    'news',
+    'identifiers',
+    'members',
+    'imports-of',
+    'literals',
+  ].includes(queryMode) &&
   !queryName
 ) {
   console.error(`mode ${queryMode} needs a name argument`);

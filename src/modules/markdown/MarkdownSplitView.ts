@@ -10,7 +10,7 @@ import { BoxRenderable, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { TextCoordinates } from '../text/TextCoordinates';
-import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
+import { ReadOnlyTextBuffer } from '../text/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';

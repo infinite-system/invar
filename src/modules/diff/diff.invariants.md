@@ -54,7 +54,7 @@ that supplied the engine.
 highlights; no replace operation against either read-only side.
 
 **Evidence:** `src/modules/diff/DiffView.ts` (`previousTextBuffer`, `currentTextBuffer`,
-`findTarget`, `highlightLine`); `src/modules/editor/ReadOnlyTextBuffer.ts` (`findTarget`);
+`findTarget`, `highlightLine`); `src/modules/text/ReadOnlyTextBuffer.ts` (`findTarget`);
 `src/modules/search/FindBar.ts` (`enginesByTargetIdentifier`).
 
 **Impossible if true:** searching current erasing the base query; a base match highlighting current

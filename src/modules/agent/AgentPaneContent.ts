@@ -83,6 +83,7 @@ class $AgentPaneContent implements PaneContent {
   readonly id: string;
   readonly kind = 'agent';
   readonly instanceLabel: string;
+  readonly panelSpace = { kind: 'terminal', label: 'Terminal' } as const;
   readonly frameHeaderRows = 1;
   readonly icon = '✦';
   readonly keybindingContext = 'agent';

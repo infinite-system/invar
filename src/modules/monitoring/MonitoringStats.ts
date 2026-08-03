@@ -28,7 +28,7 @@ import {
 import { RuntimeSample } from './RuntimeSample';
 import type { RuntimeHeapCensus, RuntimeProcessSample } from './RuntimeSample';
 import type { RetainedDocumentRow } from '../workspace/OpenBufferSet';
-import type { LanguageServerProcessRegistration } from '../lsp/LanguageServerProcessRegistry';
+import type { MonitoredLanguageServerProcess } from './LanguageServerProcessSource.interface';
 import type {
   ProcessResourceSample,
   ProcessSampler,
@@ -395,12 +395,12 @@ export interface MonitoringStatsDependencies {
   /** The monitor's own contributor identifier, so it can exclude itself from its suspect list. */
   ownIdentifier: () => string;
   /** Registered server PIDs from the LSP manager's one spawn path, in manager order. */
-  languageServerProcesses: () => readonly LanguageServerProcessRegistration[];
+  languageServerProcesses: () => readonly MonitoredLanguageServerProcess[];
   /** Platform process sampler. Linux reads `/proc`; another platform can supply another adapter. */
   processSampler: ProcessSampler;
 }
 
-export interface MonitoredLanguageServerRow extends LanguageServerProcessRegistration {
+export interface MonitoredLanguageServerRow extends MonitoredLanguageServerProcess {
   readonly state: 'running' | 'gone';
   /** Null until a second sample establishes a delta window, or when the process is gone. */
   readonly processorPercent: number | null;

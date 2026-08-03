@@ -33,7 +33,7 @@ import {
   type EditorColumnSymbolHoverPort,
 } from '../ui/EditorColumnDefault';
 import { BracketMatch } from './BracketMatch';
-import type { EditorFrameAttribution } from './EditorFrameAttribution';
+import type { EditorFrameAttribution } from '../text/EditorFrameAttribution';
 import { SourceTextPaneContent } from './SourceTextPaneContent';
 import type { Workspace } from '../workspace/Workspace';
 import type {

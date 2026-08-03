@@ -25,8 +25,8 @@ import {
 } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { TextCoordinates } from '../text/TextCoordinates';
-import type { EditorFrameAttribution } from './EditorFrameAttribution';
-import { EditorWrap, type VisualRow } from './EditorWrap';
+import type { EditorFrameAttribution } from '../text/EditorFrameAttribution';
+import { EditorWrap, type VisualRow } from '../text/EditorWrap';
 import { Highlighter, type Role, type Span } from '../syntax/Highlighter';
 import type { BracketCell } from './BracketMatch';
 import type { Palette } from '../theme/ThemePalettes';

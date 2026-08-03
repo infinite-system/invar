@@ -492,6 +492,9 @@ the same reason `EditorCoordinates` became `TextCoordinates` — the file names 
 `ReadOnlyTextBuffer`, the shared model behind the editor, the diff view, and the Markdown split
 view, already owned the cursor, so this puts the type where its one generator is.
 
-What did NOT move: `ReadOnlyTextBuffer`, `EditorWrap`, `CodeFolding`, and `BracketMatch`. Those are
-source-text-view behaviour, and moving them for the convenience of one interface would repeat the
-mistake in the other direction.
+At that point, `ReadOnlyTextBuffer`, `EditorWrap`, `CodeFolding`, and `BracketMatch` did not move.
+The later shared-generators audit found that the first two serve the editor, diff, Markdown, and UI
+core through the same generator. It moved `ReadOnlyTextBuffer`, `EditorWrap`,
+`EditorFrameAttribution`, and the generic `EditorSourceTextViews` provider to `src/modules/text/`.
+`CodeFolding`, `BracketMatch`, and the concrete editor provider factory remain in
+`src/modules/editor/` because they belong to the editor plugin.

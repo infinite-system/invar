@@ -32,3 +32,18 @@ The builder had to stop its own hook process and commit with
 SKIP_GATE=1. Second live instance of the policy gap; the hook should
 detect builder worktrees (or dispatch should plant a worktree-local
 config) so briefs and hooks stop contradicting each other.
+
+## Evidence from #493 (2026-08-03) — third instance
+
+The pre-commit hook ran the full merge gate on the builder's first
+commit, against the brief. The builder used SKIP_GATE=1 after an
+accidental partial gate run. Mitigation now in effect: wave briefs
+name SKIP_GATE=1 for builder commits. The structural fix (dispatch
+plants worktree-local hook config) is still this task.
+
+## Evidence from #495 (2026-08-03) — fourth instance, opposite polarity
+
+This builder let the hook's gate RUN to completion (green) instead of
+bypassing — a full merge gate executed while two other builders were
+live, which the concurrency rule forbids. The hook enforces neither
+policy; dispatch must decide for the worktree.

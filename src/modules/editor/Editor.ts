@@ -7,9 +7,9 @@ import {
 import { TextCoordinates } from '../text/TextCoordinates';
 import { EditorIndent } from './EditorIndent';
 import { TextEditing } from '../text/TextEditing';
-import { EditorWrap } from './EditorWrap';
+import { EditorWrap } from '../text/EditorWrap';
 import { CodeFolding, type FoldRange } from './CodeFolding';
-import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
+import { ReadOnlyTextBuffer } from '../text/ReadOnlyTextBuffer';
 import { UndoStore, type EditKind } from '../storage/UndoStore';
 import { Files } from '../system/Files';
 import { Clock } from '../system/Clock';

@@ -26,6 +26,8 @@ re-resolve after provider changes.
 
 **Evidence:** `src/modules/app/ApplicationContributions.ts`;
 `src/modules/plugins/ExtensionsPlugin.ts`;
+`src/modules/monitoring/MonitoringPlugin.ts` and
+`src/modules/lsp/LspWorkspaceProvider.ts` (language-server process source withdrawal);
 `scripts/harness/smoke-plugin-manifest-harness.ts`.
 
 **Impossible if true:** A peer consumer holding a provider after its plugin is disposed; a
@@ -102,7 +104,8 @@ when their workspace contribution attaches and call the returned disposer when i
 Consumers watch the revision and resolve their own interface from the same workspace.
 
 **Generates:** `ProviderRegistry`; `Workspace.providers`; one registration route for legacy
-`WorkspaceContribution.providers`; structure, inline rewrite, and database provider wiring;
+`WorkspaceContribution.providers`; structure, inline rewrite, database, and language-server
+monitoring provider wiring;
 the structural rendezvous census.
 
 **Rejected alternatives:** A registry inside each consumer module — duplicates the same
@@ -118,6 +121,8 @@ provider — fixes the implementation edge and prevents substitution. A typed un
 `src/modules/inline-rewrite/InlineRewriteContributor.ts`;
 `src/modules/database/DatabaseProviderPlugin.ts`;
 `src/modules/database/DatabaseConsumerWorkspace.ts`;
+`src/modules/monitoring/LanguageServerProcessSource.interface.ts`;
+`src/modules/monitoring/MonitoringPlugin.ts`;
 `.invar/tasks/completed/245-provider-seam-open-or-bless-decision/census-245-provider-rendezvous.ts`.
 
 **Impossible if true:** A second provider registry; a peer consumer constructing a concrete
@@ -129,7 +134,8 @@ consumer-owned provider interface.
 --require-one`; `bun test src/modules/plugins/ProviderRegistry.test.ts
 src/modules/structure/StructureOutline.test.ts
 src/modules/inline-rewrite/InlineRewriteContributor.test.ts
-src/modules/database/DatabaseConsumerWorkspace.test.ts`; and `bun
+src/modules/database/DatabaseConsumerWorkspace.test.ts
+src/modules/monitoring/MonitoringPlugin.test.ts`; and `bun
 scripts/harness/smoke-plugin-manifest-harness.ts`.
 
 **Status:** provisional

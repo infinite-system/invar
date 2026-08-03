@@ -24,6 +24,10 @@ class $LanguageServerProcessRegistry {
     return [...this.$registrations.values()];
   }
 
+  static entry(owner: object): LanguageServerProcessRegistration | null {
+    return this.$registrations.get(owner) ?? null;
+  }
+
   static reset(): void {
     this.$registrations.clear();
   }

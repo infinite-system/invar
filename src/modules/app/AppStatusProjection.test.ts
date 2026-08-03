@@ -26,7 +26,7 @@ import {
   type AppStatusMouseEvent,
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
-import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { Dialog } from '../ui/Dialog';
 
@@ -71,7 +71,8 @@ describe('AppStatusProjection', () => {
   test('reads optional live ports on every snapshot and publishes the active agent title', () => {
     const settings = createSettings();
     workspaceSet = new WorkspaceSet.Class(settings, {
-      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+      createSourceTextViews: () =>
+        EditorSourceTextViewProviderFactory.Class.create(),
     });
     workspaceSet.open(temporaryRoot);
     const commands = new CommandRegistry.Class();
