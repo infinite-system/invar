@@ -191,10 +191,29 @@ describe('AgentPaneContent — transcript selection + highlight', () => {
     pane.beginTranscriptSelection({ line: 1, column: 0 });
     pane.extendTranscriptSelection({ line: 1, column: 5 });
     expect(pane.hasSelection()).toBe(true);
+    expect(pane.selectionTelemetry()).toEqual({
+      owner: 'agent-transcript',
+      characterLength: 5,
+    });
 
     const styled = pane.render(context());
     expect(chunkTexts(styled)).toContain('hello'); // the highlighted span became its own chunk
     expect(await pane.copySelection()).toBe(5); // copied "hello"
+  });
+
+  test('composer selection telemetry names its owner and exact character count', () => {
+    const { pane } = makePane();
+    for (const character of 'telemetry') {
+      pane.handleKey({ name: character, sequence: character } as never);
+    }
+    pane.applyComposerInputAction('selectLeft');
+    pane.applyComposerInputAction('selectLeft');
+    pane.applyComposerInputAction('selectLeft');
+
+    expect(pane.selectionTelemetry()).toEqual({
+      owner: 'agent-composer',
+      characterLength: 3,
+    });
   });
 });
 

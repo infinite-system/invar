@@ -2235,7 +2235,16 @@ class $Bootstrap {
       }
     };
 
-    const publishCopyResult = (copyPromise: Promise<number>): void => {
+    const copyPathTelemetryEnabled =
+      process.env.INVAR_COPY_PATH_TELEMETRY === '1';
+    const logCopyAttempt = (attempt: CopyPathTelemetryAttempt): void => {
+      if (!copyPathTelemetryEnabled) return;
+      Logging.Class.info(`COPY_PATH_TELEMETRY ${JSON.stringify(attempt)}`);
+    };
+    const publishCopyResult = (
+      copyPromise: Promise<number>,
+      telemetryContext?: CopyPathTelemetryContext,
+    ): void => {
       void copyPromise.then((copiedCharacters) => {
         if (copiedCharacters > 0) {
           app.copyNotice.value =
@@ -2248,6 +2257,19 @@ class $Bootstrap {
           clipboardBackend: Clipboard.Class.lastBackend,
         });
         StatusChannel.Class.flush();
+        if (telemetryContext) {
+          logCopyAttempt({
+            focusedSurface: telemetryContext.focusedSurface,
+            selectionOwner: telemetryContext.selectionOwner,
+            selectionLength:
+              telemetryContext.selectionLength ?? copiedCharacters,
+            routeTaken: telemetryContext.routeTaken,
+            osc52Emitted:
+              copiedCharacters > 0 && Clipboard.Class.lastOsc52Emitted,
+            osc52ByteLength:
+              copiedCharacters > 0 ? Clipboard.Class.lastOsc52ByteLength : 0,
+          });
+        }
       });
     };
 
@@ -2558,7 +2580,13 @@ class $Bootstrap {
             ? focusedContent
             : currentAgentPane();
         if (!pane) return;
-        publishCopyResult(pane.copySelection());
+        const selectionTelemetry = pane.selectionTelemetry();
+        publishCopyResult(pane.copySelection(), {
+          focusedSurface: focusedContent?.kind ?? focusedContent?.id ?? 'none',
+          selectionOwner: selectionTelemetry.owner,
+          selectionLength: selectionTelemetry.characterLength,
+          routeTaken: 'copy-handler',
+        });
       },
       'agent.cancelTurn': () => {
         const focusedContent = panelHost.focusedContent;
@@ -2571,11 +2599,19 @@ class $Bootstrap {
       // which pane that is. The word actions exist so the terminal context claims those chords —
       // handling is the pane's own, reached by forwarding the original key.
       'terminal.copy': () => {
-        const selection = (
-          panelHost.focusedContent ?? currentPaneOfKind('terminal')
-        )?.capability?.<PaneTextSelectionPort>('text-selection');
+        const focusedContent =
+          panelHost.focusedContent ?? currentPaneOfKind('terminal');
+        if (!focusedContent) return;
+        const selection =
+          focusedContent.capability?.<PaneTextSelectionPort>('text-selection');
         if (!selection) return;
-        publishCopyResult(selection.copySelection());
+        publishCopyResult(selection.copySelection(), {
+          focusedSurface:
+            focusedContent.kind ?? focusedContent.id ?? 'unknown-pane',
+          selectionOwner: 'focused-pane-selection',
+          selectionLength: null,
+          routeTaken: 'copy-handler',
+        });
       },
       'terminal.wordLeft': (key) => panelHost.handleKey(key),
       'terminal.wordRight': (key) => panelHost.handleKey(key),
@@ -2936,6 +2972,21 @@ class $Bootstrap {
           ) {
             dispatchAction(paneContextAction, key);
             return;
+          }
+          if (paneContextAction === 'terminal.copy') {
+            const agentSelectionTelemetry =
+              currentAgentPane()?.selectionTelemetry() ?? {
+                owner: 'none' as const,
+                characterLength: 0,
+              };
+            logCopyAttempt({
+              focusedSurface: contextOwningPane.kind ?? contextOwningPane.id,
+              selectionOwner: agentSelectionTelemetry.owner,
+              selectionLength: agentSelectionTelemetry.characterLength,
+              routeTaken: 'forwarded-to-child-pty',
+              osc52Emitted: false,
+              osc52ByteLength: 0,
+            });
           }
         }
         panelHost.handleKey(key);
@@ -3549,4 +3600,20 @@ interface WorkspacePanelWorld {
   readonly contentSet: PanelContentSet;
   readonly identityScope: string;
   agentInstanceCount: number;
+}
+
+interface CopyPathTelemetryContext {
+  readonly focusedSurface: string;
+  readonly selectionOwner: string;
+  readonly selectionLength: number | null;
+  readonly routeTaken: CopyPathTelemetryAttempt['routeTaken'];
+}
+
+interface CopyPathTelemetryAttempt {
+  readonly focusedSurface: string;
+  readonly selectionOwner: string;
+  readonly selectionLength: number;
+  readonly routeTaken: 'copy-handler' | 'forwarded-to-child-pty';
+  readonly osc52Emitted: boolean;
+  readonly osc52ByteLength: number;
 }

@@ -5,7 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Visible panel contents own separate headed regions (src/modules/ui/ui.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
@@ -38,6 +38,18 @@ function statusButtonColumn(
   if (column < 0)
     throw new Error(`Status button is not visible: ${buttonText}`);
   return column + 1;
+}
+
+function copyPathTelemetryAttempts(
+  logPath: string,
+): CopyPathTelemetryAttempt[] {
+  if (!existsSync(logPath)) return [];
+  return readFileSync(logPath, 'utf8')
+    .split('\n')
+    .filter((line) => line.includes('COPY_PATH_TELEMETRY '))
+    .map((line) =>
+      JSON.parse(line.slice(line.indexOf('COPY_PATH_TELEMETRY ') + 20)),
+    );
 }
 
 async function driveSharedCloseGlyphTier(
@@ -259,6 +271,7 @@ const homeDirectory = mkdtempSync(
 );
 
 const statusPath = join(homeDirectory, 'status.json');
+const copyPathTelemetryLogPath = join(homeDirectory, 'copy-path-telemetry.log');
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(process.cwd(), 'fixtures'),
@@ -267,7 +280,9 @@ const driver = new PtyTestDriver.Class({
   homeDirectory,
   environment: {
     TUI_STATUS_PATH: statusPath,
+    TUI_LOG_PATH: copyPathTelemetryLogPath,
     INVAR_AGENT_BACKEND: 'echo',
+    INVAR_COPY_PATH_TELEMETRY: '1',
   },
 });
 
@@ -485,6 +500,36 @@ try {
     (snapshot) => snapshot.findText('AGENTKEY') !== null,
   );
   HarnessSmoke.Class.pass('focused agent cell received the keys');
+  driver.sendKeys('End');
+  driver.sendKeys('Shift+Left');
+  driver.sendKeys('Shift+Left');
+  driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'the focused agent copy publishes its selected character count',
+    (status) => status.lastCopyChars === 2,
+  );
+  await driver.awaitGridCondition(
+    'the focused agent copy paints its status-bar flash',
+    (candidate) => candidate.findText('Copied 2 chars') !== null,
+  );
+  await driver.awaitOutputCondition(
+    'the focused agent copy writes one structured copy-path telemetry line',
+    () =>
+      copyPathTelemetryAttempts(copyPathTelemetryLogPath).some(
+        (attempt) =>
+          attempt.focusedSurface === 'agent' &&
+          attempt.selectionOwner === 'agent-composer' &&
+          attempt.selectionLength === 2 &&
+          attempt.routeTaken === 'copy-handler' &&
+          attempt.osc52Emitted === true &&
+          attempt.osc52ByteLength === 2,
+      ),
+  );
+  HarnessSmoke.Class.pass(
+    'focused agent copy shows its flash and writes structured telemetry',
+  );
 
   console.log(
     '== harness panel-split: click focuses terminal and stty sees its sub-width ==',
@@ -500,6 +545,23 @@ try {
       status.panelActiveContent === splitTerminalIdentifier,
   );
   HarnessSmoke.Class.pass('click moved focus to the terminal cell');
+  driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+  await driver.awaitOutputCondition(
+    'an active agent selection forwarded to the terminal child writes explicit telemetry',
+    () =>
+      copyPathTelemetryAttempts(copyPathTelemetryLogPath).some(
+        (attempt) =>
+          attempt.focusedSurface === 'terminal' &&
+          attempt.selectionOwner === 'agent-composer' &&
+          attempt.selectionLength === 2 &&
+          attempt.routeTaken === 'forwarded-to-child-pty' &&
+          attempt.osc52Emitted === false &&
+          attempt.osc52ByteLength === 0,
+      ),
+  );
+  HarnessSmoke.Class.pass(
+    'the log names an active agent selection forwarded to the terminal child',
+  );
   driver.sendText('stty size');
   driver.sendKeys('Enter');
   const expectedTerminalColumns = initialRightColumns - 4;
@@ -598,4 +660,13 @@ try {
 } finally {
   await driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+}
+
+interface CopyPathTelemetryAttempt {
+  readonly focusedSurface: string;
+  readonly selectionOwner: string;
+  readonly selectionLength: number;
+  readonly routeTaken: string;
+  readonly osc52Emitted: boolean;
+  readonly osc52ByteLength: number;
 }

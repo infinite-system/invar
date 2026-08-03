@@ -24,11 +24,17 @@ test('copy sends exact Unicode text through the configured OSC 52 emitter', asyn
   expect(Clipboard.Class.lastCopiedTextHash).toBe(
     createHash('sha256').update(copiedText, 'utf8').digest('hex'),
   );
+  expect(Clipboard.Class.lastOsc52Emitted).toBe(true);
+  expect(Clipboard.Class.lastOsc52ByteLength).toBe(
+    Buffer.byteLength(copiedText, 'utf8'),
+  );
 
   disposeEmitter();
   expect(await Clipboard.Class.copy('no renderer')).toBe(false);
   expect(emittedSequences).toHaveLength(1);
   expect(Clipboard.Class.lastBackend).toBeNull();
+  expect(Clipboard.Class.lastOsc52Emitted).toBe(false);
+  expect(Clipboard.Class.lastOsc52ByteLength).toBe(0);
 });
 
 test('a stale renderer disposer cannot clear a newer OSC 52 emitter', async () => {

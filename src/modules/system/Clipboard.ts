@@ -18,6 +18,10 @@ class $Clipboard {
   static lastBackend: string | null = null;
   /** SHA-256 of the exact bytes offered to the last copy backend (observability without text leak). */
   static lastCopiedTextHash: string | null = null;
+  /** Whether the most recent copy emitted OSC 52 through the renderer-owned writer. */
+  static lastOsc52Emitted = false;
+  /** UTF-8 byte length carried by the most recent successful OSC 52 emission. */
+  static lastOsc52ByteLength = 0;
 
   /** Bind OSC 52 to the active renderer's serialized terminal writer. */
   static setOsc52Emitter(emitter: ClipboardOsc52Emitter | null): () => void {
@@ -30,6 +34,8 @@ class $Clipboard {
   /** Copy text to the host terminal with OSC 52, plus a local system tool when one is available. */
   static async copy(text: string): Promise<boolean> {
     this.internalBuffer = text;
+    this.lastOsc52Emitted = false;
+    this.lastOsc52ByteLength = 0;
     this.lastCopiedTextHash = createHash('sha256')
       .update(text, 'utf8')
       .digest('hex');
@@ -38,7 +44,11 @@ class $Clipboard {
       const base64Payload = Buffer.from(text, 'utf8').toString('base64');
       emittedOsc52 =
         this.osc52Emitter?.(`\x1b]52;c;${base64Payload}\x07`) ?? false;
-      if (emittedOsc52) this.lastBackend = 'osc52';
+      if (emittedOsc52) {
+        this.lastBackend = 'osc52';
+        this.lastOsc52Emitted = true;
+        this.lastOsc52ByteLength = Buffer.byteLength(text, 'utf8');
+      }
     } catch {
       /* a local tool below remains available */
     }
