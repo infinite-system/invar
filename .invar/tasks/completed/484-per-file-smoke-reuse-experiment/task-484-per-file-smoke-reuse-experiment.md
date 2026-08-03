@@ -1,7 +1,7 @@
 # Task 484 — per-file smoke reuse: the churn experiment
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 4e9d13d1 — Landed: instruments + the blocked-premise finding. Rollout re-scope awaits the user.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
