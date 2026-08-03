@@ -4,6 +4,26 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 56 — 2026-08-03 ~11:10 EDT — LAND #485, THEN PRESENT THE NUMBER
+
+#485 (reclaimable boot churn) is READY: 189 total boots, 36 reclaimable
+(19%, ~8.5GB-boots at 236MB/boot), 153 semantic under strict classification;
+measurement-only, no source change. Gate runs at /tmp/gate-485.log on
+b64a0cae in worktree 485-measure-the-reclaimable-boot-churn, death-reporting
+monitor armed. ON GREEN: land via GATE_LOG=/tmp/gate-485.log
+BYCATCH_TRIAGED=1 bash scripts/fleet/land.sh 485
+measure-the-reclaimable-boot-churn <msg> "<summary>" (convert bycatch +
+instrument feedback from the report first). THEN give the user the verdict:
+19% reclaimable is MODEST — boots are ~5% of gate wall-clock, so reclaiming
+a fifth of them buys ~1% wall + some GC relief, against the cost of reset
+machinery and contamination risk; the honest recommendation is OPTION 2/3
+(accept the churn; test higher worker counts directly). The CALL IS THE
+USER'S. Briefing now self-prunes to 5 anchors (rule in header + conductor
+skill). Sixteen landings after 485 lands.
+
+
+---
+
 # RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT
 
 The user chose OPTION 1 for the churn question: measure first. #485
@@ -57,25 +77,6 @@ intelligently" = 483's two phases landed. User RESTING. No experiments.
 
 ---
 
-# RESUME ANCHOR 51 — 2026-08-03 ~08:20 EDT — #482 IN FLIGHT; USER PRESENT
-
-Delta over 50c: the user's Ctrl+C observation ("claude flinches") pointed at
-composer-vs-transcript focus; #482 filed and DISPATCHED (codex, worktree
-482-agent-pane-copy-fails-with-composer-focus) driving the exact sequence
-with BOTH focus arms + clipboardEmissions() + child-interrupt observation.
-ON READY: convert bycatch, merge main forward, gate (log to a fresh
-/tmp/gate-482.log, death-reporting monitor), land via land.sh with
-GATE_LOG + BYCATCH_TRIAGED=1.
-
-User is PRESENT, happy with the loop (their words: confident agents will do
-the job and we stay on the same page via mirror or conductor-driving).
-No experiments. Everything else per anchors 49-50: twelve landings, fleet
-otherwise zero, morning items: #464 retire call; #460-#463 hygiene backlog
-awaiting the user's word; 7 historical worktrees (194-439) await a
-user-authorized sweep.
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
 - RESUME ANCHOR 50c — 2026-08-03 ~08:15 EDT — COPY: TRANSPORT PROVEN INNOCENT
@@ -96,3 +97,4 @@ user-authorized sweep.
 - RESUME ANCHOR 34 — 2026-08-02 ~13:15 EDT (81% gauge)
 - RESUME ANCHOR 33 — 2026-08-01 ~20:30 EDT (100% gauge)
 - RESUME ANCHOR 32 — 2026-08-01 ~19:15 EDT (97% gauge)
+- RESUME ANCHOR 51 — 2026-08-03 ~08:20 EDT — #482 IN FLIGHT; USER PRESENT
