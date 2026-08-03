@@ -78,3 +78,17 @@ Drive the demo loop end to end in the harness (outer Invar in a PtyTestDriver,
 inner via the mirrored server) and assert: the mirror pane repaints on agent
 gestures; the trail cells appear on pointer moves; an MCP tool call round-trips
 a graph read.
+
+## PTY usability feedback from builders (the user's tracked question)
+
+From #470's builder (codex, 2026-08-03, first overnight PTY use):
+- EASY: the warm server ("made the render transition easy to see without
+  rebooting between samples"); `--size` fixtures; `app.show` for compact
+  evidence. The primary loop works for builders as designed.
+- GAP 1: `renderQuiescent` is status-projection-only, so `app.get`/`waitFor`
+  cannot address it — the fluent loop needs EITHER a condition wait on
+  status fields OR a renderer-lifecycle graph root. (Do not double-expose;
+  pick one and document the status-versus-graph split in the drive help.)
+- GAP 2: `app.show` has no label argument — a label is treated as another
+  status path. Small ergonomics fix.
+- Add both to this task's implementation round alongside the MCP doorway.
