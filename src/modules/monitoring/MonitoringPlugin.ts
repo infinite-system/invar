@@ -28,7 +28,10 @@ import { MonitoringStats } from './MonitoringStats';
 import type { MonitoredWorkspaceLedger } from './MonitoringStats';
 import { LinuxProcessSampler } from './LinuxProcessSampler';
 import type { ProcessSampler } from './ProcessSampler.interface';
-import { LanguageServerProcessRegistry } from '../lsp/LanguageServerProcessRegistry';
+import type {
+  LanguageServerProcessSource,
+  MonitoredLanguageServerProcess,
+} from './LanguageServerProcessSource.interface';
 
 class $MonitoringPlugin implements ApplicationContributor {
   readonly identifier = 'monitoring';
@@ -119,8 +122,7 @@ class $MonitoringPlugin implements ApplicationContributor {
       workspaceLedgers: () => this.workspaceLedgers(),
       logFilePath: () => this.logFilePath(),
       ownIdentifier: () => this.identifier,
-      languageServerProcesses: () =>
-        LanguageServerProcessRegistry.Class.entries(),
+      languageServerProcesses: () => this.languageServerProcesses(),
       processSampler: this.createProcessSampler(),
     });
   }
@@ -148,6 +150,17 @@ class $MonitoringPlugin implements ApplicationContributor {
       root: workspace.root,
       rows: workspace.buffers.documentLedger(),
     }));
+  }
+
+  /** Every open workspace's language-server rows, resolved through that workspace's host registry. */
+  protected languageServerProcesses(): readonly MonitoredLanguageServerProcess[] {
+    const application = this.application;
+    if (!application) return [];
+    return application.workspaceSet.entries.value.flatMap((workspace) =>
+      workspace.providers
+        .resolveAll<LanguageServerProcessSource>('language-server-processes')
+        .flatMap((source) => source.languageServerProcesses()),
+    );
   }
 
   /**

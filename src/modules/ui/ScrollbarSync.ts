@@ -4,7 +4,7 @@ import {
   type ScrollBarRenderable,
 } from '@opentui/core';
 import { Reactive } from 'ivue';
-import { EditorWrap } from '../editor/EditorWrap';
+import { EditorWrap } from '../text/EditorWrap';
 import { Logging } from '../system/Logging';
 import type { Theme } from '../theme/Theme';
 import type { Palette } from '../theme/ThemePalettes';

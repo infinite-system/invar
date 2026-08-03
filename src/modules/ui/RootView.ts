@@ -32,7 +32,7 @@ import { TextCoordinates } from '../text/TextCoordinates';
 import {
   EditorFrameAttribution,
   type EditorFrameAttributionSnapshot,
-} from '../editor/EditorFrameAttribution';
+} from '../text/EditorFrameAttribution';
 import { CommandBar } from './CommandBar';
 import { StatusBar } from './StatusBar';
 import { TabBar } from './TabBar';

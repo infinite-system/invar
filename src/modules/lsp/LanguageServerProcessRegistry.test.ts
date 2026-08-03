@@ -23,6 +23,10 @@ test('the registry preserves manager order and replaces one manager process in p
     { serverName: 'typescript-language-server', processId: 43 },
     { serverName: 'rust-analyzer', processId: 42 },
   ]);
+  expect(LanguageServerProcessRegistry.Class.entry(firstManager)).toEqual({
+    serverName: 'typescript-language-server',
+    processId: 43,
+  });
 });
 
 test('unregister removes only the manager that released its process', () => {

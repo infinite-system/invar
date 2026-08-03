@@ -4,6 +4,7 @@ import { Editor } from './Editor';
 import { UndoStore } from '../storage/UndoStore';
 import { Clock } from '../system/Clock';
 import { EditorContributions } from './EditorContributions';
+import { ReadOnlyTextBuffer } from '../text/ReadOnlyTextBuffer';
 
 afterEach(() => Clock.Class.freeze(null));
 
@@ -475,4 +476,69 @@ test('horizontal movement wraps across line boundaries', () => {
   editor.moveHorizontal(-1);
   expect(editor.cursor.line.value).toBe(0);
   expect(editor.cursor.col.value).toBe(2);
+});
+
+test('Editor extends the read-only text generator with editing and undo', () => {
+  const editor = new Editor.Class();
+
+  expect(editor).toBeInstanceOf(ReadOnlyTextBuffer.$Class);
+  expect('insertText' in editor).toBe(true);
+  expect('performUndo' in editor).toBe(true);
+});
+
+function wrapEditorWithText(
+  text: string,
+  width: number,
+  height: number,
+): Editor.Instance {
+  const editor = openWith(text);
+  editor.viewport.setSize(width, height);
+  return editor;
+}
+
+test('toggling word wrap NEVER mutates the document (pure view mapping)', () => {
+  const editor = wrapEditorWithText(
+    'alpha beta gamma delta epsilon zeta',
+    10,
+    5,
+  );
+  const revisionBefore = editor.document.revision.value;
+  const textBefore = editor.document.text;
+  editor.toggleWordWrap();
+  editor.toggleWordWrap();
+  expect(editor.document.revision.value).toBe(revisionBefore);
+  expect(editor.document.text).toBe(textBefore);
+  expect(editor.document.dirty).toBe(false);
+});
+
+test('enabling wrap forces scrollLeft to 0 and keeps it inert', () => {
+  const editor = wrapEditorWithText('x'.repeat(200) + '\nshort', 20, 5);
+  editor.placeCursor(0, 150);
+  expect(editor.viewport.scrollLeft.value).toBeGreaterThan(0);
+  editor.toggleWordWrap();
+  expect(editor.wordWrap.value).toBe(true);
+  expect(editor.viewport.scrollLeft.value).toBe(0);
+  editor.placeCursor(0, 180);
+  expect(editor.viewport.scrollLeft.value).toBe(0);
+});
+
+test('wrap mode vertical movement steps visual rows within a long line', () => {
+  const editor = wrapEditorWithText('a'.repeat(50) + '\nnext', 10, 8);
+  editor.toggleWordWrap();
+  editor.placeCursor(0, 3);
+  editor.moveVertical(1);
+  expect(editor.cursor.line.value).toBe(0);
+  expect(editor.cursor.col.value).toBe(13);
+  editor.moveVertical(-1);
+  expect(editor.cursor.col.value).toBe(3);
+});
+
+test('wrap off restores clipped horizontal scrolling', () => {
+  const editor = wrapEditorWithText('b'.repeat(120), 20, 5);
+  editor.toggleWordWrap();
+  editor.placeCursor(0, 45);
+  editor.toggleWordWrap();
+  expect(editor.wordWrap.value).toBe(false);
+  expect(editor.cursor.goalColumn.value).toBe(45);
+  expect(editor.viewport.scrollLeft.value).toBeGreaterThan(0);
 });

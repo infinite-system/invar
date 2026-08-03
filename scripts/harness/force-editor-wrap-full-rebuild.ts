@@ -10,7 +10,7 @@ import {
   EditorWrap,
   type DocumentWrapIndex,
   type WrappableDocument,
-} from '../../src/modules/editor/EditorWrap';
+} from '../../src/modules/text/EditorWrap';
 
 class $ForcedFullRebuildEditorWrap extends EditorWrap.$Class {
   protected static readonly legacyIndexByDocument = new WeakMap<

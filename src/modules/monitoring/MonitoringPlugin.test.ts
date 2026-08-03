@@ -4,11 +4,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ref } from 'vue';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { RenderLoadLedger } from '../system/RenderLoadLedger';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { PanelHost } from '../ui/PanelHost';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { MonitoringPlugin } from './MonitoringPlugin';
+import type {
+  LanguageServerProcessSource,
+  MonitoredLanguageServerProcess,
+} from './LanguageServerProcessSource.interface';
 
 interface RecordingContext {
   context: ApplicationContributionContext;
@@ -21,6 +26,7 @@ interface RecordingContext {
   commandDisposals: number;
   statusDisposals: number;
   settingDisposals: number;
+  workspaceProviders: ProviderRegistry.Model;
   snapshot: () => Record<string, unknown>;
 }
 
@@ -33,11 +39,13 @@ function makeContext(
   const commandRunners = new Map<string, () => void>();
   const settingIdentifiers: string[] = [];
   const rightDockHost = new PanelHost.Class();
+  const workspaceProviders = new ProviderRegistry.Class();
   let snapshotProvider: (() => Record<string, unknown>) | null = null;
   const activeWorkspace = {
     root: workspaceRoot,
     focusEditor: () => {},
     buffers: { documentLedger: () => [] },
+    providers: workspaceProviders,
   };
   const recording: RecordingContext = {
     rightDockHost,
@@ -49,6 +57,7 @@ function makeContext(
     commandDisposals: 0,
     statusDisposals: 0,
     settingDisposals: 0,
+    workspaceProviders,
     snapshot: () => snapshotProvider?.() ?? {},
     context: {
       workspaceSet: {
@@ -129,6 +138,37 @@ function makeContext(
   };
   return recording;
 }
+
+class MonitoringProviderProbe extends MonitoringPlugin.$Class {
+  readLanguageServerProcesses(): readonly MonitoredLanguageServerProcess[] {
+    return this.languageServerProcesses();
+  }
+}
+
+test('language-server rows arrive through each workspace host and leave with the provider', () => {
+  const workspaceRoot = mkdtempSync(join(tmpdir(), 'monitoring-plugin-'));
+  const plugin = new MonitoringProviderProbe();
+  const recording = makeContext(workspaceRoot);
+  const source: LanguageServerProcessSource = {
+    languageServerProcesses: () => [
+      { serverName: 'fixture-language-server', processId: 91 },
+    ],
+  };
+  const disposeSource = recording.workspaceProviders.register(
+    'language-server-processes',
+    source,
+  );
+
+  plugin.activateApplication(recording.context);
+  expect(plugin.readLanguageServerProcesses()).toEqual([
+    { serverName: 'fixture-language-server', processId: 91 },
+  ]);
+  disposeSource();
+  expect(plugin.readLanguageServerProcesses()).toEqual([]);
+
+  plugin.disposeApplication();
+  rmSync(workspaceRoot, { recursive: true, force: true });
+});
 
 test('activation registers the dock pane, keybindings, settings, commands, and status keys', () => {
   const workspaceRoot = mkdtempSync(join(tmpdir(), 'monitoring-plugin-'));

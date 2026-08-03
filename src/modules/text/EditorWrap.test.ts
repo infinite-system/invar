@@ -6,6 +6,9 @@ import {
   type WrapSegment,
   type WrappableDocument,
 } from './EditorWrap';
+import type { DocumentFoldRange } from './DocumentFoldState.interface';
+import { TextCoordinates } from './TextCoordinates';
+import { TextDocument } from './TextDocument';
 
 const {
   wrapLine,
@@ -15,11 +18,6 @@ const {
   moveByVisualRows,
   scrollTopToRevealCursor,
 } = EditorWrap.Class;
-
-import { TextCoordinates } from '../text/TextCoordinates';
-import { TextDocument } from '../text/TextDocument';
-import { Editor } from './Editor';
-import type { FoldRange } from './CodeFolding';
 
 function documentFromLines(lines: string[]): WrappableDocument {
   return {
@@ -372,7 +370,7 @@ test('folded visual-row queries reuse one projection with O(1) line lookups', ()
 
     protected static override buildFoldProjection(
       lineCount: number,
-      foldedRanges: readonly FoldRange[],
+      foldedRanges: readonly DocumentFoldRange[],
     ) {
       this.foldProjectionBuildCount++;
       return super.buildFoldProjection(lineCount, foldedRanges);
@@ -391,7 +389,7 @@ test('folded visual-row queries reuse one projection with O(1) line lookups', ()
       return lines[lineIndex] ?? '';
     },
   };
-  const foldedRanges: readonly FoldRange[] = [
+  const foldedRanges: readonly DocumentFoldRange[] = [
     { startLine: 0, endLine: 99_999, kind: 'delimiter' },
   ];
 
@@ -453,61 +451,4 @@ test('property: segments partition, respect the width, and never split clusters'
       }
     }
   }
-});
-
-// --- editor MODE behavior (the contract's impossibles) --------------------------------------
-
-function editorWithText(
-  text: string,
-  width: number,
-  height: number,
-): Editor.Instance {
-  const editor = new Editor.Class();
-  editor.document.loadFromText(text, '/tmp/wrap-fixture.txt');
-  editor.hasDocument.value = true;
-  editor.viewport.setSize(width, height);
-  return editor;
-}
-
-test('toggling word wrap NEVER mutates the document (pure view mapping)', () => {
-  const editor = editorWithText('alpha beta gamma delta epsilon zeta', 10, 5);
-  const revisionBefore = editor.document.revision.value;
-  const textBefore = editor.document.text;
-  editor.toggleWordWrap();
-  editor.toggleWordWrap();
-  expect(editor.document.revision.value).toBe(revisionBefore);
-  expect(editor.document.text).toBe(textBefore);
-  expect(editor.document.dirty).toBe(false);
-});
-
-test('enabling wrap forces scrollLeft to 0 and keeps it inert', () => {
-  const editor = editorWithText('x'.repeat(200) + '\nshort', 20, 5);
-  editor.placeCursor(0, 150); // wrap OFF: auto-hscroll follows the caret
-  expect(editor.viewport.scrollLeft.value).toBeGreaterThan(0);
-  editor.toggleWordWrap();
-  expect(editor.wordWrap.value).toBe(true);
-  expect(editor.viewport.scrollLeft.value).toBe(0);
-  editor.placeCursor(0, 180); // caret moves stay vertical-only in wrap mode
-  expect(editor.viewport.scrollLeft.value).toBe(0);
-});
-
-test('wrap mode vertical movement steps VISUAL rows within a long line', () => {
-  const editor = editorWithText('a'.repeat(50) + '\nnext', 10, 8);
-  editor.toggleWordWrap();
-  editor.placeCursor(0, 3);
-  editor.moveVertical(1);
-  expect(editor.cursor.line.value).toBe(0); // still the same logical line...
-  expect(editor.cursor.col.value).toBe(13); // ...one visual row (10 columns) further
-  editor.moveVertical(-1);
-  expect(editor.cursor.col.value).toBe(3);
-});
-
-test('wrap OFF restores the clip+h-scroll behavior (goal returns to the absolute display column)', () => {
-  const editor = editorWithText('b'.repeat(120), 20, 5);
-  editor.toggleWordWrap();
-  editor.placeCursor(0, 45);
-  editor.toggleWordWrap(); // back OFF
-  expect(editor.wordWrap.value).toBe(false);
-  expect(editor.cursor.goalColumn.value).toBe(45); // absolute display column again
-  expect(editor.viewport.scrollLeft.value).toBeGreaterThan(0); // h-scroll follows the caret again
 });
