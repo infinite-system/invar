@@ -7,12 +7,17 @@ import { PanelWorkspaceState } from './PanelWorkspaceState';
 
 class FakePane implements PaneContent {
   readonly renderRevision = ref(0);
+  readonly panelSpace;
 
   constructor(
     readonly id: string,
     readonly title: string,
     readonly kind: string,
-  ) {}
+    panelSpaceKind = kind,
+    panelSpaceLabel = kind === 'terminal' ? 'Terminal' : title,
+  ) {
+    this.panelSpace = { kind: panelSpaceKind, label: panelSpaceLabel };
+  }
 
   render(): StyledText {
     return {} as StyledText;
@@ -29,7 +34,9 @@ class FakePane implements PaneContent {
 test('a relaunch rebuilds group order, active group, list pin, and list width', () => {
   const firstHost = new PanelHost.Class();
   firstHost.register(new FakePane('terminal', 'Terminal', 'terminal'));
-  firstHost.register(new FakePane('agent', 'Invar Agent', 'agent'));
+  firstHost.register(
+    new FakePane('agent', 'Invar Agent', 'agent', 'terminal', 'Terminal'),
+  );
   firstHost.register(new FakePane('terminal-2', 'Terminal 2', 'terminal'));
   firstHost.split(['terminal', 'agent']);
   firstHost.showContent('terminal-2');
@@ -53,6 +60,7 @@ test('a relaunch rebuilds group order, active group, list pin, and list width', 
       relaunchedHost.register(pane);
       return pane;
     },
+    (kind) => (kind === 'agent' ? 'terminal' : kind),
   );
   relaunchedHost.restoreWorkspaceState(restoration);
 
@@ -123,9 +131,37 @@ test('restore rejects a pane whose kind cannot belong to its saved space', () =>
       restoredIdentifiers.push(pane.identifier ?? 'missing');
       return new FakePane(pane.identifier ?? 'missing', pane.label, pane.kind);
     },
+    (kind) => kind,
   );
 
   expect(restoredIdentifiers).toEqual([]);
   expect(restoration.spaces).toEqual([]);
   expect(restoration.panelListExpanded).toBe(true);
+});
+
+test('restore accepts a third pane kind in its declared space', () => {
+  const panelHost = new PanelHost.Class();
+  panelHost.registerPaneKind('output', { kind: 'output', label: 'Output' });
+  const restoration = PanelWorkspaceState.Class.restore(
+    {
+      spaces: [
+        {
+          kind: 'output',
+          label: 'Output',
+          groups: [[{ identifier: 'output', kind: 'output', label: 'Output' }]],
+          activeGroupIndex: 0,
+        },
+      ],
+      activeSpaceIndex: 0,
+      panelListExpanded: false,
+      panelListWidth: 20,
+      visible: true,
+    },
+    (pane) => new FakePane(pane.identifier ?? 'output', pane.label, pane.kind),
+    (kind) => panelHost.spaceKindForPaneKind(kind),
+  );
+
+  expect(restoration.spaces).toMatchObject([
+    { kind: 'output', label: 'Output', contentIds: ['output'] },
+  ]);
 });

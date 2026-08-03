@@ -379,6 +379,8 @@ async function driveHalfBlockAnimation(): Promise<void> {
         status.mediaMode === 'demo' &&
         Number(status.mediaFrameIndex) >= 2 &&
         status.panelActiveContent === 'media-demo' &&
+        Array.isArray(status.panelSpaceLabels) &&
+        status.panelSpaceLabels.includes('Media') &&
         status.terminalVisible === false &&
         status.terminalFocused === false &&
         status.terminalColumns === 0 &&

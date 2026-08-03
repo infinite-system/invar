@@ -177,6 +177,10 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         );
       },
       registerPanelContentFactory: (factory) => {
+        this.options.bottomPanelHost.registerPaneKind(
+          factory.kind,
+          factory.panelSpace,
+        );
         const unregisterFactory =
           this.options.panelContentFactories.register(factory);
         registrationDisposers.push(() => {
@@ -194,6 +198,10 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         return port;
       },
       registerPaneRuntime: (runtime) => {
+        this.options.bottomPanelHost.registerPaneKind(
+          runtime.kind,
+          runtime.panelSpace,
+        );
         const unregister = this.options.paneRuntimes.register(runtime);
         registrationDisposers.push(unregister);
         return {

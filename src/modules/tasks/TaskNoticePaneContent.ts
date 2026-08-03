@@ -4,6 +4,7 @@ import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type {
   PaneContent,
+  PaneContentSpace,
   PaneRenderContext,
 } from '../ui/PaneContent.interface';
 import { WrapText } from '../ui/WrapText';
@@ -12,7 +13,10 @@ import type { TaskPanelNoticeRequest } from './TaskLauncher';
 // invariant: File sources report displaced built-ins (src/modules/tasks/tasks.invariants.md)
 // invariant: Unsupported tasks fail visibly (src/modules/tasks/tasks.invariants.md)
 class $TaskNoticePaneContent implements PaneContent {
-  constructor(protected readonly notice: TaskPanelNoticeRequest) {}
+  constructor(
+    protected readonly notice: TaskPanelNoticeRequest,
+    readonly panelSpace?: PaneContentSpace,
+  ) {}
 
   get renderRevision() {
     return ref(0);

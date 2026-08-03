@@ -78,6 +78,7 @@ class PanelFactoryContributor
   readonly name = 'Panel Factory';
   readonly kind = 'database';
   readonly instanceLabel = 'Database';
+  readonly panelSpace = { kind: 'database', label: 'Database' } as const;
 
   activateApplication(context: ApplicationContributionContext): void {
     context.registerPanelContentFactory(this);
@@ -361,6 +362,8 @@ describe('ApplicationContributions', () => {
     } as unknown as ApplicationContributionsOptions);
 
     manager.activateAll();
+    expect(bottomPanelHost.spaceKindForPaneKind('database')).toBe('database');
+    expect(bottomPanelHost.spaceLabel('database')).toBe('Database');
     bottomPanelHost.register(database);
     expect(panelContentFactories.factory('database')).toBe(contributor);
 
