@@ -4,6 +4,24 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 57 — 2026-08-03 ~13:15 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
+
+User is resting; /goal active: "get the decoupling done fully". The wave =
+#356 (agent plugin, IN FLIGHT, codex), #493 (ast-query modes, IN FLIGHT,
+fable), #490 chords/labels, #491 editor generators, #492 markdown syntax,
+#405 panel kind map, then wire census-488-imports.ts into the conventions
+gate with an allowlist (the ratchet). Briefs for 490/491/492/405 are READY
+at /tmp/brief-<n>-1.md — dispatch each as a lane frees (cap 3; #495
+terminal-copy also in flight, lands but is not wave scope). Land serially,
+smallest first; #356 and #495 both touch Bootstrap — resolve at landing,
+re-gate after each. The census scripts in the completed 488 folder are the
+before/after measure; wave rows must reach zero. Proposed terminal record
+"A live PTY read is readiness driven" (#458) still awaits the user's word —
+do NOT write it unconfirmed. Contract additions from wave landings are
+propose-only as ever. Fleet-watch heartbeat is the liveness truth; gates
+get their own death-reporting monitors; land.sh needs GATE_LOG or a
+written GATE_OVERRIDE.
+
 # RESUME ANCHOR 56 — 2026-08-03 ~11:10 EDT — LAND #485, THEN PRESENT THE NUMBER
 
 #485 (reclaimable boot churn) is READY: 189 total boots, 36 reclaimable
@@ -64,19 +82,6 @@ return. Fourteen landings this session.
 
 ---
 
-# RESUME ANCHOR 52 — 2026-08-03 ~09:10 EDT — 483 IN FLIGHT, 484 STAGED
-
-Chain: 482 LANDED (03fc43fe: composer-focus eliminated, smoke arm added;
-user-side question = which selection highlight they see). #483 DISPATCHED
-(shortcut-getter conversion, two phases, judgment rules in the brief).
-ON READY: convert bycatch + instrument feedback, merge main, gate with a
-death-reporting monitor, land. THEN dispatch #484 (per-file smoke reuse
-churn experiment — task file has the full design; user redirected the axis
-from latency to churn; 236MB/instance measured). Goal hook: "get both done
-intelligently" = 483's two phases landed. User RESTING. No experiments.
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
 - RESUME ANCHOR 50c — 2026-08-03 ~08:15 EDT — COPY: TRANSPORT PROVEN INNOCENT
@@ -98,3 +103,4 @@ intelligently" = 483's two phases landed. User RESTING. No experiments.
 - RESUME ANCHOR 33 — 2026-08-01 ~20:30 EDT (100% gauge)
 - RESUME ANCHOR 32 — 2026-08-01 ~19:15 EDT (97% gauge)
 - RESUME ANCHOR 51 — 2026-08-03 ~08:20 EDT — #482 IN FLIGHT; USER PRESENT
+- RESUME ANCHOR 52 — 2026-08-03 ~09:10 EDT — 483 IN FLIGHT, 484 STAGED
