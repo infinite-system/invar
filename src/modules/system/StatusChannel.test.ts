@@ -24,11 +24,15 @@ test('a render request resets quiescence until the requested frame settles', () 
     StatusChannel.Class.markRenderRequested();
     expect(StatusChannel.Class.snapshot.renderQuiescent).toBe(false);
     expect(JSON.parse(readFileSync(statusPath, 'utf8')).renderQuiescent).toBe(
-      false,
+      true,
     );
 
     StatusChannel.Class.settle(42);
     expect(StatusChannel.Class.snapshot.renderQuiescent).toBe(true);
+    expect(JSON.parse(readFileSync(statusPath, 'utf8'))).toMatchObject({
+      frame: 42,
+      renderQuiescent: true,
+    });
   } finally {
     if (previousStatusPath === undefined) {
       delete process.env.TUI_STATUS_PATH;

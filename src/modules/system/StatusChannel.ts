@@ -90,11 +90,10 @@ class $StatusChannel {
     }
   }
 
-  /** Mark a requested frame as pending before the renderer schedules it. */
+  /** Mark a requested frame pending in memory; the completed frame owns publication. */
   static markRenderRequested(): void {
     if (!this.observingEnabled || !this.$state.renderQuiescent) return;
     this.$state.renderQuiescent = false;
-    this.flush();
   }
 
   /** Mark the frame settled and flush — called after a render quiesces. */
