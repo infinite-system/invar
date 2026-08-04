@@ -554,6 +554,12 @@ authoritative liveness signal, not process topology.
 ## Merge and landing safety
 
 - **Commit before gating.** A green gate on an uncommitted tree is not durable.
+- **`commit -a` excludes NEW files, and one pending commit owns the index.** A commit
+  that claims to add files runs `git status --short` AFTER committing — zero lines or it
+  lied (2026-08-04: three new priming files silently excluded; the feature no-opped in
+  every fresh worktree). While a backgrounded commit waits on its pre-commit gate, the
+  conductor makes NO other commit in that checkout — a parallel SKIP_GATE commit swallowed
+  the staged file under the wrong message (bc212e81).
 - **Gate the COMBINED tree, and re-check at LANDING time.** A branch cut from an old main
   must `git merge main` FIRST, then gate. **A green gate names the COMMIT it ran on, not the
   branch.** If main moved while the branch sat, the green was earned on a tree that no longer
