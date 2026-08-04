@@ -18,7 +18,7 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ### [Drive — one-command UI sightings](scripts/harness/drive.md)
 
-`bun run drive` boots the real app in the PTY harness, runs ordered input
+`bun run drive` (alias of DriveSession.ts — warm server + fluent snippets; one-shot flags REMOVED 2026-08-03) boots the real app in the PTY harness, runs chained input
 flags each with a completion rule, and prints the numbered grid + published
 status keys after every action. `--cells ROW,C1-C2` prints chars + bg/fg for
 a cell range, the color evidence a text grid hides. Compose longer drives

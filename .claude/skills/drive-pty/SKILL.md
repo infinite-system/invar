@@ -38,8 +38,10 @@ bun scripts/harness/DriveSession.ts --stop             # done: kill your server
 - Do not boot per probe (`--eval` cold-runs are for one-shots); do not leave
   servers running when your task ends; a `timeout`-killed server LEAKS its
   inner app — always `--stop`.
-- `bun run drive` is one-shot and stops itself. Only a warm DriveSession
-  server needs the separate `DriveSession.ts --stop` command.
+- `bun run drive` is an ALIAS for DriveSession.ts (the one-shot Drive.ts
+  was REMOVED 2026-08-03 by user policy). Every invocation is fluent:
+  `bun run drive -- --serve`, `-- --attach "…"`, `-- --eval "…"`,
+  `-- --home DIR` for persistent state. There is no flag-per-key mode.
 - Mirror, trail, and humanPace exist for HUMAN-WATCHED sessions only — skip
   them headless; they cost time and change nothing you can assert.
 

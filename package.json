@@ -33,7 +33,7 @@
   "scripts": {
     "start": "bun src/main.ts",
     "dev": "bun src/main.ts",
-    "drive": "bun scripts/harness/Drive.ts",
+    "drive": "bun scripts/harness/DriveSession.ts",
     "tasks": "bun scripts/tasks/tasks-status.ts",
     "tasks:live": "bun scripts/tasks/tasks-status.ts live",
     "tasks:active": "bun scripts/tasks/tasks-status.ts active",

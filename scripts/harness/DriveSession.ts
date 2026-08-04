@@ -1427,8 +1427,8 @@ class $DriveScriptRunner {
       "  app.waitFor('panelHost.visible', true)         // live graph, frame-settled condition",
       "  await app.get('panelHost.visible')              // live graph, ask now",
       '',
-      '`bun run drive` is one-shot and stops itself. Only a warm DriveSession',
-      'server needs `bun scripts/harness/DriveSession.ts --stop`.',
+      'The warm server is the only entry point (the one-shot Drive.ts was',
+      'removed 2026-08-03). Stop with `bun scripts/harness/DriveSession.ts --stop`.',
 
       '',
     ].join('\n');

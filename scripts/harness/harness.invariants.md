@@ -75,12 +75,12 @@ layout; a test result changing when an unrelated tmux client is resized.
 
 ### Harness app homes are complete and isolated
 
-**Invariant:** If a behavioral contract or `Drive` launches Invar, then that run owns a fresh user
+**Invariant:** If a behavioral contract or drive session launches Invar, then that run owns a fresh user
 home with config, data, state, and cache directories, and its own app diagnostic log. It never
 reads or writes the caller's user settings, and it never appends to the repository-relative
 diagnostic log that every other instance in the same working tree also appends to.
 
-**Scope:** `scripts/behavioral-contracts.sh`, `scripts/tui-harness.sh`, `scripts/harness/Drive.ts`,
+**Scope:** `scripts/behavioral-contracts.sh`, `scripts/tui-harness.sh`, `scripts/harness/DriveSession.ts`,
 and app launches through `PtyTestDriver` that supply `homeDirectory`. Recorded-stream unit fixtures
 that do not launch Invar are outside this rule.
 
@@ -145,7 +145,7 @@ bypass on its direct launch. Existing teardown-only smokes retain their establis
 **Generates:** Stable teardown for the existing PTY fleet; a real interactive quit path in Drive;
 one explicit test boundary instead of per-smoke confirmation handling.
 
-**Evidence:** `scripts/harness/PtyTestDriver.ts`; `scripts/harness/Drive.ts`;
+**Evidence:** `scripts/harness/PtyTestDriver.ts`; `scripts/harness/DriveSession.ts`;
 `src/modules/app/Bootstrap.ts`; `scripts/harness/smoke-quit-confirmation-harness.ts`;
 `scripts/smoke-keyboard-invariant.sh`.
 
@@ -586,16 +586,16 @@ scripts/harness/smoke-terminal-stage-harness.ts`
 
 **Last refined:** 2026-07-29
 
-### Drive clicks resolve from roles and text
+### Drive session clicks resolve from roles and text
 
-**Invariant:** If `Drive` clicks a named UI element, then it resolves the current cell from the
+**Invariant:** If a drive session clicks a named UI element, then it resolves the current cell from the
 element role and visible text; raw coordinates remain available only for geometry-specific drives.
 
-**Scope:** `scripts/harness/Drive.ts` `--click` actions. The supported semantic roles are visible text
+**Scope:** `scripts/harness/DriveSession.ts` clickText and fold-control targets. The supported semantic roles are visible text
 and editor fold controls. Smokes with richer domain-specific geometry remain outside this command
 line vocabulary.
 
-**Mechanism:** `Drive.resolveClickTarget` locates the requested text in the current
+**Mechanism:** `DriveSession.resolveClickTarget` locates the requested text in the current
 `HarnessSnapshot`, then either uses that text cell or searches left on the same row for a fold glyph
 from `ThemeIcons`. Resolution happens immediately before input, so a sidebar or dock shift moves the
 click with the element.
@@ -606,80 +606,22 @@ recipes; explicit `COLUMN,ROW` targeting for geometry tests.
 **Rejected alternatives:** Store a fold-gutter coordinate — layout settings can move the gutter while
 the coordinate still clicks a different live cell and exits zero.
 
-**Evidence:** `scripts/harness/Drive.ts`; `scripts/harness/Drive.test.ts`; the shared 554,490-line
-nested fixture resolves the first group fold control at cell 45,7 with sidebar width 32 and cell 46,7
-with sidebar width 33.
+**Evidence:** `scripts/harness/DriveSession.ts` (resolveClickTarget, fold glyph search); the shared
+554,490-line nested fixture resolves the first group fold control at cell 45,7 with sidebar width 32
+and cell 46,7 with sidebar width 33 (established under the retired one-shot; DriveSession carries the
+same resolver).
 
 **Impossible if true:** A semantic fold-control drive clicking the old cell after the sidebar moves;
 a missing role or text silently falling back to a coordinate; changing the active fold glyph breaking
 target resolution.
 
-**Verification:** `bun test scripts/harness/Drive.test.ts && bun run drive --open
-scripts/harness/BracketedPasteInput.ts --click 'fold-control=class $BracketedPasteInput {'`
+**Verification:** `bun run drive -- --eval "await app.clickText('$Bracket')"` against
+scripts/harness/BracketedPasteInput.ts opened in the session; inspection of
+DriveSession.resolveClickTarget.
 
 **Status:** provisional
 
 **Last refined:** 2026-07-28
-
-### Drive settled observations include declared debounced work
-
-**Invariant:** If `Drive` labels a boot observation settled, then every
-registered status condition is quiescent in the same published frame. A
-Markdown preview matches the active buffer revision, and an installed
-and observed structure pane has refreshed the active file.
-
-**Scope:** `scripts/harness/Drive.ts` settled boot observations. Action
-observations keep their named completion rules and are outside this registry.
-Missing plugin status keys are outside that plugin's condition.
-
-**Components:**
-- *Markdown work is current* — `markdownParsing` is false when present, and
-  an active Markdown document's `markdownRevision` equals `bufferRevision`.
-- *Structure work has started and finished* — `structureStatus="loading"`
-  always holds settlement. With an active file and the structure projection
-  visible in either dock, `structureStatus="no-document"` also holds
-  settlement until the observed outline starts its refresh. A hidden
-  unsupported file can correctly stay `no-document`.
-- *Structure paint is current* — after visible structure status leaves
-  `no-document`, the emulator grid must also stop painting
-  `No file is open.` before settlement.
-- *The registry is explicit* — each pending state has a stable name in
-  `$settledStatusRules`.
-
-**Mechanism:** `Drive.awaitSettledObservation` combines app readiness with
-the registry through `PtyTestDriver.awaitGridCondition`. Status-file writes
-and PTY frame bytes cross separate OS boundaries, so the condition
-re-evaluates both current status and the emulator grid. Structure status
-cannot release the drive while the grid still contains its earlier
-no-document headline.
-
-**Generates:** A settled Markdown preview instead of `Parsing Markdown…`; a
-current visible structure headline instead of `No file is open.`; a hidden
-unsupported structure projection that declines without work; a revision
-equality check that rejects a preview from the prior source revision.
-
-**Rejected alternatives:** Widen the timeout or wait for another frame. Time
-does not name the work, and frame arrival does not prove that debounced work
-finished.
-
-**Evidence:** `scripts/harness/Drive.ts`;
-`scripts/harness/Drive.test.ts` drives the 3,352-line
-`project.conductor.archive.md` fixture through the real PTY and plants a
-ready-status snapshot with the stale headline.
-
-**Impossible if true:** A `settled boot` print with
-`markdownParsing=true`; a parsed preview whose `markdownRevision` differs
-from `bufferRevision`; an active file beside a visible structure headline
-`No file is open.`; a settled observation with
-`structureStatus="loading"`; a hidden unsupported file timing out on
-`structureStatus="no-document"`; a new fixed sleep in the settle path.
-
-**Verification:** `bun test scripts/harness/Drive.test.ts && bun run drive
---open README.md && bun run drive --open project.conductor.archive.md`
-
-**Status:** provisional
-
-**Last refined:** 2026-07-30
 
 ### Async-published state is always awaited
 

@@ -1,10 +1,14 @@
 # Drive Invar in two minutes
 
+THE ONE ENTRY POINT is the warm DriveSession server (the one-shot
+`bun run drive` was REMOVED 2026-08-03 by user policy — fluent only).
+
 Run the real app in the PTY harness, wait for a settled synchronized frame,
 and print its numbered terminal grid plus every published status/probe key:
 
 ```sh
-bun run drive
+bun scripts/harness/DriveSession.ts --serve &   # warm server, once
+bun scripts/harness/DriveSession.ts --attach "await app.key('Control+j')"
 ```
 
 Use `--open PATH` for a file or workspace, `--geometry 100x30` for the
@@ -16,7 +20,7 @@ File input is copied into a disposable single-file workspace, so exploratory
 edits cannot touch the source. Directory input drives that workspace in place.
 
 ```sh
-bun run drive --size 100000 --key End --wheel down --click 60,20
+bun scripts/harness/DriveSession.ts --attach "await app.key('End').wheel('down').click(60, 20)"
 ```
 
 `--key`, `--wheel`, and `--click` are repeatable. Attach a status or text wait
