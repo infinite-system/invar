@@ -4,6 +4,24 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 61 — 2026-08-04 ~02:40 EDT — NIGHT GOAL: LAND THE SIX
+
+/goal (user, asleep, <3): "launch 1-6, get it done as i sleep" = land
+#438 (hook policy, decision recorded in task file), #461 + #371
+(contention residuals), #489 (drive-layer batch), #499 (smoke output
+hygiene), #494 (monitor log race), #498 (panel-blocked global chords;
+applicationGlobal is the seam). WAVE A LIVE: 438 (codex med), 461
+(codex high), 489 (fable med) — hand-launched after the dispatch batch
+TIMED OUT post-worktree (lesson: one dispatch per command, they take
+~90s each). As lanes free: 371 -> 499 -> 494 -> 498 (briefs to write;
+follow tonight's shapes). Land serially, fresh gate each, bycatch +
+instrument feedback converted at landing, rebuild dist/iv at the end.
+NO experiments. Known residual FAILs allowed at gates: scrollbars
+(until 461 lands!), plugin-manifest, git-watch (#371). User-decision
+queue unchanged (503/495 record refinements etc.).
+
+---
+
 # RESUME ANCHOR 60 — 2026-08-04 ~01:45 EDT — TASKS ARE TERMINALS; PRIMING IS MECHANICAL
 
 Since anchor 59: #503 LANDED (2 rounds) — task panes are kind terminal
@@ -82,40 +100,12 @@ All propose-only, unwritten. Next wave candidates if asked: #498
 (global chord pass-through policy, applicationGlobal is its seam),
 #438 (worktree hook policy — bit four builders today), #499 (smoke
 output hygiene), #496, #497, #489 (drive-layer batch).
----
-
-# RESUME ANCHOR 57 — 2026-08-03 ~14:05 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
-
-LANDING PLAN (once #492 reports; it is the last live builder): land
-serially with merge-main + fresh gate each — 493, 405, 491, 495, 356,
-492 — then dispatch #490 (brief at /tmp/brief-490-1.md; it REQUIRES
-356 landed first: same keybinding files), land it, then wire
-census-488-imports.ts into the conventions gate with an allowlist
-(the ratchet; also author the coupling invariant record as a
-PROPOSAL). READY reports all triaged; conversions committed through
-6f71e8c2. User decisions queued: Shift+drag gesture (#495), pointer
-record refinement (#495), readiness-driven PTY record (#458).
-
-User is resting; /goal active: "get the decoupling done fully". The wave =
-#356 (agent plugin, IN FLIGHT, codex), #493 (ast-query modes, IN FLIGHT,
-fable), #490 chords/labels, #491 editor generators, #492 markdown syntax,
-#405 panel kind map, then wire census-488-imports.ts into the conventions
-gate with an allowlist (the ratchet). Briefs for 490/491/492/405 are READY
-at /tmp/brief-<n>-1.md — dispatch each as a lane frees (cap 3; #495
-terminal-copy also in flight, lands but is not wave scope). Land serially,
-smallest first; #356 and #495 both touch Bootstrap — resolve at landing,
-re-gate after each. The census scripts in the completed 488 folder are the
-before/after measure; wave rows must reach zero. Proposed terminal record
-"A live PTY read is readiness driven" (#458) still awaits the user's word —
-do NOT write it unconfirmed. Contract additions from wave landings are
-propose-only as ever. Fleet-watch heartbeat is the liveness truth; gates
-get their own death-reporting monitors; land.sh needs GATE_LOG or a
-written GATE_OVERRIDE.
 
 ---
 
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 57 — 2026-08-03 ~14:05 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
 - RESUME ANCHOR 56 — 2026-08-03 ~11:10 EDT — LAND #485, THEN PRESENT THE NUMBER
 - RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT
 - RESUME ANCHOR 54 — 2026-08-03 ~10:20 EDT — FIFTEEN LANDINGS; FLEET AT ZERO
