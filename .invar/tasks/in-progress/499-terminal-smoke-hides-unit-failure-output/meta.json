@@ -1,0 +1,15 @@
+{
+  "task": 499,
+  "slug": "terminal-smoke-hides-unit-failure-output",
+  "branch": "fleet/499-terminal-smoke-hides-unit-failure-output",
+  "worktree": ".invar/worktrees/499-terminal-smoke-hides-unit-failure-output",
+  "tmuxSession": "invar/499-terminal-smoke-hides-unit-failure-output",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-low-499-terminal-smoke-hides-unit-failure-output.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "656bbe8a672da53178455c7b0829290928dfeea6",
+  "startedAt": "2026-08-04T02:28:00-04:00"
+}

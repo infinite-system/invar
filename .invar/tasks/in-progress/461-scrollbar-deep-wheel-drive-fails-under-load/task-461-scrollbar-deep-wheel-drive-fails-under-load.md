@@ -1,7 +1,7 @@
 # Task 461 — scrollbar deep wheel drive fails under load
 
 Priority: flake-evidence
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: any
 Model: 5.6-sol

@@ -6,12 +6,23 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #438 [builder-worktree-hook-gate-policy](.invar/tasks/in-progress/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)  [building]
+## IN-PROGRESS (7)
+- #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/in-progress/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/499-terminal-smoke-hides-unit-failure-output`
+- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/in-progress/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)  [building]
+  `tmux attach -t invar/498-global-chords-blocked-by-focused-panel`
+- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/in-progress/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)  [building]
+  `tmux attach -t invar/494-hidden-monitor-log-line-race-under-load`
+- #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/in-progress/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/489-drive-layer-drag-and-diagnostic-log`
+- #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/in-progress/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)  [building]
+  `tmux attach -t invar/461-scrollbar-deep-wheel-drive-fails-under-load`
+- #438 [builder-worktree-hook-gate-policy](.invar/tasks/in-progress/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/438-builder-worktree-hook-gate-policy`
+- #371 [git-watch-starvation-retry-flake](.invar/tasks/in-progress/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/371-git-watch-starvation-retry-flake`
 
-## USER-DIRECTED (14)
-- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
+## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -26,8 +37,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (31)
-- #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/active/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)
+## VERIFICATION-INTEGRITY (30)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
@@ -59,11 +69,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (34)
+## FLAKE-EVIDENCE (31)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
-- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/active/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
-- #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/active/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
 - #455 [agent-composer-never-activates](.invar/tasks/active/455-agent-composer-never-activates/task-455-agent-composer-never-activates.md)
 - #454 [agent-pane-invalid-grid-region](.invar/tasks/active/454-agent-pane-invalid-grid-region/task-454-agent-pane-invalid-grid-region.md)
@@ -72,7 +80,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #446 [quick-open-enumeration-stuck-loading](.invar/tasks/active/446-quick-open-enumeration-stuck-loading/task-446-quick-open-enumeration-stuck-loading.md)
 - #436 [tasks-watch-partial-frame-under-load](.invar/tasks/active/436-tasks-watch-partial-frame-under-load/task-436-tasks-watch-partial-frame-under-load.md)
 - #374 [word-delete-harness-alt-delete-timeout](.invar/tasks/active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md)
-- #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
 - #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
 - #360 [agent-engine-switch-pool-load-flake](.invar/tasks/active/360-agent-engine-switch-pool-load-flake/task-360-agent-engine-switch-pool-load-flake.md)
 - #359 [panel-split-agent-terminal-order-intermittent](.invar/tasks/active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md)
@@ -108,8 +115,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (38)
-- #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/active/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)
+## ARCHITECTURE-HYGIENE (37)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)

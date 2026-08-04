@@ -1,0 +1,15 @@
+{
+  "task": 494,
+  "slug": "hidden-monitor-log-line-race-under-load",
+  "branch": "fleet/494-hidden-monitor-log-line-race-under-load",
+  "worktree": ".invar/worktrees/494-hidden-monitor-log-line-race-under-load",
+  "tmuxSession": "invar/494-hidden-monitor-log-line-race-under-load",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-494-hidden-monitor-log-line-race-under-load.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "942ac39bda28bd3fa92879c389f74bac57a7c020",
+  "startedAt": "2026-08-04T02:37:10-04:00"
+}

@@ -1,0 +1,15 @@
+{
+  "task": 489,
+  "slug": "drive-layer-drag-and-diagnostic-log",
+  "branch": "fleet/489-drive-layer-drag-and-diagnostic-log",
+  "worktree": ".invar/worktrees/489-drive-layer-drag-and-diagnostic-log",
+  "tmuxSession": "invar/489-drive-layer-drag-and-diagnostic-log",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-489-drive-layer-drag-and-diagnostic-log.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "d6e34f5e5152a84500d68f19bb4a78fbeafb3bd0",
+  "startedAt": "2026-08-04T02:11:40-04:00"
+}
