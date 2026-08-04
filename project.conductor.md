@@ -774,3 +774,13 @@ general, before first use of any instrument this session, read its
 skill, not its source. Friction is the tell: the moment an invocation
 errors, the next act is opening the skill, never falling back to an
 older remembered pattern.
+
+## 2026-08-04 — commit -a is a lie for new files (family: untracked does not travel)
+
+The recontext landing used `git commit -aq`; the commit message named
+three NEW files that -a silently excluded (untracked). The dispatch
+closure guard `[ -f list ]` would then skip silently in every fresh
+worktree — the feature would "work" in the conductor checkout and do
+nothing for builders. Same generator as "untracked files do not
+travel with git merge". Rule: a commit that claims to add files runs
+`git status --short` AFTER committing; zero lines or it lied.
