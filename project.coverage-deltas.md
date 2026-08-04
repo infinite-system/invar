@@ -169,3 +169,9 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
 ## 2026-08-03 — Drive.ts one-shot removed by user order
 
 | `scripts/harness/Drive.test.ts` | assertions 36 → 0, waits 13 → 0. Feature removed: the one-shot Drive.ts entry was deleted by explicit user order (`bun run drive` is now an alias of DriveSession.ts). The resolveClickTarget semantics live on in DriveSession.ts with their own test (DriveSession.test.ts); the parseOptions/performAction assertions covered a flag grammar that no longer exists and are not restored. The settled-debounced-work registry record retired with the capability. |
+
+## 2026-08-04 — #499 helper conversion, three undeclared sites (conductor-completed at the gate)
+
+| `scripts/harness/smoke-move-line-harness.ts` | assertions 7 → 6, waits 8 → 8. The inline child-exit assertion moved into the shared requireChildSuccess helper (same check, now with failure output printed); not a lost claim. |
+| `scripts/harness/smoke-pixel-preview-harness.ts` | assertions 39 → 38, waits 50 → 50. Same helper conversion, same reason. |
+| `scripts/harness/smoke-voice-picker-harness.ts` | assertions 9 → 8, waits 17 → 17. Same helper conversion, same reason. |
