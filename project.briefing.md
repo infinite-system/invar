@@ -101,20 +101,9 @@ merge main, gate with a death-reporting monitor, land. Fifteen landings
 sealed before this. User is PRESENT. No experiments.
 ---
 
-# RESUME ANCHOR 54 — 2026-08-03 ~10:20 EDT — FIFTEEN LANDINGS; FLEET AT ZERO
-
-484 LANDED (4e9d13d1): BLOCKED-premise finding — the heavy boots ARE
-restart-persistence coverage; instruments (source census + runtime boot
-counter) landed; re-scope decision is the USER'S (options in the landing
-message). Fleet fully drained again. Goal met (483 both phases). USER
-RETURN ITEMS: (1) copy saga — which selection highlight do they see
-(Invar theme vs terminal-native)? (2) 484 re-scope call. (3) #464 retire,
-#460-#463 hygiene, 7 historical worktrees sweep. Crons :07/:37 + fleet-watch
-armed. No experiments (standing order). Fifteen landings this session.
----
-
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 54 — 2026-08-03 ~10:20 EDT — FIFTEEN LANDINGS; FLEET AT ZERO
 - RESUME ANCHOR 53 — 2026-08-03 ~09:35 EDT — GOAL MET; 484 EXPERIMENT IN FLIGHT
 - RESUME ANCHOR 50c — 2026-08-03 ~08:15 EDT — COPY: TRANSPORT PROVEN INNOCENT
 - RESUME ANCHOR 50b — 2026-08-03 ~08:00 EDT — LIVE COPY INVESTIGATION OPEN
