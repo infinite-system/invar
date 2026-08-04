@@ -13,6 +13,7 @@ import { OpenPtyBackend } from './OpenPtyBackend';
 import { TerminalEmulator } from './TerminalEmulator';
 import { TerminalInstance } from './TerminalInstance';
 import { TerminalPaneContent } from './TerminalPaneContent';
+import type { PaneTaskMetadata } from '../ui/PaneContent.interface';
 
 class $TerminalFactory {
   /** Build the default real backend (openpty + shell). Overridable seam. */
@@ -38,6 +39,7 @@ class $TerminalFactory {
       label: options.label,
       kind: options.kind,
       heading: options.heading,
+      task: options.task,
     });
   }
 }
@@ -59,6 +61,7 @@ export interface TerminalCreateOptions {
   environment?: Readonly<Record<string, string>>;
   kind?: string;
   heading?: string;
+  task?: PaneTaskMetadata;
   cleanPrompt?: boolean;
   promptColor?: string;
   typingSpeed?: () => number;

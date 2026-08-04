@@ -6,6 +6,7 @@ import type {
   TaskProcessLaunchContext,
   TaskProcessLaunchContributor,
 } from './TaskProcessLaunchContributor.interface';
+import type { PaneTaskMetadata } from '../ui/PaneContent.interface';
 
 class $TaskLauncher {
   protected readonly launchedIdentifiersByWorkspace = new Map<
@@ -140,6 +141,11 @@ class $TaskLauncher {
     this.options.port.launch({
       identifier,
       label: task.label,
+      task: {
+        label: task.label,
+        workspaceRoot,
+        sourcePath: task.sourcePath ?? null,
+      },
       workspaceRoot,
       command: task.command,
       arguments: argumentsList,
@@ -158,6 +164,14 @@ class $TaskLauncher {
     return (
       `task:${encodeURIComponent(workspaceRoot)}:` + String(configurationIndex)
     );
+  }
+
+  persistedTaskIdentifier(
+    identifier: string | undefined,
+    kind: string,
+  ): string | null {
+    if (identifier?.startsWith('task:')) return identifier;
+    return kind.startsWith('task:') ? kind : null;
   }
 
   protected noticeIdentifierFor(
@@ -214,6 +228,7 @@ export interface TaskPanelNoticeRequest {
 export interface TaskTerminalLaunchRequest {
   readonly identifier: string;
   readonly label: string;
+  readonly task: PaneTaskMetadata;
   readonly workspaceRoot: string;
   readonly command: string;
   readonly arguments: readonly string[];

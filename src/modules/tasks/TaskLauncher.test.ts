@@ -68,10 +68,26 @@ test('task launcher publishes its plain construction seam', () => {
   expect(TaskLauncher.Class).toBe(TaskLauncher.$Class);
 });
 
+test('task identity recognition stays behind the task launch seam', () => {
+  const fixture = launcherFixture();
+  expect(
+    fixture.launcher.persistedTaskIdentifier('task:workspace:0', 'terminal'),
+  ).toBe('task:workspace:0');
+  expect(
+    fixture.launcher.persistedTaskIdentifier(undefined, 'task:workspace:0'),
+  ).toBe('task:workspace:0');
+  expect(
+    fixture.launcher.persistedTaskIdentifier('pane-instance-1', 'terminal'),
+  ).toBeNull();
+});
+
 test('folder-open tasks launch and matching groups present as one split', () => {
   const fixture = launcherFixture();
   const tasks = [
-    task(0, 'Left', { presentationGroup: 'split' }),
+    task(0, 'Left', {
+      presentationGroup: 'split',
+      sourcePath: '/workspace/.invar/tasks.json',
+    }),
     task(1, 'Right', { presentationGroup: 'split' }),
     task(2, 'Manual', { runOnFolderOpen: false }),
   ];
@@ -82,6 +98,11 @@ test('folder-open tasks launch and matching groups present as one split', () => 
     'Left',
     'Right',
   ]);
+  expect(fixture.requests[0]?.task).toEqual({
+    label: 'Left',
+    workspaceRoot: '/workspace',
+    sourcePath: '/workspace/.invar/tasks.json',
+  });
   expect(fixture.presentations).toHaveLength(1);
   expect(fixture.presentations[0]!.identifiers).toHaveLength(2);
   expect(new Set(fixture.presentations[0]!.identifiers).size).toBe(2);

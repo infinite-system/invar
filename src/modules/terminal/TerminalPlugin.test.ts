@@ -34,6 +34,7 @@ class MockBackedTerminalPlugin extends TerminalPlugin.$Class {
         label: options.label,
         kind: options.kind,
         heading: options.heading,
+        task: options.task,
       },
     );
   }
@@ -241,18 +242,25 @@ test('the runtime builds panes and publishes the active workspace pane as curren
   currentPane = second;
   expect(runtime.currentPane()?.id).toBe('terminal-2');
 
-  // A declared task owns its own switching identity and must never become "the" terminal.
+  // A declared task is a terminal session with task metadata. The host uses that metadata to keep
+  // the task distinct from the runtime's default interactive pane.
   const task = context.paneRuntimes.createPane('terminal', {
     identifier: 'build',
     label: 'build',
-    kind: 'build',
+    kind: 'terminal',
     heading: 'build',
+    task: {
+      label: 'build',
+      workspaceRoot: '/tmp',
+      sourcePath: '/tmp/.invar/tasks.json',
+    },
     columns: 80,
     rows: 24,
     workingDirectory: '/tmp',
     process: { command: 'printf', arguments: ['%s\n', 'built'] },
   });
-  expect(task?.kind).toBe('build');
+  expect(task?.kind).toBe('terminal');
+  expect(task?.task?.sourcePath).toBe('/tmp/.invar/tasks.json');
   currentPane = null;
   expect(runtime.currentPane()).toBeNull();
 
@@ -261,10 +269,9 @@ test('the runtime builds panes and publishes the active workspace pane as curren
   expect(runtime.currentPane()?.id).toBe('terminal-2');
 
   // Uninstall releases every pane the runtime still owns — a withdrawn runtime must leave no live
-  // pane rendering or holding keyboard focus. The declared task carries its own kind and is not
-  // one of them.
+  // pane rendering or holding keyboard focus. The declared task is one of those terminal panes.
   context.manager.setEnabled('terminal', false);
-  expect(context.releasedPaneIdentifiers).toEqual(['terminal-2']);
+  expect(context.releasedPaneIdentifiers).toEqual(['terminal-2', 'build']);
   expect(runtime.currentPane()).toBeNull();
 
   // Prompt policy is the runtime's, not the host's: the interactive shell gets the themed clean

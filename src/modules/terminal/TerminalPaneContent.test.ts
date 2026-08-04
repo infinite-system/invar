@@ -32,6 +32,28 @@ test('terminal titles use their presentation label instead of their opaque ident
   opaquePane.dispose();
 });
 
+test('a task terminal keeps task identity as metadata without changing its kind', () => {
+  const instance = new TerminalInstance.Class(
+    new MockBackend.Class(),
+    new TerminalEmulator.Class(20, 5),
+  );
+  const pane = new TerminalPaneContent.Class(instance, {
+    identifier: 'task:workspace:0',
+    label: 'Build',
+    kind: 'terminal',
+    task: {
+      label: 'Build',
+      workspaceRoot: '/workspace',
+      sourcePath: '/workspace/.invar/tasks.json',
+    },
+  });
+
+  expect(pane.id).toBe('task:workspace:0');
+  expect(pane.kind).toBe('terminal');
+  expect(pane.task?.sourcePath).toBe('/workspace/.invar/tasks.json');
+  pane.dispose();
+});
+
 function makePane() {
   const backend = new MockBackend.Class();
   const emulator = new TerminalEmulator.Class(20, 5);

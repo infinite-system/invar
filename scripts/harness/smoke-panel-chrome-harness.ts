@@ -16,6 +16,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -192,6 +193,25 @@ async function driveRestoredTaskPaneSpaceHealing(
 ): Promise<void> {
   const scaleFixture =
     await HarnessSmoke.Class.createDriveScaleFixture(lineCount);
+  const taskConfigurationDirectory = join(scaleFixture.workspaceRoot, '.invar');
+  mkdirSync(taskConfigurationDirectory, { recursive: true });
+  const taskConfigurationPath = join(taskConfigurationDirectory, 'tasks.json');
+  await Bun.write(
+    taskConfigurationPath,
+    `${JSON.stringify({
+      version: '2.0.0',
+      tasks: [
+        {
+          label: 'Claude',
+          type: 'shell',
+          command: '/bin/sh',
+          args: ['-lc', "printf 'RESTORED_TASK_READY\\n'; exec /bin/sh -i"],
+          presentation: { panel: 'dedicated' },
+          runOptions: { runOn: 'folderOpen' },
+        },
+      ],
+    })}\n`,
+  );
   const homeDirectory = mkdtempSync(
     join(tmpdir(), `invar-panel-restored-task-space-${lineCount}-`),
   );
@@ -256,6 +276,8 @@ async function driveRestoredTaskPaneSpaceHealing(
       environment: {
         TUI_STATUS_PATH: join(homeDirectory, statusName),
         INVAR_AGENT_BACKEND: 'echo',
+        INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '1',
+        INVAR_TEST_SUPPRESS_FOLDER_OPEN_TASKS: '0',
       },
     });
   try {
@@ -275,16 +297,43 @@ async function driveRestoredTaskPaneSpaceHealing(
             JSON.stringify(candidate.panelSpaceLabels) ===
               JSON.stringify(['Terminal']) &&
             JSON.stringify(candidate.panelContentLabels) ===
-              JSON.stringify(['Terminal 5']) &&
+              JSON.stringify(['Terminal 5', 'Claude']) &&
+            Array.isArray(candidate.panelContentKinds) &&
+            candidate.panelContentKinds.every((kind) => kind === 'terminal') &&
             JSON.stringify(candidate.panelCellLabels) ===
-              JSON.stringify(['Terminal 5']),
+              JSON.stringify(['Claude']),
           15_000,
         );
-        const snapshot = driver.snapshot();
+        const snapshot = await driver.awaitGridCondition(
+          `${lineCount}-line ${observationName} paints the relaunched task terminal`,
+          (candidate) => candidate.findText('RESTORED_TASK_READY') !== null,
+        );
+        const taskGlyphLocation =
+          (['nerd', 'unicode', 'ascii'] as const)
+            .map((glyphLevel) =>
+              snapshot.findText(
+                ThemeIcons.Class.taskActionIconsFor(glyphLevel).taskRecord,
+              ),
+            )
+            .find((location) => location !== null) ?? null;
+        const panelContentKinds = Array.isArray(status.panelContentKinds)
+          ? status.panelContentKinds
+          : [];
         HarnessSmoke.Class.requireCondition(
           tabBar(status).tabs.length === 1 &&
-            snapshot.findText('Claude') === null,
-          `${lineCount}-line ${observationName} paints the real terminal and no dead task pane`,
+            taskGlyphLocation !== null &&
+            !panelContentKinds.some((kind) => String(kind).startsWith('task:')),
+          `${lineCount}-line ${observationName} paints one Terminal space, a task glyph, and no task kind`,
+        );
+        if (!taskGlyphLocation) {
+          throw new Error('The task glyph assertion did not retain a cell');
+        }
+        clickCell(driver, taskGlyphLocation.column, taskGlyphLocation.row);
+        await HarnessSmoke.Class.awaitStatus(
+          driver,
+          statusPath,
+          `${lineCount}-line task glyph opens its workspace task source`,
+          (candidate) => candidate.activeBuffer === taskConfigurationPath,
         );
       } finally {
         await driver.dispose();
@@ -310,12 +359,13 @@ async function driveRestoredTaskPaneSpaceHealing(
         }
       >;
     };
+    const healedPanelContentOrder = healedSettings.panelContentOrder;
     HarnessSmoke.Class.requireCondition(
-      healedSettings.panelContentOrder.includes(terminalPane.identifier) &&
-        healedSettings.panelContentOrder.every(
+      healedPanelContentOrder.includes(terminalPane.identifier) &&
+        healedPanelContentOrder.every(
           (identifier) => !identifier.startsWith('task:'),
         ),
-      `${lineCount}-line first boot removes dead task identities from the global order`,
+      `${lineCount}-line first boot must drop saved task identities from global order; order=${JSON.stringify(healedPanelContentOrder)}`,
     );
     HarnessSmoke.Class.requireCondition(
       JSON.stringify(
@@ -337,7 +387,7 @@ async function driveRestoredTaskPaneSpaceHealing(
           ),
         ),
       ) === true,
-      `${lineCount}-line first boot saves no dead task pane identity`,
+      `${lineCount}-line first boot saves no task entry because declared tasks relaunch through TaskLauncher`,
     );
     await observeOneTerminalSpace(
       'second-status.json',

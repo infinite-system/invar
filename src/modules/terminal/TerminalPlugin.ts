@@ -83,6 +83,7 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
       label: request.label,
       kind: request.kind,
       heading: request.heading,
+      task: request.task,
       columns: request.columns,
       rows: request.rows,
       cwd: request.workingDirectory,
@@ -95,8 +96,8 @@ class $TerminalPlugin implements ApplicationContributor, PaneRuntime {
       typingSpeed: () => settings.terminalTypingSpeed.value,
       reducedMotion: () => settings.reducedMotion.value,
     });
-    // Only panes that carry this runtime's own kind join its instance registry: a declared task
-    // owns its own switching identity, so it must never become "the" terminal for a consumer.
+    // Every terminal-kind pane joins the runtime's session registry. A task keeps its task identity
+    // in metadata, so its process remains a normal terminal session here.
     if ((request.kind ?? this.kind) === this.kind) {
       this.panes.set(content.id, content);
     }

@@ -372,9 +372,13 @@ try {
     'the first workspace owns its interactive terminal',
     (status) =>
       status.panelActiveContentKind === 'terminal' &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.includes(firstTaskIdentifier) &&
       Array.isArray(status.panelContentKinds) &&
-      status.panelContentKinds.includes(firstTaskIdentifier) &&
-      status.panelContentKinds.includes('terminal'),
+      status.panelContentKinds.length === status.panelContentIds.length &&
+      status.panelContentKinds.every((kind) => kind === 'terminal') &&
+      Array.isArray(status.panelContentLabels) &&
+      status.panelContentLabels.includes('Terminal'),
   );
   const firstTerminalIdentifier = String(
     firstPanelWorldStatus.panelActiveContent,
@@ -543,11 +547,11 @@ try {
     'the second workspace projects only its declared task pane',
     (status) =>
       status.activeWorkspaceRoot === secondRoot &&
-      Array.isArray(status.panelContentKinds) &&
-      JSON.stringify(status.panelContentKinds) ===
-        JSON.stringify([secondTaskIdentifier]) &&
       Array.isArray(status.panelContentIds) &&
-      !status.panelContentIds.includes(firstTaskIdentifier),
+      JSON.stringify(status.panelContentIds) ===
+        JSON.stringify([secondTaskIdentifier]) &&
+      Array.isArray(status.panelContentKinds) &&
+      JSON.stringify(status.panelContentKinds) === JSON.stringify(['terminal']),
   );
   requireCondition(
     !String(driver.snapshot().textRows().join('\n')).includes(
@@ -562,9 +566,11 @@ try {
     'a new terminal belongs only to the second workspace',
     (status) =>
       status.panelActiveContentKind === 'terminal' &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.includes(secondTaskIdentifier) &&
       Array.isArray(status.panelContentKinds) &&
-      status.panelContentKinds.includes(secondTaskIdentifier) &&
-      status.panelContentKinds.includes('terminal') &&
+      status.panelContentKinds.length === status.panelContentIds.length &&
+      status.panelContentKinds.every((kind) => kind === 'terminal') &&
       Array.isArray(status.panelContentLabels) &&
       status.panelContentLabels.includes('Terminal'),
   );

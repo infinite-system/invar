@@ -178,7 +178,7 @@ class $TaskConfiguration {
         rawTasks[configurationIndex],
       );
       if ('message' in taskResult) issues.push(taskResult);
-      else tasks.push(taskResult);
+      else tasks.push({ ...taskResult, sourcePath: configurationPath });
     }
     return { source, tasks, issues };
   }
@@ -360,6 +360,7 @@ export interface TaskConfigurationResult {
 export interface TaskDefinition {
   configurationIndex: number;
   label: string;
+  sourcePath?: string;
   command: string;
   arguments: string[];
   presentationGroup?: string;

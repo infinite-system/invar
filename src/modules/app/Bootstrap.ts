@@ -416,17 +416,32 @@ class $Bootstrap {
         );
       },
     });
+    const acceptsAnyPane = (): boolean => true;
+    const isRuntimeDefaultPane = (content: PaneContent): boolean =>
+      content.task === undefined;
     /** Resolve a visible kind through an explicit selection policy. Kind is never used as an id. */
-    const visiblePaneOfKind = (kind: string): PaneContent | null => {
+    const visiblePaneOfKind = (
+      kind: string,
+      acceptsPane: (content: PaneContent) => boolean = acceptsAnyPane,
+    ): PaneContent | null => {
       const focusedContent = panelHost.focusedContent;
-      if ((focusedContent?.kind ?? focusedContent?.id) === kind) {
+      if (
+        focusedContent &&
+        (focusedContent.kind ?? focusedContent.id) === kind &&
+        acceptsPane(focusedContent)
+      ) {
         return focusedContent;
       }
-      return panelHost.visibleContentsOfKind(kind)[0] ?? null;
+      return panelHost.visibleContentsOfKind(kind).find(acceptsPane) ?? null;
     };
     /** Resolve a requested kind through an explicit focused, visible, then registered policy. */
-    const currentPaneOfKind = (kind: string): PaneContent | null =>
-      visiblePaneOfKind(kind) ?? panelHost.contentsOfKind(kind)[0] ?? null;
+    const currentPaneOfKind = (
+      kind: string,
+      acceptsPane: (content: PaneContent) => boolean = acceptsAnyPane,
+    ): PaneContent | null =>
+      visiblePaneOfKind(kind, acceptsPane) ??
+      panelHost.contentsOfKind(kind).find(acceptsPane) ??
+      null;
     const workspacePanelWorlds = new Map<
       Workspace.Instance,
       WorkspacePanelWorld
@@ -591,7 +606,10 @@ class $Bootstrap {
 
     // The terminal action is shared by its chord and status-bar control.
     const toggleTerminal = (): void => {
-      const visibleTerminal = visiblePaneOfKind('terminal');
+      const visibleTerminal = visiblePaneOfKind(
+        'terminal',
+        isRuntimeDefaultPane,
+      );
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
       else {
         // No runtime for this kind (its plugin is disabled) — the affordance degrades to nothing
@@ -812,7 +830,7 @@ class $Bootstrap {
       return content;
     };
     ensureRuntimePane = (kind: string): PaneContent | null =>
-      currentPaneOfKind(kind) ?? createRuntimePane(kind);
+      currentPaneOfKind(kind, isRuntimeDefaultPane) ?? createRuntimePane(kind);
     replacePaneWithRuntime = (identifier, runtimeKind): boolean => {
       const replacement = createRuntimePane(runtimeKind, true);
       return replacement
@@ -964,12 +982,16 @@ class $Bootstrap {
         const existingContent = panelHost.content(pane.identifier);
         if (existingContent) return existingContent;
         if (pane.identifier.endsWith(':notice')) return null;
-        if (pane.identifier.startsWith('task:')) {
-          deadRestoredTaskPaneIdentifiers.add(pane.identifier);
-          return null;
-        }
       }
       if (pane.kind === 'task-notice') return null;
+      const persistedTaskIdentifier = taskLauncher.persistedTaskIdentifier(
+        pane.identifier,
+        pane.kind,
+      );
+      if (persistedTaskIdentifier) {
+        deadRestoredTaskPaneIdentifiers.add(persistedTaskIdentifier);
+        return null;
+      }
       return (
         createContributedPaneInstance(pane.kind, pane.label, pane.identifier) ??
         createRuntimePane(
@@ -1007,7 +1029,6 @@ class $Bootstrap {
       }
       persistPanelWorkspaceState();
     };
-    restorePanelWorkspaceState(workspaceSet.active);
     const taskLauncher = new TaskLauncher.Class({
       port: {
         launch: (request) => {
@@ -1018,11 +1039,13 @@ class $Bootstrap {
           // A declared task is the same runtime request as an ordinary terminal, plus the process it
           // declares. The host passes the declaration through; only the runtime knows a PTY is how
           // it gets started.
-          const content = paneRuntimes.createPane('terminal', {
+          const taskPaneRuntimeKind = 'terminal';
+          const content = paneRuntimes.createPane(taskPaneRuntimeKind, {
             identifier: request.identifier,
             label: request.label,
-            kind: request.identifier,
+            kind: taskPaneRuntimeKind,
             heading: request.label,
+            task: request.task,
             columns: view.panelViewportColumns() || 80,
             rows: view.panelViewportRows() || 24,
             workingDirectory: request.workspaceRoot,
@@ -1063,6 +1086,7 @@ class $Bootstrap {
         },
       },
     });
+    restorePanelWorkspaceState(workspaceSet.active);
     const tasks = new Tasks.Class({
       commands,
       launcher: taskLauncher,

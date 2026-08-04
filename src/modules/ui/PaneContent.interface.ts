@@ -41,6 +41,8 @@ export interface PaneContent {
   readonly panelSpace?: PaneContentSpace;
   /** Stable user-facing instance name (Terminal, Terminal 2, Agent 2). */
   readonly instanceLabel?: string;
+  /** A declared task carried by this pane. It remains metadata while `kind` stays the runtime kind. */
+  readonly task?: PaneTaskMetadata;
   /** Human-readable name shown in this content region's own heading. */
   readonly title: string;
   /** Optional content-chosen title colour. Absent means the host's own focused/idle convention —
@@ -153,6 +155,12 @@ export interface PaneContentSpace {
   readonly kind: string;
   /** User-facing base label. The host adds a number for later spaces of the same kind. */
   readonly label: string;
+}
+
+export interface PaneTaskMetadata {
+  readonly label: string;
+  readonly workspaceRoot: string;
+  readonly sourcePath: string | null;
 }
 
 /** One contributed choice for adding another pane inside an existing panel space. */
