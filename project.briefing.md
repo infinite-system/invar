@@ -4,6 +4,24 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 58b — 2026-08-03 ~23:10 EDT — WAVE COMPLETE + RECORDS WRITTEN + #501 LANDED
+
+Since anchor 58: the five confirmed records are WRITTEN and landed
+through the full gate (bae22b50) — readiness-driven PTY reads,
+Shift+drag host selection, pane-identity reservation, core-carries-no-
+plugin-vocabulary (ratchet-verified), applicationGlobal focus
+refinement + ui ripple. #501 (restored task panes minted extra
+spaces — the user's first bug report) landed same evening; dist/iv
+rebuilt. User said MORE BUGS are coming — hold experiments (pacing
+policy), keep lanes free, drive each report before filing (ui-task
+loop). Post-compaction rule now in doctrine: read an instrument's
+skill BEFORE first use; never fall back to retired patterns on
+friction. Remaining user-decision queue: #464 retire call, #460-463
+hygiene, 7 historical worktrees. Next-wave candidates: #498, #438,
+#499, #496, #497, #489.
+
+---
+
 # RESUME ANCHOR 58 — 2026-08-03 ~19:25 EDT — DECOUPLING WAVE COMPLETE
 
 The /goal ("get the decoupling done fully") is MET. Landed today, in
