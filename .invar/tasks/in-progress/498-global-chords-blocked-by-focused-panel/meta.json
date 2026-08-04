@@ -1,0 +1,15 @@
+{
+  "task": 498,
+  "slug": "global-chords-blocked-by-focused-panel",
+  "branch": "fleet/498-global-chords-blocked-by-focused-panel",
+  "worktree": ".invar/worktrees/498-global-chords-blocked-by-focused-panel",
+  "tmuxSession": "invar/498-global-chords-blocked-by-focused-panel",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-498-global-chords-blocked-by-focused-panel.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "29be1929edbbea6d3a8eb0a907e4f4e5aab97059",
+  "startedAt": "2026-08-04T02:40:56-04:00"
+}

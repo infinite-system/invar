@@ -5,7 +5,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: medium
-State: ACTIVE
+State: COMPLETED — 2fefd385 — monitor log assertion is condition-shaped
 
 ## In plain words
 

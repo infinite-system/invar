@@ -94,6 +94,11 @@ because everything still looks rigorous.
 4. **One verification pass at the END.**
 5. Judge by observation of the real path. **Assertions PREVENT REGRESSION; they do not DISCOVER FIXES.**
 
+Do not put `SKIP_GATE=1` in new builder briefs. `dispatch.sh` plants a
+worktree-local hook policy that keeps formatting and skips the full merge gate.
+The conductor still gates the combined tree at landing. Manually cut worktrees
+do not get this policy.
+
 **PLAIN WORDS FIRST — `## In plain words` is required in every brief AND
 every report.** Two or three sentences a ten-year-old could follow: what is
 wrong now, what must be true after. `dispatch.sh` and `round-brief.sh` refuse
