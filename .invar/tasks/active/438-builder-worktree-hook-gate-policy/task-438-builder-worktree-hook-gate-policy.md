@@ -1,10 +1,10 @@
 # Task #438 — the pre-commit hook launches a merge gate in builder worktrees
 
 Priority: verification-integrity
-Engine: user
+Engine: codex
 Environment: linux
-Model: any explicit user choice
-Effort: low
+Model: 5.6-sol
+Effort: medium
 State: ACTIVE
 
 ## What
@@ -47,3 +47,13 @@ This builder let the hook's gate RUN to completion (green) instead of
 bypassing — a full merge gate executed while two other builders were
 live, which the concurrency rule forbids. The hook enforces neither
 policy; dispatch must decide for the worktree.
+
+
+## Authorization (2026-08-04)
+
+Engine was 'user' because the hook policy was a DECISION. The user
+made it: '/goal launch 1-6' includes this task after five builders
+were bitten. The decided direction: builder worktrees get a
+worktree-local hook policy planted by dispatch, so builder commits
+neither launch the full gate nor need SKIP_GATE by hand; the
+conductor's checkout keeps the full hook.
