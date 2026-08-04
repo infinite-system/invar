@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/in-progress/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/498-global-chords-blocked-by-focused-panel`
-
 ## USER-DIRECTED (14)
 - #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/active/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -147,12 +143,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 216 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 217 — full log: project.tasks-completed.md)
 - #503 [a-task-is-a-terminal-pane-not-a-kind](.invar/tasks/completed/503-a-task-is-a-terminal-pane-not-a-kind/task-503-a-task-is-a-terminal-pane-not-a-kind.md) — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json
 - #502 [dead-task-panes-must-not-restore](.invar/tasks/completed/502-dead-task-panes-must-not-restore/task-502-dead-task-panes-must-not-restore.md) — aa80511f — dead task panes drop at restore; layouts heal; ratchet tightens to 33
 - #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/completed/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md) — faa06188 — restored task panes stay in their saved space; layouts self-heal
 - #500 [database-add-click-misses-popup](.invar/tasks/completed/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md) — ACTIVE
 - #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/completed/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md) — e322f281 — smokes print child failures and self-describe their homes
+- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/completed/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md) — 99c78b72 — frame chords survive focused panels via applicationGlobal
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
 - #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/completed/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md) — 2fefd385 — monitor log assertion is condition-shaped
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
@@ -162,4 +159,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/completed/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md) — da15f209 — drive layer: drag, log surface, --show, loud showScreen
 - #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
 - #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/completed/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md) — 9f132d18 — copy telemetry: one record per attempt names surface, route, OSC 52 result
-- #485 [measure-the-reclaimable-boot-churn](.invar/tasks/completed/485-measure-the-reclaimable-boot-churn/task-485-measure-the-reclaimable-boot-churn.md) — efe1eb8f — measured boot churn: 36 of 189 starts reclaimable (19 percent)
