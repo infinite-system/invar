@@ -12,4 +12,4 @@ for hook_path in "$HOOK_SOURCE_DIR"/*; do
   ln -sf "../../scripts/hooks/$hook_name" "$GIT_HOOKS_DIR/$hook_name"
   echo "installed hook: $hook_name -> scripts/hooks/$hook_name"
 done
-echo "done. The full merge-gate now runs before every commit (SKIP_GATE=1 to bypass)."
+echo "done. The full merge gate now runs before primary-checkout commits. Dispatched builder worktrees use their planted policy."
