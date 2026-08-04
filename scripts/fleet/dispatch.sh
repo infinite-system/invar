@@ -522,6 +522,12 @@ the single source, so no pointer-hop is left to chance. Read it wholesale
 before the brief. Law is still AGENTS.md and everything it names.
 TASK_POINTER
 
+PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
+  --base-directory "$worktree_path" "$worktree_path/TASK.md"
+
+# The closure is appended AFTER the link lint: the skills' prose mentions
+# document names bare (they are content, not task links), and linting the
+# concatenation killed every dispatch silently on 2026-08-04.
 # Deterministic context fill (user order 2026-08-04): the builder
 # fundamentals are INJECTED VERBATIM — never a list, never a pointer.
 # One owner for the set: conductor-system-prompt.sh --builder.
@@ -542,8 +548,7 @@ if [ "$engine" != "claude" ]; then
     cat "$builder_fundamentals_file"
   } >> "$worktree_path/TASK.md"
 fi
-PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
-  --base-directory "$worktree_path" "$worktree_path/TASK.md"
+
 
 # ---------------------------------------------------------------------------
 # 5. Launch inside tmux so the session is ATTACHABLE BY SOMEONE WHO IS NOT THE
