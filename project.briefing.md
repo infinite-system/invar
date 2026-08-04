@@ -4,6 +4,29 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 60 — 2026-08-04 ~01:45 EDT — TASKS ARE TERMINALS; PRIMING IS MECHANICAL
+
+Since anchor 59: #503 LANDED (2 rounds) — task panes are kind terminal
+with task metadata; the task: prefix lives only inside TaskLauncher
+(2 sites); theme glyph on task headers opens .invar/tasks.json by real
+click; r2 fixed Ctrl+J confusing a task terminal with the interactive
+terminal. dist/iv rebuilt. PRIMING IS NOW MECHANICAL AT EVERY TIER
+(user orders 2026-08-04): conductor launch fundamentals += drive-pty +
+ste-expression; builders get conductor-system-prompt.sh --builder
+(ibr/invariants/ivue/drive-pty/ste-expression) EMBEDDED VERBATIM in
+TASK.md + as claude-engine system prompt; compaction recontext is a
+SessionStart hook (matcher compact, .claude/settings.json) running
+recontext-conductor.sh — active from NEXT session; this session's
+backstop is running the script by hand after any compaction. USER
+DECISIONS QUEUED: #503's three record refinements (folder-open
+wording; allocated-vs-declaration identity distinction; drop the
+stale task-runtime-kind scope exclusion); #495 Shift+drag record;
+#464 retire; #460-463; 7 old worktrees. Lessons tonight: commit -a
+excludes new files (verify status after); one pending commit owns the
+index.
+
+---
+
 # RESUME ANCHOR 59 — 2026-08-04 ~00:10 EDT — BUG NIGHT CLOSED; FLEET AT ZERO
 
 Evening tail after anchor 58b: #501 landed (spaces heal) but the user
@@ -89,27 +112,11 @@ propose-only as ever. Fleet-watch heartbeat is the liveness truth; gates
 get their own death-reporting monitors; land.sh needs GATE_LOG or a
 written GATE_OVERRIDE.
 
-# RESUME ANCHOR 56 — 2026-08-03 ~11:10 EDT — LAND #485, THEN PRESENT THE NUMBER
-
-#485 (reclaimable boot churn) is READY: 189 total boots, 36 reclaimable
-(19%, ~8.5GB-boots at 236MB/boot), 153 semantic under strict classification;
-measurement-only, no source change. Gate runs at /tmp/gate-485.log on
-b64a0cae in worktree 485-measure-the-reclaimable-boot-churn, death-reporting
-monitor armed. ON GREEN: land via GATE_LOG=/tmp/gate-485.log
-BYCATCH_TRIAGED=1 bash scripts/fleet/land.sh 485
-measure-the-reclaimable-boot-churn <msg> "<summary>" (convert bycatch +
-instrument feedback from the report first). THEN give the user the verdict:
-19% reclaimable is MODEST — boots are ~5% of gate wall-clock, so reclaiming
-a fifth of them buys ~1% wall + some GC relief, against the cost of reset
-machinery and contamination risk; the honest recommendation is OPTION 2/3
-(accept the churn; test higher worker counts directly). The CALL IS THE
-USER'S. Briefing now self-prunes to 5 anchors (rule in header + conductor
-skill). Sixteen landings after 485 lands.
-
 ---
 
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 56 — 2026-08-03 ~11:10 EDT — LAND #485, THEN PRESENT THE NUMBER
 - RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT
 - RESUME ANCHOR 54 — 2026-08-03 ~10:20 EDT — FIFTEEN LANDINGS; FLEET AT ZERO
 - RESUME ANCHOR 53 — 2026-08-03 ~09:35 EDT — GOAL MET; 484 EXPERIMENT IN FLIGHT
