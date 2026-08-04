@@ -21,17 +21,10 @@ function statusButtonColumn(
 }
 
 function runAgentUnitTests(repositoryRoot: string): void {
-  const result = Bun.spawnSync(
-    [process.execPath, 'test', 'src/modules/agent/'],
-    {
-      cwd: repositoryRoot,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  );
-  HarnessSmoke.Class.requireCondition(
-    result.exitCode === 0,
+  HarnessSmoke.Class.requireChildSuccess(
     'agent-core unit tests pass',
+    [process.execPath, 'test', 'src/modules/agent/'],
+    repositoryRoot,
   );
 }
 

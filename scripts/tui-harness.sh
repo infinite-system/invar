@@ -174,6 +174,10 @@ case "$cmd" in
     # Run inside the repo with the caller's isolated user directories, the real Bun captured before
     # isolation, the first-run convenience task suppressed, and a session-scoped side channel.
     tmux send-keys -t "$session" "cd '$ROOT' && HOME='$HARNESS_HOME' XDG_CONFIG_HOME='$HARNESS_XDG_CONFIG_HOME' XDG_DATA_HOME='$HARNESS_XDG_DATA_HOME' XDG_STATE_HOME='$HARNESS_XDG_STATE_HOME' XDG_CACHE_HOME='$HARNESS_XDG_CACHE_HOME' PATH='$BUN_BIN':\"\$PATH\" INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1 TUI_STATUS_PATH='$(status_path "$session")' TUI_FRAME_PATH='$(frame_path "$session")' $* " C-m
+    # Self-description on stderr: callers routinely send launch stdout to /dev/null, and a
+    # persistent home (the artifacts/home fallback) makes profile-dependent failures look like
+    # code bugs unless every run names the home it inherited.
+    echo "harness home: $HARNESS_HOME" >&2
     echo "launched $session ($cols x $rows): $*"
     ;;
   ready)
