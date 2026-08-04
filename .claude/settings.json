@@ -26,5 +26,18 @@
       "Bash(mkfs:*)",
       "Bash(shred:*)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/recontext-conductor.sh"
+          }
+        ]
+      }
+    ]
   }
 }

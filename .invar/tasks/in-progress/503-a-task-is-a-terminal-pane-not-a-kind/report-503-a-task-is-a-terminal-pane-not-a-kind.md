@@ -10,6 +10,8 @@ Task metadata now keeps those two terminal panes distinct, and both user paths w
 
 Task 503 (a task is a terminal pane with task metadata) is ready at commit
 `acabef5c687db1e21aeadaf265fa8e523f774c0c`.
+The conductor then merged current `main` into the builder branch. The clean branch tip is
+`2e4eed40c34fc4afd2927b1371636585c6cea646`, and it contains the repair commit.
 
 - [TaskLauncher](../../../../src/modules/tasks/TaskLauncher.ts) still derives the stable
   `task:<encoded-root>:<index>` identifier. It now sends label, workspace root, and task source as
@@ -133,6 +135,9 @@ kind is now `terminal`, and its task data is metadata. Unit tests and both drive
 cover this shape. This strengthens the record in
 [tasks.invariants.md](../../../../src/modules/tasks/tasks.invariants.md).
 
+Round 2 keeps that one task terminal intact. `Ctrl+J` creates a different interactive terminal
+instead of changing, replacing, or reusing the task process.
+
 ### Folder open starts declared tasks — upheld, wording refinement owed
 
 A fresh boot does not restore a process-free task pane. Restore drops the saved task entry, then
@@ -140,6 +145,9 @@ TaskLauncher starts the folder-open declaration. The second boot proves the same
 healing. The present behavior still matches
 [tasks.invariants.md](../../../../src/modules/tasks/tasks.invariants.md), but the mechanism now has
 a clearer shape.
+
+The Round 2 drive proves the no-file built-in still starts on folder open. Creating the interactive
+terminal does not start a second task and does not take ownership of the task identifier.
 
 Proposed follow-up wording:
 
@@ -155,12 +163,18 @@ The scope in [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) sti
 runtime kinds.” Such a kind no longer exists. A follow-up refinement should remove that exclusion
 and name declaration-derived task identifiers.
 
+The Round 2 smoke now asserts the record directly. Task identifiers occur in `panelContentIds`.
+Both the built-in task and interactive terminal publish `terminal` in the aligned kind fields.
+
 ### Panel content order is one persisted sequence — upheld
 
 Legacy task entries drop from both the global order and saved workspace groups. The declared task
 exists live after TaskLauncher relaunches it, but it does not become a process-free saved
 placeholder. The first and second boot observations match the record in
 [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md).
+
+Round 2 changes only pane selection. Each workspace retains its own task and interactive terminal
+identifiers through both switch directions. It adds no order writer.
 
 ### A persisted pane identity is never reissued — allocator upheld, record distinction owed
 
@@ -171,6 +185,16 @@ may claim a persisted identity. Its old scope exclusion depended on a task runti
 follow-up should distinguish opaque allocated identities from declaration-derived task identities:
 the allocator must reserve both, while TaskLauncher may reclaim a task identifier only for the
 same declaration.
+
+Round 2 allocates the interactive terminal through the existing opaque allocator. It neither
+reissues nor rewrites the declaration-derived task identifier.
+
+### A pane runtime owns its processes — upheld
+
+The terminal runtime owns both process shapes. Task metadata changes which pane the default
+terminal gesture selects. It does not move task process creation, input, or disposal into the host.
+The updated runtime test proves shutdown releases the task and interactive sessions. This matches
+[ui.invariants.md](../../../../src/modules/ui/ui.invariants.md).
 
 ### Panel controls share paint and hit geometry — upheld
 
@@ -201,8 +225,15 @@ hard-coded. This matches
   lacks the declaration-derived identifier distinction described above. Both records are in
   [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md). Not fixed; invariant edits were
   outside this task.
+- FIXED IN ROUND 2 — [TerminalPlugin.test.ts](../../../../src/modules/terminal/TerminalPlugin.test.ts)
+  still built a declared task with fake kind `build`. It also said the task was outside terminal
+  runtime ownership. Commit `acabef5c` changed the fixture to terminal kind plus task metadata and
+  proved symmetric task disposal.
+- FIXED IN ROUND 2 — [PaneRuntime.interface.ts](../../../../src/modules/ui/PaneRuntime.interface.ts)
+  still described `kind` as a declared-task switching identity. Commit `acabef5c` changed the
+  comment to the current runtime-kind rule.
 
-No other runtime bycatch was observed.
+No other runtime bycatch was observed in either round.
 
 ## Instrument feedback
 
@@ -214,7 +245,14 @@ No other runtime bycatch was observed.
 - MISSING — The documented warm-driver `--env` option does not reach the app environment. A working
   environment pass-through would let `bun run drive` launch folder-open task fixtures without a
   separate PTY script.
+- EASY, ROUND 2 — The focused PTY probe made the identity change visible in one before-and-after
+  JSON object. The bare workspace smoke then exercised both workspace worlds without extra setup.
+- MISSING, ROUND 2 — The failed status wait printed its path, but the smoke cleanup removed that
+  file before inspection. A generic way to retain selected final status fields on timeout would
+  make this class of identity failure faster to diagnose.
 
 ## Commit
 
-`20b055e3ab793d3d7516dd7006f5ef42fba128bc` — `Make task panes terminal panes with metadata`
+- `20b055e3ab793d3d7516dd7006f5ef42fba128bc` — `Make task panes terminal panes with metadata`
+- `acabef5c687db1e21aeadaf265fa8e523f774c0c` — `Keep task panes separate from interactive terminals`
+- `2e4eed40c34fc4afd2927b1371636585c6cea646` — conductor merge of current `main` into the builder branch

@@ -878,9 +878,12 @@ gate logs, worktree state), never from a dropped summary. A parent cannot see a 
 context percentage. Detection is behavioural or self-reported. A parent CAN force-compact a
 child by sending a message whose content *begins with* `/compact <focus>`.
 
-**Recontext is a SCRIPT, for conductor and builders alike (user policy
-2026-08-04).** On every compaction or resume, the conductor's FIRST act is
-`bash scripts/recontext-conductor.sh` — it prints the newest anchor plus the
+**Recontext is a HOOK, for conductor and builders alike (user policy
+2026-08-04).** A SessionStart hook with the `compact` matcher
+(.claude/settings.json) runs `scripts/recontext-conductor.sh` automatically
+after every compaction and injects its output — the mechanism is mechanical,
+not remembered. Manual backstop when the hook's output is absent from
+context: run `bash scripts/recontext-conductor.sh` — it prints the newest anchor plus the
 fluency skills (list: scripts/recontext-skills.txt) wholesale; read all of it.
 Builders get the same treatment at dispatch: dispatch.sh generates
 `conductor-system-prompt.sh --builder` (ibr, invariants, ivue, drive-pty,
