@@ -1,7 +1,7 @@
 # Task 461 — scrollbar deep wheel drive fails under load
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — 0240d114 — scrollbars smoke anchors on border corners; loudest residual dead
 Engine: codex
 Environment: any
 Model: 5.6-sol
