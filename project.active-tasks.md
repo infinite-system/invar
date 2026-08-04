@@ -6,19 +6,17 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (7)
+## IN-PROGRESS (6)
 - #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/in-progress/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/499-terminal-smoke-hides-unit-failure-output`
-- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/in-progress/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)  [building]
+- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/in-progress/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/498-global-chords-blocked-by-focused-panel`
-- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/in-progress/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)  [building]
+- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/in-progress/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/494-hidden-monitor-log-line-race-under-load`
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/in-progress/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/489-drive-layer-drag-and-diagnostic-log`
-- #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/in-progress/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)  [building]
+- #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/in-progress/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/461-scrollbar-deep-wheel-drive-fails-under-load`
-- #438 [builder-worktree-hook-gate-policy](.invar/tasks/in-progress/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/438-builder-worktree-hook-gate-policy`
 - #371 [git-watch-starvation-retry-flake](.invar/tasks/in-progress/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/371-git-watch-starvation-retry-flake`
 
@@ -158,7 +156,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 210 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 211 — full log: project.tasks-completed.md)
 - #503 [a-task-is-a-terminal-pane-not-a-kind](.invar/tasks/completed/503-a-task-is-a-terminal-pane-not-a-kind/task-503-a-task-is-a-terminal-pane-not-a-kind.md) — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json
 - #502 [dead-task-panes-must-not-restore](.invar/tasks/completed/502-dead-task-panes-must-not-restore/task-502-dead-task-panes-must-not-restore.md) — aa80511f — dead task panes drop at restore; layouts heal; ratchet tightens to 33
 - #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/completed/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md) — faa06188 — restored task panes stay in their saved space; layouts self-heal
