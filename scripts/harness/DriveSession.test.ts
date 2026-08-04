@@ -56,6 +56,156 @@ class $DriveSessionTest {
   }
 }
 
+test('drag presses, glides pressed, and releases — real intermediate drag moves', async () => {
+  const mouseEvents: {
+    kind: string;
+    column: number;
+    row: number;
+    button?: string;
+    shift?: boolean;
+  }[] = [];
+  const recordEvent = (event: (typeof mouseEvents)[number]) => {
+    mouseEvents.push(event);
+  };
+  const fakeDriver = {
+    snapshot: () => ({ columns: 100, rows: 40 }),
+    sendMouse: recordEvent,
+    sendMouseWithoutFrameExpectation: recordEvent,
+  } as never;
+  const session = new DriveSession.Class(fakeDriver, '/tmp/unused').silence();
+
+  await session.drag(10, 5, 30, 9, { shift: true });
+
+  const pressIndex = mouseEvents.findIndex((event) => event.kind === 'press');
+  const releaseIndex = mouseEvents.findIndex(
+    (event) => event.kind === 'release',
+  );
+  expect(pressIndex).toBeGreaterThan(-1);
+  expect(releaseIndex).toBe(mouseEvents.length - 1);
+  expect(mouseEvents[pressIndex]).toMatchObject({
+    kind: 'press',
+    column: 10,
+    row: 5,
+    button: 'left',
+    shift: true,
+  });
+  expect(mouseEvents[releaseIndex]).toMatchObject({
+    kind: 'release',
+    column: 30,
+    row: 9,
+    button: 'left',
+    shift: true,
+  });
+  const pressedMoves = mouseEvents.slice(pressIndex + 1, releaseIndex);
+  expect(pressedMoves.length).toBeGreaterThan(0);
+  for (const pressedMove of pressedMoves) {
+    expect(pressedMove).toMatchObject({
+      kind: 'move',
+      button: 'left',
+      shift: true,
+    });
+  }
+  expect(pressedMoves.at(-1)).toMatchObject({ column: 30, row: 9 });
+});
+
+test('drag refuses a target outside the live screen', async () => {
+  const fakeDriver = {
+    snapshot: () => ({ columns: 100, rows: 40 }),
+    sendMouse: () => {},
+    sendMouseWithoutFrameExpectation: () => {},
+  } as never;
+  const session = new DriveSession.Class(fakeDriver, '/tmp/unused').silence();
+  await expect(session.flush()).resolves.toBeUndefined();
+  session.drag(10, 5, 150, 9);
+  await expect(session.flush()).rejects.toThrow('outside the 100x40 screen');
+});
+
+test('showScreen rejects non-integer shapes at call time', () => {
+  const session = new DriveSession.Class({} as never, '/tmp/unused').silence();
+  expect(() => session.showScreen([5] as never)).toThrow(
+    'showScreen takes two integers',
+  );
+  expect(() => session.showScreen(2.5)).toThrow(
+    'showScreen takes two integers',
+  );
+});
+
+test('showScreen rejects an empty or out-of-range band loudly', async () => {
+  const fakeDriver = {
+    snapshot: () => ({
+      columns: 80,
+      rows: 24,
+      rowText: (row: number) => `row-${row}`,
+    }),
+  } as never;
+  const session = new DriveSession.Class(fakeDriver, '/tmp/unused').silence();
+  session.showScreen(5, 3);
+  await expect(session.flush()).rejects.toThrow('band 5..3 is empty');
+  const outOfRange = new DriveSession.Class(
+    fakeDriver,
+    '/tmp/unused',
+  ).silence();
+  outOfRange.showScreen(99);
+  await expect(outOfRange.flush()).rejects.toThrow('outside the 24-row screen');
+});
+
+test('logTail and showLog read only this instance through the provenance guard', async () => {
+  const logPath = join(tmpdir(), `invar-drive-log-${crypto.randomUUID()}.log`);
+  await Bun.write(
+    logPath,
+    [
+      '2026-08-04T00:00:00.000Z [info] [instance=harness-own] first',
+      '2026-08-04T00:00:01.000Z [info] [instance=harness-foreign] intruder',
+      '2026-08-04T00:00:02.000Z [info] [instance=harness-own] second',
+      'unstamped leftover line',
+      '',
+    ].join('\n'),
+  );
+  const fakeDriver = {
+    diagnosticLogPath: logPath,
+    diagnosticLogInstance: 'harness-own',
+  } as never;
+  const session = new DriveSession.Class(fakeDriver, '/tmp/unused').silence();
+  try {
+    expect(session.diagnosticLogPath).toBe(logPath);
+    const tail = await session.logTail(1);
+    expect(tail).toEqual([
+      '2026-08-04T00:00:02.000Z [info] [instance=harness-own] second',
+    ]);
+    const fullTail = await session.logTail();
+    expect(fullTail).toHaveLength(2);
+    expect(fullTail.join('\n')).not.toContain('intruder');
+
+    const outputLines: string[] = [];
+    const originalLog = console.log;
+    console.log = (...parts: unknown[]) => {
+      outputLines.push(parts.map((part) => String(part)).join(' '));
+    };
+    try {
+      await session.showLog(5);
+    } finally {
+      console.log = originalLog;
+    }
+    expect(outputLines[0]).toContain(logPath);
+    expect(outputLines.join('\n')).toContain('second');
+    expect(outputLines.join('\n')).not.toContain('intruder');
+  } finally {
+    rmSync(logPath, { force: true });
+  }
+});
+
+test('--show parses fields and appends one show step to the probe', () => {
+  expect(
+    DriveScriptRunner.Class.parseShowFields(' panelVisible, frame '),
+  ).toEqual(['panelVisible', 'frame']);
+  expect(() => DriveScriptRunner.Class.parseShowFields(' , ')).toThrow(
+    '--show needs FIELD[,FIELD]',
+  );
+  expect(
+    DriveScriptRunner.Class.showSnippet(['panelVisible', 'geometry.width']),
+  ).toBe('\n;app.show("panelVisible", "geometry.width");');
+});
+
 test('show accepts a label without treating it as a status path', async () => {
   const statusPath = `/tmp/invar-drive-show-${crypto.randomUUID()}.json`;
   await Bun.write(

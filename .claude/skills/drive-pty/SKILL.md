@@ -82,16 +82,44 @@ driver is a second copy of the app. Do not add app verbs.
 
 - `moveMouse(column, row)` — a real move; hover states are real state.
 - `click(column?, row?, {alt, shift, control}?)` / `clickText(text, columnOffset?, modifiers?)` — modifier clicks (Alt+click = LSP jump) pass modifiers on press AND release
+- `drag(fromColumn, fromRow, toColumn, toRow, modifiers?)` — press, pressed
+  glide, release: text selection, thumb drags, splitter moves. Always emits
+  real intermediate drag-move bytes (a teleporting press-release selects
+  nothing); humanPace only spaces them for a watcher.
 - `key('Control+p', ...)` / `type('text')`
 - `scroll('up'|'down', ticks?, column?, row?)`
 - Waits: `waitFor(graphPath, value)` (the workhorse), `waitForStatus(field,
-  value)`, `waitForText(text)` / `waitForTextGone`, `waitForHoverState()`,
+  value)`, `waitForText(text)` / `waitForTextGone(text)` (the ABSENCE wait:
+  "it closed" = its text is no longer painted), `waitForHoverState()`,
   `waitForRepaint()`.
-- Readers: `show(...statusFields)`, `showScreen(rows)`, `await app.screen()`,
+- Readers: `show(...statusFields)`, `showScreen(firstRow?, lastRow?)` (two
+  integers; anything else throws at call time), `await app.screen()`,
   `await app.status()`, `await app.get(path)`, `await app.set(path, value)`.
 - Labeled evidence: `app.show('after panel open', ['panelVisible', 'frame'])`.
+- Diagnostic log: `app.diagnosticLogPath` (the app's ACTUAL log),
+  `await app.logTail(20)` / `app.showLog(20)` — provenance-guarded: only the
+  driven instance's own lines, never a leftover or a concurrent instance's.
+  The driver DROPS an inherited `TUI_LOG_PATH` and declares its own per-home
+  path (home isolation), so tailing the path from your shell's env reads a
+  file the driven app never writes — ask the session.
 - Impossible inputs fail loudly: a pointer target outside the live grid
   throws (a real terminal cannot produce that event) — never a silent no-op.
+
+**Wait-value and needle traps** (each cost a builder a probe):
+
+- Waits compare values as JSON — pass the real TYPED value:
+  `waitForStatus('panelVisible', false)`, never the string `'false'`.
+- `type()` then `waitForRepaint()` is the pre-satisfied class: the repaint
+  the typing caused often lands BEFORE the wait starts. Wait on what changed:
+  `waitForText('$ xy')` for the text you typed.
+- `waitForTextGone` pre-satisfies the same way: if the text never painted,
+  it resolves instantly and verifies nothing. Wait for presence first, then
+  absence.
+- A hidden surface keeps its content state: `panelActiveContentKind` persists
+  while the panel is hidden — the close condition is `panelVisible === false`
+  (or a `waitForTextGone` on the panel's visible text), never the kind field.
+- Broad `findText` needles (the composer prompt glyph, a bare `│`) can match
+  another surface first — prefer narrow visible text unique to the target.
 
 **Default geometry is 220x60** — a drive session models a real user at a real
 screen (the reference it was tuned on is 295x65). The smoke suite keeps its
@@ -110,8 +138,14 @@ bun scripts/harness/DriveSession.ts --serve [--open DIR]      # boots ONCE
 bun scripts/harness/DriveSession.ts --serve --size 100000     # generated fixture
 bun scripts/harness/DriveSession.ts --attach "…snippet…"      # probe it
 bun scripts/harness/DriveSession.ts --attach-script FILE
+bun scripts/harness/DriveSession.ts --attach "" --show panelVisible,frame
 bun scripts/harness/DriveSession.ts --stop
 ```
+
+`--show FIELD[,FIELD]` appends one `app.show(...)` to the probe, so a two-key
+question prints two lines instead of a full status dump. It composes with
+`--eval`, `--script`, `--attach`, and `--attach-script`; paths reach into
+published values (`panelListGeometry.width`).
 
 Attaches run against the SAME live session (~100ms each vs ~400ms cold, and
 navigated state persists — the real win: never re-drive to where you were).
