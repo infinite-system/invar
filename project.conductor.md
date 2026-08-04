@@ -784,3 +784,11 @@ worktree — the feature would "work" in the conductor checkout and do
 nothing for builders. Same generator as "untracked files do not
 travel with git merge". Rule: a commit that claims to add files runs
 `git status --short` AFTER committing; zero lines or it lied.
+
+## 2026-08-04 — one dispatch per command block
+
+Three dispatch.sh calls batched in one Bash invocation hit the 600s
+tool timeout mid-launch: records and worktrees existed, no builders
+ran, and the output truncation hid which stage died. Each dispatch
+takes ~90s (bun install dominates). Rule: one dispatch per command,
+read its attach line before the next.
