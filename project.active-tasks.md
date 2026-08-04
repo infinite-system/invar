@@ -6,13 +6,15 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (4)
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/in-progress/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)  [building]
   `tmux attach -t invar/489-drive-layer-drag-and-diagnostic-log`
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/in-progress/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)  [building]
   `tmux attach -t invar/461-scrollbar-deep-wheel-drive-fails-under-load`
-- #438 [builder-worktree-hook-gate-policy](.invar/tasks/in-progress/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)  [building]
+- #438 [builder-worktree-hook-gate-policy](.invar/tasks/in-progress/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/438-builder-worktree-hook-gate-policy`
+- #371 [git-watch-starvation-retry-flake](.invar/tasks/in-progress/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)  [building]
+  `tmux attach -t invar/371-git-watch-starvation-retry-flake`
 
 ## USER-DIRECTED (14)
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
@@ -63,7 +65,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (33)
+## FLAKE-EVIDENCE (32)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/active/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
@@ -75,7 +77,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #446 [quick-open-enumeration-stuck-loading](.invar/tasks/active/446-quick-open-enumeration-stuck-loading/task-446-quick-open-enumeration-stuck-loading.md)
 - #436 [tasks-watch-partial-frame-under-load](.invar/tasks/active/436-tasks-watch-partial-frame-under-load/task-436-tasks-watch-partial-frame-under-load.md)
 - #374 [word-delete-harness-alt-delete-timeout](.invar/tasks/active/374-word-delete-harness-alt-delete-timeout/task-374-word-delete-harness-alt-delete-timeout.md)
-- #371 [git-watch-starvation-retry-flake](.invar/tasks/active/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)
 - #364 [plugin-manifest-residual-wait-weaknesses](.invar/tasks/active/364-plugin-manifest-residual-wait-weaknesses/task-364-plugin-manifest-residual-wait-weaknesses.md)
 - #360 [agent-engine-switch-pool-load-flake](.invar/tasks/active/360-agent-engine-switch-pool-load-flake/task-360-agent-engine-switch-pool-load-flake.md)
 - #359 [panel-split-agent-terminal-order-intermittent](.invar/tasks/active/359-panel-split-agent-terminal-order-intermittent/task-359-panel-split-agent-terminal-order-intermittent.md)
