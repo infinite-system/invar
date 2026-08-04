@@ -322,13 +322,9 @@ await Bun.write(
 );
 
 console.log('== harness media: unit contracts and positive controls ==');
-const unitResult = Bun.spawnSync(
-  [process.execPath, 'test', 'src/modules/media/'],
-  { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
-);
-HarnessSmoke.Class.requireCondition(
-  unitResult.exitCode === 0,
+HarnessSmoke.Class.requireChildSuccess(
   'media module unit contracts, including planted red controls',
+  [process.execPath, 'test', 'src/modules/media/'],
 );
 let blankFrameControlRejected = false;
 try {

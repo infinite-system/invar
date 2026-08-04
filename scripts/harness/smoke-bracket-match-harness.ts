@@ -18,12 +18,11 @@ import { GraphClient } from './GraphClient';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
-const unitResult = Bun.spawnSync(
-  [process.execPath, 'test', 'src/modules/editor/BracketMatch.test.ts'],
-  { stdout: 'pipe', stderr: 'pipe' },
-);
-
-requireCondition(unitResult.exitCode === 0, 'bracket unit tests pass');
+HarnessSmoke.Class.requireChildSuccess('bracket unit tests pass', [
+  process.execPath,
+  'test',
+  'src/modules/editor/BracketMatch.test.ts',
+]);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-bracket-match-harness-'));
 

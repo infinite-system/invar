@@ -4,6 +4,8 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+// invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 import { mkdirSync, mkdtempSync, symlinkSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -218,22 +220,25 @@ try {
     (status) => Number(status.gitChangedCount) >= 1,
   );
   activeDirectoryDriver.sendKeys('o');
-  activeDirectoryDriver.sendKeys('Control+p');
-  await HarnessSmoke.Class.awaitStatus(
-    directoryDriver,
+  await GraphClient.Class.awaitValue(
     directoryStatusPath,
-    'Quick Open remains available after attempting to open the confined symlink',
-    (status) => status.quickOpenOpen === true,
+    'contributors.git.activeWorkspace.showingComparison',
+    true,
   );
-  activeDirectoryDriver.sendRawInputWithoutFrameExpectation('\x1b');
-  await HarnessSmoke.Class.awaitStatus(
-    directoryDriver,
+  await directoryDriver.awaitGridCondition(
+    'the confined symlink comparison is painted after its open action',
+    (snapshot) =>
+      snapshot.findText('Base (HEAD) — node_modules') !== null &&
+      snapshot.findText('Current (working) — node_modules') !== null,
+  );
+  const afterOpenChangedCount = await GraphClient.Class.query(
     directoryStatusPath,
-    'the Git changed count remains published after opening the untracked symlink row',
-    (status) => Number(status.gitChangedCount) >= 1,
+    'contributors.git.activeWorkspace.changedCount',
+    'settle',
   );
   HarnessSmoke.Class.requireCondition(
-    Number(beforeOpenStatus.gitChangedCount) >= 1,
+    Number(beforeOpenStatus.gitChangedCount) >= 1 &&
+      Number(afterOpenChangedCount.value) >= 1,
     'opening the untracked node_modules-symlink row did not crash the app',
   );
 

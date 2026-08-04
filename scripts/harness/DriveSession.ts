@@ -34,7 +34,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
+import type { HarnessMouseButton } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
+import { DiagnosticLog } from './DiagnosticLog';
 import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -90,8 +92,16 @@ class $DriveSession {
 
   /** The glide: eased positions over a near-constant gesture time. Uniform
    *  time slices with smoothstep-eased positions give the acceleration in
-   *  the middle and the soft landing at the end. */
-  protected async glideTo(column: number, row: number): Promise<void> {
+   *  the middle and the soft landing at the end. With `button: 'left'` every
+   *  step is a PRESSED move — the byte form of a drag — so drag() reuses the
+   *  same path generator; unpaced it emits the same moves at machine speed
+   *  (a drag with no intermediate moves selects nothing). */
+  protected async glideTo(
+    column: number,
+    row: number,
+    button: HarnessMouseButton = 'none',
+    modifiers: { alt?: boolean; shift?: boolean; control?: boolean } = {},
+  ): Promise<void> {
     const fromColumn = this.pointerColumn;
     const fromRow = this.pointerRow;
     const distance = Math.max(
@@ -115,7 +125,8 @@ class $DriveSession {
           kind: 'move',
           column: stepColumn,
           row: stepRow,
-          button: 'none',
+          button,
+          ...modifiers,
         });
         lastColumn = stepColumn;
         lastRow = stepRow;
@@ -266,6 +277,62 @@ class $DriveSession {
       });
       await this.tempo(260);
     });
+  }
+
+  /** Drag: press at one cell, GLIDE there pressed, release at another —
+   *  the gesture behind text selection, thumb drags, and splitter moves,
+   *  as one verb instead of four raw driver calls. The pressed path always
+   *  emits real intermediate drag-move bytes (a press that teleports to its
+   *  release selects nothing); humanPace only spaces them out so a watcher
+   *  can follow the hand. Modifiers ride every byte of the gesture. */
+  drag(
+    fromColumn: number,
+    fromRow: number,
+    toColumn: number,
+    toRow: number,
+    modifiers: { alt?: boolean; shift?: boolean; control?: boolean } = {},
+  ): this {
+    return this.step(
+      `drag ${fromColumn},${fromRow} -> ${toColumn},${toRow}`,
+      async () => {
+        this.requireCellInsideScreen(fromColumn, fromRow);
+        this.requireCellInsideScreen(toColumn, toRow);
+        // Arrive at the start like a hand would: an unpressed move first,
+        // so hover state at the press cell is real before the press.
+        if (this.paced) {
+          await this.glideTo(fromColumn, fromRow);
+          await this.tempo(220);
+        } else {
+          this.driver.sendMouseWithoutFrameExpectation({
+            kind: 'move',
+            column: fromColumn,
+            row: fromRow,
+            button: 'none',
+          });
+        }
+        this.pointerColumn = fromColumn;
+        this.pointerRow = fromRow;
+        this.driver.sendMouse({
+          kind: 'press',
+          column: fromColumn,
+          row: fromRow,
+          button: 'left',
+          ...modifiers,
+        });
+        await this.tempo(140);
+        await this.glideTo(toColumn, toRow, 'left', modifiers);
+        this.pointerColumn = toColumn;
+        this.pointerRow = toRow;
+        this.driver.sendMouse({
+          kind: 'release',
+          column: toColumn,
+          row: toRow,
+          button: 'left',
+          ...modifiers,
+        });
+        await this.tempo(260);
+      },
+    );
   }
 
   key(...keyNames: string[]): this {
@@ -524,16 +591,75 @@ class $DriveSession {
     });
   }
 
-  /** Print the painted screen, or a row band of it. */
+  /** Print the painted screen, or a row band of it: showScreen(10, 20).
+   *  Shape-checked at CALL time — an array or fraction here used to coerce
+   *  into a garbage band that printed the wrong rows and read as evidence
+   *  (#501), the silent-no-op class this instrument forbids. */
   showScreen(firstRow = 0, lastRow = -1): this {
+    if (!Number.isInteger(firstRow) || !Number.isInteger(lastRow)) {
+      throw new Error(
+        `showScreen takes two integers (firstRow, lastRow) — got ` +
+          `showScreen(${JSON.stringify(firstRow)}, ${JSON.stringify(lastRow)}). ` +
+          `For a row band write showScreen(10, 20); for one row showScreen(10, 10).`,
+      );
+    }
     return this.step('show screen', async () => {
       const snapshot = this.driver.snapshot();
+      if (firstRow < 0 || firstRow >= snapshot.rows) {
+        throw new Error(
+          `showScreen firstRow ${firstRow} is outside the ` +
+            `${snapshot.rows}-row screen`,
+        );
+      }
       const end = lastRow < 0 ? snapshot.rows - 1 : lastRow;
-      for (let row = firstRow; row <= end; row += 1) {
+      if (end < firstRow) {
+        throw new Error(
+          `showScreen band ${firstRow}..${lastRow} is empty — ` +
+            `lastRow sits above firstRow`,
+        );
+      }
+      for (
+        let row = firstRow;
+        row <= Math.min(end, snapshot.rows - 1);
+        row += 1
+      ) {
         console.log(
           `  ${String(row).padStart(2, ' ')} |${snapshot.rowText(row)}|`,
         );
       }
+    });
+  }
+
+  // ---- the app's own diagnostic log, first-class ----
+
+  /** The driven app's ACTUAL diagnostic log path. The driver declares its own
+   *  per-home TUI_LOG_PATH and DROPS an inherited one (home isolation), so
+   *  tailing the path from your own environment reads a file this app never
+   *  writes — ask the session instead. */
+  get diagnosticLogPath(): string {
+    return this.driver.diagnosticLogPath;
+  }
+
+  /** The last `lineCount` diagnostic lines THIS instance wrote. Reads through
+   *  the provenance guard, so a leftover line or a concurrent instance's line
+   *  never appears. Flushes the chain first, so the tail reflects the state
+   *  the chain actually produced. */
+  async logTail(lineCount = 20): Promise<readonly string[]> {
+    await this.flush();
+    return DiagnosticLog.Class.instanceLines(this.driver).slice(-lineCount);
+  }
+
+  /** Print the log tail at this point in the flow — the chainable form. */
+  showLog(lineCount = 20): this {
+    return this.step(`show log tail x${lineCount}`, async () => {
+      const lines = DiagnosticLog.Class.instanceLines(this.driver).slice(
+        -lineCount,
+      );
+      console.log(`\n== diagnostic log (${this.diagnosticLogPath}) ==`);
+      if (lines.length === 0) {
+        console.log('  <this instance has written no diagnostic lines>');
+      }
+      for (const line of lines) console.log(`  ${line}`);
     });
   }
 
@@ -1290,6 +1416,7 @@ class $DriveScriptRunner {
     let attachSource: string | undefined;
     let stop = false;
     let reload = false;
+    let showFields: readonly string[] | undefined;
     for (let index = 0; index < argumentsList.length; index += 1) {
       const argument = argumentsList[index];
       const value = argumentsList[index + 1] ?? '';
@@ -1328,6 +1455,9 @@ class $DriveScriptRunner {
       } else if (argument === '--server-dir') {
         serverDirectory = resolve(value);
         index += 1;
+      } else if (argument === '--show') {
+        showFields = this.parseShowFields(value);
+        index += 1;
       } else if (argument === '--geometry') {
         const [columnText, rowText] = value.split('x');
         columns = Number(columnText) || columns;
@@ -1341,6 +1471,23 @@ class $DriveScriptRunner {
     }
     if (workspaceRoot !== undefined && fixtureSize !== undefined) {
       throw new Error('--open and --size are mutually exclusive');
+    }
+    if (showFields !== undefined) {
+      if (serve || stop || reload) {
+        throw new Error(
+          '--show filters a probe — it combines with --eval, --script, ' +
+            '--attach, or --attach-script, never with --serve/--stop/--reload',
+        );
+      }
+      if (attachSource === undefined && source === undefined) {
+        throw new Error(
+          '--show needs a probe to filter: pass --attach "" for a two-key ' +
+            'read against the warm server, or --eval/--script for a one-shot',
+        );
+      }
+      const showStep = this.showSnippet(showFields);
+      if (attachSource !== undefined) attachSource += showStep;
+      else if (source !== undefined) source += showStep;
     }
     if (serve) {
       await this.serve({
@@ -1379,6 +1526,31 @@ class $DriveScriptRunner {
     });
   }
 
+  /** `--show FIELD[,FIELD]`: the narrow-output probe. Splits on commas,
+   *  trims, refuses an empty list — a probe that names nothing reads
+   *  nothing. */
+  static parseShowFields(value: string): readonly string[] {
+    const fieldNames = value
+      .split(',')
+      .map((fieldName) => fieldName.trim())
+      .filter((fieldName) => fieldName !== '');
+    if (fieldNames.length === 0) {
+      throw new Error(
+        `--show needs FIELD[,FIELD] — status paths like ` +
+          `panelVisible,panelListGeometry.width — got ${JSON.stringify(value)}`,
+      );
+    }
+    return fieldNames;
+  }
+
+  /** The snippet step `--show` appends: one `app.show(...)` after the probe,
+   *  so the run prints exactly the named fields instead of the full status. */
+  static showSnippet(fieldNames: readonly string[]): string {
+    return `\n;app.show(${fieldNames
+      .map((fieldName) => JSON.stringify(fieldName))
+      .join(', ')});`;
+  }
+
   protected static get helpText(): string {
     return [
       'Usage: bun scripts/harness/DriveSession.ts [options]',
@@ -1387,6 +1559,9 @@ class $DriveScriptRunner {
       '  --size LINE_COUNT    generate and open a temporary scale fixture',
       '  --script FILE        a snippet: NO imports, NO setup. `app` is live.',
       '  --eval CODE          the same, inline',
+      '  --show FIELD[,FIELD] print ONLY these status fields after the snippet',
+      '                       (combines with --eval/--script/--attach; a full',
+      '                       status dump is hundreds of lines — name your two)',
       '  --geometry CxR       terminal size (default 220x60, a real user scale)',
       '  --home DIR           persistent home, so state carries across runs',
       '',
@@ -1410,6 +1585,9 @@ class $DriveScriptRunner {
       "     .clickText('+ Plugin').waitForRepaint()",
       "     .show('panelContentLabels')",
       "  app.show('after panel open', ['panelVisible', 'frame'])",
+      '  app.drag(40, 8, 60, 12)          // press, pressed glide, release',
+      '  app.showLog(20)                  // tail the app diagnostic log',
+      '  await app.logTail(20)            // the same, returned as lines',
       '',
       'Watched sessions: app.humanPace() makes every gesture eye-speed —',
       'the pointer glides, clicks dwell, typing lands per character.',

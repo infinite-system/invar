@@ -88,7 +88,9 @@ function clickMarker(
 function runGit(repositoryRoot: string, commandArguments: string[]): void {
   const result = Bun.spawnSync(['git', ...commandArguments], {
     cwd: repositoryRoot,
-    stdout: 'ignore',
+    // Pipe BOTH streams: git writes some failure reasons to stdout, and a
+    // dropped stream turns a real red into `failed: ` with no reason.
+    stdout: 'pipe',
     stderr: 'pipe',
     env: Object.fromEntries(
       Object.entries(process.env).filter(
@@ -98,7 +100,9 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
   });
   if (result.exitCode !== 0) {
     throw new Error(
-      `git ${commandArguments.join(' ')} failed: ${new TextDecoder().decode(result.stderr)}`,
+      `git ${commandArguments.join(' ')} failed (exit ${result.exitCode}); ` +
+        `stderr: ${new TextDecoder().decode(result.stderr).trim()}; ` +
+        `stdout: ${new TextDecoder().decode(result.stdout).trim()}`,
     );
   }
 }

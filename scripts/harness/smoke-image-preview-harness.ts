@@ -97,15 +97,11 @@ HarnessSmoke.Class.requireCondition(
 
 console.log('== harness image-preview: decoder and half-block unit layer ==');
 
-const unitResult = Bun.spawnSync(
-  [process.execPath, 'test', 'src/modules/image/'],
-  { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
-);
-
-HarnessSmoke.Class.requireCondition(
-  unitResult.exitCode === 0,
-  'image module unit tests',
-);
+HarnessSmoke.Class.requireChildSuccess('image module unit tests', [
+  process.execPath,
+  'test',
+  'src/modules/image/',
+]);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-image-preview-harness-'));
 

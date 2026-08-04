@@ -79,21 +79,14 @@ function themedAgentSearchIconPosition(
 }
 
 function runProjectionUnitTests(repositoryRoot: string): void {
-  const result = Bun.spawnSync(
+  HarnessSmoke.Class.requireChildSuccess(
+    'transcript-search projection unit tests pass',
     [
       process.execPath,
       'test',
       'src/modules/agent/AgentTranscriptSearch.test.ts',
     ],
-    {
-      cwd: repositoryRoot,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  );
-  HarnessSmoke.Class.requireCondition(
-    result.exitCode === 0,
-    'transcript-search projection unit tests pass',
+    repositoryRoot,
   );
 }
 
