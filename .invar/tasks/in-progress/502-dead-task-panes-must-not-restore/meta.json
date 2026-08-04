@@ -1,0 +1,15 @@
+{
+  "task": 502,
+  "slug": "dead-task-panes-must-not-restore",
+  "branch": "fleet/502-dead-task-panes-must-not-restore",
+  "worktree": ".invar/worktrees/502-dead-task-panes-must-not-restore",
+  "tmuxSession": "invar/502-dead-task-panes-must-not-restore",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-502-dead-task-panes-must-not-restore.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "9035183fa98497429a11aa853bf506aeb5c80301",
+  "startedAt": "2026-08-03T23:45:10-04:00"
+}
