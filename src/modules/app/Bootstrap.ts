@@ -416,17 +416,32 @@ class $Bootstrap {
         );
       },
     });
+    const acceptsAnyPane = (): boolean => true;
+    const isRuntimeDefaultPane = (content: PaneContent): boolean =>
+      content.task === undefined;
     /** Resolve a visible kind through an explicit selection policy. Kind is never used as an id. */
-    const visiblePaneOfKind = (kind: string): PaneContent | null => {
+    const visiblePaneOfKind = (
+      kind: string,
+      acceptsPane: (content: PaneContent) => boolean = acceptsAnyPane,
+    ): PaneContent | null => {
       const focusedContent = panelHost.focusedContent;
-      if ((focusedContent?.kind ?? focusedContent?.id) === kind) {
+      if (
+        focusedContent &&
+        (focusedContent.kind ?? focusedContent.id) === kind &&
+        acceptsPane(focusedContent)
+      ) {
         return focusedContent;
       }
-      return panelHost.visibleContentsOfKind(kind)[0] ?? null;
+      return panelHost.visibleContentsOfKind(kind).find(acceptsPane) ?? null;
     };
     /** Resolve a requested kind through an explicit focused, visible, then registered policy. */
-    const currentPaneOfKind = (kind: string): PaneContent | null =>
-      visiblePaneOfKind(kind) ?? panelHost.contentsOfKind(kind)[0] ?? null;
+    const currentPaneOfKind = (
+      kind: string,
+      acceptsPane: (content: PaneContent) => boolean = acceptsAnyPane,
+    ): PaneContent | null =>
+      visiblePaneOfKind(kind, acceptsPane) ??
+      panelHost.contentsOfKind(kind).find(acceptsPane) ??
+      null;
     const workspacePanelWorlds = new Map<
       Workspace.Instance,
       WorkspacePanelWorld
@@ -591,7 +606,10 @@ class $Bootstrap {
 
     // The terminal action is shared by its chord and status-bar control.
     const toggleTerminal = (): void => {
-      const visibleTerminal = visiblePaneOfKind('terminal');
+      const visibleTerminal = visiblePaneOfKind(
+        'terminal',
+        isRuntimeDefaultPane,
+      );
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
       else {
         // No runtime for this kind (its plugin is disabled) — the affordance degrades to nothing
@@ -812,7 +830,7 @@ class $Bootstrap {
       return content;
     };
     ensureRuntimePane = (kind: string): PaneContent | null =>
-      currentPaneOfKind(kind) ?? createRuntimePane(kind);
+      currentPaneOfKind(kind, isRuntimeDefaultPane) ?? createRuntimePane(kind);
     replacePaneWithRuntime = (identifier, runtimeKind): boolean => {
       const replacement = createRuntimePane(runtimeKind, true);
       return replacement

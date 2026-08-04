@@ -55,7 +55,7 @@ export interface PaneRuntimeRequest {
   readonly identifier: string;
   /** Host-allocated instance name (`Terminal`, `Terminal 2`). */
   readonly label: string;
-  /** Pane kind override for a request that owns its own switching identity (a declared task). */
+  /** Pane kind recorded on the content. It defaults to the selected runtime kind. */
   readonly kind?: string;
   /** Heading override when the region title differs from the instance label. */
   readonly heading?: string;
