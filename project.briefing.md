@@ -4,6 +4,25 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 59 — 2026-08-04 ~00:10 EDT — BUG NIGHT CLOSED; FLEET AT ZERO
+
+Evening tail after anchor 58b: #501 landed (spaces heal) but the user
+still saw stale tabs — layer two was dead task PANES; #502 landed
+(aa80511f): dead task entries drop at restore via the live-pane
+liveness test, both persisted sequences heal, double-boot proven, and
+the vocabulary ratchet TIGHTENED 34 -> 33 (first real fall). The
+one-shot Drive.ts is REMOVED by user order (8c7788c0): `bun run
+drive` now ALIASES DriveSession.ts — fluent only (records refined,
+one retired with its capability, coverage loss declared 36->0 with
+counts); the combined tree was gated at #502's landing. dist/iv
+rebuilt post-502. USER POLICY REINFORCED TWICE: drive via the warm
+fluent server, always; read an instrument's skill BEFORE first use
+after compaction. User decisions outstanding: #464 retire, #460-463
+hygiene, 7 historical worktrees. Next-wave candidates: #498, #438,
+#499, #496, #497, #489.
+
+---
+
 # RESUME ANCHOR 58b — 2026-08-03 ~23:10 EDT — WAVE COMPLETE + RECORDS WRITTEN + #501 LANDED
 
 Since anchor 58: the five confirmed records are WRITTEN and landed
@@ -86,23 +105,12 @@ machinery and contamination risk; the honest recommendation is OPTION 2/3
 (accept the churn; test higher worker counts directly). The CALL IS THE
 USER'S. Briefing now self-prunes to 5 anchors (rule in header + conductor
 skill). Sixteen landings after 485 lands.
----
 
-# RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT
-
-The user chose OPTION 1 for the churn question: measure first. #485
-DISPATCHED (codex, worktree 485-measure-the-reclaimable-boot-churn):
-classify every runtime smoke boot as SEMANTIC (the boot is the coverage —
-restart persistence, isolation, capability re-negotiation; uncertain
-defaults to semantic) vs RECLAIMABLE; report ends with the totals table.
-MEASUREMENT ONLY — no smoke conversions; the conversion decision is the
-user's on the numbers. ON READY: convert bycatch + instrument feedback,
-merge main, gate with a death-reporting monitor, land. Fifteen landings
-sealed before this. User is PRESENT. No experiments.
 ---
 
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT
 - RESUME ANCHOR 54 — 2026-08-03 ~10:20 EDT — FIFTEEN LANDINGS; FLEET AT ZERO
 - RESUME ANCHOR 53 — 2026-08-03 ~09:35 EDT — GOAL MET; 484 EXPERIMENT IN FLIGHT
 - RESUME ANCHOR 50c — 2026-08-03 ~08:15 EDT — COPY: TRANSPORT PROVEN INNOCENT
