@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Pre-commit gate: the FULL merge-gate must pass before a commit lands. This exists because the smoke
-# suite went red for ~5 commits (the Ctrl+P→palette rebind) while every commit claimed "gated/green" —
-# conventions-gate / FAST=1 skip the multi-launch smokes, so "MEASURED != ENFORCED" recurred. This hook
-# closes that hole: no commit without the full gate green.
+# Pre-commit gate: the FULL merge-gate must pass before a primary-checkout commit lands. This exists
+# because the smoke suite went red for ~5 commits (the Ctrl+P→palette rebind) while every commit
+# claimed "gated/green" — conventions-gate / FAST=1 skip the multi-launch smokes, so "MEASURED !=
+# ENFORCED" recurred. Dispatched builder worktrees carry the narrow policy marker checked below.
 #
 # Bypass (use sparingly, e.g. a docs-only WIP checkpoint): SKIP_GATE=1 git commit ...
 # Install: bash scripts/install-hooks.sh  (symlinks .git/hooks/pre-commit → this file).
@@ -17,6 +17,19 @@ if [ -n "$staged_typescript_files" ]; then
   echo "$staged_typescript_files" | xargs bunx prettier --write --log-level warn
   echo "$staged_typescript_files" | xargs git add
   echo "pre-commit: prettier formatted $(echo "$staged_typescript_files" | wc -l) staged file(s)." >&2
+fi
+
+# dispatch.sh plants this marker in the linked worktree's private Git directory.
+# The primary checkout resolves the same name in the common Git directory, where
+# dispatch never plants it. An exact value makes a damaged marker fail closed.
+builder_hook_policy_path="$(git rev-parse --git-path invar-builder-hook-policy)"
+builder_hook_policy=""
+if [ -f "$builder_hook_policy_path" ]; then
+  IFS= read -r builder_hook_policy < "$builder_hook_policy_path" || true
+fi
+if [ "$builder_hook_policy" = "skip-full-merge-gate-v1" ]; then
+  echo "pre-commit: builder hook policy skips the full merge gate because the conductor gates the combined tree at landing." >&2
+  exit 0
 fi
 
 if [ "${SKIP_GATE:-0}" = "1" ]; then

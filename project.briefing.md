@@ -4,21 +4,29 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
-# RESUME ANCHOR 61 — 2026-08-04 ~02:40 EDT — NIGHT GOAL: LAND THE SIX
+# RESUME ANCHOR 61 — 2026-08-04 ~03:20 EDT — NIGHT GOAL: LAND THE SIX (updated)
 
-/goal (user, asleep, <3): "launch 1-6, get it done as i sleep" = land
-#438 (hook policy, decision recorded in task file), #461 + #371
-(contention residuals), #489 (drive-layer batch), #499 (smoke output
-hygiene), #494 (monitor log race), #498 (panel-blocked global chords;
-applicationGlobal is the seam). WAVE A LIVE: 438 (codex med), 461
-(codex high), 489 (fable med) — hand-launched after the dispatch batch
-TIMED OUT post-worktree (lesson: one dispatch per command, they take
-~90s each). As lanes free: 371 -> 499 -> 494 -> 498 (briefs to write;
-follow tonight's shapes). Land serially, fresh gate each, bycatch +
-instrument feedback converted at landing, rebuild dist/iv at the end.
-NO experiments. Known residual FAILs allowed at gates: scrollbars
-(until 461 lands!), plugin-manifest, git-watch (#371). User-decision
-queue unchanged (503/495 record refinements etc.).
+/goal (user asleep, <3): land #438, #461, #371, #489, #499, #494,
+#498. STATE: READY-HELD awaiting a gate window = 438 (hook policy;
+marker in worktree-private git dir), 489 (drive batch: drag verb,
+log surface, --show, showScreen loud; drive.md rewritten; one stale
+record noted for refines: "Drive session clicks resolve from roles
+and text" cites dead resolveClickTarget/fold-control), 371 (git-watch
+smoke fixed: unsequenced o/Ctrl+p race; graph-state-at-timeout killed
+the rivals). BUILDING = 461 (scrollbars residual, codex), 499 (smoke
+output hygiene, fable), 494 (monitor log race, fable). NOT YET
+DISPATCHED = 498 (chords; brief to write, applicationGlobal seam).
+LANDING PLAN once builders quiet: merge main + fresh gate + land
+serially (438 first: its hook policy dedups every later landing),
+convert bycatch/instrument feedback each, rebuild dist/iv at the end.
+DISPATCH REPAIRS TONIGHT (all committed): lint before closure append;
+pointer preamble AGENTS.md link; NEVER grep-filter dispatch output;
+one dispatch per command. Hand-launch recipe if dispatch dies
+post-record: fix TASK.md pointer + generate BUILDER-FUNDAMENTALS.md
+(--builder), bun install, agent-tmux launch (codex: sol flags;
+claude: --append-system-prompt-file), pipe-pane transcript, send the
+read-TASK.md line. send "NOT CONFIRMED" + busy pane = fine (race).
+Escape-selection suspect from 489 bycatch: file as task at landing.
 
 ---
 

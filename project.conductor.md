@@ -792,3 +792,13 @@ tool timeout mid-launch: records and worktrees existed, no builders
 ran, and the output truncation hid which stage died. Each dispatch
 takes ~90s (bun install dominates). Rule: one dispatch per command,
 read its attach line before the next.
+
+## 2026-08-04 — never filter a dispatcher's output (read-the-verdict, grep edition)
+
+Piping dispatch.sh through `grep -E 'attach|REFUS'` filtered out its
+real failure line twice tonight (launch died post-record; the grep
+showed nothing at all, which read as success until the session check).
+Same generator as "read the verdict, not the wrapper": the acting step
+reads the tool's OWN output whole (tail it, never grep it), and a
+dispatch is verified by its attach line + tmux has-session, not by
+absence of complaints.
