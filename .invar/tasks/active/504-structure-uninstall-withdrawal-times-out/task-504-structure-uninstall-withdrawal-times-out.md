@@ -34,3 +34,10 @@ read the graph at the timeout (contributor disposer state, pane
 registry, projection registration); establish whether withdrawal is
 racing, leaking a disposer, or the smoke's wait is watching the wrong
 condition. Fix product or instrument per the evidence; ratchet.
+
+## Companion chore from #494 (2026-08-04)
+
+While in the monitoring/system area: MonitoringStats.writeLogLine
+enforces "Observability never crashes the app" with prose only — add
+the invariant: annotation, and the record's Scope should name the
+monitoring log writer alongside StatusChannel (a refines; propose).
