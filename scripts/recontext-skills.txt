@@ -1,0 +1,6 @@
+# Skills whose FLUENCY the conductor must reload after every compaction.
+# One path per line. Curated: add a line when a session teaches that a
+# skill's absence cost real time; keep it short — this is fluency, not law
+# (law and doctrine live in the system prompt via claude-conductor.sh).
+.claude/skills/drive-pty/SKILL.md
+.claude/skills/manage-tasks/SKILL.md

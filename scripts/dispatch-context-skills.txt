@@ -1,0 +1,5 @@
+# Skills concatenated VERBATIM into every builder's TASK.md at dispatch
+# (deterministic priming — the builder reads them before the brief; no
+# pointer-hop left to the agent's discretion). Keep this list SHORT and
+# load-bearing: every line costs every builder tokens.
+.claude/skills/drive-pty/SKILL.md
