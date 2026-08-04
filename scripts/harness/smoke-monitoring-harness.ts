@@ -340,8 +340,21 @@ try {
     'logging turns back off',
     (status) => status.monitoringLogging === false,
   );
+  // The log baseline is snapshotted only AFTER logging reports off. While logging is on, the
+  // 1-second sampler keeps appending lines, so a count taken before the toggle races the tick
+  // still in flight during the palette drive (one extra line under gate load — task #494). Every
+  // write checks the same logging flag synchronously, so once the status file publishes
+  // `monitoringLogging === false` the log file cannot grow again; this count is at rest.
+  const lineCountAtLoggingOff = readFileSync(logPath, 'utf8')
+    .split('\n')
+    .filter((line) => line.length > 0).length;
+  HarnessSmoke.Class.requireCondition(
+    lineCountAtLoggingOff >= lineCountWhileOn,
+    `the log only ever grows while logging is on (${lineCountWhileOn} at the` +
+      ` on-read, ${lineCountAtLoggingOff} at rest)`,
+  );
   HarnessSmoke.Class.pass(
-    `logging writes only while it is on (${lineCountWhileOn} lines written)`,
+    `logging writes only while it is on (${lineCountAtLoggingOff} lines written)`,
   );
 
   console.log('== monitoring: a hidden monitor goes back to rest ==');
@@ -367,14 +380,15 @@ try {
     restingSampleCount >= sampleCountWhileOpen,
     'the reading published while hidden is the last one taken while observed',
   );
+  // No growth from the at-rest baseline across the same quiet window the sample counter held.
   const logLinesAfterHidden = existsSync(logPath)
     ? readFileSync(logPath, 'utf8')
         .split('\n')
         .filter((line) => line.length > 0).length
     : 0;
   HarnessSmoke.Class.requireCondition(
-    logLinesAfterHidden === lineCountWhileOn,
-    'a hidden monitor writes no log line either',
+    logLinesAfterHidden === lineCountAtLoggingOff,
+    `a hidden monitor writes no log line either (held at ${lineCountAtLoggingOff})`,
   );
   HarnessSmoke.Class.pass(
     'hiding the pane returns the monitor to complete rest, timers and all',
