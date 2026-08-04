@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json
 
 ## In plain words (user, verbatim intent)
 
