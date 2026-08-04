@@ -790,8 +790,8 @@ function verticalScrollBarProof(
 /** The editor SOURCE pane's column range, measured from a gutter row at call time. At the app's
  *  defaults the structure dock occupies the columns right of the editor, so the old fixed
  *  columns-to-screen-edge scans would crown a dock column as the editor's own scrollbar. The
- *  gutter row anchors the pane's left border; the next `│` is its right border (the scrollbar
- *  fixtures fold nothing, so no fold-range guide can sit in between). */
+ *  gutter row anchors the pane's left border. The matching `╭` and `╮` on the border row define
+ *  the right edge without mistaking a pipe-shaped native caret for pane chrome. */
 function editorPaneColumnBounds(
   snapshot: HarnessSnapshot.Model,
 ): { startColumn: number; endColumnExclusive: number } | null {
@@ -801,13 +801,83 @@ function editorPaneColumnBounds(
       text,
     );
     if (!gutterStart) continue;
-    const startColumn = gutterStart.index + 1;
-    const endColumnExclusive = text.indexOf('\u2502', startColumn);
-    if (endColumnExclusive > startColumn) {
-      return { startColumn, endColumnExclusive };
+    const paneLeftBorderColumn = gutterStart.index;
+    for (let borderRow = row; borderRow >= 0; borderRow--) {
+      if (
+        snapshot.cell(borderRow, paneLeftBorderColumn)?.characters !== '\u256D'
+      ) {
+        continue;
+      }
+      const endColumnExclusive = snapshot
+        .rowText(borderRow)
+        .indexOf('\u256E', paneLeftBorderColumn + 1);
+      if (endColumnExclusive > paneLeftBorderColumn) {
+        return {
+          startColumn: paneLeftBorderColumn + 1,
+          endColumnExclusive,
+        };
+      }
     }
   }
   return null;
+}
+
+async function concealRightDockAndAwaitEditorReclaim(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  reclaimedGridConditionDescription: string,
+): Promise<void> {
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the structure dock is visible before measuring its editor columns',
+    (status) => status.rightDockVisible === true,
+  );
+  const dockVisibleSnapshot = await driver.awaitGridCondition(
+    'the visible structure dock narrows the editor before concealment',
+    (candidate) => {
+      const paneBounds = editorPaneColumnBounds(candidate);
+      return (
+        paneBounds !== null &&
+        paneBounds.endColumnExclusive < candidate.columns - 3
+      );
+    },
+  );
+  const dockVisiblePaneBounds = editorPaneColumnBounds(dockVisibleSnapshot);
+  const dockVisibleViewportWidth = await GraphClient.Class.query(
+    statusPath,
+    'workspaceSet.activeEditor.viewport.width',
+    'settle',
+  );
+  const reclaimedColumnCount =
+    dockVisiblePaneBounds === null
+      ? 0
+      : dockVisibleSnapshot.columns -
+        1 -
+        dockVisiblePaneBounds.endColumnExclusive;
+  const expectedReclaimedViewportWidth =
+    Number(dockVisibleViewportWidth.value) + reclaimedColumnCount;
+  requireCondition(
+    Number.isFinite(expectedReclaimedViewportWidth) && reclaimedColumnCount > 0,
+    `the visible dock owns ${reclaimedColumnCount} reclaimable editor columns`,
+  );
+
+  await HarnessSmoke.Class.concealAutoRevealedRightDock(driver, statusPath);
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'workspaceSet.activeEditor.viewport.width',
+    expectedReclaimedViewportWidth,
+  );
+  await driver.awaitGridCondition(
+    reclaimedGridConditionDescription,
+    (candidate) => {
+      const paneBounds = editorPaneColumnBounds(candidate);
+      return (
+        paneBounds !== null &&
+        paneBounds.endColumnExclusive >= candidate.columns - 3
+      );
+    },
+  );
 }
 
 function dominantEditorBackground(
@@ -1622,31 +1692,27 @@ async function proveVerticalEditorThumbStability(
       `the ${modeLabel} probe opens the mixed-width tall file`,
       (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
     );
-    driver.sendKeys('Tab');
-    await GraphClient.Class.awaitValue(
+    const openedFileFocus = await GraphClient.Class.query(
       probeStatusPath,
       'workspaceSet.active.focus',
-      'editor',
+      'settle',
     );
+    if (openedFileFocus.value !== 'editor') {
+      driver.sendKeys('Tab');
+      await GraphClient.Class.awaitValue(
+        probeStatusPath,
+        'workspaceSet.active.focus',
+        'editor',
+      );
+    }
     // The thumb-stability properties were sized for the editor width these fixtures had before
     // the structure dock's default-ON: with the dock open, wrap-on doubles the virtual rows and
     // a wheel burst no longer moves the thumb a full cell. Concealing the dock through the
     // user's own gesture restores the measured geometry without touching the default.
-    await HarnessSmoke.Class.concealAutoRevealedRightDock(
+    await concealRightDockAndAwaitEditorReclaim(
       driver,
       probeStatusPath,
-    );
-    // The status flips before the relayout paints; baselines captured against the still-narrow
-    // frame would disagree on the thumb column with every later frame.
-    await driver.awaitGridCondition(
       `the ${modeLabel} editor reclaims the concealed dock's columns`,
-      (candidate) => {
-        const paneBounds = editorPaneColumnBounds(candidate);
-        return (
-          paneBounds !== null &&
-          paneBounds.endColumnExclusive >= candidate.columns - 3
-        );
-      },
     );
     if (wordWrapEnabled) {
       driver.sendKeys('Alt+z');
@@ -2210,19 +2276,10 @@ try {
   // Every horizontal-extent arm below was sized for the editor width this fixture had before
   // the structure dock's default-ON; conceal the dock through the user's own gesture and let
   // the editor reclaim its columns before any geometry baseline is captured.
-  await HarnessSmoke.Class.concealAutoRevealedRightDock(
+  await concealRightDockAndAwaitEditorReclaim(
     overflowDriver,
     statusPath,
-  );
-  await overflowDriver.awaitGridCondition(
     'the overflow editor reclaims the concealed dock columns',
-    (candidate) => {
-      const paneBounds = editorPaneColumnBounds(candidate);
-      return (
-        paneBounds !== null &&
-        paneBounds.endColumnExclusive >= candidate.columns - 3
-      );
-    },
   );
 
   // Same correction as the vertical thumb above: await the thumb the claim reads, never the file text
