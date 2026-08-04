@@ -5,7 +5,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: low
-State: IN-PROGRESS
+State: COMPLETED — e322f281 — smokes print child failures and self-describe their homes
 
 ## In plain words
 
