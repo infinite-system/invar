@@ -60,6 +60,7 @@ class $FileTreeContributor
       {
         chord: { key: 'e', ctrl: true, shift: true },
         action: 'view.showFiles',
+        applicationGlobal: true,
       },
       { chord: { key: 'tab' }, action: 'focus.toggle', context: 'files' },
       { chord: { key: 'up' }, action: 'tree.up', context: 'files' },

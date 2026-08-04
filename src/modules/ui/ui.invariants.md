@@ -2399,10 +2399,11 @@ src/modules/ui/PanelHost.test.ts && bun scripts/harness/smoke-panel-chrome-harne
 ### A focused panel routes keystrokes to its active pane content
 
 **Invariant:** When the panel is focused and no modal input overlay owns the keyboard, every
-non-reserved keystroke is encoded to terminal bytes and delivered to `activeContent.handleKey`;
-reserved global chords (quit, panel toggle) still fire first so the user is never trapped, and an
-unencodable key is swallowed rather than driving the hidden editor beneath. When the panel is not
-focused or a modal input overlay owns the keyboard, it consumes no keys.
+keystroke other than a reserved chord or one effective `applicationGlobal` chord is encoded to
+terminal bytes and delivered to `activeContent.handleKey`; reserved global chords (quit, panel
+toggle) still fire first so the user is never trapped, and an unencodable key is swallowed rather
+than driving the hidden editor beneath. When the panel is not focused or a modal input overlay owns
+the keyboard, it consumes no keys.
 
 **Scope:** `PaneContent.keybindingContext`, `PaneContent.claimsContextAction`,
 `PaneContent.handleKey`, `PanelHost.handleKey`, and the panel-input branch in `Bootstrap.keyTick`.
@@ -2410,22 +2411,26 @@ The bytes a specific pane produces are that pane's own record.
 
 **Mechanism:** `Bootstrap.keyTick` resolves reserved global chords first (`app.quit`,
 `panel.toggleTerminal`), then reads `RootView.modalOverlayOwnsScreen`, which delegates to the
-overlay layer's one modal-focus derivation. Only when that slot is empty and
-`panelHost.visible && focused` does the panel branch run. There the focused pane's OWN
-`keybindingContext` is resolved, and the PANE decides whether it claims the resolved action
+overlay layer's one modal-focus derivation. When that slot is empty, one effective
+`applicationGlobal` chord can dispatch a frame action before the panel branch runs. Only after both
+checks does the router resolve the focused pane's OWN `keybindingContext`, and the PANE decides
+whether it claims the resolved action
 (`claimsContextAction`); a declined action falls through to `panelHost.handleKey(key)` as raw
 input, which is how a terminal selection owns Ctrl+C while an empty selection still sends SIGINT.
 The host reads no pane type and no action vocabulary. Focus follows the toggle and clicks
 (`panelContainsPoint`).
 
 **Generates:** a terminal that receives Ctrl+C/Ctrl+D/arrows/typing as a real terminal would, while
-Ctrl+Q and the toggle always work; no keystroke both drives the shell and the editor.
+Ctrl+Q, panel toggles, and selected shift-distinct frame chords still work; no keystroke both drives
+the shell and the editor.
 
 **Evidence:** `src/modules/terminal/TerminalKeys.test.ts` (control-byte, arrow, named-key, printable
 encoding); `src/modules/ui/PanelHost.test.ts` (focused host routes to the active content);
 `scripts/smoke-terminal.sh` (typed `echo hello`+Enter reaches the shell and renders; Ctrl+Q from the
 focused terminal still quits); `scripts/harness/smoke-overlay-dialog-harness.ts` (Settings Escape
-outranks retained terminal and agent focus).
+outranks retained terminal and agent focus); `scripts/harness/smoke-reserved-chord-harness.ts`
+(Ctrl+Shift+X opens Extensions from focused terminal and agent panes, while Ctrl+, stays with the
+focused task terminal).
 
 **Impossible if true:** a focused terminal where typing drives the editor; a key that both types into
 the shell and moves the editor cursor; Ctrl+Q swallowed by the focused terminal; keys consumed while
@@ -2436,7 +2441,7 @@ pane class or an action prefix to route a keystroke.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-08-04
 
 ### A split panel renders every visible cell into its own sub-region
 

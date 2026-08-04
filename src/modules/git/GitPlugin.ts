@@ -89,6 +89,7 @@ class $GitPlugin
       {
         chord: { key: 'g', ctrl: true, shift: true },
         action: 'view.showSourceControl',
+        applicationGlobal: true,
       },
       { chord: { key: 'g', ctrl: true }, action: 'git.togglePanel' },
       { chord: { key: 'up' }, action: 'git.up', context: 'git' },

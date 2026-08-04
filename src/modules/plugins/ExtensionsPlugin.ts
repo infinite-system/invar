@@ -16,6 +16,7 @@ class $ExtensionsPlugin implements ApplicationContributor {
       {
         chord: { key: 'x', ctrl: true, shift: true },
         action: 'view.showExtensions',
+        applicationGlobal: true,
       },
     ]);
     context.registerPrimaryDockContent(
