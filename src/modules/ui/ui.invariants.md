@@ -422,7 +422,8 @@ instances are outside this persisted bottom-panel order.
 `moveGroupMember` mutate those sequences, while `detachGroupMember` turns one split member into a
 full-width group. `PanelContentsList.rows` projects the same groups. `Bootstrap` serializes them in
 `Settings.panelWorkspaceStates` under the workspace root and rebuilds the pane sessions and group
-structure once on relaunch.
+structure once on relaunch. A saved task pane reuses an already-live pane with its stable identity
+or drops from both persisted sequences. Restore never creates a process-free task placeholder.
 
 **Generates:** Group reorder; split-member reorder; drag-out detachment; restart persistence; the
 agent-first global registry default `['agent', 'terminal']`.
@@ -430,7 +431,7 @@ agent-first global registry default `['agent', 'terminal']`.
 **Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/ui/PanelContentsList.ts`;
 `src/modules/ui/PanelWorkspaceState.ts`; `src/modules/settings/Settings.ts`;
 `src/modules/ui/PanelContentsList.test.ts`; `src/modules/ui/PanelWorkspaceState.test.ts`;
-`scripts/harness/smoke-panel-split-harness.ts`.
+`scripts/harness/smoke-panel-split-harness.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
 
 **Impossible if true:** A split member moving in the list without moving on screen; moving a group
 scrambling its members; a detached member remaining joined; a second boot restoring the old groups.
@@ -442,7 +443,7 @@ scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-08-01
+**Last refined:** 2026-08-03
 
 ### Activity bar order is one persisted sequence
 
@@ -2729,6 +2730,7 @@ runtime's configuration vocabulary.
 **Impossible if true:** a host file importing a pane runtime's module; a pane kind built by two
 different routes; a disabled runtime still projecting status; a disabled runtime's pane still
 occupying the panel; a panel affordance for an uninstalled kind crashing or half-opening a pane.
+Restoring a task pane with no live runtime and no process declaration is also impossible.
 
 **Verification:** `bun test src/modules/ui/PaneRuntimes.test.ts
 src/modules/terminal/TerminalPlugin.test.ts && bun
@@ -2736,7 +2738,7 @@ scripts/harness/smoke-plugin-manifest-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-08-03
 
 ### A focused pane consumes only its own scoped bindings
 

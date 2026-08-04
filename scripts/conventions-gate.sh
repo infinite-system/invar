@@ -511,7 +511,7 @@ plugin_boundary_check 'file-tree' 'file tree' \
 # census must not exceed the baseline below; when the count falls, tighten
 # the baseline in the same commit (same discipline as the boundary ratchet).
 CENSUS_DIR=".invar/tasks/completed/488-core-to-plugin-coupling-census"
-VOCabulary_BASELINE=34
+VOCabulary_BASELINE=33
 if [ -f "$CENSUS_DIR/census-488-imports.ts" ]; then
   import_output=$(bun "$CENSUS_DIR/census-488-imports.ts" 2>&1) || { echo "conventions-gate: FAIL — import census controls failed"; echo "$import_output" | tail -3; fail=1; }
   import_count=$(printf '%s' "$import_output" | grep -oE 'offending count: [0-9]+' | grep -oE '[0-9]+' || echo missing)

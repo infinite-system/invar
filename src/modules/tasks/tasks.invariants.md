@@ -137,9 +137,11 @@ scripts/harness/smoke-tasks-harness.ts`
 `runOptions.runOn: "folderOpen"`, then the first opening of its workspace root
 in an app session starts it without another user action and presents its
 terminal without taking keyboard focus from the surface the workspace opened.
-Later openings or switches to that root start nothing new. If panel restore has
-already registered the same stable task identifier, folder open reuses it
-instead of launching a duplicate.
+Later openings or switches to that root start nothing new. If the panel already
+owns a live pane with the same stable task identifier in this app session,
+folder open reuses it instead of launching a duplicate. A fresh process has no
+live task pane to reattach, so panel restore drops its saved task entry and the
+folder-open path starts the declared process again.
 
 **Scope:** Shell tasks, workspace contribution lifecycle, and the no-file
 built-in. Manual task reruns remain registered commands. `problemMatcher` is
@@ -184,7 +186,7 @@ scripts/harness/smoke-reserved-chord-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-08-01
+**Last refined:** 2026-08-03
 
 ### Each task owns one terminal
 

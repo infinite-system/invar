@@ -946,6 +946,7 @@ class $Bootstrap {
       content instanceof TaskNoticePaneContent.Class
         ? null
         : (content.kind ?? content.id);
+    const deadRestoredTaskPaneIdentifiers = new Set<string>();
     persistPanelWorkspaceState = (): void => {
       if (restoringPanelWorkspaceState) return;
       const workspaceRoot = workspaceSet.active.root;
@@ -964,17 +965,8 @@ class $Bootstrap {
         if (existingContent) return existingContent;
         if (pane.identifier.endsWith(':notice')) return null;
         if (pane.identifier.startsWith('task:')) {
-          const taskContent = paneRuntimes.createPane('terminal', {
-            identifier: pane.identifier,
-            label: pane.label,
-            kind: pane.identifier,
-            heading: pane.label,
-            columns: view.panelViewportColumns() || 80,
-            rows: view.panelViewportRows() || 24,
-            workingDirectory: workspaceSet.active.root,
-          });
-          if (taskContent) panelHost.register(taskContent);
-          return taskContent;
+          deadRestoredTaskPaneIdentifiers.add(pane.identifier);
+          return null;
         }
       }
       if (pane.kind === 'task-notice') return null;
@@ -994,6 +986,7 @@ class $Bootstrap {
       restoredPanelWorkspaceState.add(workspace);
       const state = settings.panelWorkspaceStates.value[workspace.root];
       if (!state || state.spaces.length === 0) return;
+      deadRestoredTaskPaneIdentifiers.clear();
       restoringPanelWorkspaceState = true;
       try {
         panelHost.restoreWorkspaceState(
@@ -1005,6 +998,12 @@ class $Bootstrap {
         );
       } finally {
         restoringPanelWorkspaceState = false;
+      }
+      if (deadRestoredTaskPaneIdentifiers.size > 0) {
+        settings.panelContentOrder.value =
+          settings.panelContentOrder.value.filter(
+            (identifier) => !deadRestoredTaskPaneIdentifiers.has(identifier),
+          );
       }
       persistPanelWorkspaceState();
     };
