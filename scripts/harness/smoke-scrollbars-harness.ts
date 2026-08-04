@@ -1692,12 +1692,19 @@ async function proveVerticalEditorThumbStability(
       `the ${modeLabel} probe opens the mixed-width tall file`,
       (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
     );
-    driver.sendKeys('Tab');
-    await GraphClient.Class.awaitValue(
+    const openedFileFocus = await GraphClient.Class.query(
       probeStatusPath,
       'workspaceSet.active.focus',
-      'editor',
+      'settle',
     );
+    if (openedFileFocus.value !== 'editor') {
+      driver.sendKeys('Tab');
+      await GraphClient.Class.awaitValue(
+        probeStatusPath,
+        'workspaceSet.active.focus',
+        'editor',
+      );
+    }
     // The thumb-stability properties were sized for the editor width these fixtures had before
     // the structure dock's default-ON: with the dock open, wrap-on doubles the virtual rows and
     // a wheel burst no longer moves the thumb a full cell. Concealing the dock through the
