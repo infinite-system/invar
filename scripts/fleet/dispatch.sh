@@ -519,7 +519,7 @@ Read the entire [filed task brief](${task_pointer_target}) from the beginning an
 The context closure below is your DETERMINISTIC PRIMING (user policy
 2026-08-04): the instrument fluency you need, loaded at dispatch time from
 the single source, so no pointer-hop is left to chance. Read it wholesale
-before the brief. Law is still AGENTS.md and everything it names.
+before the brief. Law is still [AGENTS.md](AGENTS.md) and everything it names.
 TASK_POINTER
 
 PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
