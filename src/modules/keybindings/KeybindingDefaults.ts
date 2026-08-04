@@ -232,7 +232,10 @@ class $KeybindingDefaults {
       { chord: { key: 'f1' }, action: 'palette.open' },
       // Ctrl+Shift+P = command palette (VS Code parity), the PRIMARY. Deliverable on legacy terminals
       // in the modifyOtherKeys form (ESC [ 27;6;112 ~) as well as under kitty — measured, not assumed.
-      { chord: { key: 'p', ctrl: true, shift: true }, action: 'palette.open' },
+      {
+        chord: { key: 'p', ctrl: true, shift: true },
+        action: 'palette.open',
+      },
       // Ctrl+Shift+B shows/hides the whole activity bar (Ctrl+B is VS Code's SIDEBAR toggle and is free
       // here too, but the bar is the activity-bar feature so B-for-bar with shift keeps chord space open).
       {
@@ -355,10 +358,12 @@ class $KeybindingDefaults {
       {
         chord: { key: 'pagedown', ctrl: true, shift: true },
         action: 'workspace.next',
+        applicationGlobal: true,
       },
       {
         chord: { key: 'pageup', ctrl: true, shift: true },
         action: 'workspace.previous',
+        applicationGlobal: true,
       },
       // Ctrl+Shift+] / Ctrl+Shift+[ also cycle projects (VS Code-style bracket cycling) — the two-line
       // workspace tabs are the thing being cycled. The macOS overlay adds the Cmd (super) form.

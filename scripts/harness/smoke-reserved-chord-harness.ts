@@ -1,12 +1,13 @@
 #!/usr/bin/env bun
 // Automatic task presentation preserves the editor's keyboard ownership. A
-// deliberately focused task pane keeps non-reserved chords and still yields
-// reserved frame chords to the host.
+// focused terminal or agent keeps pane-owned chords and yields only reserved
+// or application-global frame chords to the host.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
 // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
+// invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -174,6 +175,53 @@ try {
   await awaitStatus(
     'clicking the task terminal gives the bottom panel keyboard focus',
     (candidate) => candidate.panelFocused === true,
+  );
+
+  console.log(
+    '== harness application-global chord: focused terminal opens Extensions ==',
+  );
+  driver.sendKeys('Control+Shift+x');
+  await awaitStatus(
+    'Ctrl+Shift+X opens Extensions from the focused task terminal',
+    (candidate) => candidate.focus === 'extensions',
+  );
+  HarnessSmoke.Class.pass(
+    'Ctrl+Shift+X opens Extensions from the focused task terminal',
+  );
+
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('RESERVED-CHORD-TASK') !== null,
+  );
+  HarnessSmoke.Class.clickText(driver, snapshot, 'RESERVED-CHORD-TASK');
+  await awaitStatus(
+    'the task terminal regains focus before the agent check',
+    (candidate) => candidate.panelFocused === true,
+  );
+  driver.sendKeys('Control+Shift+a');
+  await awaitStatus(
+    'Ctrl+Shift+A opens and focuses the agent pane',
+    (candidate) =>
+      candidate.panelFocused === true &&
+      candidate.panelActiveContentKind === 'agent',
+  );
+  driver.sendKeys('Control+Shift+x');
+  await awaitStatus(
+    'Ctrl+Shift+X opens Extensions from the focused agent pane',
+    (candidate) => candidate.focus === 'extensions',
+  );
+  HarnessSmoke.Class.pass(
+    'Ctrl+Shift+X opens Extensions from the focused agent pane',
+  );
+
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Ask Claude') !== null,
+  );
+  HarnessSmoke.Class.clickText(driver, snapshot, 'Ask Claude');
+  await awaitStatus(
+    'the agent pane regains focus before the reserved chord check',
+    (candidate) =>
+      candidate.panelFocused === true &&
+      candidate.panelActiveContentKind === 'agent',
   );
   driver.sendKeysWithoutFrameExpectation('Control+,');
   driver.sendKeys('Control+Alt+b');

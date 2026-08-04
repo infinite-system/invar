@@ -98,7 +98,9 @@ terminal.
 
 **Generates:** the Tab-belongs-to-the-editor fix (#91); the small reserved set instead of a growing
 list of host privileges; byte-for-byte pass-through to the terminal and agent panes (#101) as a
-consequence rather than a feature; the ability to say a proposed binding is WRONG before shipping it.
+consequence rather than a feature; primary-dock view openers and outer workspace-navigation chords
+that still act from a focused pane; the ability to say a proposed binding is WRONG before shipping
+it.
 
 **Rejected alternatives:** *"most specific binding wins"* — describes resolution but decides nothing:
 `Tab → focus.toggle` was global and unopposed, so specificity would have kept it. *"VS Code
@@ -120,14 +122,15 @@ context-free plugin chord); `scripts/harness/smoke-workspace-tabs-harness.ts` an
 `scripts/harness/smoke-workspace-layout-isolation-harness.ts` (a focused terminal opens the Agent
 pane through the application-global route, #356 round 2);
 `scripts/harness/smoke-reserved-chord-harness.ts` (drives the surface-scoped Settings chord from
-the editor, then proves a focused task keeps it while reserved Ctrl+Alt+B still reaches the host);
+the editor, proves a focused task keeps it while reserved Ctrl+Alt+B still reaches the host, and
+proves Ctrl+Shift+X opens Extensions from focused terminal and agent panes);
 `src/modules/git/GitComparisonContent.ts` (a contributed surface owning its own Ctrl+Shift+Up/Down
 change navigation, rather than the host floor naming the plugin's actions).
 
 **Impossible if true:** the host binding an unmodified key globally; a reserved binding with no
 warrant; a chord that is advertised but never arrives; a non-reserved host chord firing while a
-terminal or agent pane holds focus; the same physical chord meaning different things on macOS and
-Linux.
+terminal or agent pane holds focus without an effective `applicationGlobal` binding; the same
+physical chord meaning different things on macOS and Linux.
 
 **Verification:** `bash scripts/smoke-keyboard-invariant.sh` (driven: indentation, every new chord's
 arrival, the pass-through sweep) plus
@@ -138,7 +141,7 @@ warrants; no unmodified reserved chord; no `F<n>` primary).
 
 **Status:** provisional
 
-**Last refined:** 2026-08-03
+**Last refined:** 2026-08-04
 
 ### Bindings are intent addressed
 

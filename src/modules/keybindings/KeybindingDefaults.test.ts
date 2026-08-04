@@ -154,6 +154,39 @@ test('the reserved set is SMALL and holds only frame-scoped actions', () => {
   ]);
 });
 
+test('only shift-distinct frame chords cross a focused pane', () => {
+  const applicationGlobalBindings =
+    KeybindingDefaults.Class.canonicalBindings.filter(
+      (binding) => binding.applicationGlobal,
+    );
+  expect(
+    applicationGlobalBindings
+      .map(
+        (binding) =>
+          `${binding.chord?.ctrl ? 'Control+' : ''}${
+            binding.chord?.shift ? 'Shift+' : ''
+          }${binding.chord?.key} -> ${binding.action}`,
+      )
+      .sort(),
+  ).toEqual(
+    [
+      'Control+Shift+pagedown -> workspace.next',
+      'Control+Shift+pageup -> workspace.previous',
+    ].sort(),
+  );
+
+  const paneOwnedActions = new Set(
+    KeybindingDefaults.Class.canonicalBindings
+      .filter((binding) => !binding.applicationGlobal)
+      .map((binding) => binding.action),
+  );
+  expect(paneOwnedActions.has('quickopen.open')).toBe(true);
+  expect(paneOwnedActions.has('palette.open')).toBe(true);
+  expect(paneOwnedActions.has('settings.toggle')).toBe(true);
+  expect(paneOwnedActions.has('help.shortcuts')).toBe(true);
+  expect(paneOwnedActions.has('view.toggleActivityBar')).toBe(true);
+});
+
 test('the host claims no unmodified key globally — that is what freed Tab', () => {
   const unmodifiedGlobalClaims = KeybindingDefaults.Class.canonicalBindings
     .filter((binding) => (binding.context ?? 'global') === 'global')
