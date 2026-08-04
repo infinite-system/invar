@@ -6,16 +6,18 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (5)
+## IN-PROGRESS (6)
 - #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/in-progress/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)  [building]
   `tmux attach -t invar/499-terminal-smoke-hides-unit-failure-output`
+- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/in-progress/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)  [building]
+  `tmux attach -t invar/494-hidden-monitor-log-line-race-under-load`
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/in-progress/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/489-drive-layer-drag-and-diagnostic-log`
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/in-progress/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)  [building]
   `tmux attach -t invar/461-scrollbar-deep-wheel-drive-fails-under-load`
 - #438 [builder-worktree-hook-gate-policy](.invar/tasks/in-progress/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/438-builder-worktree-hook-gate-policy`
-- #371 [git-watch-starvation-retry-flake](.invar/tasks/in-progress/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)  [building]
+- #371 [git-watch-starvation-retry-flake](.invar/tasks/in-progress/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/371-git-watch-starvation-retry-flake`
 
 ## USER-DIRECTED (14)
@@ -66,9 +68,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (32)
+## FLAKE-EVIDENCE (31)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
-- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/active/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
 - #455 [agent-composer-never-activates](.invar/tasks/active/455-agent-composer-never-activates/task-455-agent-composer-never-activates.md)
