@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: medium
-State: IN-PROGRESS
+State: COMPLETED — aa80511f — dead task panes drop at restore; layouts heal; ratchet tightens to 33
 
 ## In plain words
 
