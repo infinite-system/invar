@@ -6,8 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
-- #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/in-progress/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)  [building]
+## IN-PROGRESS (5)
+- #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/in-progress/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)  [building]
+  `tmux attach -t invar/499-terminal-smoke-hides-unit-failure-output`
+- #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/in-progress/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/489-drive-layer-drag-and-diagnostic-log`
 - #461 [scrollbar-deep-wheel-drive-fails-under-load](.invar/tasks/in-progress/461-scrollbar-deep-wheel-drive-fails-under-load/task-461-scrollbar-deep-wheel-drive-fails-under-load.md)  [building]
   `tmux attach -t invar/461-scrollbar-deep-wheel-drive-fails-under-load`
@@ -32,8 +34,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (31)
-- #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/active/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)
+## VERIFICATION-INTEGRITY (30)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
