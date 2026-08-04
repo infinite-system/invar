@@ -2,14 +2,14 @@
 
 ## In plain words
 
-A task pane used to tell the panel that each task was a different kind of thing. It now tells the
-panel that it is a terminal, while its task name and source stay attached as metadata. The task
-glyph appears on the pane header, and a click on it opens that workspace's `.invar/tasks.json`.
+A task pane used to tell the panel that each task was a different kind of thing. The first repair
+made it a terminal, but `Ctrl+J` then mistook that task for the workspace's interactive terminal.
+Task metadata now keeps those two terminal panes distinct, and both user paths work again.
 
 ## Result
 
-Task 503 (a task is a terminal pane with task metadata) is ready in commit
-`20b055e3ab793d3d7516dd7006f5ef42fba128bc`.
+Task 503 (a task is a terminal pane with task metadata) is ready at commit
+`acabef5c687db1e21aeadaf265fa8e523f774c0c`.
 
 - [TaskLauncher](../../../../src/modules/tasks/TaskLauncher.ts) still derives the stable
   `task:<encoded-root>:<index>` identifier. It now sends label, workspace root, and task source as
@@ -33,6 +33,25 @@ The production `task:` literal census now has two sites. Both are in
 [TaskLauncher](../../../../src/modules/tasks/TaskLauncher.ts), where they recognize the stable task
 identifier and the legacy saved kind. The panel and Bootstrap no longer know that prefix.
 
+## Round 2 repair
+
+The first repair made the built-in task eligible for every kind-based terminal lookup. When
+`Ctrl+J` asked for the workspace's interactive terminal, `currentPaneOfKind('terminal')` returned
+the built-in `Claude` task. Bootstrap therefore reused that task and never created `Terminal`.
+
+[Bootstrap](../../../../src/modules/app/Bootstrap.ts) now lets a kind lookup use one acceptance
+predicate. Normal runtime lookups still include task panes. The default-pane path accepts only
+panes without task metadata. Both the visible toggle path and the hidden ensure path use that same
+predicate.
+
+[The workspace-tabs smoke](../../../../scripts/harness/smoke-workspace-tabs-harness.ts) now reads
+task identity from `panelContentIds`. It reads terminal category from `panelContentKinds`. It also
+requires the separate `Terminal` label after `Ctrl+J` in each workspace.
+
+[The terminal runtime test](../../../../src/modules/terminal/TerminalPlugin.test.ts) now models a
+declared task with kind `terminal` and explicit task metadata. It also proves that runtime shutdown
+releases both interactive and task terminal sessions.
+
 ## Driving evidence
 
 I first drove a scratch workspace with one `.invar/tasks.json` folder-open shell task. Before the
@@ -54,6 +73,15 @@ glyph, and no task-prefixed kind. The saved global order healed to
 `["agent","pane-instance-5"]`. Saved task entries stayed absent because TaskLauncher relaunched the
 declared task.
 
+For Round 2, a second task-owned PTY probe drove the no-file built-in. Before `Ctrl+J`, it printed
+one `task:...:0 / terminal / Claude` pane. After the real key, it printed that pane plus
+`pane-instance-1 / terminal / Terminal`, with the interactive terminal active. The probe command
+is:
+
+```text
+bun .invar/tasks/in-progress/503-a-task-is-a-terminal-pane-not-a-kind/503-built-in-workspace-drive.ts
+```
+
 ## Positive control
 
 I temporarily restored the old launch defect by assigning the task identifier to `kind`. The
@@ -66,10 +94,23 @@ Timed out waiting for the first boot drops dead task panes from their saved Term
 The planted defect prevented the task from joining the one Terminal space. I removed the plant.
 The same smoke then passed at 10 and 100,000 lines on both boots.
 
+For Round 2, I temporarily removed the default-pane predicate from both terminal selection paths.
+The updated workspace smoke exited 1 with the filed failure:
+
+```text
+Timed out waiting for the first workspace owns its interactive terminal
+```
+
+The task pane satisfied the terminal kind lookup, so no separate `Terminal` pane appeared. I
+removed the plant. The bare workspace-tabs smoke then reached `ALL-PASS`.
+
 ## Verification
 
 - `bunx tsc --noEmit` — PASS.
-- `bun test` — PASS: 2,376 tests, 0 failures, and 72,167 expectations.
+- `bun test` — PASS: 2,376 tests, 0 failures, and 72,168 expectations.
+- `bun scripts/harness/smoke-workspace-tabs-harness.ts` — ALL-PASS. Both workspace roots own one
+  built-in task and one separate interactive terminal. Both retain their own process and
+  scrollback across round trips.
 - `bun scripts/harness/smoke-panel-chrome-harness.ts` — ALL-PASS. This includes both task scale
   fixtures and all existing 120-column and 88-column panel cases.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — PASS: 1,378
@@ -79,8 +120,9 @@ The same smoke then passed at 10 and 100,000 lines on both boots.
 - `git diff --check` — PASS.
 - Worktree after commit — clean.
 
-I did not run `scripts/merge-gate.sh`. Both commit writes used `SKIP_GATE=1`, as required by the
-[task brief](brief-503-1-a-task-is-a-terminal-pane-not-a-kind.md).
+I did not run `scripts/merge-gate.sh`. All commit writes used `SKIP_GATE=1`, as required by the
+[Round 1 brief](brief-503-1-a-task-is-a-terminal-pane-not-a-kind.md) and the
+[Round 2 brief](brief-503-2-2.md).
 
 ## Invariants, record by record
 
