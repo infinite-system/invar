@@ -46,14 +46,24 @@ test('task identity and process options cross the existing terminal seam', () =>
   const terminal = TestTerminalFactory.create({
     identifier: 'task:workspace:0',
     label: 'Development server',
-    kind: 'task:workspace:0',
+    kind: 'terminal',
     heading: 'Development server',
+    task: {
+      label: 'Development server',
+      workspaceRoot: '/workspace',
+      sourcePath: '/workspace/.invar/tasks.json',
+    },
     command: 'server',
     arguments: ['--watch'],
     environment: { TASK_CAPABILITY: 'present' },
   });
 
-  expect(terminal.kind).toBe('task:workspace:0');
+  expect(terminal.kind).toBe('terminal');
+  expect(terminal.task).toEqual({
+    label: 'Development server',
+    workspaceRoot: '/workspace',
+    sourcePath: '/workspace/.invar/tasks.json',
+  });
   expect(terminal.title).toBe('Development server');
   expect(receivedOptions).toMatchObject({
     command: 'server',

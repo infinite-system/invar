@@ -722,6 +722,9 @@ class $RootView {
       };
       readonly splitterElement: SplitterElement.Model | null;
       frameHeaderCloseHovered: boolean;
+      frameHeaderTaskHovered: boolean;
+      frameHeaderTaskEndColumn: number;
+      frameHeaderCloseStartColumn: number;
     }
     const panelCellViews: PanelCellView[] = [];
     let mountedPanelCellCount = -1;
@@ -875,29 +878,54 @@ class $RootView {
       };
       frameHeader.onMouseDown = (event) => {
         const content = panelHost.resolvedCells[index]?.content;
+        const view = panelCellViews[index];
+        if (!content || !view) return;
+        const localColumn = Number(event.x) - Number(frameHeader.x);
         if (
-          !content ||
-          Number(event.x) <
-            Number(frameHeader.x) + Number(frameHeader.width) - 3
-        )
+          content.task?.sourcePath &&
+          localColumn < view.frameHeaderTaskEndColumn
+        ) {
+          workspaceSet.open(content.task.workspaceRoot);
+          workspaceSet.active.openFileInTab(content.task.sourcePath);
+          workspaceSet.active.focusEditor();
+          panelHost.blur();
+          renderer.requestRender();
           return;
+        }
+        if (localColumn < view.frameHeaderCloseStartColumn) return;
         panelHost.closeOpenContent(content.id);
         renderer.requestRender();
       };
       frameHeader.onMouseMove = (event) => {
-        const closeHovered =
-          Number(event.x) >=
-          Number(frameHeader.x) + Number(frameHeader.width) - 3;
         const view = panelCellViews[index];
-        if (view) view.frameHeaderCloseHovered = closeHovered;
-        if (closeHovered)
+        const content = panelHost.resolvedCells[index]?.content;
+        if (!view || !content) return;
+        const localColumn = Number(event.x) - Number(frameHeader.x);
+        const taskHovered =
+          content.task !== undefined &&
+          localColumn < view.frameHeaderTaskEndColumn;
+        const closeHovered = localColumn >= view.frameHeaderCloseStartColumn;
+        view.frameHeaderTaskHovered = taskHovered;
+        view.frameHeaderCloseHovered = closeHovered;
+        if (taskHovered)
+          tooltip.point(
+            content.task.sourcePath
+              ? `Open ${content.task.sourcePath}`
+              : `${content.task.label} is a built-in task`,
+            Number(event.x),
+            Number(event.y),
+          );
+        else if (closeHovered)
           tooltip.point('Close instance', Number(event.x), Number(event.y));
         else tooltip.clear();
         renderer.requestRender();
       };
       frameHeader.onMouseOut = () => {
         const view = panelCellViews[index];
-        if (view) view.frameHeaderCloseHovered = false;
+        if (view) {
+          view.frameHeaderTaskHovered = false;
+          view.frameHeaderCloseHovered = false;
+        }
         tooltip.clear();
         renderer.requestRender();
       };
@@ -928,6 +956,9 @@ class $RootView {
         verticalScrollBarState,
         splitterElement,
         frameHeaderCloseHovered: false,
+        frameHeaderTaskHovered: false,
+        frameHeaderTaskEndColumn: 0,
+        frameHeaderCloseStartColumn: 0,
       };
       panelCellViews[index] = view;
       return view;
@@ -1811,18 +1842,61 @@ class $RootView {
           view.frameHeader.height = frameHeaderRows;
           view.frameHeader.visible = frameHeaderRows > 0;
           view.frameHeader.fg = palette.fg;
+          const frameHeaderWidth = Math.max(0, span.columns);
+          const taskText = span.content.task
+            ? ` ${theme.taskActionIcons.taskRecord} `
+            : '';
           const closeText = ` ${theme.glyphVocabulary.panelClose} `;
+          const taskWidth = Math.min(
+            TextCoordinates.Class.lineWidth(taskText),
+            frameHeaderWidth,
+          );
+          const closeWidth = Math.min(
+            TextCoordinates.Class.lineWidth(closeText),
+            Math.max(0, frameHeaderWidth - taskWidth),
+          );
+          const closeStartColumn = frameHeaderWidth - closeWidth;
+          view.frameHeaderTaskEndColumn = taskWidth;
+          view.frameHeaderCloseStartColumn = closeStartColumn;
           const frameHeaderPadding = ' '.repeat(
-            Math.max(
-              0,
-              span.columns - TextCoordinates.Class.lineWidth(closeText),
-            ),
+            Math.max(0, closeStartColumn - taskWidth),
           );
           view.frameHeader.content = new StyledText([
+            view.frameHeaderTaskHovered
+              ? bg(palette.cursorLine)(
+                  fg(palette.accent)(
+                    TextCoordinates.Class.displayColumnWindow(
+                      taskText,
+                      0,
+                      taskWidth,
+                    ),
+                  ),
+                )
+              : fg(palette.fg)(
+                  TextCoordinates.Class.displayColumnWindow(
+                    taskText,
+                    0,
+                    taskWidth,
+                  ),
+                ),
             fg(palette.fg)(frameHeaderPadding),
             view.frameHeaderCloseHovered
-              ? bg(palette.cursorLine)(fg(palette.accent)(closeText))
-              : fg(palette.fg)(closeText),
+              ? bg(palette.cursorLine)(
+                  fg(palette.accent)(
+                    TextCoordinates.Class.displayColumnWindow(
+                      closeText,
+                      0,
+                      closeWidth,
+                    ),
+                  ),
+                )
+              : fg(palette.fg)(
+                  TextCoordinates.Class.displayColumnWindow(
+                    closeText,
+                    0,
+                    closeWidth,
+                  ),
+                ),
           ]);
           view.body.fg = palette.fg;
           visibleContents.add(span.content);

@@ -21,6 +21,7 @@ import type {
   PanePointerContext,
   PaneRenderContext,
   PaneScrollPort,
+  PaneTaskMetadata,
   PaneWheelContext,
 } from '../ui/PaneContent.interface';
 import {
@@ -59,6 +60,7 @@ class $TerminalPaneContent implements PaneContent {
   readonly id: string;
   readonly kind: string;
   readonly instanceLabel: string;
+  readonly task?: PaneTaskMetadata;
   readonly frameHeaderRows = 1;
   readonly icon = '❯'; // ❯
   // The pane owns the `terminal` keybinding context while the panel focuses it, so the host resolves
@@ -78,6 +80,7 @@ class $TerminalPaneContent implements PaneContent {
     this.id = identity.identifier ?? 'terminal';
     this.kind = identity.kind ?? 'terminal';
     this.instanceLabel = identity.label ?? 'Terminal';
+    this.task = identity.task;
     this.heading = identity.heading ?? null;
   }
 
@@ -534,4 +537,5 @@ export interface TerminalPaneIdentity {
   label?: string;
   kind?: string;
   heading?: string;
+  task?: PaneTaskMetadata;
 }

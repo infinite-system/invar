@@ -10,6 +10,7 @@ import type {
   PaneAddMenuEntry,
   PaneContent,
   PaneContentSpace,
+  PaneTaskMetadata,
 } from './PaneContent.interface';
 
 /** A plugin-contributed owner of one pane kind and the processes behind it. */
@@ -58,6 +59,8 @@ export interface PaneRuntimeRequest {
   readonly kind?: string;
   /** Heading override when the region title differs from the instance label. */
   readonly heading?: string;
+  /** Declared-task identity and source. The runtime kind remains unchanged. */
+  readonly task?: PaneTaskMetadata;
   /** Seed geometry from the laid-out panel region; the frame loop converges the true size. */
   readonly columns: number;
   readonly rows: number;
