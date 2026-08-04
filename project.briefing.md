@@ -4,29 +4,24 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
-# RESUME ANCHOR 61 — 2026-08-04 ~03:20 EDT — NIGHT GOAL: LAND THE SIX (updated)
+# RESUME ANCHOR 62 — 2026-08-04 ~04:25 EDT — THE NIGHT GOAL IS MET
 
-/goal (user asleep, <3): land #438, #461, #371, #489, #499, #494,
-#498. STATE: READY-HELD awaiting a gate window = 438 (hook policy;
-marker in worktree-private git dir), 489 (drive batch: drag verb,
-log surface, --show, showScreen loud; drive.md rewritten; one stale
-record noted for refines: "Drive session clicks resolve from roles
-and text" cites dead resolveClickTarget/fold-control), 371 (git-watch
-smoke fixed: unsequenced o/Ctrl+p race; graph-state-at-timeout killed
-the rivals). BUILDING = 461 (scrollbars residual, codex), 499 (smoke
-output hygiene, fable), 494 (monitor log race, fable). NOT YET
-DISPATCHED = 498 (chords; brief to write, applicationGlobal seam).
-LANDING PLAN once builders quiet: merge main + fresh gate + land
-serially (438 first: its hook policy dedups every later landing),
-convert bycatch/instrument feedback each, rebuild dist/iv at the end.
-DISPATCH REPAIRS TONIGHT (all committed): lint before closure append;
-pointer preamble AGENTS.md link; NEVER grep-filter dispatch output;
-one dispatch per command. Hand-launch recipe if dispatch dies
-post-record: fix TASK.md pointer + generate BUILDER-FUNDAMENTALS.md
-(--builder), bun install, agent-tmux launch (codex: sol flags;
-claude: --append-system-prompt-file), pipe-pane transcript, send the
-read-TASK.md line. send "NOT CONFIRMED" + busy pane = fine (race).
-Escape-selection suspect from 489 bycatch: file as task at landing.
+All seven landed: #438 (hook policy; builder commits self-skip the
+gate), #494 (monitor log race), #371 (git-watch sequenced), #461
+(scrollbars residual DEAD — first clean gates in days), #499 (smokes
+print child failures + self-describe homes), #489 (drive batch: drag,
+log surface, --show, loud showScreen), #498 (five frame chords ride
+applicationGlobal; Ctrl+P stays terminal-owned by byte proof).
+dist/iv rebuilt. Bycatch converted: #504 (structure uninstall,
+pre-existing, proven on main — the LAST standing gate residual),
+#505 (Quick Open dead on comparison focus + Ctrl+Shift+O sweep).
+Conveyor lessons recorded: one dispatch per command; never
+grep-filter a dispatcher; coverage declarations go stale when main
+moves under a branch (re-base at the gate with reasons — consider a
+delta-based ratchet, daylight design question). MORNING QUEUE FOR THE
+USER: #498's decisions table (Ctrl+P/F1/etc. stay pane-owned); #503 +
+#495 + #489 record refinements (propose-only, unwritten); #504/#505
+dispatch call; the Escape-selection suspect (#489 bycatch).
 
 ---
 
