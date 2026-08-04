@@ -882,10 +882,13 @@ child by sending a message whose content *begins with* `/compact <focus>`.
 2026-08-04).** On every compaction or resume, the conductor's FIRST act is
 `bash scripts/recontext-conductor.sh` — it prints the newest anchor plus the
 fluency skills (list: scripts/recontext-skills.txt) wholesale; read all of it.
-Builders get the same treatment at dispatch: dispatch.sh concatenates
-scripts/dispatch-context-skills.txt verbatim into TASK.md, so priming is
-deterministic, never a pointer-hop. Curate both lists when a session proves a
-skill's absence cost time.
+Builders get the same treatment at dispatch: dispatch.sh generates
+`conductor-system-prompt.sh --builder` (ibr, invariants, ivue, drive-pty,
+ste-expression — everything but the conductor skill) and injects it VERBATIM
+into TASK.md; claude-engine builders get the same file as an appended SYSTEM
+PROMPT (codex has no such flag — TASK.md embedding is its channel). One owner
+for both sets: conductor-system-prompt.sh. Curate the recontext list when a
+session proves a skill's absence cost time.
 
 **Instrument fluency does not survive compaction.** Before the first drive (or first
 use of any instrument) after a compaction or resume, read its skill wholesale —

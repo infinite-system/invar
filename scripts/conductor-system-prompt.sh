@@ -26,7 +26,19 @@ fundamentals_files=(
   ".claude/skills/ibr/IBR.md"
   ".claude/skills/invariants/SKILL.md"
   ".claude/skills/ivue/SKILL.md"
+  ".claude/skills/drive-pty/SKILL.md"
+  ".claude/skills/ste-expression/SKILL.md"
   ".claude/skills/conductor/SKILL.md"
+)
+
+# BUILDER set (user order 2026-08-04): everything the conductor gets except
+# the conductor skill. One owner for both lists — this script.
+builder_fundamentals_files=(
+  ".claude/skills/ibr/IBR.md"
+  ".claude/skills/invariants/SKILL.md"
+  ".claude/skills/ivue/SKILL.md"
+  ".claude/skills/drive-pty/SKILL.md"
+  ".claude/skills/ste-expression/SKILL.md"
 )
 
 print_file() {
@@ -75,6 +87,24 @@ if [ "${1:-}" = "--self-test" ]; then
     exit 0
   fi
   exit 1
+fi
+
+if [ "${1:-}" = "--builder" ]; then
+  cat <<'BUILDER_PREAMBLE'
+YOU ARE A BUILDER AGENT in the Invar fleet. The fundamentals below are
+injected verbatim at dispatch time and are always in force. The LAW is
+AGENTS.md and everything it names — read it fully before any work. Your
+task brief is TASK.md in your worktree; execute it fully, write your READY
+report where it says, and never run scripts/merge-gate.sh (the conductor
+gates and lands). Commit on your branch with SKIP_GATE=1.
+BUILDER_PREAMBLE
+  for relative_path in "${builder_fundamentals_files[@]}"; do
+    print_file "$relative_path"
+  done
+  printf '\n================================================================\n'
+  printf '== END OF BUILDER FUNDAMENTALS — TASK.md is your brief.\n'
+  printf '================================================================\n'
+  exit 0
 fi
 
 cat <<'PREAMBLE'

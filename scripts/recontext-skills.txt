@@ -1,0 +1,8 @@
+# Skills whose FLUENCY the conductor must reload after every compaction —
+# exactly the fundamentals NOT already in this session's launch-time system
+# prompt. Future launches carry drive-pty + ste-expression in the system
+# prompt (conductor-system-prompt.sh); this list bridges sessions launched
+# before that change. Curate: a line earns its place when absence cost time.
+.claude/skills/drive-pty/SKILL.md
+.claude/skills/ste-expression/SKILL.md
+.claude/skills/manage-tasks/SKILL.md
