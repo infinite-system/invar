@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (6)
-- #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/in-progress/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)  [building]
+## IN-PROGRESS (7)
+- #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/in-progress/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/499-terminal-smoke-hides-unit-failure-output`
+- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/in-progress/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)  [building]
+  `tmux attach -t invar/498-global-chords-blocked-by-focused-panel`
 - #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/in-progress/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md)  [building]
   `tmux attach -t invar/494-hidden-monitor-log-line-race-under-load`
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/in-progress/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md)  [READY delivered — builder idle, awaiting landing]
@@ -20,8 +22,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #371 [git-watch-starvation-retry-flake](.invar/tasks/in-progress/371-git-watch-starvation-retry-flake/task-371-git-watch-starvation-retry-flake.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/371-git-watch-starvation-retry-flake`
 
-## USER-DIRECTED (14)
-- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
+## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
