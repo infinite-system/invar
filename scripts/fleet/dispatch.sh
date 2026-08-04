@@ -522,26 +522,21 @@ the single source, so no pointer-hop is left to chance. Read it wholesale
 before the brief. Law is still AGENTS.md and everything it names.
 TASK_POINTER
 
-# Deterministic context fill (mirrors claude-conductor.sh for the conductor):
-# cat the load-bearing skills VERBATIM into the closure the builder reads
-# first. The list is data: scripts/dispatch-context-skills.txt at dispatch
-# time — additions reach every future builder without editing this script.
-dispatch_context_list="${repository_root}/scripts/dispatch-context-skills.txt"
-if [ -f "$dispatch_context_list" ]; then
-  while IFS= read -r context_skill; do
-    case "$context_skill" in ''|'#'*) continue;; esac
-    if [ ! -f "${repository_root}/${context_skill}" ]; then
-      echo "dispatch: REFUSING — context skill missing: ${context_skill}" >&2
-      exit 1
-    fi
-    {
-      printf '\n----------------------------------------------------------------\n'
-      printf -- '-- CONTEXT CLOSURE: %s (verbatim at dispatch time)\n' "$context_skill"
-      printf -- '----------------------------------------------------------------\n'
-      cat "${repository_root}/${context_skill}"
-    } >> "$worktree_path/TASK.md"
-  done < "$dispatch_context_list"
-fi
+# Deterministic context fill (user order 2026-08-04): the builder
+# fundamentals are INJECTED VERBATIM — never a list, never a pointer.
+# One owner for the set: conductor-system-prompt.sh --builder.
+# claude engine additionally gets the same content as an APPENDED SYSTEM
+# PROMPT (survives the builder's own compactions unread); codex has no
+# system-prompt flag, so TASK.md embedding is its deterministic channel
+# (codex reads TASK.md as its dispatched first act; AGENTS.md law
+# auto-loads natively).
+builder_fundamentals_file="${worktree_path}/BUILDER-FUNDAMENTALS.md"
+bash "${repository_root}/scripts/conductor-system-prompt.sh" --builder > "$builder_fundamentals_file" || {
+  echo "dispatch: REFUSING — builder fundamentals generation failed" >&2; exit 1; }
+{
+  printf '\n'
+  cat "$builder_fundamentals_file"
+} >> "$worktree_path/TASK.md"
 PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
   --base-directory "$worktree_path" "$worktree_path/TASK.md"
 
@@ -601,6 +596,12 @@ case "$engine" in
     ;;
 esac
 agent_command="${agent_command}${model_flags}"
+# claude engine: the builder fundamentals also ride the SYSTEM PROMPT — the
+# one tier the builder's own compactions cannot destroy. codex has no such
+# flag; its channel is the TASK.md embedding above.
+if [ "$engine" = "claude" ]; then
+  agent_command="${agent_command} --append-system-prompt-file=${builder_fundamentals_file}"
+fi
 
 # A marker taken BEFORE launch makes the native-session link deterministic:
 # the engine's store file created after this instant belongs to this launch.
