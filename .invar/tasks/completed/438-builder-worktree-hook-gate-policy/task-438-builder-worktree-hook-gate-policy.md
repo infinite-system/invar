@@ -5,7 +5,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: medium
-State: IN-PROGRESS
+State: COMPLETED — 1cf4be58 — builder worktrees skip the full gate by planted policy
 
 ## What
 

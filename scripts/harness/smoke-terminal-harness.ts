@@ -713,19 +713,14 @@ try {
 
 console.log('== harness terminal: deterministic emulator and panel tests ==');
 
-const unitResult = Bun.spawnSync(
+HarnessSmoke.Class.requireChildSuccess(
+  'terminal core and PanelHost unit tests',
   [
     process.execPath,
     'test',
     'src/modules/terminal/',
     'src/modules/ui/PanelHost.test.ts',
   ],
-  { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
-);
-
-HarnessSmoke.Class.requireCondition(
-  unitResult.exitCode === 0,
-  'terminal core and PanelHost unit tests',
 );
 
 console.log(

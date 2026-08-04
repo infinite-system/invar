@@ -11,17 +11,10 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function runNarrationUnitTests(repositoryRoot: string): void {
-  const result = Bun.spawnSync(
-    [process.execPath, 'test', 'src/modules/narration/'],
-    {
-      cwd: repositoryRoot,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  );
-  HarnessSmoke.Class.requireCondition(
-    result.exitCode === 0,
+  HarnessSmoke.Class.requireChildSuccess(
     'narration projection unit tests pass',
+    [process.execPath, 'test', 'src/modules/narration/'],
+    repositoryRoot,
   );
 }
 

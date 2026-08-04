@@ -1,0 +1,18 @@
+{
+  "task": 371,
+  "slug": "git-watch-starvation-retry-flake",
+  "branch": "fleet/371-git-watch-starvation-retry-flake",
+  "worktree": ".invar/worktrees/371-git-watch-starvation-retry-flake",
+  "tmuxSession": "invar/371-git-watch-starvation-retry-flake",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-371-git-watch-starvation-retry-flake.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "9d1656de563b6c5b0f1b3f4da7260f743d2567b5",
+  "startedAt": "2026-08-04T02:23:06-04:00",
+  "landedAt": "2026-08-04T03:26:50-04:00",
+  "durationMinutes": 63,
+  "mergeCommit": "70ec2e7f"
+}

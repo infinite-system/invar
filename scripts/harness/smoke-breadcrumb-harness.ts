@@ -294,17 +294,16 @@ async function driveBreadcrumbAtScale(lineCount: number): Promise<void> {
     join(tmpdir(), `tui-breadcrumb-home-${lineCount}-`),
   );
   statusPath = join(homeDirectory, 'status.json');
-  const generated = Bun.spawnSync([
-    'bun',
-    'scripts/make-scale-workspace.ts',
-    '--lines',
-    String(lineCount),
-    '--directory',
-    fixtureRoot,
-  ]);
-  HarnessSmoke.Class.requireCondition(
-    generated.exitCode === 0,
+  HarnessSmoke.Class.requireChildSuccess(
     `${lineCount}-line shared scale fixture generated`,
+    [
+      'bun',
+      'scripts/make-scale-workspace.ts',
+      '--lines',
+      String(lineCount),
+      '--directory',
+      fixtureRoot,
+    ],
   );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,

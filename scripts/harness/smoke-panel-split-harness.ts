@@ -250,14 +250,9 @@ async function driveSharedCloseGlyphTier(
 
 console.log('== harness panel-split: deterministic PanelHost split tests ==');
 
-const unitResult = Bun.spawnSync(
-  [process.execPath, 'test', 'src/modules/ui/PanelHost.test.ts'],
-  { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
-);
-
-HarnessSmoke.Class.requireCondition(
-  unitResult.exitCode === 0,
+HarnessSmoke.Class.requireChildSuccess(
   'PanelHost unit tests (split layout, focus routing, per-cell resize, divider re-flow)',
+  [process.execPath, 'test', 'src/modules/ui/PanelHost.test.ts'],
 );
 
 console.log(

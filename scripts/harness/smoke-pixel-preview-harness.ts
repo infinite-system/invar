@@ -198,20 +198,12 @@ console.log(
   '== harness pixel-preview: encoders, mount, and tier precedence unit layer ==',
 );
 
-const unitResult = Bun.spawnSync(
-  [
-    process.execPath,
-    'test',
-    'src/modules/image/',
-    'src/modules/theme/GraphicsTier.test.ts',
-  ],
-  { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
-);
-
-HarnessSmoke.Class.requireCondition(
-  unitResult.exitCode === 0,
-  'image and graphics-tier unit tests',
-);
+HarnessSmoke.Class.requireChildSuccess('image and graphics-tier unit tests', [
+  process.execPath,
+  'test',
+  'src/modules/image/',
+  'src/modules/theme/GraphicsTier.test.ts',
+]);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-pixel-preview-harness-'));
 
