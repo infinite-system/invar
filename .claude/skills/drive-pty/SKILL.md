@@ -40,6 +40,10 @@ bun scripts/harness/DriveSession.ts --stop             # done: kill your server
   inner app — always `--stop`.
 - `bun run drive` is one-shot and stops itself. Only a warm DriveSession
   server needs the separate `DriveSession.ts --stop` command.
+- USER POLICY (2026-08-03): the warm server + fluent snippets is THE way
+  to drive, always — including custom homes (`--serve` accepts `--home`,
+  and `--reload` re-homes). Reach for the one-shot ONLY when the warm
+  server structurally cannot do the job, and say so aloud when you do.
 - Mirror, trail, and humanPace exist for HUMAN-WATCHED sessions only — skip
   them headless; they cost time and change nothing you can assert.
 
