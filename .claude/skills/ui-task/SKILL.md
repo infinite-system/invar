@@ -24,7 +24,7 @@ specifications, not one-bug-one-agent waste.
 ## The loop
 
 1. **SEE — drive before you speak.** The moment a UI topic opens,
-   reach for `bun run drive` FIRST (scripts/harness/drive.md): ordered
+   reach for the fluent drive FIRST (`bun run drive -- --attach`, see scripts/harness/drive.md): chained
    action flags with per-action condition waits, `--gesture` verbs,
    and `--cells ROW,C1-C2` color dumps — most sightings are one
    command, no probe file. Write a probe .ts (PtyTestDriver at a real

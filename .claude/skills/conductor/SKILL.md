@@ -437,7 +437,7 @@ It requires a merge-base run. State whether it was verified at the merge base, a
 ## Verify by driving
 
 Verify everything by driving the real user path: the **PTY harness** (`PtyTestDriver` +
-frame probe), never internal values. Driving goes through the warm fluent server (user policy 2026-08-03; one-shot `bun run drive` only when the server structurally cannot, said aloud). Quick sightings previously used `bun run drive`
+frame probe), never internal values. Driving goes through the warm fluent server, always (user policy 2026-08-03; `bun run drive` is now an ALIAS of DriveSession.ts — the one-shot Drive.ts is REMOVED). Quick sightings previously used the one-shot
 (scripts/harness/drive.md) — `--gesture` verbs with built-in waits, `--cells` color dumps —
 before any bespoke probe file; briefs name the drive command so builders see the same pixels. This is the builder's inner loop, not only the gate's
 instrument.

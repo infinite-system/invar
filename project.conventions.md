@@ -129,7 +129,7 @@ a mechanical checker should not be able to see.
   Advertised binding hints come from `effectiveBindings()` — never hand-written strings.
 
 ## Verification (authoritative channels)
-- Quick UI sightings → `bun run drive` (scripts/harness/drive.md): ordered input flags with
+- Quick UI sightings → `bun run drive -- --attach "…"` (fluent DriveSession alias; scripts/harness/drive.md): chained verbs with
   per-action completion waits and `--cells ROW,C1-C2` color dumps. Use primitive
   `DriveSession` chains for longer drives. Neither front door defines app-specific gestures.
 - Semantic state → the session's `status-<session>.json` (harness `field <session> <name>`);

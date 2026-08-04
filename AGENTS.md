@@ -24,7 +24,7 @@ skipping those is the exact failure two resurrection drills caught.**
 
 Your inner loop is **driving the real app in your own PTY** (`scripts/harness/PtyTestDriver.ts`
 + FrameProbe) and LOOKING at what it does. Seconds per turn. No gate, no suite. Start with
-[`bun run drive`](scripts/harness/drive.md) for a settled grid, published probes, scale fixtures,
+[`bun run drive`](scripts/harness/drive.md) (alias of the fluent DriveSession — warm server + snippets) for a settled grid, published probes, scale fixtures,
 and repeatable key, wheel, or click input, condition flags, and `--cells ROW,C1-C2` per-cell
 color dumps. Most sightings are ONE drive command; use primitive `DriveSession` chains when
 the flag sequence cannot express the drive. Keep both front doors primitive: coordinates,

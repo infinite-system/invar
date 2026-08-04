@@ -165,3 +165,7 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
 | `src/modules/editor/EditorWrap.test.ts` | assertions 81 → 0, waits 32 → 0. FILE SPLIT, not weakened. `src/modules/text/EditorWrap.test.ts` keeps the pure generator claims. `src/modules/editor/Editor.test.ts` keeps the 13 editor-mode assertions that require the concrete editor. No claim was dropped. |
 | `src/modules/editor/EditorWrapIndex.test.ts` | assertions 37 → 0, waits 15 → 0. FILE MOVED, not removed. Now `src/modules/text/EditorWrapIndex.test.ts` with the same 37 assertions and 15 waits. No claim was dropped. |
 | `src/modules/editor/ReadOnlyTextBuffer.test.ts` | assertions 13 → 0, waits 2 → 0. FILE SPLIT, not weakened. `src/modules/text/ReadOnlyTextBuffer.test.ts` keeps the ten read-only generator assertions and both waits. `src/modules/editor/Editor.test.ts` keeps the three concrete editor-extension assertions. No claim was dropped. |
+
+## 2026-08-03 — Drive.ts one-shot removed by user order
+
+| `scripts/harness/Drive.test.ts` | assertions 36 → 0, waits 13 → 0. Feature removed: the one-shot Drive.ts entry was deleted by explicit user order (`bun run drive` is now an alias of DriveSession.ts). The resolveClickTarget semantics live on in DriveSession.ts with their own test (DriveSession.test.ts); the parseOptions/performAction assertions covered a flag grammar that no longer exists and are not restored. The settled-debounced-work registry record retired with the capability. |
