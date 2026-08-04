@@ -60,3 +60,9 @@ momentum/scroll-top sequence so "no impulse" vs "one-frame
 cancellation" vs "at a bound" is readable without a second probe.
 Also: the direct keyboard harness reuses artifacts/home — manual
 drives poison fresh-profile assertions; prefer per-run homes.
+
+## Additional ask from #501 (2026-08-03)
+
+CONFUSING: showScreen([rows]) accepted the call but printed nothing;
+showScreen() worked. Fix the row-band form or reject the bad shape
+loudly.
