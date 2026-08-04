@@ -1,0 +1,15 @@
+{
+  "task": 503,
+  "slug": "a-task-is-a-terminal-pane-not-a-kind",
+  "branch": "fleet/503-a-task-is-a-terminal-pane-not-a-kind",
+  "worktree": ".invar/worktrees/503-a-task-is-a-terminal-pane-not-a-kind",
+  "tmuxSession": "invar/503-a-task-is-a-terminal-pane-not-a-kind",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-503-a-task-is-a-terminal-pane-not-a-kind.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "2f258f5c82fd02a5e01e3036058d0e5ed8d505d4",
+  "startedAt": "2026-08-04T00:33:05-04:00"
+}
