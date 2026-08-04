@@ -1,6 +1,6 @@
 # #371 — git-watch smoke passes only on retry under gate load
 
-State: IN-PROGRESS
+State: COMPLETED — 70ec2e7f — git-watch smoke sequences its keys; race dead
 Priority: flake-evidence
 Engine: codex
 Environment: linux
