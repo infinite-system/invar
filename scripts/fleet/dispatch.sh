@@ -533,10 +533,15 @@ TASK_POINTER
 builder_fundamentals_file="${worktree_path}/BUILDER-FUNDAMENTALS.md"
 bash "${repository_root}/scripts/conductor-system-prompt.sh" --builder > "$builder_fundamentals_file" || {
   echo "dispatch: REFUSING — builder fundamentals generation failed" >&2; exit 1; }
-{
-  printf '\n'
-  cat "$builder_fundamentals_file"
-} >> "$worktree_path/TASK.md"
+# ONE copy per engine: codex reads it inside TASK.md (no system-prompt flag
+# exists); claude carries it in the system prompt ONLY — embedding it in
+# TASK.md too would double it (user question 2026-08-04 caught this).
+if [ "$engine" != "claude" ]; then
+  {
+    printf '\n'
+    cat "$builder_fundamentals_file"
+  } >> "$worktree_path/TASK.md"
+fi
 PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
   --base-directory "$worktree_path" "$worktree_path/TASK.md"
 
