@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #438 [builder-worktree-hook-gate-policy](.invar/tasks/in-progress/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)  [building]
+  `tmux attach -t invar/438-builder-worktree-hook-gate-policy`
+
 ## USER-DIRECTED (14)
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -22,13 +26,12 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (32)
+## VERIFICATION-INTEGRITY (31)
 - #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/active/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
 - #440 [panel-list-geometry-mismatch](.invar/tasks/active/440-panel-list-geometry-mismatch/task-440-panel-list-geometry-mismatch.md)
-- #438 [builder-worktree-hook-gate-policy](.invar/tasks/active/438-builder-worktree-hook-gate-policy/task-438-builder-worktree-hook-gate-policy.md)
 - #411 [gate-load-starvation-family](.invar/tasks/active/411-gate-load-starvation-family/task-411-gate-load-starvation-family.md)
 - #407 [keybinding-conflict-detection](.invar/tasks/active/407-keybinding-conflict-detection/task-407-keybinding-conflict-detection.md)
 - #399 [splitter-regions-stale-rectangle](.invar/tasks/active/399-splitter-regions-stale-rectangle/task-399-splitter-regions-stale-rectangle.md)

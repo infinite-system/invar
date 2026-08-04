@@ -1,0 +1,15 @@
+{
+  "task": 438,
+  "slug": "builder-worktree-hook-gate-policy",
+  "branch": "fleet/438-builder-worktree-hook-gate-policy",
+  "worktree": ".invar/worktrees/438-builder-worktree-hook-gate-policy",
+  "tmuxSession": "invar/438-builder-worktree-hook-gate-policy",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-438-builder-worktree-hook-gate-policy.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "af2ee7e4314b891715e5f8e379065cfbd4fedaf4",
+  "startedAt": "2026-08-04T02:11:39-04:00"
+}
