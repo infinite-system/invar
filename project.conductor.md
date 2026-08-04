@@ -762,3 +762,15 @@ is gate-verified on main). Rule: while a backgrounded commit is
 pending, the conductor makes NO other commit in that checkout. Same
 generator as the round-brief/steer race: two acts sharing mutable
 state must be strictly sequenced.
+
+## 2026-08-03 — compaction strips instrument fluency; the skill restores it in one read
+
+Post-compaction the conductor drove with retired one-shot flags and
+grep-guessed the fluent API for six round-trips, despite having BUILT
+the warm server and MCP doorway pre-compaction. A summary carries
+facts, not fluency. Rule: BEFORE the first drive after any compaction
+or resume, read .claude/skills/drive-pty/SKILL.md wholesale — and in
+general, before first use of any instrument this session, read its
+skill, not its source. Friction is the tell: the moment an invocation
+errors, the next act is opening the skill, never falling back to an
+older remembered pattern.

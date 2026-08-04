@@ -878,6 +878,12 @@ gate logs, worktree state), never from a dropped summary. A parent cannot see a 
 context percentage. Detection is behavioural or self-reported. A parent CAN force-compact a
 child by sending a message whose content *begins with* `/compact <focus>`.
 
+**Instrument fluency does not survive compaction.** Before the first drive (or first
+use of any instrument) after a compaction or resume, read its skill wholesale —
+`.claude/skills/drive-pty/SKILL.md` for driving. A summary carries facts, not fluency;
+an invocation error means OPEN THE SKILL, never fall back to an older remembered
+pattern (2026-08-03: six wasted round-trips on retired one-shot flags).
+
 **Instantiating a fresh conductor.** This skill (doctrine) + `project.conductor.md` (lessons)
 transfer the METHOD, not the live state. Read in order:
 
