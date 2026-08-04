@@ -273,6 +273,7 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   echo "  environment: ${declared_environment:-unset} (host: $(uname -s | tr '[:upper:]' '[:lower:]'))"
   echo "  branch:      ${branch}"
   echo "  worktree:    ${worktree_path}"
+  echo "  hook policy: plant the worktree-local builder marker; keep formatting and skip the full merge gate"
   echo "  task brief:  ${task_pointer_target}"
   echo "  transcript:  ${transcript_path}"
   rm -f "$brief_snapshot"
@@ -503,6 +504,14 @@ echo "dispatch: worktree cut at $worktree_head (content base $base_commit + the 
 [ -d "$worktree_path/.invar/tasks/in-progress/${name}" ] \
   || { echo "dispatch: worktree does not see its own in-progress record — refusing" >&2; exit 1; }
 
+# The installed pre-commit hook is shared by every linked worktree. Plant the
+# builder policy inside this worktree's private Git directory, so the primary
+# checkout keeps its full pre-commit gate. The hook still formats staged files
+# before it reads this marker.
+builder_hook_policy_path="$(git -C "$worktree_path" rev-parse --git-path invar-builder-hook-policy)"
+printf '%s\n' "skip-full-merge-gate-v1" > "$builder_hook_policy_path"
+echo "dispatch: planted builder hook policy at $builder_hook_policy_path"
+
 echo "dispatch: installing dependencies (not optional, not the builder's job to discover)"
 ( cd "$worktree_path" && PATH="$HOME/.bun/bin:$PATH" bun install >/dev/null 2>&1 ) \
   || { echo "dispatch: bun install FAILED — not launching" >&2; exit 1; }
@@ -519,7 +528,7 @@ Read the entire [filed task brief](${task_pointer_target}) from the beginning an
 The context closure below is your DETERMINISTIC PRIMING (user policy
 2026-08-04): the instrument fluency you need, loaded at dispatch time from
 the single source, so no pointer-hop is left to chance. Read it wholesale
-before the brief. Law is still AGENTS.md and everything it names.
+before the brief. Law is still [AGENTS.md](AGENTS.md) and everything it names.
 TASK_POINTER
 
 PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
