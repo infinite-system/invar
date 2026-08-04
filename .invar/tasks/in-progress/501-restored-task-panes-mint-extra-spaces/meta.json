@@ -1,0 +1,15 @@
+{
+  "task": 501,
+  "slug": "restored-task-panes-mint-extra-spaces",
+  "branch": "fleet/501-restored-task-panes-mint-extra-spaces",
+  "worktree": ".invar/worktrees/501-restored-task-panes-mint-extra-spaces",
+  "tmuxSession": "invar/501-restored-task-panes-mint-extra-spaces",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-501-restored-task-panes-mint-extra-spaces.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "2d6fd18041495687e4cf90e5d397764bee5e43fc",
+  "startedAt": "2026-08-03T22:08:24-04:00"
+}

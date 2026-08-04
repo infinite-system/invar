@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/in-progress/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md)  [building]
+  `tmux attach -t invar/501-restored-task-panes-mint-extra-spaces`
+
 ## USER-DIRECTED (14)
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
