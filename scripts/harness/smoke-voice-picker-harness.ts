@@ -12,22 +12,15 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function runVoiceUnitTests(repositoryRoot: string): void {
-  const result = Bun.spawnSync(
+  HarnessSmoke.Class.requireChildSuccess(
+    'voice discovery and dynamic-enum unit tests pass',
     [
       process.execPath,
       'test',
       'src/modules/narration/VoiceDiscovery.test.ts',
       'src/modules/settings/SettingsPanel.test.ts',
     ],
-    {
-      cwd: repositoryRoot,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  );
-  HarnessSmoke.Class.requireCondition(
-    result.exitCode === 0,
-    'voice discovery and dynamic-enum unit tests pass',
+    repositoryRoot,
   );
 }
 

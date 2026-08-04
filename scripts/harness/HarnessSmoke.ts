@@ -13,6 +13,7 @@ import {
   panelCellsOfKind,
   panelCellRectangle,
   panelContentIdentifiersOfKind,
+  requireChildSuccess,
   type HarnessStatus,
   type PublishedPanelCell,
 } from './HarnessSmokeSupport';
@@ -31,6 +32,16 @@ class $HarnessSmoke {
   static requireCondition(condition: unknown, label: string): void {
     if (!condition) throw new Error(`FAIL ${label}`);
     this.pass(label);
+  }
+
+  /** Spawn a child and require exit 0, printing the child's full output when it fails —
+   *  a piped-and-dropped child turns a real red into one bare label (gate-493). */
+  static requireChildSuccess(
+    label: string,
+    command: readonly string[],
+    workingDirectory = process.cwd(),
+  ): void {
+    requireChildSuccess(label, command, workingDirectory);
   }
 
   /** The one generated scale fixture shared by Drive and DriveSession. */

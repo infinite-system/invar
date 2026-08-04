@@ -285,8 +285,11 @@ const plantedGit = (...gitArguments: string[]) => {
     env: plantedGitEnvironment,
   });
   if (result.exitCode !== 0) {
+    // Report BOTH streams: git writes some failure reasons to stdout.
     throw new Error(
-      `fixture git ${gitArguments.join(' ')} failed: ${result.stderr.toString()}`,
+      `fixture git ${gitArguments.join(' ')} failed (exit ${result.exitCode}); ` +
+        `stderr: ${result.stderr.toString().trim()}; ` +
+        `stdout: ${result.stdout.toString().trim()}`,
     );
   }
 };

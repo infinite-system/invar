@@ -16,19 +16,14 @@ console.log(
   '== harness git-blame: deterministic parser and relative-time tests ==',
 );
 
-const unitResult = Bun.spawnSync(
+HarnessSmoke.Class.requireChildSuccess(
+  'blame unit tests (porcelain parse, metadata reuse, uncommitted, relative-date buckets)',
   [
     process.execPath,
     'test',
     'src/modules/git/GitBlame.test.ts',
     'src/modules/git/RelativeTime.test.ts',
   ],
-  { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
-);
-
-HarnessSmoke.Class.requireCondition(
-  unitResult.exitCode === 0,
-  'blame unit tests (porcelain parse, metadata reuse, uncommitted, relative-date buckets)',
 );
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-git-blame-harness-'));

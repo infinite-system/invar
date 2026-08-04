@@ -7,7 +7,12 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
-import { pass, requireCondition, runGit } from './HarnessSmokeSupport';
+import {
+  pass,
+  requireChildSuccess,
+  requireCondition,
+  runGit,
+} from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
@@ -50,12 +55,11 @@ async function runCommand(
   return driver.awaitSnapshot(predicate);
 }
 
-const unitResult = Bun.spawnSync(
-  [process.execPath, 'test', 'src/modules/editor/EditorMoveLine.test.ts'],
-  { stdout: 'pipe', stderr: 'pipe' },
-);
-
-requireCondition(unitResult.exitCode === 0, 'move-line unit tests pass');
+requireChildSuccess('move-line unit tests pass', [
+  process.execPath,
+  'test',
+  'src/modules/editor/EditorMoveLine.test.ts',
+]);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-move-line-harness-'));
 

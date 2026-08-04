@@ -162,6 +162,36 @@ export function requireCondition(
   pass(label);
 }
 
+/** Spawn a child with piped streams and require exit 0 — printing the child's full
+ *  stdout and stderr FIRST when it fails. A piped-and-dropped child collapses a real
+ *  red into one bare label: gate-493 preserved only "FAIL terminal core and PanelHost
+ *  unit tests", so the failing test's identity was destroyed with it. */
+export function requireChildSuccess(
+  label: string,
+  command: readonly string[],
+  workingDirectory = process.cwd(),
+): void {
+  const result = Bun.spawnSync([...command], {
+    cwd: workingDirectory,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  if (result.exitCode !== 0) {
+    const standardOutput = new TextDecoder().decode(result.stdout).trim();
+    const standardError = new TextDecoder().decode(result.stderr).trim();
+    console.error(
+      `-- child output for FAIL ${label} (exit ${result.exitCode}) --`,
+    );
+    if (standardOutput.length > 0) console.error(standardOutput);
+    if (standardError.length > 0) console.error(standardError);
+    if (standardOutput.length === 0 && standardError.length === 0) {
+      console.error('(the child wrote nothing on either stream)');
+    }
+    console.error(`-- end of child output for ${label} --`);
+  }
+  requireCondition(result.exitCode === 0, label);
+}
+
 export function requireEqual(
   actualValue: unknown,
   expectedValue: unknown,
@@ -357,7 +387,10 @@ export function runGit(
 ): void {
   const result = Bun.spawnSync(['git', ...commandArguments], {
     cwd: repositoryRoot,
-    stdout: 'ignore',
+    // git writes several common failure reasons to STDOUT ("nothing to commit,
+    // working tree clean"), so a stderr-only report can render a red as `failed: `
+    // with no reason at all. Pipe BOTH streams and report both.
+    stdout: 'pipe',
     stderr: 'pipe',
     env: Object.fromEntries(
       Object.entries(process.env).filter(
@@ -367,9 +400,15 @@ export function runGit(
     ) as Record<string, string>,
   });
   if (result.exitCode !== 0) {
+    const standardError = new TextDecoder().decode(result.stderr).trim();
+    const standardOutput = new TextDecoder().decode(result.stdout).trim();
     throw new Error(
-      `git ${commandArguments.join(' ')} failed: ` +
-        new TextDecoder().decode(result.stderr),
+      `git ${commandArguments.join(' ')} failed (exit ${result.exitCode})` +
+        (standardError.length > 0 ? `; stderr: ${standardError}` : '') +
+        (standardOutput.length > 0 ? `; stdout: ${standardOutput}` : '') +
+        (standardError.length === 0 && standardOutput.length === 0
+          ? '; both streams were empty'
+          : ''),
     );
   }
 }

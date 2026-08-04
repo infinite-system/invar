@@ -27,6 +27,16 @@ WORKSPACE="$(mktemp -d "${TMPDIR:-/tmp}/invar-keyboard-XXXXXX")"
 RECEIVED_BYTES_PATH="$WORKSPACE/received-key-bytes.txt"
 failures=0
 
+# --- self-description: name the persistent profile this run inherits -----------------------------
+# A bare run reuses the harness home (tui-harness.sh falls back to artifacts/home). A failure that
+# depends on that profile then looks like a code bug. Name the fixture up front so the log carries
+# it (#356 round 3: a false green came from exactly this invisibility).
+HARNESS_HOME="${INVAR_HARNESS_HOME:-$REPOSITORY_ROOT/artifacts/home}"
+SETTINGS_PATH="${XDG_CONFIG_HOME:-$HARNESS_HOME/.config}/invar/settings.json"
+starting_panel_order="$(SETTINGS_PATH="$SETTINGS_PATH" "$BUN" -e 'try{const settings=require(process.env.SETTINGS_PATH);const order=settings.panelContentOrder;process.stdout.write(Array.isArray(order)?JSON.stringify(order):"(not set in settings.json - app default applies)")}catch{process.stdout.write("(no settings.json - fresh home, app default applies)")}' 2>/dev/null)"
+echo "harness home: $HARNESS_HOME"
+echo "starting panelContentOrder: ${starting_panel_order:-(unreadable)}"
+
 field()  { "$HARNESS" field "$SESSION" "$1"; }
 pass()   { echo "  PASS  $1"; }
 fail()   { echo "  FAIL  $1"; failures=1; }
