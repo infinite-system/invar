@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/in-progress/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md)  [building]
-  `tmux attach -t invar/501-restored-task-panes-mint-extra-spaces`
-
 ## USER-DIRECTED (14)
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/active/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -153,7 +149,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 207 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 208 — full log: project.tasks-completed.md)
+- #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/completed/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md) — faa06188 — restored task panes stay in their saved space; layouts self-heal
 - #500 [database-add-click-misses-popup](.invar/tasks/completed/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md) — ACTIVE
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
@@ -168,4 +165,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #482 [agent-pane-copy-fails-with-composer-focus](.invar/tasks/completed/482-agent-pane-copy-fails-with-composer-focus/task-482-agent-pane-copy-fails-with-composer-focus.md) — 03fc43fe — Landed: composer-focus arm added to the smoke; hypothesis eliminated; user-side highlight question is the last differential.
 - #481 [shared-machinery-waits-and-drive-gesture-deletion](.invar/tasks/completed/481-shared-machinery-waits-and-drive-gesture-deletion/task-481-shared-machinery-waits-and-drive-gesture-deletion.md) — e3e3316a — Landed: honest shell settle, gesture layer deleted, 11 delays declared. The census migration is now COMPLETE except declared remainders.
 - #480 [migrate-the-quick-open-idiom](.invar/tasks/completed/480-migrate-the-quick-open-idiom/task-480-migrate-the-quick-open-idiom.md) — 04ea99ab — Landed: the Quick Open idiom retired across the suite. Migration remainder: shared machinery + agent/terminal + panel/layout + shell sites, per the #479 table.
-- #479 [migrate-the-census-tail](.invar/tasks/completed/479-migrate-the-census-tail/task-479-migrate-the-census-tail.md) — c5316ddf — Round 1 landed: the two live gate-flake files migrated site-complete. Remainder (Quick Open idiom files, shared machinery, agent/terminal files, shell sites) stays honestly tabled for the next round.

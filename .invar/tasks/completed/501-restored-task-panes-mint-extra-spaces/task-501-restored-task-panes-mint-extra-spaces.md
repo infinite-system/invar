@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: medium
-State: IN-PROGRESS
+State: COMPLETED — faa06188 — restored task panes stay in their saved space; layouts self-heal
 
 ## In plain words
 

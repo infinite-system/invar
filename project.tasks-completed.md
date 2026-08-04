@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/completed/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md) — faa06188 — restored task panes stay in their saved space; layouts self-heal
 - #500 [database-add-click-misses-popup](.invar/tasks/completed/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md) — ACTIVE
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
