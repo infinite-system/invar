@@ -1255,7 +1255,7 @@ command ids, pane kinds, labels, category names, setting keys.
 keybindings, commands, settings, status segments, status projection, syntax and capability
 providers), so core needs no plugin names; the #488 census scripts measure both coupling forms,
 and the conventions gate fails any commit that adds an import (must be 0) or exceeds the
-vocabulary baseline (34, tightening as counts fall).
+vocabulary baseline (33, tightening as counts fall).
 
 **Generates:** installable and removable plugins; the negative-space proof that the seams work
 (seven plugins have zero vocabulary in core); the decoupling wave's end state staying the floor.

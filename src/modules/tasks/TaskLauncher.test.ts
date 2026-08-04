@@ -104,12 +104,12 @@ test('folder-open tasks start once per workspace root in one app session', () =>
   expect(fixture.presentations).toHaveLength(1);
 });
 
-test('a restored task identifier suppresses another folder-open launch', () => {
-  const restoredIdentifier = `task:${encodeURIComponent('/workspace')}:0`;
-  const fixture = launcherFixture([restoredIdentifier]);
+test('a live task identifier suppresses another folder-open launch', () => {
+  const liveIdentifier = `task:${encodeURIComponent('/workspace')}:0`;
+  const fixture = launcherFixture([liveIdentifier]);
 
   expect(
-    fixture.launcher.launchFolderOpen('/workspace', [task(0, 'Restored')], []),
+    fixture.launcher.launchFolderOpen('/workspace', [task(0, 'Live')], []),
   ).toEqual([]);
 
   expect(fixture.requests).toEqual([]);

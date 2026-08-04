@@ -198,27 +198,43 @@ async function driveRestoredTaskPaneSpaceHealing(
   const settingsDirectory = join(homeDirectory, '.config', 'invar');
   mkdirSync(settingsDirectory, { recursive: true });
   const settingsPath = join(settingsDirectory, 'settings.json');
-  const taskPane = {
-    kind: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:0`,
-    label: 'Claude',
-    identifier: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:0`,
+  const terminalPane = {
+    kind: 'terminal',
+    label: 'Terminal 5',
+    identifier: 'pane-instance-5',
   };
+  const taskPanes = [
+    {
+      kind: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:0`,
+      label: 'Claude',
+      identifier: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:0`,
+    },
+    {
+      kind: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:1`,
+      label: 'Terminal',
+      identifier: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:1`,
+    },
+  ];
   await Bun.write(
     settingsPath,
     `${JSON.stringify({
+      panelContentOrder: [
+        terminalPane.identifier,
+        ...taskPanes.map((pane) => pane.identifier),
+      ],
       panelWorkspaceStates: {
         [scaleFixture.workspaceRoot]: {
           spaces: [
             {
               kind: 'terminal',
               label: 'Terminal',
-              groups: [[taskPane]],
+              groups: [[terminalPane, ...taskPanes]],
               activeGroupIndex: 0,
             },
             {
-              kind: taskPane.kind,
-              label: taskPane.label,
-              groups: [[taskPane]],
+              kind: taskPanes[0]!.kind,
+              label: taskPanes[0]!.label,
+              groups: [[taskPanes[0]!]],
               activeGroupIndex: 0,
             },
           ],
@@ -259,16 +275,16 @@ async function driveRestoredTaskPaneSpaceHealing(
             JSON.stringify(candidate.panelSpaceLabels) ===
               JSON.stringify(['Terminal']) &&
             JSON.stringify(candidate.panelContentLabels) ===
-              JSON.stringify(['Claude']) &&
+              JSON.stringify(['Terminal 5']) &&
             JSON.stringify(candidate.panelCellLabels) ===
-              JSON.stringify(['Claude']),
+              JSON.stringify(['Terminal 5']),
           15_000,
         );
         const snapshot = driver.snapshot();
         HarnessSmoke.Class.requireCondition(
           tabBar(status).tabs.length === 1 &&
-            snapshot.findText('Claude ×') === null,
-          `${lineCount}-line ${observationName} paints one Terminal space tab and no Claude space tab`,
+            snapshot.findText('Claude') === null,
+          `${lineCount}-line ${observationName} paints the real terminal and no dead task pane`,
         );
       } finally {
         await driver.dispose();
@@ -277,14 +293,30 @@ async function driveRestoredTaskPaneSpaceHealing(
 
     await observeOneTerminalSpace(
       'first-status.json',
-      'the first boot folds the restored task pane into its saved Terminal space',
+      'the first boot drops dead task panes from their saved Terminal space',
     );
     const healedSettings = (await Bun.file(settingsPath).json()) as {
+      panelContentOrder: readonly string[];
       panelWorkspaceStates: Record<
         string,
-        { spaces: readonly { kind: string }[] }
+        {
+          spaces: readonly {
+            kind: string;
+            groups: readonly (readonly {
+              identifier?: string;
+              kind: string;
+            }[])[];
+          }[];
+        }
       >;
     };
+    HarnessSmoke.Class.requireCondition(
+      healedSettings.panelContentOrder.includes(terminalPane.identifier) &&
+        healedSettings.panelContentOrder.every(
+          (identifier) => !identifier.startsWith('task:'),
+        ),
+      `${lineCount}-line first boot removes dead task identities from the global order`,
+    );
     HarnessSmoke.Class.requireCondition(
       JSON.stringify(
         healedSettings.panelWorkspaceStates[
@@ -293,12 +325,26 @@ async function driveRestoredTaskPaneSpaceHealing(
       ) === JSON.stringify(['terminal']),
       `${lineCount}-line first boot saves only the healed Terminal space`,
     );
+    HarnessSmoke.Class.requireCondition(
+      healedSettings.panelWorkspaceStates[
+        scaleFixture.workspaceRoot
+      ]?.spaces.every((space) =>
+        space.groups.every((group) =>
+          group.every(
+            (pane) =>
+              !pane.kind.startsWith('task:') &&
+              !pane.identifier?.startsWith('task:'),
+          ),
+        ),
+      ) === true,
+      `${lineCount}-line first boot saves no dead task pane identity`,
+    );
     await observeOneTerminalSpace(
       'second-status.json',
-      'the second boot keeps the healed task pane in the Terminal space',
+      'the second boot reads the layout with no dead task panes',
     );
     HarnessSmoke.Class.pass(
-      `${lineCount}-line restored task panes stay in Terminal and stale task spaces heal across restart`,
+      `${lineCount}-line dead task panes stay gone and the real terminal survives restart`,
     );
   } finally {
     await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
