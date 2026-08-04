@@ -515,7 +515,33 @@ cat > "$worktree_path/TASK.md" <<TASK_POINTER
 # Task brief
 
 Read the entire [filed task brief](${task_pointer_target}) from the beginning and execute it fully.
+
+The context closure below is your DETERMINISTIC PRIMING (user policy
+2026-08-04): the instrument fluency you need, loaded at dispatch time from
+the single source, so no pointer-hop is left to chance. Read it wholesale
+before the brief. Law is still AGENTS.md and everything it names.
 TASK_POINTER
+
+# Deterministic context fill (mirrors claude-conductor.sh for the conductor):
+# cat the load-bearing skills VERBATIM into the closure the builder reads
+# first. The list is data: scripts/dispatch-context-skills.txt at dispatch
+# time — additions reach every future builder without editing this script.
+dispatch_context_list="${repository_root}/scripts/dispatch-context-skills.txt"
+if [ -f "$dispatch_context_list" ]; then
+  while IFS= read -r context_skill; do
+    case "$context_skill" in ''|'#'*) continue;; esac
+    if [ ! -f "${repository_root}/${context_skill}" ]; then
+      echo "dispatch: REFUSING — context skill missing: ${context_skill}" >&2
+      exit 1
+    fi
+    {
+      printf '\n----------------------------------------------------------------\n'
+      printf -- '-- CONTEXT CLOSURE: %s (verbatim at dispatch time)\n' "$context_skill"
+      printf -- '----------------------------------------------------------------\n'
+      cat "${repository_root}/${context_skill}"
+    } >> "$worktree_path/TASK.md"
+  done < "$dispatch_context_list"
+fi
 PATH="$HOME/.bun/bin:$PATH" bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
   --base-directory "$worktree_path" "$worktree_path/TASK.md"
 

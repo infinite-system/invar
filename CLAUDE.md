@@ -26,6 +26,9 @@ when it is not spelled out:
    with loud boundaries. There is nothing to skip and nothing further to
    dereference; a missing document fails the script loudly.
 2. Act per the anchor at the end of that output.
+3. On every LATER compaction inside the session: FIRST act is
+   `bash scripts/recontext-conductor.sh` — read its whole output
+   (anchor + fluency skills). State never lives in remembered summaries.
 
 Two resurrection drills (2026-07-30) proved pointer-chains lose readers at
 every hop; the script deletes the hops. Everything else is on disk.
