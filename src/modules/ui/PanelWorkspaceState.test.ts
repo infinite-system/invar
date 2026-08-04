@@ -167,6 +167,64 @@ test('restore rejects a pane whose kind cannot belong to its saved space', () =>
   expect(restoration.panelListExpanded).toBe(true);
 });
 
+test('restore keeps undeclared panes in their first saved space', () => {
+  const restoredPanes = new Map<string, FakePane>();
+  const restoration = PanelWorkspaceState.Class.restore(
+    {
+      spaces: [
+        {
+          kind: 'terminal',
+          label: 'Terminal',
+          groups: [
+            [
+              {
+                identifier: 'task:%2Fworkspace:0',
+                kind: 'task:%2Fworkspace:0',
+                label: 'Claude',
+              },
+            ],
+          ],
+          activeGroupIndex: 0,
+        },
+        {
+          kind: 'task:%2Fworkspace:0',
+          label: 'Claude',
+          groups: [
+            [
+              {
+                identifier: 'task:%2Fworkspace:0',
+                kind: 'task:%2Fworkspace:0',
+                label: 'Claude',
+              },
+            ],
+          ],
+          activeGroupIndex: 0,
+        },
+      ],
+      activeSpaceIndex: 0,
+      panelListExpanded: true,
+      panelListWidth: 24,
+      visible: true,
+    },
+    (pane) => {
+      const identifier = pane.identifier ?? 'missing';
+      const restoredPane = new FakePane(identifier, pane.label, pane.kind);
+      restoredPanes.set(identifier, restoredPane);
+      return restoredPane;
+    },
+    () => null,
+  );
+
+  expect(restoration.spaces).toMatchObject([
+    {
+      kind: 'terminal',
+      label: 'Terminal',
+      contentIds: ['task:%2Fworkspace:0'],
+    },
+  ]);
+  expect(restoredPanes.size).toBe(1);
+});
+
 test('restore accepts a third pane kind in its declared space', () => {
   const panelHost = new PanelHost.Class();
   panelHost.registerPaneKind('output', { kind: 'output', label: 'Output' });

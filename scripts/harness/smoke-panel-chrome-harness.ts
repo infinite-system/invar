@@ -187,6 +187,127 @@ async function driveLegacyPersistedPaneRestore(): Promise<void> {
   }
 }
 
+async function driveRestoredTaskPaneSpaceHealing(
+  lineCount: number,
+): Promise<void> {
+  const scaleFixture =
+    await HarnessSmoke.Class.createDriveScaleFixture(lineCount);
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `invar-panel-restored-task-space-${lineCount}-`),
+  );
+  const settingsDirectory = join(homeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  const settingsPath = join(settingsDirectory, 'settings.json');
+  const taskPane = {
+    kind: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:0`,
+    label: 'Claude',
+    identifier: `task:${encodeURIComponent(scaleFixture.workspaceRoot)}:0`,
+  };
+  await Bun.write(
+    settingsPath,
+    `${JSON.stringify({
+      panelWorkspaceStates: {
+        [scaleFixture.workspaceRoot]: {
+          spaces: [
+            {
+              kind: 'terminal',
+              label: 'Terminal',
+              groups: [[taskPane]],
+              activeGroupIndex: 0,
+            },
+            {
+              kind: taskPane.kind,
+              label: taskPane.label,
+              groups: [[taskPane]],
+              activeGroupIndex: 0,
+            },
+          ],
+          activeSpaceIndex: 0,
+          panelListExpanded: true,
+          panelListWidth: 24,
+          visible: true,
+        },
+      },
+    })}\n`,
+  );
+
+  const startDriver = (statusName: string): PtyTestDriver.Model =>
+    new PtyTestDriver.Class({
+      workspaceRoot: scaleFixture.workspaceRoot,
+      columns: 120,
+      rows: 40,
+      homeDirectory,
+      environment: {
+        TUI_STATUS_PATH: join(homeDirectory, statusName),
+        INVAR_AGENT_BACKEND: 'echo',
+      },
+    });
+  try {
+    const observeOneTerminalSpace = async (
+      statusName: string,
+      observationName: string,
+    ): Promise<void> => {
+      const statusPath = join(homeDirectory, statusName);
+      const driver = startDriver(statusName);
+      try {
+        const status = await HarnessSmoke.Class.awaitStatus(
+          driver,
+          statusPath,
+          observationName,
+          (candidate) =>
+            candidate.ready === true &&
+            JSON.stringify(candidate.panelSpaceLabels) ===
+              JSON.stringify(['Terminal']) &&
+            JSON.stringify(candidate.panelContentLabels) ===
+              JSON.stringify(['Claude']) &&
+            JSON.stringify(candidate.panelCellLabels) ===
+              JSON.stringify(['Claude']),
+          15_000,
+        );
+        const snapshot = driver.snapshot();
+        HarnessSmoke.Class.requireCondition(
+          tabBar(status).tabs.length === 1 &&
+            snapshot.findText('Claude ×') === null,
+          `${lineCount}-line ${observationName} paints one Terminal space tab and no Claude space tab`,
+        );
+      } finally {
+        await driver.dispose();
+      }
+    };
+
+    await observeOneTerminalSpace(
+      'first-status.json',
+      'the first boot folds the restored task pane into its saved Terminal space',
+    );
+    const healedSettings = (await Bun.file(settingsPath).json()) as {
+      panelWorkspaceStates: Record<
+        string,
+        { spaces: readonly { kind: string }[] }
+      >;
+    };
+    HarnessSmoke.Class.requireCondition(
+      JSON.stringify(
+        healedSettings.panelWorkspaceStates[
+          scaleFixture.workspaceRoot
+        ]?.spaces.map((space) => space.kind),
+      ) === JSON.stringify(['terminal']),
+      `${lineCount}-line first boot saves only the healed Terminal space`,
+    );
+    await observeOneTerminalSpace(
+      'second-status.json',
+      'the second boot keeps the healed task pane in the Terminal space',
+    );
+    HarnessSmoke.Class.pass(
+      `${lineCount}-line restored task panes stay in Terminal and stale task spaces heal across restart`,
+    );
+  } finally {
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+    await HarnessSmoke.Class.removeTemporaryDirectory(
+      scaleFixture.workspaceRoot,
+    );
+  }
+}
+
 async function driveEmptyPanelRecovery(
   columns: number,
   rows: number,
@@ -1349,6 +1470,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
 }
 
 await driveLegacyPersistedPaneRestore();
+await driveRestoredTaskPaneSpaceHealing(10);
+await driveRestoredTaskPaneSpaceHealing(100_000);
 await driveEmptyPanelRecovery(120, 40);
 await driveEmptyPanelRecovery(88, 24);
 await driveRightDockCrossing();

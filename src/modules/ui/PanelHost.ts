@@ -432,6 +432,10 @@ class $PanelHost {
     return this.spaceForPaneKind(kind).kind;
   }
 
+  declaredSpaceKindForPaneKind(kind: string): string | null {
+    return this.spacesByPaneKind.get(kind)?.kind ?? null;
+  }
+
   spaceLabel(kind: string): string {
     const declaration = [...this.spacesByPaneKind.values()].find(
       (candidate) => candidate.kind === kind,

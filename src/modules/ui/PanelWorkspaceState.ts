@@ -67,17 +67,33 @@ class $PanelWorkspaceState {
   static restore(
     state: PersistedPanelWorkspaceState,
     createPane: (pane: PanelWorkspacePaneState) => PaneContent | null,
-    spaceKindForPaneKind: (kind: string) => string,
+    declaredSpaceKindForPaneKind: (kind: string) => string | null,
   ): PanelWorkspaceRestoration {
+    const claimedPaneIdentifiers = new Set<string>();
     const spaces: PanelSpace[] = state.spaces.flatMap(
       (spaceState, spaceIndex) => {
         const identifier = `${spaceState.kind}-space-restored-${spaceIndex + 1}`;
         const groups = spaceState.groups.flatMap((paneStates, groupIndex) => {
           const contentIds = paneStates.flatMap((paneState) => {
-            const paneSpaceKind = spaceKindForPaneKind(paneState.kind);
-            if (paneSpaceKind !== spaceState.kind) return [];
+            if (
+              paneState.identifier &&
+              claimedPaneIdentifiers.has(paneState.identifier)
+            ) {
+              return [];
+            }
+            const declaredSpaceKind = declaredSpaceKindForPaneKind(
+              paneState.kind,
+            );
+            if (
+              declaredSpaceKind !== null &&
+              declaredSpaceKind !== spaceState.kind
+            ) {
+              return [];
+            }
             const content = createPane(paneState);
-            return content ? [content.id] : [];
+            if (!content || claimedPaneIdentifiers.has(content.id)) return [];
+            claimedPaneIdentifiers.add(content.id);
+            return [content.id];
           });
           return contentIds.length > 0
             ? [

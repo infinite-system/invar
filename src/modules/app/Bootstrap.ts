@@ -1000,12 +1000,13 @@ class $Bootstrap {
           PanelWorkspaceState.Class.restore(
             state,
             (pane) => restorePane(pane),
-            (kind) => panelHost.spaceKindForPaneKind(kind),
+            (kind) => panelHost.declaredSpaceKindForPaneKind(kind),
           ),
         );
       } finally {
         restoringPanelWorkspaceState = false;
       }
+      persistPanelWorkspaceState();
     };
     restorePanelWorkspaceState(workspaceSet.active);
     const taskLauncher = new TaskLauncher.Class({
