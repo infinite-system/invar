@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: ACTIVE
+State: IN-PROGRESS
 
 ## In plain words (user-blessed 2026-08-05)
 
