@@ -6,6 +6,12 @@ CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
 # RESUME ANCHOR 62 — 2026-08-04 ~04:25 EDT — THE NIGHT GOAL IS MET
 
+CRONS DISARMED BY USER ORDER (2026-08-04 ~20:20, verbatim "disarm
+loops"): both the :07 orchestration loop and the :37 sweep are
+STOPPED. The conductor skill's re-arm-on-restart rule is SUSPENDED
+until the user re-arms — a resumed session must NOT recreate them
+unbidden. fleet-watch (the Monitor) stays armed.
+
 All seven landed: #438 (hook policy; builder commits self-skip the
 gate), #494 (monitor log race), #371 (git-watch sequenced), #461
 (scrollbars residual DEAD — first clean gates in days), #499 (smokes
