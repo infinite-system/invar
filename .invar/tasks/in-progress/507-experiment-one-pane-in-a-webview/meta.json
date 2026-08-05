@@ -1,0 +1,15 @@
+{
+  "task": 507,
+  "slug": "experiment-one-pane-in-a-webview",
+  "branch": "fleet/507-experiment-one-pane-in-a-webview",
+  "worktree": ".invar/worktrees/507-experiment-one-pane-in-a-webview",
+  "tmuxSession": "invar/507-experiment-one-pane-in-a-webview",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-507-experiment-one-pane-in-a-webview.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "1f424517e0e7747008fef985f7e07c9bf6bced48",
+  "startedAt": "2026-08-05T19:10:28-04:00"
+}

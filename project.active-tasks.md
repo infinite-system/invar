@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #507 [experiment-one-pane-in-a-webview](.invar/tasks/in-progress/507-experiment-one-pane-in-a-webview/task-507-experiment-one-pane-in-a-webview.md)  [building]
+  `tmux attach -t invar/507-experiment-one-pane-in-a-webview`
 - #506 [constructor-first-and-the-constants-role-table](.invar/tasks/in-progress/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md)  [building]
   `tmux attach -t invar/506-constructor-first-and-the-constants-role-table`
 
