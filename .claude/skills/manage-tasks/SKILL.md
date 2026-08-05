@@ -272,3 +272,13 @@ applies to the whole task, not just its design. Distinct from
 `retired` (dead, never coming back) and `active` (should eventually
 be driven). Enter and leave by `git mv` + a dated note, like every
 state move.
+
+
+## The draft state (added 2026-08-05, user decision)
+
+`draft` = a filed spec/brief AWAITING USER REVIEW before any
+dispatch. Drafts are logged in the repo (never /tmp-only), carry
+`State: DRAFT`, are not backlog, and exit only two ways: blessed
+(git mv to active, possibly splitting into numbered tasks) or
+parked/retired with the user's reason. The draft folder holds the
+reviewable brief itself beside the task file.
