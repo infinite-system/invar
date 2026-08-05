@@ -23,22 +23,6 @@ class $GitWatcher {
   protected static get fallbackIgnoredDirectoryNames(): Set<string> {
     return new Set(['node_modules', '.git', 'dist']);
   }
-
-  protected readonly directoryWatchers = new Map<string, FSWatcher>();
-  // A SINGLE watch on this worktree's git dir, dedicated to HEAD changes (branch switches).
-  protected headWatcher: FSWatcher | null = null;
-  protected debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  protected reconcileTimer: ReturnType<typeof setInterval> | null = null;
-  protected disposed = false;
-  protected readonly debounceMilliseconds: number;
-  protected readonly reconcileIntervalMilliseconds: number;
-  protected readonly onReconciled: (() => void) | null;
-  protected readonly onWatchSetEstablished: (() => void) | null;
-  protected activationIgnoreQuerySubprocessCount = 0;
-  protected activationWatchedDirectoryCount = 0;
-  protected watchSetEstablished = false;
-  protected readonly watchSetEstablishmentPromise: Promise<void>;
-
   constructor(
     readonly cwd: string,
     protected readonly repository: GitRepository.Model,
@@ -55,6 +39,21 @@ class $GitWatcher {
       options.viewPainted,
     );
   }
+
+  protected readonly directoryWatchers = new Map<string, FSWatcher>();
+  // A SINGLE watch on this worktree's git dir, dedicated to HEAD changes (branch switches).
+  protected headWatcher: FSWatcher | null = null;
+  protected debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  protected reconcileTimer: ReturnType<typeof setInterval> | null = null;
+  protected disposed = false;
+  protected readonly debounceMilliseconds: number;
+  protected readonly reconcileIntervalMilliseconds: number;
+  protected readonly onReconciled: (() => void) | null;
+  protected readonly onWatchSetEstablished: (() => void) | null;
+  protected activationIgnoreQuerySubprocessCount = 0;
+  protected activationWatchedDirectoryCount = 0;
+  protected watchSetEstablished = false;
+  protected readonly watchSetEstablishmentPromise: Promise<void>;
 
   protected get Processes() {
     return Processes.Class;

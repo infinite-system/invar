@@ -15,10 +15,44 @@ import type { VideoFrameSource } from './VideoFrameSource.interface';
 // invariant: A streaming producer can outrun the display (src/modules/media/media.invariants.md)
 // invariant: Missing ffmpeg is loud and harmless (src/modules/media/media.invariants.md)
 class $FfmpegVideoSource implements VideoFrameSource {
-  protected readonly subprocess: SpawnedProcess<'ignore', 'ignore', 'ignore'>;
-  protected readonly readFileDescriptor: number;
-  protected readonly pipeDirectory: string;
-  protected disposed = false;
+  static locate(): string | null {
+    return Bun.which('ffmpeg');
+  }
+  static sampleArgumentVector(
+    ffmpegPath: string,
+    width: number,
+    height: number,
+    framesPerSecond: number,
+    outputPath = '-',
+  ): string[] {
+    const pixelWidth = Math.max(1, Math.floor(width));
+    const pixelHeight = Math.max(2, Math.floor(height));
+    const frameRate = Math.max(1, Math.floor(framesPerSecond));
+    return [
+      ffmpegPath,
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      // A morphing Mandelbrot set, not a zooming one. Every zooming variant
+      // ends in a flat or speckled frame once the detail is finer than one
+      // pane pixel. Holding the scale and morphing keeps large shapes and
+      // strong colour at the pane sizes this player uses.
+      `mandelbrot=size=${pixelWidth}x${pixelHeight}:rate=${frameRate}` +
+        ':maxiter=150:start_scale=1.4:end_scale=1.4:morphamp=0.3',
+      '-an',
+      '-threads',
+      '1',
+      '-pix_fmt',
+      'rgba',
+      '-f',
+      'rawvideo',
+      outputPath,
+    ];
+  }
 
   constructor(
     ffmpegPath: string,
@@ -72,45 +106,10 @@ class $FfmpegVideoSource implements VideoFrameSource {
     }
   }
 
-  static locate(): string | null {
-    return Bun.which('ffmpeg');
-  }
-
-  static sampleArgumentVector(
-    ffmpegPath: string,
-    width: number,
-    height: number,
-    framesPerSecond: number,
-    outputPath = '-',
-  ): string[] {
-    const pixelWidth = Math.max(1, Math.floor(width));
-    const pixelHeight = Math.max(2, Math.floor(height));
-    const frameRate = Math.max(1, Math.floor(framesPerSecond));
-    return [
-      ffmpegPath,
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-y',
-      '-f',
-      'lavfi',
-      '-i',
-      // A morphing Mandelbrot set, not a zooming one. Every zooming variant
-      // ends in a flat or speckled frame once the detail is finer than one
-      // pane pixel. Holding the scale and morphing keeps large shapes and
-      // strong colour at the pane sizes this player uses.
-      `mandelbrot=size=${pixelWidth}x${pixelHeight}:rate=${frameRate}` +
-        ':maxiter=150:start_scale=1.4:end_scale=1.4:morphamp=0.3',
-      '-an',
-      '-threads',
-      '1',
-      '-pix_fmt',
-      'rgba',
-      '-f',
-      'rawvideo',
-      outputPath,
-    ];
-  }
+  protected readonly subprocess: SpawnedProcess<'ignore', 'ignore', 'ignore'>;
+  protected readonly readFileDescriptor: number;
+  protected readonly pipeDirectory: string;
+  protected disposed = false;
 
   async readFrameInto(target: Uint8Array): Promise<boolean> {
     let targetOffset = 0;

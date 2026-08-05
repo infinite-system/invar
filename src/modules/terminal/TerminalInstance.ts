@@ -30,19 +30,6 @@ import type {
 } from './TerminalEmulator';
 
 class $TerminalInstance {
-  protected readonly terminalCommandController: TerminalCommandController.Model;
-  protected readonly terminalObserver: TerminalObserver.Model;
-  protected userInputAwaitingParse = false;
-  protected lastKnownIdentity = '';
-  protected lastKnownWorkingDirectory = '';
-  protected plainTitleFallback = '';
-  protected synchronizedUpdatePending = false;
-  protected synchronizedUpdateTimedOut = false;
-  protected synchronizedUpdateTimeoutHandle: ReturnType<
-    typeof setTimeout
-  > | null = null;
-  protected readonly synchronizedUpdateTimeoutMilliseconds: number;
-
   constructor(
     protected readonly backend: TerminalBackend,
     protected readonly emulator: TerminalEmulator.Model,
@@ -86,6 +73,19 @@ class $TerminalInstance {
       this.renderRevision.value++;
     });
   }
+
+  protected readonly terminalCommandController: TerminalCommandController.Model;
+  protected readonly terminalObserver: TerminalObserver.Model;
+  protected userInputAwaitingParse = false;
+  protected lastKnownIdentity = '';
+  protected lastKnownWorkingDirectory = '';
+  protected plainTitleFallback = '';
+  protected synchronizedUpdatePending = false;
+  protected synchronizedUpdateTimedOut = false;
+  protected synchronizedUpdateTimeoutHandle: ReturnType<
+    typeof setTimeout
+  > | null = null;
+  protected readonly synchronizedUpdateTimeoutMilliseconds: number;
 
   /** Bumped on every ordinary parsed pulse, each synchronized commit, and exit. */
   get renderRevision() {

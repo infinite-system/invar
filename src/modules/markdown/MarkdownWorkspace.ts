@@ -32,9 +32,6 @@ class $MarkdownWorkspace
     EditorSurfaceClaim,
     NavigationHistoryContributor
 {
-  declare $watch: typeof import('vue').watch;
-  declare $stopEffects: () => void;
-
   constructor(
     readonly workspace: Workspace.Model,
     /** Whether the MOUNTED preview pane currently holds the keyboard. Supplied by the plugin, which
@@ -69,6 +66,9 @@ class $MarkdownWorkspace
       { immediate: true, flush: 'sync' },
     );
   }
+
+  declare $watch: typeof import('vue').watch;
+  declare $stopEffects: () => void;
 
   protected readonly disposeEditorSurfaceClaim: () => void;
   protected readonly disposeNavigationHistory: () => void;

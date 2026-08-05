@@ -66,102 +66,6 @@ import type { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import type { Dialog, DialogChoice } from './Dialog';
 
 class $OverlayLayer {
-  get paintRevision() {
-    return ref(0);
-  }
-  // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
-  get modalOverlayOwnsScreen(): boolean {
-    return (
-      this.dependencies.commands.open.value ||
-      this.dependencies.findBar.open.value ||
-      this.dependencies.goToLinePrompt.open.value ||
-      this.dependencies.quickOpen.open.value ||
-      this.dependencies.contextMenu.open.value ||
-      this.dependencies.boundedListPopup.capturesKeyboard ||
-      this.dependencies.settingsPanel.open.value ||
-      this.dependencies.shortcutHelp.open.value ||
-      this.dependencies.quitConfirmation.open.value ||
-      this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0
-    );
-  }
-  protected readonly commandPalette: BoxRenderable;
-  protected readonly commandPaletteInput: TextRenderable;
-  protected readonly commandPaletteList: TextRenderable;
-  protected readonly commandPaletteDismissal: ModalOverlayDismissal.Model;
-  protected readonly findBarBox: BoxRenderable;
-  protected readonly findBarText: TextRenderable;
-  protected readonly findBarCloseButton: OverlayCloseButton.Model;
-  protected readonly quickOpenBox: BoxRenderable;
-  protected readonly quickOpenInput: TextRenderable;
-  protected readonly quickOpenList: TextRenderable;
-  protected readonly quickOpenDismissal: ModalOverlayDismissal.Model;
-  protected readonly goToLineBox: BoxRenderable;
-  protected readonly goToLineText: TextRenderable;
-  protected readonly goToLineDismissal: ModalOverlayDismissal.Model;
-  protected readonly confirmBox: BoxRenderable;
-  protected readonly confirmText: TextRenderable;
-  protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
-  protected readonly quitConfirmationBox: BoxRenderable;
-  protected readonly quitConfirmationText: TextRenderable;
-  protected readonly quitConfirmationDismissal: ModalOverlayDismissal.Model;
-  protected readonly settingsBox: BoxRenderable;
-  protected readonly settingsText: SelectableText.Model;
-  protected readonly settingsDismissal: ModalOverlayDismissal.Model;
-  protected readonly shortcutHelpBox: BoxRenderable;
-  protected readonly shortcutHelpText: TextRenderable;
-  protected readonly shortcutHelpDismissal: ModalOverlayDismissal.Model;
-  protected readonly contextMenuBox: BoxRenderable;
-  protected readonly contextMenuList: TextRenderable;
-  protected readonly contextMenuDismissal: ModalOverlayDismissal.Model;
-  protected readonly tooltipText: HitTransparentText.Model;
-  protected readonly commandPaletteViewport: ScrollableTextViewport.Instance;
-  protected readonly quickOpenViewport: ScrollableTextViewport.Instance;
-  protected readonly settingsViewport: ScrollableTextViewport.Instance;
-  protected readonly shortcutHelpViewport: ScrollableTextViewport.Instance;
-  protected readonly contextMenuViewport: ScrollableTextViewport.Instance;
-  protected commandPaletteContentRows = 0;
-  protected commandPaletteViewportRows = 1;
-  protected quickOpenContentRows = 0;
-  protected quickOpenViewportRows = 1;
-  protected settingsContentRows = 0;
-  protected settingsViewportRows = 1;
-  protected settingsViewportColumns = 1;
-  protected shortcutHelpContentRows = 0;
-  protected shortcutHelpVisibleRows = 1;
-  protected contextMenuContentRows = 0;
-  protected contextMenuViewportRows = 1;
-  protected previousCommandPaletteOpen = false;
-  protected previousCommandPaletteSelectedIndex = -1;
-  protected previousQuickOpenOpen = false;
-  protected previousQuickOpenSelectedIndex = -1;
-  protected previousSettingsOpen = false;
-  protected previousSettingsSelectedIndex = -1;
-  protected previousShortcutHelpOpen = false;
-  protected previousContextMenuOpen = false;
-  protected previousContextMenuSelectedIndex = -1;
-  // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
-  // invariant: Seams are drawn at the shared generator (project.invariants.md)
-  protected readonly settingsSelection = new TextSelectionModel.Class();
-  protected settingsRenderedLines: readonly SettingsRenderedLine[] = [];
-  protected readonly dialogBoundsByName = new Map<
-    OverlayDialogName,
-    OverlayDialogBounds
-  >();
-  // Hit geometry the renderers drew this frame, read by the pointer handlers so a drawn cell and its
-  // hit-rect never disagree (the one-geometry-source rule). Written in update(), read on mouse events.
-  protected findBarButtonZones: FindBarButtonZone[] = [];
-  // Clickable widget zones the settings renderer drew this frame (one-geometry-source): each maps a
-  // (row, column-range) to a descriptor index + an action, so a mouse click edits the setting like a UI
-  // app — steppers for numbers, a toggle for booleans, arrows for enums.
-  protected settingsWidgetZones: SettingsWidgetZone[] = [];
-  protected quitConfirmationButtonZones: QuitConfirmationButtonZone[] = [];
-  protected quitConfirmationHoveredChoice: DialogChoice | null = null;
-  protected commandPaletteRowCount = 0;
-  protected commandPaletteFirstVisible = 0;
-  protected quickOpenRowCount = 0;
-  // The model index of the first row the quick-open list currently draws (its scroll window's top), so a
-  // pointer hit-test maps a visible row back to the match it draws. 0 whenever the list is unscrolled.
-  protected quickOpenFirstVisible = 0;
   constructor(protected readonly dependencies: OverlayLayerDependencies) {
     const { renderer, shortcutHelp, contextMenu, quickOpen } = dependencies;
     const root = renderer.root;
@@ -640,6 +544,103 @@ class $OverlayLayer {
     });
     root.add(this.tooltipText);
   }
+
+  get paintRevision() {
+    return ref(0);
+  }
+  // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
+  get modalOverlayOwnsScreen(): boolean {
+    return (
+      this.dependencies.commands.open.value ||
+      this.dependencies.findBar.open.value ||
+      this.dependencies.goToLinePrompt.open.value ||
+      this.dependencies.quickOpen.open.value ||
+      this.dependencies.contextMenu.open.value ||
+      this.dependencies.boundedListPopup.capturesKeyboard ||
+      this.dependencies.settingsPanel.open.value ||
+      this.dependencies.shortcutHelp.open.value ||
+      this.dependencies.quitConfirmation.open.value ||
+      this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0
+    );
+  }
+  protected readonly commandPalette: BoxRenderable;
+  protected readonly commandPaletteInput: TextRenderable;
+  protected readonly commandPaletteList: TextRenderable;
+  protected readonly commandPaletteDismissal: ModalOverlayDismissal.Model;
+  protected readonly findBarBox: BoxRenderable;
+  protected readonly findBarText: TextRenderable;
+  protected readonly findBarCloseButton: OverlayCloseButton.Model;
+  protected readonly quickOpenBox: BoxRenderable;
+  protected readonly quickOpenInput: TextRenderable;
+  protected readonly quickOpenList: TextRenderable;
+  protected readonly quickOpenDismissal: ModalOverlayDismissal.Model;
+  protected readonly goToLineBox: BoxRenderable;
+  protected readonly goToLineText: TextRenderable;
+  protected readonly goToLineDismissal: ModalOverlayDismissal.Model;
+  protected readonly confirmBox: BoxRenderable;
+  protected readonly confirmText: TextRenderable;
+  protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
+  protected readonly quitConfirmationBox: BoxRenderable;
+  protected readonly quitConfirmationText: TextRenderable;
+  protected readonly quitConfirmationDismissal: ModalOverlayDismissal.Model;
+  protected readonly settingsBox: BoxRenderable;
+  protected readonly settingsText: SelectableText.Model;
+  protected readonly settingsDismissal: ModalOverlayDismissal.Model;
+  protected readonly shortcutHelpBox: BoxRenderable;
+  protected readonly shortcutHelpText: TextRenderable;
+  protected readonly shortcutHelpDismissal: ModalOverlayDismissal.Model;
+  protected readonly contextMenuBox: BoxRenderable;
+  protected readonly contextMenuList: TextRenderable;
+  protected readonly contextMenuDismissal: ModalOverlayDismissal.Model;
+  protected readonly tooltipText: HitTransparentText.Model;
+  protected readonly commandPaletteViewport: ScrollableTextViewport.Instance;
+  protected readonly quickOpenViewport: ScrollableTextViewport.Instance;
+  protected readonly settingsViewport: ScrollableTextViewport.Instance;
+  protected readonly shortcutHelpViewport: ScrollableTextViewport.Instance;
+  protected readonly contextMenuViewport: ScrollableTextViewport.Instance;
+  protected commandPaletteContentRows = 0;
+  protected commandPaletteViewportRows = 1;
+  protected quickOpenContentRows = 0;
+  protected quickOpenViewportRows = 1;
+  protected settingsContentRows = 0;
+  protected settingsViewportRows = 1;
+  protected settingsViewportColumns = 1;
+  protected shortcutHelpContentRows = 0;
+  protected shortcutHelpVisibleRows = 1;
+  protected contextMenuContentRows = 0;
+  protected contextMenuViewportRows = 1;
+  protected previousCommandPaletteOpen = false;
+  protected previousCommandPaletteSelectedIndex = -1;
+  protected previousQuickOpenOpen = false;
+  protected previousQuickOpenSelectedIndex = -1;
+  protected previousSettingsOpen = false;
+  protected previousSettingsSelectedIndex = -1;
+  protected previousShortcutHelpOpen = false;
+  protected previousContextMenuOpen = false;
+  protected previousContextMenuSelectedIndex = -1;
+  // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
+  // invariant: Seams are drawn at the shared generator (project.invariants.md)
+  protected readonly settingsSelection = new TextSelectionModel.Class();
+  protected settingsRenderedLines: readonly SettingsRenderedLine[] = [];
+  protected readonly dialogBoundsByName = new Map<
+    OverlayDialogName,
+    OverlayDialogBounds
+  >();
+  // Hit geometry the renderers drew this frame, read by the pointer handlers so a drawn cell and its
+  // hit-rect never disagree (the one-geometry-source rule). Written in update(), read on mouse events.
+  protected findBarButtonZones: FindBarButtonZone[] = [];
+  // Clickable widget zones the settings renderer drew this frame (one-geometry-source): each maps a
+  // (row, column-range) to a descriptor index + an action, so a mouse click edits the setting like a UI
+  // app — steppers for numbers, a toggle for booleans, arrows for enums.
+  protected settingsWidgetZones: SettingsWidgetZone[] = [];
+  protected quitConfirmationButtonZones: QuitConfirmationButtonZone[] = [];
+  protected quitConfirmationHoveredChoice: DialogChoice | null = null;
+  protected commandPaletteRowCount = 0;
+  protected commandPaletteFirstVisible = 0;
+  protected quickOpenRowCount = 0;
+  // The model index of the first row the quick-open list currently draws (its scroll window's top), so a
+  // pointer hit-test maps a visible row back to the match it draws. 0 whenever the list is unscrolled.
+  protected quickOpenFirstVisible = 0;
   protected createCloseButton(
     identifier: string,
     zIndex: number,

@@ -19,6 +19,8 @@ import { CodexStreamMapping } from './CodexStreamMapping';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 
 class $CodexStreamBackend implements AgentBackend {
+  constructor(protected readonly options: CodexStreamOptions) {}
+
   readonly ibrFoundationDelivery = 'prepend-every-prompt';
 
   protected eventCallback: ((event: AgentEvent) => void) | null = null;
@@ -28,8 +30,6 @@ class $CodexStreamBackend implements AgentBackend {
   protected interrupting = false;
   protected disposed = false;
   protected stderrTail = '';
-
-  constructor(protected readonly options: CodexStreamOptions) {}
 
   send(prompt: string): void {
     if (this.disposed || this.child) return;

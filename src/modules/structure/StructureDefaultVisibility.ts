@@ -20,16 +20,6 @@ import type {
 } from './StructureSource.interface';
 
 class $StructureDefaultVisibility {
-  declare $watch: typeof import('vue').watch;
-  declare $stopEffects: () => void;
-
-  /** Absolute paths whose reader closed the pane by hand; the default skips them. */
-  protected readonly readerClosedPaths = new Set<string>();
-  /** True while the visible dock was opened by THIS policy, so only its own reveals auto-hide. */
-  protected autoShown = false;
-  /** Guards the visibility watch while the policy itself mutates the dock. */
-  protected applyingDefault = false;
-
   constructor(protected readonly options: StructureDefaultVisibilityOptions) {
     this.autoShown = this.options.dockContent.isPainted();
     this.$watch(
@@ -47,6 +37,16 @@ class $StructureDefaultVisibility {
       { flush: 'sync' },
     );
   }
+
+  declare $watch: typeof import('vue').watch;
+  declare $stopEffects: () => void;
+
+  /** Absolute paths whose reader closed the pane by hand; the default skips them. */
+  protected readonly readerClosedPaths = new Set<string>();
+  /** True while the visible dock was opened by THIS policy, so only its own reveals auto-hide. */
+  protected autoShown = false;
+  /** Guards the visibility watch while the policy itself mutates the dock. */
+  protected applyingDefault = false;
 
   /** Everything the default depends on: workspace, document, installed sources, the setting. */
   protected get documentFingerprint(): string {

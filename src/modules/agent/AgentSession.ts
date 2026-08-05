@@ -30,6 +30,28 @@ import { TranscriptContextSerializer } from './TranscriptContextSerializer';
 import type { AgentIbrFoundationResolution } from './AgentIbrFoundation';
 
 class $AgentSession {
+  protected static get maximumPendingContextCharacters(): number {
+    return 32 * 1024;
+  }
+  protected static get streamInactivityThresholdMilliseconds(): number {
+    const injectedThreshold = Number(
+      process.env.INVAR_AGENT_STREAM_INACTIVITY_MS,
+    );
+    return Number.isFinite(injectedThreshold) && injectedThreshold > 0
+      ? injectedThreshold
+      : 120_000;
+  }
+
+  constructor(
+    protected backend: AgentBackend,
+    activeEngine: ResolvedEngine = 'claude',
+    protected readonly workspaceRoot: string = process.cwd(),
+    protected readonly ibrFoundation: AgentIbrFoundationResolution | null = null,
+  ) {
+    this.currentEngine = activeEngine;
+    this.wireBackend();
+  }
+
   /** The one append-only transcript. Mutated only by fold()/send()/swapBackend() here; read-only
    *  everywhere else. */
   protected readonly entries: TranscriptEntry[] = [];
@@ -71,16 +93,6 @@ class $AgentSession {
    *  so the transcript records who PRODUCED each turn (history keeps its label across switches).
    *  Defaults to 'claude' (the only engine that existed before the stamp) for direct construction. */
   protected currentEngine: ResolvedEngine;
-
-  constructor(
-    protected backend: AgentBackend,
-    activeEngine: ResolvedEngine = 'claude',
-    protected readonly workspaceRoot: string = process.cwd(),
-    protected readonly ibrFoundation: AgentIbrFoundationResolution | null = null,
-  ) {
-    this.currentEngine = activeEngine;
-    this.wireBackend();
-  }
 
   /** The engine currently answering (the pane title + greeting read this when no engine port is bound). */
   get activeEngine(): ResolvedEngine {
@@ -543,19 +555,6 @@ class $AgentSession {
     promptParts.push(prompt);
     this.pendingContextPreamble = null;
     return promptParts.join('\n\n');
-  }
-
-  protected static get maximumPendingContextCharacters(): number {
-    return 32 * 1024;
-  }
-
-  protected static get streamInactivityThresholdMilliseconds(): number {
-    const injectedThreshold = Number(
-      process.env.INVAR_AGENT_STREAM_INACTIVITY_MS,
-    );
-    return Number.isFinite(injectedThreshold) && injectedThreshold > 0
-      ? injectedThreshold
-      : 120_000;
   }
 
   dispose(): void {

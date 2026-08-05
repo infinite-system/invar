@@ -72,6 +72,65 @@ class $AgentPaneContent implements PaneContent {
   protected static get WAITING_CYCLE_MILLISECONDS(): number {
     return 1500;
   }
+  constructor(
+    protected readonly session: AgentSession.Instance,
+    protected readonly identity: AgentPaneIdentity = {},
+  ) {
+    this.id = identity.identifier ?? 'agent';
+    this.instanceLabel = identity.label ?? 'Agent';
+    this.spinner = new AgentSpinner.Class(
+      () => this.session.turnInFlight && this.paneVisible.value,
+    );
+    this.transcriptSelectionDrag = new SelectionDragBehavior.Class({
+      viewportRectangle: () => ({
+        leftColumn: 0,
+        rightColumn: Math.max(0, this.lastWidth - 1),
+        topRow: 0,
+        bottomRow: Math.max(0, this.lastBodyHeight - 1),
+      }),
+      positionAtCell: (column, row) =>
+        this.regionAtRow(row).kind === 'transcript'
+          ? this.transcriptPointAt(column, row)
+          : null,
+      horizontalScrollPosition: () => 0,
+      horizontalScrollingEnabled: () => false,
+      beginSelection: (position) => this.beginTranscriptSelection(position),
+      extendSelection: (position) => this.extendTranscriptSelection(position),
+      finishSelection: () => this.finishTranscriptSelection(),
+      lineGraphemeCount: (line) => this.transcriptLineGraphemeCount(line),
+      scrollColumns: () => {},
+      scrollRows: (rows) => this.scrollRowsBy(rows),
+      haltCompetingScroll: () => this.haltScrollMomentum(),
+    });
+    // MONOTONIC fuse: read every repaint source, then return a strictly increasing counter. An
+    // arithmetic SUM here could cancel (spinner-stop −1 + session-bump +1 = net 0 → a finished turn
+    // stuck rendering "working…", the reviewed repaint bug); a recompute now ALWAYS yields a new value.
+    // Reading composer TEXT (string identity), not its length, also kills same-length-edit cancels.
+    let fuseCounter = 0;
+    this.revision = computed(() => {
+      void this.session.renderRevision.value;
+      void this.composer.text.value;
+      void this.spinner.frame.value;
+      void this.spinner.running;
+      void this.viewRevision.value;
+      void this.permissionMode?.value;
+      void this.terminalFollowPort?.mode.value;
+      // Transcript-search state repaints through the SAME fuse: the bar opening (which creates the
+      // engine), the live query, the matches, and the cycled current match all change what the body
+      // rows paint. Before the engine exists only `open` is subscribed — its flip re-runs this
+      // computed, which then finds and subscribes the fresh engine.
+      void this.transcriptSearchPort?.findBar.open.value;
+      const transcriptSearchEngine =
+        this.transcriptSearchPort?.findBar.engineFor(
+          this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER,
+        );
+      void transcriptSearchEngine?.query.value;
+      void transcriptSearchEngine?.matches.value;
+      void transcriptSearchEngine?.currentMatchIndex.value;
+      fuseCounter += 1;
+      return fuseCounter;
+    });
+  }
 
   protected get agentPaneContentClass(): typeof $AgentPaneContent {
     return this.constructor as typeof $AgentPaneContent;
@@ -163,66 +222,6 @@ class $AgentPaneContent implements PaneContent {
   /** The composer caret cell (viewport-local) resolved last frame. */
   protected lastCaret = { column: 2, row: 0 };
   protected lastGlyphLevel: GlyphLevel = 'unicode';
-
-  constructor(
-    protected readonly session: AgentSession.Instance,
-    protected readonly identity: AgentPaneIdentity = {},
-  ) {
-    this.id = identity.identifier ?? 'agent';
-    this.instanceLabel = identity.label ?? 'Agent';
-    this.spinner = new AgentSpinner.Class(
-      () => this.session.turnInFlight && this.paneVisible.value,
-    );
-    this.transcriptSelectionDrag = new SelectionDragBehavior.Class({
-      viewportRectangle: () => ({
-        leftColumn: 0,
-        rightColumn: Math.max(0, this.lastWidth - 1),
-        topRow: 0,
-        bottomRow: Math.max(0, this.lastBodyHeight - 1),
-      }),
-      positionAtCell: (column, row) =>
-        this.regionAtRow(row).kind === 'transcript'
-          ? this.transcriptPointAt(column, row)
-          : null,
-      horizontalScrollPosition: () => 0,
-      horizontalScrollingEnabled: () => false,
-      beginSelection: (position) => this.beginTranscriptSelection(position),
-      extendSelection: (position) => this.extendTranscriptSelection(position),
-      finishSelection: () => this.finishTranscriptSelection(),
-      lineGraphemeCount: (line) => this.transcriptLineGraphemeCount(line),
-      scrollColumns: () => {},
-      scrollRows: (rows) => this.scrollRowsBy(rows),
-      haltCompetingScroll: () => this.haltScrollMomentum(),
-    });
-    // MONOTONIC fuse: read every repaint source, then return a strictly increasing counter. An
-    // arithmetic SUM here could cancel (spinner-stop −1 + session-bump +1 = net 0 → a finished turn
-    // stuck rendering "working…", the reviewed repaint bug); a recompute now ALWAYS yields a new value.
-    // Reading composer TEXT (string identity), not its length, also kills same-length-edit cancels.
-    let fuseCounter = 0;
-    this.revision = computed(() => {
-      void this.session.renderRevision.value;
-      void this.composer.text.value;
-      void this.spinner.frame.value;
-      void this.spinner.running;
-      void this.viewRevision.value;
-      void this.permissionMode?.value;
-      void this.terminalFollowPort?.mode.value;
-      // Transcript-search state repaints through the SAME fuse: the bar opening (which creates the
-      // engine), the live query, the matches, and the cycled current match all change what the body
-      // rows paint. Before the engine exists only `open` is subscribed — its flip re-runs this
-      // computed, which then finds and subscribes the fresh engine.
-      void this.transcriptSearchPort?.findBar.open.value;
-      const transcriptSearchEngine =
-        this.transcriptSearchPort?.findBar.engineFor(
-          this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER,
-        );
-      void transcriptSearchEngine?.query.value;
-      void transcriptSearchEngine?.matches.value;
-      void transcriptSearchEngine?.currentMatchIndex.value;
-      fuseCounter += 1;
-      return fuseCounter;
-    });
-  }
 
   /** The host reports whether this pane is actually on screen (panel visible AND the agent is a visible
    *  cell). Drives the spinner's busy∧visible gate. */

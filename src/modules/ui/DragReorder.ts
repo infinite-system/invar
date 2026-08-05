@@ -2,14 +2,14 @@ import { Static } from 'ivue/extras';
 
 /** Shared pointer-drag state for ordered UI collections. Geometry stays with each consumer. */
 class $DragReorder {
-  protected draggingIdentifier: string | null = null;
-
   constructor(
     protected readonly moveItem: (
       identifier: string,
       targetIndex: number,
     ) => boolean,
   ) {}
+
+  protected draggingIdentifier: string | null = null;
 
   begin(identifier: string): void {
     this.draggingIdentifier = identifier;

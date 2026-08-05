@@ -4,6 +4,38 @@ import type { DocumentHandle } from './DocumentHandle';
 // invariant: Gutter marks come from document scoped contributions (src/modules/workspace/workspace.invariants.md)
 // invariant: One mark has one reserved meaning (src/modules/workspace/workspace.invariants.md)
 class $GutterDecorations {
+  static priorityFor(decoration: EditorLineDecoration): number {
+    if (decoration.owner === 'diagnostics') {
+      if (decoration.severity === 'error') return 700;
+      if (decoration.severity === 'warning') return 600;
+      if (decoration.severity === 'info') return 500;
+      return 400;
+    }
+    if (decoration.kind === 'modified') return 300;
+    if (decoration.kind === 'added') return 200;
+    return 100;
+  }
+  static colorFor(decoration: EditorLineDecoration): EditorDecorationColor {
+    return decoration.owner === 'diagnostics'
+      ? decoration.severity
+      : decoration.kind;
+  }
+  static highestPriority(
+    decorations: readonly EditorLineDecoration[],
+  ): EditorLineDecoration | null {
+    let highestPriorityDecoration: EditorLineDecoration | null = null;
+    for (const decoration of decorations) {
+      if (
+        highestPriorityDecoration === null ||
+        this.priorityFor(decoration) >
+          this.priorityFor(highestPriorityDecoration)
+      ) {
+        highestPriorityDecoration = decoration;
+      }
+    }
+    return highestPriorityDecoration;
+  }
+
   protected readonly contributions = new Set<GutterDecorationContribution>();
   protected snapshotCache = new WeakMap<
     DocumentHandle.Model,
@@ -67,40 +99,6 @@ class $GutterDecorations {
     handle: DocumentHandle.Model,
   ): ReadonlyMap<number, readonly EditorLineDecoration[]> {
     return this.snapshotFor(handle).byLine;
-  }
-
-  static priorityFor(decoration: EditorLineDecoration): number {
-    if (decoration.owner === 'diagnostics') {
-      if (decoration.severity === 'error') return 700;
-      if (decoration.severity === 'warning') return 600;
-      if (decoration.severity === 'info') return 500;
-      return 400;
-    }
-    if (decoration.kind === 'modified') return 300;
-    if (decoration.kind === 'added') return 200;
-    return 100;
-  }
-
-  static colorFor(decoration: EditorLineDecoration): EditorDecorationColor {
-    return decoration.owner === 'diagnostics'
-      ? decoration.severity
-      : decoration.kind;
-  }
-
-  static highestPriority(
-    decorations: readonly EditorLineDecoration[],
-  ): EditorLineDecoration | null {
-    let highestPriorityDecoration: EditorLineDecoration | null = null;
-    for (const decoration of decorations) {
-      if (
-        highestPriorityDecoration === null ||
-        this.priorityFor(decoration) >
-          this.priorityFor(highestPriorityDecoration)
-      ) {
-        highestPriorityDecoration = decoration;
-      }
-    }
-    return highestPriorityDecoration;
   }
 }
 

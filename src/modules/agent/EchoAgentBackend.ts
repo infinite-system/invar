@@ -15,6 +15,8 @@ import {
 } from './AgentTerminalTools';
 
 class $EchoAgentBackend implements AgentBackend {
+  constructor(protected readonly options: EchoAgentOptions = {}) {}
+
   /** The echo can PAUSE a scripted tool behind a permission prompt (env-gated), so the whole ask-mode
    *  UI loop is drivable hermetically — no SDK, no billing. */
   readonly supportsPermissionPrompts = true;
@@ -25,8 +27,6 @@ class $EchoAgentBackend implements AgentBackend {
   protected pendingTimer: ReturnType<typeof setTimeout> | null = null;
   /** Session-scoped auto-allow (mirrors the SDK backend's 'always-allow' semantics for the smoke). */
   protected readonly autoAllowedTools = new Set<string>();
-
-  constructor(protected readonly options: EchoAgentOptions = {}) {}
 
   send(prompt: string): void {
     if (this.disposed) return;

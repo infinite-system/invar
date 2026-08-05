@@ -29,24 +29,6 @@ import type { Tooltip } from './Tooltip';
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 class $CommandBar {
-  readonly bar: TextRenderable;
-  protected currentGeometry: CommandBarGeometry = {
-    width: 1,
-    segments: [],
-  };
-
-  constructor(protected readonly dependencies: CommandBarDependencies) {
-    this.bar = new TextRenderable(dependencies.renderer, {
-      id: 'workspace-command-bar',
-      content: '',
-      width: '100%',
-      height: 1,
-      wrapMode: 'none',
-      selectable: false,
-    });
-    this.wirePointerInput();
-  }
-
   static layoutGeometry(
     width: number,
     folderName: string,
@@ -110,6 +92,24 @@ class $CommandBar {
     }
     return { width: boundedWidth, segments };
   }
+
+  constructor(protected readonly dependencies: CommandBarDependencies) {
+    this.bar = new TextRenderable(dependencies.renderer, {
+      id: 'workspace-command-bar',
+      content: '',
+      width: '100%',
+      height: 1,
+      wrapMode: 'none',
+      selectable: false,
+    });
+    this.wirePointerInput();
+  }
+
+  readonly bar: TextRenderable;
+  protected currentGeometry: CommandBarGeometry = {
+    width: 1,
+    segments: [],
+  };
 
   update(): void {
     const width =

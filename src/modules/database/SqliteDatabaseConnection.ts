@@ -8,11 +8,11 @@ import type {
 
 // invariant: Database answers can exceed the view (src/modules/database/database.invariants.md)
 class $SqliteDatabaseConnection implements DatabaseConnection {
-  protected database: BunSqliteDatabase | null;
-
   constructor(filePath: string) {
     this.database = new BunSqliteDatabase(filePath);
   }
+
+  protected database: BunSqliteDatabase | null;
 
   async query(
     statementText: string,

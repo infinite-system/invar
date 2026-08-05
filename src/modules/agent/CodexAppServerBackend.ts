@@ -37,6 +37,8 @@ import {
 } from './AgentTerminalTools';
 
 class $CodexAppServerBackend implements AgentBackend {
+  constructor(protected readonly options: CodexAppServerOptions) {}
+
   readonly supportsPermissionPrompts = true;
   readonly ibrFoundationDelivery = 'prepend-prompt';
 
@@ -52,8 +54,6 @@ class $CodexAppServerBackend implements AgentBackend {
   protected disposed = false;
   protected permissionRequestCounter = 0;
   protected stderrTail = '';
-
-  constructor(protected readonly options: CodexAppServerOptions) {}
 
   send(prompt: string): void {
     if (this.disposed || this.turnInFlight) return; // one turn at a time (AgentSession also guards)

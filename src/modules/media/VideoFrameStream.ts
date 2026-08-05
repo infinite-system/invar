@@ -3,14 +3,6 @@ import type { VideoFrameSource } from './VideoFrameSource.interface';
 // invariant: Video decoding never exceeds the showing and decoding frames (src/modules/media/media.invariants.md)
 // invariant: Playback memory is independent of duration (src/modules/media/media.invariants.md)
 class $VideoFrameStream {
-  protected showingFrameStorage: Uint8Array;
-  protected decodingFrameStorage: Uint8Array;
-  protected pullInFlight = false;
-  protected decodedFrameIndexValue = -1;
-  protected decodedFrameCountValue = 0;
-  protected droppedFrameCountValue = 0;
-  protected disposed = false;
-
   constructor(
     protected readonly source: VideoFrameSource,
     readonly width: number,
@@ -21,6 +13,14 @@ class $VideoFrameStream {
     this.showingFrameStorage = new Uint8Array(frameByteLength);
     this.decodingFrameStorage = new Uint8Array(frameByteLength);
   }
+
+  protected showingFrameStorage: Uint8Array;
+  protected decodingFrameStorage: Uint8Array;
+  protected pullInFlight = false;
+  protected decodedFrameIndexValue = -1;
+  protected decodedFrameCountValue = 0;
+  protected droppedFrameCountValue = 0;
+  protected disposed = false;
 
   get showingFrame(): Uint8Array {
     return this.showingFrameStorage;

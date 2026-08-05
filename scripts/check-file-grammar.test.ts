@@ -132,6 +132,60 @@ describe('file grammar failure paths', () => {
     );
   });
 
+  test('rejects an instance member before the constructor', () => {
+    const checkerResult = runCheckerFixture('syntax', {
+      fileName: 'Example.ts',
+      sourceText: validClassFile(
+        'Example',
+        `  get value(): number { return 1; }
+  constructor() {}`,
+      ),
+    });
+
+    expect(checkerResult.exitCode).toBe(1);
+    expect(checkerResult.combinedOutput).toContain('syntax\tenforced\t1');
+    expect(checkerResult.combinedOutput).toContain(
+      '[constructor-first] static members must precede the constructor, which must precede every instance member',
+    );
+  });
+
+  test('rejects a static member after the constructor', () => {
+    expectRule(
+      [
+        {
+          fileName: 'src/modules/example/Example.ts',
+          sourceText: validClassFile(
+            'Example',
+            `  constructor() {}
+  static get DEFAULT_VALUE(): number { return 1; }`,
+          ),
+        },
+      ],
+      'constructor-first',
+    );
+  });
+
+  test('accepts static members before the constructor', () => {
+    const violations = inspectFileGrammar([
+      {
+        fileName: 'src/modules/example/Example.ts',
+        sourceText: validClassFile(
+          'Example',
+          `  static get DEFAULT_VALUE(): number { return 1; }
+  constructor() {}
+  get value(): number { return 1; }`,
+        ),
+      },
+      {
+        fileName: 'src/modules/example/Example.test.ts',
+        sourceText:
+          "import { test } from 'bun:test';\ntest('example', () => {});\n",
+      },
+    ]);
+
+    expect(violations).toEqual([]);
+  });
+
   test('rejects abutting top-level declarations', () => {
     const checkerResult = runCheckerFixture('syntax', {
       fileName: 'Example.ts',

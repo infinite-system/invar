@@ -16,19 +16,19 @@ import { InlineRewrite } from './InlineRewrite';
 class $InlineRewriteWorkspace
   implements WorkspaceContribution, EditorContribution
 {
-  protected readonly controllers = new Map<
-    SourceTextView,
-    InlineRewrite.Instance
-  >();
-  protected disposeEditorContribution: (() => void) | null = null;
-  protected enabled = false;
-
   constructor(
     protected readonly workspace: Workspace.Model,
     protected readonly options: InlineRewriteWorkspaceOptions,
   ) {
     this.setEnabled(options.enabled);
   }
+
+  protected readonly controllers = new Map<
+    SourceTextView,
+    InlineRewrite.Instance
+  >();
+  protected disposeEditorContribution: (() => void) | null = null;
+  protected enabled = false;
 
   setEnabled(enabled: boolean): void {
     if (enabled === this.enabled) return;

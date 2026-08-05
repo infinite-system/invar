@@ -5,8 +5,27 @@ import type { AgentSession } from './AgentSession';
 
 // invariant: Terminal follow obeys the live user mode (src/modules/agent/agent.invariants.md)
 class $AgentTerminalFollow {
-  protected readonly stopObservation: () => void;
-  protected disposed = false;
+  static nextMode(mode: AgentTerminalFollowMode): AgentTerminalFollowMode {
+    const currentIndex = this.MODE_ORDER.indexOf(mode);
+    const nextIndex =
+      currentIndex < 0 ? 0 : (currentIndex + 1) % this.MODE_ORDER.length;
+    return this.MODE_ORDER[nextIndex]!;
+  }
+  static labelFor(mode: AgentTerminalFollowMode): string {
+    switch (mode) {
+      case 'follow-all':
+        return 'follow';
+      case 'on-error':
+        return 'on-error';
+      case 'on-request':
+        return 'on-request';
+      case 'off':
+        return 'off';
+    }
+  }
+  protected static get MODE_ORDER(): readonly AgentTerminalFollowMode[] {
+    return ['follow-all', 'on-error', 'on-request', 'off'];
+  }
 
   constructor(
     protected readonly session: AgentSession.Model,
@@ -18,6 +37,9 @@ class $AgentTerminalFollow {
       this.observe(event),
     );
   }
+
+  protected readonly stopObservation: () => void;
+  protected disposed = false;
 
   get currentMode(): AgentTerminalFollowMode {
     return this.mode.value;
@@ -35,26 +57,6 @@ class $AgentTerminalFollow {
     const agentTerminalFollowClass = this
       .constructor as typeof $AgentTerminalFollow;
     return agentTerminalFollowClass.labelFor(this.mode.value);
-  }
-
-  static nextMode(mode: AgentTerminalFollowMode): AgentTerminalFollowMode {
-    const currentIndex = this.MODE_ORDER.indexOf(mode);
-    const nextIndex =
-      currentIndex < 0 ? 0 : (currentIndex + 1) % this.MODE_ORDER.length;
-    return this.MODE_ORDER[nextIndex]!;
-  }
-
-  static labelFor(mode: AgentTerminalFollowMode): string {
-    switch (mode) {
-      case 'follow-all':
-        return 'follow';
-      case 'on-error':
-        return 'on-error';
-      case 'on-request':
-        return 'on-request';
-      case 'off':
-        return 'off';
-    }
   }
 
   dispose(): void {
@@ -106,10 +108,6 @@ class $AgentTerminalFollow {
       `output (${event.output.totalLines} lines${event.output.truncated ? ', truncated' : ''}):`,
       ...(outputLines.length > 0 ? outputLines : ['<no output>']),
     ].join('\n');
-  }
-
-  protected static get MODE_ORDER(): readonly AgentTerminalFollowMode[] {
-    return ['follow-all', 'on-error', 'on-request', 'off'];
   }
 }
 

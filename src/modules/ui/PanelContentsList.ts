@@ -8,12 +8,6 @@ import { WrapText } from './WrapText';
 // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
 // invariant: The panel contents list mirrors open content (src/modules/ui/ui.invariants.md)
 class $PanelContentsList {
-  protected readonly minimumWidth = 10;
-  protected readonly maximumWidth = 40;
-  protected draggingRow: PanelContentsListRow | null = null;
-  protected hoveredRowIndex = -1;
-  protected hoveredAction: 'split' | 'close' | null = null;
-
   constructor(
     protected readonly panelHost: PanelHost.Instance,
     protected readonly requestSplit: (
@@ -25,6 +19,12 @@ class $PanelContentsList {
       row: number;
     }) => void = () => {},
   ) {}
+
+  protected readonly minimumWidth = 10;
+  protected readonly maximumWidth = 40;
+  protected draggingRow: PanelContentsListRow | null = null;
+  protected hoveredRowIndex = -1;
+  protected hoveredAction: 'split' | 'close' | null = null;
 
   protected get headerLabel(): string {
     const activeSpace = this.panelHost.activeSpace;

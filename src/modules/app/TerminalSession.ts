@@ -26,11 +26,15 @@ import { Static } from 'ivue/extras';
 
 class $TerminalSession {
   /** DECSET 1004 focus reporting: the terminal emits \e[I on focus-in, \e[O on focus-out. */
+  // Hot session-recovery path: fixed DECSET bytes never vary by subclass.
   static readonly FOCUS_REPORTING_ON = '\x1b[?1004h';
+  // Hot session-recovery path: fixed DECRST bytes never vary by subclass.
   static readonly FOCUS_REPORTING_OFF = '\x1b[?1004l';
   /** DECSET 2004 bracketed paste: pastes arrive framed \e[200~…\e[201~ (OpenTUI parses the framing
    *  into its `paste` event but never enables the mode — the app owns it). */
+  // Hot session-recovery path: fixed DECSET bytes never vary by subclass.
   static readonly BRACKETED_PASTE_ON = '\x1b[?2004h';
+  // Hot session-recovery path: fixed DECRST bytes never vary by subclass.
   static readonly BRACKETED_PASTE_OFF = '\x1b[?2004l';
 
   /** Enter the APP-owned terminal modes — the ones OpenTUI's native setup does NOT manage: focus

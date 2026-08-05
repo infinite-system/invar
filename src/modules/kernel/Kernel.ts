@@ -8,14 +8,13 @@ import { Logging } from '../system/Logging';
 // invariant: Construction goes through overridable seams (project.invariants.md)
 class $Kernel {
   protected static singleton: $Kernel | undefined;
+  static get instance(): $Kernel {
+    return (this.singleton ??= new this());
+  }
   protected hooks: SealHook[] = [];
   protected targets = new Map<string, KernelTarget>();
   protected extensions: KernelExtension[] = [];
   protected sealed = false;
-
-  static get instance(): $Kernel {
-    return (this.singleton ??= new this());
-  }
 
   /** Register a composition hook to run at seal time (plugins, class replacement). */
   register(hook: SealHook): void {

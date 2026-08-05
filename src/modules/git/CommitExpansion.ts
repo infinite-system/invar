@@ -18,6 +18,10 @@ import { GitParsers, type CommitFileChange } from './GitParsers';
 import type { ExpandedCommit } from './GitLogRows';
 
 class $CommitExpansion {
+  protected static get DEFAULT_CAPACITY(): number {
+    return 32;
+  }
+
   constructor(
     readonly cwd: string,
     readonly options: CommitExpansionOptions = {},
@@ -35,10 +39,6 @@ class $CommitExpansion {
   protected fetchTickets = new Map<string, number>();
   protected fetchPromises = new Map<string, Promise<void>>();
   protected nextTicket = 0;
-
-  protected static get DEFAULT_CAPACITY(): number {
-    return 32;
-  }
 
   get capacity(): number {
     const commitExpansionClass = this.constructor as typeof $CommitExpansion;

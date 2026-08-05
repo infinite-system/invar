@@ -5,12 +5,12 @@ import { Dialog } from '../ui/Dialog';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $GoToLinePrompt extends Dialog.$Class {
-  protected readonly inputModel: TextInputModel.Model;
-
   constructor() {
     super();
     this.inputModel = this.createInput();
   }
+
+  protected readonly inputModel: TextInputModel.Model;
 
   protected createInput(): TextInputModel.Model {
     return new TextInputModel.Class();

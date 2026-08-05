@@ -9,14 +9,14 @@ import type {
 import { TextCoordinates } from '../text/TextCoordinates';
 
 class $InlineRewrite {
+  constructor(protected readonly options: InlineRewriteOptions) {}
+
   protected eligibility: (() => boolean) | null = null;
   protected recentRegion: LanguageRange | null = null;
   protected recentRegionFragmented = false;
   protected quietTimer: ReturnType<typeof setTimeout> | null = null;
   protected activeAbortController: AbortController | null = null;
   protected requestGeneration = 0;
-
-  constructor(protected readonly options: InlineRewriteOptions) {}
 
   protected get quietMilliseconds(): number {
     return this.options.quietMilliseconds ?? 1750;

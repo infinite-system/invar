@@ -10,6 +10,8 @@ import { LanguageRegistry } from './LanguageRegistry';
 
 // invariant: Document syntax has one removable host port (src/modules/syntax/syntax.invariants.md)
 class $DocumentSyntax implements DocumentSyntaxReader {
+  constructor(protected readonly providers: ProviderRegistry.Model) {}
+
   protected readonly sourceSelectionByDocument = new WeakMap<
     SyntaxDocument,
     {
@@ -17,8 +19,6 @@ class $DocumentSyntax implements DocumentSyntaxReader {
       source: DocumentSyntaxSource | null;
     }
   >();
-
-  constructor(protected readonly providers: ProviderRegistry.Model) {}
 
   usesSource(document: SyntaxDocument): boolean {
     return this.sourceFor(document) !== null;

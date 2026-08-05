@@ -12,38 +12,21 @@ import { Terminal, type IBufferCell } from '@xterm/headless';
 // invariant: Pane chrome and child cells keep separate authority (src/modules/terminal/terminal.invariants.md)
 
 class $TerminalEmulator {
+  // Hot byte-parse path: this fixed OSC prefix never varies by subclass.
   protected static readonly OSC_66_PREFIX = new Uint8Array([
     0x1b, 0x5d, 0x36, 0x36, 0x3b,
   ]);
+  // Hot byte-parse path: this fixed protocol byte never varies by subclass.
   protected static readonly STRING_TERMINATOR_ESCAPE = 0x1b;
+  // Hot byte-parse path: this fixed protocol byte never varies by subclass.
   protected static readonly STRING_TERMINATOR_FINAL = 0x5c;
+  // Hot byte-parse path: this fixed protocol byte never varies by subclass.
   protected static readonly BELL_TERMINATOR = 0x07;
+  // Hot byte-parse path: this fixed protocol byte never varies by subclass.
   protected static readonly METADATA_TERMINATOR = 0x3b;
-
-  protected readonly terminal: Terminal;
-  protected pendingTextSizingProtocolBytes = new Uint8Array();
-  protected readonly reusableCell: { cell: IBufferCell | undefined } = {
-    cell: undefined,
-  };
-  protected replyCallback: ((data: string) => void) | null = null;
-  protected readonly cellsChangedCallbacks = new Set<() => void>();
-  protected metadataChangedCallback: (() => void) | null = null;
-  protected readonly lineFeedCallbacks = new Set<
-    (event: TerminalLineFeedEvent) => void
-  >();
-  protected readonly shellIntegrationCallbacks = new Set<
-    (event: TerminalShellIntegrationEvent) => void
-  >();
-  protected terminalTitle = '';
-  protected terminalCurrentWorkingDirectory = '';
-  protected isSgrMouseEncodingEnabledValue = false;
-  protected hasShellPromptMarkerValue = false;
-  protected isShellPromptActiveValue = false;
-  protected lastShellIntegrationEventValue: TerminalShellIntegrationEvent | null =
-    null;
-  protected readonly paletteOverrides = new Map<number, string>();
-  protected readonly textSizingSupported: boolean;
-
+  protected static get DEFAULT_SCROLLBACK_LINE_COUNT(): number {
+    return 40;
+  }
   constructor(
     columns: number,
     rows: number,
@@ -91,6 +74,30 @@ class $TerminalEmulator {
       (parameters) => this.observePrivateModeChange(parameters, false),
     );
   }
+
+  protected readonly terminal: Terminal;
+  protected pendingTextSizingProtocolBytes = new Uint8Array();
+  protected readonly reusableCell: { cell: IBufferCell | undefined } = {
+    cell: undefined,
+  };
+  protected replyCallback: ((data: string) => void) | null = null;
+  protected readonly cellsChangedCallbacks = new Set<() => void>();
+  protected metadataChangedCallback: (() => void) | null = null;
+  protected readonly lineFeedCallbacks = new Set<
+    (event: TerminalLineFeedEvent) => void
+  >();
+  protected readonly shellIntegrationCallbacks = new Set<
+    (event: TerminalShellIntegrationEvent) => void
+  >();
+  protected terminalTitle = '';
+  protected terminalCurrentWorkingDirectory = '';
+  protected isSgrMouseEncodingEnabledValue = false;
+  protected hasShellPromptMarkerValue = false;
+  protected isShellPromptActiveValue = false;
+  protected lastShellIntegrationEventValue: TerminalShellIntegrationEvent | null =
+    null;
+  protected readonly paletteOverrides = new Map<number, string>();
+  protected readonly textSizingSupported: boolean;
 
   /** Feed child bytes into the parser. onCellsChanged fires once per parsed pulse (coalescing). */
   write(bytes: Uint8Array | string): void {
@@ -533,10 +540,6 @@ class $TerminalEmulator {
     const maximum = 16 ** component.length - 1;
     const value = Math.round((Number.parseInt(component, 16) * 255) / maximum);
     return value.toString(16).padStart(2, '0');
-  }
-
-  protected static get DEFAULT_SCROLLBACK_LINE_COUNT(): number {
-    return 40;
   }
 
   protected observeTitle(title: string): void {

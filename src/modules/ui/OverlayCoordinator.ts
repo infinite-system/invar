@@ -1,4 +1,6 @@
 class $OverlayCoordinator {
+  constructor(protected readonly closeActions: ExclusiveOverlayCloseActions) {}
+
   protected get exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
     const exclusiveOverlayNamesValue: readonly ExclusiveOverlayName[] = [
       'findBar',
@@ -14,7 +16,6 @@ class $OverlayCoordinator {
     ];
     return exclusiveOverlayNamesValue;
   }
-  constructor(protected readonly closeActions: ExclusiveOverlayCloseActions) {}
   /** Close every sibling before opening the requested overlay. The requested overlay stays mounted,
    *  so Find-to-Replace is a mode change on one bar rather than a close-and-reopen cycle. */
   openExclusiveOverlay(

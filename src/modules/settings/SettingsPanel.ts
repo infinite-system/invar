@@ -272,13 +272,12 @@ class $SettingsPanel {
     ];
     return settingDescriptors;
   }
+  // The reactive settings store the panel edits; read late so it stays swappable/testable.
+  constructor(protected readonly settingsStore: Settings.Instance) {}
 
   protected get settingsPanelClass(): typeof $SettingsPanel {
     return this.constructor as typeof $SettingsPanel;
   }
-
-  // The reactive settings store the panel edits; read late so it stays swappable/testable.
-  constructor(protected readonly settingsStore: Settings.Instance) {}
 
   // Options for dynamic-enum rows, PROBED once per panel-open (show()) and cached — so a filesystem scan
   // (installed voices) runs on open, not on every keystroke. Plain field (the Tooltip idiom: a Reactive

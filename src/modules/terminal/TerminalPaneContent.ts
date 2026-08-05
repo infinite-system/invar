@@ -56,6 +56,16 @@ class $TerminalPaneContent implements PaneContent {
   protected static get PAD_ROWS(): number {
     return 0;
   }
+  constructor(
+    protected readonly instance: TerminalInstance.Instance,
+    identity: TerminalPaneIdentity = {},
+  ) {
+    this.id = identity.identifier ?? 'terminal';
+    this.kind = identity.kind ?? 'terminal';
+    this.instanceLabel = identity.label ?? 'Terminal';
+    this.task = identity.task;
+    this.heading = identity.heading ?? null;
+  }
 
   readonly id: string;
   readonly kind: string;
@@ -72,17 +82,6 @@ class $TerminalPaneContent implements PaneContent {
   protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
   protected forwardedPointerButton: number | null = null;
   protected readonly heading: string | null;
-
-  constructor(
-    protected readonly instance: TerminalInstance.Instance,
-    identity: TerminalPaneIdentity = {},
-  ) {
-    this.id = identity.identifier ?? 'terminal';
-    this.kind = identity.kind ?? 'terminal';
-    this.instanceLabel = identity.label ?? 'Terminal';
-    this.task = identity.task;
-    this.heading = identity.heading ?? null;
-  }
 
   protected get terminalPadColumns(): number {
     const terminalPaneContentClass = this

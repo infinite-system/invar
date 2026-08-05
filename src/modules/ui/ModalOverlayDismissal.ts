@@ -6,9 +6,6 @@ import {
 
 // invariant: Modal outside presses dismiss and consume (src/modules/ui/ui.invariants.md)
 class $ModalOverlayDismissal {
-  protected readonly backdrop: BoxRenderable;
-  protected readonly closeButton: OverlayCloseButton.Model;
-
   constructor(
     protected readonly dependencies: ModalOverlayDismissalDependencies,
   ) {
@@ -34,6 +31,9 @@ class $ModalOverlayDismissal {
     });
     dependencies.renderer.root.add(this.backdrop);
   }
+
+  protected readonly backdrop: BoxRenderable;
+  protected readonly closeButton: OverlayCloseButton.Model;
 
   show(geometry: OverlayCloseButtonGeometry): void {
     this.backdrop.visible = true;

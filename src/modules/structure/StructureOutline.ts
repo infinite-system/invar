@@ -34,15 +34,11 @@ import type {
 } from './StructureSource.interface';
 
 class $StructureOutline {
-  declare $watch: typeof import('vue').watch;
-  declare $stopEffects: () => void;
-
   /** Rapid edits coalesce to one request this long after the last keystroke (the diagnostics
    *  change-window precedent). */
   protected static get EDIT_REFRESH_DELAY_MILLISECONDS(): number {
     return 350;
   }
-
   /** A document/observation change refreshes almost immediately (off the sync microtask). */
   protected static get SWITCH_REFRESH_DELAY_MILLISECONDS(): number {
     return 30;
@@ -79,6 +75,9 @@ class $StructureOutline {
       { immediate: true },
     );
   }
+
+  declare $watch: typeof import('vue').watch;
+  declare $stopEffects: () => void;
 
   protected disposeDocumentLifecycle: (() => void) | null = null;
   protected refreshTimer: ReturnType<typeof setTimeout> | null = null;

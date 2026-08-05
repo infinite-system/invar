@@ -39,7 +39,22 @@ import {
 import { SeparatorAppearance } from './SeparatorAppearance';
 
 class $SolidThumbScrollBar extends ScrollBarRenderable {
-  protected overviewMarks: readonly ScrollbarOverviewMark[] = [];
+  protected static stableThumbAxis(
+    virtualThumbStart: number,
+    virtualThumbSize: number,
+    trackLength: number,
+  ): ThumbAxis {
+    const minimumLength = Math.min(2, trackLength);
+    const length = Math.max(
+      minimumLength,
+      Math.min(Math.ceil(virtualThumbSize / 2), trackLength),
+    );
+    const start = Math.max(
+      0,
+      Math.min(Math.floor(virtualThumbStart / 2), trackLength - length),
+    );
+    return { start, length };
+  }
 
   constructor(context: RenderContext, options: ScrollBarOptions) {
     super(context, {
@@ -127,29 +142,14 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
     };
   }
 
+  protected overviewMarks: readonly ScrollbarOverviewMark[] = [];
+
   setOverviewMarks(marks: readonly ScrollbarOverviewColorInput[]): void {
     this.overviewMarks = marks.map((mark) => ({
       trackOffset: mark.trackOffset,
       color: RGBA.fromHex(mark.color),
       glyph: mark.glyph,
     }));
-  }
-
-  protected static stableThumbAxis(
-    virtualThumbStart: number,
-    virtualThumbSize: number,
-    trackLength: number,
-  ): ThumbAxis {
-    const minimumLength = Math.min(2, trackLength);
-    const length = Math.max(
-      minimumLength,
-      Math.min(Math.ceil(virtualThumbSize / 2), trackLength),
-    );
-    const start = Math.max(
-      0,
-      Math.min(Math.floor(virtualThumbStart / 2), trackLength - length),
-    );
-    return { start, length };
   }
 
   /** Re-assert the slider's viewport AFTER the scroll state settled — the slider clamps viewPortSize

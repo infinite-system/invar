@@ -19,15 +19,15 @@ import type { DatabaseValue } from './DatabaseProvider.interface';
 // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 // invariant: Database files are user selected (src/modules/database/database.invariants.md)
 class $DatabasePaneContent implements PaneContent, PaneTextInputPort {
-  protected readonly pathInput = new TextInputModel.Class();
-  readonly kind = 'database';
-
   constructor(
     protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => DatabaseConsumerWorkspace.Model,
     protected readonly identifier = 'database',
     readonly instanceLabel = 'Database',
   ) {}
+
+  protected readonly pathInput = new TextInputModel.Class();
+  readonly kind = 'database';
 
   get inputActive() {
     return ref(false);

@@ -28,6 +28,7 @@ import type {
 } from './TasksDashboardOverview';
 
 class $TasksDashboardPaneRenderer {
+  // Hot cell-paint path: this packed color is fixed and never varies by subclass.
   protected static readonly ROUND_AMBER = '#d7af5f';
 
   static lensTabs(): LensTab[] {

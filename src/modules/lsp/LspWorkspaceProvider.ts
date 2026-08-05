@@ -45,16 +45,6 @@ class $LspWorkspaceProvider
     StructureSource,
     LanguageServerProcessSource
 {
-  readonly identifier = 'document-language-service' as const;
-  readonly providers: readonly WorkspaceProvider[] = [this];
-  protected rootPath = '';
-  protected client: LanguageClient.Model | null = null;
-  protected disposeDocumentLifecycle: (() => void) | null = null;
-  protected disposeGutterDecorations: (() => void) | null = null;
-  protected disposeStructureSource: (() => void) | null = null;
-  protected disposeLanguageServerProcessSource: (() => void) | null = null;
-  protected disposeRewriteProviderFactory: (() => void) | null = null;
-
   constructor(
     protected readonly workspace: Workspace.Model,
     protected readonly options: LspWorkspaceProviderOptions,
@@ -80,6 +70,16 @@ class $LspWorkspaceProvider
       CodexRewriteProviderFactory.Class,
     );
   }
+
+  readonly identifier = 'document-language-service' as const;
+  readonly providers: readonly WorkspaceProvider[] = [this];
+  protected rootPath = '';
+  protected client: LanguageClient.Model | null = null;
+  protected disposeDocumentLifecycle: (() => void) | null = null;
+  protected disposeGutterDecorations: (() => void) | null = null;
+  protected disposeStructureSource: (() => void) | null = null;
+  protected disposeLanguageServerProcessSource: (() => void) | null = null;
+  protected disposeRewriteProviderFactory: (() => void) | null = null;
 
   completionTriggerCharacters(_document: LanguageDocument): readonly string[] {
     return this.client?.completionTriggerCharacters ?? [];

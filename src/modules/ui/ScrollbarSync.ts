@@ -19,19 +19,6 @@ import type { Tooltip } from './Tooltip';
 // invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
 // invariant: The editor overview derives from the decoration snapshot (src/modules/ui/ui.invariants.md)
 class $ScrollbarSync {
-  protected readonly barScales = new Map<object, number>();
-  protected applying = false;
-  protected readonly editorVerticalBar: SolidThumbScrollBar.Model;
-  protected readonly editorHorizontalBar: SolidThumbScrollBar.Model;
-  protected readonly primaryDockVerticalBar: SolidThumbScrollBar.Model;
-  protected readonly primaryDockHorizontalBar: SolidThumbScrollBar.Model;
-  protected readonly rightDockVerticalBar: SolidThumbScrollBar.Model;
-  protected readonly editorOverviewRuler = new OverviewRuler.Class();
-  protected editorOverviewMarks: readonly OverviewRulerMark[] = [];
-  protected paintedEditorOverviewMarks: readonly OverviewRulerMark[] | null =
-    null;
-  protected paintedEditorOverviewPaletteSignature = '';
-
   constructor(protected readonly dependencies: ScrollbarSyncDependencies) {
     const makeBar = (
       identifier: string,
@@ -141,6 +128,19 @@ class $ScrollbarSync {
     };
     this.editorVerticalBar.onMouseOut = () => dependencies.tooltip.clear();
   }
+
+  protected readonly barScales = new Map<object, number>();
+  protected applying = false;
+  protected readonly editorVerticalBar: SolidThumbScrollBar.Model;
+  protected readonly editorHorizontalBar: SolidThumbScrollBar.Model;
+  protected readonly primaryDockVerticalBar: SolidThumbScrollBar.Model;
+  protected readonly primaryDockHorizontalBar: SolidThumbScrollBar.Model;
+  protected readonly rightDockVerticalBar: SolidThumbScrollBar.Model;
+  protected readonly editorOverviewRuler = new OverviewRuler.Class();
+  protected editorOverviewMarks: readonly OverviewRulerMark[] = [];
+  protected paintedEditorOverviewMarks: readonly OverviewRulerMark[] | null =
+    null;
+  protected paintedEditorOverviewPaletteSignature = '';
 
   protected truePosition(
     bar: ScrollBarRenderable,

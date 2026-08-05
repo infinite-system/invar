@@ -17,6 +17,37 @@ import type { ScrollPhysics } from './ScrollPhysics';
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: Completion reuses bounded popup geometry (src/modules/ui/ui.invariants.md)
 class $CompletionPopup {
+  static filterItems(
+    items: readonly LanguageCompletionItem[],
+    prefix: string,
+  ): readonly LanguageCompletionItem[] {
+    const normalizedPrefix = prefix.toLocaleLowerCase();
+    return items
+      .filter((item) =>
+        (item.filterText ?? item.label)
+          .toLocaleLowerCase()
+          .startsWith(normalizedPrefix),
+      )
+      .map((item, sourceIndex) => ({ item, sourceIndex }))
+      .sort(
+        (first, second) =>
+          (first.item.sortText ?? first.item.label).localeCompare(
+            second.item.sortText ?? second.item.label,
+          ) || first.sourceIndex - second.sourceIndex,
+      )
+      .map(({ item }) => item);
+  }
+
+  constructor(protected readonly dependencies: CompletionPopupDependencies) {
+    this.popup = new BoundedListPopup.Class({
+      renderer: dependencies.renderer,
+      settings: dependencies.settings,
+      theme: dependencies.theme,
+      scrollPhysics: dependencies.scrollPhysics,
+      identifier: 'completion-popup',
+    });
+  }
+
   protected readonly popup: BoundedListPopup.Model;
   protected sourceItems: readonly LanguageCompletionItem[] = [];
   protected completionItemsByIdentifier = new Map<
@@ -28,16 +59,6 @@ class $CompletionPopup {
     null;
   protected prefixValue = '';
   protected sourceIsIncompleteValue = false;
-
-  constructor(protected readonly dependencies: CompletionPopupDependencies) {
-    this.popup = new BoundedListPopup.Class({
-      renderer: dependencies.renderer,
-      settings: dependencies.settings,
-      theme: dependencies.theme,
-      scrollPhysics: dependencies.scrollPhysics,
-      identifier: 'completion-popup',
-    });
-  }
 
   get open(): boolean {
     return this.popup.open.value;
@@ -140,27 +161,6 @@ class $CompletionPopup {
 
   dispose(): void {
     this.popup.dispose();
-  }
-
-  static filterItems(
-    items: readonly LanguageCompletionItem[],
-    prefix: string,
-  ): readonly LanguageCompletionItem[] {
-    const normalizedPrefix = prefix.toLocaleLowerCase();
-    return items
-      .filter((item) =>
-        (item.filterText ?? item.label)
-          .toLocaleLowerCase()
-          .startsWith(normalizedPrefix),
-      )
-      .map((item, sourceIndex) => ({ item, sourceIndex }))
-      .sort(
-        (first, second) =>
-          (first.item.sortText ?? first.item.label).localeCompare(
-            second.item.sortText ?? second.item.label,
-          ) || first.sourceIndex - second.sourceIndex,
-      )
-      .map(({ item }) => item);
   }
 
   // The mark comes from the SAME authority the file tree resolves through: the item's kind becomes a

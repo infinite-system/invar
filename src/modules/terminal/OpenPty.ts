@@ -93,17 +93,6 @@ class $OpenPty {
     }
     throw new Error('openpty not found in libc or libutil');
   }
-
-  protected readonly masterFileDescriptor: number;
-  protected slaveFileDescriptorValue: number;
-  protected fileStatusFlagsWithoutNonBlocking = 0;
-  protected masterReadStream: TtyReadStream | null = null;
-  protected masterReadRestartTimer: ReturnType<typeof setTimeout> | null = null;
-  protected dataCallbackRegistered = false;
-  protected readonly writeQueue: QueuedPtyWrite[] = [];
-  protected writeDrainTimer: ReturnType<typeof setTimeout> | null = null;
-  protected closed = false;
-
   constructor(columns = 80, rows = 24) {
     const masterFileDescriptor = new Int32Array(1);
     const slaveFileDescriptor = new Int32Array(1);
@@ -127,6 +116,16 @@ class $OpenPty {
       throw error;
     }
   }
+
+  protected readonly masterFileDescriptor: number;
+  protected slaveFileDescriptorValue: number;
+  protected fileStatusFlagsWithoutNonBlocking = 0;
+  protected masterReadStream: TtyReadStream | null = null;
+  protected masterReadRestartTimer: ReturnType<typeof setTimeout> | null = null;
+  protected dataCallbackRegistered = false;
+  protected readonly writeQueue: QueuedPtyWrite[] = [];
+  protected writeDrainTimer: ReturnType<typeof setTimeout> | null = null;
+  protected closed = false;
 
   get slaveFileDescriptor(): number {
     if (this.slaveFileDescriptorValue < 0) {

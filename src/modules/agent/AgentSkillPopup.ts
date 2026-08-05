@@ -19,6 +19,11 @@ import {
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 class $AgentSkillPopup {
+  constructor(protected readonly dependencies: AgentSkillPopupDependencies) {
+    this.ownsPopup = dependencies.popup === undefined;
+    this.popup = dependencies.popup ?? this.createPopup(dependencies);
+  }
+
   protected readonly ownerIdentifier = 'agent-skill-popup';
   protected readonly popup: BoundedListPopup.Model;
   protected readonly ownsPopup: boolean;
@@ -28,11 +33,6 @@ class $AgentSkillPopup {
   >();
   protected activeInvocationKey: string | null = null;
   protected dismissedInvocationKey: string | null = null;
-
-  constructor(protected readonly dependencies: AgentSkillPopupDependencies) {
-    this.ownsPopup = dependencies.popup === undefined;
-    this.popup = dependencies.popup ?? this.createPopup(dependencies);
-  }
 
   protected createPopup(
     dependencies: AgentSkillPopupDependencies,

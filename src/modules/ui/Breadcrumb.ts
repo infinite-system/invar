@@ -5,6 +5,7 @@ class $Breadcrumb {
   // Cells painted on EACH side of a crumb label. They belong to the crumb, not to the row: the
   // hover background covers the label plus these cells, the click target is that same span, and
   // the crumb picker anchors on its start. One geometry, three readers.
+  // Hot paint-and-hit path: this fixed cell width never varies by subclass.
   static readonly HOVER_PAD_COLUMNS = 1;
 
   /** The crumb label as it occupies the row — the label plus its own pad cell on each side. */

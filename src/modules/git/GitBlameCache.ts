@@ -22,6 +22,13 @@ import { GitCommands } from './GitCommands';
 import { GitBlame, type BlameLine } from './GitBlame';
 
 class $GitBlameCache {
+  static get MAXIMUM_BLAMED_FILES(): number {
+    return 16;
+  }
+  protected static get STAT_MEMO_WINDOW_MILLISECONDS(): number {
+    return 30;
+  }
+
   constructor(
     readonly cwd: string,
     readonly options: GitBlameCacheOptions = {},
@@ -42,14 +49,6 @@ class $GitBlameCache {
   // One stat per paint, not per query: the same (path) asked again inside the memo window reuses
   // the mtime — the status bar and the status side-channel both query during one frame.
   protected statMemo: GitStatMemo | null = null;
-
-  static get MAXIMUM_BLAMED_FILES(): number {
-    return 16;
-  }
-
-  protected static get STAT_MEMO_WINDOW_MILLISECONDS(): number {
-    return 30;
-  }
 
   get cachedFileCount(): number {
     return this.cache.size;

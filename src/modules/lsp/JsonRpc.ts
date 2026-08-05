@@ -5,6 +5,10 @@ class $JsonRpc {
     const headerEnd = new Uint8Array([13, 10, 13, 10]);
     return headerEnd;
   }
+  constructor(options: JsonRpcOptions = {}) {
+    this.maxHeaderBytes = options.maxHeaderBytes ?? 8 * 1024;
+    this.maxMessageBytes = options.maxMessageBytes ?? 16 * 1024 * 1024;
+  }
 
   protected bytes = new Uint8Array(0);
   protected bodyLength: number | null = null;
@@ -12,11 +16,6 @@ class $JsonRpc {
   protected readonly pending = new Map<JsonRpcId, PendingResponse>();
   protected readonly maxHeaderBytes: number;
   protected readonly maxMessageBytes: number;
-
-  constructor(options: JsonRpcOptions = {}) {
-    this.maxHeaderBytes = options.maxHeaderBytes ?? 8 * 1024;
-    this.maxMessageBytes = options.maxMessageBytes ?? 16 * 1024 * 1024;
-  }
 
   encode(message: JsonRpcMessage): Uint8Array {
     const body = new TextEncoder().encode(JSON.stringify(message));

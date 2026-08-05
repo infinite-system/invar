@@ -19,11 +19,6 @@ import type { Tooltip } from './Tooltip';
 // invariant: The active activity item determines its dock content (src/modules/ui/ui.invariants.md)
 // invariant: Activity bar order is one persisted sequence (src/modules/ui/ui.invariants.md)
 class $ActivityBar {
-  readonly bar: BoxRenderable;
-  protected readonly body: TextRenderable;
-  protected readonly contentOrderDrag: ContentOrderDrag.Model;
-  protected hoveredItemIndex = -1;
-
   constructor(protected readonly dependencies: ActivityBarDependencies) {
     this.bar = new BoxRenderable(dependencies.renderer, {
       id: dependencies.identifier,
@@ -46,6 +41,11 @@ class $ActivityBar {
     this.bar.add(this.body);
     this.wireHandlers();
   }
+
+  readonly bar: BoxRenderable;
+  protected readonly body: TextRenderable;
+  protected readonly contentOrderDrag: ContentOrderDrag.Model;
+  protected hoveredItemIndex = -1;
 
   protected itemAtRow(screenRow: number) {
     const index = Math.floor((screenRow - this.bar.y) / 2);

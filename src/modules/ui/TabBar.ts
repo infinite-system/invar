@@ -40,6 +40,13 @@ import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { BreadcrumbPicker } from './BreadcrumbPicker';
 
 class $TabBar {
+  constructor(protected readonly dependencies: TabBarDependencies) {
+    this.breadcrumbPicker = this.createBreadcrumbPicker();
+    this.wireWorkspaceHandlers();
+    this.wireBufferHandlers();
+    this.wireBreadcrumbHandlers();
+  }
+
   protected workspaceSegments: WorkspaceTabBarSegment[] = [];
   protected workspaceHover: WorkspaceTabBarHover = null;
   protected lastRevealedWorkspaceIndex = -1;
@@ -52,12 +59,6 @@ class $TabBar {
   protected breadcrumbSegments: BreadcrumbBarSegment[] = [];
   protected breadcrumbHover: BreadcrumbBarHover = null;
   protected readonly breadcrumbPicker: BreadcrumbPicker.Model;
-  constructor(protected readonly dependencies: TabBarDependencies) {
-    this.breadcrumbPicker = this.createBreadcrumbPicker();
-    this.wireWorkspaceHandlers();
-    this.wireBufferHandlers();
-    this.wireBreadcrumbHandlers();
-  }
   /** Render the workspace/project strip; keeps the reveal index + hit-test segments. */
   renderWorkspace(): StyledText {
     const { workspaceTabStrip, workspaceTabBar, renderer, theme, readPalette } =

@@ -6,6 +6,8 @@ import type {
 
 // invariant: A runtime reading is a delta over a named window (src/modules/monitoring/monitoring.invariants.md)
 class $LinuxProcessSampler implements ProcessSampler {
+  constructor(protected readonly options: LinuxProcessSamplerOptions = {}) {}
+
   /** Field index of `utime`, counting from the field after the parenthesized command name. */
   protected readonly linuxStatUserTimeIndex = 11;
 
@@ -18,8 +20,6 @@ class $LinuxProcessSampler implements ProcessSampler {
 
   protected clockTicksPerSecondValue: number | null = null;
   protected pageBytesValue: number | null = null;
-
-  constructor(protected readonly options: LinuxProcessSamplerOptions = {}) {}
 
   protected get clockTicksPerSecond(): number {
     if (this.options.clockTicksPerSecond !== undefined)

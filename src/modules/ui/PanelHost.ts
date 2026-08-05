@@ -25,6 +25,13 @@ import type { PanelHostFocusSet } from './PanelHostFocusSet';
 
 // invariant: One panel host owns keyboard focus (src/modules/ui/ui.invariants.md)
 class $PanelHost {
+  constructor(readonly options: PanelHostOptions = {}) {
+    this.unregisterFromFocusSet =
+      this.options.focusSet?.register(this) ?? (() => {});
+    this.initialContentOrder = [...(this.options.contentOrder?.value ?? [])];
+    this.selectedContentSet = this.createContentSet();
+  }
+
   protected get minimumCellRatio() {
     return 0.12;
   }
@@ -35,12 +42,6 @@ class $PanelHost {
   protected nextPanelGroupNumber = 1;
   protected selectedContentSet: PanelContentSet;
 
-  constructor(readonly options: PanelHostOptions = {}) {
-    this.unregisterFromFocusSet =
-      this.options.focusSet?.register(this) ?? (() => {});
-    this.initialContentOrder = [...(this.options.contentOrder?.value ?? [])];
-    this.selectedContentSet = this.createContentSet();
-  }
   /** The registry, keyed by content id. Non-reactive — `order`/`layout` drive what shows. */
   protected get contents(): Map<string, PaneContent> {
     return this.selectedContentSet.contents;

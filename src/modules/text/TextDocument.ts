@@ -11,6 +11,11 @@ import { Files } from '../system/Files';
 import { TextCoordinates } from './TextCoordinates';
 
 class $TextDocument {
+  constructor() {
+    // A never-loaded document is its own baseline: an empty buffer has no unsaved edits.
+    this.captureSavedBaseline();
+  }
+
   path = '';
   // Compact ground truth — a plain string[], not a reactive-per-line structure.
   protected _lines: string[] = [''];
@@ -42,11 +47,6 @@ class $TextDocument {
   protected readonly lineChangeListeners = new Set<
     (change: DocumentLineChange) => void
   >();
-
-  constructor() {
-    // A never-loaded document is its own baseline: an empty buffer has no unsaved edits.
-    this.captureSavedBaseline();
-  }
 
   // Reactive signals: revision (bumped on any content change) and the saved-baseline version.
   get revision() {

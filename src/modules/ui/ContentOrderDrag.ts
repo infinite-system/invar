@@ -1,8 +1,8 @@
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 class $ContentOrderDrag {
-  protected draggingIdentifier: string | null = null;
-
   constructor(protected readonly contentOrderTarget: ContentOrderTarget) {}
+
+  protected draggingIdentifier: string | null = null;
 
   pointerDown(identifier: string): void {
     this.draggingIdentifier = identifier;

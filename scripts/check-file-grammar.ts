@@ -17,6 +17,7 @@ import * as typescript from 'typescript';
 export type FileGrammarRule =
   | 'arrow-function-class-field'
   | 'class-file-order'
+  | 'constructor-first'
   | 'construction-bypass'
   | 'contract-interface-content'
   | 'contract-interface-file-name'
@@ -261,6 +262,35 @@ function inspectClassMembers(
   const violations: FileGrammarViolation[] = [];
 
   function inspectNode(node: typescript.Node): void {
+    if (typescript.isClassDeclaration(node)) {
+      const constructorIndex = node.members.findIndex((member) =>
+        typescript.isConstructorDeclaration(member),
+      );
+      if (
+        constructorIndex >= 0 &&
+        (node.members
+          .slice(0, constructorIndex)
+          .some(
+            (member) =>
+              !hasModifier(member, typescript.SyntaxKind.StaticKeyword),
+          ) ||
+          node.members
+            .slice(constructorIndex + 1)
+            .some((member) =>
+              hasModifier(member, typescript.SyntaxKind.StaticKeyword),
+            ))
+      ) {
+        violations.push(
+          createViolation(
+            sourceFile,
+            node.members[constructorIndex]!,
+            'constructor-first',
+            'static members must precede the constructor, which must precede every instance member',
+          ),
+        );
+      }
+    }
+
     if (hasModifier(node, typescript.SyntaxKind.PrivateKeyword)) {
       violations.push(
         createViolation(

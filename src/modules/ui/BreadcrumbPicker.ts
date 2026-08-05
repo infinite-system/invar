@@ -20,6 +20,7 @@ class $BreadcrumbPicker {
   static get PARENT_DIRECTORY_ITEM_IDENTIFIER(): string {
     return 'breadcrumb-picker:parent-directory';
   }
+  constructor(protected readonly dependencies: BreadcrumbPickerDependencies) {}
 
   protected get parentDirectoryItemLabel(): string {
     return '..';
@@ -33,8 +34,6 @@ class $BreadcrumbPicker {
   protected workspaceRoot = '';
   protected currentDirectory = '';
   protected directoryPaths = new Set<string>();
-
-  constructor(protected readonly dependencies: BreadcrumbPickerDependencies) {}
 
   show(segment: BreadcrumbPathSegment, anchor: BoundedListPopupAnchor): void {
     const workspaceRoot = Files.Class.absolute(

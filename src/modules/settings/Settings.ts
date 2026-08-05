@@ -53,6 +53,305 @@ class $Settings {
   protected static get $allowedDockVerticalSpans(): ReadonlySet<DockVerticalSpan> {
     return new Set(['full-height', 'ends-at-panel']);
   }
+  /** The default Files/Environment-backed filesystem (dependencies read late, inside each method). */
+  static defaultFileSystem(): SettingsFileSystem {
+    return {
+      readTextFile(path: string): string | null {
+        if (!Files.Class.exists(path)) return null;
+        try {
+          return Files.Class.read(path);
+        } catch {
+          return null;
+        }
+      },
+      writeTextFile(path: string, content: string): void {
+        Files.Class.write(path, content);
+      },
+      homeDirectory(): string {
+        return (
+          Environment.Class.env('HOME') ??
+          Environment.Class.env('USERPROFILE') ??
+          Environment.Class.cwd
+        );
+      },
+    };
+  }
+  static get DEFAULTS(): SettingsValues {
+    return {
+      verticalFlingCeiling: 220,
+      scrollAccelGain: 34,
+      scrollFriction: 0.015,
+      maximumGlideDurationMilliseconds: 900,
+      linesPerNotch: 1,
+      horizontalScrollModifier: 'alt',
+      fastScrollModifier: 'none',
+      fastScrollMultiplier: 3,
+      scrollbarThickness: 1,
+      glyphMode: 'auto',
+      graphicsTier: 'auto',
+      theme: 'dark',
+      wordWrap: false,
+      showActivityBar: true,
+      showRightActivityBar: false,
+      showIndentGuides: true,
+      reducedMotion: false,
+      workspaceTabPosition: 'top',
+      sidebarPosition: 'left',
+      panelAlignment: 'center',
+      leftDockVerticalSpan: 'full-height',
+      rightDockVerticalSpan: 'ends-at-panel',
+      terminalTypingSpeed: 40,
+      terminalCleanPrompt: true,
+      sidebarWidth: 32,
+      rightDockWidth: 28,
+      primaryDockContentOrder: [],
+      panelContentOrder: ['terminal'],
+      panelTabCycleSeconds: 10,
+      panelTabCycling: false,
+      panelWorkspaceStates: {},
+    };
+  }
+  protected static sanitizeIdentifierOrder(
+    candidate: unknown,
+  ): string[] | undefined {
+    if (
+      !Array.isArray(candidate) ||
+      candidate.length === 0 ||
+      !candidate.every(
+        (identifier) => typeof identifier === 'string' && identifier.length > 0,
+      )
+    ) {
+      return undefined;
+    }
+    return [...new Set(candidate as string[])];
+  }
+  protected static isTaskNoticeIdentifier(identifier: string): boolean {
+    return identifier.endsWith(':notice');
+  }
+  protected static sanitizePanelContentOrder(
+    candidate: unknown,
+  ): string[] | undefined {
+    const identifiers = this.sanitizeIdentifierOrder(candidate)?.filter(
+      (identifier) => !this.isTaskNoticeIdentifier(identifier),
+    );
+    return identifiers && identifiers.length > 0 ? identifiers : undefined;
+  }
+  /** Keep only recognized keys whose value has the right shape — corrupt entries are dropped. */
+  static sanitize(parsed: unknown): Partial<SettingsValues> {
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    const record = parsed as Record<string, unknown>;
+    const result: Partial<SettingsValues> = {};
+    const readNumber = (key: keyof SettingsValues): void => {
+      const value = record[key];
+      if (typeof value === 'number' && Number.isFinite(value))
+        result[key] = value as never;
+    };
+    const readModifier = (key: keyof SettingsValues): void => {
+      const value = record[key];
+      if (
+        typeof value === 'string' &&
+        this.$allowedScrollModifiers.has(value as ScrollModifier)
+      ) {
+        result[key] = value as never;
+      }
+    };
+    readNumber('verticalFlingCeiling');
+    readNumber('scrollAccelGain');
+    readNumber('scrollFriction');
+    readNumber('maximumGlideDurationMilliseconds');
+    readNumber('linesPerNotch');
+    readModifier('horizontalScrollModifier');
+    readModifier('fastScrollModifier');
+    readNumber('fastScrollMultiplier');
+    readNumber('scrollbarThickness');
+    if (
+      typeof record.glyphMode === 'string' &&
+      this.$allowedGlyphModes.has(record.glyphMode as GlyphMode)
+    ) {
+      result.glyphMode = record.glyphMode as GlyphMode;
+    }
+    if (
+      typeof record.graphicsTier === 'string' &&
+      this.$allowedGraphicsTiers.has(record.graphicsTier as GraphicsTierSetting)
+    ) {
+      result.graphicsTier = record.graphicsTier as GraphicsTierSetting;
+    }
+    if (typeof record.theme === 'string') result.theme = record.theme;
+    if (typeof record.wordWrap === 'boolean') result.wordWrap = record.wordWrap;
+    if (typeof record.showActivityBar === 'boolean')
+      result.showActivityBar = record.showActivityBar;
+    if (typeof record.showRightActivityBar === 'boolean')
+      result.showRightActivityBar = record.showRightActivityBar;
+    if (typeof record.showIndentGuides === 'boolean')
+      result.showIndentGuides = record.showIndentGuides;
+    if (typeof record.reducedMotion === 'boolean')
+      result.reducedMotion = record.reducedMotion;
+    if (
+      typeof record.workspaceTabPosition === 'string' &&
+      this.$allowedWorkspaceTabPositions.has(
+        record.workspaceTabPosition as WorkspaceTabPosition,
+      )
+    ) {
+      result.workspaceTabPosition =
+        record.workspaceTabPosition as WorkspaceTabPosition;
+    }
+    if (
+      typeof record.sidebarPosition === 'string' &&
+      this.$allowedSidebarPositions.has(
+        record.sidebarPosition as SidebarPosition,
+      )
+    ) {
+      result.sidebarPosition = record.sidebarPosition as SidebarPosition;
+    }
+    if (
+      record.panelAlignment === 'justify' ||
+      record.panelAlignment === 'left'
+    ) {
+      result.panelAlignment = 'center';
+    } else if (
+      typeof record.panelAlignment === 'string' &&
+      this.$allowedPanelAlignments.has(record.panelAlignment as PanelAlignment)
+    ) {
+      result.panelAlignment = record.panelAlignment as PanelAlignment;
+    }
+    if (
+      typeof record.leftDockVerticalSpan === 'string' &&
+      this.$allowedDockVerticalSpans.has(
+        record.leftDockVerticalSpan as DockVerticalSpan,
+      )
+    ) {
+      result.leftDockVerticalSpan =
+        record.leftDockVerticalSpan as DockVerticalSpan;
+    }
+    if (
+      typeof record.rightDockVerticalSpan === 'string' &&
+      this.$allowedDockVerticalSpans.has(
+        record.rightDockVerticalSpan as DockVerticalSpan,
+      )
+    ) {
+      result.rightDockVerticalSpan =
+        record.rightDockVerticalSpan as DockVerticalSpan;
+    }
+    readNumber('terminalTypingSpeed');
+    if (typeof record.terminalCleanPrompt === 'boolean')
+      result.terminalCleanPrompt = record.terminalCleanPrompt;
+    readNumber('sidebarWidth');
+    readNumber('rightDockWidth');
+    readNumber('panelTabCycleSeconds');
+    if (typeof record.panelTabCycling === 'boolean')
+      result.panelTabCycling = record.panelTabCycling;
+    const panelWorkspaceStates = this.sanitizePanelWorkspaceStates(
+      record.panelWorkspaceStates,
+    );
+    if (panelWorkspaceStates)
+      result.panelWorkspaceStates = panelWorkspaceStates;
+    const primaryDockContentOrder = this.sanitizeIdentifierOrder(
+      record.primaryDockContentOrder,
+    );
+    if (primaryDockContentOrder)
+      result.primaryDockContentOrder = primaryDockContentOrder;
+    const panelContentOrder = this.sanitizePanelContentOrder(
+      record.panelContentOrder,
+    );
+    if (panelContentOrder) result.panelContentOrder = panelContentOrder;
+    return result;
+  }
+  protected static sanitizePanelWorkspaceStates(
+    candidate: unknown,
+  ): Record<string, PanelWorkspaceState> | undefined {
+    if (
+      typeof candidate !== 'object' ||
+      candidate === null ||
+      Array.isArray(candidate)
+    ) {
+      return undefined;
+    }
+    const sanitized: Record<string, PanelWorkspaceState> = {};
+    for (const [workspaceRoot, value] of Object.entries(candidate)) {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        continue;
+      }
+      const record = value as Record<string, unknown>;
+      if (!Array.isArray(record.spaces)) continue;
+      const spaces = record.spaces.flatMap((spaceValue) => {
+        if (
+          typeof spaceValue !== 'object' ||
+          spaceValue === null ||
+          Array.isArray(spaceValue)
+        ) {
+          return [];
+        }
+        const space = spaceValue as Record<string, unknown>;
+        if (
+          typeof space.kind !== 'string' ||
+          typeof space.label !== 'string' ||
+          !Array.isArray(space.groups)
+        ) {
+          return [];
+        }
+        const groups = space.groups.flatMap((groupValue) => {
+          if (!Array.isArray(groupValue)) return [];
+          const panes = groupValue.flatMap((paneValue) => {
+            if (
+              typeof paneValue !== 'object' ||
+              paneValue === null ||
+              Array.isArray(paneValue)
+            ) {
+              return [];
+            }
+            const pane = paneValue as Record<string, unknown>;
+            if (
+              pane.kind === 'task-notice' ||
+              (typeof pane.identifier === 'string' &&
+                this.isTaskNoticeIdentifier(pane.identifier))
+            ) {
+              return [];
+            }
+            return typeof pane.kind === 'string' &&
+              typeof pane.label === 'string'
+              ? [
+                  {
+                    kind: pane.kind,
+                    label: pane.label,
+                    ...(typeof pane.identifier === 'string'
+                      ? { identifier: pane.identifier }
+                      : {}),
+                  },
+                ]
+              : [];
+          });
+          return panes.length > 0 ? [panes] : [];
+        });
+        return groups.length > 0
+          ? [
+              {
+                kind: space.kind,
+                label: space.label,
+                groups,
+                activeGroupIndex:
+                  typeof space.activeGroupIndex === 'number'
+                    ? Math.max(0, Math.floor(space.activeGroupIndex))
+                    : 0,
+              },
+            ]
+          : [];
+      });
+      sanitized[workspaceRoot] = {
+        spaces,
+        activeSpaceIndex:
+          typeof record.activeSpaceIndex === 'number'
+            ? Math.max(0, Math.floor(record.activeSpaceIndex))
+            : 0,
+        panelListExpanded: record.panelListExpanded === true,
+        panelListWidth:
+          typeof record.panelListWidth === 'number'
+            ? Math.max(10, Math.min(40, Math.round(record.panelListWidth)))
+            : 20,
+        visible: record.visible === true,
+      };
+    }
+    return sanitized;
+  }
 
   constructor(readonly options: SettingsOptions = {}) {}
 
@@ -214,30 +513,6 @@ class $Settings {
 
   protected get fileSystem(): SettingsFileSystem {
     return (this.fileSystemInstance ??= this.createFileSystem());
-  }
-
-  /** The default Files/Environment-backed filesystem (dependencies read late, inside each method). */
-  static defaultFileSystem(): SettingsFileSystem {
-    return {
-      readTextFile(path: string): string | null {
-        if (!Files.Class.exists(path)) return null;
-        try {
-          return Files.Class.read(path);
-        } catch {
-          return null;
-        }
-      },
-      writeTextFile(path: string, content: string): void {
-        Files.Class.write(path, content);
-      },
-      homeDirectory(): string {
-        return (
-          Environment.Class.env('HOME') ??
-          Environment.Class.env('USERPROFILE') ??
-          Environment.Class.cwd
-        );
-      },
-    };
   }
 
   // ---- Path resolution ---------------------------------------------------------------------------
@@ -466,288 +741,6 @@ class $Settings {
   }
 
   // ---- Static helpers ----------------------------------------------------------------------------
-
-  static get DEFAULTS(): SettingsValues {
-    return {
-      verticalFlingCeiling: 220,
-      scrollAccelGain: 34,
-      scrollFriction: 0.015,
-      maximumGlideDurationMilliseconds: 900,
-      linesPerNotch: 1,
-      horizontalScrollModifier: 'alt',
-      fastScrollModifier: 'none',
-      fastScrollMultiplier: 3,
-      scrollbarThickness: 1,
-      glyphMode: 'auto',
-      graphicsTier: 'auto',
-      theme: 'dark',
-      wordWrap: false,
-      showActivityBar: true,
-      showRightActivityBar: false,
-      showIndentGuides: true,
-      reducedMotion: false,
-      workspaceTabPosition: 'top',
-      sidebarPosition: 'left',
-      panelAlignment: 'center',
-      leftDockVerticalSpan: 'full-height',
-      rightDockVerticalSpan: 'ends-at-panel',
-      terminalTypingSpeed: 40,
-      terminalCleanPrompt: true,
-      sidebarWidth: 32,
-      rightDockWidth: 28,
-      primaryDockContentOrder: [],
-      panelContentOrder: ['terminal'],
-      panelTabCycleSeconds: 10,
-      panelTabCycling: false,
-      panelWorkspaceStates: {},
-    };
-  }
-
-  protected static sanitizeIdentifierOrder(
-    candidate: unknown,
-  ): string[] | undefined {
-    if (
-      !Array.isArray(candidate) ||
-      candidate.length === 0 ||
-      !candidate.every(
-        (identifier) => typeof identifier === 'string' && identifier.length > 0,
-      )
-    ) {
-      return undefined;
-    }
-    return [...new Set(candidate as string[])];
-  }
-
-  protected static isTaskNoticeIdentifier(identifier: string): boolean {
-    return identifier.endsWith(':notice');
-  }
-
-  protected static sanitizePanelContentOrder(
-    candidate: unknown,
-  ): string[] | undefined {
-    const identifiers = this.sanitizeIdentifierOrder(candidate)?.filter(
-      (identifier) => !this.isTaskNoticeIdentifier(identifier),
-    );
-    return identifiers && identifiers.length > 0 ? identifiers : undefined;
-  }
-
-  /** Keep only recognized keys whose value has the right shape — corrupt entries are dropped. */
-  static sanitize(parsed: unknown): Partial<SettingsValues> {
-    if (typeof parsed !== 'object' || parsed === null) return {};
-    const record = parsed as Record<string, unknown>;
-    const result: Partial<SettingsValues> = {};
-    const readNumber = (key: keyof SettingsValues): void => {
-      const value = record[key];
-      if (typeof value === 'number' && Number.isFinite(value))
-        result[key] = value as never;
-    };
-    const readModifier = (key: keyof SettingsValues): void => {
-      const value = record[key];
-      if (
-        typeof value === 'string' &&
-        this.$allowedScrollModifiers.has(value as ScrollModifier)
-      ) {
-        result[key] = value as never;
-      }
-    };
-    readNumber('verticalFlingCeiling');
-    readNumber('scrollAccelGain');
-    readNumber('scrollFriction');
-    readNumber('maximumGlideDurationMilliseconds');
-    readNumber('linesPerNotch');
-    readModifier('horizontalScrollModifier');
-    readModifier('fastScrollModifier');
-    readNumber('fastScrollMultiplier');
-    readNumber('scrollbarThickness');
-    if (
-      typeof record.glyphMode === 'string' &&
-      this.$allowedGlyphModes.has(record.glyphMode as GlyphMode)
-    ) {
-      result.glyphMode = record.glyphMode as GlyphMode;
-    }
-    if (
-      typeof record.graphicsTier === 'string' &&
-      this.$allowedGraphicsTiers.has(record.graphicsTier as GraphicsTierSetting)
-    ) {
-      result.graphicsTier = record.graphicsTier as GraphicsTierSetting;
-    }
-    if (typeof record.theme === 'string') result.theme = record.theme;
-    if (typeof record.wordWrap === 'boolean') result.wordWrap = record.wordWrap;
-    if (typeof record.showActivityBar === 'boolean')
-      result.showActivityBar = record.showActivityBar;
-    if (typeof record.showRightActivityBar === 'boolean')
-      result.showRightActivityBar = record.showRightActivityBar;
-    if (typeof record.showIndentGuides === 'boolean')
-      result.showIndentGuides = record.showIndentGuides;
-    if (typeof record.reducedMotion === 'boolean')
-      result.reducedMotion = record.reducedMotion;
-    if (
-      typeof record.workspaceTabPosition === 'string' &&
-      this.$allowedWorkspaceTabPositions.has(
-        record.workspaceTabPosition as WorkspaceTabPosition,
-      )
-    ) {
-      result.workspaceTabPosition =
-        record.workspaceTabPosition as WorkspaceTabPosition;
-    }
-    if (
-      typeof record.sidebarPosition === 'string' &&
-      this.$allowedSidebarPositions.has(
-        record.sidebarPosition as SidebarPosition,
-      )
-    ) {
-      result.sidebarPosition = record.sidebarPosition as SidebarPosition;
-    }
-    if (
-      record.panelAlignment === 'justify' ||
-      record.panelAlignment === 'left'
-    ) {
-      result.panelAlignment = 'center';
-    } else if (
-      typeof record.panelAlignment === 'string' &&
-      this.$allowedPanelAlignments.has(record.panelAlignment as PanelAlignment)
-    ) {
-      result.panelAlignment = record.panelAlignment as PanelAlignment;
-    }
-    if (
-      typeof record.leftDockVerticalSpan === 'string' &&
-      this.$allowedDockVerticalSpans.has(
-        record.leftDockVerticalSpan as DockVerticalSpan,
-      )
-    ) {
-      result.leftDockVerticalSpan =
-        record.leftDockVerticalSpan as DockVerticalSpan;
-    }
-    if (
-      typeof record.rightDockVerticalSpan === 'string' &&
-      this.$allowedDockVerticalSpans.has(
-        record.rightDockVerticalSpan as DockVerticalSpan,
-      )
-    ) {
-      result.rightDockVerticalSpan =
-        record.rightDockVerticalSpan as DockVerticalSpan;
-    }
-    readNumber('terminalTypingSpeed');
-    if (typeof record.terminalCleanPrompt === 'boolean')
-      result.terminalCleanPrompt = record.terminalCleanPrompt;
-    readNumber('sidebarWidth');
-    readNumber('rightDockWidth');
-    readNumber('panelTabCycleSeconds');
-    if (typeof record.panelTabCycling === 'boolean')
-      result.panelTabCycling = record.panelTabCycling;
-    const panelWorkspaceStates = this.sanitizePanelWorkspaceStates(
-      record.panelWorkspaceStates,
-    );
-    if (panelWorkspaceStates)
-      result.panelWorkspaceStates = panelWorkspaceStates;
-    const primaryDockContentOrder = this.sanitizeIdentifierOrder(
-      record.primaryDockContentOrder,
-    );
-    if (primaryDockContentOrder)
-      result.primaryDockContentOrder = primaryDockContentOrder;
-    const panelContentOrder = this.sanitizePanelContentOrder(
-      record.panelContentOrder,
-    );
-    if (panelContentOrder) result.panelContentOrder = panelContentOrder;
-    return result;
-  }
-
-  protected static sanitizePanelWorkspaceStates(
-    candidate: unknown,
-  ): Record<string, PanelWorkspaceState> | undefined {
-    if (
-      typeof candidate !== 'object' ||
-      candidate === null ||
-      Array.isArray(candidate)
-    ) {
-      return undefined;
-    }
-    const sanitized: Record<string, PanelWorkspaceState> = {};
-    for (const [workspaceRoot, value] of Object.entries(candidate)) {
-      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-        continue;
-      }
-      const record = value as Record<string, unknown>;
-      if (!Array.isArray(record.spaces)) continue;
-      const spaces = record.spaces.flatMap((spaceValue) => {
-        if (
-          typeof spaceValue !== 'object' ||
-          spaceValue === null ||
-          Array.isArray(spaceValue)
-        ) {
-          return [];
-        }
-        const space = spaceValue as Record<string, unknown>;
-        if (
-          typeof space.kind !== 'string' ||
-          typeof space.label !== 'string' ||
-          !Array.isArray(space.groups)
-        ) {
-          return [];
-        }
-        const groups = space.groups.flatMap((groupValue) => {
-          if (!Array.isArray(groupValue)) return [];
-          const panes = groupValue.flatMap((paneValue) => {
-            if (
-              typeof paneValue !== 'object' ||
-              paneValue === null ||
-              Array.isArray(paneValue)
-            ) {
-              return [];
-            }
-            const pane = paneValue as Record<string, unknown>;
-            if (
-              pane.kind === 'task-notice' ||
-              (typeof pane.identifier === 'string' &&
-                this.isTaskNoticeIdentifier(pane.identifier))
-            ) {
-              return [];
-            }
-            return typeof pane.kind === 'string' &&
-              typeof pane.label === 'string'
-              ? [
-                  {
-                    kind: pane.kind,
-                    label: pane.label,
-                    ...(typeof pane.identifier === 'string'
-                      ? { identifier: pane.identifier }
-                      : {}),
-                  },
-                ]
-              : [];
-          });
-          return panes.length > 0 ? [panes] : [];
-        });
-        return groups.length > 0
-          ? [
-              {
-                kind: space.kind,
-                label: space.label,
-                groups,
-                activeGroupIndex:
-                  typeof space.activeGroupIndex === 'number'
-                    ? Math.max(0, Math.floor(space.activeGroupIndex))
-                    : 0,
-              },
-            ]
-          : [];
-      });
-      sanitized[workspaceRoot] = {
-        spaces,
-        activeSpaceIndex:
-          typeof record.activeSpaceIndex === 'number'
-            ? Math.max(0, Math.floor(record.activeSpaceIndex))
-            : 0,
-        panelListExpanded: record.panelListExpanded === true,
-        panelListWidth:
-          typeof record.panelListWidth === 'number'
-            ? Math.max(10, Math.min(40, Math.round(record.panelListWidth)))
-            : 20,
-        visible: record.visible === true,
-      };
-    }
-    return sanitized;
-  }
 }
 
 export namespace Settings {

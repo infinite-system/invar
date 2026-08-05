@@ -39,26 +39,6 @@ import type { Theme } from '../theme/Theme';
 class $SourceTextPaneContent
   implements PaneContent, PaneNativeSurfacePort, PaneTextSelectionPort
 {
-  // Gutter (line numbers + fold controls) and code are SEPARATE renderables so the code buffer
-  // holds only code — OpenTUI's native selection then never shades the gutter on a multi-line
-  // span, and code-local selection coords are pure display columns.
-  protected readonly gutterBody: TextRenderable;
-  protected readonly codeBody: SelectableText.Model;
-  protected readonly controller: EditorPane.Instance;
-  protected readonly paintRevision: Ref<string>;
-  /** What the pane shows with no document open — the first thing a new user reads. */
-  protected get emptyState(): string {
-    return [
-      '',
-      '   Invar — a terminal code workspace',
-      '',
-      '   ↑/↓  navigate files      Enter  open / expand',
-      '   Tab  switch pane         Ctrl+P command palette',
-      '   Ctrl+Q or F10  quit   (VS Code: Ctrl+X then Ctrl+C)',
-      '',
-    ].join('\n');
-  }
-
   constructor(protected readonly deps: SourceTextPaneContentDeps) {
     this.gutterBody = new TextRenderable(deps.renderer, {
       id: 'editor-gutter',
@@ -86,6 +66,26 @@ class $SourceTextPaneContent
     deps.slot.add(this.codeBody);
     this.controller = this.createController();
     this.paintRevision = computed(() => this.readPaintRevision());
+  }
+
+  // Gutter (line numbers + fold controls) and code are SEPARATE renderables so the code buffer
+  // holds only code — OpenTUI's native selection then never shades the gutter on a multi-line
+  // span, and code-local selection coords are pure display columns.
+  protected readonly gutterBody: TextRenderable;
+  protected readonly codeBody: SelectableText.Model;
+  protected readonly controller: EditorPane.Instance;
+  protected readonly paintRevision: Ref<string>;
+  /** What the pane shows with no document open — the first thing a new user reads. */
+  protected get emptyState(): string {
+    return [
+      '',
+      '   Invar — a terminal code workspace',
+      '',
+      '   ↑/↓  navigate files      Enter  open / expand',
+      '   Tab  switch pane         Ctrl+P command palette',
+      '   Ctrl+Q or F10  quit   (VS Code: Ctrl+X then Ctrl+C)',
+      '',
+    ].join('\n');
   }
 
   protected createController(): EditorPane.Instance {

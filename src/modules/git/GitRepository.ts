@@ -13,12 +13,12 @@ import {
 } from './GitParsers';
 
 class $GitRepository {
+  constructor(readonly cwd: string) {}
+
   protected refreshRequestId = 0;
   protected backgroundRefreshInFlight = false;
   protected historyRequestId = 0;
   protected operationId = 0;
-
-  constructor(readonly cwd: string) {}
 
   get branch() {
     return ref('');

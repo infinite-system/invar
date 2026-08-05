@@ -25,6 +25,9 @@ class $AgentComposer {
   protected static get RIGHT_PADDING_COLUMNS(): number {
     return 2;
   }
+  constructor() {
+    this.input = this.createInput();
+  }
 
   protected readonly input: TextInputModel.Model;
   /** Last frame's wrap width + scroll offset — the coord space for caret / pointer / selection mapping. */
@@ -34,10 +37,6 @@ class $AgentComposer {
   protected cachedSegments: readonly AgentWordWrapSegment[] | null = null;
   protected cachedSegmentsText = '';
   protected cachedSegmentsWidth = 0;
-
-  constructor() {
-    this.input = this.createInput();
-  }
 
   protected createInput(): TextInputModel.Model {
     return new TextInputModel.Class();

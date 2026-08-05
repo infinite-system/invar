@@ -20,17 +20,17 @@ import type {
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: The composition graph reaches every installed contributor (src/modules/system/system.invariants.md)
 class $ApplicationContributions implements ApplicationContributionCatalog {
+  constructor(
+    protected readonly orderedContributors: readonly ApplicationContributor[],
+    protected readonly options: ApplicationContributionsOptions,
+  ) {}
+
   protected readonly activeContributions = new Map<
     string,
     ActiveContribution
   >();
   protected readonly failures = new Map<string, string>();
   protected readonly keyObservers = new Set<(key: KeyEvent) => void>();
-
-  constructor(
-    protected readonly orderedContributors: readonly ApplicationContributor[],
-    protected readonly options: ApplicationContributionsOptions,
-  ) {}
 
   get revision() {
     return ref(0);

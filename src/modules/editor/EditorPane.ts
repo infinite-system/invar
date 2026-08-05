@@ -29,6 +29,11 @@ import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 
 class $EditorPane {
+  constructor(protected readonly deps: EditorPaneDeps) {
+    this.drag = this.buildDragBehavior();
+    this.wireHandlers();
+  }
+
   // View geometry of the last-rendered frame in both wrap modes: the visual rows the window showed,
   // written by renderEditor and read by the caret block, applySelection, and the mouse hit-test — so
   // all consumers agree on what is where.
@@ -41,10 +46,6 @@ class $EditorPane {
   protected lastClickLine = -1;
   protected lastClickColumn = -1;
   protected clickCount = 0;
-  constructor(protected readonly deps: EditorPaneDeps) {
-    this.drag = this.buildDragBehavior();
-    this.wireHandlers();
-  }
   /** Render the editor window (delegates to EditorPaneRenderer); stores the wrap window. Returns null
    *  for the empty state (diff shown / no document), leaving the stored window untouched. */
   renderEditor(): {

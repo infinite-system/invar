@@ -32,19 +32,19 @@ import type { DocumentSyntaxReader } from '../syntax/DocumentSyntaxSource.interf
 // invariant: The dirty marker is derived from content, never asserted (src/modules/text/text.invariants.md)
 // invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
 class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
-  // invariant: Construction goes through overridable seams (project.invariants.md)
-  viewport = this.createViewport();
-  protected undo = this.createUndo();
-  protected disposeUndoDocumentListener: (() => void) | null = null;
-  protected disposeEditorContributions: (() => void) | null = null;
-  protected editorContributions: EditorContributions.Model | null = null;
-
   constructor() {
     super();
     this.disposeUndoDocumentListener = this.document.onLineChange((change) =>
       this.undo.recordChange(change),
     );
   }
+
+  // invariant: Construction goes through overridable seams (project.invariants.md)
+  viewport = this.createViewport();
+  protected undo = this.createUndo();
+  protected disposeUndoDocumentListener: (() => void) | null = null;
+  protected disposeEditorContributions: (() => void) | null = null;
+  protected editorContributions: EditorContributions.Model | null = null;
 
   protected createViewport() {
     return new TextViewport.Class();

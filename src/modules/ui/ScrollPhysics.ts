@@ -6,24 +6,26 @@ import { Static } from 'ivue/extras';
 
 class $ScrollPhysics {
   /** Key repeats within this window continue an acceleration run; a gap resets it. */
+  // Hot key-repeat path: this fixed run window never varies by subclass.
   static readonly KEY_RUN_WINDOW_MS = 150;
 
   /** Held-arrow ramp: near-immediate onset, steep build (user-tuned 2026-07-21: the ramp kicks in
    *  after ~2 fast repeats and climbs hard — holding feels fast almost immediately, while a single
    *  press or slow taps still move exactly 1 row). */
+  // Hot key-repeat path: this fixed ramp onset never varies by subclass.
   static readonly KEY_ACCEL_START_RUN = 2; // presses before any acceleration (was 3)
+  // Hot key-repeat path: this fixed ramp curve never varies by subclass.
   static readonly KEY_ACCEL_QUADRATIC = 0.4; // rows += this * (run - start)^2 (was 0.15)
+  // Hot key-repeat path: this fixed row cap never varies by subclass.
   static readonly KEY_ACCEL_CAP_ROWS = 50; // max rows per repeat (was 45)
 
   /** Ctrl+Up/Down big-jump traversal: a screenful-ish stride that also ramps. Hand-tuned. */
+  // Hot jump-key path: this fixed base stride never varies by subclass.
   static readonly JUMP_BASE_ROWS = 15;
+  // Hot jump-key path: this fixed ramp stride never varies by subclass.
   static readonly JUMP_RAMP_ROWS = 5; // + per repeat in a run
+  // Hot jump-key path: this fixed row cap never varies by subclass.
   static readonly JUMP_CAP_ROWS = 120;
-
-  protected accelerationDirection = '';
-  protected accelerationRunLength = 0;
-  protected accelerationLastTimestampMilliseconds = 0;
-
   /**
    * Rows a plain held arrow moves on the `runLength`-th repeat: 1 while tapping, then a
    * noticeably building quadratic ramp up to the cap.
@@ -35,7 +37,6 @@ class $ScrollPhysics {
       (runLength - this.KEY_ACCEL_START_RUN + 1) ** 2;
     return Math.min(this.KEY_ACCEL_CAP_ROWS, Math.floor(1 + ramp));
   }
-
   /** Rows a Ctrl+arrow big jump moves on the `runLength`-th repeat. */
   static jumpRows(runLength: number): number {
     return Math.min(
@@ -43,6 +44,10 @@ class $ScrollPhysics {
       this.JUMP_BASE_ROWS + this.JUMP_RAMP_ROWS * runLength,
     );
   }
+
+  protected accelerationDirection = '';
+  protected accelerationRunLength = 0;
+  protected accelerationLastTimestampMilliseconds = 0;
 
   keyAccelerationFor(
     direction: string,

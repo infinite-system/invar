@@ -11,6 +11,11 @@ import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 
 class $ShortcutHelp {
+  constructor(
+    protected readonly keybindings: KeybindingRegistry.Instance,
+    protected readonly commands: CommandRegistry.Instance,
+  ) {}
+
   protected get categoryByActionPrefix(): Record<string, string> {
     const categoryByActionPrefixValue: Record<string, string> = {
       app: 'Application',
@@ -48,10 +53,6 @@ class $ShortcutHelp {
       .map((word) => (word ? word[0]!.toUpperCase() + word.slice(1) : word))
       .join(' ');
   }
-  constructor(
-    protected readonly keybindings: KeybindingRegistry.Instance,
-    protected readonly commands: CommandRegistry.Instance,
-  ) {}
   get open() {
     return ref(false);
   }

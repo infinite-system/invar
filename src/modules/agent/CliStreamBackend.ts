@@ -18,6 +18,8 @@ import { ClaudeStreamMapping } from './ClaudeStreamMapping';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 
 class $CliStreamBackend implements AgentBackend {
+  constructor(protected readonly options: CliStreamOptions) {}
+
   readonly ibrFoundationDelivery = 'append-system-prompt';
 
   protected eventCallback: ((event: AgentEvent) => void) | null = null;
@@ -28,8 +30,6 @@ class $CliStreamBackend implements AgentBackend {
   protected disposed = false;
   /** Tail of the child's stderr, so a non-zero exit can surface a useful reason (e.g. not logged in). */
   protected stderrTail = '';
-
-  constructor(protected readonly options: CliStreamOptions) {}
 
   protected authHintFor(stderr: string): string | null {
     const lower = stderr.toLowerCase();

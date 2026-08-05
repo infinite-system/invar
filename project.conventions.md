@@ -82,6 +82,20 @@ a mechanical checker should not be able to see.
   lower camel case. Instance getters remain lower camel case because a literal there is usually a
   per-instance knob. `$SCREAMING_SNAKE_CASE` is always invalid: a literal needs no cache. CHECK:
   `scripts/check-static-getter-naming.ts` in `scripts/conventions-gate.sh`.
+- CONSTANTS HAVE ONE FORM PER ROLE:
+
+  | Role | Form |
+  | --- | --- |
+  | Tunable or overridable class constant | `static get SCREAMING_SNAKE_CASE()` |
+  | Protocol or byte constant on a hot path, never overridden | `static readonly SCREAMING_SNAKE_CASE` with a one-line hot-path comment |
+  | Contributor or pane identity data | Instance `readonly lowerCamelCase` field |
+  | Extensible constructed dependency | Field assigned from a prototype `createX()` factory method |
+  | Any other supposed constant | Defect: choose the real role or remove it |
+
+  Read a live static through the receiving class, per the ivue static ladder. JavaScript dispatches
+  a getter or prototype method override even while a parent constructor runs. A subclass field
+  initializer runs only after `super()` returns. It cannot override a value during parent
+  construction. This is why tunables use getters and constructed dependencies use `createX()`.
 - FILE GRAMMAR (applies to all new and edited code; AST enforcement is scheduled, the rule is
   not):
   1. **Sequence:** imports → `// invariant:` annotations → the EPONYMOUS declaration → exported
@@ -92,15 +106,19 @@ a mechanical checker should not be able to see.
      generates; TS type hoisting makes below-declaration types legal in its own signatures.
   2. **No detached behavior or data:** module-level helper functions become `protected` static
      or instance METHODS on the class (prototype methods — never arrow-function class fields,
-     which bind per-instance and break `super` chains). Module-level constants (sentinels,
-     regexes, tables) become **`protected static` GETTERS** — getters late-bind through the
-     prototype so an override governs every use including the base's own; a shadowed readonly
-     field does not. Expensive constructions use the `$`-prefixed cached-getter convention.
+     which bind per-instance and break `super` chains). Module-level constants follow the role
+     table above. Tunable sentinels, regexes, and tables become **`protected static` GETTERS**.
+     Getters late-bind through the prototype, so an override governs the base's own reads.
+     Expensive constructions use the `$`-prefixed cached-getter convention.
      The old `$name` backing-function shape collapses: the manifest member IS the method.
-  3. **`protected` is the floor:** no `private` modifier, no `#fields` in `src/modules/**` —
+  3. **Class member order:** static members → constructor → state getters → prop getters →
+     derived getters → methods. A constructor is the first instance member. Comments and invariant
+     annotations can precede the member they describe. `scripts/check-file-grammar.ts` enforces the
+     constructor position in converted modules.
+  4. **`protected` is the floor:** no `private` modifier, no `#fields` in `src/modules/**` —
      TypeScript `private` blocks subclass override exactly like detachment did (recorded
      invariant: *Construction goes through overridable seams*; everything must extend).
-  4. **Tests are strictly colocated:** `Foo.test.ts` beside `Foo.ts`, never in `__tests__/`
+  5. **Tests are strictly colocated:** `Foo.test.ts` beside `Foo.ts`, never in `__tests__/`
      directories; PAIR-COMPLETENESS — every eponymous class file has its colocated test
      (`*.interface.ts` files are structurally exempt because they contain no behavior).
 - BLAME HYGIENE: every grammar-only conversion commit is appended by full hash to `.git-blame-ignore-revs`; phase-2 waves extend the same list.
