@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #506 [constructor-first-and-the-constants-role-table](.invar/tasks/in-progress/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md)  [building]
-  `tmux attach -t invar/506-constructor-first-and-the-constants-role-table`
-
 ## USER-DIRECTED (15)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
 - #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/active/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md)
@@ -148,7 +144,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 217 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 218 — full log: project.tasks-completed.md)
+- #506 [constructor-first-and-the-constants-role-table](.invar/tasks/completed/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md) — b27235a9 — constructor first everywhere; constants have one form per role
 - #503 [a-task-is-a-terminal-pane-not-a-kind](.invar/tasks/completed/503-a-task-is-a-terminal-pane-not-a-kind/task-503-a-task-is-a-terminal-pane-not-a-kind.md) — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json
 - #502 [dead-task-panes-must-not-restore](.invar/tasks/completed/502-dead-task-panes-must-not-restore/task-502-dead-task-panes-must-not-restore.md) — aa80511f — dead task panes drop at restore; layouts heal; ratchet tightens to 33
 - #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/completed/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md) — faa06188 — restored task panes stay in their saved space; layouts self-heal
@@ -163,4 +160,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #490 [chord-and-command-relocation-sweep](.invar/tasks/completed/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md) — c343b38f — plugin chords and labels relocated; ShortcutHelp reads live layers
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/completed/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md) — da15f209 — drive layer: drag, log surface, --show, loud showScreen
 - #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
-- #487 [copy-path-telemetry-names-the-dying-stage](.invar/tasks/completed/487-copy-path-telemetry-names-the-dying-stage/task-487-copy-path-telemetry-names-the-dying-stage.md) — 9f132d18 — copy telemetry: one record per attempt names surface, route, OSC 52 result

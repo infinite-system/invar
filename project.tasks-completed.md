@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #506 [constructor-first-and-the-constants-role-table](.invar/tasks/completed/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md) — b27235a9 — constructor first everywhere; constants have one form per role
 - #503 [a-task-is-a-terminal-pane-not-a-kind](.invar/tasks/completed/503-a-task-is-a-terminal-pane-not-a-kind/task-503-a-task-is-a-terminal-pane-not-a-kind.md) — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json
 - #502 [dead-task-panes-must-not-restore](.invar/tasks/completed/502-dead-task-panes-must-not-restore/task-502-dead-task-panes-must-not-restore.md) — aa80511f — dead task panes drop at restore; layouts heal; ratchet tightens to 33
 - #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/completed/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md) — faa06188 — restored task panes stay in their saved space; layouts self-heal
