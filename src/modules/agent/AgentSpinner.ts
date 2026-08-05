@@ -19,15 +19,6 @@ class $AgentSpinner {
     };
     return defaultScheduler;
   }
-
-  protected timerHandle: unknown = null;
-  /** Wall-clock ms captured when the busy spell began (for the elapsed counter). */
-  protected startMilliseconds = 0;
-  protected readonly scheduler: SpinnerScheduler;
-  protected readonly intervalMilliseconds: number;
-  protected readonly stopRunningWatch: () => void;
-  protected disposed = false;
-
   constructor(
     protected readonly shouldRun: () => boolean,
     scheduler?: SpinnerScheduler,
@@ -43,6 +34,14 @@ class $AgentSpinner {
       { immediate: true, flush: 'sync' },
     );
   }
+
+  protected timerHandle: unknown = null;
+  /** Wall-clock ms captured when the busy spell began (for the elapsed counter). */
+  protected startMilliseconds = 0;
+  protected readonly scheduler: SpinnerScheduler;
+  protected readonly intervalMilliseconds: number;
+  protected readonly stopRunningWatch: () => void;
+  protected disposed = false;
 
   /** The current animation frame index — fused into the pane's render revision so a tick repaints. */
   get frame() {

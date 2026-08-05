@@ -75,115 +75,6 @@ class $DiffView {
     >();
     return overviewKindsByAlignment;
   }
-
-  protected get DiffAlignment() {
-    return DiffAlignment.Class;
-  }
-
-  protected get TextCoordinates() {
-    return TextCoordinates.Class;
-  }
-
-  protected get Highlighter() {
-    return Highlighter.Class;
-  }
-
-  protected get LanguageRegistry() {
-    return LanguageRegistry.Class;
-  }
-
-  protected get Momentum() {
-    return Momentum.Class;
-  }
-
-  protected get ReadOnlyTextBuffer() {
-    return ReadOnlyTextBuffer.Class;
-  }
-
-  protected get ScrollbarGeometry() {
-    return ScrollbarGeometry.Class;
-  }
-
-  protected get SelectableText() {
-    return SelectableText.Class;
-  }
-
-  protected get SelectionDragBehavior() {
-    return SelectionDragBehavior.Class;
-  }
-
-  protected get SolidThumbScrollBar() {
-    return SolidThumbScrollBar.Class;
-  }
-
-  protected get SplitterModel() {
-    return SplitterModel.Class;
-  }
-
-  /** The bright accent for a changed row's GUTTER MARKER (line number tint) — the same hues the git
-   *  panel uses for add/modify/delete. Distinct from the row's background fill below. */
-  protected changedRowColor(
-    kind: AlignedRowKind,
-    palette: Palette,
-  ): string | null {
-    switch (kind) {
-      case 'added':
-        return palette.added;
-      case 'deleted':
-        return palette.deleted;
-      case 'modified':
-        return palette.modified;
-      case 'equal':
-        return null;
-    }
-  }
-
-  /** The muted BACKGROUND fill for a changed row — theme-fitting (not the neon accent), so code text on
-   *  top stays legible on a near-black editor. Null for unchanged rows (no fill). */
-  protected changedRowBackground(
-    kind: AlignedRowKind,
-    palette: Palette,
-  ): string | null {
-    switch (kind) {
-      case 'added':
-        return palette.diffAddedBg;
-      case 'deleted':
-        return palette.diffDeletedBg;
-      case 'modified':
-        return palette.diffModifiedBg;
-      case 'equal':
-        return null;
-    }
-  }
-
-  protected syntaxRoleColor(role: Role, palette: Palette): string {
-    switch (role) {
-      case 'keyword':
-        return palette.keyword;
-      case 'string':
-        return palette.string;
-      case 'number':
-        return palette.number;
-      case 'comment':
-        return palette.comment;
-      case 'func':
-        return palette.func;
-      case 'type':
-        return palette.type;
-      case 'operator':
-        return palette.operator;
-      case 'added':
-        return palette.added;
-      case 'removed':
-        return palette.deleted;
-      case 'variable':
-        return palette.variable;
-      case 'text':
-        return palette.fg;
-    }
-    return palette.fg;
-  }
-
   /** Project existing change blocks into one kind per overview-track row without recomputing a diff. */
   static overviewKinds(
     alignment: DiffAlignmentResult,
@@ -232,86 +123,6 @@ class $DiffView {
     );
     overviewKindsByHeight.set(normalizedTrackHeight, overviewKinds);
     return [...overviewKinds];
-  }
-
-  readonly alignment: DiffAlignmentResult;
-  readonly previousVersionLines: readonly string[];
-  readonly currentVersionLines: readonly string[];
-  readonly contentWidth: number;
-  readonly rootRenderable: BoxRenderable;
-  protected readonly headerRenderable: TextRenderable;
-  protected readonly bodyRenderable: BoxRenderable;
-  protected readonly previousPaneRenderables: DiffPaneRenderables;
-  protected readonly currentPaneRenderables: DiffPaneRenderables;
-  protected readonly paneDividerRenderable: BoxRenderable;
-  protected readonly paneSplitter: SplitterModel.Instance;
-  protected readonly paneSplitterElement: SplitterElement.Model;
-  protected readonly overviewRulerRenderable: TextRenderable;
-  protected readonly verticalScrollbarRenderable: ScrollBarRenderable;
-  protected readonly horizontalScrollbarRenderable: ScrollBarRenderable;
-  protected readonly previousSelectionDragBehavior: SelectionDragBehavior.Model;
-  protected readonly currentSelectionDragBehavior: SelectionDragBehavior.Model;
-  // Presentation geometry only. Projection and hit-testing share these values, but update() does
-  // not mutate reactive model state and therefore cannot create a render-invalidation loop.
-  protected headerSegments: HeaderSegment[] = [];
-  protected isApplyingScrollbarGeometry = false;
-  protected verticalReportedToTrueScale = 1;
-  protected horizontalReportedToTrueScale = 1;
-  protected activeSelectionSide: 'previous' | 'current' | null = null;
-  protected activeSelectionBuffer: ReadOnlyTextBuffer.Model | null = null;
-  protected readonly previousTextBuffer: ReadOnlyTextBuffer.Model;
-  protected readonly currentTextBuffer: ReadOnlyTextBuffer.Model;
-  protected focusedFindSide: 'previous' | 'current' = 'current';
-  protected findBarSource: FindBar.Instance | null = null;
-  protected findIdentifier = 'diff';
-
-  get alignedRowScrollOffset() {
-    return ref(0);
-  }
-  get horizontalScrollOffset() {
-    return ref(0);
-  }
-  get verticalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(this.Momentum.AT_REST);
-  }
-  get horizontalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(this.Momentum.AT_REST);
-  }
-  get activeChangeBlockNumber() {
-    return ref(this.alignment.changeBlocks.length > 0 ? 1 : 0);
-  }
-  get selectionRevision() {
-    return ref(0);
-  }
-
-  // Live scroll physics: like Workspace, the fling profile reads its ceiling/gain/friction from the
-  // Settings store when attached, so the diff pane obeys the same Ctrl+, tuning as the editor
-  // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default. Both axes use
-  // the one profile: a horizontal axis on a slower curve reads as lag next to the vertical fling.
-  protected settingsSource: Settings.Instance | null = null;
-  protected splitRatioSetting: RegisteredSetting<number> | null = null;
-  attachSettings(
-    settings: Settings.Instance,
-    splitRatioSetting?: RegisteredSetting<number>,
-  ): void {
-    this.settingsSource = settings;
-    this.splitRatioSetting = splitRatioSetting ?? null;
-    if (splitRatioSetting) {
-      this.paneSplitter.size.value = splitRatioSetting.value.value;
-    }
-    this.update();
-  }
-  protected get flingMomentum(): MomentumOptions {
-    const settings = this.settingsSource;
-    if (!settings) return this.Momentum.verticalOptions;
-    return {
-      impulse: settings.scrollAccelGain.value,
-      max: settings.verticalFlingCeiling.value,
-      decayPerSec: settings.scrollFriction.value,
-      stopVelocity: this.Momentum.verticalOptions.stopVelocity,
-      maximumGlideDurationMilliseconds:
-        settings.maximumGlideDurationMilliseconds.value,
-    };
   }
   constructor(
     public readonly renderer: CliRenderer,
@@ -435,6 +246,194 @@ class $DiffView {
     this.rootRenderable.add(this.bodyRenderable);
     (options.parentRenderable ?? renderer.root).add(this.rootRenderable);
     this.update();
+  }
+
+  protected get DiffAlignment() {
+    return DiffAlignment.Class;
+  }
+
+  protected get TextCoordinates() {
+    return TextCoordinates.Class;
+  }
+
+  protected get Highlighter() {
+    return Highlighter.Class;
+  }
+
+  protected get LanguageRegistry() {
+    return LanguageRegistry.Class;
+  }
+
+  protected get Momentum() {
+    return Momentum.Class;
+  }
+
+  protected get ReadOnlyTextBuffer() {
+    return ReadOnlyTextBuffer.Class;
+  }
+
+  protected get ScrollbarGeometry() {
+    return ScrollbarGeometry.Class;
+  }
+
+  protected get SelectableText() {
+    return SelectableText.Class;
+  }
+
+  protected get SelectionDragBehavior() {
+    return SelectionDragBehavior.Class;
+  }
+
+  protected get SolidThumbScrollBar() {
+    return SolidThumbScrollBar.Class;
+  }
+
+  protected get SplitterModel() {
+    return SplitterModel.Class;
+  }
+
+  /** The bright accent for a changed row's GUTTER MARKER (line number tint) — the same hues the git
+   *  panel uses for add/modify/delete. Distinct from the row's background fill below. */
+  protected changedRowColor(
+    kind: AlignedRowKind,
+    palette: Palette,
+  ): string | null {
+    switch (kind) {
+      case 'added':
+        return palette.added;
+      case 'deleted':
+        return palette.deleted;
+      case 'modified':
+        return palette.modified;
+      case 'equal':
+        return null;
+    }
+  }
+
+  /** The muted BACKGROUND fill for a changed row — theme-fitting (not the neon accent), so code text on
+   *  top stays legible on a near-black editor. Null for unchanged rows (no fill). */
+  protected changedRowBackground(
+    kind: AlignedRowKind,
+    palette: Palette,
+  ): string | null {
+    switch (kind) {
+      case 'added':
+        return palette.diffAddedBg;
+      case 'deleted':
+        return palette.diffDeletedBg;
+      case 'modified':
+        return palette.diffModifiedBg;
+      case 'equal':
+        return null;
+    }
+  }
+
+  protected syntaxRoleColor(role: Role, palette: Palette): string {
+    switch (role) {
+      case 'keyword':
+        return palette.keyword;
+      case 'string':
+        return palette.string;
+      case 'number':
+        return palette.number;
+      case 'comment':
+        return palette.comment;
+      case 'func':
+        return palette.func;
+      case 'type':
+        return palette.type;
+      case 'operator':
+        return palette.operator;
+      case 'added':
+        return palette.added;
+      case 'removed':
+        return palette.deleted;
+      case 'variable':
+        return palette.variable;
+      case 'text':
+        return palette.fg;
+    }
+    return palette.fg;
+  }
+
+  readonly alignment: DiffAlignmentResult;
+  readonly previousVersionLines: readonly string[];
+  readonly currentVersionLines: readonly string[];
+  readonly contentWidth: number;
+  readonly rootRenderable: BoxRenderable;
+  protected readonly headerRenderable: TextRenderable;
+  protected readonly bodyRenderable: BoxRenderable;
+  protected readonly previousPaneRenderables: DiffPaneRenderables;
+  protected readonly currentPaneRenderables: DiffPaneRenderables;
+  protected readonly paneDividerRenderable: BoxRenderable;
+  protected readonly paneSplitter: SplitterModel.Instance;
+  protected readonly paneSplitterElement: SplitterElement.Model;
+  protected readonly overviewRulerRenderable: TextRenderable;
+  protected readonly verticalScrollbarRenderable: ScrollBarRenderable;
+  protected readonly horizontalScrollbarRenderable: ScrollBarRenderable;
+  protected readonly previousSelectionDragBehavior: SelectionDragBehavior.Model;
+  protected readonly currentSelectionDragBehavior: SelectionDragBehavior.Model;
+  // Presentation geometry only. Projection and hit-testing share these values, but update() does
+  // not mutate reactive model state and therefore cannot create a render-invalidation loop.
+  protected headerSegments: HeaderSegment[] = [];
+  protected isApplyingScrollbarGeometry = false;
+  protected verticalReportedToTrueScale = 1;
+  protected horizontalReportedToTrueScale = 1;
+  protected activeSelectionSide: 'previous' | 'current' | null = null;
+  protected activeSelectionBuffer: ReadOnlyTextBuffer.Model | null = null;
+  protected readonly previousTextBuffer: ReadOnlyTextBuffer.Model;
+  protected readonly currentTextBuffer: ReadOnlyTextBuffer.Model;
+  protected focusedFindSide: 'previous' | 'current' = 'current';
+  protected findBarSource: FindBar.Instance | null = null;
+  protected findIdentifier = 'diff';
+
+  get alignedRowScrollOffset() {
+    return ref(0);
+  }
+  get horizontalScrollOffset() {
+    return ref(0);
+  }
+  get verticalScrollMomentum() {
+    return shallowRef<ScrollMomentum>(this.Momentum.AT_REST);
+  }
+  get horizontalScrollMomentum() {
+    return shallowRef<ScrollMomentum>(this.Momentum.AT_REST);
+  }
+  get activeChangeBlockNumber() {
+    return ref(this.alignment.changeBlocks.length > 0 ? 1 : 0);
+  }
+  get selectionRevision() {
+    return ref(0);
+  }
+
+  // Live scroll physics: like Workspace, the fling profile reads its ceiling/gain/friction from the
+  // Settings store when attached, so the diff pane obeys the same Ctrl+, tuning as the editor
+  // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default. Both axes use
+  // the one profile: a horizontal axis on a slower curve reads as lag next to the vertical fling.
+  protected settingsSource: Settings.Instance | null = null;
+  protected splitRatioSetting: RegisteredSetting<number> | null = null;
+  attachSettings(
+    settings: Settings.Instance,
+    splitRatioSetting?: RegisteredSetting<number>,
+  ): void {
+    this.settingsSource = settings;
+    this.splitRatioSetting = splitRatioSetting ?? null;
+    if (splitRatioSetting) {
+      this.paneSplitter.size.value = splitRatioSetting.value.value;
+    }
+    this.update();
+  }
+  protected get flingMomentum(): MomentumOptions {
+    const settings = this.settingsSource;
+    if (!settings) return this.Momentum.verticalOptions;
+    return {
+      impulse: settings.scrollAccelGain.value,
+      max: settings.verticalFlingCeiling.value,
+      decayPerSec: settings.scrollFriction.value,
+      stopVelocity: this.Momentum.verticalOptions.stopVelocity,
+      maximumGlideDurationMilliseconds:
+        settings.maximumGlideDurationMilliseconds.value,
+    };
   }
 
   // --- owned-resource seams ---

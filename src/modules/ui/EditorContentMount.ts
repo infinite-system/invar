@@ -22,10 +22,11 @@ import type {
 } from './EditorSurfaceContents';
 
 class $EditorContentMount {
+  constructor(protected readonly deps: EditorContentMountDeps) {}
+
   protected surface: EditorSurfaceContent | null = null;
   protected mountedSurfaceIdentity = '';
   protected mounted: 'editor' | 'surface' | null = 'editor';
-  constructor(protected readonly deps: EditorContentMountDeps) {}
   /** The mounted contributed surface (or null); read by the find target, the frame loop, the caret,
    *  the status bar, and the key/clipboard routing — all of which see only the generic contract. */
   get contributedSurface(): EditorSurfaceContent | null {

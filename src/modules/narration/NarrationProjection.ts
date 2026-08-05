@@ -21,12 +21,6 @@ import type { TtsBackend } from './TtsBackend.interface';
 import { SpeakableText } from './SpeakableText';
 
 class $NarrationProjection {
-  /** How many transcript entries have been CONSIDERED (spoken or deliberately skipped). Only finalized
-   *  entries advance it, so the still-open trailing turn is revisited until it completes. */
-  protected consideredThrough = 0;
-
-  protected stopWatch: (() => void) | null = null;
-
   constructor(
     protected readonly session: NarrationTranscript,
     protected readonly enabled: Ref<boolean>,
@@ -43,6 +37,12 @@ class $NarrationProjection {
       { flush: 'sync' },
     );
   }
+
+  /** How many transcript entries have been CONSIDERED (spoken or deliberately skipped). Only finalized
+   *  entries advance it, so the still-open trailing turn is revisited until it completes. */
+  protected consideredThrough = 0;
+
+  protected stopWatch: (() => void) | null = null;
 
   /** Count of assistant turns actually spoken — the observable the status probe/tests assert on. */
   get spokenCount() {

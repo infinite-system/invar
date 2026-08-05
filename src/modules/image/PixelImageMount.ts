@@ -27,6 +27,7 @@ class $PixelImageMount {
   protected static get FALLBACK_CELL_PIXEL_HEIGHT(): number {
     return 16;
   }
+  constructor(protected terminal: PixelMountTerminal) {}
 
   protected placementKey = ''; // the latest REQUESTED key (dedupes sync calls)
   // EMITTED state — what is actually on screen. Written ONLY at the moment a payload writes (or a
@@ -37,8 +38,6 @@ class $PixelImageMount {
   protected nextImageId = 7001; // arbitrary base clear of small ids other tools might use
   protected emitGeneration = 0;
   protected disposeSweep = ''; // the removeAll payload of any identity-tracking encoder ever placed
-
-  constructor(protected terminal: PixelMountTerminal) {}
 
   protected get ImageResample() {
     return ImageResample.Class;

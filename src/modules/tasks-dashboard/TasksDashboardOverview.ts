@@ -44,6 +44,10 @@ import {
 } from '../../../scripts/tasks/tasks-status';
 
 class $TasksDashboardOverview {
+  constructor(
+    protected readonly dependencies: TasksDashboardOverviewDependencies,
+  ) {}
+
   protected readonly dataHeartbeatMilliseconds = 1000;
   // One heartbeat is one wall-clock motion step (#348's contract): the
   // interval IS the step duration, so each tick advances exactly one step
@@ -70,10 +74,6 @@ class $TasksDashboardOverview {
     'performance-behaviour': '⚡',
     'architecture-hygiene': '⬡',
   };
-
-  constructor(
-    protected readonly dependencies: TasksDashboardOverviewDependencies,
-  ) {}
 
   protected dataHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   protected motionHeartbeatTimer: ReturnType<typeof setInterval> | null = null;

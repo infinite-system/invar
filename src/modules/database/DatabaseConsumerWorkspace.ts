@@ -16,12 +16,6 @@ import type {
 // invariant: Database answers can exceed the view (src/modules/database/database.invariants.md)
 // invariant: Database files are user selected (src/modules/database/database.invariants.md)
 class $DatabaseConsumerWorkspace implements WorkspaceContribution {
-  declare $watch: typeof import('vue').watch;
-  declare $stopEffects: () => void;
-  protected connection: DatabaseConnection | null = null;
-  protected refreshGeneration = 0;
-  protected browseGeneration = 0;
-
   constructor(
     protected readonly workspace: Workspace.Model,
     protected readonly isObserved: () => boolean,
@@ -36,6 +30,12 @@ class $DatabaseConsumerWorkspace implements WorkspaceContribution {
       { immediate: true },
     );
   }
+
+  declare $watch: typeof import('vue').watch;
+  declare $stopEffects: () => void;
+  protected connection: DatabaseConnection | null = null;
+  protected refreshGeneration = 0;
+  protected browseGeneration = 0;
 
   get status() {
     return ref<DatabaseConsumerStatus>('idle');

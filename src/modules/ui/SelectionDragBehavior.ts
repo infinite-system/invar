@@ -1,4 +1,6 @@
 class $SelectionDragBehavior {
+  constructor(protected readonly options: SelectionDragBehaviorOptions) {}
+
   protected pointerPosition: {
     screenColumn: number;
     screenRow: number;
@@ -6,7 +8,6 @@ class $SelectionDragBehavior {
   protected selectionAnchor: SelectionDragPosition | null = null;
   protected columnScrollRemainder = 0;
   protected rowScrollRemainder = 0;
-  constructor(protected readonly options: SelectionDragBehaviorOptions) {}
   get active(): boolean {
     return this.pointerPosition !== null;
   }

@@ -11,26 +11,30 @@ import { TerminalHeader } from './TerminalHeader';
 // invariant: Observation payloads are bounded and self describing (src/modules/terminal/terminal.invariants.md)
 
 class $TerminalObserver {
-  protected readonly revisionValue = ref(0);
-  protected readonly bufferedEntries: TerminalObservationBufferEntry[] = [];
-  protected readonly textEncoder = new TextEncoder();
-  protected readonly maximumEventCount: number;
-  protected readonly maximumBufferBytes: number;
-  protected readonly headLineCount: number;
-  protected readonly tailLineCount: number;
-  protected readonly outputByteCap: number;
-  protected readonly now: () => number;
-  protected readonly stopCellsChangedObservation: () => void;
-  protected readonly stopLineFeedObservation: () => void;
-  protected readonly stopShellIntegrationObservation: () => void;
-  protected readonly observationCallbacks = new Set<
-    (event: TerminalObservationEvent) => void
-  >();
-  protected activeCommand: TerminalObservedCommand | null = null;
-  protected pendingHeuristicCommand = '';
-  protected pendingHeuristicCurrentWorkingDirectory = '';
-  protected bufferedByteCountValue = 0;
-  protected disposed = false;
+  protected static get DEFAULT_MAXIMUM_EVENT_COUNT(): number {
+    return 100;
+  }
+  protected static get defaultMaximumBufferBytes(): number {
+    return 256 * 1024;
+  }
+  protected static get DEFAULT_HEAD_LINE_COUNT(): number {
+    return 20;
+  }
+  protected static get DEFAULT_TAIL_LINE_COUNT(): number {
+    return 20;
+  }
+  protected static get DEFAULT_OUTPUT_BYTE_CAP(): number {
+    return 8192;
+  }
+  protected static get PASSWORD_PROMPT_PATTERN(): RegExp {
+    return /password.*:/i;
+  }
+  protected static get PASSPHRASE_PROMPT_PATTERN(): RegExp {
+    return /enter\s+passphrase/i;
+  }
+  protected static get SECRET_ASSIGNMENT_PATTERN(): RegExp {
+    return /(\b(?:[a-z_][a-z0-9_]*_(?:token|secret|key)|[a-z_][a-z0-9_]*password[a-z0-9_]*|password[a-z0-9_]*)\s*=\s*)(?:"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|[^\s]*)/gi;
+  }
 
   constructor(
     protected readonly emulator: TerminalEmulator.Model,
@@ -70,25 +74,26 @@ class $TerminalObserver {
       );
   }
 
-  protected static get DEFAULT_MAXIMUM_EVENT_COUNT(): number {
-    return 100;
-  }
-
-  protected static get defaultMaximumBufferBytes(): number {
-    return 256 * 1024;
-  }
-
-  protected static get DEFAULT_HEAD_LINE_COUNT(): number {
-    return 20;
-  }
-
-  protected static get DEFAULT_TAIL_LINE_COUNT(): number {
-    return 20;
-  }
-
-  protected static get DEFAULT_OUTPUT_BYTE_CAP(): number {
-    return 8192;
-  }
+  protected readonly revisionValue = ref(0);
+  protected readonly bufferedEntries: TerminalObservationBufferEntry[] = [];
+  protected readonly textEncoder = new TextEncoder();
+  protected readonly maximumEventCount: number;
+  protected readonly maximumBufferBytes: number;
+  protected readonly headLineCount: number;
+  protected readonly tailLineCount: number;
+  protected readonly outputByteCap: number;
+  protected readonly now: () => number;
+  protected readonly stopCellsChangedObservation: () => void;
+  protected readonly stopLineFeedObservation: () => void;
+  protected readonly stopShellIntegrationObservation: () => void;
+  protected readonly observationCallbacks = new Set<
+    (event: TerminalObservationEvent) => void
+  >();
+  protected activeCommand: TerminalObservedCommand | null = null;
+  protected pendingHeuristicCommand = '';
+  protected pendingHeuristicCurrentWorkingDirectory = '';
+  protected bufferedByteCountValue = 0;
+  protected disposed = false;
 
   get revision(): Ref<number> {
     return this.revisionValue;
@@ -385,18 +390,6 @@ class $TerminalObserver {
       terminalObserverClass.SECRET_ASSIGNMENT_PATTERN,
       (_assignment, prefix: string) => `${prefix}[REDACTED]`,
     );
-  }
-
-  protected static get PASSWORD_PROMPT_PATTERN(): RegExp {
-    return /password.*:/i;
-  }
-
-  protected static get PASSPHRASE_PROMPT_PATTERN(): RegExp {
-    return /enter\s+passphrase/i;
-  }
-
-  protected static get SECRET_ASSIGNMENT_PATTERN(): RegExp {
-    return /(\b(?:[a-z_][a-z0-9_]*_(?:token|secret|key)|[a-z_][a-z0-9_]*password[a-z0-9_]*|password[a-z0-9_]*)\s*=\s*)(?:"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|[^\s]*)/gi;
   }
 
   protected promptCommandFromLine(line: string): string {

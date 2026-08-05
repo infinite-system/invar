@@ -19,11 +19,6 @@ class $ScrollPhysics {
   static readonly JUMP_BASE_ROWS = 15;
   static readonly JUMP_RAMP_ROWS = 5; // + per repeat in a run
   static readonly JUMP_CAP_ROWS = 120;
-
-  protected accelerationDirection = '';
-  protected accelerationRunLength = 0;
-  protected accelerationLastTimestampMilliseconds = 0;
-
   /**
    * Rows a plain held arrow moves on the `runLength`-th repeat: 1 while tapping, then a
    * noticeably building quadratic ramp up to the cap.
@@ -35,7 +30,6 @@ class $ScrollPhysics {
       (runLength - this.KEY_ACCEL_START_RUN + 1) ** 2;
     return Math.min(this.KEY_ACCEL_CAP_ROWS, Math.floor(1 + ramp));
   }
-
   /** Rows a Ctrl+arrow big jump moves on the `runLength`-th repeat. */
   static jumpRows(runLength: number): number {
     return Math.min(
@@ -43,6 +37,10 @@ class $ScrollPhysics {
       this.JUMP_BASE_ROWS + this.JUMP_RAMP_ROWS * runLength,
     );
   }
+
+  protected accelerationDirection = '';
+  protected accelerationRunLength = 0;
+  protected accelerationLastTimestampMilliseconds = 0;
 
   keyAccelerationFor(
     direction: string,

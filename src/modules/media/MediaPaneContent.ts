@@ -19,33 +19,6 @@ import { VideoFrameStream } from './VideoFrameStream';
 // invariant: Video decoding never exceeds the showing and decoding frames (src/modules/media/media.invariants.md)
 // invariant: Missing ffmpeg is loud and harmless (src/modules/media/media.invariants.md)
 class $MediaPaneContent implements PaneContent {
-  readonly id: string;
-  readonly kind = 'media';
-  readonly instanceLabel: string;
-  readonly keybindingContext = 'media';
-  readonly renderRevision: Ref<number> = ref(0);
-  protected readonly mode: MediaPaneMode;
-  protected readonly pixelMount: PixelImageMount.Model;
-  protected readonly framebuffer: CellFramebuffer.Model | null;
-  protected readonly scene: SoftwareScene.Model | null;
-  protected readonly demoImage: DecodedImage | null;
-  protected readonly graphicsSupersamplingScale = 8;
-  protected videoStream: VideoFrameStream.Model | null = null;
-  protected videoImage: DecodedImage | null = null;
-  protected timer: ReturnType<typeof setTimeout> | null = null;
-  protected disposed = false;
-  protected pausedValue = false;
-  protected frameIndexValue = 0;
-  protected decodedFrameCountValue = 0;
-  protected droppedFrameCountValue = 0;
-  protected noticeValue: string | null = null;
-  protected activeSceneValue: MediaSceneKind = 'cube';
-  protected requestedScene: MediaSceneKind | 'automatic' = 'automatic';
-  protected animationStartMilliseconds = performance.now();
-  protected viewportColumns: number;
-  protected viewportRows: number;
-  protected framebufferSupersamplingScale = 1;
-
   constructor(protected readonly options: MediaPaneOptions) {
     this.id = options.identifier;
     this.instanceLabel = options.label;
@@ -76,6 +49,33 @@ class $MediaPaneContent implements PaneContent {
       this.restartVideo();
     }
   }
+
+  readonly id: string;
+  readonly kind = 'media';
+  readonly instanceLabel: string;
+  readonly keybindingContext = 'media';
+  readonly renderRevision: Ref<number> = ref(0);
+  protected readonly mode: MediaPaneMode;
+  protected readonly pixelMount: PixelImageMount.Model;
+  protected readonly framebuffer: CellFramebuffer.Model | null;
+  protected readonly scene: SoftwareScene.Model | null;
+  protected readonly demoImage: DecodedImage | null;
+  protected readonly graphicsSupersamplingScale = 8;
+  protected videoStream: VideoFrameStream.Model | null = null;
+  protected videoImage: DecodedImage | null = null;
+  protected timer: ReturnType<typeof setTimeout> | null = null;
+  protected disposed = false;
+  protected pausedValue = false;
+  protected frameIndexValue = 0;
+  protected decodedFrameCountValue = 0;
+  protected droppedFrameCountValue = 0;
+  protected noticeValue: string | null = null;
+  protected activeSceneValue: MediaSceneKind = 'cube';
+  protected requestedScene: MediaSceneKind | 'automatic' = 'automatic';
+  protected animationStartMilliseconds = performance.now();
+  protected viewportColumns: number;
+  protected viewportRows: number;
+  protected framebufferSupersamplingScale = 1;
 
   get title(): string {
     if (this.mode === 'video') {

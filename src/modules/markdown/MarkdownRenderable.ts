@@ -26,14 +26,6 @@ import type { FindInBuffer } from '../search/FindInBuffer';
 
 // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
 class $MarkdownRenderable extends BoxRenderable {
-  readonly bodyRenderable: SelectableText.Model;
-  protected visibleRowsSnapshot: PreviewRow[] = [];
-  protected hoveredReferenceKey: string | null = null;
-  protected referenceIsDeadProvider: ((target: string) => boolean) | null =
-    null;
-  protected findEngineProvider: (() => FindInBuffer.Instance | null) | null =
-    null;
-
   constructor(
     renderer: CliRenderer,
     readonly preview: MarkdownPreview.Model,
@@ -63,6 +55,14 @@ class $MarkdownRenderable extends BoxRenderable {
     this.onSizeChange = () => this.refresh();
     this.preview.attachRenderTarget(this);
   }
+
+  readonly bodyRenderable: SelectableText.Model;
+  protected visibleRowsSnapshot: PreviewRow[] = [];
+  protected hoveredReferenceKey: string | null = null;
+  protected referenceIsDeadProvider: ((target: string) => boolean) | null =
+    null;
+  protected findEngineProvider: (() => FindInBuffer.Instance | null) | null =
+    null;
 
   setHoveredReferenceKey(referenceKey: string | null): void {
     this.hoveredReferenceKey = referenceKey;

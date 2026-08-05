@@ -5,6 +5,8 @@ import { TerminalCommandTyping } from './TerminalCommandTyping';
 // invariant: Animated agent commands stay visible and inert (src/modules/terminal/terminal.invariants.md)
 // invariant: Terminal replacement preserves human execution (src/modules/terminal/terminal.invariants.md)
 class $TerminalCommandController {
+  constructor(protected readonly options: TerminalCommandControllerOptions) {}
+
   protected readonly pendingRequests: TerminalCommandRequest[] = [];
   protected activeRequest: TerminalCommandRequest | null = null;
   protected activeTimer: unknown = null;
@@ -16,8 +18,6 @@ class $TerminalCommandController {
   protected eventCallback: ((event: TerminalCommandEvent) => void) | null =
     null;
   protected disposed = false;
-
-  constructor(protected readonly options: TerminalCommandControllerOptions) {}
 
   onEvent(callback: (event: TerminalCommandEvent) => void): void {
     this.eventCallback = callback;

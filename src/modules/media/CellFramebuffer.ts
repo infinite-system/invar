@@ -2,15 +2,15 @@ import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 
 // invariant: Animation reuses one fixed framebuffer working set (src/modules/media/media.invariants.md)
 class $CellFramebuffer {
+  constructor(cellColumns = 1, cellRows = 1, supersamplingScale = 1) {
+    this.resize(cellColumns, cellRows, supersamplingScale);
+  }
+
   protected pixelColumns = 1;
   protected pixelRows = 2;
   protected pixelStorage = new Uint8Array(1 * 2 * 4);
   protected depthStorage = new Float32Array(1 * 2);
   protected bufferGenerationValue = 1;
-
-  constructor(cellColumns = 1, cellRows = 1, supersamplingScale = 1) {
-    this.resize(cellColumns, cellRows, supersamplingScale);
-  }
 
   get width(): number {
     return this.pixelColumns;

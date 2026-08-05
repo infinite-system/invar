@@ -8,8 +8,6 @@ import {
 
 // invariant: Overlay keyboard actions have visible mouse paths (src/modules/ui/ui.invariants.md)
 class $OverlayCloseButton {
-  protected readonly renderable: TextRenderable;
-
   constructor(protected readonly dependencies: OverlayCloseButtonDependencies) {
     this.renderable = new TextRenderable(dependencies.renderer, {
       id: dependencies.identifier,
@@ -25,6 +23,8 @@ class $OverlayCloseButton {
     };
     dependencies.renderer.root.add(this.renderable);
   }
+
+  protected readonly renderable: TextRenderable;
 
   show(geometry: OverlayCloseButtonGeometry): void {
     const width = Math.max(1, Math.min(3, geometry.width));

@@ -42,6 +42,12 @@ class $TypeScriptProvider implements LanguageServerProvider {
     const defaultOrder = ['tsgo', 'typescript-language-server'];
     return defaultOrder;
   }
+  static supportsPath(path: string): boolean {
+    return this.$typescriptExtensions.has(
+      Files.Class.extname(path).toLowerCase(),
+    );
+  }
+  constructor(protected readonly options: TypeScriptProviderOptions = {}) {}
 
   readonly id = 'typescript';
   readonly capabilities: LanguageCapabilities = {
@@ -53,20 +59,12 @@ class $TypeScriptProvider implements LanguageServerProvider {
     documentSymbols: true,
   };
 
-  constructor(protected readonly options: TypeScriptProviderOptions = {}) {}
-
   protected get Files() {
     return Files.Class;
   }
 
   protected get Environment() {
     return Environment.Class;
-  }
-
-  static supportsPath(path: string): boolean {
-    return this.$typescriptExtensions.has(
-      Files.Class.extname(path).toLowerCase(),
-    );
   }
 
   supportsPath(path: string): boolean {

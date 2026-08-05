@@ -9,12 +9,12 @@ import type {
 import type { PaneTaskMetadata } from '../ui/PaneContent.interface';
 
 class $TaskLauncher {
+  constructor(protected readonly options: TaskLauncherOptions) {}
+
   protected readonly launchedIdentifiersByWorkspace = new Map<
     string,
     Set<string>
   >();
-
-  constructor(protected readonly options: TaskLauncherOptions) {}
 
   launchFolderOpen(
     workspaceRoot: string,

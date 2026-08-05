@@ -33,6 +33,130 @@ import type {
 } from '../workspace/LanguageProvider.interface';
 
 class $HoverCard {
+  constructor(protected readonly deps: HoverCardDeps) {
+    const { renderer } = deps;
+    const root = renderer.root;
+    // A full-screen, GENUINELY hit-transparent, non-drawing backdrop visible exactly while the card is.
+    // OpenTUI composites incrementally: hiding a small overlay does NOT repaint the panes beneath, so a
+    // dismiss with no other change would leave the card's glyphs stale. A full-screen renderable
+    // toggling visible→false invalidates the WHOLE screen, forcing a full repaint that clears the card.
+    // It MUST be hit-transparent (HitTransparentText masks addToHitGrid) so the pointer passes THROUGH
+    // it to the editor beneath — otherwise a plain BoxRenderable captures every wheel/move and the card
+    // traps the doc: you couldn't scroll the code or hover a different symbol while a card was open.
+    this.backdrop = new HitTransparentText.Class(renderer, {
+      id: 'hover-card-backdrop',
+      content: '',
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      width: '100%',
+      height: '100%',
+      visible: false,
+      zIndex: 134,
+      selectable: false,
+    });
+    root.add(this.backdrop);
+    this.box = new BoxRenderable(renderer, {
+      id: 'hover-card',
+      position: 'absolute',
+      border: true,
+      borderStyle: 'rounded',
+      flexDirection: 'column',
+      visible: false,
+      zIndex: 135,
+    });
+    this.content = new SelectableText.Class(renderer, {
+      id: 'hover-card-content',
+      content: '',
+      selectable: true,
+    });
+    this.box.add(this.content);
+    // The card composes the ONE scroll surface: momentum + wheel (incl. alt→horizontal) + both bars
+    // (thickness from Settings) + drag-select with edge autoscroll. The card supplies only its IDENTITY
+    // — content extent, bar colours, and its own selection MODEL + cell↔content mapping.
+    this.viewport = new ScrollableTextViewport.Class({
+      renderer,
+      settings: deps.settings,
+      parent: this.box,
+      id: 'hover-card',
+      extent: () => ({
+        contentRows: this.contentLines.length,
+        contentColumns: this.contentMaxWidth,
+        viewportRows: this.viewportRows(),
+        viewportColumns: this.viewportColumns(),
+      }),
+      // Track blends with the card bg (kills the black half-block lines); thumb is a subtle dim grey.
+      colors: () => ({
+        track: deps.theme.palette.panel,
+        thumb: deps.theme.palette.dim,
+      }),
+      onScroll: () => this.requestPaint(),
+      selection: {
+        positionAtCell: (screenColumn, screenRow) =>
+          this.contentPositionAtCell(screenColumn, screenRow),
+        viewportRectangle: () => ({
+          leftColumn: this.content.x,
+          rightColumn: this.content.x + Math.max(1, this.interiorColumns) - 1,
+          topRow: this.content.y,
+          bottomRow: this.content.y + Math.max(1, this.viewportRows()) - 1,
+        }),
+        begin: (position) => {
+          this.selectionAnchor = {
+            row: position.line,
+            column: position.column,
+          };
+          this.selectionFocus = { row: position.line, column: position.column };
+          this.requestPaint();
+        },
+        extend: (position) => {
+          this.selectionFocus = { row: position.line, column: position.column };
+          this.requestPaint();
+        },
+        finish: () => {
+          // A bare click (anchor === focus) leaves no span: drop it so update() paints no highlight.
+          if (
+            this.selectionAnchor &&
+            this.selectionFocus &&
+            this.selectionAnchor.row === this.selectionFocus.row &&
+            this.selectionAnchor.column === this.selectionFocus.column
+          ) {
+            this.selectionAnchor = null;
+            this.selectionFocus = null;
+          }
+          this.requestPaint();
+        },
+        // Card text is code (ASCII type signatures), so display column ≈ character index; the plain
+        // line length is the end-of-line stop that makes a rightward drag include the last character.
+        lineGraphemeCount: (lineIndex) =>
+          this.contentPlain[lineIndex]?.length ?? 0,
+      },
+    });
+    root.add(this.box);
+    // The card receives its OWN pointer: moving into it (to scroll/select) must NOT dismiss it, and a
+    // wheel over it scrolls the content (through the viewport). It never touches the editor's cursor.
+    this.box.onMouseMove = () => {
+      this.pointerOverCard = true;
+      this.cardWasEntered = true;
+      this.idleSeconds = 0;
+    };
+    this.box.onMouseOut = () => {
+      this.pointerOverCard = false;
+      this.idleSeconds = 0;
+      this.requestPaint();
+    };
+    this.box.onMouseScroll = (event: MouseEvent) =>
+      this.viewport.handleWheel(event);
+    this.content.onMouseDown = (event: MouseEvent) => {
+      this.pointerOverCard = true;
+      this.cardWasEntered = true;
+      this.viewport.beginDrag(event.x, event.y);
+    };
+    this.content.onMouseDrag = (event: MouseEvent) =>
+      this.viewport.dragTo(event.x, event.y);
+    this.content.onMouseUp = () => this.viewport.endDrag();
+    this.content.onMouseDragEnd = () => this.viewport.endDrag();
+  }
+
   protected get hoverDwellSeconds() {
     return 0.5;
   }
@@ -159,129 +283,6 @@ class $HoverCard {
    *  only its content windowing + selection MODEL. invariant: A scrollable text surface is
    *  drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md) */
   protected readonly viewport: ScrollableTextViewport.Instance;
-  constructor(protected readonly deps: HoverCardDeps) {
-    const { renderer } = deps;
-    const root = renderer.root;
-    // A full-screen, GENUINELY hit-transparent, non-drawing backdrop visible exactly while the card is.
-    // OpenTUI composites incrementally: hiding a small overlay does NOT repaint the panes beneath, so a
-    // dismiss with no other change would leave the card's glyphs stale. A full-screen renderable
-    // toggling visible→false invalidates the WHOLE screen, forcing a full repaint that clears the card.
-    // It MUST be hit-transparent (HitTransparentText masks addToHitGrid) so the pointer passes THROUGH
-    // it to the editor beneath — otherwise a plain BoxRenderable captures every wheel/move and the card
-    // traps the doc: you couldn't scroll the code or hover a different symbol while a card was open.
-    this.backdrop = new HitTransparentText.Class(renderer, {
-      id: 'hover-card-backdrop',
-      content: '',
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%',
-      visible: false,
-      zIndex: 134,
-      selectable: false,
-    });
-    root.add(this.backdrop);
-    this.box = new BoxRenderable(renderer, {
-      id: 'hover-card',
-      position: 'absolute',
-      border: true,
-      borderStyle: 'rounded',
-      flexDirection: 'column',
-      visible: false,
-      zIndex: 135,
-    });
-    this.content = new SelectableText.Class(renderer, {
-      id: 'hover-card-content',
-      content: '',
-      selectable: true,
-    });
-    this.box.add(this.content);
-    // The card composes the ONE scroll surface: momentum + wheel (incl. alt→horizontal) + both bars
-    // (thickness from Settings) + drag-select with edge autoscroll. The card supplies only its IDENTITY
-    // — content extent, bar colours, and its own selection MODEL + cell↔content mapping.
-    this.viewport = new ScrollableTextViewport.Class({
-      renderer,
-      settings: deps.settings,
-      parent: this.box,
-      id: 'hover-card',
-      extent: () => ({
-        contentRows: this.contentLines.length,
-        contentColumns: this.contentMaxWidth,
-        viewportRows: this.viewportRows(),
-        viewportColumns: this.viewportColumns(),
-      }),
-      // Track blends with the card bg (kills the black half-block lines); thumb is a subtle dim grey.
-      colors: () => ({
-        track: deps.theme.palette.panel,
-        thumb: deps.theme.palette.dim,
-      }),
-      onScroll: () => this.requestPaint(),
-      selection: {
-        positionAtCell: (screenColumn, screenRow) =>
-          this.contentPositionAtCell(screenColumn, screenRow),
-        viewportRectangle: () => ({
-          leftColumn: this.content.x,
-          rightColumn: this.content.x + Math.max(1, this.interiorColumns) - 1,
-          topRow: this.content.y,
-          bottomRow: this.content.y + Math.max(1, this.viewportRows()) - 1,
-        }),
-        begin: (position) => {
-          this.selectionAnchor = {
-            row: position.line,
-            column: position.column,
-          };
-          this.selectionFocus = { row: position.line, column: position.column };
-          this.requestPaint();
-        },
-        extend: (position) => {
-          this.selectionFocus = { row: position.line, column: position.column };
-          this.requestPaint();
-        },
-        finish: () => {
-          // A bare click (anchor === focus) leaves no span: drop it so update() paints no highlight.
-          if (
-            this.selectionAnchor &&
-            this.selectionFocus &&
-            this.selectionAnchor.row === this.selectionFocus.row &&
-            this.selectionAnchor.column === this.selectionFocus.column
-          ) {
-            this.selectionAnchor = null;
-            this.selectionFocus = null;
-          }
-          this.requestPaint();
-        },
-        // Card text is code (ASCII type signatures), so display column ≈ character index; the plain
-        // line length is the end-of-line stop that makes a rightward drag include the last character.
-        lineGraphemeCount: (lineIndex) =>
-          this.contentPlain[lineIndex]?.length ?? 0,
-      },
-    });
-    root.add(this.box);
-    // The card receives its OWN pointer: moving into it (to scroll/select) must NOT dismiss it, and a
-    // wheel over it scrolls the content (through the viewport). It never touches the editor's cursor.
-    this.box.onMouseMove = () => {
-      this.pointerOverCard = true;
-      this.cardWasEntered = true;
-      this.idleSeconds = 0;
-    };
-    this.box.onMouseOut = () => {
-      this.pointerOverCard = false;
-      this.idleSeconds = 0;
-      this.requestPaint();
-    };
-    this.box.onMouseScroll = (event: MouseEvent) =>
-      this.viewport.handleWheel(event);
-    this.content.onMouseDown = (event: MouseEvent) => {
-      this.pointerOverCard = true;
-      this.cardWasEntered = true;
-      this.viewport.beginDrag(event.x, event.y);
-    };
-    this.content.onMouseDrag = (event: MouseEvent) =>
-      this.viewport.dragTo(event.x, event.y);
-    this.content.onMouseUp = () => this.viewport.endDrag();
-    this.content.onMouseDragEnd = () => this.viewport.endDrag();
-  }
   /** Map a screen cell to an ABSOLUTE content position (row into contentLines, display column). Rows
    *  outside the painted window clamp to the content extent so an edge drag still resolves a position. */
   protected contentPositionAtCell(

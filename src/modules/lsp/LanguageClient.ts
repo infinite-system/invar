@@ -60,6 +60,29 @@ class $LanguageClient {
   protected static get DIAGNOSTIC_PULL_CHANGE_DELAY_MILLISECONDS(): number {
     return 350;
   }
+  constructor(options: LanguageClientOptions = {}) {
+    this.rootPath = options.rootPath ?? this.defaultRootPath();
+    // Set BEFORE createProviders() — the default TypeScript provider reads it at construction.
+    this.preferredTypeScriptServer = options.preferredTypeScriptServer;
+    this.fileSizeLimitKb = options.fileSizeLimitKb;
+    this.providers = options.providers
+      ? [...options.providers]
+      : this.createProviders();
+    this.processFactory = options.processFactory ?? null;
+    this.transportFactory = options.transportFactory ?? null;
+    this.maxDiagnosticsPerDocument = Math.max(
+      1,
+      options.maxDiagnosticsPerDocument ?? 10_000,
+    );
+    this.maxReferencesPerRequest = Math.max(
+      1,
+      options.maxReferencesPerRequest ?? 5_000,
+    );
+    this.maxDocumentSymbolsPerDocument = Math.max(
+      1,
+      options.maxDocumentSymbolsPerDocument ?? 10_000,
+    );
+  }
 
   protected readonly rootPath: string;
   protected readonly providers: readonly LanguageServerProvider[];
@@ -93,30 +116,6 @@ class $LanguageClient {
   protected publishedPid: number | null = null;
 
   protected readonly maxDocumentSymbolsPerDocument: number;
-
-  constructor(options: LanguageClientOptions = {}) {
-    this.rootPath = options.rootPath ?? this.defaultRootPath();
-    // Set BEFORE createProviders() — the default TypeScript provider reads it at construction.
-    this.preferredTypeScriptServer = options.preferredTypeScriptServer;
-    this.fileSizeLimitKb = options.fileSizeLimitKb;
-    this.providers = options.providers
-      ? [...options.providers]
-      : this.createProviders();
-    this.processFactory = options.processFactory ?? null;
-    this.transportFactory = options.transportFactory ?? null;
-    this.maxDiagnosticsPerDocument = Math.max(
-      1,
-      options.maxDiagnosticsPerDocument ?? 10_000,
-    );
-    this.maxReferencesPerRequest = Math.max(
-      1,
-      options.maxReferencesPerRequest ?? 5_000,
-    );
-    this.maxDocumentSymbolsPerDocument = Math.max(
-      1,
-      options.maxDocumentSymbolsPerDocument ?? 10_000,
-    );
-  }
 
   protected get TextCoordinates() {
     return TextCoordinates.Class;

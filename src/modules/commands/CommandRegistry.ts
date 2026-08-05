@@ -13,14 +13,14 @@ import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $CommandRegistry {
+  constructor() {
+    this.queryInputModel = this.createQueryInput();
+  }
+
   // invariant: Every action dispatches through the one registry (src/modules/commands/commands.invariants.md)
   //   — the single source of truth; both the palette and keybindings resolve actions out of this map.
   protected commands = new Map<string, Command>();
   protected readonly queryInputModel: TextInputModel.Model;
-
-  constructor() {
-    this.queryInputModel = this.createQueryInput();
-  }
 
   protected createQueryInput(): TextInputModel.Model {
     return new TextInputModel.Class();

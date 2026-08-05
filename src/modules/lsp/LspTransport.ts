@@ -10,6 +10,10 @@ import type { ReadableStreamDefaultReader } from 'node:stream/web';
 import type { LspProcessLike } from './LspProcess';
 
 class $LspTransport {
+  constructor(protected readonly process: LspProcessLike) {
+    this.rpc = this.createJsonRpc();
+  }
+
   protected readonly rpc: JsonRpc.Model;
   // The `node:stream/web` default reader is exactly what `ReadableStream#getReader()` yields
   // under Bun's lib types. The bare global `ReadableStreamDefaultReader` is a different type
@@ -21,10 +25,6 @@ class $LspTransport {
   protected closeHandler: LspCloseHandler | null = null;
   protected active = false;
   protected closeReason: Error | null = null;
-
-  constructor(protected readonly process: LspProcessLike) {
-    this.rpc = this.createJsonRpc();
-  }
 
   protected createJsonRpc(): JsonRpc.Model {
     return new JsonRpc.Class();

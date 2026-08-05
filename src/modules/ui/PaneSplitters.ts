@@ -6,8 +6,6 @@ import type { Palette } from '../theme/ThemePalettes';
 import { SplitterElement } from './SplitterElement';
 
 class $PaneSplitters {
-  readonly sidebar: SplitterElement.Model;
-
   constructor(protected readonly dependencies: PaneSplittersDependencies) {
     // The drag writes the LIVE slot, which belongs to the workspace on screen, and persists the
     // same number as the size a fresh workspace starts at. Two writes, two meanings: one is this
@@ -34,6 +32,8 @@ class $PaneSplitters {
       },
     });
   }
+
+  readonly sidebar: SplitterElement.Model;
 
   updateAppearance(palette: Palette): void {
     this.sidebar.updateAppearance(palette);

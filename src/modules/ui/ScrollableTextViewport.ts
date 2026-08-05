@@ -32,17 +32,6 @@ import type { Settings } from '../settings/Settings';
 import { Logging } from '../system/Logging';
 
 class $ScrollableTextViewport {
-  protected scrollTopValue = 0;
-  protected scrollLeftValue = 0;
-  protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
-  protected horizontalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
-  protected readonly verticalBar: ScrollBarRenderable;
-  protected readonly horizontalBar: ScrollBarRenderable;
-  protected readonly drag: SelectionDragBehavior.Model;
-  /** True while update() writes a bar's reported position, so its onChange ignores our own sync. */
-  protected applyingBarGeometry = false;
-  protected verticalBarScale = 1;
-  protected horizontalBarScale = 1;
   constructor(protected readonly deps: ScrollableTextViewportDeps) {
     const { renderer, id } = deps;
     this.followBottomActive = deps.followBottom === true;
@@ -98,6 +87,18 @@ class $ScrollableTextViewport {
       haltCompetingScroll: () => this.haltMomentum(),
     });
   }
+
+  protected scrollTopValue = 0;
+  protected scrollLeftValue = 0;
+  protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
+  protected horizontalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
+  protected readonly verticalBar: ScrollBarRenderable;
+  protected readonly horizontalBar: ScrollBarRenderable;
+  protected readonly drag: SelectionDragBehavior.Model;
+  /** True while update() writes a bar's reported position, so its onChange ignores our own sync. */
+  protected applyingBarGeometry = false;
+  protected verticalBarScale = 1;
+  protected horizontalBarScale = 1;
   /** Tail-anchor state (followBottom mode only): true while the scroll is pinned to the newest content.
    *  Set in the constructor (after `deps` is assigned) so the initializer never reads deps too early. */
   protected followBottomActive = false;

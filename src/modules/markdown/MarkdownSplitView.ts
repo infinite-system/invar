@@ -28,53 +28,6 @@ import {
 } from './MarkdownRenderable';
 
 class $MarkdownSplitView {
-  readonly rootRenderable: BoxRenderable;
-  readonly preview: MarkdownPreview.Instance;
-  readonly previewRenderable: MarkdownRenderable.Model;
-  protected readonly previewPaneRenderable: BoxRenderable;
-  protected readonly dividerRenderable: BoxRenderable;
-  protected readonly paneSplitter: SplitterModel.Instance;
-  protected readonly splitterElement: SplitterElement.Model;
-  protected readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
-  protected readonly previewViewport: ScrollableTextViewport.Instance;
-  protected readonly splitRatioSetting: RegisteredSetting<number>;
-  protected readonly scrollSyncSetting: RegisteredSetting<boolean>;
-  protected lastLaidOutWidth = -1;
-  protected renderedPreviewText = '';
-  protected renderedPreviewRevision = -1;
-  protected renderedPreviewWidth = -1;
-  protected renderedPreviewBorderSignature = '';
-  protected pendingSourceRevealLine: number | null = null;
-  protected pendingBottomReveal = false;
-  protected lastScrollSyncLeader: MarkdownSplitPane | null = null;
-  protected lastSynchronizedSourceScrollTop = -1;
-  protected lastSynchronizedPreviewScrollTop = -1;
-  protected lastSynchronizedPreviewRevision = -1;
-  protected lastSynchronizedPreviewWidth = -1;
-  protected referenceVerdictRevision = -1;
-  protected referenceDeadByTarget = new Map<string, boolean>();
-  /** The preview's share of the one double-click clock. A second press on the SAME reference span
-   *  activates it, so the mouse alone navigates. */
-  protected readonly previewDoubleClick = new DoubleClickGesture.Class();
-
-  get focusedPane() {
-    return ref<MarkdownSplitPane>(this.options.viewOnly ? 'preview' : 'source');
-  }
-  get hoveredReferencePath() {
-    return ref<string | null>(null);
-  }
-  get hoveredReferenceKey() {
-    return ref<string | null>(null);
-  }
-  /** The last stated outcome of activating an UNRESOLVABLE link (external scheme or missing
-   *  file), for the status bar. Cleared by the next successful open; null while nothing is owed.
-   *  invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md) */
-  get linkNotice() {
-    return ref<string | null>(null);
-  }
-  get selectionRevision() {
-    return ref(0);
-  }
   constructor(
     readonly renderer: CliRenderer,
     readonly theme: Theme.Instance,
@@ -145,6 +98,54 @@ class $MarkdownSplitView {
     );
     this.preview.open(options.source, this.previewRenderable);
     this.update();
+  }
+
+  readonly rootRenderable: BoxRenderable;
+  readonly preview: MarkdownPreview.Instance;
+  readonly previewRenderable: MarkdownRenderable.Model;
+  protected readonly previewPaneRenderable: BoxRenderable;
+  protected readonly dividerRenderable: BoxRenderable;
+  protected readonly paneSplitter: SplitterModel.Instance;
+  protected readonly splitterElement: SplitterElement.Model;
+  protected readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
+  protected readonly previewViewport: ScrollableTextViewport.Instance;
+  protected readonly splitRatioSetting: RegisteredSetting<number>;
+  protected readonly scrollSyncSetting: RegisteredSetting<boolean>;
+  protected lastLaidOutWidth = -1;
+  protected renderedPreviewText = '';
+  protected renderedPreviewRevision = -1;
+  protected renderedPreviewWidth = -1;
+  protected renderedPreviewBorderSignature = '';
+  protected pendingSourceRevealLine: number | null = null;
+  protected pendingBottomReveal = false;
+  protected lastScrollSyncLeader: MarkdownSplitPane | null = null;
+  protected lastSynchronizedSourceScrollTop = -1;
+  protected lastSynchronizedPreviewScrollTop = -1;
+  protected lastSynchronizedPreviewRevision = -1;
+  protected lastSynchronizedPreviewWidth = -1;
+  protected referenceVerdictRevision = -1;
+  protected referenceDeadByTarget = new Map<string, boolean>();
+  /** The preview's share of the one double-click clock. A second press on the SAME reference span
+   *  activates it, so the mouse alone navigates. */
+  protected readonly previewDoubleClick = new DoubleClickGesture.Class();
+
+  get focusedPane() {
+    return ref<MarkdownSplitPane>(this.options.viewOnly ? 'preview' : 'source');
+  }
+  get hoveredReferencePath() {
+    return ref<string | null>(null);
+  }
+  get hoveredReferenceKey() {
+    return ref<string | null>(null);
+  }
+  /** The last stated outcome of activating an UNRESOLVABLE link (external scheme or missing
+   *  file), for the status bar. Cleared by the next successful open; null while nothing is owed.
+   *  invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md) */
+  get linkNotice() {
+    return ref<string | null>(null);
+  }
+  get selectionRevision() {
+    return ref(0);
   }
 
   protected createPreview(): MarkdownPreview.Instance {

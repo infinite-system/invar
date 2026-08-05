@@ -8,6 +8,13 @@ import type { SourceTextViewProvider } from './SourceTextView.interface';
 /** The project-layer workspace set. Each entry preserves its own editor/tree state while cold. */
 // invariant: Workspace and file navigation are separate layers (src/modules/workspace/workspace.invariants.md)
 class $WorkspaceSet {
+  constructor(
+    protected readonly settings: Settings.Instance,
+    protected readonly options: WorkspaceSetOptions = {},
+  ) {
+    this.contributors = [...(options.contributors ?? [])];
+  }
+
   protected readonly contributors: WorkspaceContributor[];
   protected readonly activeWorkspaceListeners = new Set<
     (workspace: Workspace.Instance) => void
@@ -15,13 +22,6 @@ class $WorkspaceSet {
   protected readonly disposedWorkspaceListeners = new Set<
     (workspace: Workspace.Instance) => void
   >();
-
-  constructor(
-    protected readonly settings: Settings.Instance,
-    protected readonly options: WorkspaceSetOptions = {},
-  ) {
-    this.contributors = [...(options.contributors ?? [])];
-  }
 
   get entries() {
     return shallowRef<Workspace.Instance[]>([]);

@@ -17,12 +17,11 @@ class $QuickOpen {
   protected static get PROJECT_FILE_ENTRY_LIMIT(): number {
     return 2000;
   }
-
-  protected readonly queryInputModel: TextInputModel.Model;
-
   constructor(readonly options: QuickOpenOptions = {}) {
     this.queryInputModel = this.createQueryInput();
   }
+
+  protected readonly queryInputModel: TextInputModel.Model;
 
   protected createQueryInput(): TextInputModel.Model {
     return new TextInputModel.Class();

@@ -14,10 +14,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 class $CodexRewriteProvider implements RewriteProvider {
+  constructor(protected readonly options: CodexRewriteProviderOptions = {}) {}
+
   protected activeChild: CodexRewriteProcess | null = null;
   protected disposed = false;
-
-  constructor(protected readonly options: CodexRewriteProviderOptions = {}) {}
 
   get available(): boolean {
     return this.codexExecutable() !== null;

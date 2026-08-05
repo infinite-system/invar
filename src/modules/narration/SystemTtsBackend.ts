@@ -136,18 +136,6 @@ class $SystemTtsBackend implements TtsBackend {
     queue.push(utterance);
     while (queue.length > maximumLength) queue.shift();
   }
-
-  protected readonly engine: DetectedEngine | null;
-  protected readonly playerPath: string | null;
-  protected readonly utteranceQueue: string[] = [];
-  protected synthesisProcess: SpawnedProcess | null = null;
-  protected playbackProcess: SpawnedProcess | null = null;
-  protected disposed = false;
-
-  protected get Processes() {
-    return Processes.Class;
-  }
-
   constructor(options: SystemTtsOptions = {}) {
     const resolveVoiceName =
       options.voiceProvider ?? ((): string => options.voice ?? '');
@@ -166,6 +154,17 @@ class $SystemTtsBackend implements TtsBackend {
       this.engine && !this.engine.playsDirectly
         ? systemTtsBackendClass.detectPlayer()
         : null;
+  }
+
+  protected readonly engine: DetectedEngine | null;
+  protected readonly playerPath: string | null;
+  protected readonly utteranceQueue: string[] = [];
+  protected synthesisProcess: SpawnedProcess | null = null;
+  protected playbackProcess: SpawnedProcess | null = null;
+  protected disposed = false;
+
+  protected get Processes() {
+    return Processes.Class;
   }
 
   /** True when a working engine (and, on Linux, a player) was found — otherwise narration is silent. */

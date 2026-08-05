@@ -12,17 +12,17 @@ import { SeparatorAppearance } from './SeparatorAppearance';
 
 // invariant: Splitter paint and hit testing share one geometry (src/modules/ui/ui.invariants.md)
 class $SplitterElement {
-  readonly renderable: BoxRenderable;
-  readonly model: SplitterModel.Instance;
-  protected hovered = false;
-  protected dragActive = false;
-  protected surfaceBackgroundColor: RGBA | undefined;
-
   constructor(readonly options: SplitterElementOptions) {
     this.model = this.createSplitterModel();
     this.renderable = this.createRenderable();
     this.bindPointerEvents();
   }
+
+  readonly renderable: BoxRenderable;
+  readonly model: SplitterModel.Instance;
+  protected hovered = false;
+  protected dragActive = false;
+  protected surfaceBackgroundColor: RGBA | undefined;
 
   protected createSplitterModel(): SplitterModel.Instance {
     return new SplitterModel.Class({

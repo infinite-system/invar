@@ -14,9 +14,9 @@ import type {
 /** The single host-facing language provider. It delegates each document to one supporting service.
  *  invariant: Language services coexist by document (src/modules/workspace/workspace.invariants.md) */
 class $LanguageProviderRouter implements LanguageProvider {
-  readonly identifier = 'language' as const;
-
   constructor(protected readonly providers: ProviderRegistry.Model) {}
+
+  readonly identifier = 'language' as const;
 
   supportsDocument(document: LanguageDocument): boolean {
     return this.serviceFor(document) !== null;

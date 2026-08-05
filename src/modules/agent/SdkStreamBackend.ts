@@ -42,6 +42,8 @@ import {
 } from './AgentTerminalTools';
 
 class $SdkStreamBackend implements AgentBackend {
+  constructor(protected readonly options: SdkStreamOptions) {}
+
   readonly supportsPermissionPrompts = true;
   readonly ibrFoundationDelivery = 'append-system-prompt';
 
@@ -57,8 +59,6 @@ class $SdkStreamBackend implements AgentBackend {
   /** Session-scoped auto-allow: tools the user answered 'always-allow' for — future calls skip the prompt. */
   protected readonly autoAllowedTools = new Set<string>();
   protected permissionRequestCounter = 0;
-
-  constructor(protected readonly options: SdkStreamOptions) {}
 
   send(prompt: string): void {
     if (this.disposed || this.activeQuery || this.starting) return; // one turn at a time (AgentSession also guards this)

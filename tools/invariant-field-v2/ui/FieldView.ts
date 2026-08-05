@@ -20,12 +20,25 @@ import type {
 } from '../types';
 
 class $FieldView {
-  protected threeDimensionalResources: ThreeDimensionalResources | null = null;
-  protected resizeObserver: BrowserResizeObserver | null = null;
-  protected animationFrameIdentifier: number | null = null;
-  protected orbitPointerIdentifier: number | null = null;
-  protected previousPointerX = 0;
-  protected previousPointerY = 0;
+  /**
+   * Eight stable hue slots, not eight domains. Repository domains hash into
+   * these slots; the visible sector label names the domains that landed here.
+   */
+  protected static get SECTOR_PALETTE_NAMES() {
+    return [
+      'system',
+      'state',
+      'interaction',
+      'language',
+      'data',
+      'process',
+      'evidence',
+      'risk',
+    ] as const;
+  }
+  protected static get TIMELINE_EVENT_ORDER(): readonly TimelineEventType[] {
+    return ['birth', 'removed', 'strengthen', 'weaken', 'rot'];
+  }
 
   constructor(
     public props: FieldViewProps,
@@ -46,6 +59,13 @@ class $FieldView {
       );
     }
   }
+
+  protected threeDimensionalResources: ThreeDimensionalResources | null = null;
+  protected resizeObserver: BrowserResizeObserver | null = null;
+  protected animationFrameIdentifier: number | null = null;
+  protected orbitPointerIdentifier: number | null = null;
+  protected previousPointerX = 0;
+  protected previousPointerY = 0;
 
   // --- state ---
   get tooltip() {
@@ -1170,27 +1190,6 @@ class $FieldView {
 
   protected get browserWindow(): FieldBrowserWindow {
     return globalThis as unknown as FieldBrowserWindow;
-  }
-
-  /**
-   * Eight stable hue slots, not eight domains. Repository domains hash into
-   * these slots; the visible sector label names the domains that landed here.
-   */
-  protected static get SECTOR_PALETTE_NAMES() {
-    return [
-      'system',
-      'state',
-      'interaction',
-      'language',
-      'data',
-      'process',
-      'evidence',
-      'risk',
-    ] as const;
-  }
-
-  protected static get TIMELINE_EVENT_ORDER(): readonly TimelineEventType[] {
-    return ['birth', 'removed', 'strengthen', 'weaken', 'rot'];
   }
 }
 

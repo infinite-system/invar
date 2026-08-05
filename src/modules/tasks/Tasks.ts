@@ -12,12 +12,12 @@ import {
 import type { TaskLauncher } from './TaskLauncher';
 
 class $Tasks implements WorkspaceContributor {
+  constructor(protected readonly options: TasksOptions) {}
+
   protected readonly workspaceStates = new Map<
     Workspace.Model,
     TaskWorkspaceState
   >();
-
-  constructor(protected readonly options: TasksOptions) {}
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const state: TaskWorkspaceState = {

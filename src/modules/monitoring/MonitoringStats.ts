@@ -35,6 +35,8 @@ import type {
 } from './ProcessSampler.interface';
 
 class $MonitoringStats {
+  constructor(protected readonly dependencies: MonitoringStatsDependencies) {}
+
   /** Two bytes per UTF-16 unit is what a JavaScript string costs for text in the Latin range. */
   protected readonly bytesPerTextUnit = 2;
 
@@ -46,8 +48,6 @@ class $MonitoringStats {
 
   declare $watch: typeof import('vue').watch;
   declare $stopEffects: () => void;
-
-  constructor(protected readonly dependencies: MonitoringStatsDependencies) {}
 
   protected sampleTimer: ReturnType<typeof setInterval> | null = null;
   protected observationStarted = false;

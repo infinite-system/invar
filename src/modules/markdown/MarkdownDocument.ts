@@ -15,6 +15,12 @@ class $MarkdownDocument {
     const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
     return emptyBlocks;
   }
+  constructor(
+    readonly source: MarkdownSource,
+    options: MarkdownDocumentOptions = {},
+  ) {
+    this.debounceMs = Math.max(0, options.debounceMs ?? 40);
+  }
 
   declare $watch: typeof import('vue').watch;
   declare $stopEffects: () => void;
@@ -25,13 +31,6 @@ class $MarkdownDocument {
   protected requestSequence = 0;
   protected latestRequest = 0;
   protected readonly debounceMs: number;
-
-  constructor(
-    readonly source: MarkdownSource,
-    options: MarkdownDocumentOptions = {},
-  ) {
-    this.debounceMs = Math.max(0, options.debounceMs ?? 40);
-  }
 
   get blocks() {
     const documentClass = this.constructor as typeof $MarkdownDocument;

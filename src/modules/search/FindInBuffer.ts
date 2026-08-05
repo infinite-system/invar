@@ -6,14 +6,14 @@ import { TextInputModel } from '../text/TextInputModel';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $FindInBuffer {
-  protected replacementContexts: MatchReplacementContext[] = [];
-  protected readonly queryInputModel: TextInputModel.Model;
-  protected readonly replacementInputModel: TextInputModel.Model;
-
   constructor(public readonly document: TextDocument.Instance) {
     this.queryInputModel = this.createTextInput();
     this.replacementInputModel = this.createTextInput();
   }
+
+  protected replacementContexts: MatchReplacementContext[] = [];
+  protected readonly queryInputModel: TextInputModel.Model;
+  protected readonly replacementInputModel: TextInputModel.Model;
 
   protected createTextInput(): TextInputModel.Model {
     return new TextInputModel.Class();

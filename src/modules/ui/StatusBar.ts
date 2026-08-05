@@ -23,26 +23,11 @@ import type { PanelHost } from './PanelHost';
 import type { StatusBarSegments } from './StatusBarSegments';
 
 class $StatusBar {
-  /** The status-bar box; RootView mounts this into the layout column. */
-  readonly bar: BoxRenderable;
-  protected readonly statusText: TextRenderable;
-  protected readonly shortcutHelpButton: TextRenderable;
-  protected readonly settingsButton: TextRenderable;
-  protected readonly terminalButton: TextRenderable;
-  protected readonly contributionButton: TextRenderable;
-  protected readonly rightDockButton: TextRenderable;
-  protected readonly clock: TextRenderable;
-  protected hover = false;
-  protected settingsHover = false;
-  protected terminalHover = false;
-  protected contributionHover = false;
-  protected contributedControl:
-    ReturnType<StatusBarSegments.Model['controls']>[number] | null = null;
-  protected rightDockHover = false;
-  // The clock's single re-armed minute-boundary timer (NOT a per-second interval): the only periodic
-  // wake at rest, once/min, so it forces the demand-driven loop to repaint the new minute without
-  // turning idle into a busy loop.
-  protected clockTimer: ReturnType<typeof setTimeout> | null = null;
+  /** One left-margin authority for every ordered status contribution. */
+  static composeStatusText(segments: readonly string[]): string {
+    return segments.length > 0 ? ` ${segments.join('  ·  ')}` : '';
+  }
+
   constructor(protected readonly deps: StatusBarDeps) {
     const { renderer } = deps;
     this.bar = new BoxRenderable(renderer, {
@@ -257,6 +242,27 @@ class $StatusBar {
       deps.tooltip.clear();
     };
   }
+
+  /** The status-bar box; RootView mounts this into the layout column. */
+  readonly bar: BoxRenderable;
+  protected readonly statusText: TextRenderable;
+  protected readonly shortcutHelpButton: TextRenderable;
+  protected readonly settingsButton: TextRenderable;
+  protected readonly terminalButton: TextRenderable;
+  protected readonly contributionButton: TextRenderable;
+  protected readonly rightDockButton: TextRenderable;
+  protected readonly clock: TextRenderable;
+  protected hover = false;
+  protected settingsHover = false;
+  protected terminalHover = false;
+  protected contributionHover = false;
+  protected contributedControl:
+    ReturnType<StatusBarSegments.Model['controls']>[number] | null = null;
+  protected rightDockHover = false;
+  // The clock's single re-armed minute-boundary timer (NOT a per-second interval): the only periodic
+  // wake at rest, once/min, so it forces the demand-driven loop to repaint the new minute without
+  // turning idle into a busy loop.
+  protected clockTimer: ReturnType<typeof setTimeout> | null = null;
   protected toggle(): void {
     const { shortcutHelp, overlayCoordinator } = this.deps;
     if (shortcutHelp.open.value) shortcutHelp.close();
@@ -326,10 +332,6 @@ class $StatusBar {
         focusedSurfaceTitle,
       }),
     );
-  }
-  /** One left-margin authority for every ordered status contribution. */
-  static composeStatusText(segments: readonly string[]): string {
-    return segments.length > 0 ? ` ${segments.join('  ·  ')}` : '';
   }
   /** Re-sync the bar from the model each frame. `focusedSurfaceTitle` is the mounted editor
    *  surface's own answer, which RootView reads. */

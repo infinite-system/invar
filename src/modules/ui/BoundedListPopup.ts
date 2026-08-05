@@ -52,6 +52,294 @@ class $BoundedListPopup {
   protected static get RESERVED_BOTTOM_ROWS(): number {
     return 1;
   }
+  // A pinned navigation row (the hierarchical `..` parent entry) is BROWSING chrome that happens to
+  // live in the list, so it is never scored: while the query is empty it holds the first rows in
+  // source order, and the moment the user types they are searching this folder, not walking out of
+  // it, so it disappears instead of competing for a fuzzy rank.
+  // invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
+  static filterItems(
+    items: readonly BoundedListPopupItem[],
+    query: string,
+  ): readonly BoundedListPopupMatch[] {
+    const queryIsEmpty = query.length === 0;
+    const pinnedMatches: BoundedListPopupMatch[] = [];
+    const matches: BoundedListPopupMatch[] = [];
+    items.forEach((item, sourceIndex) => {
+      if (item.pinnedWhileQueryEmpty === true) {
+        if (queryIsEmpty) pinnedMatches.push({ item, sourceIndex, score: 0 });
+        return;
+      }
+      const score = CommandScoring.Class.fuzzyScore(
+        query,
+        item.searchText ?? item.label,
+      );
+      if (score >= 0) matches.push({ item, sourceIndex, score });
+    });
+    matches.sort(
+      (firstMatch, secondMatch) =>
+        firstMatch.score - secondMatch.score ||
+        firstMatch.sourceIndex - secondMatch.sourceIndex,
+    );
+    return [...pinnedMatches, ...matches];
+  }
+  static layoutGeometry(
+    input: BoundedListPopupGeometryInput,
+  ): BoundedListPopupGeometry {
+    const screenWidth = Math.max(1, Math.floor(input.screenWidth));
+    const screenHeight = Math.max(1, Math.floor(input.screenHeight));
+    const chromeRows = input.searchVisible ? 1 : 0;
+    const naturalListRows = Math.max(1, input.itemCount);
+    const naturalHeight =
+      this.VERTICAL_FRAME_ROWS + chromeRows + naturalListRows;
+    const safeBottomExclusive = Math.max(
+      1,
+      Math.min(
+        screenHeight - this.RESERVED_BOTTOM_ROWS,
+        input.availableBottomExclusive ?? screenHeight,
+      ),
+    );
+    const downwardTop = Math.max(0, Math.floor(input.anchor.row) + 1);
+    const downwardCapacity = Math.max(0, safeBottomExclusive - downwardTop);
+    const upwardCapacity = Math.max(
+      0,
+      Math.min(Math.floor(input.anchor.row), safeBottomExclusive),
+    );
+    const opensUpward =
+      naturalHeight > downwardCapacity && upwardCapacity > downwardCapacity;
+    const availableHeight = opensUpward ? upwardCapacity : downwardCapacity;
+    const boxHeight = Math.min(naturalHeight, Math.max(1, availableHeight));
+    const unclampedTop = opensUpward
+      ? Math.floor(input.anchor.row) - boxHeight
+      : downwardTop;
+    const boxTop = Math.max(
+      0,
+      Math.min(unclampedTop, Math.max(0, safeBottomExclusive - boxHeight)),
+    );
+    const requestedWidth = Math.max(
+      this.MINIMUM_BOX_WIDTH,
+      Math.floor(input.desiredBoxWidth),
+    );
+    const boxWidth = Math.max(1, Math.min(requestedWidth, screenWidth));
+    const boxLeft = Math.max(
+      0,
+      Math.min(
+        Math.floor(input.anchor.column),
+        Math.max(0, screenWidth - boxWidth),
+      ),
+    );
+    const listRows = Math.max(
+      0,
+      boxHeight - this.VERTICAL_FRAME_ROWS - chromeRows,
+    );
+    const verticalOverflow = input.itemCount > listRows;
+    const interiorColumns = Math.max(
+      1,
+      boxWidth - this.HORIZONTAL_FRAME_COLUMNS,
+    );
+    const listColumns = Math.max(
+      1,
+      interiorColumns -
+        (verticalOverflow ? Math.max(1, input.scrollbarThickness) : 0),
+    );
+    const maximumFirstVisible = Math.max(
+      0,
+      input.itemCount - Math.max(1, listRows),
+    );
+    const firstVisible = Math.max(
+      0,
+      Math.min(Math.floor(input.firstVisible), maximumFirstVisible),
+    );
+    const chromeRow = chromeRows > 0 ? boxTop + 1 : null;
+    return {
+      boxLeft,
+      boxTop,
+      boxWidth,
+      boxHeight,
+      bottomRow: boxTop + boxHeight - 1,
+      opensUpward,
+      searchRow: input.searchVisible ? chromeRow : null,
+      listLeft: boxLeft + 1,
+      listTop: boxTop + 1 + chromeRows,
+      listColumns,
+      listIconColumns: Math.max(0, Math.floor(input.iconColumns)),
+      listRows,
+      firstVisible,
+      visibleItemCount: Math.max(
+        0,
+        Math.min(listRows, input.itemCount - firstVisible),
+      ),
+      verticalOverflow,
+    };
+  }
+  static desiredBoxWidth(
+    maximumItemWidth: number,
+    title: string,
+    minimumWidth = this.MINIMUM_BOX_WIDTH,
+  ): number {
+    return Math.max(
+      minimumWidth,
+      TextCoordinates.Class.lineWidth(title) + 4,
+      maximumItemWidth + this.HORIZONTAL_FRAME_COLUMNS,
+    );
+  }
+  protected static filterIndexAtRow(
+    geometry: BoundedListPopupGeometry,
+    screenRow: number,
+  ): number {
+    const visibleRowIndex = screenRow - geometry.listTop;
+    if (visibleRowIndex < 0 || visibleRowIndex >= geometry.visibleItemCount) {
+      return -1;
+    }
+    return geometry.firstVisible + visibleRowIndex;
+  }
+  static enabledNavigation(
+    matches: readonly BoundedListPopupMatch[],
+  ): BoundedListPopupEnabledNavigation {
+    const enabledFilteredIndices: number[] = [];
+    const enabledPositionByFilteredIndex = new Int32Array(matches.length);
+    enabledPositionByFilteredIndex.fill(-1);
+    for (
+      let filteredIndex = 0;
+      filteredIndex < matches.length;
+      filteredIndex++
+    ) {
+      if (matches[filteredIndex]?.item.enabled === false) continue;
+      enabledPositionByFilteredIndex[filteredIndex] =
+        enabledFilteredIndices.length;
+      enabledFilteredIndices.push(filteredIndex);
+    }
+    return { enabledFilteredIndices, enabledPositionByFilteredIndex };
+  }
+  static nextEnabledFilteredIndex(
+    navigation: BoundedListPopupEnabledNavigation,
+    selectedIndex: number,
+    direction: 1 | -1,
+    movementSteps = 1,
+  ): number {
+    const enabledItemCount = navigation.enabledFilteredIndices.length;
+    if (enabledItemCount === 0) return -1;
+    const selectedEnabledPosition =
+      navigation.enabledPositionByFilteredIndex[selectedIndex] ?? -1;
+    const navigationOrigin =
+      selectedEnabledPosition >= 0
+        ? selectedEnabledPosition
+        : direction === 1
+          ? -1
+          : 0;
+    const wrappedEnabledPosition =
+      (((navigationOrigin + direction * movementSteps) % enabledItemCount) +
+        enabledItemCount) %
+      enabledItemCount;
+    return navigation.enabledFilteredIndices[wrappedEnabledPosition] ?? -1;
+  }
+  // One row-text generator for paint, exact box width, and the label column
+  // every row shares. The icon column is derived once from the widest supplied
+  // mark, so every row keeps the same label column even when a contributed item
+  // does not use the theme's one-cell vocabulary.
+  // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
+  static itemRowText(item: BoundedListPopupItem, iconColumns: number): string {
+    if (iconColumns <= 0) return ` ${item.label}`;
+    const iconCell = TextCoordinates.Class.padToDisplayWidth(
+      item.icon ?? '',
+      iconColumns,
+    );
+    return ` ${iconCell} ${item.label}`;
+  }
+  static itemSetIconColumns(items: readonly BoundedListPopupItem[]): number {
+    let iconColumns = 0;
+    for (const item of items) {
+      iconColumns = Math.max(
+        iconColumns,
+        TextCoordinates.Class.lineWidth(item.icon ?? ''),
+      );
+    }
+    return iconColumns;
+  }
+  static itemSetMaximumWidth(items: readonly BoundedListPopupItem[]): number {
+    const iconColumns = this.itemSetIconColumns(items);
+    let maximumWidth = 1;
+    for (const item of items) {
+      maximumWidth = Math.max(
+        maximumWidth,
+        TextCoordinates.Class.lineWidth(this.itemRowText(item, iconColumns)),
+      );
+    }
+    return maximumWidth;
+  }
+  constructor(protected readonly dependencies: BoundedListPopupDependencies) {
+    this.queryInput = this.createQueryInput();
+    const { renderer } = dependencies;
+    const identifier = dependencies.identifier ?? 'bounded-list-popup';
+    this.box = new BoxRenderable(renderer, {
+      id: identifier,
+      position: 'absolute',
+      border: true,
+      borderStyle: 'rounded',
+      flexDirection: 'column',
+      visible: false,
+      zIndex: 130,
+    });
+    this.searchInput = new TextRenderable(renderer, {
+      id: `${identifier}-search`,
+      content: '',
+      height: 1,
+      selectable: false,
+    });
+    this.list = new TextRenderable(renderer, {
+      id: `${identifier}-list`,
+      content: '',
+      selectable: false,
+    });
+    this.box.add(this.searchInput);
+    this.box.add(this.list);
+    this.viewport = new ScrollableTextViewport.Class({
+      renderer,
+      settings: dependencies.settings,
+      parent: this.box,
+      id: identifier,
+      disableHorizontal: true,
+      scrollbarZIndex: 1,
+      extent: () => ({
+        contentRows: this.filteredMatches.length,
+        contentColumns: this.maximumItemWidthValue,
+        viewportRows: Math.max(1, this.currentGeometry?.listRows ?? 1),
+        viewportColumns: Math.max(1, this.currentGeometry?.listColumns ?? 1),
+      }),
+      colors: () => ({
+        track: dependencies.theme.palette.panel,
+        thumb: dependencies.theme.palette.dim,
+      }),
+      onScroll: () => this.requestPaint(),
+      selection: {
+        positionAtCell: (screenColumn, screenRow) =>
+          this.selectionPositionAtCell(screenColumn, screenRow),
+        viewportRectangle: () => ({
+          leftColumn: this.currentGeometry?.listLeft ?? 0,
+          rightColumn:
+            (this.currentGeometry?.listLeft ?? 0) +
+            Math.max(1, this.currentGeometry?.listColumns ?? 1) -
+            1,
+          topRow: this.currentGeometry?.listTop ?? 0,
+          bottomRow:
+            (this.currentGeometry?.listTop ?? 0) +
+            Math.max(1, this.currentGeometry?.listRows ?? 1) -
+            1,
+        }),
+        begin: (position) => this.selectFilteredIndex(position.line),
+        extend: (position) => this.selectFilteredIndex(position.line),
+        finish: () => this.requestPaint(),
+      },
+    });
+    this.dismissal = new ModalOverlayDismissal.Class({
+      renderer,
+      identifier,
+      backdropZIndex: 125,
+      closeButtonZIndex: 131,
+      dismiss: () => this.close(),
+    });
+    renderer.root.add(this.box);
+    this.wirePointerInput();
+  }
 
   protected readonly box: BoxRenderable;
   protected readonly searchInput: TextRenderable;
@@ -145,214 +433,6 @@ class $BoundedListPopup {
   /** The query model's grapheme caret offset. */
   get queryCaret(): number {
     return this.queryInput.caret.value;
-  }
-
-  constructor(protected readonly dependencies: BoundedListPopupDependencies) {
-    this.queryInput = this.createQueryInput();
-    const { renderer } = dependencies;
-    const identifier = dependencies.identifier ?? 'bounded-list-popup';
-    this.box = new BoxRenderable(renderer, {
-      id: identifier,
-      position: 'absolute',
-      border: true,
-      borderStyle: 'rounded',
-      flexDirection: 'column',
-      visible: false,
-      zIndex: 130,
-    });
-    this.searchInput = new TextRenderable(renderer, {
-      id: `${identifier}-search`,
-      content: '',
-      height: 1,
-      selectable: false,
-    });
-    this.list = new TextRenderable(renderer, {
-      id: `${identifier}-list`,
-      content: '',
-      selectable: false,
-    });
-    this.box.add(this.searchInput);
-    this.box.add(this.list);
-    this.viewport = new ScrollableTextViewport.Class({
-      renderer,
-      settings: dependencies.settings,
-      parent: this.box,
-      id: identifier,
-      disableHorizontal: true,
-      scrollbarZIndex: 1,
-      extent: () => ({
-        contentRows: this.filteredMatches.length,
-        contentColumns: this.maximumItemWidthValue,
-        viewportRows: Math.max(1, this.currentGeometry?.listRows ?? 1),
-        viewportColumns: Math.max(1, this.currentGeometry?.listColumns ?? 1),
-      }),
-      colors: () => ({
-        track: dependencies.theme.palette.panel,
-        thumb: dependencies.theme.palette.dim,
-      }),
-      onScroll: () => this.requestPaint(),
-      selection: {
-        positionAtCell: (screenColumn, screenRow) =>
-          this.selectionPositionAtCell(screenColumn, screenRow),
-        viewportRectangle: () => ({
-          leftColumn: this.currentGeometry?.listLeft ?? 0,
-          rightColumn:
-            (this.currentGeometry?.listLeft ?? 0) +
-            Math.max(1, this.currentGeometry?.listColumns ?? 1) -
-            1,
-          topRow: this.currentGeometry?.listTop ?? 0,
-          bottomRow:
-            (this.currentGeometry?.listTop ?? 0) +
-            Math.max(1, this.currentGeometry?.listRows ?? 1) -
-            1,
-        }),
-        begin: (position) => this.selectFilteredIndex(position.line),
-        extend: (position) => this.selectFilteredIndex(position.line),
-        finish: () => this.requestPaint(),
-      },
-    });
-    this.dismissal = new ModalOverlayDismissal.Class({
-      renderer,
-      identifier,
-      backdropZIndex: 125,
-      closeButtonZIndex: 131,
-      dismiss: () => this.close(),
-    });
-    renderer.root.add(this.box);
-    this.wirePointerInput();
-  }
-
-  // A pinned navigation row (the hierarchical `..` parent entry) is BROWSING chrome that happens to
-  // live in the list, so it is never scored: while the query is empty it holds the first rows in
-  // source order, and the moment the user types they are searching this folder, not walking out of
-  // it, so it disappears instead of competing for a fuzzy rank.
-  // invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
-  static filterItems(
-    items: readonly BoundedListPopupItem[],
-    query: string,
-  ): readonly BoundedListPopupMatch[] {
-    const queryIsEmpty = query.length === 0;
-    const pinnedMatches: BoundedListPopupMatch[] = [];
-    const matches: BoundedListPopupMatch[] = [];
-    items.forEach((item, sourceIndex) => {
-      if (item.pinnedWhileQueryEmpty === true) {
-        if (queryIsEmpty) pinnedMatches.push({ item, sourceIndex, score: 0 });
-        return;
-      }
-      const score = CommandScoring.Class.fuzzyScore(
-        query,
-        item.searchText ?? item.label,
-      );
-      if (score >= 0) matches.push({ item, sourceIndex, score });
-    });
-    matches.sort(
-      (firstMatch, secondMatch) =>
-        firstMatch.score - secondMatch.score ||
-        firstMatch.sourceIndex - secondMatch.sourceIndex,
-    );
-    return [...pinnedMatches, ...matches];
-  }
-
-  static layoutGeometry(
-    input: BoundedListPopupGeometryInput,
-  ): BoundedListPopupGeometry {
-    const screenWidth = Math.max(1, Math.floor(input.screenWidth));
-    const screenHeight = Math.max(1, Math.floor(input.screenHeight));
-    const chromeRows = input.searchVisible ? 1 : 0;
-    const naturalListRows = Math.max(1, input.itemCount);
-    const naturalHeight =
-      this.VERTICAL_FRAME_ROWS + chromeRows + naturalListRows;
-    const safeBottomExclusive = Math.max(
-      1,
-      Math.min(
-        screenHeight - this.RESERVED_BOTTOM_ROWS,
-        input.availableBottomExclusive ?? screenHeight,
-      ),
-    );
-    const downwardTop = Math.max(0, Math.floor(input.anchor.row) + 1);
-    const downwardCapacity = Math.max(0, safeBottomExclusive - downwardTop);
-    const upwardCapacity = Math.max(
-      0,
-      Math.min(Math.floor(input.anchor.row), safeBottomExclusive),
-    );
-    const opensUpward =
-      naturalHeight > downwardCapacity && upwardCapacity > downwardCapacity;
-    const availableHeight = opensUpward ? upwardCapacity : downwardCapacity;
-    const boxHeight = Math.min(naturalHeight, Math.max(1, availableHeight));
-    const unclampedTop = opensUpward
-      ? Math.floor(input.anchor.row) - boxHeight
-      : downwardTop;
-    const boxTop = Math.max(
-      0,
-      Math.min(unclampedTop, Math.max(0, safeBottomExclusive - boxHeight)),
-    );
-    const requestedWidth = Math.max(
-      this.MINIMUM_BOX_WIDTH,
-      Math.floor(input.desiredBoxWidth),
-    );
-    const boxWidth = Math.max(1, Math.min(requestedWidth, screenWidth));
-    const boxLeft = Math.max(
-      0,
-      Math.min(
-        Math.floor(input.anchor.column),
-        Math.max(0, screenWidth - boxWidth),
-      ),
-    );
-    const listRows = Math.max(
-      0,
-      boxHeight - this.VERTICAL_FRAME_ROWS - chromeRows,
-    );
-    const verticalOverflow = input.itemCount > listRows;
-    const interiorColumns = Math.max(
-      1,
-      boxWidth - this.HORIZONTAL_FRAME_COLUMNS,
-    );
-    const listColumns = Math.max(
-      1,
-      interiorColumns -
-        (verticalOverflow ? Math.max(1, input.scrollbarThickness) : 0),
-    );
-    const maximumFirstVisible = Math.max(
-      0,
-      input.itemCount - Math.max(1, listRows),
-    );
-    const firstVisible = Math.max(
-      0,
-      Math.min(Math.floor(input.firstVisible), maximumFirstVisible),
-    );
-    const chromeRow = chromeRows > 0 ? boxTop + 1 : null;
-    return {
-      boxLeft,
-      boxTop,
-      boxWidth,
-      boxHeight,
-      bottomRow: boxTop + boxHeight - 1,
-      opensUpward,
-      searchRow: input.searchVisible ? chromeRow : null,
-      listLeft: boxLeft + 1,
-      listTop: boxTop + 1 + chromeRows,
-      listColumns,
-      listIconColumns: Math.max(0, Math.floor(input.iconColumns)),
-      listRows,
-      firstVisible,
-      visibleItemCount: Math.max(
-        0,
-        Math.min(listRows, input.itemCount - firstVisible),
-      ),
-      verticalOverflow,
-    };
-  }
-
-  static desiredBoxWidth(
-    maximumItemWidth: number,
-    title: string,
-    minimumWidth = this.MINIMUM_BOX_WIDTH,
-  ): number {
-    return Math.max(
-      minimumWidth,
-      TextCoordinates.Class.lineWidth(title) + 4,
-      maximumItemWidth + this.HORIZONTAL_FRAME_COLUMNS,
-    );
   }
 
   openAt(
@@ -702,98 +782,8 @@ class $BoundedListPopup {
     }
   }
 
-  protected static filterIndexAtRow(
-    geometry: BoundedListPopupGeometry,
-    screenRow: number,
-  ): number {
-    const visibleRowIndex = screenRow - geometry.listTop;
-    if (visibleRowIndex < 0 || visibleRowIndex >= geometry.visibleItemCount) {
-      return -1;
-    }
-    return geometry.firstVisible + visibleRowIndex;
-  }
-
   protected createQueryInput(): TextInputModel.Model {
     return new TextInputModel.Class();
-  }
-
-  static enabledNavigation(
-    matches: readonly BoundedListPopupMatch[],
-  ): BoundedListPopupEnabledNavigation {
-    const enabledFilteredIndices: number[] = [];
-    const enabledPositionByFilteredIndex = new Int32Array(matches.length);
-    enabledPositionByFilteredIndex.fill(-1);
-    for (
-      let filteredIndex = 0;
-      filteredIndex < matches.length;
-      filteredIndex++
-    ) {
-      if (matches[filteredIndex]?.item.enabled === false) continue;
-      enabledPositionByFilteredIndex[filteredIndex] =
-        enabledFilteredIndices.length;
-      enabledFilteredIndices.push(filteredIndex);
-    }
-    return { enabledFilteredIndices, enabledPositionByFilteredIndex };
-  }
-
-  static nextEnabledFilteredIndex(
-    navigation: BoundedListPopupEnabledNavigation,
-    selectedIndex: number,
-    direction: 1 | -1,
-    movementSteps = 1,
-  ): number {
-    const enabledItemCount = navigation.enabledFilteredIndices.length;
-    if (enabledItemCount === 0) return -1;
-    const selectedEnabledPosition =
-      navigation.enabledPositionByFilteredIndex[selectedIndex] ?? -1;
-    const navigationOrigin =
-      selectedEnabledPosition >= 0
-        ? selectedEnabledPosition
-        : direction === 1
-          ? -1
-          : 0;
-    const wrappedEnabledPosition =
-      (((navigationOrigin + direction * movementSteps) % enabledItemCount) +
-        enabledItemCount) %
-      enabledItemCount;
-    return navigation.enabledFilteredIndices[wrappedEnabledPosition] ?? -1;
-  }
-
-  // One row-text generator for paint, exact box width, and the label column
-  // every row shares. The icon column is derived once from the widest supplied
-  // mark, so every row keeps the same label column even when a contributed item
-  // does not use the theme's one-cell vocabulary.
-  // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
-  static itemRowText(item: BoundedListPopupItem, iconColumns: number): string {
-    if (iconColumns <= 0) return ` ${item.label}`;
-    const iconCell = TextCoordinates.Class.padToDisplayWidth(
-      item.icon ?? '',
-      iconColumns,
-    );
-    return ` ${iconCell} ${item.label}`;
-  }
-
-  static itemSetIconColumns(items: readonly BoundedListPopupItem[]): number {
-    let iconColumns = 0;
-    for (const item of items) {
-      iconColumns = Math.max(
-        iconColumns,
-        TextCoordinates.Class.lineWidth(item.icon ?? ''),
-      );
-    }
-    return iconColumns;
-  }
-
-  static itemSetMaximumWidth(items: readonly BoundedListPopupItem[]): number {
-    const iconColumns = this.itemSetIconColumns(items);
-    let maximumWidth = 1;
-    for (const item of items) {
-      maximumWidth = Math.max(
-        maximumWidth,
-        TextCoordinates.Class.lineWidth(this.itemRowText(item, iconColumns)),
-      );
-    }
-    return maximumWidth;
   }
 
   protected maximumItemWidth(items: readonly BoundedListPopupItem[]): number {

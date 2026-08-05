@@ -17,16 +17,6 @@ import { OpenPty } from './OpenPty';
 import { TerminalRcfile, type TerminalRcfileHandle } from './TerminalRcfile';
 
 class $OpenPtyBackend implements TerminalBackend {
-  protected readonly openPty: OpenPty.Model;
-  protected readonly child: ReturnType<typeof Bun.spawn>;
-  protected readonly promptRcfile: TerminalRcfileHandle | null;
-  protected dataCallback: ((bytes: Uint8Array) => void) | null = null;
-  protected pendingData: Uint8Array[] = [];
-  protected exitCallback: ((exitCode: number | null) => void) | null = null;
-  protected killed = false;
-  readonly title: string;
-  readonly cwd: string;
-
   constructor(
     options: {
       columns?: number;
@@ -103,6 +93,16 @@ class $OpenPtyBackend implements TerminalBackend {
       if (!this.killed) this.exitCallback?.(exitCode ?? null);
     });
   }
+
+  protected readonly openPty: OpenPty.Model;
+  protected readonly child: ReturnType<typeof Bun.spawn>;
+  protected readonly promptRcfile: TerminalRcfileHandle | null;
+  protected dataCallback: ((bytes: Uint8Array) => void) | null = null;
+  protected pendingData: Uint8Array[] = [];
+  protected exitCallback: ((exitCode: number | null) => void) | null = null;
+  protected killed = false;
+  readonly title: string;
+  readonly cwd: string;
 
   protected shellArgument(argument: string): string {
     return `'${argument.replaceAll("'", "'\"'\"'")}'`;
