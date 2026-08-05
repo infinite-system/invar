@@ -4,6 +4,39 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 63 — 2026-08-05 ~19:55 EDT — CHECKPOINT AT 82%: 506 GATING, 508 AWAITS REVIEW
+
+CRONS REMAIN DISARMED (user order stands; do not re-arm). fleet-watch
+Monitor armed. IN FLIGHT: #506 (constructor-first sweep, 95 files, +
+grammar rule + constants role table) is READY and GATING at
+/tmp/gate-506.log in its worktree with a death-reporting monitor — ON
+GREEN: convert bycatch (plugin-manifest red = #504 pre-existing,
+already filed; TASK-DRIFT lesson below), land via GATE_LOG=... land.sh
+506 constructor-first-and-the-constants-role-table, rebuild dist/iv.
+AWAITING USER REVIEW (do NOT dispatch): /tmp/brief-508-DRAFT.md — the
+drop story: M1 local drop (bracketed-paste enable + path routing),
+M2 iv ssh (THE MUST — channel protocol RPC-shaped from day one,
+capability namespaces reserved, byte sweep through the wrapper),
+M3 Open button picker tiers, M4 inversion design doc + sync-call
+census (local Invar over remote capabilities — the VS-Code-server
+answer, lean via the 12 capability slots; see project.gui-feasibility
+.md). User decisions pending IN the draft: confined-root refinement
+(import-or-read-only proposal), assignment split 508-511. PARKED: 507
+(webview GUI — user reason verbatim in its task file; never
+re-propose). Today's other landings: none besides the wave; #505/#504
+still active-undispatched. LESSONS THIS CHECKPOINT: task files
+carrying volatile counts must name the commit they were counted at
+(506's "85 of 113" drifted to 89/126 by dispatch; the promised
+13-field list was absent — builders survived it by re-censusing, but
+the brief lied); the parked state exists (.invar/tasks/parked/,
+tooling + skills updated). User conversation state: drag-drop over
+ssh is THE remaining terminal gap; iv ssh is non-negotiable; the
+inversion (local iv, remote fs) is wanted lean. Instrument note from
+506: scroll().waitFor(velocity,0) pre-satisfies — wait scrollTop
+change first (fold into drive-pty skill at next pass).
+
+---
+
 # RESUME ANCHOR 62 — 2026-08-04 ~04:25 EDT — THE NIGHT GOAL IS MET
 
 CRONS DISARMED BY USER ORDER (2026-08-04 ~20:20, verbatim "disarm
@@ -91,29 +124,9 @@ hygiene, 7 historical worktrees. Next-wave candidates: #498, #438,
 
 ---
 
-# RESUME ANCHOR 58 — 2026-08-03 ~19:25 EDT — DECOUPLING WAVE COMPLETE
-
-The /goal ("get the decoupling done fully") is MET. Landed today, in
-order: #485, #488, #458, #487, #493, #405, #491, #495, #356 (8 rounds,
-311m), #492, #490; #500 closed inside #356 r7. The coupling ratchet is
-LIVE in scripts/conventions-gate.sh (import census must be 0;
-vocabulary baseline 34, tightening; red arms proven) — gate-verified
-on main at bc212e81 (mislabeled commit, accounted in 169dc59d).
-Fleet idle; no in-progress tasks. AWAITING THE USER: (1) Shift+drag
-gesture confirmation (#495) + pointer-authority record refinement;
-(2) Focus-owns-the-keystroke applicationGlobal refinement wording
-(#356 r2); (3) pane-identity reservation record proposal (#356 r4);
-(4) readiness-driven PTY read record (#458); (5) the coupling
-invariant record itself (census-measured property, no record yet).
-All propose-only, unwritten. Next wave candidates if asked: #498
-(global chord pass-through policy, applicationGlobal is its seam),
-#438 (worktree hook policy — bit four builders today), #499 (smoke
-output hygiene), #496, #497, #489 (drive-layer batch).
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 58 — 2026-08-03 ~19:25 EDT — DECOUPLING WAVE COMPLETE
 - RESUME ANCHOR 57 — 2026-08-03 ~14:05 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
 - RESUME ANCHOR 56 — 2026-08-03 ~11:10 EDT — LAND #485, THEN PRESENT THE NUMBER
 - RESUME ANCHOR 55 — 2026-08-03 ~10:45 EDT — #485 MEASUREMENT IN FLIGHT

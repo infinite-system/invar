@@ -802,3 +802,13 @@ Same generator as "read the verdict, not the wrapper": the acting step
 reads the tool's OWN output whole (tail it, never grep it), and a
 dispatch is verified by its attach line + tmux has-session, not by
 absence of complaints.
+
+## 2026-08-05 — a task file's counts age; stamp them (506 task drift)
+
+#506's task file said "85 of 113 constructors violate" and promised a
+13-field list; by dispatch the tree had 89/126 and the list was never
+written in. The builder survived by re-censusing, but the brief lied
+in two places. Rule: volatile numbers in task files carry the commit
+they were measured at, and a promised artifact is pasted in, never
+referenced as intent. The census scripts are cheap — re-run at
+dispatch when the filing is older than the tree.
