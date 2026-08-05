@@ -4,7 +4,9 @@ import { Static } from 'ivue/extras';
 import type { GlyphLevel } from './TerminalCapabilities';
 
 class $ThemeIcons {
+  // Hot chrome-format path: this fixed Unicode lookup never varies by subclass.
   protected static readonly SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+  // Hot chrome-format path: this fixed Unicode lookup never varies by subclass.
   protected static readonly SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
 
   /** Render a bounded chrome count through the active glyph tier. */

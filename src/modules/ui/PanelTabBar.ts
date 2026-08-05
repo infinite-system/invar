@@ -11,8 +11,11 @@ import { WrapText } from './WrapText';
 // invariant: Tab bars share paint and hit geometry (src/modules/ui/ui.invariants.md)
 // invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelTabBar {
+  // Hot panel paint-and-hit path: this fixed cell width never varies by subclass.
   protected static readonly ACTION_CELL_WIDTH = 3;
+  // Hot panel layout path: this fixed padding never varies by subclass.
   protected static readonly EDITOR_FRAME_LEFT_PADDING_CELLS = 2;
+  // Hot panel layout path: this fixed lower bound never varies by subclass.
   protected static readonly MINIMUM_TAB_WIDTH = 4;
 
   static project(options: PanelTabBarOptions): PanelTabBarProjection {

@@ -33,6 +33,7 @@ class $GraphChannel {
   protected static transitionRequest: GraphRequest | null = null;
   protected static transitionStop: (() => void) | null = null;
   /** How long a parked condition tolerates a quiet renderer before nudging. */
+  // Hot graph-wait polling path: this fixed cadence never varies by subclass.
   protected static readonly QUIET_NUDGE_MILLISECONDS = 250;
 
   protected static get requestPath(): string {
