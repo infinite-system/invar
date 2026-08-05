@@ -63,7 +63,8 @@ import {
   type TasksWatchAnimationRow,
 } from './TasksWatchRenderer';
 
-export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
+export type TaskState =
+  'active' | 'in-progress' | 'completed' | 'retired' | 'parked';
 
 export type DriftSignal =
   | 'DUPLICATE-NUMBER'
@@ -188,6 +189,7 @@ const TASK_STATES: TaskState[] = [
   'in-progress',
   'completed',
   'retired',
+  'parked',
 ];
 
 const OPEN_STATES: TaskState[] = ['active', 'in-progress'];

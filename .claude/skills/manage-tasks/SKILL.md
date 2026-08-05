@@ -260,3 +260,15 @@ STALE-ACTIVE-VIEW: run `write-active`, then find what skipped it.
 
 One task, one folder, forever. `git mv` between states. Never `cp`, never `rm`. A commit
 accompanies every move, so the task system's history is the audit trail.
+
+
+## The parked state (added 2026-08-05, user decision)
+
+`parked` = deliberately shelved BY USER DECISION. The task file
+records the reason VERBATIM and the revisit trigger (usually: the
+user raises it). Parked tasks are never backlog: no dispatch, no
+priority ordering, no re-proposal by the conductor — the ratchet rule
+applies to the whole task, not just its design. Distinct from
+`retired` (dead, never coming back) and `active` (should eventually
+be driven). Enter and leave by `git mv` + a dated note, like every
+state move.
