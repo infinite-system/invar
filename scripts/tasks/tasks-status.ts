@@ -190,6 +190,7 @@ const TASK_STATES: TaskState[] = [
   'completed',
   'retired',
   'parked',
+  'draft',
 ];
 
 const OPEN_STATES: TaskState[] = ['active', 'in-progress'];
