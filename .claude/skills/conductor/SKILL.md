@@ -173,7 +173,8 @@ glides; `5,1,5,1` stumbles at the same mean.
 ## ⚑ RULE ONE — TASKS: A TASK'S RECORD IS A FOLDER, BUILT AS THE WORK HAPPENS
 
 **`.invar/tasks/<state>/<number>-<descriptive-name>/`.** States: `active`, `in-progress`,
-`completed`, `retired`. Move a task between states. Never delete a folder. The protocol is
+`completed`, `retired`, `parked` (user-shelved with verbatim reason + revisit trigger;
+never backlog, never re-proposed — the user raising it is the only exit). Move a task between states. Never delete a folder. The protocol is
 the `manage-tasks` skill (`.claude/skills/manage-tasks/SKILL.md`), shared with Invar users.
 This section is the conductor's operative summary.
 
