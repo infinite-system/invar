@@ -51,3 +51,15 @@ Read-only pane is acceptable if input routing balloons; drag-and-drop
 one file onto the page to open it IS in scope (the user's original
 itch). Keep the daemon changes additive (no CLI behavior change);
 gate-relevant code stays untouched or the experiment overreached.
+
+## PARKED (user, 2026-08-05, verbatim reason)
+
+"this is overkill at this stage, this will still become 1.5 tax
+everytime, agent does cli better than web view and I have to jump
+around, trying to resolve the fires in each." The stage argument:
+the fleet's verification is CLI-native; a web surface needs a second
+harness civilization before agents can own its fires. PARKED, not
+refuted — the feasibility note (project.gui-feasibility.md), the
+kernel-swap seam analysis, and whatever WIP the builder commits stay
+as the record for a future revisit. Do not re-propose while parked;
+the revisit trigger is the user raising it.
