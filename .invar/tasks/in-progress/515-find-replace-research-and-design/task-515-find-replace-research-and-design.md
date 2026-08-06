@@ -60,3 +60,13 @@ Invar:
   consent + drift reporting).
 Screenshot-derived layout notes are welcome in the doc (describe;
 do not embed binaries in the repo).
+
+## Dialog discipline (user addition, same session)
+
+All consent surfaces (replace-all, undo-with-counts, drift warnings)
+use the PROPER overlay dialog family — the same component and styling
+as the existing close/quit confirmation dialog — never inline y/N
+text prompts. Buttons carry the established 1-key padding. The design
+doc names the shared dialog component it reuses (overlay-dialog seam;
+Input overlays share one modal slot) and shows the consent copy for
+each dialog.
