@@ -64,7 +64,7 @@ import {
 } from './TasksWatchRenderer';
 
 export type TaskState =
-  'active' | 'in-progress' | 'completed' | 'retired' | 'parked';
+  'active' | 'in-progress' | 'completed' | 'retired' | 'parked' | 'draft';
 
 export type DriftSignal =
   | 'DUPLICATE-NUMBER'
