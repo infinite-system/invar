@@ -6,17 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
-- #517 [codex-compaction-threshold-steer](.invar/tasks/in-progress/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md)  [building]
+## IN-PROGRESS (2)
+- #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/in-progress/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/518-live-tasks-pane-matches-tasks-watch`
+- #517 [codex-compaction-threshold-steer](.invar/tasks/in-progress/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/517-codex-compaction-threshold-steer`
-- #515 [find-replace-research-and-design](.invar/tasks/in-progress/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/515-find-replace-research-and-design`
-- #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/in-progress/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md)  [building]
-  `tmux attach -t invar/514-terminal-instance-lifecycle-and-panel-chrome`
-- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/in-progress/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/513-drops-into-agents-paste-the-remote-path`
 
-## USER-DIRECTED (15)
+## USER-DIRECTED (16)
+- #521 [repair-in-file-replace-all-undo](.invar/tasks/active/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
 - #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/active/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -66,7 +63,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (31)
+## FLAKE-EVIDENCE (32)
+- #519 [terminal-toggle-gesture-flake](.invar/tasks/active/519-terminal-toggle-gesture-flake/task-519-terminal-toggle-gesture-flake.md)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
 - #456 [structure-filter-focus-tone-missing](.invar/tasks/active/456-structure-filter-focus-tone-missing/task-456-structure-filter-focus-tone-missing.md)
@@ -112,7 +110,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (37)
+## ARCHITECTURE-HYGIENE (39)
+- #522 [drive-scoped-text-click-gesture](.invar/tasks/active/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)
+- #520 [drive-session-framed-paste-gesture](.invar/tasks/active/520-drive-session-framed-paste-gesture/task-520-drive-session-framed-paste-gesture.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
@@ -155,8 +155,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 223 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 226 — full log: project.tasks-completed.md)
 - #516 [the-ui-design-doctrine](.invar/tasks/completed/516-the-ui-design-doctrine/task-516-the-ui-design-doctrine.md) — ACTIVE
+- #515 [find-replace-research-and-design](.invar/tasks/completed/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md) — b27d892b — Find/Replace full design landed: two surfaces, reverse-patch transactions, dialog copy, four proposed records, six milestones; milestone 1 filed as #521.
+- #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/completed/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md) — aee4a082 — Panel chrome rebuilt: one no-create bottom-panel toggle through the status seam, overlay hover grammar on instance rows, expand-trap fixed, fresh-boot drive honesty via a completed-frame boundary; three gate rounds, contract refines landed with the code.
+- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/completed/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md) — 22c80f69 — Dropped files paste as remote-usable paths into the focused agent/terminal pane via the PaneContent drop capability.
 - #511 [inversion-design-and-sync-census](.invar/tasks/completed/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md) — 86d4388b — inversion: measured (70 sync sites) and deferred
 - #510 [the-open-button-picker-tiers](.invar/tasks/completed/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md) — 6cc66819 — the Open button: client-native over ssh, local-native, in-app browser
 - #509 [iv-ssh-the-channel-client](.invar/tasks/completed/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md) — b5794429 — iv ssh: byte-perfect passthrough + the RPC channel; dropzone works
@@ -168,6 +171,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #500 [database-add-click-misses-popup](.invar/tasks/completed/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md) — ACTIVE
 - #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/completed/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md) — e322f281 — smokes print child failures and self-describe their homes
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/completed/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md) — 99c78b72 — frame chords survive focused panels via applicationGlobal
-- #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
-- #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/completed/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md) — 2fefd385 — monitor log assertion is condition-shaped
-- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test

@@ -1,14 +1,15 @@
 import { expect, test } from 'bun:test';
-import type { KeyEvent, StyledText } from '@opentui/core';
+import { RGBA, type KeyEvent, type StyledText } from '@opentui/core';
 import { ref } from 'vue';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import { PanelContentsList } from './PanelContentsList';
 import { PanelHost } from './PanelHost';
-import type { PaneContent } from './PaneContent.interface';
+import type { PaneContent, PaneTaskMetadata } from './PaneContent.interface';
 import { TabBarRenderer } from './TabBarRenderer';
 import { TabStrip } from './TabStrip';
+import { WrapText } from './WrapText';
 
 class FakeContent implements PaneContent {
   readonly renderRevision = ref(0);
@@ -20,6 +21,7 @@ class FakeContent implements PaneContent {
     readonly icon: string,
     readonly kind: string = id,
     panelSpace?: { readonly kind: string; readonly label: string },
+    readonly task?: PaneTaskMetadata,
   ) {
     this.panelSpace =
       panelSpace ??
@@ -118,6 +120,7 @@ test('a row split button requests a new member for that group and joined members
     .render(
       ThemePalettes.Class.DARK,
       ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+      ThemeIcons.Class.taskActionIconsFor('unicode').taskRecord,
     )
     .chunks.map((chunk) => chunk.text)
     .join('');
@@ -153,6 +156,7 @@ test('the add control reads a third space label from pane registration', () => {
     .render(
       ThemePalettes.Class.DARK,
       ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+      ThemeIcons.Class.taskActionIconsFor('unicode').taskRecord,
     )
     .chunks.map((chunk) => chunk.text)
     .join('');
@@ -175,7 +179,11 @@ test('the add control keeps one button form whether or not instances remain', ()
   const glyphs = ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
   const renderText = (): string =>
     list
-      .render(palette, glyphs)
+      .render(
+        palette,
+        glyphs,
+        ThemeIcons.Class.taskActionIconsFor('unicode').taskRecord,
+      )
       .chunks.map((chunk) => chunk.text)
       .join('');
 
@@ -188,6 +196,128 @@ test('the add control keeps one button form whether or not instances remain', ()
   host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
   expect(renderText()).toContain('+ Terminal');
   expect(renderText()).not.toContain('Add Terminal');
+});
+
+test('the add control starts idle and tracks hover and press without moving', () => {
+  const host = new PanelHost.Class();
+  host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
+  const list = new PanelContentsList.Class(host);
+  const renderHeader = () =>
+    list.render(
+      ThemePalettes.Class.DARK,
+      ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode'),
+      ThemeIcons.Class.taskActionIconsFor('unicode').taskRecord,
+    ).chunks[0];
+
+  expect(renderHeader()?.text.startsWith(' + Terminal')).toBe(true);
+  expect(
+    renderHeader()?.bg?.equals(RGBA.fromHex(ThemePalettes.Class.DARK.panel)),
+  ).toBe(true);
+  list.pointerMove(2, 0);
+  expect(
+    renderHeader()?.bg?.equals(
+      RGBA.fromHex(ThemePalettes.Class.DARK.cursorLine),
+    ),
+  ).toBe(true);
+  list.pointerDown(2, 0);
+  expect(
+    renderHeader()?.bg?.equals(
+      RGBA.fromHex(ThemePalettes.Class.DARK.selection),
+    ),
+  ).toBe(true);
+  list.pointerUp();
+  expect(
+    renderHeader()?.bg?.equals(
+      RGBA.fromHex(ThemePalettes.Class.DARK.cursorLine),
+    ),
+  ).toBe(true);
+});
+
+test('row controls overlay the full idle title and restore it after hover', () => {
+  const host = new PanelHost.Class();
+  host.register(
+    new FakeContent(
+      'terminal',
+      'Terminal instance with a long descriptive name',
+      'T',
+      'terminal',
+    ),
+  );
+  const list = new PanelContentsList.Class(host);
+  list.setWidth(20);
+  const glyphs = ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
+  const renderRow = (): string =>
+    list
+      .render(
+        ThemePalettes.Class.DARK,
+        glyphs,
+        ThemeIcons.Class.taskActionIconsFor('unicode').taskRecord,
+      )
+      .chunks.map((chunk) => chunk.text)
+      .join('')
+      .split('\n')[2] ?? '';
+
+  const idleRow = renderRow();
+  expect(WrapText.Class.displayWidth(idleRow)).toBe(20);
+  expect(idleRow.endsWith('…')).toBe(true);
+  expect(idleRow).not.toContain(glyphs.panelSplit);
+  expect(idleRow).not.toContain(glyphs.panelClose);
+
+  list.pointerMove(list.width - 5, 2);
+  const hoveredRow = renderRow();
+  expect(WrapText.Class.displayWidth(hoveredRow)).toBe(20);
+  expect(hoveredRow.slice(0, 13)).toBe(idleRow.slice(0, 13));
+  expect(hoveredRow[13]).toBe('…');
+  expect(hoveredRow).toContain(glyphs.panelSplit);
+  expect(hoveredRow).toContain(glyphs.panelClose);
+
+  list.pointerOut();
+  expect(renderRow()).toBe(idleRow);
+});
+
+test('task, split, and close share the right row control geometry', () => {
+  const host = new PanelHost.Class();
+  host.register(
+    new FakeContent(
+      'task-terminal',
+      'Build the complete application package',
+      'T',
+      'terminal',
+      undefined,
+      {
+        label: 'Build',
+        workspaceRoot: '/workspace',
+        sourcePath: '/workspace/.invar/tasks.json',
+      },
+    ),
+  );
+  const openedTasks: string[] = [];
+  const list = new PanelContentsList.Class(
+    host,
+    () => {},
+    () => {},
+    (identifier) => openedTasks.push(identifier),
+  );
+
+  list.pointerMove(list.width - 8, 2);
+  const glyphs = ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
+  const hoveredRow =
+    list
+      .render(
+        ThemePalettes.Class.DARK,
+        glyphs,
+        ThemeIcons.Class.taskActionIconsFor('unicode').taskRecord,
+      )
+      .chunks.map((chunk) => chunk.text)
+      .join('')
+      .split('\n')[2] ?? '';
+  expect(hoveredRow[list.width - 10]).toBe('…');
+  expect(WrapText.Class.displayWidth(hoveredRow)).toBe(list.width);
+  expect(list.tooltipAt(list.width - 8, 2)).toBe('Open tasks.json');
+  expect(list.pointerDown(list.width - 8, 2)).toBe(true);
+  expect(openedTasks).toEqual(['task-terminal']);
+  expect(list.tooltipAt(list.width - 5, 2)).toBe('Split instance');
+  expect(list.tooltipAt(list.width - 2, 2)).toBe('Close instance');
 });
 
 test('the list selects visibility among multiple open instances of one kind', () => {
@@ -232,7 +362,11 @@ test('tabs and panel rows project one tier-aware close token', () => {
     const expectedCloseGlyph = glyphVocabulary.panelClose;
     list.pointerMove(list.width - 1, 2);
     const listText = list
-      .render(ThemePalettes.Class.DARK, glyphVocabulary)
+      .render(
+        ThemePalettes.Class.DARK,
+        glyphVocabulary,
+        ThemeIcons.Class.taskActionIconsFor(level).taskRecord,
+      )
       .chunks.map((chunk) => chunk.text)
       .join('');
     const tabText = TabBarRenderer.Class.renderBuffer({

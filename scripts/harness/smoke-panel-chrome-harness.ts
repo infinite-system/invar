@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 // Drive the mixed workspace-tab and editor-action row through its keyboard and mouse paths.
 // Run: bun scripts/harness/smoke-panel-chrome-harness.ts
-// ALL-PASS means tabs survive when editor actions truncate, both action shortcuts work,
-// their tooltips show effective chords, wide buttons use their painted geometry, and all panel
-// controls still work.
+// ALL-PASS means tabs survive when editor actions truncate, the exact terminal lifecycle graph
+// survives every create/remove/split step at small and large scale, expanded mode always has a
+// symmetric exit, row controls share their backgrounds, and all neighboring panel controls work.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -308,11 +309,42 @@ async function driveRestoredTaskPaneSpaceHealing(
           `${lineCount}-line ${observationName} paints the relaunched task terminal`,
           (candidate) => candidate.findText('RESTORED_TASK_READY') !== null,
         );
+        const listRegion = status.panelListGeometry as {
+          left: number;
+          top: number;
+          width: number;
+        };
+        const taskRow = snapshot
+          .textRows()
+          .findIndex(
+            (rowText, row) =>
+              row >= listRegion.top &&
+              rowText
+                .slice(listRegion.left, listRegion.left + listRegion.width)
+                .includes('Claude'),
+          );
+        if (taskRow < 0) throw new Error('The task row did not paint');
+        driver.sendMouse({
+          kind: 'move',
+          column: listRegion.left + listRegion.width - 8,
+          row: taskRow,
+          button: 'none',
+        });
+        const hoveredSnapshot = await driver.awaitGridCondition(
+          `${lineCount}-line task row reveals its Open tasks.json control`,
+          (candidate) => candidate.findText('Open tasks.json') !== null,
+        );
         const taskGlyphLocation =
           (['nerd', 'unicode', 'ascii'] as const)
             .map((glyphLevel) =>
-              snapshot.findText(
+              hoveredSnapshot.findTextInRectangle(
                 ThemeIcons.Class.taskActionIconsFor(glyphLevel).taskRecord,
+                {
+                  left: listRegion.left + listRegion.width - 9,
+                  top: taskRow,
+                  width: 3,
+                  height: 1,
+                },
               ),
             )
             .find((location) => location !== null) ?? null;
@@ -322,6 +354,7 @@ async function driveRestoredTaskPaneSpaceHealing(
         HarnessSmoke.Class.requireCondition(
           tabBar(status).tabs.length === 1 &&
             taskGlyphLocation !== null &&
+            taskGlyphLocation.row === taskRow &&
             !panelContentKinds.some((kind) => String(kind).startsWith('task:')),
           `${lineCount}-line ${observationName} paints one Terminal space, a task glyph, and no task kind`,
         );
@@ -574,6 +607,909 @@ async function driveEmptyPanelRecovery(
     await driver.dispose();
     await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
     await HarnessSmoke.Class.removeTemporaryDirectory(workspaceRoot);
+  }
+}
+
+async function driveTerminalLifecycleProtocol(
+  lineCount: number,
+): Promise<void> {
+  const scaleFixture =
+    await HarnessSmoke.Class.createDriveScaleFixture(lineCount);
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `invar-panel-lifecycle-${lineCount}-`),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: scaleFixture.workspaceRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+
+  const exactState = async (
+    name: string,
+    contentIds: readonly string[],
+    groups: readonly (readonly string[])[],
+    cellIds: readonly string[],
+  ): Promise<StatusSnapshot> => {
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.orderedContents.length',
+      contentIds.length,
+    );
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.resolvedCells.length',
+      cellIds.length,
+    );
+    const status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line lifecycle graph after ${name}`,
+      (candidate) =>
+        JSON.stringify(candidate.panelContentIds) ===
+          JSON.stringify(contentIds) &&
+        JSON.stringify(candidate.panelGroups) === JSON.stringify(groups) &&
+        JSON.stringify(candidate.panelCellIds) === JSON.stringify(cellIds),
+    );
+    HarnessSmoke.Class.requireCondition(
+      JSON.stringify(status.panelContentIds) === JSON.stringify(contentIds) &&
+        JSON.stringify(status.panelGroups) === JSON.stringify(groups) &&
+        JSON.stringify(status.panelCellIds) === JSON.stringify(cellIds),
+      `${lineCount}-line lifecycle graph is exact after ${name}`,
+    );
+    return status;
+  };
+
+  const listGeometry = (): { left: number; top: number; width: number } => {
+    const geometry = HarnessSmoke.Class.readStatus(statusPath)
+      .panelListGeometry as { left: number; top: number; width: number };
+    if (!geometry || geometry.width <= 0) {
+      throw new Error('Missing panel instances-list geometry');
+    }
+    return geometry;
+  };
+
+  const choosePopupItem = async (identifier: string): Promise<void> => {
+    const popupStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `the lifecycle chooser offers ${identifier}`,
+      (candidate) =>
+        candidate.boundedListPopupOpen === true &&
+        Array.isArray(candidate.boundedListPopupItemIdentifiers) &&
+        candidate.boundedListPopupItemIdentifiers.includes(identifier),
+    );
+    const identifiers = popupStatus.boundedListPopupItemIdentifiers as string[];
+    const selectedIndex = Number(popupStatus.boundedListPopupSelected);
+    const targetIndex = identifiers.indexOf(identifier);
+    const movement = targetIndex - selectedIndex;
+    const key = movement < 0 ? 'Up' : 'Down';
+    for (let step = 0; step < Math.abs(movement); step += 1) {
+      driver.sendKeys(key);
+    }
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `the lifecycle chooser selects ${identifier}`,
+      (candidate) =>
+        candidate.boundedListPopupSelectedIdentifier === identifier,
+    );
+    driver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `the lifecycle chooser closes after selecting ${identifier}`,
+      (candidate) => candidate.boundedListPopupOpen === false,
+    );
+  };
+
+  const addInstance = async (identifier = 'terminal'): Promise<void> => {
+    const geometry = listGeometry();
+    clickCell(driver, geometry.left + 2, geometry.top);
+    await choosePopupItem(identifier);
+  };
+
+  const closeRow = (rowIndex: number): void => {
+    const geometry = listGeometry();
+    clickCell(
+      driver,
+      geometry.left + geometry.width - 2,
+      geometry.top + 2 + rowIndex,
+    );
+  };
+
+  const splitRow = async (rowIndex: number): Promise<void> => {
+    const geometry = listGeometry();
+    clickCell(
+      driver,
+      geometry.left + geometry.width - 5,
+      geometry.top + 2 + rowIndex,
+    );
+    await choosePopupItem('terminal');
+  };
+
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line lifecycle fixture is ready`,
+      (status) => status.ready === true,
+      15_000,
+    );
+    const statusControlSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line generic panel status control is visible`,
+      (candidate) =>
+        candidate.rowText(candidate.rows - 1).lastIndexOf(' ❯ ') >= 0,
+    );
+    const statusBarRow = statusControlSnapshot.rows - 1;
+    const statusControlStart = statusControlSnapshot
+      .rowText(statusBarRow)
+      .lastIndexOf(' ❯ ');
+    clickCell(driver, statusControlStart + 1, statusBarRow);
+    let status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line lifecycle panel opens`,
+      (candidate) => candidate.panelVisible === true,
+    );
+    const listToggle = tabBar(status).instancesToggle;
+    if (!listToggle) throw new Error('Missing instances-list toggle');
+    clickSegment(driver, tabBar(status).tabRow, listToggle);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line lifecycle list opens`,
+      (candidate) => candidate.panelListVisible === true,
+    );
+    await exactState('opening the list', [], [], []);
+
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    const firstSpaceAdd = tabBar(status).spaceAdd;
+    if (!firstSpaceAdd) throw new Error('Missing first Terminal-space Add');
+    clickSegment(driver, tabBar(status).tabRow, firstSpaceAdd);
+    await choosePopupItem('terminal');
+    await exactState(
+      'creating terminal 1',
+      ['pane-instance-1'],
+      [['pane-instance-1']],
+      ['pane-instance-1'],
+    );
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    if (status.panelListVisible !== true) {
+      const recreatedListToggle = tabBar(status).instancesToggle;
+      if (!recreatedListToggle) {
+        throw new Error('Missing recreated instances-list toggle');
+      }
+      clickSegment(driver, tabBar(status).tabRow, recreatedListToggle);
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${lineCount}-line recreated lifecycle list opens`,
+        (candidate) => candidate.panelListVisible === true,
+      );
+    }
+    const headerGeometry = listGeometry();
+    const idleHeaderSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line add header paints its leading space in the idle state`,
+      (candidate) =>
+        candidate.cell(headerGeometry.top, headerGeometry.left + 1)
+          ?.characters === '+',
+    );
+    const darkPalette = ThemePalettes.Class.DARK;
+    HarnessSmoke.Class.requireCondition(
+      idleHeaderSnapshot.cell(headerGeometry.top, headerGeometry.left)
+        ?.characters === ' ' &&
+        idleHeaderSnapshot.cell(headerGeometry.top, headerGeometry.left + 1)
+          ?.background === Number.parseInt(darkPalette.panel.slice(1), 16),
+      `${lineCount}-line add header starts with one leading space and no selected background`,
+    );
+    driver.sendMouse({
+      kind: 'move',
+      column: headerGeometry.left + 2,
+      row: headerGeometry.top,
+      button: 'none',
+    });
+    const hoveredHeaderSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line add header paints its hover state`,
+      (candidate) =>
+        candidate.findText('Add Terminal instance') !== null &&
+        candidate.cell(headerGeometry.top, headerGeometry.left + 1)
+          ?.background === Number.parseInt(darkPalette.cursorLine.slice(1), 16),
+    );
+    HarnessSmoke.Class.requireCondition(
+      hoveredHeaderSnapshot.cell(headerGeometry.top, headerGeometry.left + 1)
+        ?.background === Number.parseInt(darkPalette.cursorLine.slice(1), 16),
+      `${lineCount}-line add header hover uses the shared hover background`,
+    );
+    driver.sendMouse({
+      kind: 'press',
+      column: headerGeometry.left + 2,
+      row: headerGeometry.top,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line add header press opens its chooser`,
+      (candidate) => candidate.boundedListPopupOpen === true,
+    );
+    const pressedHeaderSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line add header paints its pressed state`,
+      (candidate) =>
+        candidate.cell(headerGeometry.top, headerGeometry.left + 1)
+          ?.background === Number.parseInt(darkPalette.selection.slice(1), 16),
+    );
+    HarnessSmoke.Class.requireCondition(
+      pressedHeaderSnapshot.cell(headerGeometry.top, headerGeometry.left + 1)
+        ?.background === Number.parseInt(darkPalette.selection.slice(1), 16),
+      `${lineCount}-line add header press uses the shared selected background`,
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line add header press cancels cleanly`,
+      (candidate) => candidate.boundedListPopupOpen === false,
+    );
+    driver.sendMouse({
+      kind: 'release',
+      column: headerGeometry.left + 2,
+      row: headerGeometry.top,
+      button: 'left',
+    });
+    await exactState(
+      'cancelling the pressed add header',
+      ['pane-instance-1'],
+      [['pane-instance-1']],
+      ['pane-instance-1'],
+    );
+    await addInstance();
+    await exactState(
+      'creating terminal 2',
+      ['pane-instance-1', 'pane-instance-2'],
+      [['pane-instance-1'], ['pane-instance-2']],
+      ['pane-instance-2'],
+    );
+    await addInstance();
+    await exactState(
+      'creating terminal 3',
+      ['pane-instance-1', 'pane-instance-2', 'pane-instance-3'],
+      [['pane-instance-1'], ['pane-instance-2'], ['pane-instance-3']],
+      ['pane-instance-3'],
+    );
+    const activeRowGeometry = listGeometry();
+    const activeRow = activeRowGeometry.top + 4;
+    const idleActiveRowText = driver
+      .snapshot()
+      .rowText(activeRow)
+      .slice(
+        activeRowGeometry.left,
+        activeRowGeometry.left + activeRowGeometry.width,
+      );
+    driver.sendMouse({
+      kind: 'move',
+      column: activeRowGeometry.left + activeRowGeometry.width - 5,
+      row: activeRow,
+      button: 'none',
+    });
+    const rowControlSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line active instance row paints one hover cluster`,
+      (candidate) => candidate.findText('Split instance') !== null,
+    );
+    HarnessSmoke.Class.requireCondition(
+      rowControlSnapshot.cell(
+        activeRow,
+        activeRowGeometry.left + activeRowGeometry.width - 5,
+      )?.background === Number.parseInt(darkPalette.cursorLine.slice(1), 16) &&
+        rowControlSnapshot.cell(
+          activeRow,
+          activeRowGeometry.left + activeRowGeometry.width - 2,
+        )?.background === Number.parseInt(darkPalette.selection.slice(1), 16),
+      `${lineCount}-line hovered split and idle close controls keep the row's background family`,
+    );
+    const hoveredActiveRowText = rowControlSnapshot
+      .rowText(activeRow)
+      .slice(
+        activeRowGeometry.left,
+        activeRowGeometry.left + activeRowGeometry.width,
+      );
+    HarnessSmoke.Class.requireCondition(
+      hoveredActiveRowText.slice(0, -6) === idleActiveRowText.slice(0, -6) &&
+        hoveredActiveRowText.slice(-6) !== idleActiveRowText.slice(-6),
+      `${lineCount}-line row controls overlay only the right tail without shifting the title`,
+    );
+    driver.sendMouse({
+      kind: 'move',
+      column: activeRowGeometry.left + 2,
+      row: activeRowGeometry.top,
+      button: 'none',
+    });
+    const restoredActiveRowSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line unhover restores the full instance row`,
+      (candidate) =>
+        candidate
+          .rowText(activeRow)
+          .slice(
+            activeRowGeometry.left,
+            activeRowGeometry.left + activeRowGeometry.width,
+          ) === idleActiveRowText,
+    );
+    HarnessSmoke.Class.requireCondition(
+      restoredActiveRowSnapshot
+        .rowText(activeRow)
+        .slice(
+          activeRowGeometry.left,
+          activeRowGeometry.left + activeRowGeometry.width,
+        ) === idleActiveRowText,
+      `${lineCount}-line unhover restores the full edge-to-edge instance title`,
+    );
+    driver.sendMouse({
+      kind: 'move',
+      column: activeRowGeometry.left + activeRowGeometry.width - 1,
+      row: activeRow,
+      button: 'none',
+    });
+    const rightEdgeCloseSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line overlay geometry reaches the row's right edge`,
+      (candidate) => candidate.findText('Close instance') !== null,
+    );
+    HarnessSmoke.Class.requireCondition(
+      rightEdgeCloseSnapshot.findText('Close instance') !== null,
+      `${lineCount}-line truncation and overlay controls fill the same row width`,
+    );
+    closeRow(0);
+    await exactState(
+      'removing terminal 1',
+      ['pane-instance-2', 'pane-instance-3'],
+      [['pane-instance-2'], ['pane-instance-3']],
+      ['pane-instance-3'],
+    );
+    closeRow(0);
+    await exactState(
+      'removing terminal 2',
+      ['pane-instance-3'],
+      [['pane-instance-3']],
+      ['pane-instance-3'],
+    );
+    closeRow(0);
+    await exactState('removing the last terminal', [], [], []);
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'panelHost.spaces.length',
+      1,
+    );
+
+    const emptyGeometry = listGeometry();
+    clickCell(
+      driver,
+      emptyGeometry.left + emptyGeometry.width - 2,
+      emptyGeometry.top + 2,
+    );
+    await exactState('clicking close in an empty list', [], [], []);
+
+    await addInstance();
+    await exactState(
+      'recreating terminal 4',
+      ['pane-instance-4'],
+      [['pane-instance-4']],
+      ['pane-instance-4'],
+    );
+    await addInstance();
+    await exactState(
+      'recreating terminal 5',
+      ['pane-instance-4', 'pane-instance-5'],
+      [['pane-instance-4'], ['pane-instance-5']],
+      ['pane-instance-5'],
+    );
+    await addInstance();
+    await exactState(
+      'recreating terminal 6',
+      ['pane-instance-4', 'pane-instance-5', 'pane-instance-6'],
+      [['pane-instance-4'], ['pane-instance-5'], ['pane-instance-6']],
+      ['pane-instance-6'],
+    );
+    closeRow(1);
+    await exactState(
+      'removing the middle recreated terminal',
+      ['pane-instance-4', 'pane-instance-6'],
+      [['pane-instance-4'], ['pane-instance-6']],
+      ['pane-instance-6'],
+    );
+
+    await splitRow(0);
+    await exactState(
+      'splitting terminal 4 with terminal 7',
+      ['pane-instance-4', 'pane-instance-6', 'pane-instance-7'],
+      [['pane-instance-4', 'pane-instance-7'], ['pane-instance-6']],
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+    await splitRow(2);
+    await exactState(
+      'splitting terminal 6 with terminal 8',
+      [
+        'pane-instance-4',
+        'pane-instance-6',
+        'pane-instance-7',
+        'pane-instance-8',
+      ],
+      [
+        ['pane-instance-4', 'pane-instance-7'],
+        ['pane-instance-6', 'pane-instance-8'],
+      ],
+      ['pane-instance-6', 'pane-instance-8'],
+    );
+
+    await addInstance('terminal');
+    await exactState(
+      'creating the normal terminal',
+      [
+        'pane-instance-4',
+        'pane-instance-6',
+        'pane-instance-7',
+        'pane-instance-8',
+        'pane-instance-9',
+      ],
+      [
+        ['pane-instance-4', 'pane-instance-7'],
+        ['pane-instance-6', 'pane-instance-8'],
+        ['pane-instance-9'],
+      ],
+      ['pane-instance-9'],
+    );
+    await addInstance('invar-agent');
+    await exactState(
+      'creating the Invar agent',
+      [
+        'pane-instance-10',
+        'pane-instance-4',
+        'pane-instance-6',
+        'pane-instance-7',
+        'pane-instance-8',
+        'pane-instance-9',
+      ],
+      [
+        ['pane-instance-4', 'pane-instance-7'],
+        ['pane-instance-6', 'pane-instance-8'],
+        ['pane-instance-9'],
+        ['pane-instance-10'],
+      ],
+      ['pane-instance-10'],
+    );
+    await addInstance('terminal-agent');
+    await exactState(
+      'creating the Claude terminal agent',
+      [
+        'pane-instance-10',
+        'pane-instance-4',
+        'pane-instance-6',
+        'pane-instance-7',
+        'pane-instance-8',
+        'pane-instance-9',
+        'pane-instance-11',
+      ],
+      [
+        ['pane-instance-4', 'pane-instance-7'],
+        ['pane-instance-6', 'pane-instance-8'],
+        ['pane-instance-9'],
+        ['pane-instance-10'],
+        ['pane-instance-11'],
+      ],
+      ['pane-instance-11'],
+    );
+
+    closeRow(4);
+    await exactState(
+      'removing the normal terminal',
+      [
+        'pane-instance-10',
+        'pane-instance-4',
+        'pane-instance-6',
+        'pane-instance-7',
+        'pane-instance-8',
+        'pane-instance-11',
+      ],
+      [
+        ['pane-instance-4', 'pane-instance-7'],
+        ['pane-instance-6', 'pane-instance-8'],
+        ['pane-instance-10'],
+        ['pane-instance-11'],
+      ],
+      ['pane-instance-11'],
+    );
+    closeRow(4);
+    await exactState(
+      'removing the Invar agent',
+      [
+        'pane-instance-4',
+        'pane-instance-6',
+        'pane-instance-7',
+        'pane-instance-8',
+        'pane-instance-11',
+      ],
+      [
+        ['pane-instance-4', 'pane-instance-7'],
+        ['pane-instance-6', 'pane-instance-8'],
+        ['pane-instance-11'],
+      ],
+      ['pane-instance-11'],
+    );
+    closeRow(4);
+    const survivingIds = [
+      'pane-instance-4',
+      'pane-instance-6',
+      'pane-instance-7',
+      'pane-instance-8',
+    ];
+    const survivingGroups = [
+      ['pane-instance-4', 'pane-instance-7'],
+      ['pane-instance-6', 'pane-instance-8'],
+    ];
+    await exactState(
+      'removing the Claude terminal agent',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+
+    const cancellationGeometry = listGeometry();
+    clickCell(driver, cancellationGeometry.left + 2, cancellationGeometry.top);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle add chooser opens before cancellation',
+      (candidate) => candidate.boundedListPopupOpen === true,
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle add chooser cancels',
+      (candidate) => candidate.boundedListPopupOpen === false,
+    );
+    await exactState('cancelling an add', survivingIds, survivingGroups, [
+      'pane-instance-4',
+      'pane-instance-7',
+    ]);
+
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    let expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand) throw new Error('Missing lifecycle expand control');
+    clickSegment(driver, tabBar(status).row, expand);
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle panel expands with a split active',
+      (candidate) => candidate.panelExpanded === true,
+    );
+    HarnessSmoke.Class.requireCondition(
+      Number(tabBar(status).instancesToggle?.endColumnExclusive) <=
+        Number(
+          tabBar(status).controls.find((control) => control.action === 'expand')
+            ?.startColumn,
+        ),
+      'expanded tab controls stop before the restore control hit area',
+    );
+    await exactState(
+      'expanding with a split active',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+    expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand) throw new Error('Missing lifecycle restore control');
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle panel restores through the same control',
+      (candidate) => candidate.panelExpanded === false,
+    );
+    await exactState(
+      'restoring the split panel',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand)
+      throw new Error('Missing lifecycle expand control before toggle');
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle panel expands before the chord interleave',
+      (candidate) => candidate.panelExpanded === true,
+    );
+    driver.sendKeys('Control+j');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'Ctrl+J closes and clears expanded mode',
+      (candidate) =>
+        candidate.panelVisible === false && candidate.panelExpanded === false,
+    );
+    await exactState(
+      'closing an expanded panel with Ctrl+J',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+    driver.sendKeys('Control+j');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'Ctrl+J reopens the retained split without expanded mode',
+      (candidate) =>
+        candidate.panelVisible === true && candidate.panelExpanded === false,
+    );
+    await exactState(
+      'reopening after the expanded chord interleave',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand)
+      throw new Error('Missing lifecycle expand control before resize');
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle panel expands before resize',
+      (candidate) => candidate.panelExpanded === true,
+    );
+    driver.resize(100, 32);
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'expanded lifecycle geometry follows a PTY resize',
+      (candidate) =>
+        candidate.width === 100 &&
+        candidate.height === 32 &&
+        candidate.panelExpanded === true,
+    );
+    expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand) throw new Error('Missing resized lifecycle restore control');
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the resized lifecycle panel restores',
+      (candidate) => candidate.panelExpanded === false,
+    );
+    await exactState(
+      'resizing and restoring the expanded split',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand) throw new Error('Missing expand control before create/remove');
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle panel expands before create/remove',
+      (candidate) => candidate.panelExpanded === true,
+    );
+    await addInstance();
+    await exactState(
+      'creating terminal 12 while expanded',
+      [...survivingIds, 'pane-instance-12'],
+      [...survivingGroups, ['pane-instance-12']],
+      ['pane-instance-12'],
+    );
+    closeRow(4);
+    status = await exactState(
+      'removing terminal 12 while expanded',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+    HarnessSmoke.Class.requireCondition(
+      status.panelExpanded === true,
+      'removing an expanded singleton keeps the symmetric restore control active',
+    );
+    expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand) throw new Error('Missing restore after expanded remove');
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the lifecycle panel restores after expanded create/remove',
+      (candidate) => candidate.panelExpanded === false,
+    );
+    await exactState(
+      'restoring after expanded create/remove',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    expand = tabBar(status).controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!expand) throw new Error('Missing expand control before rapid cycle');
+    const frameBeforeRapidCycle = Number(status.frame);
+    clickSegment(driver, tabBar(status).row, expand);
+    clickSegment(driver, tabBar(status).row, expand);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'two rapid expand clicks complete one symmetric cycle',
+      (candidate) =>
+        Number(candidate.frame) > frameBeforeRapidCycle &&
+        candidate.panelExpanded === false,
+    );
+    await exactState('two rapid expand clicks', survivingIds, survivingGroups, [
+      'pane-instance-4',
+      'pane-instance-7',
+    ]);
+
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    const dragRemovalGeometry = listGeometry();
+    const layoutSlots = status.layoutSlots as
+      Record<string, { left: number; top: number; width: number }> | undefined;
+    const panelLeft = Number(layoutSlots?.bottomPanel?.left ?? 0);
+    const splitCellColumns = Array.isArray(status.panelCellColumns)
+      ? status.panelCellColumns.map(Number)
+      : [];
+    const firstCellColumns = Number(splitCellColumns[0] ?? 0);
+    const dividerColumn = panelLeft + firstCellColumns;
+    const dividerRow = dragRemovalGeometry.top + 4;
+    driver.sendMouse({
+      kind: 'move',
+      column: dividerColumn,
+      row: dividerRow,
+      button: 'none',
+    });
+    driver.sendMouse({
+      kind: 'press',
+      column: dividerColumn,
+      row: dividerRow,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'move',
+      column: dividerColumn - 2,
+      row: dividerRow,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line split divider moves before a removal interleaves`,
+      (candidate) =>
+        JSON.stringify(candidate.panelCellColumns) !==
+        JSON.stringify(splitCellColumns),
+    );
+    await exactState(
+      'moving the split divider before removal',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+    driver.sendMouse({
+      kind: 'press',
+      column: dragRemovalGeometry.left + dragRemovalGeometry.width - 2,
+      row: dragRemovalGeometry.top + 2,
+      button: 'left',
+    });
+    await exactState(
+      'attempting removal while the split-divider drag owns the pointer',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+    driver.sendMouse({
+      kind: 'release',
+      column: dividerColumn - 2,
+      row: dividerRow,
+      button: 'left',
+    });
+    await exactState(
+      'cancelling the removal attempt by releasing the split-divider drag',
+      survivingIds,
+      survivingGroups,
+      ['pane-instance-4', 'pane-instance-7'],
+    );
+    closeRow(0);
+    await exactState(
+      'removing the active split member after the drag releases',
+      ['pane-instance-6', 'pane-instance-7', 'pane-instance-8'],
+      [['pane-instance-7'], ['pane-instance-6', 'pane-instance-8']],
+      ['pane-instance-7'],
+    );
+    await driver.dispose();
+    const secondLaunchStatusPath = join(
+      homeDirectory,
+      'second-launch-status.json',
+    );
+    const secondLaunchDriver = new PtyTestDriver.Class({
+      workspaceRoot: scaleFixture.workspaceRoot,
+      columns: 120,
+      rows: 40,
+      homeDirectory,
+      environment: {
+        TUI_STATUS_PATH: secondLaunchStatusPath,
+        INVAR_AGENT_BACKEND: 'echo',
+      },
+    });
+    try {
+      await GraphClient.Class.awaitValue(
+        secondLaunchStatusPath,
+        'panelHost.orderedContents.length',
+        3,
+      );
+      await GraphClient.Class.awaitValue(
+        secondLaunchStatusPath,
+        'panelHost.resolvedCells.length',
+        1,
+      );
+      const secondLaunchStatus = await HarnessSmoke.Class.awaitStatus(
+        secondLaunchDriver,
+        secondLaunchStatusPath,
+        `${lineCount}-line second launch reads the state written by the lifecycle protocol`,
+        (candidate) =>
+          candidate.ready === true &&
+          JSON.stringify(candidate.panelContentIds) ===
+            JSON.stringify([
+              'pane-instance-6',
+              'pane-instance-7',
+              'pane-instance-8',
+            ]) &&
+          JSON.stringify(candidate.panelGroups) ===
+            JSON.stringify([
+              ['pane-instance-7'],
+              ['pane-instance-6', 'pane-instance-8'],
+            ]) &&
+          JSON.stringify(candidate.panelCellIds) ===
+            JSON.stringify(['pane-instance-7']),
+        15_000,
+      );
+      HarnessSmoke.Class.requireCondition(
+        secondLaunchStatus.panelVisible === true &&
+          secondLaunchStatus.panelListVisible === true,
+        `${lineCount}-line second launch restores the visible panel and instances list`,
+      );
+    } finally {
+      await secondLaunchDriver.dispose();
+    }
+    HarnessSmoke.Class.pass(
+      `${lineCount}-line terminal lifecycle protocol and its second launch keep every exact graph transition`,
+    );
+  } finally {
+    await driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+    await HarnessSmoke.Class.removeTemporaryDirectory(
+      scaleFixture.workspaceRoot,
+    );
   }
 }
 
@@ -1568,6 +2504,8 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
 await driveLegacyPersistedPaneRestore();
 await driveRestoredTaskPaneSpaceHealing(10);
 await driveRestoredTaskPaneSpaceHealing(100_000);
+await driveTerminalLifecycleProtocol(10);
+await driveTerminalLifecycleProtocol(100_000);
 await driveEmptyPanelRecovery(120, 40);
 await driveEmptyPanelRecovery(88, 24);
 await driveRightDockCrossing();

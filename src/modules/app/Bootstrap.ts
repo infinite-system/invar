@@ -356,8 +356,8 @@ class $Bootstrap {
     let confirmQuit = (): void => {};
     const quitConfirmation = new Dialog.Class();
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
-    // The bottom panel slot: a generic, content-agnostic host. Its occupants come from contributed
-    // RUNTIMES, built lazily on first toggle so nothing is started until the panel is opened.
+    // The bottom panel slot is a generic, content-agnostic host. Its occupants come from contributed
+    // runtimes and start lazily on their first content-specific request.
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
     // invariant: A pane runtime owns its processes (src/modules/ui/ui.invariants.md)
     const paneRuntimes = new PaneRuntimes.Class();
@@ -589,6 +589,11 @@ class $Bootstrap {
       droppedPathOpeners: applicationContributions,
       boundedListPopup,
       overlayCoordinator,
+      pasteIntoFocusedPane: (text) => {
+        if (!panelHost.visible.value || !panelHost.focused.value) return false;
+        if (!panelHost.focusedContent?.acceptsDroppedPathPaste) return false;
+        return panelHost.handlePaste(text);
+      },
       focusEditor: () => {
         panelHost.blur();
         primaryDockHost.blur();
@@ -633,20 +638,39 @@ class $Bootstrap {
     let panelPaneAddPopup: PanelAddPopup.Instance | null = null;
     let pendingPanelSplitTargetIdentifier: string | null = null;
 
-    // The terminal action is shared by its chord and status-bar control.
+    // The terminal chord keeps its established content-specific behavior: select an existing
+    // interactive terminal or create one lazily when the workspace has none.
     const toggleTerminal = (): void => {
       const visibleTerminal = visiblePaneOfKind(
         'terminal',
         isRuntimeDefaultPane,
       );
-      if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
+      if (panelHost.visible.value && visibleTerminal) panelHost.hide();
       else {
-        // No runtime for this kind (its plugin is disabled) — the affordance degrades to nothing
-        // rather than crashing.
         const pane = ensureRuntimePane('terminal');
         if (pane) panelHost.showContent(pane.id);
       }
     };
+    // The status control owns the generic panel visibility seam. It does not invent content.
+    const toggleBottomPanel = (): void => {
+      panelHost.toggle();
+    };
+    statusBarSegments.register({
+      segments: () => [],
+      controls: () => [
+        {
+          identifier: 'bottom-panel',
+          icon: theme.terminalIcon,
+          label: `Toggle Bottom Panel${
+            keybindings.bindingHint('panel.toggleTerminal', 'global')
+              ? ` (${keybindings.bindingHint('panel.toggleTerminal', 'global')})`
+              : ''
+          }`,
+          active: panelHost.visible.value,
+          run: toggleBottomPanel,
+        },
+      ],
+    });
 
     const toggleRightDock = (): void => {
       // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
@@ -726,7 +750,6 @@ class $Bootstrap {
       statusBarSegments,
       editorSurfaceContents,
       editorColumnDefault,
-      toggleTerminal,
       (anchor) => panelAddPopup?.show(anchor),
       (anchor, splitTargetIdentifier) => {
         pendingPanelSplitTargetIdentifier = splitTargetIdentifier ?? null;
@@ -2390,9 +2413,8 @@ class $Bootstrap {
       'editor.duplicateLine': () => workspaceSet.activeEditor.duplicateLine(),
       'editor.indent': () => workspaceSet.activeEditor.indent(),
       'editor.outdent': () => workspaceSet.activeEditor.outdent(),
-      // Toggle the bottom panel (terminal). Reserved so it fires from ANY mode — including from within a
-      // focused terminal (to hide it) — exactly like the quit escape hatch. Same closure the status-bar
-      // terminal button runs, so chord and click are one action.
+      // Toggle the terminal from any mode, including from within its own focused PTY. The status-bar
+      // control toggles generic panel visibility instead, so opening an empty panel does not create content.
       'panel.toggleTerminal': toggleTerminal,
       'panel.toggleSplit': togglePanelSplit,
       'panel.contentsPrevious': () => focusPanelContent(-1),

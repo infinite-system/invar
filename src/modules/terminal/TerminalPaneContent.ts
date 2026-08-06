@@ -73,6 +73,8 @@ class $TerminalPaneContent implements PaneContent {
   readonly task?: PaneTaskMetadata;
   readonly frameHeaderRows = 1;
   readonly icon = '❯'; // ❯
+  // invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
+  readonly acceptsDroppedPathPaste = true;
   // The pane owns the `terminal` keybinding context while the panel focuses it, so the host resolves
   // its bindings generically instead of testing for this class.
   readonly keybindingContext = 'terminal';
@@ -161,7 +163,7 @@ class $TerminalPaneContent implements PaneContent {
    *  bytes as if the user had typed the pasted/dictated text. */
   handlePaste(text: string): boolean {
     if (!text) return false;
-    this.instance.sendUserInput(text);
+    this.instance.pasteUserInput(text);
     return true;
   }
 

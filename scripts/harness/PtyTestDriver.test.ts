@@ -384,6 +384,24 @@ describe('PtyTestDriver.assertContentInvariantAcrossAction', () => {
 });
 
 describe('PtyTestDriver completed-frame observations', () => {
+  test('waits until the emulator has applied the requested completed frame', async () => {
+    const driver = createRecordedStreamDriver(
+      ['FIRST FRAME', 'SECOND FRAME'],
+      80,
+    );
+    try {
+      const snapshot = await driver.awaitCompletedFrameObservationAfter(
+        1,
+        'the recorded stream applies its second frame',
+        1_000,
+      );
+      expect(snapshot.findText('SECOND FRAME')).not.toBeNull();
+      expect(driver.completedFrameObservationCount).toBe(2);
+    } finally {
+      await driver.dispose();
+    }
+  });
+
   test('records the exact emulator grid at each frame boundary in one PTY chunk', async () => {
     const driver = createSingleChunkRecordedStreamDriver([
       'FIRST FRAME',

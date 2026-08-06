@@ -50,6 +50,15 @@ test('ordinary bytes and non-path paste remain byte exact', async () => {
   );
 });
 
+test('multiple usable paths share one shell-quoted paste form', () => {
+  expect(
+    BracketedPathPaste.Class.shellQuotedPaths([
+      '/tmp/first file.txt',
+      "/tmp/second'file.txt",
+    ]),
+  ).toBe("'/tmp/first file.txt' '/tmp/second'\"'\"'file.txt'");
+});
+
 test('a standalone Escape flushes at the event-loop boundary', async () => {
   const forwarded: Uint8Array[] = [];
   const parser = new BracketedPathPaste.Class(

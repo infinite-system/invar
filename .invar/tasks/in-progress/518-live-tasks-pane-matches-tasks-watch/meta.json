@@ -1,0 +1,15 @@
+{
+  "task": 518,
+  "slug": "live-tasks-pane-matches-tasks-watch",
+  "branch": "fleet/518-live-tasks-pane-matches-tasks-watch",
+  "worktree": ".invar/worktrees/518-live-tasks-pane-matches-tasks-watch",
+  "tmuxSession": "invar/518-live-tasks-pane-matches-tasks-watch",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-518-live-tasks-pane-matches-tasks-watch.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e675d14c73fc97e068aac81bea17561bd5bfddbd",
+  "startedAt": "2026-08-05T23:58:40-04:00"
+}

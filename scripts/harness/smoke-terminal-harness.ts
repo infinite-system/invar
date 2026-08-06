@@ -782,10 +782,16 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.terminalVisible === true',
-    (status) => status.terminalVisible === true,
+    'the shared status button opens the empty panel without creating a terminal',
+    (status) =>
+      status.panelVisible === true &&
+      status.terminalVisible === false &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.length === 0,
   );
-  HarnessSmoke.Class.pass('status-bar terminal button opens the panel');
+  HarnessSmoke.Class.pass(
+    'the shared status button opens the panel without creating a terminal',
+  );
   driver.sendMouse({
     kind: 'press',
     column: terminalButtonColumn,
@@ -801,8 +807,12 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.terminalVisible === false',
-    (status) => status.terminalVisible === false,
+    'the second shared status click hides the unchanged empty panel',
+    (status) =>
+      status.panelVisible === false &&
+      status.terminalVisible === false &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.length === 0,
   );
   HarnessSmoke.Class.pass('second status-bar click hides the panel');
 
