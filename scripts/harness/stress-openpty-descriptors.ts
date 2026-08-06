@@ -25,7 +25,7 @@ if (!treeRoot) {
   process.exit(2);
 }
 
-const { OpenPty } = await import(`${treeRoot}/src/modules/terminal/OpenPty.ts`);
+const { OpenPty } = await import(`${treeRoot}/src/modules/system/OpenPty.ts`);
 
 let constructionFailureCount = 0;
 

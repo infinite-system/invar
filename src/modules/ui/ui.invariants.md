@@ -2552,7 +2552,7 @@ payloads that cannot truncate on a partial PTY write.
 payloads and both bracketed-paste markers across PTY chunks.
 
 **Evidence:** `scripts/harness/BracketedPasteInput.test.ts`;
-`scripts/harness/smoke-paste-harness.ts`; `src/modules/terminal/OpenPty.ts`.
+`scripts/harness/smoke-paste-harness.ts`; `src/modules/system/OpenPty.ts`.
 
 **Impossible if true:** A split marker becomes typed text; one paste produces multiple composer
 insertions; a typed unbracketed path opens a file; a complete existing-path drop reaches the shell;

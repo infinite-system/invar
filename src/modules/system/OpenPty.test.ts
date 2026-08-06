@@ -11,7 +11,7 @@ test('the PTY resource publishes its plain construction seam', () => {
 // empty queue on return is the observable form of "no timer turn was needed".
 test('a keystroke write needs no timer turn', async () => {
   const childSource = String.raw`
-    import { OpenPty } from './src/modules/terminal/OpenPty';
+    import { OpenPty } from './src/modules/system/OpenPty';
 
     class QueueObservingOpenPty extends OpenPty.$Class {
       get pendingWriteCount(): number {
@@ -50,7 +50,7 @@ test('a keystroke write needs no timer turn', async () => {
 
 test('a saturated PTY write leaves the event loop responsive', async () => {
   const childSource = String.raw`
-      import { OpenPty } from './src/modules/terminal/OpenPty';
+      import { OpenPty } from './src/modules/system/OpenPty';
 
       const openPty = new OpenPty.Class();
       const echoChild = Bun.spawn(
@@ -104,7 +104,7 @@ test('a saturated PTY write leaves the event loop responsive', async () => {
 
 test('a normal master read-stream close resumes bytes from the live PTY', async () => {
   const childSource = String.raw`
-    import { OpenPty } from './src/modules/terminal/OpenPty';
+    import { OpenPty } from './src/modules/system/OpenPty';
 
     class InterruptibleOpenPty extends OpenPty.$Class {
       readStartCount = 0;
@@ -172,7 +172,7 @@ test('a normal master read-stream close resumes bytes from the live PTY', async 
 test('a genuine asynchronous PTY write failure names its errno', async () => {
   const childSource = String.raw`
     import { closeSync } from 'node:fs';
-    import { OpenPty } from './src/modules/terminal/OpenPty';
+    import { OpenPty } from './src/modules/system/OpenPty';
 
     class BrokenDescriptorOpenPty extends OpenPty.$Class {
       protected establishNonBlockingWriteState(): void {}
@@ -207,7 +207,7 @@ test('a genuine asynchronous PTY write failure names its errno', async () => {
 test('a failed PTY window resize names the ioctl and errno', async () => {
   const childSource = String.raw`
     import { closeSync } from 'node:fs';
-    import { OpenPty } from './src/modules/terminal/OpenPty';
+    import { OpenPty } from './src/modules/system/OpenPty';
 
     class BrokenResizeOpenPty extends OpenPty.$Class {
       breakMasterDescriptor(): void {

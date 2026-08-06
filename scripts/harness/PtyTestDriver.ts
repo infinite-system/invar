@@ -15,7 +15,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { OpenPty } from '../../src/modules/terminal/OpenPty';
+import { OpenPty } from '../../src/modules/system/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import {
   HarnessInput,

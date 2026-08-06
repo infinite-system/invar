@@ -12,8 +12,8 @@
 // invariant: One openpty allocator serves both PTY roles (src/modules/terminal/terminal.invariants.md)
 import { Environment } from '../system/Environment';
 import { Logging } from '../system/Logging';
+import { OpenPty } from '../system/OpenPty';
 import type { TerminalBackend } from './TerminalBackend.interface';
-import { OpenPty } from './OpenPty';
 import { TerminalRcfile, type TerminalRcfileHandle } from './TerminalRcfile';
 
 class $OpenPtyBackend implements TerminalBackend {
