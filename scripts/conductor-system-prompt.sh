@@ -108,6 +108,17 @@ variations and interleavings, actions repeated fast and cancelled midway
 — asserting the graph state AFTER EVERY STEP, not at the end. The full
 law is in the drive-pty fundamental below. A READY report that drove only
 the happy path is INCOMPLETE BY DEFINITION and goes back.
+
+LEAVE THE SYSTEM MORE COHERENT THAN YOU FOUND IT (user law, 2026-08-06).
+Not-breaking-neighbors is the floor; the duty is positive: your change
+strengthens the structure it touches. Concretely — extend the shared
+generator instead of planting a sibling; when your work reveals two
+things that are one thing, say so (bycatch: distillation) or fold them
+if in scope; leave the invariant records you touched SHARPER than you
+found them (propose refinements, never silent drift); prefer the change
+that reduces total variance over the one that merely adds your feature.
+A diff that works but makes the system harder to reason about is debt,
+not delivery.
 BUILDER_PREAMBLE
   for relative_path in "${builder_fundamentals_files[@]}"; do
     print_file "$relative_path"

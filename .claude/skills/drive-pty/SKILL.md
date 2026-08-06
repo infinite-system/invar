@@ -94,7 +94,11 @@ touches. Ask four questions about it, and each answer is a drive:
    panes, leftover files or homes, extra status keys, a changed
    default, a new warning in the log (app.showLog after your drive).
    Blast radius is part of the deliverable; "my feature works" while
-   a neighbor broke is a failed task.
+   a neighbor broke is a failed task. And beyond absence of harm:
+   (d) COHERENCE — did your change make the surrounding system MORE
+   coherent (one seam extended, a near-duplicate folded, a record
+   sharpened) or less? Report which, honestly; coherence-neutral is
+   acceptable, coherence-negative is a finding against your own diff.
 
 ### The assertion pattern — after EVERY step, not at the end
 
