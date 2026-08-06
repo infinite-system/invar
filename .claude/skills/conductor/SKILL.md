@@ -318,6 +318,20 @@ These five rules close that hole. They are MUSTS, not guidance.
    this arm checks JUDGMENT — an over-unified seam or a parallel engine
    is invisible to every counter. Structural findings go back in the
    same refinement round as visual ones, while the builder is warm.
+   **Delegate the reading, keep the driving.** The structural arm on a
+   large diff goes to a background review subagent (opus at medium for
+   judgment-heavy reads) returning a compact verdict with file:line
+   pointers — the conductor's context is the scarce resource and file
+   dumps burn it. The drive arm stays the conductor's own: user-proxy
+   judgment is the instrument. Review subagents are harness subagents,
+   never tmux lanes.
+   **Sample mid-flight at claim boundaries.** Do not wait for READY on
+   long tasks: every builder COMMIT is a claim that a part works — drive
+   that part (or run a subagent structural pass on the partial diff)
+   when the commit lands. A wrong seam caught at a commit costs one
+   warm steer instead of a post-READY round. Boundary: never judge
+   uncommitted WIP — a half-built tree fails honestly and the finding
+   is noise; hold anything speculative until the builder claims it.
 2. **BRIEFS STATE THE DELIVERABLE TWICE: code and visual.** Every brief
    names what the code must do AND what the user must SEE (or explicitly
    states "no visible change"). Every mockup carries one line separating
