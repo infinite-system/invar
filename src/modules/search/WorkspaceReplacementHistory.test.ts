@@ -23,7 +23,14 @@ const transaction = (
 ): WorkspaceReplacementTransaction => {
   const arena = new TextArena.Class();
   arena.store(new Uint8Array(byteLength));
-  return { identifier, arena, patches: [], complete };
+  return {
+    identifier,
+    arena,
+    patches: [],
+    locations: [],
+    complete,
+    state: 'applied',
+  };
 };
 
 test('history evicts the oldest complete transaction at count and byte bounds', () => {
@@ -74,7 +81,11 @@ test('the one-arena check rejects a planted second patch-text owner', () => {
       identifier: 'planted-second-arena',
       arena: transactionArena,
       patches: [patch],
+      locations: [
+        { absolutePath: '/one.txt', relativePath: 'one.txt', line: 0 },
+      ],
       complete: true,
+      state: 'applied',
     }),
   ).toThrow('One workspace replacement transaction must use one text arena.');
 });

@@ -11,6 +11,7 @@ import {
   type WorkspaceSearchRequest,
 } from './WorkspaceSearchBackend';
 import { WorkspaceSearchWorkspace } from './WorkspaceSearchWorkspace';
+import { TextSearchPattern } from './TextSearchPattern';
 
 const temporaryDirectories: string[] = [];
 
@@ -86,6 +87,32 @@ function backendWithCandidates(
 }
 
 describe('WorkspaceSearchBackend resolved ripgrep integration', () => {
+  test('one source context preserves UTF-8 offsets and CRLF context bytes', () => {
+    const sourceText = 'α\r\nbefore needle after';
+    const pattern = new TextSearchPattern.Class({
+      text: 'needle',
+      caseSensitive: true,
+      wholeWord: false,
+      useRegex: false,
+    });
+    const match = pattern.matchesInText(sourceText)[0]!;
+    const result = WorkspaceSearchBackend.Class.resultForMatchInSource(
+      'source.txt',
+      '/workspace/source.txt',
+      match,
+      'changed',
+      WorkspaceSearchBackend.Class.sourceContext(sourceText),
+    );
+
+    expect(result.baselineByteOffset).toBe(
+      new TextEncoder().encode('α\r\nbefore ').byteLength,
+    );
+    expect(new TextDecoder().decode(result.beforeContextBytes)).toBe(
+      'α\r\nbefore ',
+    );
+    expect(new TextDecoder().decode(result.afterContextBytes)).toBe(' after');
+  });
+
   test('a missing ripgrep binary is unavailable with a remedy and never reaches spawn', async () => {
     const workspaceRoot = createTemporaryWorkspace('invar-workspace-no-rg-');
     let spawnCount = 0;

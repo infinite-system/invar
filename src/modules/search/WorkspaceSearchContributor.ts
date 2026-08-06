@@ -39,11 +39,24 @@ class $WorkspaceSearchContributor
   protected disposeStatusProjection: (() => void) | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
+    const disposeUndoProvider =
+      workspace.workspaceUndoCoordinator.registerProvider(
+        workspace.workspaceSearch.providerIdentifier,
+        {
+          requestUndo: (transactionIdentifier) =>
+            this.paneContent?.showUndoRequest(workspace, transactionIdentifier),
+          requestRedo: (transactionIdentifier) =>
+            this.paneContent?.showRedoRequest(workspace, transactionIdentifier),
+        },
+      );
     return {
       opened: () => {},
       suspended: () => workspace.workspaceSearch.cancel(),
       resumed: () => {},
-      disposed: () => workspace.workspaceSearch.cancel(),
+      disposed: () => {
+        disposeUndoProvider();
+        workspace.workspaceSearch.cancel();
+      },
     };
   }
 
@@ -276,6 +289,30 @@ class $WorkspaceSearchContributor
         run: () => pane().dismissSelectedMatch(),
       },
       {
+        id: 'workspaceSearch.replaceMatch',
+        title: 'Search: Replace Selected Match',
+        category: 'Search',
+        run: () => pane().requestReplaceSelectedMatch(),
+      },
+      {
+        id: 'workspaceSearch.replaceAll',
+        title: 'Search: Replace All Workspace Matches',
+        category: 'Search',
+        run: () => pane().requestReplaceAll(),
+      },
+      {
+        id: 'workspaceSearch.undoWorkspaceReplace',
+        title: 'Search: Undo Last Workspace Replace',
+        category: 'Search',
+        run: () => pane().requestUndo(),
+      },
+      {
+        id: 'workspaceSearch.redoWorkspaceReplace',
+        title: 'Search: Redo Workspace Replace',
+        category: 'Search',
+        run: () => pane().requestRedo(),
+      },
+      {
         id: 'workspaceSearch.cancel',
         title: 'Search: Cancel Current Search',
         category: 'Search',
@@ -290,6 +327,7 @@ class $WorkspaceSearchContributor
     const search = application.workspaceSet.active.workspaceSearch;
     return {
       workspaceSearchFlowState: search.flowState.value,
+      workspaceSearchBulkFlowState: search.bulkFlowState.value,
       workspaceSearchQueryGeneration: search.queryGeneration.value,
       workspaceSearchResultCount: search.resultCount,
       workspaceSearchSelectedCount: search.resultTree.selectedCount,
@@ -300,6 +338,12 @@ class $WorkspaceSearchContributor
       workspaceSearchSelectionChars:
         this.paneContent?.selectionTelemetry().characterLength ?? 0,
       workspaceSearchErrorMessage: search.errorMessage.value,
+      workspaceSearchDriftedCount: search.driftedCount.value,
+      workspaceSearchFailedCount: search.failedCount.value,
+      workspaceSearchSkippedCount: search.skippedCount.value,
+      workspaceSearchAppliedCount: search.appliedCount.value,
+      workspaceSearchActiveTransactionIdentifier:
+        search.activeTransactionIdentifier.value,
     };
   }
 

@@ -79,6 +79,30 @@ test('open editor undo requests the opaque workspace transaction and does not mo
   ]);
 });
 
+test('button requests use the same latest-transaction re-entry guard', () => {
+  const coordinator = new WorkspaceUndoCoordinator.Class();
+  const requests: string[] = [];
+  coordinator.registerProvider('test-provider', {
+    requestUndo: (identifier) => requests.push(`undo:${identifier}`),
+    requestRedo: (identifier) => requests.push(`redo:${identifier}`),
+  });
+  coordinator.registerTransaction('test-provider', 'transaction-one', [
+    '/one.txt',
+  ]);
+  coordinator.registerTransaction('test-provider', 'transaction-two', [
+    '/two.txt',
+  ]);
+
+  expect(coordinator.requestLatest('undo', 'test-provider')).toBe(true);
+  expect(coordinator.requestLatest('undo', 'test-provider')).toBe(false);
+  expect(requests).toEqual(['undo:transaction-two']);
+  expect(coordinator.cancelRequest('test-provider', 'transaction-two')).toBe(
+    true,
+  );
+  expect(coordinator.requestLatest('undo', 'test-provider')).toBe(true);
+  expect(requests).toEqual(['undo:transaction-two', 'undo:transaction-two']);
+});
+
 test('closed, detached, and reopened documents receive the correct live reference', () => {
   const coordinator = new WorkspaceUndoCoordinator.Class();
   const firstHandle = new DocumentHandle.Class(Symbol('first'), '/one.txt');

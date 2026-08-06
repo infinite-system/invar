@@ -934,12 +934,8 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     metadata: TextEditBatchMetadata,
   ): number {
     if (this.readOnly.value || !this.hasDocument.value) return 0;
-    const applicableEdits = edits.filter(
-      (edit) =>
-        this.document.sliceRange(
-          { line: edit.start.line, col: edit.start.column },
-          { line: edit.end.line, col: edit.end.column },
-        ) === edit.expectedText,
+    const applicableEdits = edits.filter((edit) =>
+      this.textEditStillMatches(edit),
     );
     if (applicableEdits.length === 0) return 0;
     this.recordOrdinaryEdit();
@@ -947,7 +943,32 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
       ...metadata,
       bulkItemCount: applicableEdits.length,
     });
-    const descendingEdits = [...applicableEdits].sort(
+    return this.applyVerifiedEdits(applicableEdits);
+  }
+
+  /** Apply a verified workspace transaction without copying its patch text into editor history. */
+  applyTextEditsAsExternalTransaction(edits: readonly TextEdit[]): number {
+    if (this.readOnly.value || !this.hasDocument.value || edits.length === 0)
+      return 0;
+    const verifiedEdits = edits.filter((edit) =>
+      this.textEditStillMatches(edit),
+    );
+    if (verifiedEdits.length !== edits.length) return 0;
+    this.recordOrdinaryEdit();
+    return this.applyVerifiedEdits(verifiedEdits);
+  }
+
+  protected textEditStillMatches(edit: TextEdit): boolean {
+    return (
+      this.document.sliceRange(
+        { line: edit.start.line, col: edit.start.column },
+        { line: edit.end.line, col: edit.end.column },
+      ) === edit.expectedText
+    );
+  }
+
+  protected applyVerifiedEdits(edits: readonly TextEdit[]): number {
+    const descendingEdits = [...edits].sort(
       (firstEdit, secondEdit) =>
         secondEdit.start.line - firstEdit.start.line ||
         secondEdit.start.column - firstEdit.start.column,
@@ -959,7 +980,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
         edit.replacementText,
       );
     }
-    return applicableEdits.length;
+    return descendingEdits.length;
   }
 
   attachExternalUndoRequestHandler(

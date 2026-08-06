@@ -23,9 +23,12 @@ test('the Search pane paints fields, toggles, groups, and previews', () => {
     endColumn: 5,
     startUtf16Offset: 20,
     endUtf16Offset: 23,
+    baselineByteOffset: 20,
     matchedText: 'old',
     lineText: 'const oldValue = old;',
     replacementText: 'new',
+    beforeContextBytes: new Uint8Array(),
+    afterContextBytes: new Uint8Array(),
   };
   workspace.resultTree.updateResults([result], false, true);
 
@@ -42,6 +45,7 @@ test('the Search pane paints fields, toggles, groups, and previews', () => {
     foldOpenGlyph: 'v',
     foldClosedGlyph: '>',
     closeGlyph: 'x',
+    replaceGlyph: 'r',
     ellipsisCell: '…',
     selectionRanges: [],
   });
@@ -64,11 +68,22 @@ test('the Search pane paints fields, toggles, groups, and previews', () => {
     'toggleWholeWord',
     'toggleRegex',
     'toggleIgnoreFiles',
+    'replaceMatch',
     'dismissMatch',
+    'replaceAll',
+    'undo',
+    'redo',
   ]);
   expect(
     projection.buttons
-      .filter((button) => button.action !== 'dismissMatch')
+      .filter((button) =>
+        [
+          'toggleCase',
+          'toggleWholeWord',
+          'toggleRegex',
+          'toggleIgnoreFiles',
+        ].includes(button.action),
+      )
       .every((button) => button.row === 4),
   ).toBe(true);
 });

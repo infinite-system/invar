@@ -26,8 +26,56 @@ class $WorkspaceReplacementHistory {
     return this.retainedArenaByteLength;
   }
 
+  get canUndo(): boolean {
+    return this.transactions.some(
+      (transaction) => transaction.state === 'applied',
+    );
+  }
+
+  get canRedo(): boolean {
+    return this.transactions.some(
+      (transaction) => transaction.state === 'undone',
+    );
+  }
+
   entries(): readonly WorkspaceReplacementTransaction[] {
     return this.transactions;
+  }
+
+  find(identifier: string): WorkspaceReplacementTransaction | null {
+    return (
+      this.transactions.find(
+        (transaction) => transaction.identifier === identifier,
+      ) ?? null
+    );
+  }
+
+  latest(
+    state: WorkspaceReplacementTransactionState,
+  ): WorkspaceReplacementTransaction | null {
+    return (
+      [...this.transactions]
+        .reverse()
+        .find((transaction) => transaction.state === state) ?? null
+    );
+  }
+
+  canAcceptArenaByteLength(arenaByteLength: number): boolean {
+    return (
+      arenaByteLength <=
+      (this.constructor as typeof $WorkspaceReplacementHistory)
+        .maximumArenaByteLength
+    );
+  }
+
+  remove(identifier: string): boolean {
+    const index = this.transactions.findIndex(
+      (transaction) => transaction.identifier === identifier,
+    );
+    if (index < 0) return false;
+    const transaction = this.transactions.splice(index, 1)[0]!;
+    this.retainedArenaByteLength -= transaction.arena.byteLength;
+    return true;
   }
 
   add(transaction: WorkspaceReplacementTransaction): HistoryAddResult {
@@ -87,8 +135,18 @@ export interface WorkspaceReplacementTransaction {
   readonly identifier: string;
   readonly arena: TextArena.Instance;
   readonly patches: readonly TextPatch.Instance[];
+  readonly locations: readonly WorkspaceReplacementLocation[];
   readonly complete: boolean;
+  state: WorkspaceReplacementTransactionState;
 }
+
+export interface WorkspaceReplacementLocation {
+  readonly absolutePath: string;
+  readonly relativePath: string;
+  readonly line: number;
+}
+
+export type WorkspaceReplacementTransactionState = 'applied' | 'undone';
 
 export interface HistoryAddResult {
   readonly accepted: boolean;

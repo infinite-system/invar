@@ -1,6 +1,8 @@
 import { Static } from 'ivue/extras';
 import { Files } from '../system/Files';
 import { Processes } from '../system/Processes';
+import { TextByteCoordinates } from '../text/TextByteCoordinates';
+import { TextPatch } from '../workspace/TextPatch';
 import {
   TextSearchPattern,
   type TextSearchMatch,
@@ -16,6 +18,76 @@ class $WorkspaceSearchBackend {
   // invariant: Cost tracks the actively observed set (project.invariants.md)
   static get MAXIMUM_MATCH_COUNT(): number {
     return 20_000;
+  }
+
+  static resultForMatch(
+    relativePath: string,
+    absolutePath: string,
+    match: TextSearchMatch,
+    replacementText: string,
+    sourceText: string,
+  ): WorkspaceSearchResult {
+    return this.resultForMatchInSource(
+      relativePath,
+      absolutePath,
+      match,
+      replacementText,
+      this.sourceContext(sourceText),
+    );
+  }
+
+  static sourceContext(sourceText: string): WorkspaceSearchSourceContext {
+    return {
+      sourceBytes: TextByteCoordinates.Class.encode(sourceText),
+      lineStartByteOffsets:
+        TextByteCoordinates.Class.lineStartByteOffsets(sourceText),
+    };
+  }
+
+  static resultForMatchInSource(
+    relativePath: string,
+    absolutePath: string,
+    match: TextSearchMatch,
+    replacementText: string,
+    sourceContext: WorkspaceSearchSourceContext,
+  ): WorkspaceSearchResult {
+    const lineStartByteOffset =
+      sourceContext.lineStartByteOffsets[match.line] ?? 0;
+    const baselineByteOffset =
+      lineStartByteOffset +
+      TextByteCoordinates.Class.encode(
+        match.lineText.slice(0, match.startUtf16Offset),
+      ).byteLength;
+    const removedByteLength = TextByteCoordinates.Class.encode(
+      match.lineText.slice(match.startUtf16Offset, match.endUtf16Offset),
+    ).byteLength;
+    const contextByteLength = TextPatch.Class.CONTEXT_BYTE_LENGTH;
+    const beforeStart = Math.max(0, baselineByteOffset - contextByteLength);
+    const afterStart = baselineByteOffset + removedByteLength;
+    return {
+      relativePath,
+      absolutePath,
+      line: match.line,
+      startColumn: match.startColumn,
+      endColumn: match.endColumn,
+      startUtf16Offset: match.startUtf16Offset,
+      endUtf16Offset: match.endUtf16Offset,
+      baselineByteOffset,
+      matchedText: match.matchedText,
+      lineText: match.lineText,
+      replacementText,
+      beforeContextBytes: sourceContext.sourceBytes.slice(
+        beforeStart,
+        baselineByteOffset,
+      ),
+      afterContextBytes: sourceContext.sourceBytes.slice(
+        afterStart,
+        Math.min(
+          sourceContext.sourceBytes.byteLength,
+          afterStart + contextByteLength,
+        ),
+      ),
+    };
   }
 
   constructor(readonly options: WorkspaceSearchBackendOptions = {}) {}
@@ -219,36 +291,23 @@ class $WorkspaceSearchBackend {
     const remainingMatchCount = this.maximumMatchCount - results.length;
     const localMatches = pattern.matchesInText(text, remainingMatchCount + 1);
     const acceptedMatches = localMatches.slice(0, remainingMatchCount);
+    const sourceContext = (
+      this.constructor as typeof $WorkspaceSearchBackend
+    ).sourceContext(text);
     const fileResults = acceptedMatches.map((match) =>
-      this.resultForMatch(relativePath, absolutePath, match, request, pattern),
+      (
+        this.constructor as typeof $WorkspaceSearchBackend
+      ).resultForMatchInSource(
+        relativePath,
+        absolutePath,
+        match,
+        pattern.expandReplacement(request.replacementText, match),
+        sourceContext,
+      ),
     );
     results.push(...fileResults);
     if (fileResults.length > 0) onFileResults?.(fileResults);
     return localMatches.length > remainingMatchCount;
-  }
-
-  protected resultForMatch(
-    relativePath: string,
-    absolutePath: string,
-    match: TextSearchMatch,
-    request: WorkspaceSearchRequest,
-    pattern: TextSearchPattern.Instance,
-  ): WorkspaceSearchResult {
-    return {
-      relativePath,
-      absolutePath,
-      line: match.line,
-      startColumn: match.startColumn,
-      endColumn: match.endColumn,
-      startUtf16Offset: match.startUtf16Offset,
-      endUtf16Offset: match.endUtf16Offset,
-      matchedText: match.matchedText,
-      lineText: match.lineText,
-      replacementText: pattern.expandReplacement(
-        request.replacementText,
-        match,
-      ),
-    };
   }
 
   protected candidatePathFromJson(line: string): string | null {
@@ -335,6 +394,11 @@ export interface WorkspaceSearchRequest {
   readonly skippedAbsolutePaths: readonly string[];
 }
 
+export interface WorkspaceSearchSourceContext {
+  readonly sourceBytes: Uint8Array;
+  readonly lineStartByteOffsets: readonly number[];
+}
+
 export interface WorkspaceSearchResult {
   readonly relativePath: string;
   readonly absolutePath: string;
@@ -343,9 +407,12 @@ export interface WorkspaceSearchResult {
   readonly endColumn: number;
   readonly startUtf16Offset: number;
   readonly endUtf16Offset: number;
+  readonly baselineByteOffset: number;
   readonly matchedText: string;
   readonly lineText: string;
   readonly replacementText: string;
+  readonly beforeContextBytes: Uint8Array;
+  readonly afterContextBytes: Uint8Array;
 }
 
 export interface WorkspaceSearchBackendResult {

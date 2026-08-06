@@ -20,7 +20,9 @@ import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
 import { TextSelectionModel } from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
 import type { Workspace } from '../workspace/Workspace';
+import type { TextPatchDirection } from '../workspace/TextPatch';
 import type { WorkspaceSearchResult } from './WorkspaceSearchBackend';
+import type { WorkspaceReplacementLocation } from './WorkspaceReplacementHistory';
 import {
   WorkspaceSearchPaneRenderer,
   type WorkspaceSearchButtonAction,
@@ -35,6 +37,7 @@ import {
   WorkspaceSearchResultTree,
   type WorkspaceSearchTreeRow,
 } from './WorkspaceSearchResultTree';
+import type { WorkspacePreparedReplacement } from './WorkspaceSearchWorkspace';
 
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 // invariant: Editable text fields share one input model (project.invariants.md)
@@ -227,6 +230,7 @@ class $WorkspaceSearchPaneContent implements PaneContent {
       foldOpenGlyph: this.application.theme.glyphVocabulary.foldOpen,
       foldClosedGlyph: this.application.theme.glyphVocabulary.foldClosed,
       closeGlyph: this.application.theme.glyphVocabulary.panelClose,
+      replaceGlyph: this.application.theme.findIcons.replace,
       ellipsisCell: this.application.theme.ellipsisCell,
       selectionRanges: [],
     };
@@ -357,6 +361,55 @@ class $WorkspaceSearchPaneContent implements PaneContent {
     this.application.requestRender();
   }
 
+  requestReplaceSelectedMatch(): void {
+    const row = this.search.resultTree.selectedRow();
+    if (row?.kind !== 'match' || !row.result) return;
+    this.requestReplaceMatch(row.result);
+  }
+
+  requestReplaceAll(): void {
+    const prepared = this.search.prepareReplace();
+    if (prepared.tooLarge) {
+      this.showTooLargeAlert(prepared);
+      return;
+    }
+    this.showPreparedDialog(prepared);
+  }
+
+  requestUndo(workspace: Workspace.Model = this.workspace): void {
+    workspace.workspaceUndoCoordinator.requestLatest(
+      'undo',
+      workspace.workspaceSearch.providerIdentifier,
+    );
+  }
+
+  showUndoRequest(
+    workspace: Workspace.Model,
+    transactionIdentifier: string,
+  ): void {
+    const prepared = workspace.workspaceSearch.prepareUndo(
+      transactionIdentifier,
+    );
+    if (prepared) this.showPreparedDialog(prepared, workspace);
+  }
+
+  requestRedo(workspace: Workspace.Model = this.workspace): void {
+    workspace.workspaceUndoCoordinator.requestLatest(
+      'redo',
+      workspace.workspaceSearch.providerIdentifier,
+    );
+  }
+
+  showRedoRequest(
+    workspace: Workspace.Model,
+    transactionIdentifier: string,
+  ): void {
+    const prepared = workspace.workspaceSearch.prepareRedo(
+      transactionIdentifier,
+    );
+    if (prepared) this.showPreparedDialog(prepared, workspace);
+  }
+
   moveResultSelection(delta: number): void {
     this.haltScrollMomentum();
     this.focusResults();
@@ -417,6 +470,10 @@ class $WorkspaceSearchPaneContent implements PaneContent {
       return 'Use workspace excludes and .gitignore';
     }
     if (button?.action === 'dismissMatch') return 'Dismiss match';
+    if (button?.action === 'replaceMatch') return 'Replace match';
+    if (button?.action === 'replaceAll') return 'Replace all selected matches';
+    if (button?.action === 'undo') return 'Undo workspace replace';
+    if (button?.action === 'redo') return 'Redo workspace replace';
     const resultIndex = this.resultIndexAtRow(row);
     const resultRow = this.search.resultTree.rows[resultIndex];
     if (!resultRow) return null;
@@ -508,13 +565,183 @@ class $WorkspaceSearchPaneContent implements PaneContent {
   }
 
   protected runButton(button: WorkspaceSearchButtonZone): void {
+    if (button.disabled) return;
     if (button.action === 'toggleCase') this.toggleCase();
     else if (button.action === 'toggleWholeWord') this.toggleWholeWord();
     else if (button.action === 'toggleRegex') this.toggleRegex();
     else if (button.action === 'toggleIgnoreFiles') this.toggleIgnoreFiles();
     else if (button.action === 'dismissMatch' && button.result) {
       this.search.resultTree.dismiss(button.result);
+    } else if (button.action === 'replaceMatch' && button.result) {
+      this.requestReplaceMatch(button.result);
+    } else if (button.action === 'replaceAll') this.requestReplaceAll();
+    else if (button.action === 'undo') this.requestUndo();
+    else if (button.action === 'redo') this.requestRedo();
+  }
+
+  protected requestReplaceMatch(result: WorkspaceSearchResult): void {
+    const prepared = this.search.prepareReplace([result]);
+    if (prepared.tooLarge) {
+      this.showTooLargeAlert(prepared);
+      return;
     }
+    if (prepared.safeEntries.length > 0) {
+      this.search.applyPreparedAction(prepared);
+      this.application.requestRender();
+      return;
+    }
+    const location =
+      prepared.driftedEntries[0]?.location ??
+      prepared.failedEntries[0]?.entry.location;
+    if (!location) return;
+    this.application.confirm({
+      identifier: 'workspace-replace-drifted-match',
+      title: 'Match changed',
+      message:
+        'This item changed since the search and will not be replaced.\n\n' +
+        `${location.relativePath}:${location.line + 1}\n\n` +
+        'Refresh the search to find its new location.',
+      confirmLabel: 'Refresh',
+      cancelLabel: 'Cancel',
+      onConfirm: () => {
+        void this.search
+          .search()
+          .finally(() => this.application.requestRender());
+      },
+      onCancel: () => this.search.cancelPreparedAction(prepared),
+    });
+  }
+
+  protected showPreparedDialog(
+    prepared: WorkspacePreparedReplacement,
+    workspace: Workspace.Model = this.workspace,
+  ): void {
+    const safeCount = prepared.safeEntries.length;
+    const safeFileCount = new Set(
+      prepared.safeEntries.map((entry) => entry.location.absolutePath),
+    ).size;
+    const allCount = prepared.entries.length;
+    const changedLocations = prepared.driftedEntries.map(
+      (entry) => entry.location,
+    );
+    const failedLocations = prepared.failedEntries.map(
+      ({ entry }) => entry.location,
+    );
+    const direction = prepared.direction;
+    const title = this.dialogTitle(direction);
+    const confirmLabel = this.dialogConfirmLabel(direction);
+    const hasSkippedItems =
+      changedLocations.length > 0 || failedLocations.length > 0;
+    const actionLine = this.dialogActionLine(
+      direction,
+      safeCount,
+      safeFileCount,
+      hasSkippedItems,
+    );
+    const changedLead = this.changedItemsLead(
+      direction,
+      changedLocations.length,
+      allCount,
+    );
+    const failureLead = `${failedLocations.length} of ${allCount} items could not be changed and will be skipped.`;
+    const warningSections = [
+      ...(changedLocations.length > 0
+        ? [`${changedLead}\n\n${this.locationText(changedLocations)}`]
+        : []),
+      ...(failedLocations.length > 0
+        ? [`${failureLead}\n\n${this.locationText(failedLocations)}`]
+        : []),
+    ];
+    const message = [
+      ...warningSections,
+      actionLine,
+      'Open files will have unsaved changes. Closed files will change on disk.',
+    ].join('\n\n');
+    this.application.confirm({
+      identifier: `workspace-replace-${direction}`,
+      title,
+      message,
+      confirmLabel,
+      cancelLabel: 'Cancel',
+      onConfirm: () => {
+        workspace.workspaceSearch.applyPreparedAction(prepared);
+        this.application.requestRender();
+      },
+      onCancel: () => workspace.workspaceSearch.cancelPreparedAction(prepared),
+    });
+  }
+
+  protected showTooLargeAlert(prepared: WorkspacePreparedReplacement): void {
+    this.application.confirm({
+      identifier: 'workspace-replace-too-large',
+      title: 'Replace is too large',
+      message:
+        'This replace needs more than 64 MiB of undo text.\n\n' +
+        'No files changed. Narrow the search and try again.',
+      confirmLabel: 'Close',
+      singleAction: true,
+      hint: 'Enter or Escape to close',
+      onConfirm: () => this.search.cancelPreparedAction(prepared),
+      onCancel: () => this.search.cancelPreparedAction(prepared),
+    });
+  }
+
+  protected dialogTitle(direction: TextPatchDirection): string {
+    if (direction === 'apply') return 'Replace across files';
+    if (direction === 'undo') return 'Undo workspace replace';
+    return 'Redo workspace replace';
+  }
+
+  protected dialogConfirmLabel(direction: TextPatchDirection): string {
+    if (direction === 'apply') return 'Replace';
+    if (direction === 'undo') return 'Undo';
+    return 'Redo';
+  }
+
+  protected dialogActionLine(
+    direction: TextPatchDirection,
+    safeItemCount: number,
+    safeFileCount: number,
+    hasSkippedItems: boolean,
+  ): string {
+    const safeQualifier = hasSkippedItems ? ' safe' : '';
+    if (direction === 'apply') {
+      return `Replace ${safeItemCount}${safeQualifier} ${this.itemNoun(safeItemCount)} across ${safeFileCount} ${this.fileNoun(safeFileCount)}?`;
+    }
+    if (direction === 'undo') {
+      return `Undo will revert ${safeItemCount}${safeQualifier} ${this.itemNoun(safeItemCount)} across ${safeFileCount} ${this.fileNoun(safeFileCount)}.`;
+    }
+    return `Redo will replace ${safeItemCount}${safeQualifier} ${this.itemNoun(safeItemCount)} across ${safeFileCount} ${this.fileNoun(safeFileCount)}.`;
+  }
+
+  protected changedItemsLead(
+    direction: TextPatchDirection,
+    changedItemCount: number,
+    allItemCount: number,
+  ): string {
+    if (direction === 'apply') {
+      return `${changedItemCount} of ${allItemCount} items changed since this search and will be skipped.`;
+    }
+    if (direction === 'undo') {
+      return `${changedItemCount} of ${allItemCount} items changed since replacement and will be skipped.`;
+    }
+    return `${changedItemCount} of ${allItemCount} items changed since undo and will be skipped.`;
+  }
+
+  protected itemNoun(count: number): string {
+    return count === 1 ? 'item' : 'items';
+  }
+
+  protected fileNoun(count: number): string {
+    return count === 1 ? 'file' : 'files';
+  }
+
+  protected locationText(
+    locations: readonly WorkspaceReplacementLocation[],
+  ): string {
+    return locations
+      .map((location) => `${location.relativePath}:${location.line + 1}`)
+      .join('\n');
   }
 
   protected openResult(result: WorkspaceSearchResult): void {

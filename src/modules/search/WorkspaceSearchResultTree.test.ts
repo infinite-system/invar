@@ -10,9 +10,12 @@ const result = (relativePath: string, line: number): WorkspaceSearchResult => ({
   endColumn: 3,
   startUtf16Offset: line * 10,
   endUtf16Offset: line * 10 + 3,
+  baselineByteOffset: line * 10,
   matchedText: 'old',
   lineText: 'old value',
   replacementText: 'new',
+  beforeContextBytes: new Uint8Array(),
+  afterContextBytes: new Uint8Array(),
 });
 
 describe('WorkspaceSearchResultTree', () => {

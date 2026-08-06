@@ -1,4 +1,6 @@
 import { Static } from 'ivue/extras';
+import { ByteArrays } from '../system/ByteArrays';
+import { TextByteCoordinates } from '../text/TextByteCoordinates';
 
 // A workspace text transaction owns its UTF-8 bytes here. Slices point into fixed slabs, so
 // patches retain coordinates instead of JavaScript string copies. Repeated replacement text is
@@ -32,7 +34,7 @@ class $TextArena {
     const hash = this.hash(bytes);
     const candidates = this.internedSlicesByHash.get(hash) ?? [];
     for (const candidate of candidates) {
-      if (this.bytesEqual(this.view(candidate), bytes)) return candidate;
+      if (ByteArrays.Class.equal(this.view(candidate), bytes)) return candidate;
     }
     const slice = this.storeBytes(bytes);
     this.internedSlicesByHash.set(hash, [...candidates, slice]);
@@ -90,11 +92,13 @@ class $TextArena {
     ) {
       return true;
     }
-    return this.bytesEqual(this.view(first), this.view(second));
+    return ByteArrays.Class.equal(this.view(first), this.view(second));
   }
 
   protected encode(value: string | Uint8Array): Uint8Array {
-    return typeof value === 'string' ? new TextEncoder().encode(value) : value;
+    return typeof value === 'string'
+      ? TextByteCoordinates.Class.encode(value)
+      : value;
   }
 
   protected storeBytes(bytes: Uint8Array): TextArenaSlice {
@@ -129,14 +133,6 @@ class $TextArena {
       hash = Math.imul(hash, 16777619);
     }
     return hash >>> 0;
-  }
-
-  protected bytesEqual(first: Uint8Array, second: Uint8Array): boolean {
-    if (first.byteLength !== second.byteLength) return false;
-    for (let byteIndex = 0; byteIndex < first.byteLength; byteIndex++) {
-      if (first[byteIndex] !== second[byteIndex]) return false;
-    }
-    return true;
   }
 }
 

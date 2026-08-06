@@ -4,7 +4,7 @@ import { TextArena, type TextArenaSlice } from './TextArena';
 // One exact byte replacement inside a multi-document transaction. Offsets are hints. The saved
 // subject and both saved context sides are the authority when a file changes between actions.
 class $TextPatch {
-  protected static get CONTEXT_BYTE_LENGTH(): number {
+  static get CONTEXT_BYTE_LENGTH(): number {
     return 64;
   }
 
@@ -45,6 +45,46 @@ class $TextPatch {
       sourceBytes.byteLength,
       removedEnd + textPatchClass.CONTEXT_BYTE_LENGTH,
     );
+    return this.createWithContext(
+      arena,
+      options,
+      sourceBytes.subarray(beforeStart, options.baselineByteOffset),
+      sourceBytes.subarray(removedEnd, afterEnd),
+    );
+  }
+
+  static createRecorded(
+    arena: TextArena.Instance,
+    options: TextPatchRecordedOptions,
+  ): TextPatch.Instance {
+    const textPatchClass = this as typeof $TextPatch;
+    if (options.baselineByteOffset < 0) {
+      throw new Error('Recorded text patch byte offset cannot be negative.');
+    }
+    if (options.beforeContextBytes.byteLength > options.baselineByteOffset) {
+      throw new Error('Recorded text patch context starts before its file.');
+    }
+    if (
+      options.beforeContextBytes.byteLength >
+        textPatchClass.CONTEXT_BYTE_LENGTH ||
+      options.afterContextBytes.byteLength > textPatchClass.CONTEXT_BYTE_LENGTH
+    ) {
+      throw new Error('Recorded text patch context exceeds the shared bound.');
+    }
+    return this.createWithContext(
+      arena,
+      options,
+      options.beforeContextBytes,
+      options.afterContextBytes,
+    );
+  }
+
+  protected static createWithContext(
+    arena: TextArena.Instance,
+    options: TextPatchCreateOptions,
+    beforeContextBytes: Uint8Array,
+    afterContextBytes: Uint8Array,
+  ): TextPatch.Instance {
     return new this(
       arena,
       options.path,
@@ -52,10 +92,8 @@ class $TextPatch {
       options.baselineByteOffset,
       arena.store(options.removedBytes),
       arena.intern(options.insertedBytes),
-      arena.store(
-        sourceBytes.subarray(beforeStart, options.baselineByteOffset),
-      ),
-      arena.store(sourceBytes.subarray(removedEnd, afterEnd)),
+      arena.store(beforeContextBytes),
+      arena.store(afterContextBytes),
     );
   }
 
@@ -190,6 +228,11 @@ export interface TextPatchCreateOptions {
   readonly baselineByteOffset: number;
   readonly removedBytes: Uint8Array;
   readonly insertedBytes: Uint8Array;
+}
+
+export interface TextPatchRecordedOptions extends TextPatchCreateOptions {
+  readonly beforeContextBytes: Uint8Array;
+  readonly afterContextBytes: Uint8Array;
 }
 
 export type TextPatchVerification =

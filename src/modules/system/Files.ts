@@ -15,6 +15,7 @@ import {
   openSync,
   readSync,
   closeSync,
+  renameSync,
 } from 'node:fs';
 import {
   join,
@@ -26,6 +27,8 @@ import {
   sep,
 } from 'node:path';
 import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { ByteArrays } from './ByteArrays';
 
 class $Files {
   static get pathSeparator(): string {
@@ -50,6 +53,14 @@ class $Files {
   static isDir(path: string): boolean {
     try {
       return statSync(path).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  static isReadOnly(path: string): boolean {
+    try {
+      return (statSync(path).mode & 0o222) === 0;
     } catch {
       return false;
     }
@@ -135,6 +146,46 @@ class $Files {
     return readFileSync(path);
   }
 
+  /** Replace one file only while its bytes still equal the caller's verified source. */
+  static replaceBytesIfUnchanged(
+    path: string,
+    expectedBytes: Uint8Array,
+    replacementBytes: Uint8Array,
+  ): FileReplacementResult {
+    let temporaryPath = '';
+    try {
+      const currentBytes = readFileSync(path);
+      if (!ByteArrays.Class.equal(currentBytes, expectedBytes)) {
+        return { replaced: false, reason: 'changed' };
+      }
+      const mode = statSync(path).mode;
+      if (this.isReadOnly(path)) {
+        return { replaced: false, reason: 'read-only' };
+      }
+      temporaryPath = join(
+        dirname(path),
+        `.${basename(path)}.invar-replace-${randomUUID()}`,
+      );
+      writeFileSync(temporaryPath, replacementBytes, { mode, flag: 'wx' });
+      renameSync(temporaryPath, path);
+      temporaryPath = '';
+      const writtenBytes = readFileSync(path);
+      if (!ByteArrays.Class.equal(writtenBytes, replacementBytes)) {
+        return { replaced: false, reason: 'read-back' };
+      }
+      return { replaced: true, reason: '' };
+    } catch (error) {
+      return {
+        replaced: false,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    } finally {
+      if (temporaryPath.length > 0) {
+        rmSync(temporaryPath, { force: true });
+      }
+    }
+  }
+
   static write(path: string, content: string): void {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content, 'utf8');
@@ -207,4 +258,9 @@ export interface DirectoryNameListingResult {
   ok: boolean;
   entryNames: string[];
   error: string;
+}
+
+export interface FileReplacementResult {
+  readonly replaced: boolean;
+  readonly reason: string;
 }

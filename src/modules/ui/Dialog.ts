@@ -30,6 +30,9 @@ class $Dialog {
   get hint() {
     return ref('Left/Right or Tab, then Enter');
   }
+  get singleAction() {
+    return ref(false);
+  }
 
   show(options: DialogOptions): void {
     this.identifier.value = options.identifier;
@@ -38,9 +41,10 @@ class $Dialog {
     this.confirmLabel.value = options.confirmLabel ?? 'Yes';
     this.cancelLabel.value = options.cancelLabel ?? 'No';
     this.hint.value = options.hint ?? 'Left/Right or Tab, then Enter';
+    this.singleAction.value = options.singleAction ?? false;
     this.confirmAction = options.onConfirm;
     this.cancelAction = options.onCancel ?? null;
-    this.focusedChoice.value = 'no';
+    this.focusedChoice.value = this.singleAction.value ? 'yes' : 'no';
     this.open.value = true;
   }
 
@@ -53,6 +57,7 @@ class $Dialog {
   protected closeWithoutCancel(): void {
     this.open.value = false;
     this.focusedChoice.value = 'no';
+    this.singleAction.value = false;
     this.confirmAction = null;
     this.cancelAction = null;
   }
@@ -62,6 +67,7 @@ class $Dialog {
   }
 
   focusPrevious(): void {
+    if (this.singleAction.value) return;
     this.focusedChoice.value =
       this.focusedChoice.value === 'yes' ? 'no' : 'yes';
   }
@@ -98,6 +104,7 @@ export interface DialogOptions {
   readonly confirmLabel?: string;
   readonly cancelLabel?: string;
   readonly hint?: string;
+  readonly singleAction?: boolean;
   readonly onConfirm: () => void;
   readonly onCancel?: () => void;
 }

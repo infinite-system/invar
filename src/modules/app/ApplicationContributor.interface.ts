@@ -3,6 +3,7 @@ import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 import type { BoundedListPopup } from '../ui/BoundedListPopup';
+import type { Dialog, DialogOptions } from '../ui/Dialog';
 import type { ContextMenu } from '../ui/ContextMenu';
 import type { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import type { PanelHost } from '../ui/PanelHost';
@@ -58,6 +59,9 @@ export interface ApplicationContributionContext {
   readonly rightDockHost: PanelHost.Instance;
   readonly contextMenu: ContextMenu.Instance;
   readonly boundedListPopup: BoundedListPopup.Instance;
+  readonly dialog: Dialog.Model;
+  /** Open the shared modal dialog through its one overlay slot. */
+  readonly confirm: (options: DialogOptions) => void;
   readonly findBar: FindBar.Instance;
   readonly overlayCoordinator: OverlayCoordinator.Instance;
   readonly statusBarSegments: StatusBarSegments.Model;
