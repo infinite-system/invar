@@ -224,7 +224,20 @@ class $PanelHost {
         .map((content) => content.id),
     );
     for (const identifier of identifiers) {
-      this.removeContentFromAnySet(identifier);
+      this.unregisterContentFromAnySet(identifier);
+    }
+  }
+
+  /** Withdraw one registration from whichever content set owns it, including its empty space. */
+  protected unregisterContentFromAnySet(identifier: string): void {
+    for (const contentSet of this.contentSets) {
+      if (!contentSet.contents.has(identifier)) continue;
+      if (contentSet === this.selectedContentSet) {
+        this.unregisterContent(identifier);
+      } else {
+        this.removeContentFromHiddenSet(contentSet, identifier);
+      }
+      return;
     }
   }
   protected synchronizeSelectedContentSet(): void {
@@ -1312,6 +1325,30 @@ class $PanelHost {
   removeContent(id: string): void {
     const content = this.detachContent(id);
     if (!content) return;
+    content.dispose();
+    this.options.onContentRemoved?.(content);
+  }
+
+  /** Withdraw one contributed content registration. Unlike closing one pane instance, withdrawal
+   *  also removes an empty space that can no longer create or project that content kind. */
+  unregisterContent(id: string): void {
+    const owningSpaceIdentifier = this.spaces.value.find((space) =>
+      space.contentIds.includes(id),
+    )?.identifier;
+    const content = this.detachContent(id);
+    if (!content) return;
+    const replacementNeedsFocus =
+      this.focused.value && this.focusedContent === null;
+    if (owningSpaceIdentifier) {
+      const owningSpace = this.spaces.value.find(
+        (space) => space.identifier === owningSpaceIdentifier,
+      );
+      if (owningSpace?.contentIds.length === 0) {
+        this.closeSpace(owningSpaceIdentifier);
+      }
+    }
+    const replacementContent = this.focusedContent as PaneContent | null;
+    if (replacementNeedsFocus) replacementContent?.onFocus();
     content.dispose();
     this.options.onContentRemoved?.(content);
   }
