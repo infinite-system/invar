@@ -56,27 +56,63 @@ first two nights.
 
 ## DRIVE ADVERSARIALLY — the verification law (user doctrine, 2026-08-05)
 
-The happy path is the smoke's FLOOR, never its content. Whatever you
-build, verify it by DRIVING VARIATIONS until it breaks or clearly
-will not:
+WHY THIS EXISTS: a bug you find while building costs minutes; the same
+bug found at the conductor's gate costs a round trip; found by the user,
+a session. Adversarial driving moves discovery to the cheapest point —
+you, before delivery. This is how churn dies.
 
-- CYCLES: create several -> remove ALL -> create again -> remove one
-  by one. Lifecycles break at re-entry, not first entry.
-- BOUNDARY COUNTS: zero, one, many, all. The bug lives at 0 and at
-  "remove the last one" far more often than at 3.
-- ORDER VARIATIONS: same actions, different orders; interleave
-  surfaces (create terminal, open dialog, remove terminal, close
-  dialog); do things while other things are mid-flight.
-- ASSERT AFTER EVERY STEP, not at the end: read the graph state
-  (lists, counts, focus) after each action — an end-state assertion
-  hides which step corrupted it (#514's over-removal hid exactly
-  this way).
-- BREAK IT ON PURPOSE: the action your feature makes possible, done
-  twice, cancelled midway, repeated fast — before the report claims
-  done.
-The READY report names the variation protocol driven, not just the
-assertions written. A report showing only the happy path is
-incomplete by definition.
+### The method — derive your variations from the feature's SHAPE
+
+Do not test what you built. Attack the STATE MACHINE your feature
+touches. Ask four questions about it, and each answer is a drive:
+
+1. WHAT ACCUMULATES? (instances, entries, tabs, matches) -> drive the
+   COUNT edges: zero of it, one, many, ALL of it removed, the LAST one
+   removed, one more created after all were removed. Re-entry after
+   emptiness is where lifecycle bugs live — identity allocators,
+   restored state, and "empty space" handling all meet there.
+2. WHAT ORDERS EXIST? -> permute: create A, create B, remove A (not B);
+   remove the ACTIVE one vs an inactive one; act on the thing while a
+   sibling surface is open (dialog up, popup open, split mid-drag).
+   Interleaving is where shared-state bugs live.
+3. WHAT IS MID-FLIGHT? -> repeat the action FAST (double-click speed);
+   cancel halfway (Escape mid-flow, close the pane mid-upload); act
+   during an animation or a pending async. Races live here, and only
+   driving finds them — unit tests serialize time.
+4. WHAT DOES THE FEATURE ASSUME? -> break each assumption once: the
+   file it needs is missing, the pane it targets was closed, the same
+   action arrives from the OTHER entry point (chord vs button vs
+   palette — same seam, all paths).
+
+### The assertion pattern — after EVERY step, not at the end
+
+```
+const list = async () => (await app.get('panelHost.activeSpace'))?.contentIds ?? [];
+await app.clickText('+ Plugin')...;      // act
+expectEqual(await list(), [...before, newId]);   // assert THE WHOLE STATE
+```
+
+An end-state assertion proves the journey ended well; it cannot say
+WHICH step corrupted state that later self-healed or compounded
+(the #514 over-removal hid exactly this way). Assert the full
+observable state (the list, the counts, the focus, the active id)
+after every action, and diff it against what THIS step should have
+changed — nothing else may move.
+
+### When to stop
+
+Stop when a full pass of all four question-families runs clean AND
+one deliberate attempt to break your own fix fails. Not before. If a
+variation feels tedious to drive, that is the variation most worth
+driving — tedium is where nobody looked.
+
+### Report it
+
+The READY report names the variation protocol actually driven (the
+families, the counts, the interleavings) — not just the assertions
+written. "Drove creates/removes through zero, one, many, all;
+interleaved with dialog and split; double-speed repeats; two planted
+breaks caught" is a verification claim. "Smoke passes" is not.
 
 Two instruments, one contract. INPUT always travels through the real PTY as
 bytes a real terminal could produce — the founding harness invariant; there
