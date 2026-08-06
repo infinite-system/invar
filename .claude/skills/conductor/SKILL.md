@@ -308,6 +308,55 @@ These five rules close that hole. They are MUSTS, not guidance.
    Drive on a FRESH app instance — a warm server predating the branch
    shows the old code and lies (a stale server
    can still show a removed button).
+   **The acceptance has TWO ARMS — drive the behavior, read the
+   structure.** Alongside the drive, review the branch diff structurally
+   (stat first, then the load-bearing files): seams at the shared
+   generator, not duplicated and not over-unified; new code in its right
+   module home; no second engine beside an existing one; no forbidden
+   capability re-introduced; ivue and file-grammar shapes by eye where
+   the mechanical gates cannot judge. The gate's ratchets check COUNTS;
+   this arm checks JUDGMENT — an over-unified seam or a parallel engine
+   is invisible to every counter. Structural findings go back in the
+   same refinement round as visual ones, while the builder is warm.
+   **THE STRUCTURAL REVIEW CHECKLIST (give the subagent exactly this).**
+   The reviewer reads the repo's ivue skill and the touched module's
+   invariants first, then answers FIVE questions, each PASS or FINDING
+   with file:line and one sentence:
+   1. SEAMS — does new code compose through the landed seams, or does
+      it re-implement engine/query/policy logic that already exists?
+      Grep the new files for the old capability's identifiers.
+   2. OVER-UNIFICATION — is one generator serving two genuinely
+      different behaviors (one table driving both fields and options;
+      one toggle serving create and no-create)? The tell: escape
+      hatches, forcedWidth-style overrides, placement by accident.
+   3. MODULE HOMES — new code in its right module; shell files
+      (RootView, Bootstrap, Sidebar) wiring-only; no domain logic in
+      the shell.
+   4. IVUE CONFORMANCE by eye — ref-getters for state, plain getters
+      derived, thin closures, namespace exports, statics read live,
+      constants in their role table; compare against the nearest
+      sibling surface for the house form.
+   5. DUPLICATION — copied blocks between the new files, and between
+      new files and existing generators (wrap, render-context,
+      geometry constants); two sources for one geometry is always a
+      finding.
+   The reviewer ends with SOUND or NEEDS-ROUND, no code blocks over
+   three lines. NEEDS-ROUND findings go into the next round-brief as
+   numbered items with the reviewer's file:line evidence.
+   **Delegate the reading, keep the driving.** The structural arm on a
+   large diff goes to a background review subagent (opus at medium for
+   judgment-heavy reads) returning a compact verdict with file:line
+   pointers — the conductor's context is the scarce resource and file
+   dumps burn it. The drive arm stays the conductor's own: user-proxy
+   judgment is the instrument. Review subagents are harness subagents,
+   never tmux lanes.
+   **Sample mid-flight at claim boundaries.** Do not wait for READY on
+   long tasks: every builder COMMIT is a claim that a part works — drive
+   that part (or run a subagent structural pass on the partial diff)
+   when the commit lands. A wrong seam caught at a commit costs one
+   warm steer instead of a post-READY round. Boundary: never judge
+   uncommitted WIP — a half-built tree fails honestly and the finding
+   is noise; hold anything speculative until the builder claims it.
 2. **BRIEFS STATE THE DELIVERABLE TWICE: code and visual.** Every brief
    names what the code must do AND what the user must SEE (or explicitly
    states "no visible change"). Every mockup carries one line separating
