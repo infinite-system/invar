@@ -4,7 +4,7 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
-# RESUME ANCHOR 75 — 2026-08-06 11:22 EDT — MORNING CORRECTIONS LANDED; MILESTONE CONVEYOR RUNNING
+# RESUME ANCHOR 75 — 2026-08-06 11:08 EDT — MORNING CORRECTIONS LANDED; MILESTONE CONVEYOR RUNNING
 
 USER PRESENT since ~10:00 and DIRECTING. Their morning findings, all now
 fixed and landed: pipes header (was my brief's notation miss), dead ↥
