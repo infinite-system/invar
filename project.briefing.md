@@ -4,6 +4,39 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 75 — 2026-08-06 11:22 EDT — MORNING CORRECTIONS LANDED; MILESTONE CONVEYOR RUNNING
+
+USER PRESENT since ~10:00 and DIRECTING. Their morning findings, all now
+fixed and landed: pipes header (was my brief's notation miss), dead ↥
+Open button (zenity launched headless — now in-app picker fallback),
+tasks pane phase drift (per-process edit history — now one pure helper),
+Find/Replace absent (my wrongful hold of milestones 2-6 — RULE THREE
+item 3 now forbids holds on ordered work).
+
+RULE THREE — THE ACCEPTANCE PROTOCOL is OPERATIVE (925b6ec8, user
+ratified all five): (1) conductor acceptance drive on a FRESH instance
+before landing anything visible; (2) briefs state deliverable code AND
+visual; (3) night orders execute, no holds, no questions; (4) check the
+whole deliverable after landing + periodic control census; (5) verify
+coherence before briefing the user, close gaps yourself.
+
+LANDED TODAY: #532 accf2bc8 (milestone 2 data core, acceptance-driven),
+#533 129fc4b9 (pipes gone + ↥ works + phase parity, acceptance-driven:
+header " LIVE  ACTIVE  DONE  ▷" no pipes, tooltip painted, picker
+opened). dist/iv rebuilt 11:1x. NOW: #534 (milestone 3 — workspace
+search backend) DISPATCHED codex sol high, lane
+invar/534-workspace-search-backend. On READY: acceptance = "no visible
+change" + backend proofs; gate; land. THEN milestone 4 (#535 to file:
+left-dock Search surface + activity icon + plugin entry — THE visible
+feature), then 5 (replace/consent/history), then 6 (doctrine pass).
+After 6: RULE THREE item 4 whole-feature check — drive Search end to
+end as the user, THEN brief the user.
+
+DISK: /tmp 22G, 9G free, floor breached; rm on /tmp is PERMISSION-
+BLOCKED for the conductor — flagged to the user twice; hold new gates
+if free drops below 5G. Morning queue (decisions + record refinements
+incl. 532's snapshot-wording drift) stands in anchor 74's list.
+
 # RESUME ANCHOR 74 — 2026-08-06 07:21 EDT — NINE LANDED; GATE FLAKE KILLED; IDLE FOR MORNING
 
 /goal COMPLETE (user asleep). Crons armed (:07, :37). fleet-watch live.
