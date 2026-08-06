@@ -1350,9 +1350,29 @@ class $PanelHost {
               candidate.id !== id &&
               activeSpaceContentIdentifiers.has(candidate.id),
           ) ?? null;
-        this.layout.value = [];
-        this.activeId.value = fallback?.id ?? null;
-        this.focusedIndex.value = 0;
+        const activeSpace = this.activeSpace;
+        const fallbackGroup =
+          activeSpace && fallback
+            ? this.groups(activeSpace).find((group) =>
+                group.contentIds.includes(fallback.id),
+              )
+            : null;
+        if (activeSpace && fallbackGroup && fallback) {
+          activeSpace.activeGroupId = fallbackGroup.identifier;
+          activeSpace.activeId = fallback.id;
+          this.loadActiveSpace();
+          this.focusedIndex.value = Math.max(
+            0,
+            this.resolvedCells.findIndex(
+              (cell) => cell.content.id === fallback.id,
+            ),
+          );
+          this.activeId.value = fallback.id;
+        } else {
+          this.layout.value = [];
+          this.activeId.value = fallback?.id ?? null;
+          this.focusedIndex.value = 0;
+        }
       } else if (remainingVisibleCells.length === 1) {
         this.layout.value = [];
         this.activeId.value = remainingVisibleCells[0]?.id ?? null;

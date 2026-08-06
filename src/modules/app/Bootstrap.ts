@@ -633,20 +633,27 @@ class $Bootstrap {
     let panelPaneAddPopup: PanelAddPopup.Instance | null = null;
     let pendingPanelSplitTargetIdentifier: string | null = null;
 
-    // The terminal action is shared by its chord and status-bar control.
+    // One bottom-panel toggle is shared by its chord and contributed status control.
+    // It never creates content: an empty panel remains the same empty panel when reopened.
     const toggleTerminal = (): void => {
-      const visibleTerminal = visiblePaneOfKind(
-        'terminal',
-        isRuntimeDefaultPane,
-      );
-      if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
-      else {
-        // No runtime for this kind (its plugin is disabled) — the affordance degrades to nothing
-        // rather than crashing.
-        const pane = ensureRuntimePane('terminal');
-        if (pane) panelHost.showContent(pane.id);
-      }
+      panelHost.toggle();
     };
+    statusBarSegments.register({
+      segments: () => [],
+      controls: () => [
+        {
+          identifier: 'bottom-panel',
+          icon: theme.terminalIcon,
+          label: `Toggle Bottom Panel${
+            keybindings.bindingHint('panel.toggleTerminal', 'global')
+              ? ` (${keybindings.bindingHint('panel.toggleTerminal', 'global')})`
+              : ''
+          }`,
+          active: panelHost.visible.value,
+          run: toggleTerminal,
+        },
+      ],
+    });
 
     const toggleRightDock = (): void => {
       // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
@@ -726,7 +733,6 @@ class $Bootstrap {
       statusBarSegments,
       editorSurfaceContents,
       editorColumnDefault,
-      toggleTerminal,
       (anchor) => panelAddPopup?.show(anchor),
       (anchor, splitTargetIdentifier) => {
         pendingPanelSplitTargetIdentifier = splitTargetIdentifier ?? null;

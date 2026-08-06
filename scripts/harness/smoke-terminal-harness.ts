@@ -782,10 +782,16 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.terminalVisible === true',
-    (status) => status.terminalVisible === true,
+    'the shared status button opens the empty panel without creating a terminal',
+    (status) =>
+      status.panelVisible === true &&
+      status.terminalVisible === false &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.length === 0,
   );
-  HarnessSmoke.Class.pass('status-bar terminal button opens the panel');
+  HarnessSmoke.Class.pass(
+    'the shared status button opens the panel without creating a terminal',
+  );
   driver.sendMouse({
     kind: 'press',
     column: terminalButtonColumn,
@@ -801,15 +807,55 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.terminalVisible === false',
-    (status) => status.terminalVisible === false,
+    'the second shared status click hides the unchanged empty panel',
+    (status) =>
+      status.panelVisible === false &&
+      status.terminalVisible === false &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.length === 0,
   );
   HarnessSmoke.Class.pass('second status-bar click hides the panel');
 
   console.log(
-    '== harness terminal: Ctrl+J opens and focuses the real nested shell ==',
+    '== harness terminal: Ctrl+J opens the panel and Add creates the real nested shell ==',
   );
   driver.sendKeys('Control+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Ctrl+J opens the same empty panel without creating a terminal',
+    (status) =>
+      status.panelVisible === true &&
+      status.terminalVisible === false &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.length === 0,
+  );
+  const emptyPanelSnapshot = await driver.awaitGridCondition(
+    'the empty panel paints its visible Plugin Add control',
+    (snapshot) => snapshot.findText('+ Plugin') !== null,
+  );
+  const pluginAddPosition = emptyPanelSnapshot.findText('+ Plugin');
+  if (!pluginAddPosition) throw new Error('Missing Plugin Add control');
+  driver.sendMouse({
+    kind: 'move',
+    column: pluginAddPosition.column + 2,
+    row: pluginAddPosition.row,
+    button: 'none',
+  });
+  driver.sendMouseClick({
+    column: pluginAddPosition.column + 2,
+    row: pluginAddPosition.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Plugin Add chooser selects Terminal',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupSelectedIdentifier === 'terminal',
+  );
+  driver.sendKeys('Enter');
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -821,7 +867,9 @@ try {
       Number(status.terminalColumns) > 0 &&
       Number(status.terminalRows) > 0,
   );
-  HarnessSmoke.Class.pass('Ctrl+J opened and focused the terminal content');
+  HarnessSmoke.Class.pass(
+    'Ctrl+J opened the panel and its Add control created the focused terminal',
+  );
   const initialColumns = Number(openedStatus.terminalColumns);
   const initialRows = Number(openedStatus.terminalRows);
   const initialChildColumns = initialColumns - 4;

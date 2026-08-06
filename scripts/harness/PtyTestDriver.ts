@@ -486,6 +486,42 @@ class $PtyTestDriver {
     }
   }
 
+  /** Wait until the emulator has applied a synchronized output frame after
+   *  the caller's recorded observation boundary. */
+  async awaitCompletedFrameObservationAfter(
+    completedFrameObservationCount: number,
+    predicateDescription: string,
+    timeoutMilliseconds = 30_000,
+  ): Promise<HarnessSnapshot.Model> {
+    if (
+      !Number.isInteger(completedFrameObservationCount) ||
+      completedFrameObservationCount < 0
+    ) {
+      throw new Error(
+        `Invalid completed frame observation count ${completedFrameObservationCount}`,
+      );
+    }
+    const deadline = performance.now() + timeoutMilliseconds;
+    await this.flushObservedOutput();
+    while (true) {
+      const completedObservation =
+        this.completedFrameObservationsValue[completedFrameObservationCount];
+      if (completedObservation) {
+        this.expectedScreenChangeBaseline = undefined;
+        return completedObservation.snapshot;
+      }
+      const remainingMilliseconds = deadline - performance.now();
+      if (remainingMilliseconds <= 0) {
+        throw new Error(
+          `Timed out waiting for completed output frame: ${predicateDescription}`,
+        );
+      }
+      this.quiescence.throwIfFailed();
+      await Bun.sleep(Math.min(10, remainingMilliseconds));
+      await this.flushObservedOutput();
+    }
+  }
+
   /**
    * Await a predicate over OBSERVED RAW OUTPUT rather than the grid. Terminal graphics
    * protocols (kitty, sixel) are byte streams that are not necessarily bounded by a

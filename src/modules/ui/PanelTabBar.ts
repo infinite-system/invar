@@ -21,7 +21,11 @@ class $PanelTabBar {
   static project(options: PanelTabBarOptions): PanelTabBarProjection {
     const width = Math.max(0, Math.floor(options.width));
     const splitterControls = this.projectSplitterControls(options, width);
-    const tabRow = this.projectTabRow(options, width);
+    const tabRightInsetWidth = options.expanded ? splitterControls.width : 0;
+    const tabRow = this.projectTabRow(
+      options,
+      Math.max(0, width - tabRightInsetWidth),
+    );
     return {
       splitterLeadingText: new StyledText([]),
       splitterControlText: splitterControls.text,
@@ -36,6 +40,7 @@ class $PanelTabBar {
       splitterControlWidth: splitterControls.width,
       controlWidth: splitterControls.width,
       tabControlWidth: tabRow.controlWidth,
+      tabRightInsetWidth,
       tabs: tabRow.tabs,
       tabCloses: tabRow.closes,
       editorActions: [],
@@ -427,6 +432,8 @@ export interface PanelTabBarProjection {
   /** Compatibility name for the splitter row's control width. */
   readonly controlWidth: number;
   readonly tabControlWidth: number;
+  /** Cells reserved at the tab row's right edge for same-row panel controls. */
+  readonly tabRightInsetWidth: number;
   readonly tabs: readonly PanelTabBarTabSegment[];
   readonly tabCloses: readonly PanelTabBarCloseSegment[];
   readonly editorActions: readonly PanelTabBarEditorActionSegment[];

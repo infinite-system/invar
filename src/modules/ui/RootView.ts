@@ -124,7 +124,6 @@ class $RootView {
     statusBarSegments: StatusBarSegments.Model,
     editorSurfaceContents: EditorSurfaceContents.Model,
     editorColumnDefault: EditorColumnDefault.Model,
-    toggleTerminal: () => void,
     openPanelAddPopup: (anchor: { column: number; row: number }) => void,
     openPanelPaneAddPopup: (
       anchor: { column: number; row: number },
@@ -515,11 +514,9 @@ class $RootView {
       tooltip,
       theme,
       settingsPanel,
-      panelHost,
       rightDockHost,
       primaryDockHost,
       statusBarSegments,
-      toggleTerminal,
       toggleRightDock,
     });
     // --- bottom panel slot (the composable PanelHost region) --------------------------------------
@@ -615,6 +612,14 @@ class $RootView {
       (targetIdentifier, anchor) =>
         openPanelPaneAddPopup(anchor, targetIdentifier),
       (anchor) => openPanelPaneAddPopup(anchor),
+      (identifier) => {
+        const task = panelHost.content(identifier)?.task;
+        if (!task?.sourcePath) return;
+        workspaceSet.open(task.workspaceRoot);
+        workspaceSet.active.openFileInTab(task.sourcePath);
+        workspaceSet.active.focusEditor();
+        panelHost.blur();
+      },
     );
     const panelContentsListRenderable = new TextRenderable(renderer, {
       id: 'panel-contents-list',
@@ -721,8 +726,6 @@ class $RootView {
       };
       readonly splitterElement: SplitterElement.Model | null;
       frameHeaderCloseHovered: boolean;
-      frameHeaderTaskHovered: boolean;
-      frameHeaderTaskEndColumn: number;
       frameHeaderCloseStartColumn: number;
     }
     const panelCellViews: PanelCellView[] = [];
@@ -880,17 +883,6 @@ class $RootView {
         const view = panelCellViews[index];
         if (!content || !view) return;
         const localColumn = Number(event.x) - Number(frameHeader.x);
-        if (
-          content.task?.sourcePath &&
-          localColumn < view.frameHeaderTaskEndColumn
-        ) {
-          workspaceSet.open(content.task.workspaceRoot);
-          workspaceSet.active.openFileInTab(content.task.sourcePath);
-          workspaceSet.active.focusEditor();
-          panelHost.blur();
-          renderer.requestRender();
-          return;
-        }
         if (localColumn < view.frameHeaderCloseStartColumn) return;
         panelHost.closeOpenContent(content.id);
         renderer.requestRender();
@@ -900,21 +892,9 @@ class $RootView {
         const content = panelHost.resolvedCells[index]?.content;
         if (!view || !content) return;
         const localColumn = Number(event.x) - Number(frameHeader.x);
-        const taskHovered =
-          content.task !== undefined &&
-          localColumn < view.frameHeaderTaskEndColumn;
         const closeHovered = localColumn >= view.frameHeaderCloseStartColumn;
-        view.frameHeaderTaskHovered = taskHovered;
         view.frameHeaderCloseHovered = closeHovered;
-        if (taskHovered)
-          tooltip.point(
-            content.task.sourcePath
-              ? `Open ${content.task.sourcePath}`
-              : `${content.task.label} is a built-in task`,
-            Number(event.x),
-            Number(event.y),
-          );
-        else if (closeHovered)
+        if (closeHovered)
           tooltip.point('Close instance', Number(event.x), Number(event.y));
         else tooltip.clear();
         renderer.requestRender();
@@ -922,7 +902,6 @@ class $RootView {
       frameHeader.onMouseOut = () => {
         const view = panelCellViews[index];
         if (view) {
-          view.frameHeaderTaskHovered = false;
           view.frameHeaderCloseHovered = false;
         }
         tooltip.clear();
@@ -955,8 +934,6 @@ class $RootView {
         verticalScrollBarState,
         splitterElement,
         frameHeaderCloseHovered: false,
-        frameHeaderTaskHovered: false,
-        frameHeaderTaskEndColumn: 0,
         frameHeaderCloseStartColumn: 0,
       };
       panelCellViews[index] = view;
@@ -1460,11 +1437,13 @@ class $RootView {
         panelTabBarRenderable.top = layoutSlotGeometry.bottomPanelTabs.top;
         panelTabBarRenderable.width =
           layoutSlotGeometry.bottomPanelTabs.width -
-          panelTabBarProjection.tabControlWidth;
+          panelTabBarProjection.tabControlWidth -
+          panelTabBarProjection.tabRightInsetWidth;
         panelTabBarRenderable.content = panelTabBarProjection.tabText;
         panelTabControlRenderable.left =
           layoutSlotGeometry.bottomPanelTabs.left +
           layoutSlotGeometry.bottomPanelTabs.width -
+          panelTabBarProjection.tabRightInsetWidth -
           panelTabBarProjection.tabControlWidth;
         panelTabControlRenderable.top = layoutSlotGeometry.bottomPanelTabs.top;
         panelTabControlRenderable.width = panelTabBarProjection.tabControlWidth;
@@ -1827,6 +1806,7 @@ class $RootView {
         panelContentsListRenderable.content = panelContentsList.render(
           palette,
           theme.glyphVocabulary,
+          theme.taskActionIcons.taskRecord,
         );
         const cellRows = panelViewportRows();
         const panelContentTop = panelBox.y as number;
@@ -1842,42 +1822,15 @@ class $RootView {
           view.frameHeader.visible = frameHeaderRows > 0;
           view.frameHeader.fg = palette.fg;
           const frameHeaderWidth = Math.max(0, span.columns);
-          const taskText = span.content.task
-            ? ` ${theme.taskActionIcons.taskRecord} `
-            : '';
           const closeText = ` ${theme.glyphVocabulary.panelClose} `;
-          const taskWidth = Math.min(
-            TextCoordinates.Class.lineWidth(taskText),
-            frameHeaderWidth,
-          );
           const closeWidth = Math.min(
             TextCoordinates.Class.lineWidth(closeText),
-            Math.max(0, frameHeaderWidth - taskWidth),
+            frameHeaderWidth,
           );
           const closeStartColumn = frameHeaderWidth - closeWidth;
-          view.frameHeaderTaskEndColumn = taskWidth;
           view.frameHeaderCloseStartColumn = closeStartColumn;
-          const frameHeaderPadding = ' '.repeat(
-            Math.max(0, closeStartColumn - taskWidth),
-          );
+          const frameHeaderPadding = ' '.repeat(Math.max(0, closeStartColumn));
           view.frameHeader.content = new StyledText([
-            view.frameHeaderTaskHovered
-              ? bg(palette.cursorLine)(
-                  fg(palette.accent)(
-                    TextCoordinates.Class.displayColumnWindow(
-                      taskText,
-                      0,
-                      taskWidth,
-                    ),
-                  ),
-                )
-              : fg(palette.fg)(
-                  TextCoordinates.Class.displayColumnWindow(
-                    taskText,
-                    0,
-                    taskWidth,
-                  ),
-                ),
             fg(palette.fg)(frameHeaderPadding),
             view.frameHeaderCloseHovered
               ? bg(palette.cursorLine)(
@@ -2499,10 +2452,11 @@ class $RootView {
       panelSeparatorGeometry,
       panelContentsListRegion: () => ({
         left:
-          Number(panelBox.x) +
-          Number(panelBox.width) -
+          Number(layoutCanvas.x) +
+          layoutSlotGeometry.bottomPanel.left +
+          layoutSlotGeometry.bottomPanel.width -
           (panelContentsList.visible ? panelContentsList.width : 0),
-        top: Number(panelBox.y),
+        top: Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanel.top,
         width: panelContentsList.visible ? panelContentsList.width : 0,
         height: panelContentsList.visible
           ? Math.max(0, Number(panelBox.height))

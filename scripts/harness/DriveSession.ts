@@ -52,6 +52,7 @@ class $DriveSession {
   protected readonly steps: DriveStep[] = [];
   protected pointerColumn = 0;
   protected pointerRow = 0;
+  protected lastInputCompletedFrameObservationCount: number | null = null;
   protected quiet = false;
   protected humanPaceTempoMultiplier = 0;
 
@@ -135,6 +136,11 @@ class $DriveSession {
     }
   }
 
+  protected markInputFrameObservationBoundary(): void {
+    this.lastInputCompletedFrameObservationCount =
+      this.driver.completedFrameObservationCount;
+  }
+
   constructor(
     public readonly driver: PtyTestDriver.Model,
     public readonly statusPath: string,
@@ -166,6 +172,7 @@ class $DriveSession {
    *  Under humanPace the pointer GLIDES there instead of teleporting. */
   moveMouse(column: number, row: number): this {
     return this.step(`move to ${column},${row}`, async () => {
+      this.markInputFrameObservationBoundary();
       this.requireCellInsideScreen(column, row);
       if (this.paced) {
         await this.glideTo(column, row);
@@ -203,6 +210,7 @@ class $DriveSession {
     return this.step(
       `${modifierNames ? `${modifierNames}+` : ''}click ${column ?? 'pointer'},${row ?? ''}`,
       async () => {
+        this.markInputFrameObservationBoundary();
         const targetColumn = column ?? this.pointerColumn;
         const targetRow = row ?? this.pointerRow;
         this.requireCellInsideScreen(targetColumn, targetRow);
@@ -247,6 +255,7 @@ class $DriveSession {
       const position = snapshot.findText(text);
       if (!position) throw new Error(`${text} vanished before the click`);
       const column = position.column + columnOffset;
+      this.markInputFrameObservationBoundary();
       if (this.paced) {
         await this.glideTo(column, position.row);
         await this.tempo(220);
@@ -295,6 +304,7 @@ class $DriveSession {
     return this.step(
       `drag ${fromColumn},${fromRow} -> ${toColumn},${toRow}`,
       async () => {
+        this.markInputFrameObservationBoundary();
         this.requireCellInsideScreen(fromColumn, fromRow);
         this.requireCellInsideScreen(toColumn, toRow);
         // Arrive at the start like a hand would: an unpressed move first,
@@ -337,6 +347,7 @@ class $DriveSession {
 
   key(...keyNames: string[]): this {
     return this.step(`key ${keyNames.join(' ')}`, async () => {
+      this.markInputFrameObservationBoundary();
       this.driver.sendKeysWithoutFrameExpectation(...keyNames);
       await this.tempo(180);
     });
@@ -344,6 +355,7 @@ class $DriveSession {
 
   type(text: string): this {
     return this.step(`type ${JSON.stringify(text)}`, async () => {
+      this.markInputFrameObservationBoundary();
       for (const character of text) {
         this.driver.sendKeysWithoutFrameExpectation(character);
         // Human typing cadence with a light rhythm wobble — pacing only,
@@ -363,6 +375,7 @@ class $DriveSession {
     row?: number,
   ): this {
     return this.step(`scroll ${direction} x${ticks}`, async () => {
+      this.markInputFrameObservationBoundary();
       const targetColumn = column ?? this.pointerColumn;
       const targetRow = row ?? this.pointerRow;
       this.requireCellInsideScreen(targetColumn, targetRow);
@@ -399,6 +412,7 @@ class $DriveSession {
     return this.step(
       `wait ${fieldName}=${JSON.stringify(expectedValue)}`,
       async () => {
+        const deadline = performance.now() + timeoutMilliseconds;
         await HarnessSmoke.Class.awaitStatusWithoutFrame(
           this.driver,
           this.statusPath,
@@ -407,6 +421,13 @@ class $DriveSession {
             JSON.stringify(status[fieldName]) === JSON.stringify(expectedValue),
           timeoutMilliseconds,
         );
+        if (this.lastInputCompletedFrameObservationCount !== null) {
+          await this.driver.awaitCompletedFrameObservationAfter(
+            this.lastInputCompletedFrameObservationCount,
+            `${fieldName} is painted after the last input`,
+            Math.max(0, deadline - performance.now()),
+          );
+        }
       },
     );
   }
@@ -421,6 +442,7 @@ class $DriveSession {
     return this.step(
       `wait ${fieldName} drops ${JSON.stringify(value)}`,
       async () => {
+        const deadline = performance.now() + timeoutMilliseconds;
         await HarnessSmoke.Class.awaitStatusWithoutFrame(
           this.driver,
           this.statusPath,
@@ -431,6 +453,13 @@ class $DriveSession {
           },
           timeoutMilliseconds,
         );
+        if (this.lastInputCompletedFrameObservationCount !== null) {
+          await this.driver.awaitCompletedFrameObservationAfter(
+            this.lastInputCompletedFrameObservationCount,
+            `${fieldName} is painted after dropping ${JSON.stringify(value)}`,
+            Math.max(0, deadline - performance.now()),
+          );
+        }
       },
     );
   }

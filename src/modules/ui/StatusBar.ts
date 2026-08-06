@@ -57,17 +57,7 @@ class $StatusBar {
       height: 1,
       selectable: false,
     });
-    // Terminal-toggle affordance: a hit-tested single-cell glyph, LEFT of the gear. Click runs the SAME
-    // toggleTerminal closure the Ctrl+J / Ctrl+backtick chords run (lazy-init + show/hide the bottom panel);
-    // it lights accent while the panel is open, so it doubles as a visible open/closed indicator.
-    this.terminalButton = new TextRenderable(renderer, {
-      id: 'status-terminal-button',
-      content: ` ${deps.theme.terminalIcon} `,
-      width: 3,
-      height: 1,
-      selectable: false,
-    });
-    // A contributor may publish one compact panel control without teaching this host its identity.
+    // A contributor may publish one compact control without teaching this host its identity.
     this.contributionButton = new TextRenderable(renderer, {
       id: 'status-contribution-button',
       content: '',
@@ -102,7 +92,6 @@ class $StatusBar {
     });
     this.bar.add(spacer);
     this.bar.add(this.contributionButton);
-    this.bar.add(this.terminalButton);
     this.bar.add(this.settingsButton);
     this.bar.add(this.shortcutHelpButton);
     this.bar.add(this.clock);
@@ -112,32 +101,6 @@ class $StatusBar {
     deps.app.onDispose(() => {
       if (this.clockTimer) clearTimeout(this.clockTimer);
     });
-    this.terminalButton.onMouseDown = () => {
-      deps.toggleTerminal();
-      renderer.requestRender();
-    };
-    this.terminalButton.onMouseMove = (event) => {
-      if (!this.terminalHover) {
-        this.terminalHover = true;
-        renderer.requestRender();
-      }
-      const openChordHint = deps.keybindings.bindingHint(
-        'panel.toggleTerminal',
-        'global',
-      );
-      deps.tooltip.point(
-        `Terminal${openChordHint ? ` (${openChordHint})` : ''}`,
-        event.x,
-        event.y,
-      );
-    };
-    this.terminalButton.onMouseOut = () => {
-      if (this.terminalHover) {
-        this.terminalHover = false;
-        renderer.requestRender();
-      }
-      deps.tooltip.clear();
-    };
     this.contributionButton.onMouseDown = () => {
       this.contributedControl?.run();
       renderer.requestRender();
@@ -248,13 +211,11 @@ class $StatusBar {
   protected readonly statusText: TextRenderable;
   protected readonly shortcutHelpButton: TextRenderable;
   protected readonly settingsButton: TextRenderable;
-  protected readonly terminalButton: TextRenderable;
   protected readonly contributionButton: TextRenderable;
   protected readonly rightDockButton: TextRenderable;
   protected readonly clock: TextRenderable;
   protected hover = false;
   protected settingsHover = false;
-  protected terminalHover = false;
   protected contributionHover = false;
   protected contributedControl:
     ReturnType<StatusBarSegments.Model['controls']>[number] | null = null;
@@ -301,9 +262,8 @@ class $StatusBar {
   }
   panelControlContainsPoint(column: number, row: number): boolean {
     return (
-      this.renderableContainsPoint(this.terminalButton, column, row) ||
-      (this.contributionButton.visible &&
-        this.renderableContainsPoint(this.contributionButton, column, row))
+      this.contributionButton.visible &&
+      this.renderableContainsPoint(this.contributionButton, column, row)
     );
   }
   rightDockControlContainsPoint(column: number, row: number): boolean {
@@ -342,17 +302,6 @@ class $StatusBar {
     // The `?` help affordance brightens on hover and while its sheet is open.
     this.shortcutHelpButton.fg =
       this.hover || this.deps.shortcutHelp.open.value
-        ? palette.accent
-        : palette.dim;
-    // The terminal affordance uses its built-in runtime action.
-    const visibleContentKinds = new Set(
-      this.deps.panelHost
-        .visibleContents()
-        .map((content) => content.kind ?? content.id),
-    );
-    this.terminalButton.content = ` ${this.deps.theme.terminalIcon} `;
-    this.terminalButton.fg =
-      this.terminalHover || visibleContentKinds.has('terminal')
         ? palette.accent
         : palette.dim;
     const statusContext = {
@@ -403,17 +352,12 @@ export interface StatusBarDeps {
   overlayCoordinator: OverlayCoordinator.Instance;
   keybindings: KeybindingRegistry.Instance;
   tooltip: Tooltip.Instance;
-  /** For the settings (gear) + terminal glyphs at the current glyph tier. */
+  /** For the settings and right-dock glyphs at the current glyph tier. */
   theme: Theme.Instance;
   /** The settings panel the gear button toggles (mirrors the shortcutHelp dep the `?` button uses). */
   settingsPanel: SettingsPanel.Instance;
-  /** The bottom panel; the terminal button reads its `visible` state to light up when open. */
-  panelHost: PanelHost.Instance;
   rightDockHost: PanelHost.Instance;
   primaryDockHost: PanelHost.Instance;
   statusBarSegments: StatusBarSegments.Model;
-  /** Lazy-inits the terminal + toggles the bottom panel — the SAME closure the panel.toggleTerminal
-   *  keybinding runs, so the button and the chord are one action (no divergent toggle paths). */
-  toggleTerminal: () => void;
   toggleRightDock: () => void;
 }
