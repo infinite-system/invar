@@ -11,7 +11,7 @@ CRONS ARMED (:07 orchestration 9abac598, :37 sweep a472671f).
 fleet-watch Monitor armed; on resume re-arm if heartbeat stale:
 Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true).
 
-THREE BUILDERS LIVE (at cap): #514 panel batch — SEVEN concerns now
+STATE UPDATE: #514 READY (untriaged — triage at landing). ONLY #518 STILL BUILDING. Was: #514 panel batch — SEVEN concerns now
 (over-removal protocol, ONE toggle panel button, hover bg unify +
 OVERLAY hover grammar refined item 3, + Terminal polish, glyph to
 right cluster, expand-trap item 6, fresh-boot drive dishonesty
