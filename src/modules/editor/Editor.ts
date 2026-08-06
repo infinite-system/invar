@@ -10,7 +10,12 @@ import { TextEditing } from '../text/TextEditing';
 import { EditorWrap } from '../text/EditorWrap';
 import { CodeFolding, type FoldRange } from './CodeFolding';
 import { ReadOnlyTextBuffer } from '../text/ReadOnlyTextBuffer';
-import { UndoStore, type EditKind } from '../storage/UndoStore';
+import {
+  UndoStore,
+  type EditKind,
+  type ExternalUndoDirection,
+  type ExternalUndoReference,
+} from '../storage/UndoStore';
 import { Files } from '../system/Files';
 import { Clock } from '../system/Clock';
 import { Clipboard } from '../system/Clipboard';
@@ -22,6 +27,7 @@ import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { EditorContributions } from './EditorContributions';
 import type { DocumentFoldState } from '../text/DocumentFoldState.interface';
 import type { SourceTextView } from '../workspace/SourceTextView.interface';
+import type { ExternalUndoRequestHandler } from '../workspace/ExternalUndoHistory.interface';
 import type { DocumentSyntaxReader } from '../syntax/DocumentSyntaxSource.interface';
 import type {
   TextEdit,
@@ -49,6 +55,8 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   protected disposeUndoDocumentListener: (() => void) | null = null;
   protected disposeEditorContributions: (() => void) | null = null;
   protected editorContributions: EditorContributions.Model | null = null;
+  protected externalUndoRequestHandler: ExternalUndoRequestHandler | null =
+    null;
 
   protected createViewport() {
     return new TextViewport.Class();
@@ -466,6 +474,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     this.disposeEditorContributions?.();
     this.disposeEditorContributions = null;
     this.editorContributions = null;
+    this.externalUndoRequestHandler = null;
     this.undo.clear();
     super.dispose();
     this.hasDocument.value = false;
@@ -953,8 +962,37 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     return applicableEdits.length;
   }
 
+  attachExternalUndoRequestHandler(
+    handler: ExternalUndoRequestHandler | null,
+  ): void {
+    this.externalUndoRequestHandler = handler;
+  }
+
+  recordExternalUndoReference(
+    reference: ExternalUndoReference,
+    direction: ExternalUndoDirection = 'undo',
+  ): void {
+    this.undo.recordExternalReference(reference, direction);
+  }
+
+  moveExternalUndoReference(
+    reference: ExternalUndoReference,
+    direction: ExternalUndoDirection,
+  ): boolean {
+    return this.undo.moveExternalReference(reference, direction);
+  }
+
+  removeExternalUndoReference(reference: ExternalUndoReference): boolean {
+    return this.undo.removeExternalReference(reference);
+  }
+
   performUndo(): void {
     this.recordOrdinaryEdit();
+    const externalReference = this.undo.nextUndoExternalReference;
+    if (externalReference) {
+      this.externalUndoRequestHandler?.('undo', externalReference);
+      return;
+    }
     const target = this.undo.undo({
       line: this.cursor.line.value,
       col: this.cursor.col.value,
@@ -980,6 +1018,11 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
 
   performRedo(): void {
     this.recordOrdinaryEdit();
+    const externalReference = this.undo.nextRedoExternalReference;
+    if (externalReference) {
+      this.externalUndoRequestHandler?.('redo', externalReference);
+      return;
+    }
     const target = this.undo.redo();
     if (!target) return;
     for (const change of target.changes) {

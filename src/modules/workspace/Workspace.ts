@@ -37,6 +37,7 @@ import { TextCoordinates } from '../text/TextCoordinates';
 import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { DocumentSyntax } from '../syntax/DocumentSyntax';
 import { LanguageProviderRouter } from './LanguageProviderRouter';
+import { WorkspaceUndoCoordinator } from './WorkspaceUndoCoordinator';
 
 // A workspace: one project root with its open buffers, documents, and generic contribution
 // lifecycle. WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -73,6 +74,7 @@ class $Workspace {
   // live documents; older clean tabs dehydrate to a light handle and rehydrate on activation.
   buffers = this.createBufferSet();
   documentLifecycle = new DocumentLifecycle.Class();
+  workspaceUndoCoordinator = this.createWorkspaceUndoCoordinator();
   gutterDecorations = new GutterDecorations.Class();
   // Contributions claim the editor surface here and the host asks them capability questions. It
   // never learns which surface is up.
@@ -191,6 +193,9 @@ class $Workspace {
   protected createNavigationHistory() {
     return new NavigationHistory.Class();
   }
+  protected createWorkspaceUndoCoordinator() {
+    return new WorkspaceUndoCoordinator.Class();
+  }
   protected createBufferSet() {
     // This seam is the SOLE creator of a buffer view, so every live buffer in the set came from
     // this workspace's provider. The seams below carry the view they made, so nothing downstream
@@ -211,13 +216,17 @@ class $Workspace {
       },
       opened: (handle, buffer) => {
         const view = this.viewsByLiveBuffer.get(buffer);
-        if (view) handle.attach(view.document);
+        if (view) {
+          handle.attach(view.document);
+          this.workspaceUndoCoordinator.attach(handle, view);
+        }
         this.documentLifecycle.opened(handle);
       },
       becameActive: (handle) => this.documentBecameActive(handle),
       closed: (handle, buffer) => {
-        this.documentLifecycle.closed(handle);
         const view = this.viewsByLiveBuffer.get(buffer);
+        if (view) this.workspaceUndoCoordinator.detach(handle, view);
+        this.documentLifecycle.closed(handle);
         if (view) handle.detach(view.document);
       },
     });
