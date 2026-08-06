@@ -1,17 +1,19 @@
 // invariant: Child synchronized updates commit as one repaint (src/modules/terminal/terminal.invariants.md)
 import { Static } from 'ivue/extras';
 
+export const TASKS_WATCH_ANIMATION_FRAMES_PER_SECOND = 60;
+
 class $TasksWatchRenderer {
   protected static get $graphemeSegmenter(): Intl.Segmenter {
     return new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   }
 
-  protected static get TARGET_ANIMATION_FRAMES_PER_SECOND(): number {
-    return 60;
+  protected static get targetAnimationFramesPerSecond(): number {
+    return TASKS_WATCH_ANIMATION_FRAMES_PER_SECOND;
   }
 
   protected static get animationFrameMilliseconds(): number {
-    return 1_000 / this.TARGET_ANIMATION_FRAMES_PER_SECOND;
+    return 1_000 / this.targetAnimationFramesPerSecond;
   }
 
   protected previousLines: string[] = [];

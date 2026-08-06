@@ -449,7 +449,33 @@ class $RootView {
       width: '100%',
       height: '100%',
     });
+    const rightDockVerticalScrollBarState = {
+      applyingGeometry: false,
+      reportedToTrueScale: 1,
+    };
+    const rightDockVerticalScrollBar = new SolidThumbScrollBar.Class(renderer, {
+      id: 'right-dock-scrollbar-v',
+      orientation: 'vertical',
+      position: 'absolute',
+      width: 1,
+      showArrows: false,
+      visible: false,
+      zIndex: 50,
+      onChange: (position) => {
+        if (rightDockVerticalScrollBarState.applyingGeometry) return;
+        const content = rightDockHost.activeContent;
+        if (!content?.scrollToLine) return;
+        content.haltScrollMomentum?.();
+        content.scrollToLine(
+          Math.round(
+            position * rightDockVerticalScrollBarState.reportedToTrueScale,
+          ),
+        );
+        renderer.requestRender();
+      },
+    });
     rightDockBox.add(rightDockBody);
+    rightDockBox.add(rightDockVerticalScrollBar);
     rightDockBox.onMouseDown = () => {
       rightDockHost.focus();
       renderer.requestRender();
@@ -472,7 +498,12 @@ class $RootView {
       const content = rightDockHost.activeContent;
       const localColumn = Number(event.x) - Number(rightDockBody.x);
       const localRow = Number(event.y) - Number(rightDockBody.y);
-      content?.onPointerMove?.(localColumn, localRow);
+      content?.onPointerMove?.(localColumn, localRow, {
+        screenColumn: Number(event.x),
+        screenRow: Number(event.y),
+        button: event.button,
+        modifiers: event.modifiers,
+      });
       const tooltipText = content?.tooltipAt?.(localColumn, localRow) ?? null;
       if (tooltipText) {
         tooltip.point(tooltipText, Number(event.x), Number(event.y));
@@ -481,11 +512,44 @@ class $RootView {
       }
       renderer.requestRender();
     };
-    rightDockBody.onMouseOut = () => {
+    rightDockBody.onMouseDrag = (event: MouseEvent) => {
+      rightDockHost.activeContent?.onPointerDrag?.(
+        Number(event.x) - Number(rightDockBody.x),
+        Number(event.y) - Number(rightDockBody.y),
+        {
+          screenColumn: Number(event.x),
+          screenRow: Number(event.y),
+          button: event.button,
+          modifiers: event.modifiers,
+        },
+      );
+      renderer.requestRender();
+    };
+    const endRightDockContentDrag = (event: MouseEvent): void => {
+      rightDockHost.activeContent?.onPointerUp?.(
+        Number(event.x) - Number(rightDockBody.x),
+        Number(event.y) - Number(rightDockBody.y),
+        {
+          screenColumn: Number(event.x),
+          screenRow: Number(event.y),
+          button: event.button,
+          modifiers: event.modifiers,
+        },
+      );
+      renderer.requestRender();
+    };
+    rightDockBody.onMouseUp = endRightDockContentDrag;
+    rightDockBody.onMouseDragEnd = endRightDockContentDrag;
+    const clearRightDockContentPointer = (): void => {
       rightDockHost.activeContent?.onPointerOut?.();
+    };
+    const clearRightDockPointerAndTooltip = (): void => {
+      clearRightDockContentPointer();
       tooltip.clear();
       renderer.requestRender();
     };
+    rightDockBody.onMouseOut = clearRightDockPointerAndTooltip;
+    rightDockBox.onMouseOut = clearRightDockPointerAndTooltip;
     rightDockBody.onMouseScroll = (event) => {
       const direction = event.scroll?.direction;
       if (direction !== 'up' && direction !== 'down') return;
@@ -709,6 +773,78 @@ class $RootView {
       requestRender: () => renderer.requestRender(),
     };
     const contentsWithScrollPort = new WeakSet<PaneContent>();
+    interface PaneVerticalScrollBarView {
+      readonly container: BoxRenderable;
+      readonly body: TextRenderable;
+      readonly verticalScrollBar: SolidThumbScrollBar.Model;
+      readonly verticalScrollBarState: {
+        applyingGeometry: boolean;
+        reportedToTrueScale: number;
+      };
+    }
+    const updatePaneVerticalScrollBar = (
+      content: PaneContent | null | undefined,
+      view: PaneVerticalScrollBarView,
+      viewportColumns: number,
+      palette: Palette,
+    ): void => {
+      const scrollTop = content?.scrollTop;
+      const scrollContentRows = content?.scrollContentRows;
+      const scrollViewportRows = content?.scrollViewportRows;
+      if (
+        typeof scrollTop !== 'number' ||
+        typeof scrollContentRows !== 'number' ||
+        typeof scrollViewportRows !== 'number' ||
+        !content?.scrollToLine
+      ) {
+        view.verticalScrollBar.visible = false;
+        return;
+      }
+      const geometry = ScrollbarGeometry.Class.scrollbarGeometry(
+        'vertical',
+        {
+          top: Math.max(
+            0,
+            Number(view.body.y) -
+              Number(view.container.y) +
+              (content.scrollbarRowOffset ?? 0) -
+              1,
+          ),
+          left: Number(view.body.x) - Number(view.container.x),
+          width: viewportColumns,
+          height: scrollViewportRows,
+        },
+        {
+          scrollSize: scrollContentRows,
+          viewportSize: scrollViewportRows,
+          scrollPosition: scrollTop,
+        },
+      );
+      if (!geometry) {
+        view.verticalScrollBar.visible = false;
+        return;
+      }
+      view.verticalScrollBar.visible = true;
+      view.verticalScrollBar.slider.backgroundColor = palette.panel;
+      view.verticalScrollBar.slider.foregroundColor = palette.dim;
+      view.verticalScrollBar.top = geometry.trackTop;
+      view.verticalScrollBar.left = geometry.trackLeft;
+      view.verticalScrollBar.height = geometry.trackLength;
+      view.verticalScrollBar.width = Math.max(
+        1,
+        Math.round(settings.scrollbarThickness.value),
+      );
+      view.verticalScrollBarState.applyingGeometry = true;
+      try {
+        view.verticalScrollBar.scrollSize = scrollContentRows;
+        view.verticalScrollBar.viewportSize = geometry.reportedViewportSize;
+        view.verticalScrollBar.scrollPosition = geometry.reportedPosition;
+      } finally {
+        view.verticalScrollBarState.applyingGeometry = false;
+      }
+      view.verticalScrollBarState.reportedToTrueScale =
+        geometry.reportedToTrueScale;
+    };
     // Split-aware panel body: a reconciling POOL of cell views. Each visible cell is one TextRenderable
     // body; adjacent cells are separated by a 1-column divider whose drag re-flows the two it sits
     // between (a vertical ratio SplitterModel over the panel's inner width). ONE visible cell means no
@@ -1786,6 +1922,26 @@ class $RootView {
               focused: rightDockFocused,
             }) ?? rightDockBody.content)
           : ' Right dock\n\n No content';
+        if (
+          rightDockContent?.attachViewportScrollPort &&
+          !contentsWithScrollPort.has(rightDockContent)
+        ) {
+          rightDockContent.attachViewportScrollPort(paneScrollPort);
+          contentsWithScrollPort.add(rightDockContent);
+        }
+        updatePaneVerticalScrollBar(
+          rightDockContent,
+          {
+            container: rightDockBox,
+            body: rightDockBody,
+            verticalScrollBar: rightDockVerticalScrollBar,
+            verticalScrollBarState: rightDockVerticalScrollBarState,
+          },
+          rightDockViewportColumns(),
+          palette,
+        );
+      } else {
+        rightDockVerticalScrollBar.visible = false;
       }
       // Bottom panel slot: pull EACH visible cell's PaneContent into its own body (one body = the
       // terminal for tier S; two = agent | terminal side by side). The host is content-agnostic — RootView
@@ -1873,64 +2029,7 @@ class $RootView {
             content.attachViewportScrollPort(paneScrollPort);
             contentsWithScrollPort.add(content);
           }
-          const scrollTop = content.scrollTop;
-          const scrollContentRows = content.scrollContentRows;
-          const scrollViewportRows = content.scrollViewportRows;
-          if (
-            typeof scrollTop === 'number' &&
-            typeof scrollContentRows === 'number' &&
-            typeof scrollViewportRows === 'number' &&
-            content.scrollToLine
-          ) {
-            const geometry = ScrollbarGeometry.Class.scrollbarGeometry(
-              'vertical',
-              {
-                top: Math.max(
-                  0,
-                  Number(view.body.y) -
-                    Number(view.container.y) +
-                    (content.scrollbarRowOffset ?? 0) -
-                    1,
-                ),
-                left: Number(view.body.x) - Number(view.container.x),
-                width: span.columns,
-                height: scrollViewportRows,
-              },
-              {
-                scrollSize: scrollContentRows,
-                viewportSize: scrollViewportRows,
-                scrollPosition: scrollTop,
-              },
-            );
-            if (geometry) {
-              view.verticalScrollBar.visible = true;
-              view.verticalScrollBar.slider.backgroundColor = palette.panel;
-              view.verticalScrollBar.slider.foregroundColor = palette.dim;
-              view.verticalScrollBar.top = geometry.trackTop;
-              view.verticalScrollBar.left = geometry.trackLeft;
-              view.verticalScrollBar.height = geometry.trackLength;
-              view.verticalScrollBar.width = Math.max(
-                1,
-                Math.round(settings.scrollbarThickness.value),
-              );
-              view.verticalScrollBarState.applyingGeometry = true;
-              try {
-                view.verticalScrollBar.scrollSize = scrollContentRows;
-                view.verticalScrollBar.viewportSize =
-                  geometry.reportedViewportSize;
-                view.verticalScrollBar.scrollPosition =
-                  geometry.reportedPosition;
-              } finally {
-                view.verticalScrollBarState.applyingGeometry = false;
-              }
-              view.verticalScrollBarState.reportedToTrueScale =
-                geometry.reportedToTrueScale;
-            } else {
-              view.verticalScrollBar.visible = false;
-            }
-          } else {
-            view.verticalScrollBar.visible = false;
-          }
+          updatePaneVerticalScrollBar(content, view, span.columns, palette);
           view.splitterElement?.updateAppearance(palette);
         });
         for (const content of panelHost.orderedContents) {
@@ -2427,8 +2526,11 @@ class $RootView {
       overlayViewportExtents: () => overlayLayer.viewportExtents(),
       modalOverlayOwnsScreen: () => overlayLayer.modalOverlayOwnsScreen,
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
-      tickPanelScroll(dtSeconds: number): boolean {
-        let moving = false;
+      tickHostedPaneScroll(dtSeconds: number): boolean {
+        let moving =
+          rightDockHost.visible.value && rightDockHost.activeContent
+            ? (rightDockHost.activeContent.tickScroll?.(dtSeconds) ?? false)
+            : false;
         for (const cell of panelHost.resolvedCells) {
           moving = (cell.content.tickScroll?.(dtSeconds) ?? false) || moving;
         }
@@ -2466,6 +2568,7 @@ class $RootView {
       rightDockViewportColumns,
       rightDockViewportRows,
       rightDockContainsPoint,
+      clearRightDockContentPointer,
       activityBarContainsPoint,
       layoutGeometry: () => layoutSlotGeometry,
       splitterRegions: () => {
@@ -2568,9 +2671,9 @@ export interface RootView {
   modalOverlayOwnsScreen(): boolean;
   /** Frame-tick hook: advance the LSP hover-card dwell; true while counting or a request is in flight. */
   tickHover(dtSeconds: number): boolean;
-  /** Frame-tick hook: advance the agent transcript's scroll-momentum glide + drag edge-autoscroll; true
-   *  while moving (keeps frames coming until the fling decays, then stops so idle-quiescence holds). */
-  tickPanelScroll(dtSeconds: number): boolean;
+  /** Frame-tick hook: advance hosted pane scroll momentum and drag edge-autoscroll; true while moving
+   *  (keeps frames coming until the fling decays, then stops so idle-quiescence holds). */
+  tickHostedPaneScroll(dtSeconds: number): boolean;
   /** Dismiss the LSP hover card unconditionally (Escape — always closes, even while engaged). */
   dismissHover(): void;
   /** Dismiss the LSP hover card UNLESS it is engaged (pointer over it / dragging a selection): a stray
@@ -2604,6 +2707,8 @@ export interface RootView {
   rightDockViewportColumns(): number;
   rightDockViewportRows(): number;
   rightDockContainsPoint(x: number, y: number): boolean;
+  /** Clear pointer state owned by the active right-dock content after the root sees an outside move. */
+  clearRightDockContentPointer(): void;
   activityBarContainsPoint(x: number, y: number): boolean;
   layoutGeometry(): LayoutSlotGeometry;
   splitterRegions(): Record<

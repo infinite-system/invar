@@ -123,10 +123,10 @@ absent and again while it names a running gate. Both runs pass with the same fix
 no paint; if the pane itself is not painted, then it has no task-tree read, data timer, or motion
 timer. Selected, registered, and retained are not observed. While painted, each steady data tick
 reads fleet facts only for painted task rows, lists sessions at most once for those rows, and
-rebuilds only changed painted rows. While visible,
-building, exploring, and gate motion use the exact exported CLI watch ramps and glyph frames,
-and they step on the exported wall-clock cadence, so the pane and the CLI watch show the same
-motion step at the same moment however often either repaints.
+rebuilds only changed painted rows. While visible, one 60 fps heartbeat samples all painted
+building, exploring, and gate rows from the exact CLI watch ramps and glyph frames. Each motion
+frame increments only the attributed paint count and requests one contribution-boundary render.
+It reads no task and rebuilds no row.
 
 **Scope:** `TasksDashboardOverview` clocks and `TasksDashboardPaneRenderer` motion paint.
 
@@ -134,20 +134,23 @@ motion step at the same moment however often either repaints.
 view paints: the host is visible and its exact active content is the contribution. The pane starts
 and stops both ivue-owned intervals from that predicate. A constant four-directory stamp guards
 full task-tree reads. Worktree mtimes guard fleet reads, and the current row window selects fleet
-and session facts. The motion tick advances only when a painted row or gate needs it. The renderer indexes the
-tables exported by `scripts/tasks/tasks-status.ts` at the step
+and session facts. The motion tick advances only when a painted row or gate needs it. Its interval
+derives from `TASKS_WATCH_ANIMATION_FRAMES_PER_SECOND`, the same constant as
+`TasksWatchRenderer`. The renderer indexes the tables exported by `scripts/tasks/tasks-status.ts` at the step
 `tasksMotionStepAtElapsed(elapsedMilliseconds)` returns. The step is a pure function of elapsed
 time, never of a paint ordinal: a paint count made motion SPEED a hostage of the frame rate,
 which ran the CLI watch ten times too fast at 60 fps (#348).
 
 **Evidence:** `src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`startObservation`,
-`animationElapsedMilliseconds`); `src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts`;
+`motionHeartbeatMilliseconds`, `motionHeartbeatTick`);
+`scripts/tasks/TasksWatchRenderer.ts` (`TASKS_WATCH_ANIMATION_FRAMES_PER_SECOND`);
+`src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts`;
 `scripts/tasks/tasks-status.ts` (`tasksMotionStepAtElapsed`); and
 `src/modules/tasks-dashboard/TasksDashboardOverview.test.ts`.
 
-**Impossible if true:** A timer for a collapsed dock, inactive tab, or inactive workspace; a
-steady visible tick that scans every task folder; a held READY row that repaints; a pane-local
-copy of a watch ramp or glyph sequence; a motion step derived from a frame or paint ordinal.
+**Impossible if true:** A timer for a collapsed dock, inactive tab, or inactive workspace; one
+timer per task row; a motion frame that reads task files or rebuilds rows; a held READY row that
+repaints; a pane-local watch ramp, glyph sequence, or animation sample rate.
 
 **Verification:** `bun test src/modules/tasks-dashboard` and the hidden-path, 500-folder
 painted-window, positive-control, and motion arms of
@@ -155,34 +158,36 @@ painted-window, positive-control, and motion arms of
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-08-06
 
 ### Fleet extras name their repository scope
 
-**Invariant:** If the active workspace is the main Invar checkout, then live task rows may show
-the fleet's gate glance, line delta, and exploring/building phase. In every other workspace the
-pane states that those extras describe the main checkout only and does not read or imply
-workspace-local fleet facts.
+**Invariant:** If the active workspace is the main Invar checkout or one of its owned
+`.invar/worktrees/`, then live task rows show the fleet's gate glance, line delta, and
+exploring/building phase. In every other workspace the pane states that those extras describe the
+main checkout only and does not read or imply workspace-local fleet facts.
 
 **Scope:** Fleet-only rows and fields in `TasksDashboardOverview`.
 
-**Mechanism:** `INVAR_FLEET_REPOSITORY_ROOT` resolves the main checkout even when the app code
-runs from a task worktree. The overview compares resolved workspace roots before calling either
-fleet reader.
+**Mechanism:** `fleetRepositoryRootForWorkspace` resolves the main checkout even when the app
+runs from a task worktree. The overview admits the exact fleet root and descendants of its
+`.invar/worktrees/` directory before calling either fleet reader. A separator-terminated prefix
+keeps similarly named sibling paths outside that scope.
 
 **Evidence:** `scripts/tasks/tasks-status.ts` (`INVAR_FLEET_REPOSITORY_ROOT`,
 `readTaskFleetFacts`, `readFleetGateGlance`) and
-`src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`refreshFleetFacts`).
+`src/modules/tasks-dashboard/TasksDashboardOverview.ts` (`refreshPaintedFacts`).
 
 **Impossible if true:** A fixture or unrelated project displaying main-checkout deltas as its
-own; a fleet reader running for an unrelated active workspace.
+own; a fleet reader running for an unrelated active workspace; a dispatched Invar worktree whose
+pane phase differs from `tasks:watch` over the same task record.
 
 **Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardOverview.test.ts` and
 the scoped fixture arm of `bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-08-06
 
 ### Tasks stay hidden by default
 
@@ -217,8 +222,9 @@ focus; turning the setting off hiding a dock the reader opened.
 **Invariant:** If the dashboard needs a task fact, then it obtains it by importing the exported
 readers of `scripts/tasks/tasks-status.ts` — `readTaskRecords`, `builderStanding`,
 `startedAtMilliseconds`, `landingStamp`, `completedStateAttachment`, `agentIdentity`,
-`formatDuration`, `PRIORITY_ORDER`, `tasksTreeStamp`, the fleet-fact readers, the exported
-motion tables, and the exported motion cadence (`tasksMotionStepAtElapsed`) — and it
+`formatDuration`, `PRIORITY_ORDER`, `tasksStateDirectoriesStamp`, the fleet-fact readers,
+`projectTasksWatchTaskGroup`, the exported motion tables, and the exported motion cadence
+(`tasksMotionStepAtElapsed`) — and it
 re-implements no reader or watch vocabulary: no second folder parser, no second readiness rule,
 no second duration formula, no copied colour or glyph ramp, and no second motion cadence. The
 pane adds only what a terminal cannot: ivue reactivity, selection, and opening files.
@@ -231,6 +237,8 @@ executes nothing.
 - *One readiness rule* — READY versus building is `builderStanding`, the same round-anchor rule
   the `tasks:live` lens prints; the pane cannot drift from the terminal.
 - *One duration vocabulary* — `formatDuration` renders both the CLI's and the pane's clocks.
+- *One two-row projection* — `projectTasksWatchTaskGroup` generates the title and detail segments
+  consumed by `tasks:watch` and `TasksDashboardPaneRenderer`.
 - *The seam grows at the generator* — a fact the pane needs and the CLI does not yet expose is
   added as an export in `tasks-status.ts`, never re-derived pane-side (`taskFileName` on
   `TaskRecord` is the precedent).
@@ -246,19 +254,24 @@ import list at the top of `TasksDashboardOverview.ts`.
 process per refresh and parses paint, not facts. Embedding the `tasks:watch` PTY widget — the
 user named that an interim only; it polls redraws where the pane is reactive.
 
-**Evidence:** `scripts/tasks/tasks-status.ts` (exports, `builderStanding`, `landingStamp`);
-`src/modules/tasks-dashboard/TasksDashboardOverview.ts` (the single import site).
+**Evidence:** `scripts/tasks/tasks-status.ts` (`projectTasksWatchTaskGroup`, `live`);
+`src/modules/tasks-dashboard/TasksDashboardOverview.ts` (fact imports);
+`src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts` (`taskGroupLine`);
+`src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts` (exact title and detail
+projection parity).
 
 **Impossible if true:** A folder-walking loop, a `State:`/`Priority:` line parser, a readiness
-comparison, or a duration formatter defined inside `src/modules/tasks-dashboard/`.
+comparison, a duration formatter, or a second Live title/detail layout inside
+`src/modules/tasks-dashboard/`.
 
-**Verification:** `grep -rn "readdirSync\|State:\|Priority:" src/modules/tasks-dashboard/*.ts
---include='*.ts' | grep -v test | grep -v invariant` names no parser; and
-`bun test src/modules/tasks-dashboard/TasksDashboardOverview.test.ts`.
+**Verification:** `bun scripts/ast-query.ts identifiers readdirSync --path
+src/modules/tasks-dashboard --require-zero` and `bun test
+src/modules/tasks-dashboard/TasksDashboardOverview.test.ts
+src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-30
+**Last refined:** 2026-08-06
 
 ### The tasks dashboard is a pane content citizen
 
@@ -350,19 +363,23 @@ the absent-tree arm of `bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
 
 ### Each dashboard lens has one stable row shape
 
-**Invariant:** If the Live lens paints a task, then its title owns the first row and its
-standing owns the second row; if Active or Done paints a task, then all task text and actions
-stay on one truncated row. Active section names start with a capital letter.
+**Invariant:** If the Live lens paints a task, then its title owns the first row and its standing
+owns the second row; if Active or Done paints a task, then all task text stays on one row. At
+rest, text uses the full row with no reserved action cells. Hover highlights the whole task
+group and overlays the action cells on its last row, using one geometry for truncation, paint,
+hit testing, and tooltips. Active section names start with a capital letter.
 
 **Scope:** `TasksDashboardOverview.taskRows`, `buildLiveRows`, `buildActiveRows`,
 `buildDoneRows`, and `TasksDashboardPaneRenderer.renderRow`. Every pane width and task count.
 
-**Mechanism:** `taskRows` adds a detail row only for Live. `renderRow` reserves the pinned
-action cells and sends the remaining text through `WrapText.clipToWidth` with the active
-theme's one-cell ellipsis.
+**Mechanism:** `taskRows` adds a detail row only for Live. `actionProjection` exists only for
+the hovered task number. It returns the text end and half-open action ranges that
+`renderPieces`, `renderActions`, `taskActionAt`, and `tooltipAt` all consume. `renderRow` paints
+every row to `innerWidth`, so hover changes content inside a fixed row and never moves a sibling.
 
-**Generates:** Two-row Live items; one-row Active and Done items; capitalized Active section
-headers; one shared grapheme-safe truncation path.
+**Generates:** Two-row Live items; one-row Active and Done items; full-width rest text;
+whole-group hover; hover-only action overlays; capitalized Active section headers; one shared
+grapheme-safe truncation path.
 
 **Rejected alternatives:** A detail row for every lens — it doubles the Active and Done
 height without adding status information. Direct string slicing — it can split a grapheme or
@@ -373,8 +390,9 @@ section names); `src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts`
 and one-row truncated lenses); `scripts/harness/smoke-tasks-dashboard-harness.ts` (default-width
 PTY projection and large-tree arm).
 
-**Impossible if true:** Live status on the title row; an Active or Done item consuming a
-second row; a lower-case Active section name; a clipped task name without the theme ellipsis.
+**Impossible if true:** Live status on the title row; an Active or Done item consuming a second
+row; a blank reserved action cell at rest; only one row of a Live group highlighting; hover
+moving a sibling row; paint and hit ranges disagreeing; a row background ending one cell early.
 
 **Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardOverview.test.ts
 src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts` and
@@ -382,27 +400,27 @@ src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts` and
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-08-06
 
 ### Dashboard controls state their selection and next action
 
-**Invariant:** If a lens is selected, then its label and exactly one cell on both sides keep
-the theme selection background across focus and live theme changes; if automatic lens cycling
-is stopped or running, then the cycle control shows and explains the action that the next
-activation performs.
+**Invariant:** If the lens control paints, then it is the contiguous
+`| LIVE | ACTIVE | DONE |` segmented group with no dead cell between lenses. Every segment uses
+the same rest, hover, and selected grammar from one half-open geometry. If automatic lens cycling
+is stopped or running, then the cycle control shows and explains the next activation.
 
 **Scope:** `TasksDashboardPaneRenderer.renderTabLine`, `lensTabs`, `hitTestTabLine`, and
 `tooltipForTabLineTarget`; `TasksDashboardPaneContent.tooltipAt` and the tab-line
 pointer-down path.
 
-**Mechanism:** `lensTabs` is the single paint and hit geometry. `renderTabLine` resolves
-selected and hovered backgrounds from the current palette and resolves cycle glyphs from
-`TaskActionIconSet`; `PaneContent.tooltipAt` routes the same hit target to the shared tooltip
-host. Stopping cycling changes only `cycling` and keeps the current lens.
+**Mechanism:** `lensTabs` generates adjacent half-open ranges and their complete border text.
+`renderTabLine` paints those exact strings. `hitTestTabLine` reads the same ranges. Selected and
+hovered backgrounds come from the current palette. The cycle glyph comes from
+`TaskActionIconSet`, and `PaneContent.tooltipAt` routes it to the shared tooltip host.
 
-**Generates:** Persistent padded lens selection; theme-derived tab tones; start and stop
-glyphs; `Start automatic lens cycling` and `Stop automatic lens cycling` tooltips; stop on
-the current lens.
+**Generates:** One contiguous three-segment lens control; theme-derived rest, hover, and selected
+tones; start and stop glyphs; `Start automatic lens cycling` and
+`Stop automatic lens cycling` tooltips; stop on the current lens.
 
 **Rejected alternatives:** A literal play glyph or colour in the renderer — it bypasses the
 theme capability ladder. A tasks-owned tooltip surface — it would duplicate the shared
@@ -413,9 +431,9 @@ palette chunks, and tooltip polarities); `src/modules/tasks-dashboard/TasksDashb
 (start and stop activation); `scripts/harness/smoke-tasks-dashboard-harness.ts` (FrameProbe
 padding and live theme switch).
 
-**Impossible if true:** A selected lens shown only by foreground colour; a selected
-background that omits either padding cell; a theme switch that keeps the old selection tone;
-a running control that still advertises start; a second click that cannot stop cycling.
+**Impossible if true:** Two border cells or a blank cell between adjacent lenses; a border cell
+that activates no lens; paint and hit geometry disagreeing; a theme switch keeping the old
+selection tone; a running control advertising start; a second click that cannot stop cycling.
 
 **Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts
 src/modules/tasks-dashboard/TasksDashboardPaneContent.test.ts` and
@@ -423,7 +441,51 @@ src/modules/tasks-dashboard/TasksDashboardPaneContent.test.ts` and
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-08-06
+
+### Task pane scrolling and copy use shared seams
+
+**Invariant:** If a reader scrolls or selects text in the Tasks pane, then scrolling uses the
+shared `Momentum` and pane scroll port over `TasksDashboardOverview.scrollTop`, while selection
+uses `TextSelectionModel` and `SelectionDragBehavior` and copy reaches `Clipboard` through the
+generic `text-selection` capability.
+
+**Scope:** Wheel, thumb, pointer selection, edge autoscroll, Ctrl+C, and Super+C in
+`TasksDashboardPaneContent`.
+
+**Components:**
+- *One scroll writer* — wheel input queues `verticalMomentum`; `tickScroll` alone writes the
+  resulting row steps through `TasksDashboardOverview.scrollBy`.
+- *One selection model* — pointer drag and painted ranges read one `TextSelectionModel`.
+- *One copy route* — `tasks.copy` asks `ApplicationContributionContext.copyPaneSelection` to copy
+  the generic `text-selection` capability and publish the shared copy result.
+
+**Mechanism:** `TasksDashboardPaneContent` attaches the host's `PaneScrollPort`, steps
+`Momentum`, and publishes the same scroll extent the host uses for its thumb. `RootView`
+advances the visible right-dock content from the same frame hook as panel cells. Its
+`updatePaneVerticalScrollBar` generator paints both hosts from the content's one position and
+extent. The content rebuilds selected text from `TasksDashboardPaneRenderer.textForRow` with
+`WrapText.sliceByDisplayCells`, so copied text and painted task text share one projection.
+
+**Generates:** Momentum scrolling; a host-painted thumb; inclusive pointer selection; edge
+autoscroll; OSC 52 copy; shared copied-character telemetry.
+
+**Evidence:** `src/modules/tasks-dashboard/TasksDashboardPaneContent.ts` (`tickScroll`,
+`selectionDrag`, `copySelection`); `src/modules/tasks-dashboard/TasksDashboardPlugin.ts`
+(`tasks.copy`); `src/modules/ui/RootView.ts` (`rightDockBody` pointer drag routing,
+`updatePaneVerticalScrollBar`, and `tickHostedPaneScroll`);
+`scripts/harness/smoke-tasks-dashboard-harness.ts` (scroll and copy arms).
+
+**Impossible if true:** Wheel input writing `scrollTop` before an animation frame; a second task
+scroll position; a Tasks drag that copies zero characters over visible text; a copied Tasks
+selection that emits no OSC 52 sequence; a thumb that reports a different extent than the rows.
+
+**Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardPaneContent.test.ts` and
+`bun scripts/harness/smoke-tasks-dashboard-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-06
 
 ### Task actions use the workspace and runtime seams
 

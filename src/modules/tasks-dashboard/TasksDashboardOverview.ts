@@ -19,13 +19,12 @@
 // invariant: Fleet extras name their repository scope (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Each dashboard lens has one stable row shape (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 import { existsSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import {
   INVAR_FLEET_REPOSITORY_ROOT,
   PRIORITY_ORDER,
-  TASKS_MOTION_STEP_MILLISECONDS,
   agentIdentity,
   builderStanding,
   completedStateAttachment,
@@ -42,6 +41,7 @@ import {
   type TaskFleetFacts,
   type TaskRecord,
 } from '../../../scripts/tasks/tasks-status';
+import { TASKS_WATCH_ANIMATION_FRAMES_PER_SECOND } from '../../../scripts/tasks/TasksWatchRenderer';
 
 class $TasksDashboardOverview {
   constructor(
@@ -49,11 +49,11 @@ class $TasksDashboardOverview {
   ) {}
 
   protected readonly dataHeartbeatMilliseconds = 1000;
-  // One heartbeat is one wall-clock motion step (#348's contract): the
-  // interval IS the step duration, so each tick advances exactly one step
-  // and the elapsed math below stays a pure product of tick count and time.
+  // One observed heartbeat samples the same time-based motion at the same
+  // 60fps cadence as tasks:watch. The motion tables still advance at six
+  // steps per second; the heartbeat controls smooth sampling, not speed.
   protected readonly motionHeartbeatMilliseconds =
-    TASKS_MOTION_STEP_MILLISECONDS;
+    1_000 / TASKS_WATCH_ANIMATION_FRAMES_PER_SECOND;
   protected readonly probeEveryTicks = 2;
   protected readonly durationRefreshEveryTicks = 60;
   declare $watch: typeof import('vue').watch;
@@ -223,9 +223,9 @@ class $TasksDashboardOverview {
 
   /**
    * How long the pane's motion has run, in milliseconds. The motion tables in
-   * `tasks-status.ts` step on wall-clock time, so the pane hands them TIME and
-   * never its paint count: the pane paints at 30 fps and the CLI watch at
-   * 60 fps, and both must show the same step at the same moment (#348).
+   * `tasks-status.ts` step on elapsed time, so the pane hands them TIME and
+   * never raw paint identity. Both surfaces sample the same motion at 60 fps,
+   * so they show the same step at the same elapsed moment (#348).
    */
   get animationElapsedMilliseconds(): number {
     return this.animationPaint.value * this.motionHeartbeatMilliseconds;
@@ -345,9 +345,16 @@ class $TasksDashboardOverview {
   protected prepareFleetScope(): void {
     const fleetRepositoryRoot =
       this.dependencies.fleetRepositoryRoot?.() ?? INVAR_FLEET_REPOSITORY_ROOT;
+    const resolvedWorkspaceRoot = resolve(this.dependencies.workspaceRoot());
+    const resolvedFleetRepositoryRoot = resolve(fleetRepositoryRoot);
+    const fleetWorktreesPrefix = `${join(
+      resolvedFleetRepositoryRoot,
+      '.invar',
+      'worktrees',
+    )}${sep}`;
     this.fleetScopeMatches.value =
-      resolve(this.dependencies.workspaceRoot()) ===
-      resolve(fleetRepositoryRoot);
+      resolvedWorkspaceRoot === resolvedFleetRepositoryRoot ||
+      resolvedWorkspaceRoot.startsWith(fleetWorktreesPrefix);
     this.fleetFactsByFolder.clear();
     this.fleetFactStampsByFolder.clear();
     this.availableSessionNames = new Set();

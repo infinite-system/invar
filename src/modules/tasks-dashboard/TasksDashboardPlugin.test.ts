@@ -46,6 +46,7 @@ interface RecordingContext {
   rightDockHost: PanelHost.Instance;
   dockContents: PaneContent[];
   keybindings: number;
+  keybindingActions: string[];
   commandIds: string[];
   commandRunners: Map<string, () => void>;
   commandDisposals: number;
@@ -54,6 +55,7 @@ interface RecordingContext {
   openedPaths: string[];
   editorFocusCount: number;
   runtimeRequests: Array<{ kind: string; request: Record<string, unknown> }>;
+  copiedPaneIds: string[];
   snapshot: () => Record<string, unknown>;
 }
 
@@ -85,12 +87,14 @@ function makeContext(
   const commandIds: string[] = [];
   const commandRunners = new Map<string, () => void>();
   const settingIdentifiers: string[] = [];
+  const keybindingActions: string[] = [];
   const rightDockHost = new PanelHost.Class();
   let snapshotProvider: (() => Record<string, unknown>) | null = null;
   const recording: RecordingContext = {
     rightDockHost,
     dockContents,
     keybindings: 0,
+    keybindingActions,
     commandIds,
     commandRunners,
     commandDisposals: 0,
@@ -99,6 +103,7 @@ function makeContext(
     openedPaths: [],
     editorFocusCount: 0,
     runtimeRequests: [],
+    copiedPaneIds: [],
     snapshot: () => snapshotProvider?.() ?? {},
     context: {
       workspaceSet: {
@@ -131,8 +136,9 @@ function makeContext(
         },
         ellipsisCell: '…',
       },
-      registerKeybindings: () => {
+      registerKeybindings: (keybindings: readonly { action: string }[]) => {
         recording.keybindings += 1;
+        keybindingActions.push(...keybindings.map((binding) => binding.action));
       },
       registerRightDockContent: (content: PaneContent) => {
         dockContents.push(content);
@@ -195,6 +201,9 @@ function makeContext(
         },
       },
       requestRender: () => {},
+      copyPaneSelection: (content: PaneContent) => {
+        recording.copiedPaneIds.push(content.id);
+      },
       openRuntimePane: (kind: string, request: Record<string, unknown>) => {
         recording.runtimeRequests.push({ kind, request });
         return true;
@@ -221,13 +230,30 @@ test('activation registers the dock pane, commands, keybindings, setting, and st
   expect(recording.commandIds).toContain('view.showTasks');
   expect(recording.commandIds).toContain('tasks.open');
   expect(recording.commandIds).toContain('tasks.toggleCycle');
+  expect(recording.commandIds).toContain('tasks.copy');
+  expect(
+    recording.keybindingActions.filter((action) => action === 'tasks.copy'),
+  ).toHaveLength(2);
   const snapshot = recording.snapshot();
   expect(snapshot.tasksLens).toBe('live');
   expect(snapshot.tasksAvailable).toBe(false);
   expect(snapshot.tasksRows).toBe(0);
   recording.commandRunners.get('view.showTasks')?.();
   expect(recording.snapshot().tasksAvailable).toBe(true);
+  // The pinned fleet root differs from this workspace, so one scope row
+  // precedes the task's title and detail rows.
   expect(recording.snapshot().tasksRows).toBe(3);
+  plugin.disposeApplication();
+  rmSync(workspaceRoot, { recursive: true, force: true });
+});
+
+test('tasks.copy sends the tasks text-selection citizen through the host copy seam', () => {
+  const workspaceRoot = makeWorkspaceRoot(true);
+  const plugin = new TasksDashboardPlugin.Class();
+  const recording = makeContext(workspaceRoot);
+  plugin.activateApplication(recording.context);
+  recording.commandRunners.get('tasks.copy')?.();
+  expect(recording.copiedPaneIds).toEqual(['tasks']);
   plugin.disposeApplication();
   rmSync(workspaceRoot, { recursive: true, force: true });
 });
@@ -326,7 +352,8 @@ test('the detail row attaches through the terminal runtime and states a missing 
   recording.commandRunners.get('view.showTasks')?.();
   const pane = recording.dockContents[0]!;
   pane.onResize(60, 10);
-  // Scope row, task row, detail row. The session is the first pinned action.
+  // Scope row, task row, detail row. Hover reveals the detail row's first pinned action.
+  expect(pane.onPointerMove?.(5, 3)).toBe(true);
   expect(pane.onPointerDown?.(45, 3)).toBe(true);
   expect(recording.runtimeRequests).toHaveLength(1);
   expect(recording.runtimeRequests[0]?.kind).toBe('terminal');

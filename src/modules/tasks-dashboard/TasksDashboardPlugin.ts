@@ -83,6 +83,16 @@ class $TasksDashboardPlugin implements ApplicationContributor {
         action: 'tasks.toggleCycle',
         context: 'tasksDashboard',
       },
+      {
+        chord: { key: 'c', ctrl: true },
+        action: 'tasks.copy',
+        context: 'tasksDashboard',
+      },
+      {
+        chord: { key: 'c', super: true },
+        action: 'tasks.copy',
+        context: 'tasksDashboard',
+      },
     ]);
     const cycleSecondsSetting = context.registerSetting({
       identifier: 'tasksDashboardCycleSeconds',
@@ -324,13 +334,19 @@ class $TasksDashboardPlugin implements ApplicationContributor {
         id: 'tasks.previousLens',
         title: 'Tasks: Previous Lens',
         category: 'Tasks',
-        run: () => overview().advanceLens(-1),
+        run: () => {
+          this.paneContent?.haltScrollMomentum();
+          overview().advanceLens(-1);
+        },
       },
       {
         id: 'tasks.nextLens',
         title: 'Tasks: Next Lens',
         category: 'Tasks',
-        run: () => overview().advanceLens(1),
+        run: () => {
+          this.paneContent?.haltScrollMomentum();
+          overview().advanceLens(1);
+        },
       },
       {
         id: 'tasks.open',
@@ -347,6 +363,14 @@ class $TasksDashboardPlugin implements ApplicationContributor {
         title: 'Tasks: Play/Pause Overview Cycle',
         category: 'Tasks',
         run: () => overview().toggleCycling(),
+      },
+      {
+        id: 'tasks.copy',
+        title: 'Tasks: Copy Selection',
+        category: 'Tasks',
+        run: () => {
+          if (this.paneContent) context.copyPaneSelection(this.paneContent);
+        },
       },
     ]);
   }

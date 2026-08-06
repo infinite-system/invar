@@ -1585,10 +1585,10 @@ class $Bootstrap {
       // The LSP hover-card dwell advances on the SAME frame tick (holds a frame while counting or while a
       // hover request is in flight, false once the card is shown or disarmed).
       animating = view.tickHover(deltaTimeSeconds) || animating;
-      // The agent transcript's scroll-momentum glide + drag edge-autoscroll advance on the SAME tick and
-      // settle to zero at rest (idle-quiescence preserved).
+      // Every hosted pane's scroll-momentum glide + drag edge-autoscroll advances on the SAME tick and
+      // settles to zero at rest (idle-quiescence preserved).
       const panelScrollMomentumIsActive =
-        view.tickPanelScroll(deltaTimeSeconds);
+        view.tickHostedPaneScroll(deltaTimeSeconds);
       animating = panelScrollMomentumIsActive || animating;
       StatusChannel.Class.update({
         panelScrollMomentumAtRest: !panelScrollMomentumIsActive,
@@ -3133,6 +3133,12 @@ class $Bootstrap {
             !view.activityBarContainsPoint(event.x, event.y)
           ) {
             rightDockHost.blur();
+          }
+          if (
+            rightDockHost.visible.value &&
+            !view.rightDockContainsPoint(event.x, event.y)
+          ) {
+            view.clearRightDockContentPointer();
           }
           if (event.type === 'down') tooltip.clear(); // any click hides the tooltip, wherever it lands
           if (event.type === 'down' && completionPopup.open) {
