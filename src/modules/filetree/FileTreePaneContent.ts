@@ -83,6 +83,11 @@ class $FileTreePaneContent implements PaneContent {
       width: innerWidth,
       buttons: [
         {
+          action: 'openFile',
+          glyph: this.application.theme.glyph('fileTreeOpen'),
+          tooltip: 'Open file',
+        },
+        {
           action: 'revealOpenFile',
           glyph: this.application.theme.glyph('fileTreeReveal'),
           tooltip: 'Reveal open file',
@@ -172,6 +177,10 @@ class $FileTreePaneContent implements PaneContent {
         ? FileTreeHeaderRow.Class.buttonAtColumn(this.headerProjection, column)
             ?.action
         : null;
+      if (action === 'openFile') {
+        this.application.commands.run('file.open');
+        return true;
+      }
       if (action !== 'revealOpenFile') return false;
       // invariant: The tree reveal follows the active file (src/modules/filetree/filetree.invariants.md)
       workspace.revealActiveFile();

@@ -245,6 +245,10 @@ class $ThemeIcons {
         owner: 'navigation forward',
       },
       {
+        mark: unicodeVocabulary.fileTreeOpen,
+        owner: 'file-tree open file',
+      },
+      {
         mark: unicodeVocabulary.fileTreeReveal,
         owner: 'file-tree reveal',
       },
@@ -524,6 +528,7 @@ class $ThemeIcons {
         panelConnectorMiddle: '\u{251c}',
         panelConnectorLast: '\u{2570}',
         fileTreeReveal: '\u{f05b}',
+        fileTreeOpen: '\u{f07c}',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
         overviewMark: '•',
@@ -570,6 +575,7 @@ class $ThemeIcons {
         panelConnectorMiddle: '├',
         panelConnectorLast: '╰',
         fileTreeReveal: '⊙',
+        fileTreeOpen: '↥',
         diffPreviousChange: '↑',
         diffNextChange: '↓',
         overviewMark: '•',
@@ -601,6 +607,7 @@ class $ThemeIcons {
         panelConnectorMiddle: '+',
         panelConnectorLast: '\\',
         fileTreeReveal: 'o',
+        fileTreeOpen: 'O',
         diffPreviousChange: 'U',
         diffNextChange: 'D',
         overviewMark: '.',
@@ -1018,6 +1025,7 @@ export interface InterfaceGlyphVocabulary {
   panelConnectorMiddle: string;
   panelConnectorLast: string;
   fileTreeReveal: string;
+  fileTreeOpen: string;
   diffPreviousChange: string;
   diffNextChange: string;
   overviewMark: string;

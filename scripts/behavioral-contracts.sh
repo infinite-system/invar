@@ -1331,9 +1331,16 @@ fi
 
 echo "== CONTRACT iv-ssh-channel: terminal bytes and drop uploads share one SSH connection without sharing a byte route =="
 if "$BUN" "$DIR/harness/smoke-ssh-channel-harness.ts"; then
-  pass "iv ssh framing, small/large upload, remote open, resize, exit code, OSC 52, and keyboard byte sweep hold"
+  pass "iv ssh framing, small/large upload, client-native picker, remote open, resize, exit code, OSC 52, and keyboard byte sweep hold"
 else
   bad "iv ssh channel PTY drive failed"
+fi
+
+echo "== CONTRACT file-open picker: in-app and native tiers use one Open control and one path route =="
+if "$BUN" "$DIR/harness/smoke-file-open-harness.ts"; then
+  pass "the in-app browser, outside-root badge, native picker, and 100,000-line open hold"
+else
+  bad "file-open picker PTY drive failed"
 fi
 
 echo ""

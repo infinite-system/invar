@@ -17,4 +17,18 @@ test('ssh arguments and remote Invar arguments stay on their own sides', () => {
   expect(commands.channel.at(-1)).toBe("'iv' --channel-server");
   expect(commands.interactive.at(-1)).toBe("'iv' '/work tree'");
   expect(commands.interactive).toContain('-tt');
+
+  const channelCommands = SshClient.Class.commands(
+    '/tmp/control',
+    ['host'],
+    ['/workspace'],
+    'iv',
+    '/tmp/invar-channel-session.sock',
+  );
+  expect(channelCommands.channel.at(-1)).toBe(
+    "INVAR_CHANNEL_SOCKET='/tmp/invar-channel-session.sock' 'iv' --channel-server",
+  );
+  expect(channelCommands.interactive.at(-1)).toBe(
+    "INVAR_CHANNEL_SOCKET='/tmp/invar-channel-session.sock' 'iv' '/workspace'",
+  );
 });

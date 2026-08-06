@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
 // Drive `iv ssh` through a real local PTY and a spawned localhost sshd. The first arm uploads the
-// shared small and 100,000-line scale files, proves that local paths never reach SSH, and observes
-// remote Invar open each stored file. The second arm sends the keyboard invariant's pass-through
-// byte set to the existing raw-byte reporter through the same wrapper. A deliberately wrong byte
-// expectation is the assertion's positive control.
+// shared small and 100,000-line scale files, drives the remote Open control through a stub client
+// dialog, proves that local paths never reach SSH, and observes remote Invar open each stored file.
+// The second arm sends the keyboard invariant's pass-through byte set to the existing raw-byte
+// reporter through the same wrapper. A deliberately wrong byte expectation is the assertion's
+// positive control.
 //
 // Run: bun scripts/harness/smoke-ssh-channel-harness.ts
-// Read: every arm prints PASS; `ALL-PASS` means PTY, resize, upload, notification, scale, and byte
-// fidelity all held through one OpenSSH control-master connection.
+// Read: every arm prints PASS; `ALL-PASS` means PTY, resize, picker request, upload, notification,
+// scale, and byte fidelity all held through one OpenSSH control-master connection.
 import {
   chmodSync,
   mkdtempSync,
@@ -20,12 +21,14 @@ import { join } from 'node:path';
 import { HarnessInput } from './HarnessInput';
 import { pass, requireCondition } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 
 const repositoryRoot = process.cwd();
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'invar-ssh-channel-'));
 const sshDirectory = join(fixtureRoot, 'ssh');
 const workspaceDirectory = join(fixtureRoot, 'workspace');
 const scaleDirectory = join(fixtureRoot, 'scale');
+const dialogBinaryDirectory = join(fixtureRoot, 'dialog-bin');
 const dropzoneDirectory = join(fixtureRoot, 'dropzone');
 const homeDirectory = join(fixtureRoot, 'home');
 const receivedBytesPath = join(fixtureRoot, 'received-key-bytes.txt');
@@ -163,6 +166,15 @@ try {
     '--directory',
     scaleDirectory,
   ]);
+  run(['mkdir', '-p', dialogBinaryDirectory]);
+  const pickerPath = join(scaleDirectory, 'picker.ts');
+  writeFileSync(pickerPath, 'export const CLIENT_PICKER_CONTENT = true;\n');
+  const dialogBinaryPath = join(dialogBinaryDirectory, 'zenity');
+  writeFileSync(
+    dialogBinaryPath,
+    '#!/usr/bin/env bash\nprintf \'%s\\n\' "$INVAR_DIALOG_PICK_PATH"\n',
+  );
+  chmodSync(dialogBinaryPath, 0o700);
   run([
     'bun',
     'build',
@@ -267,7 +279,11 @@ try {
       '--',
       workspaceDirectory,
     ],
-    environment: { INVAR_REMOTE_IV_COMMAND: remoteExecutablePath },
+    environment: {
+      INVAR_REMOTE_IV_COMMAND: remoteExecutablePath,
+      INVAR_DIALOG_PICK_PATH: pickerPath,
+      PATH: `${dialogBinaryDirectory}:${process.env.PATH ?? ''}`,
+    },
     retainFullOutput: true,
   });
   try {
@@ -300,6 +316,45 @@ try {
     pass(
       '100,000-line file uploaded and remote Invar opened the dropzone copy',
     );
+
+    const openFileGlyphs = (['nerd', 'unicode', 'ascii'] as const).map(
+      (glyphLevel) => ThemeIcons.Class.glyphFor(glyphLevel, 'fileTreeOpen'),
+    );
+    const beforePicker = applicationDriver.snapshot();
+    requireCondition(
+      beforePicker.findText('CLIENT_PICKER_CONTENT') === null,
+      'positive control starts before the client-picked file is visible',
+    );
+    const openFilePosition = openFileGlyphs
+      .map((glyph) => beforePicker.findText(glyph))
+      .find((position) => position !== null);
+    if (!openFilePosition)
+      throw new Error('Remote Open file control is absent');
+    applicationDriver.sendMouse({
+      kind: 'move',
+      column: openFilePosition.column,
+      row: openFilePosition.row,
+      button: 'none',
+    });
+    await applicationDriver.awaitGridCondition(
+      'the remote Open file control receives hover before click',
+      (snapshot) =>
+        snapshot.cell(openFilePosition.row, openFilePosition.column)
+          ?.background !==
+        beforePicker.cell(openFilePosition.row, openFilePosition.column)
+          ?.background,
+    );
+    applicationDriver.sendMouseClick({
+      column: openFilePosition.column,
+      row: openFilePosition.row,
+      button: 'left',
+    });
+    await applicationDriver.awaitGridCondition(
+      'dialog.request uploads and opens the client-native selection',
+      (snapshot) => snapshot.findText('CLIENT_PICKER_CONTENT') !== null,
+      30_000,
+    );
+    pass('remote Open used the client-native picker and dropzone upload');
 
     applicationDriver.resize(96, 32);
     await awaitRemoteSize(96, 32);

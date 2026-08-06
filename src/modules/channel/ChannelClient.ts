@@ -9,7 +9,10 @@ import {
 } from './ChannelFrame';
 
 class $ChannelClient {
-  constructor(protected readonly write: (bytes: Uint8Array) => void) {}
+  constructor(
+    protected readonly write: (bytes: Uint8Array) => void,
+    protected readonly requestHandler?: ChannelRequestHandler,
+  ) {}
 
   protected readonly decoder = new ChannelFrame.Class();
   protected welcomePromise: Promise<void> | null = null;
@@ -112,6 +115,10 @@ class $ChannelClient {
       this.welcomeResolve?.();
       return;
     }
+    if (frame.kind === ChannelFrame.Class.FRAME_KIND.Request) {
+      void this.handleRequest(frame.header);
+      return;
+    }
     if (frame.kind !== ChannelFrame.Class.FRAME_KIND.Response) {
       throw new Error(`Unexpected client channel frame kind ${frame.kind}`);
     }
@@ -130,6 +137,42 @@ class $ChannelClient {
     if (frame.header.error)
       request.reject(new Error(this.responseErrorMessage(frame.header)));
     else request.resolve(frame.header.result as Record<string, unknown>);
+  }
+
+  protected async handleRequest(
+    header: Record<string, unknown>,
+  ): Promise<void> {
+    const requestId = String(header.requestId ?? '');
+    const method = String(header.method ?? '');
+    if (!requestId || !method || !this.requestHandler) {
+      this.send(ChannelFrame.Class.FRAME_KIND.Response, {
+        requestId,
+        error: {
+          code: 'METHOD_NOT_FOUND',
+          message: `Unsupported method ${method}`,
+        },
+      });
+      return;
+    }
+    try {
+      const parameters =
+        header.parameters && typeof header.parameters === 'object'
+          ? (header.parameters as Record<string, unknown>)
+          : {};
+      const result = await this.requestHandler(method, parameters);
+      this.send(ChannelFrame.Class.FRAME_KIND.Response, {
+        requestId,
+        result,
+      });
+    } catch (error) {
+      this.send(ChannelFrame.Class.FRAME_KIND.Response, {
+        requestId,
+        error: {
+          code: 'INTERNAL',
+          message: String((error as Error)?.message ?? error),
+        },
+      });
+    }
   }
 
   protected responseErrorMessage(header: Record<string, unknown>): string {
@@ -162,3 +205,8 @@ interface PendingRequest {
   resolve: (result: Record<string, unknown>) => void;
   reject: (error: unknown) => void;
 }
+
+export type ChannelRequestHandler = (
+  method: string,
+  parameters: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;

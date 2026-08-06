@@ -1,5 +1,8 @@
 import { Static } from 'ivue/extras';
 import { unlink } from 'node:fs/promises';
+import { chmodSync, rmSync } from 'node:fs';
+import { createServer, type Server } from 'node:net';
+import { randomUUID } from 'node:crypto';
 import {
   ChannelFrame,
   type ChannelFrameKind,
@@ -11,14 +14,25 @@ import { Dropzone } from './Dropzone';
 class $ChannelServer {
   static async main(): Promise<void> {
     const server = new this((bytes) => process.stdout.write(bytes));
-    for await (const bytes of Bun.stdin.stream()) await server.receive(bytes);
+    const socketPath = process.env.INVAR_CHANNEL_SOCKET;
+    const dialogServer = socketPath
+      ? await server.listenForDialogRequests(socketPath)
+      : null;
+    try {
+      for await (const bytes of Bun.stdin.stream()) await server.receive(bytes);
+    } finally {
+      if (dialogServer)
+        await server.closeDialogServer(dialogServer, socketPath!);
+    }
   }
 
   constructor(protected readonly write: (bytes: Uint8Array) => void) {}
 
   protected readonly decoder = new ChannelFrame.Class();
   protected negotiated = false;
+  protected peerCapabilities = new Set<string>();
   protected readonly uploads = new Map<string, PendingUpload>();
+  protected readonly requests = new Map<string, PendingChannelRequest>();
 
   async receive(bytes: Uint8Array): Promise<void> {
     for (const frame of this.decoder.push(bytes)) await this.handleFrame(frame);
@@ -49,6 +63,10 @@ class $ChannelServer {
       this.handleCancel(frame.header);
       return;
     }
+    if (frame.kind === ChannelFrame.Class.FRAME_KIND.Response) {
+      this.handleResponse(frame.header);
+      return;
+    }
     throw new Error(`Unexpected channel frame kind ${frame.kind}`);
   }
 
@@ -65,10 +83,119 @@ class $ChannelServer {
       throw new Error('No common channel version');
     }
     this.negotiated = true;
+    const capabilities = Array.isArray(frame.header.capabilities)
+      ? frame.header.capabilities
+      : [];
+    this.peerCapabilities = new Set(
+      capabilities.filter(
+        (capability): capability is string => typeof capability === 'string',
+      ),
+    );
     this.send(ChannelFrame.Class.FRAME_KIND.Welcome, {
       version: '1.0',
       capabilities: ['drop.upload'],
     });
+  }
+
+  protected request(
+    method: string,
+    parameters: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    if (!this.peerSupports(method)) {
+      return Promise.reject(
+        new Error(`Remote channel does not offer ${method}`),
+      );
+    }
+    const requestId = randomUUID();
+    const response = new Promise<Record<string, unknown>>((resolve, reject) =>
+      this.requests.set(requestId, { resolve, reject }),
+    );
+    this.send(ChannelFrame.Class.FRAME_KIND.Request, {
+      requestId,
+      method,
+      parameters,
+    });
+    return response;
+  }
+
+  protected peerSupports(method: string): boolean {
+    if (this.peerCapabilities.has(method)) return true;
+    const namespace = method.slice(0, method.indexOf('.') + 1);
+    return namespace.length > 1 && this.peerCapabilities.has(`${namespace}*`);
+  }
+
+  protected handleResponse(header: Record<string, unknown>): void {
+    const requestId = this.requiredString(header.requestId, 'requestId');
+    const request = this.requests.get(requestId);
+    if (!request) throw new Error(`Response for unknown request ${requestId}`);
+    this.requests.delete(requestId);
+    if (header.error) {
+      const error = header.error as { message?: unknown };
+      request.reject(
+        new Error(String(error.message ?? 'Channel request failed')),
+      );
+      return;
+    }
+    request.resolve(this.requiredRecord(header.result, 'result'));
+  }
+
+  protected listenForDialogRequests(socketPath: string): Promise<Server> {
+    if (!/^\/tmp\/invar-channel-[A-Za-z0-9._-]+[.]sock$/u.test(socketPath)) {
+      return Promise.reject(new Error('Invalid channel session socket path'));
+    }
+    rmSync(socketPath, { force: true });
+    const dialogServer = createServer((socket) => {
+      let requestText = '';
+      socket.setEncoding('utf8');
+      socket.on('data', (text) => {
+        requestText += text;
+        const newlineIndex = requestText.indexOf('\n');
+        if (newlineIndex < 0) return;
+        let request: { method?: unknown };
+        try {
+          request = JSON.parse(requestText.slice(0, newlineIndex)) as {
+            method?: unknown;
+          };
+        } catch (error) {
+          socket.end(`${JSON.stringify({ error: String(error) })}\n`);
+          return;
+        }
+        if (request.method !== 'dialog.request') {
+          socket.end(
+            `${JSON.stringify({ error: `Unsupported method ${String(request.method)}` })}\n`,
+          );
+          return;
+        }
+        void this.request('dialog.request', {})
+          .then((result) =>
+            socket.end(
+              `${JSON.stringify({ path: typeof result.path === 'string' ? result.path : null })}\n`,
+            ),
+          )
+          .catch((error) =>
+            socket.end(`${JSON.stringify({ error: String(error) })}\n`),
+          );
+      });
+    });
+    return new Promise((resolve, reject) => {
+      dialogServer.once('error', reject);
+      dialogServer.listen(socketPath, () => {
+        chmodSync(socketPath, 0o600);
+        resolve(dialogServer);
+      });
+    });
+  }
+
+  protected closeDialogServer(
+    dialogServer: Server,
+    socketPath: string,
+  ): Promise<void> {
+    return new Promise((resolve) =>
+      dialogServer.close(() => {
+        rmSync(socketPath, { force: true });
+        resolve();
+      }),
+    );
   }
 
   protected handleRequest(header: Record<string, unknown>): void {
@@ -250,4 +377,9 @@ interface PendingUpload {
   queue: ChannelStreamQueue.Model;
   storage: Promise<{ path: string; size: number; sha256: string }>;
   opened: boolean;
+}
+
+interface PendingChannelRequest {
+  resolve: (result: Record<string, unknown>) => void;
+  reject: (error: unknown) => void;
 }

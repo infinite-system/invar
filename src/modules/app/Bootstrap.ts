@@ -89,6 +89,7 @@ import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { Dialog } from '../ui/Dialog';
 import type { SourceTextViewProvider } from '../workspace/SourceTextView.interface';
 import { PathDropController } from './PathDropController';
+import { FileOpenController } from './FileOpenController';
 
 class $Bootstrap {
   protected static awaitProjectedFrame(
@@ -595,6 +596,17 @@ class $Bootstrap {
         workspaceSet.active.focusEditor();
       },
       screenSize: () => ({ columns: renderer.width, rows: renderer.height }),
+    });
+    const fileOpenController = new FileOpenController.Class({
+      workspaceSet,
+      pathDropController,
+      boundedListPopup,
+      overlayCoordinator,
+      theme,
+      popupAnchor: () => ({
+        column: Math.floor(renderer.width / 4),
+        row: Math.floor(renderer.height / 5),
+      }),
     });
     applicationContributions.activateAll();
     app.onDispose(() => applicationContributions.dispose());
@@ -1276,6 +1288,7 @@ class $Bootstrap {
       keybindings,
       findBar,
       quickOpen,
+      fileOpenController,
       goToLinePrompt,
       quitConfirmation,
       settingsPanel,
@@ -1725,6 +1738,7 @@ class $Bootstrap {
         overlayCoordinator.openExclusiveOverlay('quickOpen', () =>
           quickOpen.showWorkspacePath(workspaceSet.active.root),
         ),
+      openFile: () => void fileOpenController.open(),
       openGoToLine: () =>
         overlayCoordinator.openExclusiveOverlay('goToLine', () =>
           goToLinePrompt.show(),
@@ -2072,6 +2086,7 @@ class $Bootstrap {
         overlayCoordinator.openExclusiveOverlay('quickOpen', () =>
           quickOpen.showWorkspacePath(workspaceSet.active.root),
         ),
+      'file.open': () => void fileOpenController.open(),
       'workspace.close': () => {
         workspaceSet.closeActive();
       },
@@ -2409,6 +2424,7 @@ class $Bootstrap {
       'quickopen.open',
       'editor.goToLine',
       'workspace.openFolder',
+      'file.open',
       'palette.open',
       'settings.toggle',
       'help.shortcuts',
@@ -3218,6 +3234,7 @@ export interface BootedApp extends AppStatusProjectionPorts {
   keybindings: KeybindingRegistry.Instance;
   findBar: FindBar.Instance;
   quickOpen: QuickOpen.Instance;
+  fileOpenController: FileOpenController.Model;
   goToLinePrompt: GoToLinePrompt.Model;
   quitConfirmation: Dialog.Model;
   settingsPanel: SettingsPanel.Instance;
