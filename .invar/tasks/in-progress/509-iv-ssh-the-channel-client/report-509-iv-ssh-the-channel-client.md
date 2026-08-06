@@ -20,8 +20,8 @@ Dependency merge: `2f3636f7556737d6ea0588164ba1181cc876f379` (`Merge task 508 dr
 routing dependency`). It brings in `0f0961b8fa3a4366455bcc97b399d703694661c9` from
 [task 508 local drop routing](../508-local-drop-opens-the-dropped-file/report-508-local-drop-opens-the-dropped-file.md).
 
-All task changes are committed. The dispatcher-created untracked `BUILDER-FUNDAMENTALS.md` file
-remains untouched.
+All task changes are committed. The dispatcher-created untracked fundamentals file remains
+untouched.
 
 ## Reproduction and result
 
@@ -43,10 +43,9 @@ isolated OpenSSH server:
 
 ## Transport and protocol
 
-The exact version 1.0 wire contract is in
-[iv-channel-protocol.md](../../../../docs/iv-channel-protocol.md). `iv ssh` starts one OpenSSH
-control master, then opens two sessions through it. The interactive session owns the PTY. A stock
-SSH exec session runs `iv --channel-server` without a PTY and carries framed RPC.
+The exact version 1.0 wire contract is part of the task commit. `iv ssh` starts one OpenSSH control
+master, then opens two sessions through it. The interactive session owns the PTY. A stock SSH exec
+session runs `iv --channel-server` without a PTY and carries framed RPC.
 
 This transport needs no sshd subsystem configuration and opens no listening port. OpenSSH owns
 authentication, multiplexing, flow control, and cleanup. A frame has a fixed 16-byte prefix, a
@@ -233,4 +232,3 @@ I did not run `scripts/merge-gate.sh` or the full behavioral-contract suite.
   `Quick safety check` prompt even though the harness set `INVAR_AGENT_BACKEND=echo`. The prompt
   reproduced during later failed probes. The SSH channel did not depend on that pane, so I did not
   change agent startup policy.
-

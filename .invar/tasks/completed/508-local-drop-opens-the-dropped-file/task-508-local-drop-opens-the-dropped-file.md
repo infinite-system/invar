@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 3cbd082e — dropped files open by kind; outside-root reads only
 
 ## In plain words
 
