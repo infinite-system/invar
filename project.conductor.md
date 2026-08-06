@@ -823,3 +823,30 @@ multi-file edit, verify EVERY named target (grep or tsc), not the
 ones that were top of mind. The post-commit `git status` habit
 catches missing files; this one needs a per-target presence check —
 and tsc on main after any src/scripts edit is two seconds.
+
+## 2026-08-06 — three clocks: screen, hit grid, status file (the #529 flake kill)
+
+Seven gate flake sightings reduced to two mechanisms, both about CLOCKS.
+The PTY emulator's screen, OpenTUI's native hit grid, and the settled
+status file advance separately. A queued frame can settle and flush the
+PREVIOUS projection after the model changed (status clock behind screen
+clock, then quiescence — the file lies until the next input). A press can
+dispatch by the previous frame's hit geometry (hit-grid clock behind
+screen clock — the gesture lands on what used to be there and is silently
+consumed). Rule: a wait or gesture that mixes clocks needs a YOKE — the
+settle-boundary republish yokes status to the settled frame; the
+hover-await-reveal gesture yokes a press to the hit grid. When a drive
+flakes under load and the assertion looks honest, ask WHICH CLOCK each
+side of the wait reads. Evidence: #529 report + probes (committed on its
+branch); post-fix 20/20 contention green vs 3-in-12 baseline.
+
+## 2026-08-06 — a READY with template tokens is not READY (placeholder check)
+
+#529 filed READY with FINAL_CONTENTION_RESULT / BUN_TEST_RESULT /
+CONVENTIONS_RESULT still in the Verification section — the report was
+templated before the runs finished and filed early. The diagnosis was
+excellent; the claims were unfilled. Rule: before gating on any READY,
+scan the report for placeholder-shaped tokens (ALL_CAPS_WITH_UNDERSCORES
+outside code fences) and for verification lines with no numbers. A claim
+without its result is a wish with a heading. Cost of the miss: one gate
+cycle; cost of the check: one grep.
