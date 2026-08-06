@@ -1,5 +1,6 @@
 import { Static } from 'ivue/extras';
 import { Files } from '../system/Files';
+import { BracketedPathPaste } from '../channel/BracketedPathPaste';
 import type {
   BoundedListPopup,
   BoundedListPopupItem,
@@ -91,6 +92,13 @@ class $PathDropController {
 
   handlePaths(paths: readonly string[]): boolean {
     if (paths.length === 0) return false;
+    if (
+      this.dependencies.pasteIntoFocusedPane(
+        BracketedPathPaste.Class.shellQuotedPaths(paths),
+      )
+    ) {
+      return true;
+    }
     const workspace = this.dependencies.workspaceSet.active;
 
     const directoryPaths: string[] = [];
@@ -149,6 +157,7 @@ export interface PathDropControllerDependencies {
   readonly droppedPathOpeners: DroppedPathOpeners;
   readonly boundedListPopup: BoundedListPopup.Instance;
   readonly overlayCoordinator: OverlayCoordinator.Instance;
+  readonly pasteIntoFocusedPane: (text: string) => boolean;
   readonly focusEditor: () => void;
   readonly screenSize: () => { columns: number; rows: number };
 }
