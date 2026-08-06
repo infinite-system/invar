@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 6cc66819 — the Open button: client-native over ssh, local-native, in-app browser
 
 Tier 1 in-app filesystem browser popup; tier 2 native local dialog
 capability; tier 3 dialog.request over the 509 channel -> client's

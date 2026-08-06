@@ -18,8 +18,8 @@ Commit on `fleet/510-the-open-button-picker-tiers`:
 
 The commit changes 23 files with 1,202 insertions and 20 deletions. The tree is
 clean apart from the dispatcher's untracked
-[BUILDER-FUNDAMENTALS.md](../../../../BUILDER-FUNDAMENTALS.md), which I left
-untouched.
+[BUILDER-FUNDAMENTALS.md](/home/parallels/dev/invar/.invar/worktrees/510-the-open-button-picker-tiers/BUILDER-FUNDAMENTALS.md),
+which I left untouched.
 
 ## Delivered behavior
 
