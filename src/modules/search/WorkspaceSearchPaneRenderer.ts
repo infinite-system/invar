@@ -162,15 +162,12 @@ class $WorkspaceSearchPaneRenderer {
     );
     chunks.push(fg(context.palette.fg)('\n'));
 
-    const summary =
-      context.workspace.flowState.value === 'searching'
-        ? 'Searching…'
-        : context.workspace.flowState.value === 'queued'
-          ? 'Search queued…'
-          : `${context.workspace.resultCount} results in ${context.workspace.fileCount.value} files`;
     chunks.push(
       fg(context.palette.dim)(
-        TextCoordinates.Class.padToDisplayWidth(` ${summary}`, context.width),
+        TextCoordinates.Class.padToDisplayWidth(
+          ` ${context.resultSummary}`,
+          context.width,
+        ),
       ),
       fg(context.palette.fg)('\n'),
     );
@@ -430,9 +427,11 @@ class $WorkspaceSearchPaneRenderer {
           fg(
             disabled
               ? context.palette.dim
-              : active || pressed
-                ? context.palette.accent
-                : context.palette.fg,
+              : pressed
+                ? context.palette.panel
+                : active
+                  ? context.palette.accent
+                  : context.palette.fg,
           )(text),
         ),
       ],
@@ -513,6 +512,7 @@ export interface WorkspaceSearchButtonZone {
 
 export interface WorkspaceSearchPaneRenderContext {
   readonly workspace: WorkspaceSearchWorkspace.Model;
+  readonly resultSummary: string;
   readonly palette: Palette;
   readonly width: number;
   readonly height: number;

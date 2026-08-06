@@ -34,6 +34,7 @@ test('the Search pane paints fields, toggles, groups, and previews', () => {
 
   const projection = WorkspaceSearchPaneRenderer.Class.render({
     workspace,
+    resultSummary: '1 result in 1 file',
     palette: ThemePalettes.Class.DARK,
     width: 32,
     height: 20,
@@ -58,6 +59,7 @@ test('the Search pane paints fields, toggles, groups, and previews', () => {
   expect(text).toContain('Aa');
   expect(text).toContain('ab');
   expect(text).toContain('.*');
+  expect(text).toContain('1 result in 1 file');
   expect(text).toContain('app.ts');
   expect(text).toContain('14 const oldValue');
   expect(text).toContain('→ new');

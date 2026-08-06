@@ -21,6 +21,7 @@ export interface ScrollbarThumbDragTarget {
     | 'editorScrollTop'
     | 'editorScrollLeft'
     | 'structureScrollTop'
+    | 'workspaceSearchScrollTop'
     | 'markdownPreviewScrollTop'
     | 'markdownPreviewScrollLeft';
   readonly pressColumn: number;

@@ -38,6 +38,7 @@ import {
   type WorkspaceSearchTreeRow,
 } from './WorkspaceSearchResultTree';
 import type { WorkspacePreparedReplacement } from './WorkspaceSearchWorkspace';
+import { SearchCountText } from './SearchCountText';
 
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 // invariant: Editable text fields share one input model (project.invariants.md)
@@ -139,6 +140,15 @@ class $WorkspaceSearchPaneContent implements PaneContent {
     return this.search.resultCount;
   }
 
+  get resultSummary(): string {
+    if (this.search.flowState.value === 'searching') return 'Searching…';
+    if (this.search.flowState.value === 'queued') return 'Search queued…';
+    return SearchCountText.Class.resultSummary(
+      this.search.resultCount,
+      this.search.fileCount.value,
+    );
+  }
+
   get keybindingContext(): string {
     return 'workspaceSearch';
   }
@@ -219,6 +229,7 @@ class $WorkspaceSearchPaneContent implements PaneContent {
     const rows = this.search.resultTree.rows;
     const baseContext: WorkspaceSearchPaneRenderContext = {
       workspace: this.search,
+      resultSummary: this.resultSummary,
       palette,
       width,
       height,
@@ -706,12 +717,12 @@ class $WorkspaceSearchPaneContent implements PaneContent {
   ): string {
     const safeQualifier = hasSkippedItems ? ' safe' : '';
     if (direction === 'apply') {
-      return `Replace ${safeItemCount}${safeQualifier} ${this.itemNoun(safeItemCount)} across ${safeFileCount} ${this.fileNoun(safeFileCount)}?`;
+      return `Replace ${safeItemCount}${safeQualifier} ${SearchCountText.Class.itemNoun(safeItemCount)} across ${safeFileCount} ${SearchCountText.Class.fileNoun(safeFileCount)}?`;
     }
     if (direction === 'undo') {
-      return `Undo will revert ${safeItemCount}${safeQualifier} ${this.itemNoun(safeItemCount)} across ${safeFileCount} ${this.fileNoun(safeFileCount)}.`;
+      return `Undo will revert ${safeItemCount}${safeQualifier} ${SearchCountText.Class.itemNoun(safeItemCount)} across ${safeFileCount} ${SearchCountText.Class.fileNoun(safeFileCount)}.`;
     }
-    return `Redo will replace ${safeItemCount}${safeQualifier} ${this.itemNoun(safeItemCount)} across ${safeFileCount} ${this.fileNoun(safeFileCount)}.`;
+    return `Redo will replace ${safeItemCount}${safeQualifier} ${SearchCountText.Class.itemNoun(safeItemCount)} across ${safeFileCount} ${SearchCountText.Class.fileNoun(safeFileCount)}.`;
   }
 
   protected changedItemsLead(
@@ -726,14 +737,6 @@ class $WorkspaceSearchPaneContent implements PaneContent {
       return `${changedItemCount} of ${allItemCount} items changed since replacement and will be skipped.`;
     }
     return `${changedItemCount} of ${allItemCount} items changed since undo and will be skipped.`;
-  }
-
-  protected itemNoun(count: number): string {
-    return count === 1 ? 'item' : 'items';
-  }
-
-  protected fileNoun(count: number): string {
-    return count === 1 ? 'file' : 'files';
   }
 
   protected locationText(

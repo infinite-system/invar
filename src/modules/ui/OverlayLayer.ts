@@ -510,19 +510,44 @@ class $OverlayLayer {
       );
       this.dependencies.commands.runSelected();
     };
-    // Find bar action buttons: hit-test the pointer against the zones the renderer drew this frame.
+    // Find bar action buttons: hit-test every pointer phase against the zones the renderer drew this
+    // frame. Hover, press, paint, and activation therefore share one geometry.
     // invariant: Find bar controls are mouse-clickable buttons (src/modules/search/search.invariants.md)
-    this.findBarText.onMouseUp = (event) => {
-      const localRow = event.y - this.findBarText.y;
-      const localColumn = event.x - this.findBarText.x;
-      const button = this.findBarButtonZones.find(
-        (zone) =>
-          zone.row === localRow &&
-          localColumn >= zone.startColumn &&
-          localColumn < zone.endColumn,
-      );
-      if (button) this.runFindButton(button.action);
+    const updateFindBarPointer = (event: MouseEvent): void => {
+      const hoveredButton = this.findBarButtonAt(event.x, event.y);
+      if (this.findBarHoveredButton.value === hoveredButton?.action) return;
+      this.findBarHoveredButton.value = hoveredButton?.action ?? null;
+      this.requestPaint();
     };
+    this.findBarBox.onMouseMove = updateFindBarPointer;
+    this.findBarBox.onMouseDrag = updateFindBarPointer;
+    this.findBarText.onMouseMove = updateFindBarPointer;
+    this.findBarText.onMouseDrag = updateFindBarPointer;
+    this.findBarBox.onMouseOut = () => {
+      if (this.findBarHoveredButton.value === null) return;
+      this.findBarHoveredButton.value = null;
+      this.requestPaint();
+    };
+    const beginFindBarButton = (event: MouseEvent): void => {
+      const button = this.findBarButtonAt(event.x, event.y);
+      this.findBarHoveredButton.value = button?.action ?? null;
+      this.findBarPressedButton.value = button?.action ?? null;
+      this.requestPaint();
+    };
+    this.findBarBox.onMouseDown = beginFindBarButton;
+    this.findBarText.onMouseDown = beginFindBarButton;
+    const finishFindBarButton = (event: MouseEvent): void => {
+      const button = this.findBarButtonAt(event.x, event.y);
+      const pressedButton = this.findBarPressedButton.value;
+      this.findBarHoveredButton.value = button?.action ?? null;
+      this.findBarPressedButton.value = null;
+      this.requestPaint();
+      if (button?.action === pressedButton) this.runFindButton(button.action);
+    };
+    this.findBarBox.onMouseUp = finishFindBarButton;
+    this.findBarBox.onMouseDragEnd = finishFindBarButton;
+    this.findBarText.onMouseUp = finishFindBarButton;
+    this.findBarText.onMouseDragEnd = finishFindBarButton;
     // Settings are editable by MOUSE, not just keyboard: click a row's label to select it, its [−]/[+]
     // steppers to change a number, its arrows to cycle an enum, or its toggle to flip a boolean. Hit-test
     // the pointer against the widget zones the renderer drew THIS frame (one geometry source).
@@ -587,6 +612,12 @@ class $OverlayLayer {
 
   get paintRevision() {
     return ref(0);
+  }
+  get findBarHoveredButton() {
+    return ref<FindBarButtonAction | null>(null);
+  }
+  get findBarPressedButton() {
+    return ref<FindBarButtonAction | null>(null);
   }
   // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
   get modalOverlayOwnsScreen(): boolean {
@@ -1000,6 +1031,22 @@ class $OverlayLayer {
     return { text: new StyledText(chunks), zones };
   }
   /** Dispatch a find-bar button click to the same FindBar action its keyboard chord runs. */
+  protected findBarButtonAt(
+    screenColumn: number,
+    screenRow: number,
+  ): FindBarButtonZone | null {
+    const localRow = screenRow - this.findBarText.y;
+    const localColumn = screenColumn - this.findBarText.x;
+    return (
+      this.findBarButtonZones.find(
+        (zone) =>
+          zone.row === localRow &&
+          localColumn >= zone.startColumn &&
+          localColumn < zone.endColumn,
+      ) ?? null
+    );
+  }
+
   protected runFindButton(action: FindBarButtonAction): void {
     const { findBar, revealFindMatch } = this.dependencies;
     switch (action) {
@@ -1430,6 +1477,8 @@ class $OverlayLayer {
         findBar,
         palette,
         findIcons: theme.findIcons,
+        hoveredButton: this.findBarHoveredButton.value,
+        pressedButton: this.findBarPressedButton.value,
       });
       this.findBarText.content = findResult.text;
       this.findBarButtonZones = findResult.buttons;

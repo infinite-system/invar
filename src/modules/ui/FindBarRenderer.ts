@@ -81,9 +81,21 @@ class $FindBarRenderer {
     ): void => {
       const cellLabel = ` ${label} `;
       const startColumn = column;
-      const painted = active
-        ? bg(palette.selection)(fg(palette.accent)(cellLabel))
-        : fg(color)(cellLabel);
+      const hovered = context.hoveredButton === action;
+      const pressed = context.pressedButton === action && hovered;
+      const background = pressed
+        ? palette.accent
+        : active
+          ? palette.selection
+          : hovered
+            ? palette.cursorLine
+            : palette.panel;
+      const foreground = pressed
+        ? palette.panel
+        : active
+          ? palette.accent
+          : color;
+      const painted = bg(background)(fg(foreground)(cellLabel));
       chunks.push(painted);
       column += TextCoordinates.Class.lineWidth(cellLabel);
       buttons.push({ action, row: buttonRow, startColumn, endColumn: column });
@@ -162,4 +174,6 @@ export interface FindBarRenderContext {
   findBar: FindBar.Instance;
   palette: Palette;
   findIcons: FindIconSet;
+  hoveredButton: FindBarButtonAction | null;
+  pressedButton: FindBarButtonAction | null;
 }
