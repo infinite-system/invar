@@ -83,3 +83,11 @@ each dialog.
   distinct state, distinct chords, no coupling to the workspace
   surface beyond shared vocabulary.
 The design doc covers both surfaces and their boundary explicitly.
+
+## Input-model inheritance (user addition)
+
+All search/replace/include/exclude inputs are citizens of the shared
+input model — "Editable text fields share one input model"
+(project.invariants.md) is BINDING: text selection, alt+backspace /
+alt+delete word removals, alt+arrow word movements, the full set.
+The design doc cites the record and names the component reused.
