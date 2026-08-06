@@ -1,0 +1,15 @@
+{
+  "task": 535,
+  "slug": "left-dock-search-surface",
+  "branch": "fleet/535-left-dock-search-surface",
+  "worktree": ".invar/worktrees/535-left-dock-search-surface",
+  "tmuxSession": "invar/535-left-dock-search-surface",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-535-left-dock-search-surface.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "d8e0668c6f20d4bfd0131dc86c327941237a83b9",
+  "startedAt": "2026-08-06T12:23:58-04:00"
+}
