@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/in-progress/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/518-live-tasks-pane-matches-tasks-watch`
 - #517 [codex-compaction-threshold-steer](.invar/tasks/in-progress/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/517-codex-compaction-threshold-steer`
-- #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/in-progress/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/514-terminal-instance-lifecycle-and-panel-chrome`
 
 ## USER-DIRECTED (16)
 - #521 [repair-in-file-replace-all-undo](.invar/tasks/active/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md)
@@ -157,9 +155,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 225 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 226 — full log: project.tasks-completed.md)
 - #516 [the-ui-design-doctrine](.invar/tasks/completed/516-the-ui-design-doctrine/task-516-the-ui-design-doctrine.md) — ACTIVE
 - #515 [find-replace-research-and-design](.invar/tasks/completed/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md) — b27d892b — Find/Replace full design landed: two surfaces, reverse-patch transactions, dialog copy, four proposed records, six milestones; milestone 1 filed as #521.
+- #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/completed/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md) — aee4a082 — Panel chrome rebuilt: one no-create bottom-panel toggle through the status seam, overlay hover grammar on instance rows, expand-trap fixed, fresh-boot drive honesty via a completed-frame boundary; three gate rounds, contract refines landed with the code.
 - #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/completed/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md) — 22c80f69 — Dropped files paste as remote-usable paths into the focused agent/terminal pane via the PaneContent drop capability.
 - #511 [inversion-design-and-sync-census](.invar/tasks/completed/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md) — 86d4388b — inversion: measured (70 sync sites) and deferred
 - #510 [the-open-button-picker-tiers](.invar/tasks/completed/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md) — 6cc66819 — the Open button: client-native over ssh, local-native, in-app browser
@@ -172,4 +171,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #500 [database-add-click-misses-popup](.invar/tasks/completed/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md) — ACTIVE
 - #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/completed/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md) — e322f281 — smokes print child failures and self-describe their homes
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/completed/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md) — 99c78b72 — frame chords survive focused panels via applicationGlobal
-- #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works

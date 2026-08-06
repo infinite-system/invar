@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — aee4a082 — Panel chrome rebuilt: one no-create bottom-panel toggle through the status seam, overlay hover grammar on instance rows, expand-trap fixed, fresh-boot drive honesty via a completed-frame boundary; three gate rounds, contract refines landed with the code.
 
 ## In plain words (user, 2026-08-05, verbatim intents)
 
