@@ -490,11 +490,7 @@ try {
       snapshot.findText('[x] Language Intelligence') !== null &&
       snapshot.findText('[x] Inline Rewrite') !== null,
   );
-  driver.sendKeys('Down');
-  await driver.awaitGridCondition(
-    'Git is selected in Extensions',
-    (snapshot) => snapshot.findText('› [x] Git') !== null,
-  );
+  await selectExtensionsRowFromFirst(driver, statusPath, '[x] Git');
   driver.sendKeys('Space');
   const disabledStatus = await HarnessSmoke.Class.awaitStatus(
     driver,

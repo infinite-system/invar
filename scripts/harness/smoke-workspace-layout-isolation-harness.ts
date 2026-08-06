@@ -16,6 +16,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import {
   awaitStatus,
   dragBetweenCells,
@@ -100,32 +101,47 @@ const driver = new PtyTestDriver.Class({
   environment: { TUI_STATUS_PATH: statusPath },
 });
 
-/** The activity bar column and each item's painted row on a settled 120x40 boot grid. */
+/** The activity bar column and each item's live painted row. */
 const activityBarColumn = 2;
-const activityItemRows: Record<string, number> = {
-  files: 4,
-  git: 6,
-  structure: 8,
-  tasks: 10,
-  monitoring: 12,
-  extensions: 14,
-};
+
+function activityItemGlyphs(identifier: string): readonly string[] {
+  return (['nerd', 'unicode', 'ascii'] as const).map((glyphLevel) => {
+    const vocabulary = ThemeIcons.Class.interfaceGlyphVocabularyFor(glyphLevel);
+    if (identifier === 'files') return vocabulary.activityFiles;
+    if (identifier === 'git') return vocabulary.activitySourceControl;
+    if (identifier === 'structure') {
+      return ThemeIcons.Class.symbolMarkFor(glyphLevel, 'type');
+    }
+    if (identifier === 'tasks') return vocabulary.activityTasks;
+    if (identifier === 'monitoring') return vocabulary.activityMonitoring;
+    if (identifier === 'extensions') return vocabulary.activityExtensions;
+    throw new Error(`no activity bar glyph is recorded for ${identifier}`);
+  });
+}
 
 function clickActivityItem(identifier: string): void {
-  const row = activityItemRows[identifier];
-  if (row === undefined) {
-    throw new Error(`no activity bar row is recorded for ${identifier}`);
+  const snapshot = driver.snapshot();
+  const glyphs = new Set(activityItemGlyphs(identifier));
+  let paintedRow = -1;
+  for (let row = 0; row < snapshot.rows; row += 1) {
+    if (glyphs.has(snapshot.cell(row, activityBarColumn)?.characters ?? '')) {
+      paintedRow = row;
+      break;
+    }
+  }
+  if (paintedRow < 0) {
+    throw new Error(`no activity bar glyph is painted for ${identifier}`);
   }
   driver.sendMouse({
     kind: 'press',
     column: activityBarColumn,
-    row,
+    row: paintedRow,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
     column: activityBarColumn,
-    row,
+    row: paintedRow,
     button: 'left',
   });
 }

@@ -529,6 +529,11 @@ try {
     'the default plugin manifest declares the Source Control view',
   );
   HarnessSmoke.Class.requireCondition(
+    pluginPrimaryDockContentIdentifiers.slice(0, 3).join(',') ===
+      'files,search,git',
+    'the default primary-dock order places Search between Files and Git',
+  );
+  HarnessSmoke.Class.requireCondition(
     activityBarItemIdentifiers.length ===
       new Set(activityBarItemIdentifiers).size &&
       activityBarItemIdentifiers.length ===
@@ -962,7 +967,15 @@ try {
   const initialActivityOrder = [
     ...(initialStatus.activityBarItemIdentifiers as string[]),
   ];
-  driver.sendKeys('Down');
+  const gitExtensionSelectionIndex =
+    pluginPrimaryDockContentIdentifiers.indexOf('git');
+  HarnessSmoke.Class.requireCondition(
+    gitExtensionSelectionIndex > 0,
+    'the canonical primary-dock order gives Git a reachable Extensions row',
+  );
+  driver.sendKeys(
+    ...Array.from({ length: gitExtensionSelectionIndex }, () => 'Down'),
+  );
   await driver.awaitGridCondition(
     'the Extensions list selects Git before disabling it',
     (candidate) => candidate.findText('› [x] Git') !== null,

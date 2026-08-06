@@ -32,6 +32,14 @@ describe('Sidebar', () => {
         pointerCalls.push({ column, row, context });
         return true;
       },
+      onPointerDrag: (column: number, row: number) => {
+        pointerCalls.push({ drag: true, column, row });
+        return true;
+      },
+      onPointerUp: (column: number, row: number) => {
+        pointerCalls.push({ up: true, column, row });
+        return true;
+      },
     };
     const sidebarRenderable: {
       onMouseScroll?: (event: {
@@ -53,6 +61,18 @@ describe('Sidebar', () => {
           shift: boolean;
           ctrl: boolean;
         };
+      }) => void;
+      onMouseDrag?: (event: {
+        x: number;
+        y: number;
+        button: number;
+        modifiers: { alt: boolean; shift: boolean; ctrl: boolean };
+      }) => void;
+      onMouseUp?: (event: {
+        x: number;
+        y: number;
+        button: number;
+        modifiers: { alt: boolean; shift: boolean; ctrl: boolean };
       }) => void;
     } = {};
     const contentBody = { x: 4, y: 3 };
@@ -85,6 +105,18 @@ describe('Sidebar', () => {
       button: 1,
       modifiers: { alt: false, shift: false, ctrl: false },
     });
+    sidebarRenderable.onMouseDrag?.({
+      x: 20,
+      y: 22,
+      button: 1,
+      modifiers: { alt: false, shift: false, ctrl: false },
+    });
+    sidebarRenderable.onMouseUp?.({
+      x: 20,
+      y: 22,
+      button: 1,
+      modifiers: { alt: false, shift: false, ctrl: false },
+    });
     contentBody.x = 9;
     contentBody.y = 6;
     sidebarRenderable.onMouseScroll?.({
@@ -111,6 +143,8 @@ describe('Sidebar', () => {
           modifiers: { alt: false, shift: false, ctrl: false },
         },
       },
+      { drag: true, column: 16, row: 19 },
+      { up: true, column: 16, row: 19 },
       {
         column: 15,
         row: 21,

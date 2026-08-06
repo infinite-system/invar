@@ -1869,6 +1869,13 @@ class $RootView {
           }) ?? sidebarBody.content)
         : '';
       sidebarBody.fg = palette.fg;
+      if (
+        primaryDockContent?.attachViewportScrollPort &&
+        !contentsWithScrollPort.has(primaryDockContent)
+      ) {
+        primaryDockContent.attachViewportScrollPort(paneScrollPort);
+        contentsWithScrollPort.add(primaryDockContent);
+      }
       synchronizePrimaryDockSplitters(palette);
       // The editor column is painted through the SAME seam as every dock and panel cell. Its default
       // content is the one native-surface citizen: the resolver hands it the region, it paints the
@@ -2537,9 +2544,14 @@ class $RootView {
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
       tickHostedPaneScroll(dtSeconds: number): boolean {
         let moving =
-          rightDockHost.visible.value && rightDockHost.activeContent
-            ? (rightDockHost.activeContent.tickScroll?.(dtSeconds) ?? false)
+          primaryDockHost.visible.value && primaryDockHost.activeContent
+            ? (primaryDockHost.activeContent.tickScroll?.(dtSeconds) ?? false)
             : false;
+        moving =
+          rightDockHost.visible.value && rightDockHost.activeContent
+            ? (rightDockHost.activeContent.tickScroll?.(dtSeconds) ?? false) ||
+              moving
+            : moving;
         for (const cell of panelHost.resolvedCells) {
           moving = (cell.content.tickScroll?.(dtSeconds) ?? false) || moving;
         }

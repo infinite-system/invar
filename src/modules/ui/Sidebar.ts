@@ -1,4 +1,4 @@
-import type { BoxRenderable, CliRenderer } from '@opentui/core';
+import type { BoxRenderable, CliRenderer, MouseEvent } from '@opentui/core';
 import { Reactive } from 'ivue';
 import type { Settings } from '../settings/Settings';
 import { ScrollGesture } from './ScrollGesture';
@@ -78,6 +78,34 @@ class $Sidebar {
       );
       renderer.requestRender();
     };
+    sidebar.onMouseDrag = (event) => {
+      primaryDockHost.activeContent?.onPointerDrag?.(
+        localColumn(event.x),
+        localRow(event.y),
+        {
+          screenColumn: event.x,
+          screenRow: event.y,
+          button: event.button,
+          modifiers: event.modifiers,
+        },
+      );
+      renderer.requestRender();
+    };
+    const finishContentPointer = (event: MouseEvent): void => {
+      primaryDockHost.activeContent?.onPointerUp?.(
+        localColumn(event.x),
+        localRow(event.y),
+        {
+          screenColumn: event.x,
+          screenRow: event.y,
+          button: event.button,
+          modifiers: event.modifiers,
+        },
+      );
+      renderer.requestRender();
+    };
+    sidebar.onMouseUp = finishContentPointer;
+    sidebar.onMouseDragEnd = finishContentPointer;
   }
 }
 

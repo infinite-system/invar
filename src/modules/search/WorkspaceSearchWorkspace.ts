@@ -10,6 +10,7 @@ import {
   type WorkspaceSearchResult,
 } from './WorkspaceSearchBackend';
 import { WorkspaceSearchPathFilter } from './WorkspaceSearchPathFilter';
+import { WorkspaceSearchResultTree } from './WorkspaceSearchResultTree';
 
 /** Per-workspace query, generation, result, and open-document overlay state. */
 // invariant: Editable text fields share one input model (project.invariants.md)
@@ -20,6 +21,7 @@ class $WorkspaceSearchWorkspace {
     this.includeInputModel = this.createTextInput();
     this.excludeInputModel = this.createTextInput();
     this.backend = options.backend ?? new WorkspaceSearchBackend.Class();
+    this.resultTree = this.createResultTree();
   }
 
   protected readonly backend: WorkspaceSearchBackend.Instance;
@@ -31,9 +33,15 @@ class $WorkspaceSearchWorkspace {
   // invariant: Cost tracks the actively observed set (project.invariants.md)
   protected readonly resultStorage: WorkspaceSearchResult[] = [];
   protected readonly resultFilePaths = new Set<string>();
+  readonly resultTree: WorkspaceSearchResultTree.Model;
+  protected queuedSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected createTextInput(): TextInputModel.Model {
     return new TextInputModel.Class();
+  }
+
+  protected createResultTree(): WorkspaceSearchResultTree.Model {
+    return new WorkspaceSearchResultTree.Class();
   }
 
   get queryInput(): TextInputModel.Model {
@@ -102,7 +110,20 @@ class $WorkspaceSearchWorkspace {
     return ref(0);
   }
 
+  queueSearch(): void {
+    if (this.queuedSearchTimer !== null) clearTimeout(this.queuedSearchTimer);
+    this.flowState.value = 'queued';
+    this.queuedSearchTimer = setTimeout(() => {
+      this.queuedSearchTimer = null;
+      void this.search();
+    }, 120);
+  }
+
   async search(): Promise<readonly WorkspaceSearchResult[]> {
+    if (this.queuedSearchTimer !== null) {
+      clearTimeout(this.queuedSearchTimer);
+      this.queuedSearchTimer = null;
+    }
     const generation = this.queryGeneration.value + 1;
     this.queryGeneration.value = generation;
     this.backend.cancel();
@@ -146,12 +167,17 @@ class $WorkspaceSearchWorkspace {
     }
 
     this.limited.value = backendResult.limited;
+    this.publishResultMutation();
     this.overlayOpenDocuments(openDocumentHandles, request);
     this.flowState.value = 'ready';
     return this.results;
   }
 
   cancel(): void {
+    if (this.queuedSearchTimer !== null) {
+      clearTimeout(this.queuedSearchTimer);
+      this.queuedSearchTimer = null;
+    }
     this.queryGeneration.value++;
     this.backend.cancel();
     this.flowState.value = 'idle';
@@ -239,6 +265,7 @@ class $WorkspaceSearchWorkspace {
     this.resultStorage.length = 0;
     this.resultFilePaths.clear();
     this.fileCount.value = 0;
+    this.resultTree.reset();
     this.publishResultMutation();
   }
 
@@ -253,6 +280,11 @@ class $WorkspaceSearchWorkspace {
 
   protected publishResultMutation(): void {
     this.fileCount.value = this.resultFilePaths.size;
+    this.resultTree.updateResults(
+      this.resultStorage,
+      this.limited.value,
+      this.replacementInput.value.length > 0,
+    );
     this.resultVersion.value++;
   }
 
@@ -278,4 +310,4 @@ export interface WorkspaceSearchWorkspaceOptions {
 }
 
 export type WorkspaceSearchFlowState =
-  'idle' | 'searching' | 'ready' | 'unavailable' | 'failed';
+  'idle' | 'queued' | 'searching' | 'ready' | 'unavailable' | 'failed';
