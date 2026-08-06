@@ -1,0 +1,15 @@
+{
+  "task": 514,
+  "slug": "terminal-instance-lifecycle-and-panel-chrome",
+  "branch": "fleet/514-terminal-instance-lifecycle-and-panel-chrome",
+  "worktree": ".invar/worktrees/514-terminal-instance-lifecycle-and-panel-chrome",
+  "tmuxSession": "invar/514-terminal-instance-lifecycle-and-panel-chrome",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-514-terminal-instance-lifecycle-and-panel-chrome.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "83c03db80cb659fc48272f90adca051908ecc5c1",
+  "startedAt": "2026-08-05T22:47:12-04:00"
+}

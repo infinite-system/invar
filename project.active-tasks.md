@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/in-progress/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md)  [building]
+  `tmux attach -t invar/514-terminal-instance-lifecycle-and-panel-chrome`
 - #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/in-progress/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md)  [building]
   `tmux attach -t invar/513-drops-into-agents-paste-the-remote-path`
 
