@@ -5,9 +5,9 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Quick Open activates the selected entry (src/modules/search/search.invariants.md)
 // invariant: File enumeration failures stay visible (src/modules/search/search.invariants.md)
-import { existsSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, join } from 'node:path';
+import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -30,6 +30,13 @@ const degradedHomeDirectory = mkdtempSync(
 );
 
 const degradedStatusPath = join(degradedHomeDirectory, 'status.json');
+
+const degradedBinaryDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-quickopen-path-without-rg-'),
+);
+
+symlinkSync('/usr/bin/setsid', join(degradedBinaryDirectory, 'setsid'));
+symlinkSync('/usr/bin/git', join(degradedBinaryDirectory, 'git'));
 
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 HarnessSmoke.Class.runGit(degradedFixtureRoot, ['init', '-q']);
@@ -86,15 +93,6 @@ await Bun.write(
 );
 
 await Bun.write(join(degradedFixtureRoot, 'ignored', 'hidden.txt'), 'hidden\n');
-
-function pathWithoutRipgrep(): string {
-  return (process.env.PATH ?? '')
-    .split(delimiter)
-    .filter(
-      (pathEntry) => pathEntry.length > 0 && !existsSync(join(pathEntry, 'rg')),
-    )
-    .join(delimiter);
-}
 
 function quickOpenDialogBounds(
   status: StatusSnapshot,
@@ -450,7 +448,7 @@ try {
     rows: 40,
     homeDirectory: degradedHomeDirectory,
     environment: {
-      PATH: pathWithoutRipgrep(),
+      PATH: degradedBinaryDirectory,
       TUI_STATUS_PATH: degradedStatusPath,
     },
   });
@@ -524,4 +522,5 @@ try {
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   await HarnessSmoke.Class.removeTemporaryDirectory(degradedFixtureRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(degradedHomeDirectory);
+  await HarnessSmoke.Class.removeTemporaryDirectory(degradedBinaryDirectory);
 }
