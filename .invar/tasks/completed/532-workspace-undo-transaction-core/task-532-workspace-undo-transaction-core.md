@@ -1,7 +1,7 @@
 # 532 — workspace undo transaction core
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — accf2bc8 — Milestone 2 data core: reverse-patch transactions, interned arena, workspace undo coordinator with lifecycle-safe external references; no visible change, conductor-driven.
 Engine: codex
 Environment: linux
 Model: 5.6-sol

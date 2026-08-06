@@ -850,3 +850,24 @@ scan the report for placeholder-shaped tokens (ALL_CAPS_WITH_UNDERSCORES
 outside code fences) and for verification lines with no numbers. A claim
 without its result is a wish with a heading. Cost of the miss: one gate
 cycle; cost of the check: one grep.
+
+## 2026-08-06 — the acceptance protocol (user-ratified, all five MUSTS)
+
+The user ratified five protocol rules after the night of nine green
+landings with three visible failures. Now operative as RULE THREE in the
+conductor skill: (1) conductor acceptance drive before landing anything
+visible — reports and smokes are input, not verdict; fresh app instance,
+never a warm server predating the branch; (2) briefs state the
+deliverable twice, code AND visual, mockup notation separated from
+paint, "identical" claims name their instrument; (3) night orders
+execute with no questions and no holds — deciding is the conductor's
+job; a hold on user-ordered work is a defect; (4) check the task after
+it is done — whole-deliverable verification plus periodic hover-sweep
+census of controls no task points at; (5) verify coherence before
+briefing the user — close gaps by relaunching or filing finishing
+tasks, never by reporting them as news. Verbatim user words: "yes #1 is
+a must", "state the deliverable both code and visual", "no questions
+for me, i am sleeping, decide the best way and do it", "of course you
+have to check the tasks after they are done", "you must verify
+coherence before briefing me, if it's not delivered you relaunch the
+agents to finish it or make new tasks to finish it".

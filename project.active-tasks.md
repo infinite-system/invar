@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/in-progress/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md)  [building]
+## IN-PROGRESS (1)
+- #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/in-progress/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/533-tasks-header-pipes-and-dead-open-button`
-- #532 [workspace-undo-transaction-core](.invar/tasks/in-progress/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md)  [building]
-  `tmux attach -t invar/532-workspace-undo-transaction-core`
 
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -160,7 +158,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 232 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 233 — full log: project.tasks-completed.md)
+- #532 [workspace-undo-transaction-core](.invar/tasks/completed/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md) — accf2bc8 — Milestone 2 data core: reverse-patch transactions, interned arena, workspace undo coordinator with lifecycle-safe external references; no visible change, conductor-driven.
 - #529 [panel-chrome-rapid-expand-flake](.invar/tasks/completed/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md) — cef91323 — Gate flake killed: settle-boundary status republish (starved publisher) + hover-verified edge drags (hit-grid race); 20/20 contention green; record refined with the starved-wait impossible-shape.
 - #521 [repair-in-file-replace-all-undo](.invar/tasks/completed/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md) — 2b633367 — Replace All undo repaired through the editor delta path with consent dialogs, toggles, and scale-parity drives; Find/Replace milestone 1 complete.
 - #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/completed/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md) — 9aaca56b — Tasks pane and tasks:watch share ONE renderer: overlay hover grammar, segmented LIVE|ACTIVE|DONE, full-line coloring, 60fps one-heartbeat motion; round 2 fixed the global-tooltip-clearing dock bug.
@@ -175,4 +174,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #508 [local-drop-opens-the-dropped-file](.invar/tasks/completed/508-local-drop-opens-the-dropped-file/task-508-local-drop-opens-the-dropped-file.md) — 3cbd082e — dropped files open by kind; outside-root reads only
 - #506 [constructor-first-and-the-constants-role-table](.invar/tasks/completed/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md) — b27235a9 — constructor first everywhere; constants have one form per role
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/completed/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md) — d9e05771 — Global chords survive read-only focus via one routing fact (ownsRawKeyInput); comparison Ctrl+P fixed at the generator; Ctrl+Shift+O sighting refuted with a locking smoke.
-- #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/completed/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md) — e0606727 — Structure uninstall now withdraws its space (extension teardown got its own host path); the standing plugin-manifest gate red is closed; two Scope refinements proposed for morning review.

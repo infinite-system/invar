@@ -16,11 +16,13 @@ cd "$ROOT"
 
 # Allowlisted capabilities, each unwired for a NAMED reason. This list only ever SHRINKS.
 #  - LSP (M5): forward-milestone modules, built ahead, wired when its milestone lands.
+#  - Find/Replace Milestone 2: TextArena, TextPatch, and WorkspaceReplacementHistory are the
+#    transaction data boundary. Workspace Search wires them into replacement actions in Milestone 5.
 #  (DiffView removed 2026-07-21 — now mounted via Workspace.diffRequest -> RootView syncDiffView; the
 #   gate now enforces it stays wired.)
 #  (Markdown removed 2026-07-22 — MarkdownSplitView mounts MarkdownPreview/Renderable from RootView,
 #   and smoke-markdown drives the real tab-button path.)
-ALLOWLIST_NAMES="JsonRpc LanguageClient LspProcess LspTransport TypeScriptProvider"
+ALLOWLIST_NAMES="JsonRpc LanguageClient LspProcess LspTransport TypeScriptProvider TextArena TextPatch WorkspaceReplacementHistory"
 
 is_allowlisted() {
   local name="$1"

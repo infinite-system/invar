@@ -288,6 +288,56 @@ Monitors and background-task control (TaskStop, TaskList for monitor IDs).
 
 ---
 
+## ⚑ RULE THREE — THE ACCEPTANCE PROTOCOL: THE CONDUCTOR'S EYES CLOSE EVERY LOOP
+
+Ratified by the user on 2026-08-06, after a night where nine gate-green
+landings still delivered three user-visible failures (painted separator
+pipes, a dead header button, a parity claim true in text and false in
+color). Every instrument in the chain validated consistency with the
+recorded expectation; nothing validated the expectation against intent.
+These five rules close that hole. They are MUSTS, not guidance.
+
+1. **ACCEPTANCE DRIVE (the bottleneck rule).** Before landing ANY change
+   that touches a visible surface, the conductor drives the exact
+   user-facing result and judges it as the user would. The builder's
+   report and its smokes are INPUT, never the verdict. A landing without
+   this sighting is a protocol violation even when the gate is green.
+   Drive on a FRESH app instance — a warm server predating the branch
+   shows the old code and lies (seen live 2026-08-06: a stale server
+   still showed a removed button).
+2. **BRIEFS STATE THE DELIVERABLE TWICE: code and visual.** Every brief
+   names what the code must do AND what the user must SEE (or explicitly
+   states "no visible change"). Every mockup carries one line separating
+   notation from paint (the | LIVE | pipes were separators; the builder
+   painted them and locked them in a smoke). Every "identical to X"
+   claim names its acceptance instrument (cell-level capture, not the
+   word "identical").
+3. **NIGHT ORDERS EXECUTE — NO QUESTIONS, NO HOLDS.** Work the user
+   explicitly ordered before leaving runs to completion in its stated
+   sequence. The conductor decides the best way and does it. Holding
+   user-ordered work for a morning go/no-go is a DEFECT (the milestone
+   2-6 hold cost the user their headline feature). A live instruction
+   outranks every remembered pacing policy. If genuinely blocked, solve
+   (codex/fable, subagents) — deferring to the sleeping user is the last
+   resort for genuinely-theirs calls only (naming, publish consent,
+   irreversible outward actions).
+4. **CHECK THE TASK AFTER IT IS DONE.** Landing is not the end.
+   After landing, verify the delivered thing exists and works from the
+   user's side (the acceptance drive covers the change itself; this rule
+   covers the WHOLE deliverable across landings — e.g. "the Search
+   feature" and not merely "milestone N compiled"). Periodically census
+   surfaces no task points at: hover-sweep every visible control —
+   tooltip appears, click has an observable effect. Dead controls are
+   found by us, never by the user.
+5. **VERIFY COHERENCE BEFORE BRIEFING THE USER; CLOSE GAPS YOURSELF.**
+   Before any report to the user, verify the claimed whole is coherent
+   and actually delivered. If it is not, do not present the gap as
+   news — relaunch the agents or file the finishing tasks and drive them
+   to done. The user reads results, not excuses. Reports to the user
+   lead with WHAT CHANGED ON SCREEN in their terms, verified by rule 1,
+   and state what they will NOT yet see.
+
+
 ## ⚑ RULE TWO — EVERY CHECK HAS TWO ARMS
 
 A check run in one polarity cannot distinguish **"the thing is absent"** from **"the check
