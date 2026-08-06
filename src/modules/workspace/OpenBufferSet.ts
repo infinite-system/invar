@@ -81,7 +81,12 @@ class $OpenBufferSet {
   }
 
   /** Tab-bar view rows: path, active flag, dirty flag — never exposes the live document. */
-  tabs(): Array<{ path: string; active: boolean; dirty: boolean }> {
+  tabs(): Array<{
+    path: string;
+    active: boolean;
+    dirty: boolean;
+    readOnly: boolean;
+  }> {
     const activeIndex = this.activeIndex.value;
     return this.entries.value.map((entry, index) => ({
       path: entry.path,
@@ -90,15 +95,22 @@ class $OpenBufferSet {
         index === activeIndex
           ? (entry.buffer?.dirty ?? entry.dirty)
           : entry.dirty,
+      readOnly: entry.readOnly,
     }));
   }
 
   /** Open `path`: focus its tab if already open, else add a new (active) buffer. Returns the index. */
-  open(path: string): number {
+  open(path: string, options: OpenBufferOptions = {}): number {
     const existing = this.entries.value.findIndex(
       (entry) => entry.path === path,
     );
     if (existing >= 0) {
+      const existingEntry = this.entries.value[existing]!;
+      if (options.readOnly === true && !existingEntry.readOnly) {
+        existingEntry.readOnly = true;
+        existingEntry.buffer?.setReadOnly?.(true);
+        this.entries.value = [...this.entries.value];
+      }
       this.activate(existing);
       return existing;
     }
@@ -109,6 +121,7 @@ class $OpenBufferSet {
       buffer: null,
       position: { ...openBufferSetClass.ORIGIN },
       dirty: false,
+      readOnly: options.readOnly === true,
     };
     this.entries.value = [...this.entries.value, entry];
     this.activate(this.entries.value.length - 1);
@@ -225,7 +238,11 @@ class $OpenBufferSet {
   protected hydrate(index: number): void {
     const entry = this.entries.value[index];
     if (!entry || entry.buffer) return;
-    const buffer = this.seams.createBuffer(entry.path, entry.documentHandle);
+    const buffer = this.seams.createBuffer(
+      entry.path,
+      entry.documentHandle,
+      entry.readOnly,
+    );
     buffer.restorePosition(entry.position);
     entry.buffer = buffer;
     this.seams.opened?.(entry.documentHandle, buffer);
@@ -277,7 +294,8 @@ export namespace OpenBufferSet {
 
 /** The minimal live-buffer surface the set drives — an Editor in production, a fake in tests. */
 export interface LiveBuffer {
-  openFile(path: string): void;
+  openFile(path: string, readOnly?: boolean): void;
+  setReadOnly?(readOnly: boolean): void;
   readonly dirty: boolean;
   /** Capture the resumable position so a clean buffer can be dehydrated and later rehydrated. */
   snapshotPosition(): BufferPosition;
@@ -303,11 +321,16 @@ export interface BufferPosition {
   scrollLeft: number;
 }
 
+export interface OpenBufferOptions {
+  readonly readOnly?: boolean;
+}
+
 export interface OpenBufferSetSeams {
   /** Create a live buffer with `path` already open (production: a fresh Editor.openFile). */
   createBuffer: (
     path: string,
     documentHandle: DocumentHandle.Model,
+    readOnly: boolean,
   ) => LiveBuffer;
   /** Fully dispose a live buffer's owned resources (document/undo/syntax). */
   disposeBuffer: (
@@ -331,4 +354,6 @@ interface BufferEntry {
   position: BufferPosition;
   /** Sticky dirty flag: a dirty buffer is NEVER dehydrated (its edits must survive). */
   dirty: boolean;
+  /** External dropped files stay selectable and searchable but cannot mutate on disk. */
+  readOnly: boolean;
 }

@@ -42,10 +42,24 @@ class $MediaPaneContent implements PaneContent {
         height: this.framebuffer.height,
         rgba: this.framebuffer.rgba,
       };
+      this.stillImage = null;
+    } else if (this.mode === 'image') {
+      this.framebuffer = null;
+      this.scene = null;
+      this.demoImage = null;
+      try {
+        this.stillImage = options.loadImage?.() ?? null;
+        if (!this.stillImage)
+          this.noticeValue = 'The image could not be decoded.';
+      } catch (error) {
+        this.stillImage = null;
+        this.noticeValue = `The image could not be decoded: ${String(error)}`;
+      }
     } else {
       this.framebuffer = null;
       this.scene = null;
       this.demoImage = null;
+      this.stillImage = null;
       this.restartVideo();
     }
   }
@@ -60,6 +74,7 @@ class $MediaPaneContent implements PaneContent {
   protected readonly framebuffer: CellFramebuffer.Model | null;
   protected readonly scene: SoftwareScene.Model | null;
   protected readonly demoImage: DecodedImage | null;
+  protected readonly stillImage: DecodedImage | null;
   protected readonly graphicsSupersamplingScale = 8;
   protected videoStream: VideoFrameStream.Model | null = null;
   protected videoImage: DecodedImage | null = null;
@@ -78,8 +93,11 @@ class $MediaPaneContent implements PaneContent {
   protected framebufferSupersamplingScale = 1;
 
   get title(): string {
+    if (this.mode === 'image') return this.instanceLabel;
     if (this.mode === 'video') {
-      return this.pausedValue ? 'Sample Video · Paused' : 'Sample Video';
+      return this.pausedValue
+        ? `${this.instanceLabel} · Paused`
+        : this.instanceLabel;
     }
     const sceneName = this.activeSceneValue === 'cube' ? 'Cube' : 'Torus';
     return this.pausedValue
@@ -133,16 +151,19 @@ class $MediaPaneContent implements PaneContent {
   render(context: PaneRenderContext): StyledText {
     if (this.noticeValue) {
       this.pixelMount.clear();
+      const unavailableLabel =
+        this.mode === 'image' ? 'IMAGE UNAVAILABLE' : 'VIDEO UNAVAILABLE';
+      const recovery =
+        this.mode === 'image'
+          ? ''
+          : '\n\n  Install ffmpeg, then run\n  Media: Play Sample Video again.';
       return new StyledText([
         fg(context.palette.error)(
-          '\n  VIDEO UNAVAILABLE\n\n' +
-            `  ${this.noticeValue}\n\n` +
-            '  Install ffmpeg, then run\n' +
-            '  Media: Play Sample Video again.\n',
+          `\n  ${unavailableLabel}\n\n  ${this.noticeValue}${recovery}\n`,
         ),
       ]);
     }
-    this.scheduleNextFrame();
+    if (this.mode !== 'image') this.scheduleNextFrame();
     const graphicsTier = context.graphicsTier ?? 'halfblock';
     const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
     const screenColumn = context.screenColumn;
@@ -223,7 +244,7 @@ class $MediaPaneContent implements PaneContent {
   }
 
   protected currentImage(): DecodedImage | null {
-    return this.demoImage ?? this.videoImage;
+    return this.demoImage ?? this.stillImage ?? this.videoImage;
   }
 
   protected scheduleNextFrame(): void {
@@ -304,6 +325,7 @@ class $MediaPaneContent implements PaneContent {
   }
 
   togglePaused(): void {
+    if (this.mode === 'image') return;
     this.pausedValue = !this.pausedValue;
     if (!this.pausedValue) {
       this.animationStartMilliseconds =
@@ -330,7 +352,10 @@ class $MediaPaneContent implements PaneContent {
   }
 
   handleKey(key: KeyEvent): boolean {
-    if (key.name === 'space' || key.sequence === ' ') {
+    if (
+      this.mode !== 'image' &&
+      (key.name === 'space' || key.sequence === ' ')
+    ) {
       this.togglePaused();
       return true;
     }
@@ -377,7 +402,7 @@ class $MediaPaneContent implements PaneContent {
         Math.max(0, this.frameIndexValue) / this.options.framesPerSecond,
         this.requestedScene,
       );
-    } else {
+    } else if (this.mode === 'video') {
       this.restartVideo();
     }
     this.renderRevision.value += 1;
@@ -405,7 +430,7 @@ export namespace MediaPaneContent {
   export type Model = InstanceType<typeof Class>;
 }
 
-export type MediaPaneMode = 'demo' | 'video';
+export type MediaPaneMode = 'demo' | 'video' | 'image';
 
 export interface MediaPaneOptions {
   readonly identifier: string;
@@ -415,6 +440,7 @@ export interface MediaPaneOptions {
   readonly rows: number;
   readonly framesPerSecond: number;
   readonly pixelTerminal: PixelMountTerminal;
+  readonly loadImage?: () => DecodedImage | null;
   readonly createVideoStream?: (
     pixelWidth: number,
     pixelHeight: number,

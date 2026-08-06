@@ -339,12 +339,12 @@ class $TabBarRenderer {
     const barWidth = Math.max(1, context.barWidth);
     // Each tab lays out as filename + dirty + close; close has a space BEFORE and AFTER so it is never
     // flush against the tab edge, and the padding is identical regardless of label length. The tab shows
-    // just the FILENAME; the active file's full path renders in the breadcrumb bar ABOVE the strip
+    // the compact label supplied by the buffer layer. The active file's full path renders in the
+    // breadcrumb bar ABOVE the strip.
     // (renderBreadcrumbBar), VS Code-style — so tabs stay compact (many fit) while the path is always
     // legible for the file you're editing.
     const measured = tabs.map((tab) => {
-      const name =
-        tab.identifier.split('/').filter(Boolean).pop() ?? tab.identifier;
+      const name = tab.label;
       const labelWidth = 1 + TextCoordinates.Class.lineWidth(name) + 1 + 1 + 1; // ' ' + name + ' ' + dirtyGlyph + ' '
       return { tab, name, labelWidth, width: labelWidth + 2 }; // + close + trailing pad
     });

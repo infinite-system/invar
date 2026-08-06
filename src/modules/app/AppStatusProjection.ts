@@ -73,6 +73,7 @@ class $AppStatusProjection {
       workspaceCount: ports.workspaceSet.count,
       workspaceTabPosition: ports.settings.workspaceTabPosition.value,
       activeBuffer: editor.hasDocument.value ? editor.document.path : null,
+      activeBufferReadOnly: editor.hasDocument.value && editor.readOnly.value,
       // The active file's LSP size-suppression state — the authoritative channel a driven gate reads
       // to assert a large file was NOT attached to the language server (the guard is never silent).
       lspSizeSuppressed: workspace.languageSizeNotice() !== null,

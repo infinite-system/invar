@@ -88,6 +88,7 @@ import { Tasks } from '../tasks/Tasks';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
 import { Dialog } from '../ui/Dialog';
 import type { SourceTextViewProvider } from '../workspace/SourceTextView.interface';
+import { PathDropController } from './PathDropController';
 
 class $Bootstrap {
   protected static awaitProjectedFrame(
@@ -296,7 +297,9 @@ class $Bootstrap {
     const bufferTabStrip = new TabStrip.Class('horizontal', () =>
       workspaceSet.active.buffers.tabs().map((bufferTab) => ({
         identifier: bufferTab.path,
-        label: Files.Class.basename(bufferTab.path),
+        label:
+          Files.Class.basename(bufferTab.path) +
+          (bufferTab.readOnly ? ' [read-only]' : ''),
         active: bufferTab.active,
         dirty: bufferTab.dirty,
         closable: true,
@@ -580,6 +583,19 @@ class $Bootstrap {
         restartApplication: () => restartApplication(),
       },
     );
+    const pathDropController = new PathDropController.Class({
+      workspaceSet,
+      droppedPathOpeners: applicationContributions,
+      boundedListPopup,
+      overlayCoordinator,
+      focusEditor: () => {
+        panelHost.blur();
+        primaryDockHost.blur();
+        rightDockHost.blur();
+        workspaceSet.active.focusEditor();
+      },
+      screenSize: () => ({ columns: renderer.width, rows: renderer.height }),
+    });
     applicationContributions.activateAll();
     app.onDispose(() => applicationContributions.dispose());
     const primaryDockFallbackContentIdentifier = (options.plugins ?? []).find(
@@ -2973,10 +2989,10 @@ class $Bootstrap {
       if (!text) return;
       const channelDropPaths = ChannelDropNotification.Class.decode(text);
       if (channelDropPaths) {
-        for (const path of channelDropPaths)
-          workspaceSet.active.buffers.open(path);
+        pathDropController.handlePaths(channelDropPaths);
         return;
       }
+      if (pathDropController.handlePaste(text)) return;
       if (panelHost.visible.value && panelHost.focused.value) {
         panelHost.handlePaste(text);
         return; // a focused panel owns paste even if its pane has no sink — never leak to the editor

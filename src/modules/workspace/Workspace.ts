@@ -196,10 +196,10 @@ class $Workspace {
     // this workspace's provider. The seams below carry the view they made, so nothing downstream
     // has to assert what a buffer is.
     return new OpenBufferSet.Class({
-      createBuffer: (path, documentHandle) => {
+      createBuffer: (path, documentHandle, readOnly) => {
         const view = this.createSourceTextView();
         view.attachFoldState(documentHandle.foldState);
-        view.openFile(path);
+        view.openFile(path, readOnly);
         this.viewsByLiveBuffer.set(view, view);
         return view;
       },
@@ -666,10 +666,13 @@ class $Workspace {
 
   /** Open `path` as a tab: focus its tab if already open, else add a new active one. Captures the
    *  view left and the view reached. NavigationHistory suppresses both captures during replay. */
-  openFileInTab(path: string): void {
+  openFileInTab(
+    path: string,
+    options: { readonly readOnly?: boolean } = {},
+  ): void {
     this.recordCurrentViewState();
     this.editorSurfaces.releaseOccupying(); // a real file replaces any transient surface
-    this.buffers.open(path);
+    this.buffers.open(path, options);
     this.recordCurrentViewState();
   }
 

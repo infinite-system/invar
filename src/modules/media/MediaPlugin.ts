@@ -1,6 +1,7 @@
 import type {
   ApplicationContributionContext,
   ApplicationContributor,
+  DroppedPathRequest,
 } from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { PaneContent } from '../ui/PaneContent.interface';
@@ -10,6 +11,8 @@ import type {
   PaneRuntimeRequest,
 } from '../ui/PaneRuntime.interface';
 import type { PixelMountTerminal } from '../image/PixelImageMount';
+import { ImageDecoders } from '../image/ImageDecoders';
+import { Files } from '../system/Files';
 import { FfmpegVideoSource } from './FfmpegVideoSource';
 import {
   MediaPaneContent,
@@ -22,6 +25,15 @@ import { VideoFrameStream } from './VideoFrameStream';
 // invariant: Missing ffmpeg is loud and harmless (src/modules/media/media.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 class $MediaPlugin implements ApplicationContributor, PaneRuntime {
+  protected static readonly videoExtensions = new Set([
+    '.avi',
+    '.m4v',
+    '.mkv',
+    '.mov',
+    '.mp4',
+    '.webm',
+  ]);
+
   readonly identifier = 'media';
   readonly name = 'Animated Media';
   readonly kind = 'media';
@@ -34,11 +46,15 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
   protected disposeStatusProjection: (() => void) | null = null;
   protected ffmpegPath: string | null = null;
   protected readonly panes = new Map<string, MediaPaneContent.Model>();
+  protected nextDroppedPathIdentifier = 1;
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
     this.ffmpegPath = this.findFfmpeg();
     this.hostPort = context.registerPaneRuntime(this);
+    context.registerDroppedPathOpener((request) =>
+      this.openDroppedPath(request),
+    );
     context.registerKeybindings([
       {
         chord: { key: 'space' },
@@ -113,7 +129,7 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
     return FfmpegVideoSource.Class.locate();
   }
 
-  protected openMode(mode: MediaPaneMode): void {
+  protected openMode(mode: 'demo' | 'video'): void {
     const application = this.application;
     if (!application) return;
     const isVideo = mode === 'video';
@@ -127,6 +143,32 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
     });
   }
 
+  protected openDroppedPath(request: DroppedPathRequest): boolean {
+    const mode = this.modeForPath(request.path);
+    const application = this.application;
+    if (!mode || !application) return false;
+    const identifier = `media-dropped-${this.nextDroppedPathIdentifier}`;
+    this.nextDroppedPathIdentifier += 1;
+    return application.openRuntimePane('media', {
+      identifier,
+      label:
+        Files.Class.basename(request.path) +
+        (request.readOnly ? ' [read-only]' : ''),
+      heading: Files.Class.basename(request.path),
+      columns: 80,
+      rows: 24,
+      workingDirectory: application.workspaceSet.active.root,
+      resourcePath: request.path,
+    });
+  }
+
+  protected modeForPath(path: string): MediaPaneMode | null {
+    const extension = Files.Class.extname(path).toLowerCase();
+    if (ImageDecoders.Class.supports(extension)) return 'image';
+    const mediaPluginClass = this.constructor as typeof $MediaPlugin;
+    return mediaPluginClass.videoExtensions.has(extension) ? 'video' : null;
+  }
+
   createPane(request: PaneRuntimeRequest): PaneContent {
     const application = this.application;
     if (!application) throw new Error('The media runtime is not activated');
@@ -135,9 +177,16 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
         `Media pane identifier already belongs to another session: ${request.identifier}`,
       );
     }
-    const mode: MediaPaneMode = request.identifier.includes('video')
-      ? 'video'
-      : 'demo';
+    const mode = request.resourcePath
+      ? this.modeForPath(request.resourcePath)
+      : request.identifier.includes('video')
+        ? 'video'
+        : 'demo';
+    if (!mode) {
+      throw new Error(
+        `Media cannot open this resource: ${request.resourcePath}`,
+      );
+    }
     const pane = this.buildPane({
       identifier: request.identifier,
       label: request.label,
@@ -146,10 +195,18 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
       rows: request.rows,
       framesPerSecond: 15,
       pixelTerminal: this.pixelTerminal(application),
+      loadImage:
+        mode === 'image' && request.resourcePath
+          ? () => this.loadImage(request.resourcePath!)
+          : undefined,
       createVideoStream:
         mode === 'video'
           ? (pixelWidth, pixelHeight) =>
-              this.createVideoStream(pixelWidth, pixelHeight)
+              this.createVideoStream(
+                pixelWidth,
+                pixelHeight,
+                request.resourcePath,
+              )
           : undefined,
     });
     this.panes.set(pane.id, pane);
@@ -164,13 +221,30 @@ class $MediaPlugin implements ApplicationContributor, PaneRuntime {
   protected createVideoStream(
     pixelWidth: number,
     pixelHeight: number,
+    sourcePath?: string,
   ): VideoFrameStream.Model | null {
     if (!this.ffmpegPath) return null;
     return new VideoFrameStream.Class(
-      new FfmpegVideoSource.Class(this.ffmpegPath, pixelWidth, pixelHeight, 15),
+      new FfmpegVideoSource.Class(
+        this.ffmpegPath,
+        pixelWidth,
+        pixelHeight,
+        15,
+        sourcePath,
+      ),
       pixelWidth,
       pixelHeight,
     );
+  }
+
+  protected loadImage(
+    path: string,
+  ): ReturnType<
+    NonNullable<ReturnType<typeof ImageDecoders.Class.decoderFor>>
+  > {
+    const decoder = ImageDecoders.Class.decoderFor(Files.Class.extname(path));
+    if (!decoder) throw new Error(`No image decoder accepts ${path}`);
+    return decoder(Files.Class.readBytes(path));
   }
 
   protected pixelTerminal(
