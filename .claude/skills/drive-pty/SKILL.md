@@ -83,6 +83,18 @@ touches. Ask four questions about it, and each answer is a drive:
    file it needs is missing, the pane it targets was closed, the same
    action arrives from the OTHER entry point (chord vs button vs
    palette — same seam, all paths).
+5. WHAT IS NEARBY? -> drive the NEIGHBORS after your change, not just
+   your feature: the sibling controls on the same row, the other pane
+   kinds in the same panel, the chords that share your context. Three
+   sweeps: (a) INTERPLAY — do the nearby features still work, driven,
+   not assumed; (b) CONSISTENCY — does your surface now look or
+   behave differently from its siblings (hover styles, paddings,
+   focus rules — the ui-design chapters are the checklist); (c)
+   ARTIFACTS — did you leave anything the task did not intend: stray
+   panes, leftover files or homes, extra status keys, a changed
+   default, a new warning in the log (app.showLog after your drive).
+   Blast radius is part of the deliverable; "my feature works" while
+   a neighbor broke is a failed task.
 
 ### The assertion pattern — after EVERY step, not at the end
 
