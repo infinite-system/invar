@@ -70,3 +70,16 @@ text prompts. Buttons carry the established 1-key padding. The design
 doc names the shared dialog component it reuses (overlay-dialog seam;
 Input overlays share one modal slot) and shows the consent copy for
 each dialog.
+
+## Placement and the two-surface split (user addition, same session)
+
+- Workspace search results render IN THE LEFT DOCK — the same pane
+  slot the File Tree occupies; the activity-bar search item swaps the
+  dock content to the search view (VS Code shape). Multi-file
+  find/replace lives there.
+- SEPARATE functionality: find/replace INSIDE the open file is its
+  own surface (the existing in-editor FindBar family — study what it
+  has today, likely find-only, and design its replace extension) —
+  distinct state, distinct chords, no coupling to the workspace
+  surface beyond shared vocabulary.
+The design doc covers both surfaces and their boundary explicitly.
