@@ -4,6 +4,34 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 77 — 2026-08-06 17:23 EDT — FIND/REPLACE COMPLETE: ALL SIX MILESTONES LANDED
+
+USER PRESENT. THE FEATURE IS DONE AND CONDUCTOR-VERIFIED END TO END.
+
+LANDED: M1 #521 2b633367, M2 #532 accf2bc8, M3 #534 7ab4bbf3, M4 #535
+1d759ad5, M5 #536 3a006e4f, M6 #537 0a2b12f0. dist/iv rebuilt on final
+main. Whole-feature drive (RULE THREE item 4) PASSED: in-file find bar
+(inline header row: input + up/down + Aa ab .* + swap + esc), workspace
+search (10 results in 1 file — counts pluralize), Replace All ->
+counted consent (safe Cancel focus) -> apply -> editor Ctrl+Z ->
+workspace-undo consent -> exact restore. Every landing this run went
+through the two-arm acceptance (conductor drive + delegated opus
+structural review at READY, before its gate).
+
+OPEN THREADS: #538 filed (panel-chrome contention second wave — two
+post-#529 sightings, evidence attached); #519-#531 maintenance tasks
+active; morning-queue record refinements now include the design's four
+section-12 proposals + 534's bounded/cancel/overlay gap + 535's
+activity-order migration + 504/505's four + 532's snapshot wording.
+Disk /tmp 24G, 7G free (rm permission-blocked; hard stop 5G). Crons
+(:07, :37) + fleet-watch armed.
+
+NEXT (user decides): the record-refinement confirmation batch; #526
+rename call; the maintenance queue (#519 Ctrl+J flake, #520 paste
+gesture, #522 scoped clickText, #523 codex hooks, #524 resume scoping,
+#525 rollout resolver, #527 modified chords, #528 padding check, #530
+blind-press census, #531 scrollbars hold, #538 flake wave 2).
+
 # RESUME ANCHOR 76 — 2026-08-06 14:25 EDT — SEARCH VISIBLE (M4 LANDED); M5 DISPATCHED
 
 USER PRESENT and directing. RULE THREE fully operative + three
