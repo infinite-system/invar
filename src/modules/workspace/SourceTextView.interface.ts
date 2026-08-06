@@ -30,8 +30,9 @@ import type {
   TextEdit,
   TextEditBatchMetadata,
 } from '../text/TextEdit.interface';
+import type { ExternalUndoHistory } from './ExternalUndoHistory.interface';
 
-export interface SourceTextView extends LiveBuffer {
+export interface SourceTextView extends LiveBuffer, ExternalUndoHistory {
   // --- the document and the view state over it ---------------------------
   readonly document: TextDocument.Model;
   /** False for the document-less view behind an empty tab strip. */
