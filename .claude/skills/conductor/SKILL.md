@@ -873,14 +873,14 @@ defect and then reproducing it is worse than missing it.
 So each fire, before re-arming, ask: **is this loop still the best-worded instrument for its
 job, or has something replaced it?** If replaced, stop the chain rather than forward the text.
 
-### THE TWO-PER-HOUR DESIGN (user, 2026-07-29: "less is more") + RE-ARM ON RESTART
+### THE TWO-PER-HOUR DESIGN + RE-ARM ON RESTART
 
 Exactly TWO crons, evenly spaced — the hourly ORCHESTRATION loop at :07 and
 the hourly RECONCILIATION sweep at :37 — so the session hears a clock twice
 an hour, thirty minutes apart. Event wakes (fleet-watch's Monitor) do the
 real-time work; the crons catch drift and direction. The old 30-minute
 sweep cadence and the /loop ScheduleWakeup chain are RETIRED in favor of
-this pair (2026-07-29); do not re-arm either.
+this pair; do not re-arm either.
 
 **RE-ARM ON RESTART — the full set is THREE actions, no more:**
 
