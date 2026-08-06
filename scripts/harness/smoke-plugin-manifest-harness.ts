@@ -74,22 +74,6 @@ async function awaitRightDockScrollbarDiagnostic(
   throw new Error(`Timed out waiting for ${conditionDescription}`);
 }
 
-async function clickStatusMarker(
-  driver: PtyTestDriver.Model,
-  marker: string,
-): Promise<void> {
-  const snapshot = await driver.awaitGridCondition(
-    `the ${marker.trim()} status control paints`,
-    (candidate) => candidate.rowText(candidate.rows - 1).includes(marker),
-  );
-  const row = snapshot.rows - 1;
-  const column = snapshot.rowText(row).indexOf(marker);
-  if (column < 0)
-    throw new Error(`The ${marker.trim()} status control is not visible`);
-  driver.sendMouse({ kind: 'press', column, row, button: 'left' });
-  driver.sendMouse({ kind: 'release', column, row, button: 'left' });
-}
-
 async function selectSetting(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -870,7 +854,7 @@ try {
     agentWithoutTerminalStatus.terminalObservedEventCount === undefined,
     'Invar Agent remains usable without the Terminal runtime',
   );
-  await clickStatusMarker(driver, ' ✦ ');
+  driver.sendKeys('Control+Shift+a');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -923,7 +907,7 @@ try {
       (status.settingsSections as string[] | undefined)?.includes('Agent') ===
         true,
   );
-  await clickStatusMarker(driver, ' ✦ ');
+  driver.sendKeys('Control+Shift+a');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -1028,7 +1012,7 @@ try {
   // Close the agent panel before driving anything the host must answer. With the panel OPEN and
   // the workspace focus back on the editor, Ctrl+P never reaches Quick Open — a pre-existing defect
   // (see the #220 report's bycatch), reproduced on the unmodified tree, and not this arm's subject.
-  await clickStatusMarker(driver, ' ✦ ');
+  driver.sendKeys('Control+Shift+a');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

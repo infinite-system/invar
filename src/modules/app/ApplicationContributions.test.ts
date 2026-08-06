@@ -351,6 +351,7 @@ describe('ApplicationContributions', () => {
 
     expect(primaryDockHost.has('outline')).toBe(false);
     expect(rightDockHost.has('outline')).toBe(false);
+    expect(rightDockHost.spaces.value).toEqual([]);
     expect(contributor.content.disposed).toBe(true);
     expect(activitySurface.orderedContents).toEqual([]);
   });
@@ -384,6 +385,7 @@ describe('ApplicationContributions', () => {
 
     expect(panelContentFactories.factory('database')).toBeNull();
     expect(bottomPanelHost.contentsOfKind('database')).toEqual([]);
+    expect(bottomPanelHost.spaces.value).toEqual([]);
     expect(database.disposed).toBe(true);
   });
 });

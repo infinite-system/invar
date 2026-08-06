@@ -193,7 +193,7 @@ class $ApplicationContributions
         activeHost = this.dockHost(registeredSetting.value.value);
         activeHost.register(contribution.content);
         registrationDisposers.push(() =>
-          activeHost.removeContent(contribution.content.id),
+          activeHost.unregisterContent(contribution.content.id),
         );
         return {
           ...registeredSetting,
@@ -209,13 +209,13 @@ class $ApplicationContributions
       registerPrimaryDockContent: (content) => {
         this.options.primaryDockHost.register(content);
         registrationDisposers.push(() =>
-          this.options.primaryDockHost.removeContent(content.id),
+          this.options.primaryDockHost.unregisterContent(content.id),
         );
       },
       registerRightDockContent: (content) => {
         this.options.rightDockHost.register(content);
         registrationDisposers.push(() =>
-          this.options.rightDockHost.removeContent(content.id),
+          this.options.rightDockHost.unregisterContent(content.id),
         );
       },
       registerPanelContentFactory: (factory) => {

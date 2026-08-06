@@ -342,6 +342,7 @@ class $MonitoringStats {
   }
 
   /** Overridable seam: the test double captures lines instead of touching the file system. */
+  // invariant: Observability never crashes the app (src/modules/system/system.invariants.md)
   protected writeLogLine(line: string): void {
     const logFilePath = this.dependencies.logFilePath();
     if (logFilePath === null) return;

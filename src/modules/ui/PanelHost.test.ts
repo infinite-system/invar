@@ -678,6 +678,26 @@ test('closing the last instance keeps the panel open with its list visible', () 
   expect(host.panelListVisible).toBe(true);
 });
 
+test('withdrawing the last registration removes its space and selects a surviving space', () => {
+  const host = new PanelHost.Class();
+  const structure = fakeContent('structure', 'structure');
+  const tasks = fakeContent('tasks', 'tasks');
+  host.register(structure);
+  host.register(tasks);
+  host.showContent('structure');
+
+  host.unregisterContent('structure');
+
+  expect(structure.disposed).toBe(true);
+  expect(tasks.disposed).toBe(false);
+  expect(tasks.focused).toBe(true);
+  expect(host.spaces.value.map((space) => space.contentIds)).toEqual([
+    ['tasks'],
+  ]);
+  expect(host.activeSpace?.contentIds).toEqual(['tasks']);
+  expect(host.activeId.value).toBe('tasks');
+});
+
 test('workspace restore rejects registered content with no reachable row', () => {
   const host = new PanelHost.Class();
   host.register(fakeContent('terminal', 'terminal'));
@@ -788,10 +808,12 @@ test('kind removal reaches every workspace panel world', () => {
   expect(secondDatabase.disposed).toBe(true);
   expect(secondTerminal.disposed).toBe(false);
   expect(host.contentsOfKind('database')).toEqual([]);
+  expect(host.spaces.value.map((space) => space.kind)).toEqual(['terminal']);
   host.selectContentSet(firstWorld);
   expect(firstDatabase.disposed).toBe(true);
   expect(firstTerminal.disposed).toBe(false);
   expect(host.contentsOfKind('database')).toEqual([]);
+  expect(host.spaces.value.map((space) => space.kind)).toEqual(['terminal']);
 });
 
 // invariant: An emptied space survives its last instance (src/modules/ui/ui.invariants.md)
