@@ -370,6 +370,13 @@ per-smoke table (green / fixed-then-green with mechanism / red-outside-diff
 with merge-base proof). Same generator as family 4: enumerate the surface
 independently, never sample it through the sieve.
 
+**A doctrine edit while builders are LIVE requires a sync steer.** The
+fundamentals injection is a dispatch-time snapshot, and a builder's worktree
+carries pre-edit skill files — so mid-flight builders silently miss new laws
+(2026-08-06: #514 had three of seven doctrine updates, by steer only). When a
+skill in either fundamentals list changes, steer every live builder to read
+the MAINLINE file by absolute path, naming what changed.
+
 **round-brief.sh and steer.sh never share a command block.** The filing can
 REFUSE (missing section, dead link) after the steer already landed, handing
 the builder a pointer to a brief that does not exist. File, read the filing
