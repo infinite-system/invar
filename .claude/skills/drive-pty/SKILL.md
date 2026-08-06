@@ -115,6 +115,25 @@ observable state (the list, the counts, the focus, the active id)
 after every action, and diff it against what THIS step should have
 changed — nothing else may move.
 
+### The completeness bar — four more laws, each bought by a real failure
+
+- VERIFY THE BRIEF'S PREMISES before building on them: task files age
+  (counts drift, "known gaps" get fixed under you — #508's mode-2004
+  premise, #506's stale counts). A premise correction is a FINDING,
+  reported proudly, never silently coded around.
+- EVERY NEW CHECK PROVES IT CAN FAIL: plant the defect it claims to
+  catch, watch it red, remove the plant, watch it green. A check
+  born green is a decoration (the house positive-control rule — now
+  law, not culture).
+- SCALE PARITY: drive your surface at the small AND the shared
+  100,000-line fixture; per-frame work must not grow with document
+  or instance count (the flyweight discipline; render attribution
+  names offenders).
+- PERSISTED STATE GETS THE DOUBLE-BOOT: anything touching saved
+  state proves boot -> heal -> save -> SECOND boot reads the healed
+  file (the #501/#502/#503 pattern; single-boot proofs hid all
+  three bugs).
+
 ### When to stop
 
 Stop when a full pass of all four question-families runs clean AND
