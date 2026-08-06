@@ -4,18 +4,74 @@
 
 Closing one panel could quietly damage a different split, and the expand button could cover the
 button that brought the panel back. I made each close change only its own pane, kept the restore
-button reachable, and made the panel buttons and hover rows use one clear shape. The real app now
-survives the full create, split, remove, expand, drag, restart, and neighbor protocol at 10 and
-100,000 lines.
+button reachable, and made the panel buttons and hover rows use one clear shape. After the merge,
+Ctrl+J opened an empty panel instead of a terminal; I restored its terminal behavior without making
+the status click create content, aligned the dialog drives with that distinction, and the full
+protocol passes again at 10 and 100,000 lines.
 
 ## Result
 
-READY at commit `771eb51548dfa08f6ac41573bb97c3eaa62c2cb6` (`Fix panel lifecycle and
-chrome`). The worktree has no tracked changes. The pre-existing untracked builder-fundamentals
-setup file remains untouched.
+READY at commit `568eb8635f184d0e48e4422e5fef167151a42db0` (`fix merged panel gate contracts`).
+It includes the original task commit `771eb51548dfa08f6ac41573bb97c3eaa62c2cb6`, the Round 2 chord
+repair, and the Round 3 merge-baseline and dialog-drive repair. The worktree has no tracked changes.
+The pre-existing untracked builder-fundamentals setup file remains untouched.
 
 The implementation covers all six original items and the later overlay-hover refinement in the
 [task brief](brief-514-1-terminal-instance-lifecycle-and-panel-chrome.md).
+
+## Round 2 merge-gate repair
+
+The [Round 2 brief](brief-514-2-2.md) exposed one over-unified action. Round 1 had made the
+contributed status control and `Ctrl+J` call the same generic `panelHost.toggle()` seam. That was
+correct for a no-create status control, but wrong for the established terminal chord. Workspace
+tabs, Database, and paste all use the chord to select or lazily create the interactive terminal.
+
+The real drives failed at these exact boundaries before the repair:
+
+- Workspace tabs timed out at `the first workspace terminal owns live scrollback`.
+- Database timed out at `Terminal receives focus before opening Database: Reconnect`.
+- Paste timed out at `the focused terminal keeps the dropped paths out of the editor`.
+- Workspace layout reported `panelListExpanded=false` but painted a 20-column empty list in the new
+  workspace. The graph proved this was not leaked pinned state. The generic chord had opened an
+  empty panel, whose empty-state list is meant to remain visible.
+- The coverage ratchet found the two stale declarations named in the Round 2 brief: Agent waits were
+  `8 → 6`, and panel-split waits were `33 → 40`.
+
+[Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) now keeps two honest generators. The status
+control toggles generic panel visibility and never creates content. `Ctrl+J` hides a visible panel
+that already shows a terminal; otherwise it selects a registered terminal or creates one lazily and
+focuses it. Hiding the whole host, instead of removing one cell through `toggleContent`, preserves an
+expanded split unchanged. [smoke-terminal-harness.ts](../../../../scripts/harness/smoke-terminal-harness.ts)
+now states both sides. [smoke-panel-chrome-harness.ts](../../../../scripts/harness/smoke-panel-chrome-harness.ts)
+uses the visible status control for its intentionally empty lifecycle entrance, then retains the
+`Ctrl+J` expanded-split interleave later in the protocol.
+
+The scrollbar contention failure from the gate did not reproduce. Three isolated branch runs
+completed at both 500 and 100,000 lines, and the last run used the final code. I did not widen a
+timeout or weaken a scrollbar condition.
+
+## Round 3 merge-gate repair
+
+The [Round 3 brief](brief-514-3-3.md) named one count mismatch and two dialog-adjacent timeouts.
+
+- The core-vocabulary census reports 32 sites on the merged branch. Main added three sites after the
+  old 30-site baseline, while this task still removes one net site. The gate baseline is now 32, not
+  33, with the merge arithmetic stated beside it.
+- The post-Settings press already reached the generic `❯` control. Its smoke watched
+  `terminalVisible`, which is intentionally unchanged because that control does not create a
+  terminal. The observer now includes `panelVisible`, the state the control owns. The first press
+  changes it and the restoring press changes it back.
+- The same overlay smoke still used `❯` to create a terminal and still searched for the retired `✦`
+  Agent button. Those neighbor cases now use the real `Ctrl+J` and `Ctrl+Shift+A` chords. Terminal
+  and Agent focus, cursor hiding, Escape dismissal, and backdrop dismissal remain asserted.
+- The 10-line Add-header cancel path did not reproduce its contention-tier timeout. It passed solo,
+  passed in two concurrent full-smoke processes, and passed again in the final isolated command. I
+  changed no panel behavior, wait, timeout, or Add assertion for this item.
+
+The original overlay observer was a natural positive control: it failed twice at
+`the first post-dismissal press reaches the underlying status action`. Adding the owned
+`panelVisible` field made that exact first-press drive pass. The vocabulary gate likewise failed at
+`32 site(s), baseline 30` before the arithmetic correction and passed afterward.
 
 ## What was wrong and what changed
 
@@ -63,10 +119,11 @@ clicks, Ctrl+J, resize, split, create, and remove.
 ### One status control
 
 [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) registers one bottom-panel control through
-the existing status-bar segment seam. It runs the same toggle as Ctrl+J and never creates a pane.
-[StatusBar.ts](../../../../src/modules/ui/StatusBar.ts) projects only that generic contributed
-control. [AgentPlugin.ts](../../../../src/modules/agent/AgentPlugin.ts) no longer registers the
-separate `✦` control. Agents remain reachable through their chord and the panel Add control.
+the existing status-bar segment seam. Its generic toggle never creates a pane.
+[StatusBar.ts](../../../../src/modules/ui/StatusBar.ts) projects only that contributed control.
+[AgentPlugin.ts](../../../../src/modules/agent/AgentPlugin.ts) no longer registers the separate `✦`
+control. `Ctrl+J` keeps its terminal-specific select/create behavior, while Agents remain reachable
+through their chord and the panel Add control.
 
 The implemented tooltip screenshot read:
 
@@ -159,17 +216,22 @@ Every new contract was seen red before it was trusted:
 - Moving the overlay start one cell left made the unit test report a 19-cell row instead of 20 and a
   wrong ellipsis cell. The PTY smoke then timed out because Close no longer reached the last row
   cell.
+- Replacing the lifecycle entrance's visible `❯` with absent `❮` made the final grid wait fail and
+  print the complete 120-by-40 frame. I restored `❯` before the final run.
 - The original app supplied natural red controls for the one-button and expand checks: it painted
   both `✦` and `❯`, and its expanded tab controls covered Restore.
+- The Round 2 branch itself supplied four more natural red controls. Workspace tabs, Database,
+  paste, and the saved-state lifecycle protocol all failed at their terminal boundary before the
+  chord repair and passed after it. No new timeout was added.
 
 All plants were removed before the final commit.
 
 ## Design doctrine, chapter by chapter
 
-- [Chapter 1 — Buttons](../../../../.claude/skills/ui-design/SKILL.md#1-buttons): one padded status
-  toggle replaces two create buttons; Expand has a symmetric Restore; the row overlay has one stored
-  paint, truncation, tooltip, and hit geometry; header idle, hover, press, and cancel states are
-  distinct.
+- [Chapter 1 — Buttons](../../../../.claude/skills/ui-design/SKILL.md#1-buttons): one padded generic
+  status toggle replaces two create buttons; Expand has a symmetric Restore; the row overlay has one
+  stored paint, truncation, tooltip, and hit geometry; header idle, hover, press, and cancel states
+  are distinct.
 - [Chapter 2 — Dialogs](../../../../.claude/skills/ui-design/SKILL.md#2-dialogs): Add still uses the
   shared bounded-list popup. Database container close still uses the shared confirmation dialog. A
   cancel leaves the exact graph unchanged.
@@ -187,8 +249,10 @@ All plants were removed before the final commit.
   terminal smokes still select and copy through the shared OSC 52 route.
 
 The result uses one UX dialect: panel and row controls use theme glyphs, three-cell padding, the
-panel/selection/cursor-line background family, shared popup and confirmation hosts, and symmetric
-toggle semantics. The neighbor sweep found no control that required a second local dialect.
+panel/selection/cursor-line background family, and shared popup and confirmation hosts. The generic
+status control and terminal chord no longer pretend to share a generator: the button owns panel
+visibility, while the chord owns terminal reachability. Their common visible-panel action still
+hides the whole host without changing its split graph.
 
 ## Invariants, record by record
 
@@ -215,14 +279,15 @@ The [app invariant file](../../../../src/modules/app/app.invariants.md) has no s
 record. The relevant record lives in the UI contract, so the brief's app-record pointer was a miss.
 No app invariant needed a change.
 
-The invariant checker resolved 1,386 annotations and 271 lattice links with 0 problems.
+The final invariant checker resolved 1,388 annotations and 287 lattice links with 0 problems.
 
 ## Neighbor and blast-radius drive
 
 The final-code neighbor drive asserted the full panel graph after each step:
 
-- Shared `❯` click open, click close, Ctrl+J open, and Ctrl+J close all kept
-  `ids=[] groups=[] cells=[]`.
+- Shared `❯` click open and click close kept `ids=[] groups=[] cells=[]`. Ctrl+J from that empty
+  state created and focused `pane-instance-1`; its second press hid the panel while retaining
+  `ids=[pane-instance-1] groups=[[pane-instance-1]] cells=[pane-instance-1]`.
 - Settings open/close, shortcut help open/close, and right dock open/close changed only their own
   visibility fields.
 - Plugin Add opened and cancelled with an empty graph. Database then opened as
@@ -231,10 +296,11 @@ The final-code neighbor drive asserted the full panel graph after each step:
   plus Yes removed it to `[] [] []`.
 - Terminal, Agent, and split smokes now drive the one-button toggle plus visible Add or agent chord.
   They no longer encode the removed create-button behavior.
-- The final artifact state had panel, expanded mode, Settings, help, and right dock all false, with
-  no content, group, or cell IDs.
-- `app.showLog(40)` and the later 30-line log sweep contained only boot and `settings-save` info
-  entries. There were no warnings or errors.
+- The Round 2 fluent neighbor probe observed the graph after each chord: open was
+  `visible=true, kind=terminal, ids=[pane-instance-1], cells=[pane-instance-1]`; close retained the
+  same identifiers with `visible=false`.
+- The final `app.showLog(40)` sweep contained only boot, app-start, boot-complete, and
+  `settings-save` info entries. There were no warnings or errors.
 
 ## Instrument feedback
 
@@ -254,6 +320,38 @@ status-to-screen boundary.
 
 ## Verification
 
+Round 3 final-code gate targets:
+
+- `bash scripts/conventions-gate.sh` — PASS. The census reports 32 vocabulary sites against the
+  merged baseline of 32.
+- `bun scripts/harness/smoke-overlay-dialog-harness.ts` — ALL-PASS. The first post-dismissal press,
+  terminal and Agent focus neighbors, cursor visibility, and all outside/interior dialog actions
+  pass.
+- `bun scripts/harness/smoke-panel-chrome-harness.ts` — ALL-PASS. The 10-line Add press cancels
+  cleanly, and both 10-line and 100,000-line second launches restore their exact graphs.
+- `bun scripts/check-coverage-ratchet.ts` — PASS, 392 files and no undeclared decrease.
+- `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — PASS, 1,388
+  annotations, 287 lattice links, and 0 problems.
+
+Round 2 final-code gate targets:
+
+- `bun scripts/harness/smoke-workspace-tabs-harness.ts` — ALL-PASS.
+- `bun scripts/harness/smoke-workspace-layout-isolation-harness.ts` — ALL-PASS. Workspace B painted
+  an unpinned list width of 0, and A restored its pinned width of 27 and exact two-pane group.
+- `bun scripts/harness/smoke-database-harness.ts` — ALL-PASS.
+- `bun scripts/harness/smoke-paste-harness.ts` — ALL-PASS.
+- `bun scripts/harness/smoke-scrollbars-harness.ts` — ALL-PASS at 500 and 100,000 lines.
+- `bun scripts/check-coverage-ratchet.ts` — PASS, 392 files and no undeclared decrease.
+- `bun scripts/harness/smoke-terminal-harness.ts` — ALL-PASS. Status click stays no-create;
+  `Ctrl+J` creates, focuses, hides, and retains the terminal.
+- `bun scripts/harness/smoke-panel-split-harness.ts` — ALL-PASS.
+- `bun scripts/harness/smoke-panel-chrome-harness.ts` — ALL-PASS at 10 and 100,000 lines, including
+  both second launches and the expanded-split `Ctrl+J` cycle.
+- `bun run typecheck` — PASS.
+- `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — PASS, 0 problems.
+
+Original task verification:
+
 - `bunx tsc --noEmit` — PASS.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — PASS, 0 problems.
 - `bash scripts/conventions-gate.sh` — PASS. The core-vocabulary ratchet tightened from 33 to 30.
@@ -268,6 +366,12 @@ status-to-screen boundary.
   task-owned set and all affected PTY paths pass after the refinement.
 
 ## Bycatch
+
+- **CONFIRMED twice:** `scripts/smoke-plugin-manifest.sh` still waits for the removed `✦` Agent
+  status control after proving the Terminal runtime can be disabled while Invar Agent remains
+  usable. The saved Round 3 gate frame and a local rerun both paint the intended single `❯` control
+  and then time out at `the ✦ status control paints`. This is a stale neighboring smoke expectation,
+  not a product regression, so I did not change it in this repair.
 
 - **CONFIRMED twice:** the welcome screen says `Ctrl+P command palette`, while Ctrl+P opens Quick
   Open. Fresh app screenshots reproduced it. This is outside panel task scope and matches the
