@@ -231,6 +231,37 @@ describe('WorkspaceSearchWorkspace', () => {
     }
   });
 
+  test('retained history memory follows bounded patch text instead of source file bytes', async () => {
+    const workspaceRoot = mkdtempSync(
+      join(tmpdir(), 'invar-workspace-replace-memory-'),
+    );
+    const filePath = join(workspaceRoot, 'large.txt');
+    const source = `${'a'.repeat(512 * 1024)}needle${'b'.repeat(512 * 1024)}`;
+    await Bun.write(filePath, source);
+    const workspaceSearch = new InspectableWorkspaceSearch({
+      workspaceRoot: () => workspaceRoot,
+      openDocumentHandles: () => [],
+    });
+
+    try {
+      workspaceSearch.seedResults(
+        [replacementResult(filePath, source)],
+        'changed',
+      );
+      const preparedReplacement = workspaceSearch.prepareReplace();
+      workspaceSearch.applyPreparedAction(preparedReplacement);
+      const transaction = workspaceSearch.historySnapshot()[0]!;
+
+      expect(transaction.arena.byteLength).toBe(141);
+      expect(transaction.arena.byteLength).toBeLessThan(
+        new TextEncoder().encode(source).byteLength,
+      );
+    } finally {
+      workspaceSearch.dispose();
+      rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   test('an oversized undo record is rejected before mutation', async () => {
     const workspaceRoot = mkdtempSync(
       join(tmpdir(), 'invar-workspace-replace-large-'),
