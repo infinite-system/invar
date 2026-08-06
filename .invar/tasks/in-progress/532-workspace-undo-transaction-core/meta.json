@@ -1,0 +1,15 @@
+{
+  "task": 532,
+  "slug": "workspace-undo-transaction-core",
+  "branch": "fleet/532-workspace-undo-transaction-core",
+  "worktree": ".invar/worktrees/532-workspace-undo-transaction-core",
+  "tmuxSession": "invar/532-workspace-undo-transaction-core",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-532-workspace-undo-transaction-core.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "b320cbb635a2e9cf0d3768bab1543b0979f9ab7b",
+  "startedAt": "2026-08-06T10:07:45-04:00"
+}
