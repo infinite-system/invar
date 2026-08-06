@@ -6,7 +6,10 @@ CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
 # RESUME ANCHOR 64 — 2026-08-05 ~20:50 EDT — CHECKPOINT 85%: LAND 509, THEN 510+511
 
-CRONS DISARMED (user order; never re-arm unbidden). WATCHERS: fleet-
+CRONS RE-ARMED BY USER (2026-08-05 ~23:05, "arm the crons then, so
+you keep going"): :07 orchestration 9abac598 + :37 sweep a472671f —
+the disarm order is LIFTED; normal re-arm-on-restart doctrine applies
+again. WATCHERS: fleet-
 watch Monitor armed (re-arm if TaskList empty AND heartbeat stale:
 Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent:
 true)); gate-509 monitor b3u895vhj watches /tmp/gate-509.log.
