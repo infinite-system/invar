@@ -4,8 +4,9 @@
 
 `iv ssh` now opens Invar on another computer without changing terminal keys, screen bytes, window
 size, or the program's exit code. Pasting a local file path uploads that file through a private SSH
-channel and opens the uploaded copy in remote Invar. Small files and a 100,000-line file use the
-same route and produce the same result.
+channel and opens the uploaded copy in remote Invar. The first version put the shared PTY allocator
+inside the terminal plugin, so the SSH client reached into that plugin. The allocator now lives in
+the system tier, and all three consumers use it without crossing a plugin boundary.
 
 ## Result
 
@@ -15,10 +16,11 @@ Task commits:
 
 - `c3902bc27f31064cba81afb17e0863750f05e157` (`ssh: add the iv channel client`)
 - `d72b5826581756ecbf88ef48dedefcb8e57de1de` (`ssh: fix dropzone test path typing`)
+- `2f43d005f1c0818d168588ba014b1230505cbe0e` (`ssh: move the shared PTY allocator to system`)
 
 Dependency merge: `2f3636f7556737d6ea0588164ba1181cc876f379` (`Merge task 508 drop
 routing dependency`). It brings in `0f0961b8fa3a4366455bcc97b399d703694661c9` from
-[task 508 local drop routing](../508-local-drop-opens-the-dropped-file/report-508-local-drop-opens-the-dropped-file.md).
+[task 508 local drop routing](../../completed/508-local-drop-opens-the-dropped-file/report-508-local-drop-opens-the-dropped-file.md).
 
 All task changes are committed. The dispatcher-created untracked fundamentals file remains
 untouched.
@@ -76,9 +78,12 @@ only `drop.upload`.
   forever for a possible paste marker.
 - [ChannelDropNotification.ts](../../../../src/modules/channel/ChannelDropNotification.ts) accepts
   only an existing content-addressed regular file inside the configured remote dropzone.
+- [OpenPty.ts](../../../../src/modules/system/OpenPty.ts) is now the system-tier allocator shared by
+  the terminal runtime, the PTY harness, and the SSH client. Its tests moved with it.
 - [SshClient.ts](../../../../src/modules/channel/SshClient.ts) uses the existing `Processes` and
-  `OpenPty` seams. It owns raw-mode restoration, controlling-terminal setup, resize signals,
-  process signals, the control socket, and exact interactive exit status.
+  [OpenPty.ts](../../../../src/modules/system/OpenPty.ts) seams. It owns raw-mode restoration,
+  controlling-terminal setup, resize signals, process signals, the control socket, and exact
+  interactive exit status.
 - [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts) sends a verified remote drop path to the
   [PathDropController.ts](../../../../src/modules/app/PathDropController.ts) route from task 508.
   Ordinary paste still uses the same controller's parsing and fallback route.
@@ -90,10 +95,18 @@ only `drop.upload`.
 - [behavioral-contracts.sh](../../../../scripts/behavioral-contracts.sh) now includes that SSH smoke
   as one end-state contract.
 
+## Round 2 move rationale
+
+The [round 2 brief](brief-509-2-2.md) exposed one real core-to-plugin import. `OpenPty` allocates,
+sizes, reads, writes, and closes a PTY without terminal policy, so its three consumers share one
+system resource. `OpenPtyBackend` stays in the terminal plugin because it owns shell choice, prompt
+setup, environment, job control, and terminal lifecycle.
+
 ## Invariant review
 
-The filed [brief](brief-509-1-iv-ssh-the-channel-client.md) names three records. The channel also
-touches the bracketed-paste and root-crossing records.
+The first [brief](brief-509-1-iv-ssh-the-channel-client.md) names three records. The
+[round 2 brief](brief-509-2-2.md) adds the PTY allocator and terminal-plugin records. The moved
+evidence paths also implicate resize and bracketed paste.
 
 | Record | Verdict | Evidence |
 | --- | --- | --- |
@@ -102,10 +115,15 @@ touches the bracketed-paste and root-crossing records.
 | [External tools share one launch policy](../../../../src/modules/system/system.invariants.md#external-tools-share-one-launch-policy) | upheld for this task | Every production `ssh` and `setsid` launch uses `Processes`. `OpenPty` remains the recorded interactive PTY exception. The inherited ffmpeg violation is listed under bycatch. |
 | [Bracketed paste survives stream chunking](../../../../src/modules/ui/ui.invariants.md#bracketed-paste-survives-stream-chunking) | upheld | The wrapper parser survives every marker split, and the existing paste smoke remains green for 10-byte, 1 KiB, and 64 KiB payloads. Non-path paste continues to the focused route. |
 | [File access is confined to a single root](../../../../src/modules/system/system.invariants.md#file-access-is-confined-to-a-single-root) | uses the task 508 proposed refinement | A channel notification can name only a verified file in the private remote dropzone. The integrated task 508 route opens that outside-workspace copy read-only. Its report proposes the record change; this task does not decide it. |
+| [One openpty allocator serves both PTY roles](../../../../src/modules/terminal/terminal.invariants.md#one-openpty-allocator-serves-both-pty-roles) | upheld | The terminal backend, PTY harness, and SSH client now import one allocator from the system tier. The census found no second `openpty` owner. |
+| [A live PTY read is readiness driven](../../../../src/modules/terminal/terminal.invariants.md#a-live-pty-read-is-readiness-driven) | upheld | The unchanged allocator moved with its TTY readiness stream and annotations. The six-terminal smoke kept all six quiet readers live. |
+| [Shared PTY writes never block the event loop](../../../../src/modules/terminal/terminal.invariants.md#shared-pty-writes-never-block-the-event-loop) | upheld | The allocator's non-blocking write queue moved unchanged. Its saturation, immediate-write, errno, and close tests passed from the new path. |
+| [A controlling PTY resize reaches the renderer](../../../../src/modules/terminal/terminal.invariants.md#a-controlling-pty-resize-reaches-the-renderer) | upheld | Only its evidence and test paths changed. The terminal smoke resized the nested child, and the SSH smoke settled the remote app at 96 by 32. |
+| [The terminal is a runtime plugin](../../../../src/modules/terminal/terminal.invariants.md#the-terminal-is-a-runtime-plugin) | upheld | `OpenPtyBackend` remains inside the terminal plugin and consumes the allocator through the system tier. No core module imports the terminal plugin. |
 
 Invariant verdict: PASS for the channel design and implementation. The pre-existing root record
 still needs the human decision recorded by
-[task 508 local drop routing](../508-local-drop-opens-the-dropped-file/report-508-local-drop-opens-the-dropped-file.md#proposed-root-confinement-refinement).
+[task 508 local drop routing](../../completed/508-local-drop-opens-the-dropped-file/report-508-local-drop-opens-the-dropped-file.md#proposed-root-confinement-refinement).
 
 ## Proposed channel records
 
@@ -195,10 +213,16 @@ also carries a local wrong-byte expectation and proves that its keyboard compara
   64 KiB, staged input, animated input, and focus recovery.
 - `bun scripts/harness/smoke-ssh-channel-harness.ts` — ALL-PASS for the isolated sshd, small and
   100,000-line uploads, remote open, 96 by 32 resize, exit 23, OSC 52, and 30 keyboard encodings.
+- `bun scripts/harness/smoke-terminal-harness.ts` — ALL-PASS, including the six idle terminal reader
+  ratchet and nested child resize.
+- `bun test src/modules/system/OpenPty.test.ts scripts/harness/PtyTestDriver.test.ts
+  src/modules/terminal/OpenPtyBackend.test.ts src/modules/channel/SshClient.test.ts` — 28 passed, 0
+  failed, 79 expectations.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` — 1,383 annotations and
   266 lattice links resolved, 0 problems.
-- `bash scripts/conventions-gate.sh` — task-owned checks passed. The command exited 1 on the two
-  pre-existing failures listed under bycatch.
+- `bun .invar/tasks/completed/488-core-to-plugin-coupling-census/census-488-imports.ts` — offending
+  count 0. Its positive and negative controls passed.
+- `bash scripts/conventions-gate.sh` — PASS.
 - `git diff --check` — PASS.
 
 I did not run `scripts/merge-gate.sh` or the full behavioral-contract suite.
@@ -215,20 +239,24 @@ I did not run `scripts/merge-gate.sh` or the full behavioral-contract suite.
   smoke therefore reuses its 30 pass-through encodings through `iv ssh`, but it cannot run the old
   script itself through the wrapper. A shared byte-sweep data module would remove that duplication.
 
+## Round 2 instrument feedback
+
+- EASY: The task 488 coupling census named the exact forbidden edge and returned offending count 0
+  after the move. Its built-in controls prove that zero is measured rather than assumed.
+- CONFUSING: `ast-query imports-of OpenPty` searches module targets, not symbol names, so it returned
+  zero. `ast-query identifiers OpenPty` was the correct structural consumer census.
+- MISSING: No new instrument gap appeared. The coupling census, invariant checker, and two PTY
+  smokes covered the move.
+
 ## Bycatch
 
-- PRE-EXISTING: [tasks-status.ts](../../../../scripts/tasks/tasks-status.ts) returns `'draft'` at
-  line 193, but `TaskState` excludes it. `bun x tsc --noEmit` and the conventions gate stop with
-  `TS2322`. The task-owned TypeScript files have no remaining error.
-- PRE-EXISTING: The conventions gate reports one core-to-plugin import ratchet in
-  [DefaultPlugins.ts](../../../../src/modules/plugins/DefaultPlugins.ts). It lists value imports from
-  `editor`, `filetree`, `git`, `markdown`, `lsp`, `media`, `monitoring`, `terminal`, and
-  `inline-rewrite`. This task did not redraw the plugin manifest boundary.
 - CONTRACT VIOLATION: [FfmpegVideoSource.ts](../../../../src/modules/media/FfmpegVideoSource.ts)
   still calls `Bun.spawnSync(['mkfifo', ...])` directly. That bypasses
   [External tools share one launch policy](../../../../src/modules/system/system.invariants.md#external-tools-share-one-launch-policy).
-  The call predates this task and arrived through the task 508 dependency merge.
+  The call predates this task. It is filed as
+  [task 512 ffmpeg mkfifo bypasses launch policy](../../active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md).
 - RUNTIME: During the first small-upload timeout, the remote Terminal pane showed Claude Code's
   `Quick safety check` prompt even though the harness set `INVAR_AGENT_BACKEND=echo`. The prompt
   reproduced during later failed probes. The SSH channel did not depend on that pane, so I did not
   change agent startup policy.
+- ROUND 2: No new bycatch appeared during the allocator move, census, or PTY smokes.
