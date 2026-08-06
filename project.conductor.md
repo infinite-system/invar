@@ -812,3 +812,14 @@ in two places. Rule: volatile numbers in task files carry the commit
 they were measured at, and a promised artifact is pasted in, never
 referenced as intent. The census scripts are cheap — re-run at
 dispatch when the filing is older than the tree.
+
+## 2026-08-05 — a multi-file heredoc edit is N claims; verify each (the draft-union break)
+
+One python block editing three files died mid-way (SyntaxError from a
+chained heredoc); I verified the two SKILL files it touched and not
+the CODE file, which shipped half-edited — tsc red on main for an
+hour until a builder's bycatch caught it. Rule: after any scripted
+multi-file edit, verify EVERY named target (grep or tsc), not the
+ones that were top of mind. The post-commit `git status` habit
+catches missing files; this one needs a per-target presence check —
+and tsc on main after any src/scripts edit is two seconds.
