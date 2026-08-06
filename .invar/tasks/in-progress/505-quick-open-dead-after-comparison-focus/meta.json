@@ -1,0 +1,15 @@
+{
+  "task": 505,
+  "slug": "quick-open-dead-after-comparison-focus",
+  "branch": "fleet/505-quick-open-dead-after-comparison-focus",
+  "worktree": ".invar/worktrees/505-quick-open-dead-after-comparison-focus",
+  "tmuxSession": "invar/505-quick-open-dead-after-comparison-focus",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-505-quick-open-dead-after-comparison-focus.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "dbd50f8f97f6af09f0134b7e4d618581c69006b3",
+  "startedAt": "2026-08-06T04:56:10-04:00"
+}

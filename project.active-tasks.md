@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (14)
-- #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
+## IN-PROGRESS (1)
+- #505 [quick-open-dead-after-comparison-focus](.invar/tasks/in-progress/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)  [building]
+  `tmux attach -t invar/505-quick-open-dead-after-comparison-focus`
+
+## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
