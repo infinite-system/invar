@@ -78,6 +78,7 @@ class $TerminalPaneContent implements PaneContent {
   // The pane owns the `terminal` keybinding context while the panel focuses it, so the host resolves
   // its bindings generically instead of testing for this class.
   readonly keybindingContext = 'terminal';
+  readonly ownsRawKeyInput = true;
   protected readonly selection = new TextSelectionModel.Class();
   protected scrollPort: PaneScrollPort | null = null;
   protected observedOutputRevision = 0;

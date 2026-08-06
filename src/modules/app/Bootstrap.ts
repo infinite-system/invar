@@ -2736,29 +2736,39 @@ class $Bootstrap {
         // input — that is how a terminal without a selection still sends Ctrl+C as SIGINT. The host
         // reads no pane type and no action vocabulary.
         //
-        // Only bindings SCOPED to the pane's own context may be dispatched here. `resolve` lets
-        // global bindings match inside any context, and a focused pane owning a real surface must
-        // NOT swallow them: Ctrl+P/Ctrl+F/Ctrl+S and Ctrl+, have to reach the child as bytes, and a
-        // reserved frame chord has already fired above. That is what `resolution.context` guards.
+        // A binding scoped to the pane dispatches here. A global binding dispatches only when the
+        // pane has no raw-input owner. Terminal and agent panes declare that owner, so Ctrl+P,
+        // Ctrl+F, Ctrl+S, and Ctrl+, still reach their child or composer instead.
         // invariant: A focused pane consumes only its own scoped bindings (src/modules/ui/ui.invariants.md)
         const contextOwningPane: PaneContent | null = panelHost.focusedContent;
         const paneKeybindingContext = contextOwningPane?.keybindingContext;
-        if (contextOwningPane && paneKeybindingContext) {
-          const paneContextResolution = keybindings.resolve(
-            {
-              name: key.name,
-              ctrl: key.ctrl,
-              shift: key.shift,
-              option: key.option || key.meta,
-              super: key.super,
-            },
-            paneKeybindingContext,
-            Date.now(),
-          );
+        if (contextOwningPane) {
+          const paneContextResolution = paneKeybindingContext
+            ? keybindings.resolve(
+                {
+                  name: key.name,
+                  ctrl: key.ctrl,
+                  shift: key.shift,
+                  option: key.option || key.meta,
+                  super: key.super,
+                },
+                paneKeybindingContext,
+                Date.now(),
+              )
+            : panelResolution;
           const paneContextAction = paneContextResolution.action;
           const paneContextActionBelongsToFocusedPane =
             paneContextAction !== null &&
+            paneKeybindingContext !== undefined &&
             paneContextResolution.context === paneKeybindingContext;
+          const globalActionBelongsToHost =
+            paneContextAction !== null &&
+            paneContextResolution.context === 'global' &&
+            contextOwningPane.ownsRawKeyInput !== true;
+          if (globalActionBelongsToHost && paneContextAction) {
+            dispatchAction(paneContextAction, key);
+            return;
+          }
           const paneClaimsContextAction =
             paneContextAction !== null &&
             (contextOwningPane.claimsContextAction?.(paneContextAction) ??
@@ -3055,9 +3065,31 @@ class $Bootstrap {
         return;
       }
 
-      // A contributed surface occupies the editor column: it consumes editor-context keys before the
-      // keybinding registry, so its own panes move instead of the hidden buffer. The host does not
-      // know which keys those are — the surface answers true when it handled one.
+      const resolution = keybindings.resolve(
+        // Alt-family collapse: mac terminals surface Option as `option` OR `meta` (ESC-prefixed
+        // forms); both mean the alt slot of a chord pattern.
+        normalizedChordEvent,
+        context,
+        Date.now(),
+      );
+
+      // A contributed surface occupies the editor column, but it has no child byte sink. Global
+      // bindings therefore keep their host meaning before the surface gets its own keys. A binding
+      // scoped to the editor still reaches the surface first, so its comparison or preview movement
+      // stays local instead of driving the hidden buffer.
+      // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
+      if (
+        context === 'editor' &&
+        !workspace.editorSurfaces.activeDocumentIsKeyboardTarget &&
+        resolution.action &&
+        resolution.context === 'global'
+      ) {
+        dispatchAction(resolution.action, key);
+        return;
+      }
+
+      // The surface consumes its own keys before editor-scoped actions drive the hidden buffer. The
+      // host does not know which keys those are — the surface answers true when it handled one.
       if (
         context === 'editor' &&
         !workspace.editorSurfaces.activeDocumentIsKeyboardTarget &&
@@ -3066,13 +3098,6 @@ class $Bootstrap {
         return;
       }
 
-      const resolution = keybindings.resolve(
-        // Alt-family collapse: mac terminals surface Option as `option` OR `meta` (ESC-prefixed
-        // forms); both mean the alt slot of a chord pattern.
-        normalizedChordEvent,
-        context,
-        Date.now(),
-      );
       app.quitChordArmed.value = resolution.chordPending; // status-bar hint mirrors the pending chord
       if (resolution.action) {
         dispatchAction(resolution.action, key);

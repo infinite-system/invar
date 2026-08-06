@@ -147,6 +147,7 @@ class $AgentPaneContent implements PaneContent {
   readonly frameHeaderRows = 1;
   readonly icon = '✦';
   readonly keybindingContext = 'agent';
+  readonly ownsRawKeyInput = true;
   // invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
   readonly acceptsDroppedPathPaste = true;
 

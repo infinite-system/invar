@@ -12,6 +12,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 // invariant: Animation reuses one fixed framebuffer working set (src/modules/media/media.invariants.md)
 // invariant: Video decoding never exceeds the showing and decoding frames (src/modules/media/media.invariants.md)
 // invariant: Playback memory is independent of duration (src/modules/media/media.invariants.md)
@@ -387,6 +388,22 @@ async function driveHalfBlockAnimation(): Promise<void> {
     const initialCellGeometry = mediaCellGeometry(initialStatus);
     const expectedHalfBlockWorkingSetBytes =
       initialCellGeometry.columns * initialCellGeometry.rows * 2 * 8;
+    driver.sendKeys('Control+p');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'Ctrl+P opens Quick Open while the media pane owns focus',
+      (status) => status.quickOpenOpen === true,
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'Escape returns to the media pane after Quick Open',
+      (status) =>
+        status.quickOpenOpen === false &&
+        status.panelActiveContent === 'media-demo',
+    );
     HarnessSmoke.Class.requireCondition(
       initialWorkingSetBytes === expectedHalfBlockWorkingSetBytes,
       `the half-block arm renders its ${initialCellGeometry.columns}x${initialCellGeometry.rows} ` +

@@ -6,6 +6,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 import { mkdirSync, mkdtempSync, symlinkSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -240,6 +241,33 @@ try {
     Number(beforeOpenStatus.gitChangedCount) >= 1 &&
       Number(afterOpenChangedCount.value) >= 1,
     'opening the untracked node_modules-symlink row did not crash the app',
+  );
+
+  await GraphClient.Class.awaitValue(
+    directoryStatusPath,
+    'workspaceSet.active.focus',
+    'editor',
+  );
+  activeDirectoryDriver.sendKeys('Control+p');
+  await GraphClient.Class.awaitValue(
+    directoryStatusPath,
+    'quickOpen.open',
+    true,
+  );
+  const comparisonStillOpen = await GraphClient.Class.query(
+    directoryStatusPath,
+    'contributors.git.activeWorkspace.showingComparison',
+    'settle',
+  );
+  HarnessSmoke.Class.requireCondition(
+    comparisonStillOpen.value === true,
+    'Ctrl+P opens Quick Open without dismissing the focused comparison',
+  );
+  activeDirectoryDriver.sendKeys('Escape');
+  await GraphClient.Class.awaitValue(
+    directoryStatusPath,
+    'quickOpen.open',
+    false,
   );
 
   directoryDriver.sendKeys('Control+q');

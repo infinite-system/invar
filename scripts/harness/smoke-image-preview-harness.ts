@@ -5,6 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -255,6 +256,14 @@ try {
   );
   HarnessSmoke.Class.pass(
     `quick-open selected ${String(pngStatus.activeBuffer).split('/').at(-1)}`,
+  );
+  driver.sendKeys('Control+p');
+  await GraphClient.Class.awaitValue(statusPath, 'quickOpen.open', true);
+  driver.sendKeys('Escape');
+  await GraphClient.Class.awaitValue(statusPath, 'quickOpen.open', false);
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).activeFileIsImage === true,
+    'Ctrl+P opens Quick Open and returns to the image viewer',
   );
   let snapshot = await driver.awaitSnapshot(
     (candidate) => halfBlockCount(candidate) > 500,

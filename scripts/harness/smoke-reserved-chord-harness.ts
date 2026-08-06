@@ -163,6 +163,35 @@ try {
   );
 
   console.log(
+    '== harness global chord: focused Files opens the folder picker ==',
+  );
+  driver.sendKeys('Control+Shift+e');
+  await awaitStatus(
+    'Ctrl+Shift+E transfers focus to Files',
+    (candidate) => candidate.focus === 'files',
+  );
+  driver.sendKeys('Control+Shift+o');
+  await awaitStatus(
+    'Ctrl+Shift+O opens the folder picker while Files owns focus',
+    (candidate) =>
+      candidate.quickOpenOpen === true &&
+      candidate.quickOpenMode === 'workspacePath',
+  );
+  HarnessSmoke.Class.pass(
+    'Ctrl+Shift+O opens the folder picker from focused Files',
+  );
+  driver.sendKeys('Escape');
+  await awaitStatus(
+    'Escape closes the folder picker before the focused-panel checks',
+    (candidate) => candidate.quickOpenOpen === false,
+  );
+  driver.sendKeys('Control+Shift+j');
+  await awaitStatus(
+    'the editor regains focus before the focused-panel checks',
+    (candidate) => candidate.focus === 'editor',
+  );
+
+  console.log(
     [
       '== harness reserved chord: focused panels keep non-reserved keys',
       'but not reserved frame chords ==',
@@ -176,6 +205,17 @@ try {
     'clicking the task terminal gives the bottom panel keyboard focus',
     (candidate) => candidate.panelFocused === true,
   );
+  const terminalControlPFrame = Number(
+    HarnessSmoke.Class.readStatus(statusPath).frame,
+  );
+  driver.sendKeys('Control+p');
+  await awaitStatus(
+    'the terminal consumes Ctrl+P without opening Quick Open',
+    (candidate) =>
+      Number(candidate.frame) > terminalControlPFrame &&
+      candidate.quickOpenOpen === false,
+  );
+  HarnessSmoke.Class.pass('Ctrl+P stays with the focused terminal');
 
   console.log(
     '== harness application-global chord: focused terminal opens Extensions ==',
@@ -204,6 +244,17 @@ try {
       candidate.panelFocused === true &&
       candidate.panelActiveContentKind === 'agent',
   );
+  const agentControlPFrame = Number(
+    HarnessSmoke.Class.readStatus(statusPath).frame,
+  );
+  driver.sendKeys('Control+p');
+  await awaitStatus(
+    'the agent consumes Ctrl+P without opening Quick Open',
+    (candidate) =>
+      Number(candidate.frame) > agentControlPFrame &&
+      candidate.quickOpenOpen === false,
+  );
+  HarnessSmoke.Class.pass('Ctrl+P stays with the focused agent');
   driver.sendKeys('Control+Shift+x');
   await awaitStatus(
     'Ctrl+Shift+X opens Extensions from the focused agent pane',
