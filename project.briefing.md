@@ -4,6 +4,41 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 73 — 2026-08-06 ~05:35 EDT — EIGHT LANDED; USER-DIRECTED BACKLOG DRAINED; HOLDING FOR MORNING
+
+/goal COMPLETE on the dispatchable side (user asleep). Crons armed
+(:07, :37). fleet-watch live. ZERO builders. ZERO gates.
+
+LANDED TONIGHT (eight): #513 22c80f69, #515 b27d892b, #514 aee4a082,
+#517 7583d179, #518 9aaca56b, #521 2b633367, #504 e0606727 (standing
+plugin-manifest red CLOSED), #505 d9e05771 (global chords survive
+read-only focus; Ctrl+Shift+O sighting refuted). dist/iv rebuilt on
+final main 05:3x. Both 505 gate rounds' only other red was panel-chrome
+contention — FIFTH sighting, census lives in #529's task file.
+
+FILED FROM BYCATCH: #519 Ctrl+J flake, #520 paste gesture, #522 scoped
+clickText, #523 codex hooks probe, #524 resume --last probe, #525
+rollout resolver, #526 consent-dialog rename (needs user naming call),
+#527 modified-key chords, #528 padding-check weakness, #529 panel-chrome
+flake census.
+
+HOLD DISCIPLINE: do NOT dispatch Find/Replace milestone 2 (user go/no-go
+first), #526 (naming), or new invention while the user sleeps — the
+remaining active tasks are conductor-filed maintenance; "few tasks done
+well" governs. IF idle capacity is truly wanted before morning, #529
+(flake census, verification-integrity) is the only self-justifying
+dispatch; otherwise idle.
+
+MORNING QUEUE (present in this order): 1) the night summary — eight
+landed, what each changed, the two REAL bugs found by gates en route
+(over-unified toggle seam; dock unhover cleared global tooltip); 2)
+decisions: #514 tooltip wording, agent-button removal confirm, #526
+rename, Find/Replace milestone 2 go/no-go, #512 mkfifo policy; 3) record
+refinements to confirm: 503 three, 495, 489, 508, 515 four, 504 two
+(panel-space withdrawal boundary; observability enforcement points),
+505 two (keybindings + ui raw-input wording); 4) overlay hover grammar
+into ui-design ch.1 (evidence: 514+518 landings).
+
 # RESUME ANCHOR 72 — 2026-08-06 ~04:55 EDT — #504 LANDED (STANDING RED CLOSED); #505 DISPATCHED
 
 /goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch live.
