@@ -1,7 +1,7 @@
 # 529 — panel chrome rapid expand flake
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — cef91323 — Gate flake killed: settle-boundary status republish (starved publisher) + hover-verified edge drags (hit-grid race); 20/20 contention green; record refined with the starved-wait impossible-shape.
 Engine: claude
 Environment: linux
 Model: fable-5
