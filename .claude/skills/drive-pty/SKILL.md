@@ -129,10 +129,17 @@ changed — nothing else may move.
   100,000-line fixture; per-frame work must not grow with document
   or instance count (the flyweight discipline; render attribution
   names offenders).
-- PERSISTED STATE GETS THE DOUBLE-BOOT: anything touching saved
-  state proves boot -> heal -> save -> SECOND boot reads the healed
-  file (the #501/#502/#503 pattern; single-boot proofs hid all
-  three bugs).
+- SAVED STATE NEEDS A SECOND LAUNCH: every persistence bug has two
+  halves — the READER (what the app makes of the file) and the
+  WRITER (what the app saves back) — and one launch only exercises
+  the reader against old data. If the writer still produces the
+  broken shape, launch 1 looks perfect and the bug returns tomorrow.
+  So when your change touches anything saved (settings, layouts,
+  workspace state): launch once against the old file, verify the
+  behavior, let the app SAVE, then launch AGAIN against the file
+  launch 1 wrote, and verify the second launch is equally clean.
+  (#501/#502/#503: all three tab bugs would have passed a
+  single-launch proof.)
 
 ### When to stop
 
