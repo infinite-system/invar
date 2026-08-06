@@ -1,0 +1,15 @@
+{
+  "task": 517,
+  "slug": "codex-compaction-threshold-steer",
+  "branch": "fleet/517-codex-compaction-threshold-steer",
+  "worktree": ".invar/worktrees/517-codex-compaction-threshold-steer",
+  "tmuxSession": "invar/517-codex-compaction-threshold-steer",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-517-codex-compaction-threshold-steer.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "6ef10c64ff449010482c030c7a6936a2e63b8f2e",
+  "startedAt": "2026-08-05T23:55:41-04:00"
+}

@@ -1,0 +1,15 @@
+{
+  "task": 515,
+  "slug": "find-replace-research-and-design",
+  "branch": "fleet/515-find-replace-research-and-design",
+  "worktree": ".invar/worktrees/515-find-replace-research-and-design",
+  "tmuxSession": "invar/515-find-replace-research-and-design",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-515-find-replace-research-and-design.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "7f0d7305435f554e4c637dc863a159b7a93960e4",
+  "startedAt": "2026-08-05T22:50:05-04:00"
+}

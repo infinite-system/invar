@@ -257,6 +257,7 @@ if [ "${KEEP_WORKSPACE:-0}" != "1" ]; then
     # the 494 removal on 2026-08-04). Real work stays protected: only these
     # exact generated names are cleared.
     rm -f "$worktree_path/TASK.md" "$worktree_path/BUILDER-FUNDAMENTALS.md"
+    git -C "$worktree_path" checkout -- AGENTS.md 2>/dev/null || true
     git worktree remove "$worktree_path" 2>/dev/null \
       && echo "land: worktree removed (branch + tag + archive are the record)" \
       || echo "land: worktree DIRTY or busy — left in place at ${worktree_path}" >&2
