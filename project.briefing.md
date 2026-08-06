@@ -4,6 +4,39 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 68 — 2026-08-06 ~02:15 EDT — 513+515 LANDED; 514 IN ROUND 2; GATES HELD
+
+/goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch Monitor live.
+
+LANDED THIS RUN: #513 -> 22c80f69 (bycatch converted: #519 Ctrl+J flake,
+#520 DriveSession paste gesture). #515 -> b27d892b (design doc landed;
+milestone 1 filed as #521; two contract proposals stay in morning queue).
+#522 filed (scoped clickText, from 514 instrument feedback). Main-side
+fixes earlier: 33b4b57a (env-pinned tasks-dashboard test + ui-design
+AGENTS.md index line).
+
+NOW: #514 builder is LIVE in ROUND 2 (steer confirmed 02:1x). Gate-514 was
+RED: four neighboring terminal-focus smokes time out (workspace-tabs,
+database, paste, scrollbars) + workspace-layout-isolation pin leak + two
+stale coverage declarations. Brief: brief-514-2-2.md in its folder. NO
+GATES while this builder is live — 517/518 gating HOLDS until 514 is READY
+(fleet-watch fires READY on its report).
+
+ON 514 READY: fresh gate in ITS worktree (merge main first), land with
+/tmp/land-514-message.md (already written), then 517 (CONVERT ITS FOUR
+BYCATCH at landing: codex hooks probe task, dispatch.sh comment drift fix,
+resume --last cwd suspect probe, rollout-resolver distillation), then 518
+(merge main, gate, land; rebuild dist/iv after 514 and 518). THEN dispatch
+#521 (Find/Replace milestone 1). Then #504/#505.
+
+Known allowed red: plugin-manifest contention (#504). Landing procedure:
+GATE_LOG=<log> land.sh <n> <slug> <message-file> <summary>; it refuses
+until bycatch is converted (BYCATCH_TRIAGED=1 after converting).
+
+MORNING QUEUE unchanged (tooltip wording, agent-button removal, record
+refinements 503/495/489/508 + 515 four, #512, overlay hover grammar into
+ui-design ch.1 after 514/518 land).
+
 # RESUME ANCHOR 67 — 2026-08-06 01:53 EDT — GATE-513 RED DIAGNOSED AND FIXED; RERUN LIVE
 
 /goal ACTIVE (user asleep): "get it all done in the right sequence".
