@@ -1,0 +1,15 @@
+{
+  "task": 504,
+  "slug": "structure-uninstall-withdrawal-times-out",
+  "branch": "fleet/504-structure-uninstall-withdrawal-times-out",
+  "worktree": ".invar/worktrees/504-structure-uninstall-withdrawal-times-out",
+  "tmuxSession": "invar/504-structure-uninstall-withdrawal-times-out",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-504-structure-uninstall-withdrawal-times-out.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "822786a2f13ab82702ee7ff84c936f29ff057df6",
+  "startedAt": "2026-08-06T04:24:51-04:00"
+}
