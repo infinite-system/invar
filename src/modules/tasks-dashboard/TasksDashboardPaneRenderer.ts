@@ -9,13 +9,13 @@
 import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import {
-  TASKS_BUILDING_BREATH_FRAMES,
-  TASKS_BUILDING_RAMP,
-  TASKS_EXPLORING_GLYPHS,
-  TASKS_EXPLORING_RAMP,
   TASKS_GATE_RAMP,
+  projectTasksWatchTaskGroup,
   tasksMotionStepAtElapsed,
   type GateGlance,
+  type TasksWatchTextLine,
+  type TasksWatchTextSegment,
+  type TasksWatchTextTone,
 } from '../../../scripts/tasks/tasks-status';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { TaskActionIconSet } from '../theme/ThemeIcons';
@@ -39,26 +39,30 @@ class $TasksDashboardPaneRenderer {
     ];
     const tabs: LensTab[] = [];
     let column = 0;
-    for (const [lens, label] of labels) {
+    for (const [labelIndex, [lens, label]] of labels.entries()) {
+      const text = `${labelIndex === 0 ? '|' : ''} ${label} ${
+        labelIndex === labels.length - 1 ? '|' : ''
+      }`;
       tabs.push({
         lens,
         label,
+        text,
         startColumn: column,
-        endColumn: column + label.length + 1,
+        endColumn: column + TextCoordinates.Class.lineWidth(text),
       });
-      column += label.length + 3;
+      column += TextCoordinates.Class.lineWidth(text);
     }
     return tabs;
   }
 
   static cycleGlyphColumn(): number {
     const tabs = this.lensTabs();
-    return (tabs[tabs.length - 1]?.endColumn ?? 0) + 2;
+    return (tabs[tabs.length - 1]?.endColumn ?? 0) + 1;
   }
 
   static hitTestTabLine(column: number): TasksDashboardTabLineTarget | null {
     for (const tab of this.lensTabs()) {
-      if (column >= tab.startColumn && column <= tab.endColumn)
+      if (column >= tab.startColumn && column < tab.endColumn)
         return { kind: 'lens', lens: tab.lens };
     }
     return column === this.cycleGlyphColumn() ? { kind: 'cycle' } : null;
@@ -69,11 +73,10 @@ class $TasksDashboardPaneRenderer {
     row: TasksDashboardRow,
     column: number,
   ): TasksDashboardAction | null {
-    const actionRow =
-      row.kind === 'detail' || (row.kind === 'task' && context.lens !== 'live');
-    if (!actionRow || row.taskNumber === null) return null;
-    for (const segment of this.actionSegments(context, row)) {
-      if (column >= segment.startColumn && column <= segment.endColumn)
+    const projection = this.actionProjection(context, row);
+    if (projection === null) return null;
+    for (const segment of projection.segments) {
+      if (column >= segment.startColumn && column < segment.endColumn)
         return segment.action;
     }
     return null;
@@ -168,13 +171,13 @@ class $TasksDashboardPaneRenderer {
       column += TextCoordinates.Class.lineWidth(text);
     };
     const tabs = this.lensTabs();
-    for (const [tabIndex, tab] of tabs.entries()) {
+    for (const tab of tabs) {
       const active = tab.lens === context.lens;
       const hovered =
         context.hoveredTabLineTarget?.kind === 'lens' &&
         context.hoveredTabLineTarget.lens === tab.lens;
       put(
-        ` ${tab.label} `,
+        tab.text,
         active ? context.palette.accent : context.palette.dim,
         active
           ? context.palette.selection
@@ -182,7 +185,6 @@ class $TasksDashboardPaneRenderer {
             ? context.palette.cursorLine
             : null,
       );
-      if (tabIndex < tabs.length - 1) put(' ', context.palette.dim);
     }
     put(' ', context.palette.dim);
     const cycleHovered = context.hoveredTabLineTarget?.kind === 'cycle';
@@ -238,7 +240,8 @@ class $TasksDashboardPaneRenderer {
       (row.kind === 'detail' &&
         row.taskNumber !== null &&
         row.taskNumber === selectedTaskNumber);
-    const hovered = rowIndex === context.hoveredIndex;
+    const hovered =
+      row.taskNumber !== null && row.taskNumber === context.hoveredTaskNumber;
     const rowBackground = selected
       ? context.paneFocused
         ? context.palette.selection
@@ -267,6 +270,17 @@ class $TasksDashboardPaneRenderer {
       return;
     }
 
+    if (context.lens === 'live') {
+      const line = this.taskGroupLine(context, row);
+      this.renderProjectedLine(
+        context,
+        chunks,
+        line,
+        decorate,
+        context.innerWidth,
+      );
+      return;
+    }
     const glyph = context.lens === 'done' ? '✔' : ' ';
     const glyphColour =
       context.lens === 'done' ? context.palette.added : context.palette.dim;
@@ -280,16 +294,6 @@ class $TasksDashboardPaneRenderer {
       ],
       [` ${row.label}`, context.palette.fg],
     ];
-    if (context.lens === 'live') {
-      this.renderPieces(
-        context,
-        chunks,
-        pieces,
-        decorate,
-        context.viewportWidth,
-      );
-      return;
-    }
     if (row.attachment)
       pieces.push([` — ${row.attachment}`, context.palette.dim]);
     if (row.durationLabel)
@@ -300,7 +304,7 @@ class $TasksDashboardPaneRenderer {
       chunks,
       pieces,
       decorate,
-      this.actionStartColumn(context, row),
+      this.actionProjection(context, row)?.textEndColumn ?? context.innerWidth,
     );
     this.renderActions(context, chunks, row, decorate);
   }
@@ -315,14 +319,16 @@ class $TasksDashboardPaneRenderer {
       context.actionNotice?.taskNumber === row.taskNumber
         ? context.actionNotice.message
         : null;
-    const prefixWidth = Math.max(0, this.actionStartColumn(context, row));
+    const maximumWidth =
+      this.actionProjection(context, row)?.textEndColumn ?? context.innerWidth;
+    const line = this.taskGroupLine(context, row);
     const pieces =
       notice === null
-        ? this.statusPieces(context, row)
+        ? this.projectedPieces(context, line)
         : ([[` ${notice}`, context.palette.warning]] as Array<
             [string, string]
           >);
-    this.renderPieces(context, chunks, pieces, decorate, prefixWidth);
+    this.renderPieces(context, chunks, pieces, decorate, maximumWidth);
     this.renderActions(context, chunks, row, decorate);
   }
 
@@ -332,15 +338,16 @@ class $TasksDashboardPaneRenderer {
     row: TasksDashboardRow,
     decorate: (chunk: TextChunk) => TextChunk,
   ): void {
-    const actions = this.actionSegments(context, row);
-    for (const segment of actions) {
+    const projection = this.actionProjection(context, row);
+    if (projection === null) return;
+    for (const segment of projection.segments) {
       const colour =
         segment.action === 'session' && row.sessionAvailable === false
           ? context.palette.warning
           : context.palette.accent;
       chunks.push(decorate(fg(colour)(` ${segment.glyph} `)));
     }
-    const consumed = this.actionStartColumn(context, row) + actions.length * 3;
+    const consumed = projection.endColumn;
     if (consumed < context.innerWidth)
       chunks.push(
         decorate(
@@ -354,60 +361,72 @@ class $TasksDashboardPaneRenderer {
       );
   }
 
-  protected static statusPieces(
+  protected static taskGroupLine(
     context: TasksDashboardRenderContext,
     row: TasksDashboardRow,
+  ): TasksWatchTextLine {
+    const group = projectTasksWatchTaskGroup({
+      taskNumber: row.taskNumber ?? 0,
+      label: row.label,
+      standing: row.standing,
+      phase: row.phase,
+      round: row.round,
+      durationLabel: row.durationLabel,
+      addedLines: row.addedLines,
+      removedLines: row.removedLines,
+      identity: row.identity,
+      sessionName: row.sessionName,
+      sessionAvailable: row.sessionAvailable,
+      gateGlance: context.gateGlance,
+      animationElapsedMilliseconds: context.animationElapsedMilliseconds,
+      nowMilliseconds: Date.now(),
+    });
+    return row.kind === 'detail' ? group.detail : group.title;
+  }
+
+  protected static projectedPieces(
+    context: TasksDashboardRenderContext,
+    line: TasksWatchTextLine,
   ): Array<[string, string]> {
-    const motionStep = tasksMotionStepAtElapsed(
-      context.animationElapsedMilliseconds,
+    return line.segments.map((segment) => [
+      segment.text,
+      this.colourForProjectedSegment(context, segment),
+    ]);
+  }
+
+  protected static renderProjectedLine(
+    context: TasksDashboardRenderContext,
+    chunks: TextChunk[],
+    line: TasksWatchTextLine,
+    decorate: (chunk: TextChunk) => TextChunk,
+    maximumWidth: number,
+  ): void {
+    this.renderPieces(
+      context,
+      chunks,
+      this.projectedPieces(context, line),
+      decorate,
+      maximumWidth,
     );
-    const pieces: Array<[string, string]> = [[' ', context.palette.dim]];
-    if (row.sessionAvailable === false)
-      pieces.push(['! DEGRADED  ', context.palette.warning]);
-    if (row.standing === 'ready')
-      pieces.push(['◉ READY', context.palette.added]);
-    else if (row.phase !== null) {
-      const ramp =
-        row.phase === 'exploring' ? TASKS_EXPLORING_RAMP : TASKS_BUILDING_RAMP;
-      const motionFrame =
-        row.phase === 'exploring'
-          ? {
-              glyph:
-                TASKS_EXPLORING_GLYPHS[
-                  motionStep % TASKS_EXPLORING_GLYPHS.length
-                ]!,
-              color:
-                TASKS_EXPLORING_RAMP[motionStep % TASKS_EXPLORING_RAMP.length]!
-                  .color,
-            }
-          : TASKS_BUILDING_BREATH_FRAMES[
-              motionStep % TASKS_BUILDING_BREATH_FRAMES.length
-            ]!;
-      pieces.push([motionFrame.glyph, motionFrame.color]);
-      pieces.push([' ', context.palette.dim]);
-      for (
-        let phaseLetterIndex = 0;
-        phaseLetterIndex < row.phase.length;
-        phaseLetterIndex += 1
-      ) {
-        pieces.push([
-          row.phase[phaseLetterIndex] ?? '',
-          ramp[(phaseLetterIndex + motionStep) % ramp.length]!.color,
-        ]);
-      }
-    }
-    if (row.round > 1) pieces.push([` round ${row.round}`, this.ROUND_AMBER]);
-    if (row.durationLabel)
-      pieces.push([`  ${row.durationLabel}`, context.palette.accent]);
-    if (row.addedLines !== null && row.removedLines !== null)
-      pieces.push([
-        row.addedLines === 0 && row.removedLines === 0
-          ? '  ±0'
-          : `  +${row.addedLines} -${row.removedLines}`,
-        context.palette.dim,
-      ]);
-    if (row.identity) pieces.push([`  ${row.identity}`, context.palette.dim]);
-    return pieces;
+  }
+
+  protected static colourForProjectedSegment(
+    context: TasksDashboardRenderContext,
+    segment: TasksWatchTextSegment,
+  ): string {
+    if (segment.color !== null) return segment.color;
+    const tones: Record<TasksWatchTextTone, string> = {
+      foreground: context.palette.fg,
+      strong: context.palette.fg,
+      dim: context.palette.dim,
+      success: context.palette.added,
+      warning: context.palette.warning,
+      error: context.palette.error,
+      accent: context.palette.accent,
+      round: this.ROUND_AMBER,
+      motion: context.palette.accent,
+    };
+    return tones[segment.tone];
   }
 
   protected static renderGateRow(
@@ -475,18 +494,19 @@ class $TasksDashboardPaneRenderer {
     );
   }
 
-  protected static actionStartColumn(
+  protected static actionProjection(
     context: TasksDashboardRenderContext,
     row: TasksDashboardRow,
-  ): number {
-    const actionCount = row.sessionName === null ? 4 : 5;
-    return Math.max(0, context.innerWidth - actionCount * 3);
-  }
-
-  protected static actionSegments(
-    context: TasksDashboardRenderContext,
-    row: TasksDashboardRow,
-  ): TaskActionSegment[] {
+  ): TaskActionProjection | null {
+    const isActionRow =
+      row.kind === 'detail' || (row.kind === 'task' && context.lens !== 'live');
+    if (
+      !isActionRow ||
+      row.taskNumber === null ||
+      row.taskNumber !== context.hoveredTaskNumber
+    ) {
+      return null;
+    }
     const icons = context.taskActionIcons;
     const actions: ReadonlyArray<readonly [TasksDashboardAction, string]> = [
       ...(row.sessionName === null
@@ -497,12 +517,14 @@ class $TasksDashboardPaneRenderer {
       ['brief', icons.latestBrief],
       ['report', icons.latestReport],
     ];
-    return actions.map(([action, glyph], index) => ({
+    const textEndColumn = Math.max(0, context.innerWidth - actions.length * 3);
+    const segments = actions.map(([action, glyph], index) => ({
       action,
       glyph,
-      startColumn: this.actionStartColumn(context, row) + index * 3,
-      endColumn: this.actionStartColumn(context, row) + index * 3 + 2,
+      startColumn: textEndColumn + index * 3,
+      endColumn: textEndColumn + index * 3 + 3,
     }));
+    return { textEndColumn, endColumn: context.innerWidth, segments };
   }
 
   protected static clipAndPad(
@@ -511,7 +533,7 @@ class $TasksDashboardPaneRenderer {
   ): string {
     const clipped = WrapText.Class.clipToWidth(
       text,
-      Math.max(1, context.viewportWidth),
+      Math.max(1, context.innerWidth),
       context.ellipsisCell,
     );
     return TextCoordinates.Class.padToDisplayWidth(clipped, context.innerWidth);
@@ -526,6 +548,7 @@ export namespace TasksDashboardPaneRenderer {
 interface LensTab {
   lens: TasksDashboardLens;
   label: string;
+  text: string;
   startColumn: number;
   endColumn: number;
 }
@@ -540,6 +563,12 @@ interface TaskActionSegment {
   endColumn: number;
 }
 
+interface TaskActionProjection {
+  textEndColumn: number;
+  endColumn: number;
+  segments: TaskActionSegment[];
+}
+
 export type TasksDashboardAction =
   'session' | 'workspace' | 'task' | 'brief' | 'report';
 
@@ -550,7 +579,7 @@ export interface TasksDashboardRenderContext {
   available: boolean;
   windowTop: number;
   selectedIndex: number;
-  hoveredIndex: number;
+  hoveredTaskNumber: number | null;
   paneFocused: boolean;
   palette: Palette;
   height: number;

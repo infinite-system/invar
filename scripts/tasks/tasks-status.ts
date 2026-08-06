@@ -109,6 +109,51 @@ export interface TaskMotionFrame extends TaskMotionColour {
   readonly glyph: string;
 }
 
+export type TasksWatchTextTone =
+  | 'foreground'
+  | 'strong'
+  | 'dim'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'accent'
+  | 'round'
+  | 'motion';
+
+export interface TasksWatchTextSegment {
+  readonly text: string;
+  readonly tone: TasksWatchTextTone;
+  readonly ansiCode: string | null;
+  readonly color: string | null;
+}
+
+export interface TasksWatchTextLine {
+  readonly segments: readonly TasksWatchTextSegment[];
+}
+
+export interface TasksWatchTaskGroupProjection {
+  readonly taskNumber: number;
+  readonly title: TasksWatchTextLine;
+  readonly detail: TasksWatchTextLine;
+}
+
+export interface TasksWatchTaskGroupInput {
+  readonly taskNumber: number;
+  readonly label: string;
+  readonly standing: 'ready' | 'building' | null;
+  readonly phase: 'exploring' | 'building' | null;
+  readonly round: number;
+  readonly durationLabel: string;
+  readonly addedLines: number | null;
+  readonly removedLines: number | null;
+  readonly identity: string;
+  readonly sessionName: string | null;
+  readonly sessionAvailable: boolean | null;
+  readonly gateGlance: GateGlance | null;
+  readonly animationElapsedMilliseconds: number;
+  readonly nowMilliseconds: number;
+}
+
 export interface TaskFleetFacts {
   readonly lineDelta: { added: number; removed: number } | null;
   readonly phase: 'exploring' | 'building';
@@ -1336,6 +1381,138 @@ export function tasksMotionStepAtElapsed(elapsedMilliseconds: number): number {
   return Math.floor(elapsedMilliseconds / TASKS_MOTION_STEP_MILLISECONDS);
 }
 
+function tasksWatchTextSegment(
+  text: string,
+  tone: TasksWatchTextTone,
+  ansiCode: string | null = null,
+  color: string | null = null,
+): TasksWatchTextSegment {
+  return { text, tone, ansiCode, color };
+}
+
+/**
+ * The two-row task shape shared by `tasks:watch` and the in-app Tasks pane.
+ * The projection carries meaning and colour data. Each surface only translates
+ * that projection into its own terminal paint representation.
+ */
+export function projectTasksWatchTaskGroup(
+  input: TasksWatchTaskGroupInput,
+): TasksWatchTaskGroupProjection {
+  const motionStep = tasksMotionStepAtElapsed(
+    input.animationElapsedMilliseconds,
+  );
+  const title: TasksWatchTextLine = {
+    segments: [
+      tasksWatchTextSegment('  ', 'foreground'),
+      tasksWatchTextSegment(`#${input.taskNumber}`, 'strong', '1'),
+      tasksWatchTextSegment(` ${input.label}`, 'foreground'),
+    ],
+  };
+  const detailSegments: TasksWatchTextSegment[] = [
+    tasksWatchTextSegment('     ', 'dim', '2'),
+  ];
+  if (input.sessionAvailable === false) {
+    detailSegments.push(tasksWatchTextSegment('! DEGRADED  ', 'warning', '33'));
+  }
+  if (input.standing === 'ready') {
+    detailSegments.push(tasksWatchTextSegment('◉ READY', 'success', '32'));
+  } else if (input.phase !== null) {
+    const ramp =
+      input.phase === 'exploring' ? TASKS_EXPLORING_RAMP : TASKS_BUILDING_RAMP;
+    const motionFrame =
+      input.phase === 'exploring'
+        ? {
+            glyph:
+              TASKS_EXPLORING_GLYPHS[
+                motionStep % TASKS_EXPLORING_GLYPHS.length
+              ] ?? '➤',
+            ...TASKS_EXPLORING_RAMP[motionStep % TASKS_EXPLORING_RAMP.length]!,
+          }
+        : TASKS_BUILDING_BREATH_FRAMES[
+            motionStep % TASKS_BUILDING_BREATH_FRAMES.length
+          ]!;
+    detailSegments.push(
+      tasksWatchTextSegment(
+        motionFrame.glyph,
+        'motion',
+        motionFrame.ansi,
+        motionFrame.color,
+      ),
+      tasksWatchTextSegment(' ', 'dim', '2'),
+    );
+    for (
+      let phaseLetterIndex = 0;
+      phaseLetterIndex < input.phase.length;
+      phaseLetterIndex += 1
+    ) {
+      const colour = ramp[(phaseLetterIndex + motionStep) % ramp.length]!;
+      detailSegments.push(
+        tasksWatchTextSegment(
+          input.phase[phaseLetterIndex] ?? '',
+          'motion',
+          colour.ansi,
+          colour.color,
+        ),
+      );
+    }
+  }
+  if (input.round > 1) {
+    detailSegments.push(
+      tasksWatchTextSegment(
+        ` round ${input.round}`,
+        'round',
+        '38;5;179',
+        '#d7af5f',
+      ),
+    );
+  }
+  if (input.durationLabel.length > 0) {
+    detailSegments.push(
+      tasksWatchTextSegment(`  ${input.durationLabel}`, 'accent', '36'),
+    );
+  }
+  if (input.addedLines !== null && input.removedLines !== null) {
+    detailSegments.push(
+      tasksWatchTextSegment(
+        input.addedLines === 0 && input.removedLines === 0
+          ? '  ±0'
+          : `  +${input.addedLines} -${input.removedLines}`,
+        'dim',
+        '2',
+      ),
+    );
+  }
+  if (input.identity.length > 0) {
+    detailSegments.push(
+      tasksWatchTextSegment(`  ${input.identity}`, 'dim', '2'),
+    );
+  }
+  if (input.sessionName !== null) {
+    detailSegments.push(
+      tasksWatchTextSegment(
+        `  tmux attach -t ${input.sessionName}`,
+        input.sessionAvailable === false ? 'warning' : 'dim',
+        input.sessionAvailable === false ? '33' : '38;5;240',
+      ),
+    );
+  }
+  return {
+    taskNumber: input.taskNumber,
+    title,
+    detail: { segments: detailSegments },
+  };
+}
+
+export function renderTasksWatchTextLineAnsi(line: TasksWatchTextLine): string {
+  return line.segments
+    .map((segment) =>
+      segment.ansiCode === null
+        ? segment.text
+        : paint(segment.ansiCode, segment.text),
+    )
+    .join('');
+}
+
 export const TASKS_BUILDING_MONOCHROME_GLYPHS = ['·', '•', '●', '•'] as const;
 
 // Lines of code, live, as the agents write: each in-progress task's worktree
@@ -1865,80 +2042,52 @@ function live(
   }
   outputLine(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
-    // ROUNDS. One rule for the CLI and the pane — see builderStanding above.
     const { round, ready } = builderStanding(tasksRoot, record);
-    const roundSuffix =
-      round > 1 ? ` ${paint('38;5;179', `round ${round}`)}` : '';
-    // EXPLORING vs BUILDING. Until the worktree diff shows one changed line,
-    // the builder is READING — records, code, the brief. The first ±line flips
-    // the word to building, stickily (a later revert to ±0 does not demote it;
-    // firstEditSeen remembers per watch session). Each phase wears its own
-    // gradient — building in the teal current, exploring in white-to-navy —
-    // and the breathing glyph rides its phase's ramp, icon and text as one.
     const delta = lineDeltaCache.get(record.folderName) ?? null;
     const hasEdits = delta !== null && delta.added + delta.removed > 0;
     if (hasEdits) firstEditSeen.add(record.folderName);
     const exploring = !firstEditSeen.has(record.folderName);
-    const phaseWord = exploring ? 'exploring' : 'building';
-    const phaseRamp = exploring ? TASKS_EXPLORING_RAMP : TASKS_BUILDING_RAMP;
     const startedAt = startedAtMilliseconds(tasksRoot, record);
-    const identity = agentIdentity(record);
-    const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
-    const lineDeltaSuffix = lineDeltaBadge(record.folderName);
-    // The motion step comes from ELAPSED TIME, never from the paint ordinal:
-    // the watch repaints at 60 fps and the pane at 30 fps, and both must show
-    // the same step at the same moment (#348).
-    const lineForMotionElapsed = (
-      currentMotionElapsedMilliseconds?: number,
-    ): string => {
-      const motionStep = tasksMotionStepAtElapsed(
-        currentMotionElapsedMilliseconds ?? 0,
+    const lineForMotionElapsed = (currentMotionElapsedMilliseconds = 0) =>
+      renderTasksWatchTextLineAnsi(
+        projectTasksWatchTaskGroup({
+          taskNumber: record.taskNumber,
+          label: record.folderName.replace(/^\d+-/, ''),
+          standing: ready ? 'ready' : 'building',
+          phase: ready ? null : exploring ? 'exploring' : 'building',
+          round,
+          durationLabel:
+            startedAt === null ? '' : formatDuration(Date.now() - startedAt),
+          addedLines: delta?.added ?? null,
+          removedLines: delta?.removed ?? null,
+          identity: agentIdentity(record) ?? '',
+          sessionName: record.tmuxSession,
+          sessionAvailable: null,
+          gateGlance: gateGlanceCache,
+          animationElapsedMilliseconds: currentMotionElapsedMilliseconds,
+          nowMilliseconds: Date.now(),
+        }).detail,
       );
-      const breath =
-        currentMotionElapsedMilliseconds === undefined
-          ? null
-          : (TASKS_BUILDING_BREATH_FRAMES[
-              motionStep % TASKS_BUILDING_BREATH_FRAMES.length
-            ] ?? null);
-      const phaseGlyph =
-        breath === null
-          ? paint(exploring ? '38;5;153' : '38;5;45', exploring ? '➤' : '●')
-          : exploring
-            ? paint(
-                TASKS_EXPLORING_RAMP[motionStep % TASKS_EXPLORING_RAMP.length]
-                  ?.ansi ?? '38;5;153',
-                TASKS_EXPLORING_GLYPHS[
-                  motionStep % TASKS_EXPLORING_GLYPHS.length
-                ] ?? '➤',
-              )
-            : paint(
-                breath.ansi,
-                colourEnabled
-                  ? breath.glyph
-                  : (TASKS_BUILDING_MONOCHROME_GLYPHS[
-                      motionStep % TASKS_BUILDING_MONOCHROME_GLYPHS.length
-                    ] ?? breath.glyph),
-              );
-      const statusBadge = ready
-        ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(currentMotionElapsedMilliseconds) : green(' — awaiting landing')}`
-        : `${phaseGlyph} ${
-            currentMotionElapsedMilliseconds === undefined
-              ? paint(exploring ? '38;5;153' : '38;5;44', phaseWord)
-              : gradientWord(phaseWord, motionStep, phaseRamp)
-          }${roundSuffix}`;
-      const runningFor =
-        startedAt === null
-          ? ''
-          : `  ${cyan(formatDuration(Date.now() - startedAt))}`;
-      return `     ${statusBadge}${runningFor}${lineDeltaSuffix}${identitySuffix}`;
-    };
     const rowAnimates =
       !ready || (gateGlanceCache !== null && gateGlanceCache.exitCode === null);
-    // Two-line row: the name owns its line; the status lives under it — the
-    // row stays whole on narrow screens instead of wrapping mid-badge.
-    outputLine(
-      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}`,
-    );
+    const group = projectTasksWatchTaskGroup({
+      taskNumber: record.taskNumber,
+      label: record.folderName.replace(/^\d+-/, ''),
+      standing: ready ? 'ready' : 'building',
+      phase: ready ? null : exploring ? 'exploring' : 'building',
+      round,
+      durationLabel:
+        startedAt === null ? '' : formatDuration(Date.now() - startedAt),
+      addedLines: delta?.added ?? null,
+      removedLines: delta?.removed ?? null,
+      identity: agentIdentity(record) ?? '',
+      sessionName: record.tmuxSession,
+      sessionAvailable: null,
+      gateGlance: gateGlanceCache,
+      animationElapsedMilliseconds: motionElapsedMilliseconds ?? 0,
+      nowMilliseconds: Date.now(),
+    });
+    outputLine(renderTasksWatchTextLineAnsi(group.title));
     if (rowAnimates && outputAnimatedLine !== undefined) {
       outputAnimatedLine((animationElapsedMilliseconds) =>
         lineForMotionElapsed(animationElapsedMilliseconds),
@@ -1946,9 +2095,6 @@ function live(
     } else {
       outputLine(lineForMotionElapsed(motionElapsedMilliseconds));
     }
-    outputLine(
-      paint('38;5;240', `       tmux attach -t ${record.tmuxSession}`),
-    );
   }
   return 0;
 }
