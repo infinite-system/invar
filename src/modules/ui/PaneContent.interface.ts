@@ -58,6 +58,9 @@ export interface PaneContent {
   readonly activityBadge?: number;
   /** Optional keybinding context owned by this content while its host has focus. */
   readonly keybindingContext?: string;
+  /** This content owns unmatched global chords as raw input. Terminal and agent panes use this to
+   *  keep child or composer input. Read-only panes omit it, so global chords keep their host action. */
+  readonly ownsRawKeyInput?: boolean;
   /** This content accepts dropped paths as one shell-quoted paste while it owns focus. */
   readonly acceptsDroppedPathPaste?: boolean;
   /** Rows the host reserves above this content for controls owned by the pane frame. */

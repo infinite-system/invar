@@ -6,6 +6,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Markdown view mode persists across Markdown documents (src/modules/markdown/markdown.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -142,6 +143,23 @@ async function drivePersistence(): Promise<void> {
         HarnessSmoke.Class.readStatus(statusPath).editorColumnContent ===
           'markdown.preview',
       'preview-only paints and publishes its rendered pane',
+    );
+    driver.sendKeys('Control+p');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'Ctrl+P opens Quick Open while the Markdown preview owns focus',
+      (status) =>
+        status.quickOpenOpen === true && status.markdownPaneFocus === 'preview',
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'Escape returns to the focused Markdown preview',
+      (status) =>
+        status.quickOpenOpen === false &&
+        status.markdownPaneFocus === 'preview',
     );
     driver.sendRawInputWithoutFrameExpectation('x');
     driver.sendKeys('Control+Shift+v');
