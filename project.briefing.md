@@ -4,6 +4,35 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 64 — 2026-08-05 ~20:50 EDT — CHECKPOINT 85%: LAND 509, THEN 510+511
+
+CRONS DISARMED (user order; never re-arm unbidden). WATCHERS: fleet-
+watch Monitor armed (re-arm if TaskList empty AND heartbeat stale:
+Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent:
+true)); gate-509 monitor b3u895vhj watches /tmp/gate-509.log.
+
+LIVE: #508 LANDED (drop-by-kind; read-only badge outside root;
+refinement PROPOSED unwritten). #509 iv ssh READY, gate RUNNING at
+/tmp/gate-509.log in .invar/worktrees/509-iv-ssh-the-channel-client
+(branch already CONTAINS 508's commit — merge was clean). ON GREEN:
+land via GATE_LOG=/tmp/gate-509.log BYCATCH_TRIAGED=1 bash
+scripts/fleet/land.sh 509 iv-ssh-the-channel-client <msg> "iv ssh:
+byte-perfect passthrough + dropzone channel" — bycatch ALREADY
+CONVERTED (#512 mkfifo filed; tasks-status union FIXED on main; the
+agent-pane Quick-safety-check sighting from its report: note for
+#504/#505-era triage, one sighting only). THEN rebuild dist/iv,
+dispatch #510 (M3 picker, after-509 brief per wave draft in the
+completed 508 folder) and #511 (M4 inversion doc + sync census,
+fable). Remaining queue: #504 (structure uninstall, LAST residual),
+#505, #512. PARKED: 507. DRAFT state + PARKED state exist; 5-anchor
+rule holds. LESSONS swept this checkpoint: verify EVERY file a
+multi-target heredoc claims to edit (the half-applied draft-union
+break — tsc red on main for ~1h, caught by builder bycatch, not by
+me); one dispatch per command; steer-confirm kickoffs when dispatch
+warns. dist/iv is at the 508 landing; rebuild after 509.
+
+---
+
 # RESUME ANCHOR 63b — 2026-08-05 ~20:25 EDT — 84% GAUGE: WAVE 508/509 MID-FLIGHT
 
 CRONS DISARMED (user order stands). #506 LANDED (constructor-first +
@@ -106,27 +135,9 @@ index.
 
 ---
 
-# RESUME ANCHOR 59 — 2026-08-04 ~00:10 EDT — BUG NIGHT CLOSED; FLEET AT ZERO
-
-Evening tail after anchor 58b: #501 landed (spaces heal) but the user
-still saw stale tabs — layer two was dead task PANES; #502 landed
-(aa80511f): dead task entries drop at restore via the live-pane
-liveness test, both persisted sequences heal, double-boot proven, and
-the vocabulary ratchet TIGHTENED 34 -> 33 (first real fall). The
-one-shot Drive.ts is REMOVED by user order (8c7788c0): `bun run
-drive` now ALIASES DriveSession.ts — fluent only (records refined,
-one retired with its capability, coverage loss declared 36->0 with
-counts); the combined tree was gated at #502's landing. dist/iv
-rebuilt post-502. USER POLICY REINFORCED TWICE: drive via the warm
-fluent server, always; read an instrument's skill BEFORE first use
-after compaction. User decisions outstanding: #464 retire, #460-463
-hygiene, 7 historical worktrees. Next-wave candidates: #498, #438,
-#499, #496, #497, #489.
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 59 — 2026-08-04 ~00:10 EDT — BUG NIGHT CLOSED; FLEET AT ZERO
 - RESUME ANCHOR 58b — 2026-08-03 ~23:10 EDT — WAVE COMPLETE + RECORDS WRITTEN + #501 LANDED
 - RESUME ANCHOR 58 — 2026-08-03 ~19:25 EDT — DECOUPLING WAVE COMPLETE
 - RESUME ANCHOR 57 — 2026-08-03 ~14:05 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
