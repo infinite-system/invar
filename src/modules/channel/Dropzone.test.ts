@@ -6,7 +6,7 @@ import {
   utimesSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Dropzone } from './Dropzone';
 
@@ -53,6 +53,6 @@ test('a new upload counts toward the size cap and evicts older cargo', async () 
     directory,
     maximumByteCount: 6,
   });
-  expect(readdirSync(directory)).toEqual([second.path.split('/').at(-1)]);
+  expect(readdirSync(directory)).toEqual([basename(second.path)]);
   expect(Bun.file(first.path).size).toBe(0);
 });
