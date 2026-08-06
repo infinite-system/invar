@@ -117,6 +117,18 @@ doctrine compliance is greppable and driveable.
 
 ## The meta-rules
 
+- DESIGN COHERENCE IS THE SAME DUTY AS CODE COHERENCE (user law,
+  2026-08-06): every surface you add or touch must leave the whole
+  EXPERIENCE more integrated — the same gesture means the same thing
+  everywhere, new affordances speak the existing vocabulary (glyphs,
+  paddings, hover grammar), flows have no gaps (every state
+  reachable, every state exitable, nothing dead-ends), and the
+  result is friendlier than before, not just compliant. A feature
+  that works but introduces a second dialect — a new dialog style, a
+  different hover behavior, an unfamiliar consent pattern — makes
+  the product LESS designed. Check your surface against its
+  siblings; if you and the neighbor disagree, either adopt the
+  neighbor's form or propose the doctrine change that unifies both.
 - HARVESTED, NOT INVENTED: extend this doctrine only with rules that
   cite a landed decision or record. Taste proposals go to the user
   first.

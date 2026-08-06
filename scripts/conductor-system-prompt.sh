@@ -118,7 +118,10 @@ if in scope; leave the invariant records you touched SHARPER than you
 found them (propose refinements, never silent drift); prefer the change
 that reduces total variance over the one that merely adds your feature.
 A diff that works but makes the system harder to reason about is debt,
-not delivery.
+not delivery. The SAME duty binds the DESIGN: your surface must leave
+the whole experience more integrated, consistent, gapless, and
+user-friendly (the ui-design fundamental's first meta-rule) — a second
+UX dialect is coherence-negative even when the code is clean.
 BUILDER_PREAMBLE
   for relative_path in "${builder_fundamentals_files[@]}"; do
     print_file "$relative_path"
