@@ -28,3 +28,14 @@ BUILDER-FUNDAMENTALS.md and TASK.md wholesale after it happens."
    event per lane per threshold crossing), with both arms proven
    (a synthetic rollout above threshold fires; below stays silent).
 3. Decide steer-directly vs event-for-conductor; wire it; self-test.
+
+## Scope addition (2026-08-06): VERIFY the AGENTS.md tier empirically
+
+Dispatch now injects the fundamentals into the worktree's AGENTS.md
+(codex's mechanical re-prime tier). ASSUMED, not proven: that codex
+re-includes AGENTS.md content after ITS OWN compaction, not only at
+session start. Verify empirically: drive a codex session to
+compaction (or study the rollout structure of tonight's long
+sessions), and confirm the post-compaction context carries AGENTS.md
+content. If it does NOT: the threshold steer becomes the primary
+defense and this task's report says so loudly.
