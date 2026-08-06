@@ -53,3 +53,18 @@ steer or marker-file for fleet-watch). Verify the payload shape
 against current codex docs FIRST — the CLI moves fast and this task
 file's knowledge may lag. Fleet-watch polling remains the fallback
 arm if notify proves unreliable.
+
+## Post-compact detection (user design, 2026-08-06) — the second half
+
+The notify program also DETECTS compaction after the fact: keep a
+per-lane last-seen-usage marker (state file keyed by worktree); on
+each turn-complete, compare — a collapse (e.g. >60% last turn to
+<20% now) means compaction just happened. Fire the POST-COMPACT
+steer immediately: "context was compacted — re-read
+BUILDER-FUNDAMENTALS.md and TASK.md wholesale before continuing."
+This reconstructs Claude Code's SessionStart(compact) hook from
+codex's own parts. Both arms proven: a synthetic usage collapse
+fires; normal growth and small dips stay silent (threshold chosen so
+a long tool-output turn cannot false-positive — calibrate against
+real rollouts). Task rename at dispatch: this is now "codex
+compaction lifecycle via notify" — warn-before AND detect-after.
