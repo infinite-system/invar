@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/in-progress/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/518-live-tasks-pane-matches-tasks-watch`
-- #517 [codex-compaction-threshold-steer](.invar/tasks/in-progress/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/517-codex-compaction-threshold-steer`
 
 ## USER-DIRECTED (16)
 - #521 [repair-in-file-replace-all-undo](.invar/tasks/active/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md)
@@ -158,7 +156,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 226 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 227 — full log: project.tasks-completed.md)
+- #517 [codex-compaction-threshold-steer](.invar/tasks/completed/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md) — 7583d179 — Codex lanes survive compaction: notify-hook threshold warning, post-compaction usage-collapse detection, idempotent doctrine re-send; bycatch converted to #523-#525.
 - #516 [the-ui-design-doctrine](.invar/tasks/completed/516-the-ui-design-doctrine/task-516-the-ui-design-doctrine.md) — ACTIVE
 - #515 [find-replace-research-and-design](.invar/tasks/completed/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md) — b27d892b — Find/Replace full design landed: two surfaces, reverse-patch transactions, dialog copy, four proposed records, six milestones; milestone 1 filed as #521.
 - #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/completed/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md) — aee4a082 — Panel chrome rebuilt: one no-create bottom-panel toggle through the status seam, overlay hover grammar on instance rows, expand-trap fixed, fresh-boot drive honesty via a completed-frame boundary; three gate rounds, contract refines landed with the code.
@@ -173,4 +172,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #501 [restored-task-panes-mint-extra-spaces](.invar/tasks/completed/501-restored-task-panes-mint-extra-spaces/task-501-restored-task-panes-mint-extra-spaces.md) — faa06188 — restored task panes stay in their saved space; layouts self-heal
 - #500 [database-add-click-misses-popup](.invar/tasks/completed/500-database-add-click-misses-popup/task-500-database-add-click-misses-popup.md) — ACTIVE
 - #499 [terminal-smoke-hides-unit-failure-output](.invar/tasks/completed/499-terminal-smoke-hides-unit-failure-output/task-499-terminal-smoke-hides-unit-failure-output.md) — e322f281 — smokes print child failures and self-describe their homes
-- #498 [global-chords-blocked-by-focused-panel](.invar/tasks/completed/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md) — 99c78b72 — frame chords survive focused panels via applicationGlobal
