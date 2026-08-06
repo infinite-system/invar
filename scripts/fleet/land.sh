@@ -258,6 +258,9 @@ if [ "${KEEP_WORKSPACE:-0}" != "1" ]; then
     # exact generated names are cleared.
     rm -f "$worktree_path/TASK.md" "$worktree_path/BUILDER-FUNDAMENTALS.md"
     git -C "$worktree_path" checkout -- AGENTS.md 2>/dev/null || true
+    # The compaction-lifecycle notify state (#517) is keyed by lane name;
+    # clear it with the lane so a future same-named lane starts fresh.
+    rm -f "/tmp/codex-compaction-${name}.state" "/tmp/codex-compaction-${name}.log"
     git worktree remove "$worktree_path" 2>/dev/null \
       && echo "land: worktree removed (branch + tag + archive are the record)" \
       || echo "land: worktree DIRTY or busy — left in place at ${worktree_path}" >&2

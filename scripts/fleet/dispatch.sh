@@ -611,6 +611,14 @@ case "$engine" in
     effective_effort="${declared_effort:-medium}"
     [ "$effective_effort" = "default" ] && effective_effort="medium"
     model_flags="${model_flags} -c model_reasoning_effort=${effective_effort}"
+    # COMPACTION LIFECYCLE (#517): codex invokes this program after every
+    # turn (payload verified live on 0.146.1, codex-tui and codex_exec). It
+    # warns the lane before compaction (~70% of the window) and steers the
+    # doctrine re-read after detecting one (usage-collapse edge), through
+    # steer.sh. Flag-only registration: nothing worktree-local is planted,
+    # so land.sh has only /tmp state files to clear. The token must stay
+    # space-free — agent_command expands unquoted below.
+    model_flags="${model_flags} -c notify=[\"${repository_root}/scripts/fleet/codex-compaction-notify.sh\"]"
     ;;
   claude)
     agent_command="claude --dangerously-skip-permissions"
