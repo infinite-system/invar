@@ -4,6 +4,28 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 69 — 2026-08-06 ~03:20 EDT — FOUR OF FIVE LANDED; GATE-518 LIVE
+
+/goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch live.
+
+LANDED: #513 22c80f69, #515 b27d892b, #514 aee4a082 (three gate rounds:
+over-unified toggle seam repaired into two generators; vocabulary baseline
+32; overlay smoke observer fixed to owned state), #517 7583d179 (bycatch
+converted: #523 hooks probe, #524 resume --last probe, #525 rollout
+resolver; dispatch.sh HIGH-comment drift fixed 635d3191). dist/iv rebuilt
+after 514 (02:58). Filed this run: #519-#525.
+
+NOW: GATE-518 live at /tmp/gate-518.log (Monitor armed; main merged in at
+c164af2a). ON GREEN: land with /tmp/land-518-message.md (written), rebuild
+dist/iv again, THEN dispatch #521 (Find/Replace milestone 1, task filed,
+engine codex sol high per its file) with a brief built from
+project-find-replace-design.md sections 5/6/9/13/14 + ui-design doctrine.
+Then #504/#505 if lanes idle. Known allowed red: plugin-manifest (#504).
+
+MORNING QUEUE unchanged (tooltip wording, agent-button removal, record
+refinements 503/495/489/508 + 515 four, #512, overlay hover grammar into
+ui-design ch.1 — 514/518 landing evidence now exists for that chapter).
+
 # RESUME ANCHOR 68 — 2026-08-06 ~02:15 EDT — 513+515 LANDED; 514 IN ROUND 2; GATES HELD
 
 /goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch Monitor live.
