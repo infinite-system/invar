@@ -1,7 +1,7 @@
 # 537 — find replace doctrine pass
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 0a2b12f0 — Milestone 6: doctrine pass over both search surfaces — counts pluralize, button state tiers complete, scrollbar proven; the six-milestone Find/Replace build is closed.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
