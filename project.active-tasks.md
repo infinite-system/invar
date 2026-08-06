@@ -6,12 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/in-progress/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md)  [building]
+  `tmux attach -t invar/533-tasks-header-pipes-and-dead-open-button`
 - #532 [workspace-undo-transaction-core](.invar/tasks/in-progress/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md)  [building]
   `tmux attach -t invar/532-workspace-undo-transaction-core`
 
-## USER-DIRECTED (14)
-- #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/active/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md)
+## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)

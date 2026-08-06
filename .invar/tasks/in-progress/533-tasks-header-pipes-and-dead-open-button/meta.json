@@ -1,0 +1,15 @@
+{
+  "task": 533,
+  "slug": "tasks-header-pipes-and-dead-open-button",
+  "branch": "fleet/533-tasks-header-pipes-and-dead-open-button",
+  "worktree": ".invar/worktrees/533-tasks-header-pipes-and-dead-open-button",
+  "tmuxSession": "invar/533-tasks-header-pipes-and-dead-open-button",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-533-tasks-header-pipes-and-dead-open-button.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "674ad1ade551e56f656cc60945d9c55a81e3d595",
+  "startedAt": "2026-08-06T10:08:38-04:00"
+}
