@@ -219,6 +219,19 @@ test('sendInput crosses only the backend seam', () => {
   expect(backend.writes).toContain('ls\r');
 });
 
+test('paste follows the child bracketed-paste mode through the backend seam', async () => {
+  const { backend, instance } = makeInstance();
+  backend.feed('\x1b[?2004h');
+  await instance.flush();
+  instance.pasteUserInput("'/tmp/first file.txt'");
+  expect(backend.writes.at(-1)).toBe("\x1b[200~'/tmp/first file.txt'\x1b[201~");
+
+  backend.feed('\x1b[?2004l');
+  await instance.flush();
+  instance.pasteUserInput('/tmp/plain.txt');
+  expect(backend.writes.at(-1)).toBe('/tmp/plain.txt');
+});
+
 test('resize drives both the emulator grid and the backend', () => {
   const { backend, instance } = makeInstance(20, 5);
   instance.resize(40, 10);

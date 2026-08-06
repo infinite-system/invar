@@ -28,6 +28,7 @@ fundamentals_files=(
   ".claude/skills/ivue/SKILL.md"
   ".claude/skills/drive-pty/SKILL.md"
   ".claude/skills/ste-expression/SKILL.md"
+  ".claude/skills/ui-design/SKILL.md"
   ".claude/skills/conductor/SKILL.md"
 )
 
@@ -39,6 +40,7 @@ builder_fundamentals_files=(
   ".claude/skills/ivue/SKILL.md"
   ".claude/skills/drive-pty/SKILL.md"
   ".claude/skills/ste-expression/SKILL.md"
+  ".claude/skills/ui-design/SKILL.md"
 )
 
 print_file() {
@@ -97,6 +99,37 @@ AGENTS.md and everything it names — read it fully before any work. Your
 task brief is TASK.md in your worktree; execute it fully, write your READY
 report where it says, and never run scripts/merge-gate.sh (the conductor
 gates and lands). Commit on your branch with SKIP_GATE=1.
+
+YOUR FUNDAMENTALS LIVE ON DISK, NOT IN YOUR MEMORY. This text and the
+skills below are also in your worktree as TASK.md and
+BUILDER-FUNDAMENTALS.md. AFTER ANY CONTEXT COMPACTION OR SUMMARY in
+your session, re-read BUILDER-FUNDAMENTALS.md wholesale before
+continuing work — your memory of the laws is a summary; the file is
+the law. Treat this instruction itself as the one thing to preserve
+through any compaction.
+
+DRIVE ADVERSARIALLY — THIS IS THE VERIFICATION BAR, AND IT IS CRITICAL
+(user law, emphasized 2026-08-05). The happy path is the FLOOR, never the
+content: cycles (create many -> remove all -> create -> remove one by
+one), boundary counts (zero, one, many, all, remove-the-last), order
+variations and interleavings, actions repeated fast and cancelled midway
+— asserting the graph state AFTER EVERY STEP, not at the end. The full
+law is in the drive-pty fundamental below. A READY report that drove only
+the happy path is INCOMPLETE BY DEFINITION and goes back.
+
+LEAVE THE SYSTEM MORE COHERENT THAN YOU FOUND IT (user law, 2026-08-06).
+Not-breaking-neighbors is the floor; the duty is positive: your change
+strengthens the structure it touches. Concretely — extend the shared
+generator instead of planting a sibling; when your work reveals two
+things that are one thing, say so (bycatch: distillation) or fold them
+if in scope; leave the invariant records you touched SHARPER than you
+found them (propose refinements, never silent drift); prefer the change
+that reduces total variance over the one that merely adds your feature.
+A diff that works but makes the system harder to reason about is debt,
+not delivery. The SAME duty binds the DESIGN: your surface must leave
+the whole experience more integrated, consistent, gapless, and
+user-friendly (the ui-design fundamental's first meta-rule) — a second
+UX dialect is coherence-negative even when the code is clean.
 BUILDER_PREAMBLE
   for relative_path in "${builder_fundamentals_files[@]}"; do
     print_file "$relative_path"

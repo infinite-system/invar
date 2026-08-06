@@ -58,6 +58,8 @@ export interface PaneContent {
   readonly activityBadge?: number;
   /** Optional keybinding context owned by this content while its host has focus. */
   readonly keybindingContext?: string;
+  /** This content accepts dropped paths as one shell-quoted paste while it owns focus. */
+  readonly acceptsDroppedPathPaste?: boolean;
   /** Rows the host reserves above this content for controls owned by the pane frame. */
   readonly frameHeaderRows?: number;
   /** Optional veto on an action resolved in this content's own keybinding context. A content that

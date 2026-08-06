@@ -360,15 +360,17 @@ LSP `LanguageProvider`.
 
 **Mechanism:** `TerminalInstance` is constructed with a `TerminalBackend` and a `TerminalEmulator` and
 wires them once: `backend.onData → emulator.write`, `emulator.onReply → backend.write`,
-`backend.onExit → exit state`. `sendInput`/`resize` call only backend methods. `TerminalFactory.create`
-builds the real backend behind an overridable `createBackend` seam; a test passes a `MockBackend`
-instead and asserts the exact bytes written / sizes pushed.
+`backend.onExit → exit state`. `sendInput`, `pasteUserInput`, and `resize` call only backend methods.
+`pasteUserInput` restores DEC 2004 markers only when the child enabled bracketed-paste mode.
+`TerminalFactory.create` builds the real backend behind an overridable `createBackend` seam; a test
+passes a `MockBackend` instead and asserts the exact bytes written / sizes pushed.
 
 **Generates:** deterministic shell-free tests (scripted ANSI in, asserted bytes out); a single place to
 add a remote/ssh/container backend later; a terminal core that has no PTY knowledge.
 
-**Evidence:** `src/modules/terminal/TerminalInstance.test.ts` (input reaches `backend.writes`, device
-reports round-trip back through it, resize reaches `backend.resizes`, exit stops input);
+**Evidence:** `src/modules/terminal/TerminalInstance.test.ts` (input and bracketed paste reach
+`backend.writes`, device reports round-trip back through it, resize reaches `backend.resizes`, exit
+stops input);
 `src/modules/terminal/OpenPtyBackend.ts` is the only file that opens an fd or spawns a process.
 
 **Impossible if true:** the emulator or instance reading a file descriptor or spawning a child; a test
