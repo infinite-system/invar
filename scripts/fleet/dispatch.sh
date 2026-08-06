@@ -556,6 +556,16 @@ if [ "$engine" != "claude" ]; then
     printf '\n'
     cat "$builder_fundamentals_file"
   } >> "$worktree_path/TASK.md"
+  # CODEX MECHANICAL TIER (2026-08-06): codex has no compaction hook, but it
+  # re-reads AGENTS.md from the worktree root on every context assembly —
+  # its own machinery becomes the reload. Worktree-local append (this
+  # AGENTS.md copy dies with the worktree; land.sh restores it).
+  {
+    printf '\n\n# ==== BUILDER FUNDAMENTALS (dispatch-injected; worktree-local) ====\n'
+    printf '# Codex re-reads this file mechanically — this section survives\n'
+    printf '# your compactions the way a system prompt would.\n\n'
+    cat "$builder_fundamentals_file"
+  } >> "$worktree_path/AGENTS.md"
 fi
 
 
