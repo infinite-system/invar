@@ -9,7 +9,7 @@ CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 /goal (user asleep): "get it all done in the right sequence" + ui-design
 into builder fundamentals (DONE: both lists in conductor-system-
 prompt.sh, self-test green — 6 builder fundamentals now). CRONS ARMED
-(:07 9abac598, :37 a472671f). STATE: #513 READY-HELD (report triaged; gate when 514/515 quiet). SEQUENCE: (1) land #513 (drop-onto-
+(:07 9abac598, :37 a472671f). STATE: #513 + #515 READY-HELD (both triaged). 515 delivered the full doctrine-compliant design: SIX build milestones + FOUR proposed records, and found a REAL BUG during research (in-file Replace All cannot undo, reproduced twice — its repair IS milestone 1). Only #514 still building. When it reports: land 513 -> 515 -> 514 serially, then dispatch the Find/Replace milestones from the landed design IN ITS STATED ORDER. SEQUENCE: (1) land #513 (drop-onto-
 agents), #514 (lifecycle+chrome; its report answers the toggle-tooltip
 wording — hold the USER-CALL items for morning, land the rest), #515
 (Find/Replace research doc) as they green — serial, fresh gates,
