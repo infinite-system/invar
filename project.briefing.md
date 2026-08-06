@@ -4,6 +4,36 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 72 — 2026-08-06 ~04:55 EDT — #504 LANDED (STANDING RED CLOSED); #505 DISPATCHED
+
+/goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch live.
+
+LANDED TONIGHT: #513, #515, #514, #517, #518, #521, and #504 -> e0606727
+(30m, 2 rounds: extension withdrawal got its own host path — the
+STANDING plugin-manifest contention red is CLOSED; gate-504-r2 was fully
+green, zero fails). dist/iv rebuilt after each code landing (latest
+04:5x). Round-2 was a conductor one-number coverage re-base (164->163,
+reason inline). Panel-chrome contention fired again in gate-504 r1 —
+FOURTH sighting, added to #529's census when next touched.
+
+NOW: #505 (Quick Open dead on comparison focus) DISPATCHED codex sol
+medium; lane invar/505-quick-open-dead-after-comparison-focus. Brief
+draws the #498 boundary (pane-owned only where a child consumes bytes),
+fixes the routing CLASS, sweeps the Ctrl+Shift+O sighting, guards the
+terminal non-regression. On READY: gate in its worktree, triage, land.
+
+AFTER 505: backlog empty of user-directed dispatchables — do NOT start
+Find/Replace milestone 2 without the user. Remaining active tasks are
+bycatch-filed (#519, #520, #522-#529) — dispatch #529 (flake census) or
+#526 (rename needs user naming call — HOLD) only if clearly safe; else
+idle and wait for morning.
+
+MORNING QUEUE: #514 tooltip wording + agent-button removal; record
+refinements (503 three, 495, 489, 508, 515 four, 504 two NEW: panel-space
+withdrawal boundary + observability enforcement points); #512; overlay
+hover grammar into ui-design ch.1; #526 rename decision; Find/Replace
+milestone 2 go/no-go.
+
 # RESUME ANCHOR 71 — 2026-08-06 ~04:35 EDT — #521 LANDED; MILESTONE 1 DONE; QUEUE: 504/505
 
 /goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch live.
