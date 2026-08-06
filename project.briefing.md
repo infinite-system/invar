@@ -4,6 +4,29 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 71 — 2026-08-06 ~04:35 EDT — #521 LANDED; MILESTONE 1 DONE; QUEUE: 504/505
+
+/goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch live.
+
+LANDED TONIGHT: #513, #515, #514 (3 rounds), #517, #518 (2 rounds), and
+now #521 -> 2b633367 (2 rounds, 63m: Replace All undo repaired through
+the editor delta path; round 2 restored the quit dialog's button-span
+padding). dist/iv rebuilt on final main. Filed from bycatch this run:
+#519-#529 (note #528 padding-check weakness, #529 panel-chrome
+rapid-expand flake — three sightings censused in its task file).
+
+NEXT (if user still away): dispatch #504 (structure uninstall — clears
+the standing plugin-manifest contention red) then #505 (Quick Open dead
+on comparison focus). Do NOT dispatch Find/Replace milestones 2+ without
+the user (design doc section 16 order; milestone 2 is the hard undo seam
+— user should see milestone 1 first). ZERO builders live right now.
+
+MORNING QUEUE: #514 tooltip wording + agent-button removal; record
+refinements (503 three, 495, 489, 508, 515 four); #512; overlay hover
+grammar into ui-design ch.1; #526 rename decision (consent dialog);
+Find/Replace milestone 2 go/no-go. Known allowed red: plugin-manifest
+contention (#504 — dispatching it next may CLOSE this).
+
 # RESUME ANCHOR 70 — 2026-08-06 ~03:25 EDT — ALL FIVE LANDED; #521 DISPATCHED
 
 /goal ACTIVE (user asleep): night sequence COMPLETE on the landing side.
