@@ -4,6 +4,37 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 76 — 2026-08-06 14:25 EDT — SEARCH VISIBLE (M4 LANDED); M5 DISPATCHED
+
+USER PRESENT and directing. RULE THREE fully operative + three
+refinements ratified today: acceptance ON READY before gate (two arms:
+conductor DRIVES, delegated opus subagent READS structure via the
+five-question checklist in the skill); mid-flight sampling at builder
+COMMIT boundaries; skills carry no provenance dates (ledger does).
+
+LANDED TODAY: #532 accf2bc8 (M2 data core), #533 129fc4b9 (pipes gone,
+↥ works, phase parity), #534 7ab4bbf3 (M3 backend, 3 rounds — rg-absent
+seam; rg NOW INSTALLED by user, 14.1.0), #535 1d759ad5 (M4 THE VISIBLE
+SEARCH: icon, panel, options row, streaming tree, click-to-line; 3
+rounds: opus structural review found 4 findings closed with file:line;
+round 3 fixed the degraded-PATH leak class + activity-order neighbors).
+dist/iv rebuilt after each. First full two-arm acceptance ran on 535.
+
+NOW: #536 (M5 — per-match replace, workspace Replace All, counted
+consent, undo/redo via coordinator, per-item drift) DISPATCHED codex sol
+high; lane invar/536-workspace-replace-consent-history. ON READY:
+two-arm acceptance (drive the replace/consent/undo flow + opus
+structural pass), gate, land. THEN #537 milestone 6 (doctrine pass over
+both surfaces) — file at dispatch time. AFTER M6: RULE THREE item 4
+whole-feature drive end-to-end, THEN brief the user Find/Replace done.
+
+Known contention flake note: panel-chrome fired once post-#529-fix
+(gate-535-r2) — one sighting, non-blocking; second sighting reopens it
+via #531's evidence-hold pattern. Disk: /tmp 24G, 8G free, rm blocked
+for conductor, user aware; hard stop below 5G. Morning queue (record
+refinements incl. 535's activity-order migration proposal + 534's
+bounded/cancel/overlay contract gap) stands.
+
 # RESUME ANCHOR 75 — 2026-08-06 11:08 EDT — MORNING CORRECTIONS LANDED; MILESTONE CONVEYOR RUNNING
 
 USER PRESENT since ~10:00 and DIRECTING. Their morning findings, all now
