@@ -2,11 +2,11 @@
 
 ## In plain words
 
-Invar had a workspace search engine, but users had no panel to use it. I added the Search icon, fields, controls, result tree, and file opening. Search now works with mouse and keyboard at 10 and 100,000 lines.
+Invar had a workspace search engine, but users had no panel to use it. I added that panel, then removed five copied rules found in review. Search now uses shared wrapping and geometry, keeps all options on one row, and supports `Alt+I` and `Alt+D`.
 
 ## Result
 
-Commit `7c571aa2` adds the left-dock Search surface from the [task brief](brief-535-1-left-dock-search-surface.md).
+Commit `7c571aa2` adds the left-dock Search surface from the [task brief](brief-535-1-left-dock-search-surface.md). Commit `db857fa9` closes the five findings from the [structural brief](brief-535-2-2.md).
 
 The surface has four shared text fields: Search, Replace, Files to include, and Files to exclude. It has Aa, ab, regex, and ignore-file toggles with hover, pressed, and on states.
 
@@ -16,7 +16,17 @@ Users can collapse files, dismiss matches, select and copy result text, page, wh
 
 `Ctrl+Shift+F` focuses Search. `Ctrl+Shift+R` focuses Replace. Tab and Shift+Tab cross all fields and the result tree.
 
+`Alt+I` toggles ignore files. `Alt+D` dismisses the selected match. Both chords run named Search commands.
+
 The Search contributor performs the idempotent activity-slot migration. Fresh orders place Search after Files. Existing Search positions remain unchanged.
+
+## Structural amendment
+
+1. WrapText reuse: the error surface calls the shared wrapper in [WorkspaceSearchPaneRenderer.ts](../../../../src/modules/search/WorkspaceSearchPaneRenderer.ts):182. Limit notices use the same generator in [WorkspaceSearchResultTree.ts](../../../../src/modules/search/WorkspaceSearchResultTree.ts):245. Both local wrap loops are gone.
+2. One render-context builder: [WorkspaceSearchPaneContent.ts](../../../../src/modules/search/WorkspaceSearchPaneContent.ts):210 builds all context fields and selection ranges. The interaction path is a thin caller at [WorkspaceSearchPaneContent.ts](../../../../src/modules/search/WorkspaceSearchPaneContent.ts):677.
+3. One result geometry source: [WorkspaceSearchPaneRenderer.ts](../../../../src/modules/search/WorkspaceSearchPaneRenderer.ts):18 owns `RESULT_START_ROW`. Rendering reads it at line 178. Pane hit testing, scrolling, and resize geometry read it through [WorkspaceSearchPaneContent.ts](../../../../src/modules/search/WorkspaceSearchPaneContent.ts):155.
+4. Dedicated options row: the four field definitions contain only fields at [WorkspaceSearchPaneRenderer.ts](../../../../src/modules/search/WorkspaceSearchPaneRenderer.ts):28. The four option definitions start at line 50, and one row lays them out from line 139. The forced-width path is gone.
+5. Keyboard paths: [WorkspaceSearchContributor.ts](../../../../src/modules/search/WorkspaceSearchContributor.ts):127 binds `Alt+I` to `workspaceSearch.toggleIgnoreFiles`. Line 132 binds `Alt+D` to `workspaceSearch.dismissMatch`. Their commands register at lines 267 and 273. The selected-match action reaches [WorkspaceSearchPaneContent.ts](../../../../src/modules/search/WorkspaceSearchPaneContent.ts):353.
 
 ## Main code
 
@@ -62,6 +72,15 @@ The neighbor sweep also passed.
 - Quick Open returned 2 matches and opened `WorkspaceSearchPaneContent.ts`.
 - The in-file Find bar found 40 `WorkspaceSearch` matches and closed with Escape.
 
+I re-drove the structural round after the refactor.
+
+- The panel painted four full-width fields and one row with `Aa`, `ab`, `.*`, and `Use ignores`.
+- Mouse clicks still toggled all four options and showed the same tooltips.
+- `Alt+I` changed ignore files from on to off, then from off to on.
+- `Alt+D` left a selected file group unchanged. It dismissed the selected match and stayed at zero after a repeat.
+- Enter still opened the dismissed match at its exact file line.
+- The full permanent smoke repeated the same exact-open path at 10 and 100,000 lines.
+
 ## Ripgrep premise correction
 
 The machine does have ripgrep. The active binary was `/home/parallels/.codex/packages/standalone/releases/0.146.1-aarch64-unknown-linux-musl/codex-path/rg`, version `15.2.0`.
@@ -74,18 +93,17 @@ The panel painted the full message across five wrapped rows.
 
 ## Verification
 
-The full unit pass completed before the final structural cleanup: 2,486 tests passed, 0 failed, with 72,800 assertions across 383 files.
-
-After the structural cleanup, 34 focused tests passed with 167 assertions. The contributor positive-control restoration then passed 2 tests with 6 assertions.
+The final unit pass completed after the structural amendment: 2,485 tests passed, 0 failed, with 72,804 assertions across 383 files.
 
 These final checks passed:
 
-- `bunx tsc --noEmit`
+- `bun run typecheck`
 - `bun run build`
 - `bash scripts/conventions-gate.sh`
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`: 1,428 annotations and 287 lattice links, with 0 problems
 - `bun scripts/harness/smoke-workspace-search-harness.ts`: `ALL-PASS`
 - `git show --check 7c571aa2`
+- `git show --check db857fa9`
 
 I ran `bash scripts/behavioral-contracts.sh` once, as required. It ended `FAILURES` because the new Search smoke read two old grids after status-only waits.
 
@@ -101,6 +119,8 @@ I planted four defects and removed each plant.
 - Removing sidebar pointer release made [Sidebar.test.ts](../../../../src/modules/ui/Sidebar.test.ts) miss its `up` call.
 
 The permanent smoke also rejects a planted idle result state and wrong open file before it trusts live state.
+
+For the structural round, I changed the `Alt+D` binding to `Alt+X`. The permanent smoke failed with `Timed out waiting for Alt+D dismisses the selected match`. I restored `Alt+D`, and the same smoke passed.
 
 ## Invariant verdicts
 
@@ -118,6 +138,7 @@ I did not edit either invariant record. The four records proposed by the [Find/R
 
 ## Bycatch
 
+- Brief mismatch: [brief-535-2-2.md](brief-535-2-2.md) calls `WrapText.Class.wrap` a greedy word wrapper. [WrapText.ts](../../../../src/modules/ui/WrapText.ts):79 hard-wraps graphemes by display cells. Routing both Search copies through it kept the full error text but changed its line breaks. This reproduced in the unavailable-ripgrep drive.
 - `DriveSession.waitForHoverState()` assumed row 0 while the pointer was over the activity bar. It timed out although the Search tooltip painted. Observed once. The graph tooltip wait and permanent screen wait both passed.
 - Contract gap: [search.invariants.md](../../../../src/modules/search/search.invariants.md) limits the click-set record to Quick Open. Workspace Search now has the same generator.
 - Contract pressure: [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) says unseen activity contributions append. The required fixed Search slot needs the proposed migration refinement above.
@@ -126,4 +147,4 @@ No unrelated runtime defect reproduced twice.
 
 ## Worktree state
 
-The task diff is committed. The worktree still contains dispatch-owned [AGENTS.md](../../../../AGENTS.md) and [BUILDER-FUNDAMENTALS.md](../../../../.invar/worktrees/535-left-dock-search-surface/BUILDER-FUNDAMENTALS.md) changes. I preserved them and did not include them in `7c571aa2`.
+The task diff is committed in `7c571aa2` and `db857fa9`. The worktree still contains dispatch-owned [AGENTS.md](../../../../AGENTS.md) and [BUILDER-FUNDAMENTALS.md](../../../../.invar/worktrees/535-left-dock-search-surface/BUILDER-FUNDAMENTALS.md) changes. I preserved them and did not include them in either commit.
