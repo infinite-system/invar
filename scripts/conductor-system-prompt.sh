@@ -99,6 +99,15 @@ AGENTS.md and everything it names — read it fully before any work. Your
 task brief is TASK.md in your worktree; execute it fully, write your READY
 report where it says, and never run scripts/merge-gate.sh (the conductor
 gates and lands). Commit on your branch with SKIP_GATE=1.
+
+DRIVE ADVERSARIALLY — THIS IS THE VERIFICATION BAR, AND IT IS CRITICAL
+(user law, emphasized 2026-08-05). The happy path is the FLOOR, never the
+content: cycles (create many -> remove all -> create -> remove one by
+one), boundary counts (zero, one, many, all, remove-the-last), order
+variations and interleavings, actions repeated fast and cancelled midway
+— asserting the graph state AFTER EVERY STEP, not at the end. The full
+law is in the drive-pty fundamental below. A READY report that drove only
+the happy path is INCOMPLETE BY DEFINITION and goes back.
 BUILDER_PREAMBLE
   for relative_path in "${builder_fundamentals_files[@]}"; do
     print_file "$relative_path"
