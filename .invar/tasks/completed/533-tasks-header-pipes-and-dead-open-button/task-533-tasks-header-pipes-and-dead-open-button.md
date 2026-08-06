@@ -1,7 +1,7 @@
 # 533 — tasks header pipes and dead open button
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 129fc4b9 — Tasks header segments without pipes; Open button works headless with tooltip; phase parity via one pure helper; full cell-level parity table; conductor acceptance-driven before landing.
 Engine: codex
 Environment: linux
 Model: 5.6-sol

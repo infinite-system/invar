@@ -13,5 +13,8 @@
   "baseCommit": "674ad1ade551e56f656cc60945d9c55a81e3d595",
   "startedAt": "2026-08-06T10:08:38-04:00",
   "round": 2,
-  "roundBriefedAtMs": 1786025741777
+  "roundBriefedAtMs": 1786025741777,
+  "landedAt": "2026-08-06T11:06:37-04:00",
+  "durationMinutes": 57,
+  "mergeCommit": "129fc4b9"
 }
