@@ -1,7 +1,7 @@
 # 529 — panel chrome rapid expand flake
 
 Priority: flake-evidence
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5

@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #529 [panel-chrome-rapid-expand-flake](.invar/tasks/in-progress/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md)  [building]
+  `tmux attach -t invar/529-panel-chrome-rapid-expand-flake`
+
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -56,8 +60,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (33)
-- #529 [panel-chrome-rapid-expand-flake](.invar/tasks/active/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md)
+## FLAKE-EVIDENCE (32)
 - #519 [terminal-toggle-gesture-flake](.invar/tasks/active/519-terminal-toggle-gesture-flake/task-519-terminal-toggle-gesture-flake.md)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
