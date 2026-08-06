@@ -6,7 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (5)
+## IN-PROGRESS (4)
 - #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/in-progress/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/518-live-tasks-pane-matches-tasks-watch`
 - #517 [codex-compaction-threshold-steer](.invar/tasks/in-progress/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md)  [READY delivered — builder idle, awaiting landing]
@@ -15,8 +15,6 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
   `tmux attach -t invar/515-find-replace-research-and-design`
 - #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/in-progress/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/514-terminal-instance-lifecycle-and-panel-chrome`
-- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/in-progress/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/513-drops-into-agents-paste-the-remote-path`
 
 ## USER-DIRECTED (15)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
@@ -159,8 +157,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 223 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 224 — full log: project.tasks-completed.md)
 - #516 [the-ui-design-doctrine](.invar/tasks/completed/516-the-ui-design-doctrine/task-516-the-ui-design-doctrine.md) — ACTIVE
+- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/completed/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md) — 22c80f69 — Dropped files paste as remote-usable paths into the focused agent/terminal pane via the PaneContent drop capability.
 - #511 [inversion-design-and-sync-census](.invar/tasks/completed/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md) — 86d4388b — inversion: measured (70 sync sites) and deferred
 - #510 [the-open-button-picker-tiers](.invar/tasks/completed/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md) — 6cc66819 — the Open button: client-native over ssh, local-native, in-app browser
 - #509 [iv-ssh-the-channel-client](.invar/tasks/completed/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md) — b5794429 — iv ssh: byte-perfect passthrough + the RPC channel; dropzone works
@@ -174,4 +173,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #498 [global-chords-blocked-by-focused-panel](.invar/tasks/completed/498-global-chords-blocked-by-focused-panel/task-498-global-chords-blocked-by-focused-panel.md) — 99c78b72 — frame chords survive focused panels via applicationGlobal
 - #495 [terminal-copy-selection-empty-at-chord-time](.invar/tasks/completed/495-terminal-copy-selection-empty-at-chord-time/task-495-terminal-copy-selection-empty-at-chord-time.md) — 5bffd14f — Shift+drag host selection over mouse-aware children; copy works
 - #494 [hidden-monitor-log-line-race-under-load](.invar/tasks/completed/494-hidden-monitor-log-line-race-under-load/task-494-hidden-monitor-log-line-race-under-load.md) — 2fefd385 — monitor log assertion is condition-shaped
-- #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
