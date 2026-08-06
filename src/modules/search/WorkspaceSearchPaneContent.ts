@@ -7,7 +7,7 @@ import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { TextInputAction, TextInputModel } from '../text/TextInputModel';
 import { TextInputKey } from '../text/TextInputKey';
-import type { Workspace } from '../workspace/Workspace';
+import type { Palette } from '../theme/ThemePalettes';
 import type {
   PaneContent,
   PanePointerContext,
@@ -19,6 +19,7 @@ import type {
 import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
 import { TextSelectionModel } from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
+import type { Workspace } from '../workspace/Workspace';
 import type { WorkspaceSearchResult } from './WorkspaceSearchBackend';
 import {
   WorkspaceSearchPaneRenderer,
@@ -90,7 +91,6 @@ class $WorkspaceSearchPaneContent implements PaneContent {
   protected pendingActivationRow: WorkspaceSearchTreeRow | null = null;
   protected fieldDrag: WorkspaceSearchField | null = null;
   protected pointerDragged = false;
-  protected readonly resultStartRow = 6;
 
   get activeFocus() {
     return ref<WorkspaceSearchFocus>('query');
@@ -152,6 +152,10 @@ class $WorkspaceSearchPaneContent implements PaneContent {
     return this.workspace.workspaceSearch;
   }
 
+  protected get resultStartRow(): number {
+    return WorkspaceSearchPaneRenderer.Class.RESULT_START_ROW;
+  }
+
   protected readRenderVersion(): string {
     void this.application.workspaceSet.activeWorkspaceIndex.value;
     const search = this.search;
@@ -189,7 +193,12 @@ class $WorkspaceSearchPaneContent implements PaneContent {
 
   render(context: PaneRenderContext): StyledText {
     this.synchronizeSelection();
-    const renderContext = this.renderContext(context);
+    const renderContext = this.renderContext(
+      context.focused,
+      context.palette,
+      Math.max(1, context.width),
+      Math.max(1, context.height),
+    );
     this.projection = WorkspaceSearchPaneRenderer.Class.render(renderContext);
     return this.projection.text;
   }
@@ -199,15 +208,18 @@ class $WorkspaceSearchPaneContent implements PaneContent {
   }
 
   protected renderContext(
-    context: PaneRenderContext,
+    paneFocused: boolean,
+    palette: Palette,
+    width: number,
+    height: number,
   ): WorkspaceSearchPaneRenderContext {
     const rows = this.search.resultTree.rows;
-    return {
+    const baseContext: WorkspaceSearchPaneRenderContext = {
       workspace: this.search,
-      palette: context.palette,
-      width: Math.max(1, context.width),
-      height: Math.max(1, context.height),
-      focused: context.focused,
+      palette,
+      width,
+      height,
+      focused: paneFocused,
       activeFocus: this.activeFocus.value,
       hoveredField: this.hoveredField.value,
       hoveredButton: this.hoveredButton.value,
@@ -216,10 +228,20 @@ class $WorkspaceSearchPaneContent implements PaneContent {
       foldClosedGlyph: this.application.theme.glyphVocabulary.foldClosed,
       closeGlyph: this.application.theme.glyphVocabulary.panelClose,
       ellipsisCell: this.application.theme.ellipsisCell,
+      selectionRanges: [],
+    };
+    return {
+      ...baseContext,
       selectionRanges: rows.map((row, rowIndex) =>
         this.selection.rangeForLine(
           rowIndex,
-          TextCoordinates.Class.lineWidth(this.rowText(rowIndex, row)),
+          TextCoordinates.Class.lineWidth(
+            WorkspaceSearchPaneRenderer.Class.textForRow(
+              row,
+              baseContext,
+              this.search.resultTree.rowIsDismissed(row),
+            ),
+          ),
         ),
       ),
     };
@@ -326,6 +348,13 @@ class $WorkspaceSearchPaneContent implements PaneContent {
   toggleIgnoreFiles(): void {
     this.search.useIgnoreFiles.value = !this.search.useIgnoreFiles.value;
     this.search.queueSearch();
+  }
+
+  dismissSelectedMatch(): void {
+    const row = this.search.resultTree.selectedRow();
+    if (row?.kind !== 'match' || !row.result) return;
+    this.search.resultTree.dismiss(row.result);
+    this.application.requestRender();
   }
 
   moveResultSelection(delta: number): void {
@@ -640,29 +669,20 @@ class $WorkspaceSearchPaneContent implements PaneContent {
     if (!resultRow) return '';
     return WorkspaceSearchPaneRenderer.Class.textForRow(
       resultRow,
-      this.renderContextForText(),
+      this.interactionRenderContext(false),
       this.search.resultTree.rowIsDismissed(resultRow),
     );
   }
 
-  protected renderContextForText(): WorkspaceSearchPaneRenderContext {
-    const palette = this.application.theme.palette;
-    return {
-      workspace: this.search,
-      palette,
-      width: this.contentWidth,
-      height: this.search.resultTree.viewportHeight.value + this.resultStartRow,
-      focused: false,
-      activeFocus: this.activeFocus.value,
-      hoveredField: null,
-      hoveredButton: null,
-      pressedButton: null,
-      foldOpenGlyph: this.application.theme.glyphVocabulary.foldOpen,
-      foldClosedGlyph: this.application.theme.glyphVocabulary.foldClosed,
-      closeGlyph: this.application.theme.glyphVocabulary.panelClose,
-      ellipsisCell: this.application.theme.ellipsisCell,
-      selectionRanges: [],
-    };
+  protected interactionRenderContext(
+    paneFocused: boolean,
+  ): WorkspaceSearchPaneRenderContext {
+    return this.renderContext(
+      paneFocused,
+      this.application.theme.palette,
+      this.contentWidth,
+      this.search.resultTree.viewportHeight.value + this.resultStartRow,
+    );
   }
 
   protected fieldAt(

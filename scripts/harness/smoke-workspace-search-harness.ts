@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 // This contract drives the left-dock Search surface through the real PTY.
 // Run it with `bun scripts/harness/smoke-workspace-search-harness.ts`.
-// ALL-PASS means mouse and keyboard search, exact match opening, result copy, shared scrolling,
-// the 20,000-match cap, and the missing-ripgrep message hold at 10 and 100,000 lines.
+// ALL-PASS means mouse and keyboard search, option toggles, match dismissal, exact match opening,
+// result copy, shared scrolling, the 20,000-match cap, and the missing-ripgrep message hold at
+// 10 and 100,000 lines.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
@@ -25,6 +26,7 @@ interface WorkspaceSearchStatus {
   workspaceSearchQueryGeneration?: number;
   workspaceSearchResultCount?: number;
   workspaceSearchSelectedCount?: number;
+  workspaceSearchSelectedRow?: number;
   workspaceSearchFileCount?: number;
   workspaceSearchScrollTop?: number;
   workspaceSearchActiveField?: string;
@@ -171,7 +173,7 @@ async function driveButtonTooltips(
       expected: true,
     },
     {
-      marker: 'Use ignores:',
+      marker: 'Use ignores',
       tooltip: 'Use workspace excludes and .gitignore',
       path: 'workspaceSet.active.workspaceSearch.useIgnoreFiles',
       expected: false,
@@ -187,7 +189,7 @@ async function driveButtonTooltips(
     if (!position)
       throw new Error(`FAIL Search control ${control.marker} is not visible`);
     const column =
-      control.marker === 'Use ignores:'
+      control.marker === 'Use ignores'
         ? position.column + Math.floor(control.marker.length / 2)
         : position.column;
     driver.sendMouseWithoutFrameExpectation({
@@ -207,6 +209,24 @@ async function driveButtonTooltips(
       control.expected,
     );
   }
+}
+
+async function driveKeyboardOptions(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<void> {
+  driver.sendKeys('Alt+i');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'workspaceSet.active.workspaceSearch.useIgnoreFiles',
+    true,
+  );
+  driver.sendKeys('Alt+i');
+  await GraphClient.Class.awaitValue(
+    statusPath,
+    'workspaceSet.active.workspaceSearch.useIgnoreFiles',
+    false,
+  );
 }
 
 async function driveScale(lineCount: 10 | 100_000): Promise<void> {
@@ -258,7 +278,10 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
       `scale ${lineCount}: mouse opens Search and focuses the query`,
       (status) => status.workspaceSearchActiveField === 'query',
     );
-    if (lineCount === 10) await driveButtonTooltips(driver, statusPath);
+    if (lineCount === 10) {
+      await driveButtonTooltips(driver, statusPath);
+      await driveKeyboardOptions(driver, statusPath);
+    }
 
     const targetLineIndex = lineCount - 1;
     const targetMarker = `DRIVE-LINE-${String(lineCount).padStart(6, '0')}`;
@@ -290,9 +313,57 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
       driver,
       statusPath,
       `scale ${lineCount}: Tab reaches the result tree`,
-      (status) => status.workspaceSearchActiveField === 'results',
+      (status) =>
+        status.workspaceSearchActiveField === 'results' &&
+        status.workspaceSearchSelectedRow === 0,
     );
-    driver.sendKeys('Down', 'Enter');
+    if (lineCount === 10) {
+      driver.sendKeysWithoutFrameExpectation('Alt+d');
+      const fileRowDismissCount = Number(
+        (
+          await GraphClient.Class.query(
+            statusPath,
+            'workspaceSet.active.workspaceSearch.resultTree.selectedCount',
+            'settle',
+          )
+        ).value,
+      );
+      HarnessSmoke.Class.requireCondition(
+        fileRowDismissCount === 1,
+        'Alt+D does not dismiss the selected file group',
+      );
+    }
+    driver.sendKeys('Down');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `scale ${lineCount}: Down selects the exact match`,
+      (status) => status.workspaceSearchSelectedRow === 1,
+    );
+    if (lineCount === 10) {
+      driver.sendKeys('Alt+d');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'Alt+D dismisses the selected match',
+        (status) => status.workspaceSearchSelectedCount === 0,
+      );
+      driver.sendKeys('Alt+d');
+      const repeatedDismissCount = Number(
+        (
+          await GraphClient.Class.query(
+            statusPath,
+            'workspaceSet.active.workspaceSearch.resultTree.selectedCount',
+            'settle',
+          )
+        ).value,
+      );
+      HarnessSmoke.Class.requireCondition(
+        repeatedDismissCount === 0,
+        'repeating Alt+D keeps the selected match dismissed',
+      );
+    }
+    driver.sendKeys('Enter');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -511,11 +582,11 @@ async function driveUnavailable(): Promise<void> {
         status.workspaceSearchErrorMessage === expectedMessage,
     );
     const unavailableFragments = [
-      'Workspace search is',
-      'unavailable because ripgrep',
-      'is not installed. Install',
-      'ripgrep, make rg available',
-      'in PATH, and restart Invar.',
+      'Workspace search is unavaila',
+      'ble because ripgrep is not i',
+      'nstalled. Install ripgrep, m',
+      'ake rg available in PATH, an',
+      'd restart Invar.',
     ];
     const unavailableSnapshot = await driver.awaitGridCondition(
       'the unavailable Search message is painted across its wrapped rows',

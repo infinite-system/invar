@@ -5,6 +5,7 @@ import type { TextInputModel } from '../text/TextInputModel';
 import type { Palette } from '../theme/ThemePalettes';
 import { TextFieldPainter } from '../ui/TextFieldPainter';
 import type { SelectionSpanRange } from '../ui/TextSelectionModel';
+import { WrapText } from '../ui/WrapText';
 import type { WorkspaceSearchWorkspace } from './WorkspaceSearchWorkspace';
 import {
   WorkspaceSearchResultTree,
@@ -14,6 +15,10 @@ import {
 // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 class $WorkspaceSearchPaneRenderer {
+  static get RESULT_START_ROW(): number {
+    return 6;
+  }
+
   static render(
     context: WorkspaceSearchPaneRenderContext,
   ): WorkspaceSearchPaneRenderResult {
@@ -25,25 +30,16 @@ class $WorkspaceSearchPaneRenderer {
         field: 'query',
         input: context.workspace.queryInput,
         placeholder: 'Search',
-        button: 'toggleCase',
-        buttonLabel: 'Aa',
-        buttonActive: context.workspace.caseSensitive.value,
       },
       {
         field: 'replacement',
         input: context.workspace.replacementInput,
         placeholder: 'Replace',
-        button: 'toggleRegex',
-        buttonLabel: '.*',
-        buttonActive: context.workspace.useRegex.value,
       },
       {
         field: 'include',
         input: context.workspace.includeInput,
         placeholder: 'Files to include',
-        button: 'toggleWholeWord',
-        buttonLabel: 'ab',
-        buttonActive: context.workspace.wholeWord.value,
       },
       {
         field: 'exclude',
@@ -51,10 +47,31 @@ class $WorkspaceSearchPaneRenderer {
         placeholder: 'Files to exclude',
       },
     ];
+    const optionDefinitions: readonly WorkspaceSearchOptionDefinition[] = [
+      {
+        action: 'toggleCase',
+        label: 'Aa',
+        active: context.workspace.caseSensitive.value,
+      },
+      {
+        action: 'toggleWholeWord',
+        label: 'ab',
+        active: context.workspace.wholeWord.value,
+      },
+      {
+        action: 'toggleRegex',
+        label: '.*',
+        active: context.workspace.useRegex.value,
+      },
+      {
+        action: 'toggleIgnoreFiles',
+        label: 'Use ignores',
+        active: context.workspace.useIgnoreFiles.value,
+      },
+    ];
     let caret: { column: number; row: number } | null = null;
     fieldDefinitions.forEach((definition, row) => {
-      const buttonWidth = definition.button ? 5 : 0;
-      const fieldWidth = Math.max(1, context.width - buttonWidth);
+      const fieldWidth = Math.max(1, context.width);
       const fieldStartColumn = 0;
       fields.push({
         field: definition.field,
@@ -116,32 +133,33 @@ class $WorkspaceSearchPaneRenderer {
         chunks.push(...painted.chunks);
         if (fieldFocused) caret = { column: painted.caretColumn, row };
       }
-      if (definition.button) {
-        const button = this.button(
-          definition.button,
-          definition.buttonLabel ?? '',
-          row,
-          fieldWidth,
-          context,
-          definition.buttonActive ?? false,
-        );
-        chunks.push(...button.chunks);
-        buttons.push(button.zone);
-      }
       chunks.push(fg(context.palette.fg)('\n'));
     });
 
-    const ignoreButton = this.button(
-      'toggleIgnoreFiles',
-      `Use ignores: ${context.workspace.useIgnoreFiles.value ? 'on' : 'off'}`,
-      4,
-      0,
-      context,
-      context.workspace.useIgnoreFiles.value,
-      context.width,
+    const optionsRow = fieldDefinitions.length;
+    let optionStartColumn = 0;
+    for (const option of optionDefinitions) {
+      if (optionStartColumn >= context.width) break;
+      const button = this.button(
+        option.action,
+        option.label,
+        optionsRow,
+        optionStartColumn,
+        context,
+        option.active,
+      );
+      chunks.push(...button.chunks);
+      buttons.push(button.zone);
+      optionStartColumn = button.zone.endColumn;
+    }
+    chunks.push(
+      fg(context.palette.fg)(
+        TextCoordinates.Class.padToDisplayWidth(
+          '',
+          Math.max(0, context.width - optionStartColumn),
+        ),
+      ),
     );
-    chunks.push(...ignoreButton.chunks);
-    buttons.push(ignoreButton.zone);
     chunks.push(fg(context.palette.fg)('\n'));
 
     const summary =
@@ -157,11 +175,11 @@ class $WorkspaceSearchPaneRenderer {
       fg(context.palette.fg)('\n'),
     );
 
-    const resultStartRow = 6;
+    const resultStartRow = this.RESULT_START_ROW;
     const availableResultRows = Math.max(0, context.height - resultStartRow);
     const errorMessage = context.workspace.errorMessage.value;
     if (errorMessage) {
-      const messageLines = this.wrap(
+      const messageLines = WrapText.Class.wrap(
         errorMessage,
         Math.max(1, context.width - 2),
       );
@@ -321,10 +339,15 @@ class $WorkspaceSearchPaneRenderer {
     startColumn: number,
     context: WorkspaceSearchPaneRenderContext,
     active: boolean,
-    forcedWidth?: number,
   ): { chunks: TextChunk[]; zone: WorkspaceSearchButtonZone } {
-    const width = forcedWidth ?? TextCoordinates.Class.lineWidth(` ${label} `);
-    const text = TextCoordinates.Class.padToDisplayWidth(` ${label} `, width);
+    const width = Math.min(
+      TextCoordinates.Class.lineWidth(` ${label} `),
+      Math.max(0, context.width - startColumn),
+    );
+    const text = TextCoordinates.Class.padToDisplayWidth(
+      TextCoordinates.Class.displayColumnWindow(` ${label} `, 0, width),
+      width,
+    );
     const hovered = context.hoveredButton === action;
     const pressed = context.pressedButton === action;
     const background = pressed
@@ -368,23 +391,6 @@ class $WorkspaceSearchPaneRenderer {
         width - 1,
       )
     );
-  }
-
-  protected static wrap(text: string, width: number): string[] {
-    const words = text.split(/\s+/).filter(Boolean);
-    const lines: string[] = [];
-    let line = '';
-    for (const word of words) {
-      const candidate = line ? `${line} ${word}` : word;
-      if (line && TextCoordinates.Class.lineWidth(candidate) > width) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = candidate;
-      }
-    }
-    if (line) lines.push(line);
-    return lines;
   }
 
   protected static fitText(text: string, width: number): string {
@@ -456,7 +462,10 @@ interface WorkspaceSearchFieldDefinition {
   readonly field: WorkspaceSearchField;
   readonly input: TextInputModel.Model;
   readonly placeholder: string;
-  readonly button?: WorkspaceSearchButtonAction;
-  readonly buttonLabel?: string;
-  readonly buttonActive?: boolean;
+}
+
+interface WorkspaceSearchOptionDefinition {
+  readonly action: Exclude<WorkspaceSearchButtonAction, 'dismissMatch'>;
+  readonly label: string;
+  readonly active: boolean;
 }

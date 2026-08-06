@@ -58,11 +58,17 @@ test('the Search pane paints fields, toggles, groups, and previews', () => {
   expect(text).toContain('14 const oldValue');
   expect(text).toContain('→ new');
   expect(projection.fields).toHaveLength(4);
+  expect(projection.fields.every((field) => field.endColumn === 32)).toBe(true);
   expect(projection.buttons.map((button) => button.action)).toEqual([
     'toggleCase',
-    'toggleRegex',
     'toggleWholeWord',
+    'toggleRegex',
     'toggleIgnoreFiles',
     'dismissMatch',
   ]);
+  expect(
+    projection.buttons
+      .filter((button) => button.action !== 'dismissMatch')
+      .every((button) => button.row === 4),
+  ).toBe(true);
 });

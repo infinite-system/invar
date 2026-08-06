@@ -1,6 +1,7 @@
 import { Reactive } from 'ivue';
 import { Static } from 'ivue/extras';
 import { ref } from 'vue';
+import { WrapText } from '../ui/WrapText';
 import type { WorkspaceSearchResult } from './WorkspaceSearchBackend';
 
 // invariant: Cost tracks the actively observed set (project.invariants.md)
@@ -239,21 +240,9 @@ class $WorkspaceSearchResultTree {
 
   protected limitNoticeLines(): readonly string[] {
     const width = Math.max(1, this.viewportWidth.value - 2);
-    const lines: string[] = [];
-    let line = '';
     const resultTreeClass = this
       .constructor as typeof $WorkspaceSearchResultTree;
-    for (const word of resultTreeClass.LIMIT_NOTICE_TEXT.split(' ')) {
-      const candidate = line.length > 0 ? `${line} ${word}` : word;
-      if (line.length > 0 && candidate.length > width) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = candidate;
-      }
-    }
-    if (line.length > 0) lines.push(line);
-    return lines;
+    return WrapText.Class.wrap(resultTreeClass.LIMIT_NOTICE_TEXT, width);
   }
 }
 

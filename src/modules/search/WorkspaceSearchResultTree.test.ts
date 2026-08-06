@@ -83,7 +83,7 @@ describe('WorkspaceSearchResultTree', () => {
     tree.updateResults([result('a.ts', 0)], true);
     const noticeRows = tree.rows.filter((row) => row.kind === 'limitNotice');
     expect(noticeRows.length).toBeGreaterThan(1);
-    expect(noticeRows.map((row) => row.noticeText).join(' ')).toBe(
+    expect(noticeRows.map((row) => row.noticeText).join('')).toBe(
       WorkspaceSearchResultTree.Class.LIMIT_NOTICE_TEXT,
     );
     expect(noticeRows.every((row) => (row.noticeText?.length ?? 0) <= 22)).toBe(

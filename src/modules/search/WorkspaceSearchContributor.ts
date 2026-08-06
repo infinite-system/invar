@@ -124,6 +124,16 @@ class $WorkspaceSearchContributor
         context: 'workspaceSearch',
       },
       {
+        chord: { key: 'i', alt: true },
+        action: 'workspaceSearch.toggleIgnoreFiles',
+        context: 'workspaceSearch',
+      },
+      {
+        chord: { key: 'd', alt: true },
+        action: 'workspaceSearch.dismissMatch',
+        context: 'workspaceSearch',
+      },
+      {
         chord: { key: 'escape' },
         action: 'workspaceSearch.cancel',
         context: 'workspaceSearch',
@@ -252,6 +262,18 @@ class $WorkspaceSearchContributor
         title: 'Search: Toggle Regular Expression',
         category: 'Search',
         run: () => pane().toggleRegex(),
+      },
+      {
+        id: 'workspaceSearch.toggleIgnoreFiles',
+        title: 'Search: Toggle Ignore Files',
+        category: 'Search',
+        run: () => pane().toggleIgnoreFiles(),
+      },
+      {
+        id: 'workspaceSearch.dismissMatch',
+        title: 'Search: Dismiss Selected Match',
+        category: 'Search',
+        run: () => pane().dismissSelectedMatch(),
       },
       {
         id: 'workspaceSearch.cancel',

@@ -37,6 +37,28 @@ test('the Search pane keeps one focus cycle and reruns toggled queries', () => {
   pane.toggleCase();
   expect(workspaceSearch.caseSensitive.value).toBe(true);
   expect(workspaceSearch.flowState.value).toBe('queued');
+  pane.toggleIgnoreFiles();
+  expect(workspaceSearch.useIgnoreFiles.value).toBe(false);
+  workspaceSearch.resultTree.updateResults([
+    {
+      relativePath: 'src/app.ts',
+      absolutePath: '/workspace/src/app.ts',
+      line: 2,
+      startColumn: 0,
+      endColumn: 3,
+      startUtf16Offset: 10,
+      endUtf16Offset: 13,
+      matchedText: 'old',
+      lineText: 'old value',
+      replacementText: 'new',
+    },
+  ]);
+  workspaceSearch.resultTree.setSelection(0);
+  pane.dismissSelectedMatch();
+  expect(workspaceSearch.resultTree.selectedCount).toBe(1);
+  workspaceSearch.resultTree.setSelection(1);
+  pane.dismissSelectedMatch();
+  expect(workspaceSearch.resultTree.selectedCount).toBe(0);
   pane.cancelSearch();
   expect(workspaceSearch.flowState.value).toBe('idle');
 });
