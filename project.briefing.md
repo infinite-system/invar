@@ -4,6 +4,28 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 65 — 2026-08-05 ~23:40 EDT — NIGHT GOAL 2: LAND ALL, THEN THE FIND/REPLACE WAVE
+
+/goal (user asleep): "get it all done in the right sequence" + ui-design
+into builder fundamentals (DONE: both lists in conductor-system-
+prompt.sh, self-test green — 6 builder fundamentals now). CRONS ARMED
+(:07 9abac598, :37 a472671f). SEQUENCE: (1) land #513 (drop-onto-
+agents), #514 (lifecycle+chrome; its report answers the toggle-tooltip
+wording — hold the USER-CALL items for morning, land the rest), #515
+(Find/Replace research doc) as they green — serial, fresh gates,
+monitors, GATE_LOG land.sh, rebuild dist/iv after code landings.
+(2) From 515's landed milestone split: dispatch the Find/Replace
+IMPLEMENTATION wave in its stated order (each brief cites the
+ui-design doctrine chapters — it is now INJECTED automatically), land
+serially. (3) If lanes idle after that: #504 (structure uninstall,
+last gate residual) then #505. NO experiments. The ui-design skill
+exists (.claude/skills/ui-design/SKILL.md, six chapters) — 515's
+design must comply (already steered). Morning queue: #514's tooltip
+wording + agent-button-removal confirmation; record refinements
+backlog (503/495/489/508 proposals); #512.
+
+---
+
 # RESUME ANCHOR 64 — 2026-08-05 ~20:50 EDT — CHECKPOINT 85%: LAND 509, THEN 510+511
 
 CRONS RE-ARMED BY USER (2026-08-05 ~23:05, "arm the crons then, so
@@ -115,31 +137,9 @@ dispatch call; the Escape-selection suspect (#489 bycatch).
 
 ---
 
-# RESUME ANCHOR 60 — 2026-08-04 ~01:45 EDT — TASKS ARE TERMINALS; PRIMING IS MECHANICAL
-
-Since anchor 59: #503 LANDED (2 rounds) — task panes are kind terminal
-with task metadata; the task: prefix lives only inside TaskLauncher
-(2 sites); theme glyph on task headers opens .invar/tasks.json by real
-click; r2 fixed Ctrl+J confusing a task terminal with the interactive
-terminal. dist/iv rebuilt. PRIMING IS NOW MECHANICAL AT EVERY TIER
-(user orders 2026-08-04): conductor launch fundamentals += drive-pty +
-ste-expression; builders get conductor-system-prompt.sh --builder
-(ibr/invariants/ivue/drive-pty/ste-expression) EMBEDDED VERBATIM in
-TASK.md + as claude-engine system prompt; compaction recontext is a
-SessionStart hook (matcher compact, .claude/settings.json) running
-recontext-conductor.sh — active from NEXT session; this session's
-backstop is running the script by hand after any compaction. USER
-DECISIONS QUEUED: #503's three record refinements (folder-open
-wording; allocated-vs-declaration identity distinction; drop the
-stale task-runtime-kind scope exclusion); #495 Shift+drag record;
-#464 retire; #460-463; 7 old worktrees. Lessons tonight: commit -a
-excludes new files (verify status after); one pending commit owns the
-index.
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 60 — 2026-08-04 ~01:45 EDT — TASKS ARE TERMINALS; PRIMING IS MECHANICAL
 - RESUME ANCHOR 59 — 2026-08-04 ~00:10 EDT — BUG NIGHT CLOSED; FLEET AT ZERO
 - RESUME ANCHOR 58b — 2026-08-03 ~23:10 EDT — WAVE COMPLETE + RECORDS WRITTEN + #501 LANDED
 - RESUME ANCHOR 58 — 2026-08-03 ~19:25 EDT — DECOUPLING WAVE COMPLETE
