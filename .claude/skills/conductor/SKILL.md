@@ -297,11 +297,18 @@ color). Every instrument in the chain validated consistency with the
 recorded expectation; nothing validated the expectation against intent.
 These five rules close that hole. They are MUSTS, not guidance.
 
-1. **ACCEPTANCE DRIVE (the bottleneck rule).** Before landing ANY change
-   that touches a visible surface, the conductor drives the exact
-   user-facing result and judges it as the user would. The builder's
-   report and its smokes are INPUT, never the verdict. A landing without
-   this sighting is a protocol violation even when the gate is green.
+1. **ACCEPTANCE DRIVE (the bottleneck rule) — ON READY, BEFORE THE
+   GATE.** The moment a READY report arrives, the conductor drives the
+   exact user-facing result IN THE BUILDER'S WORKTREE and judges it as
+   the user would — before any gate runs (user refinement 2026-08-06:
+   "test the work of agents on their worktree before merging, so you can
+   refine their work before even gate commit"). The ordering is:
+   READY -> conductor acceptance drive -> refinement rounds until
+   accepted (the builder's session is still warm; a two-minute drive
+   beats a twenty-minute gate cycle burned on a visible miss) -> gate ->
+   land. The builder's report and its smokes are INPUT, never the
+   verdict. A landing without this sighting is a protocol violation even
+   when the gate is green.
    Drive on a FRESH app instance — a warm server predating the branch
    shows the old code and lies (seen live 2026-08-06: a stale server
    still showed a removed button).
