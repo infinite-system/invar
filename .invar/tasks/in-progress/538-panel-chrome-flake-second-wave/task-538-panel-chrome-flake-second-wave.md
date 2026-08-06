@@ -1,7 +1,7 @@
 # 538 — panel chrome flake second wave
 
 Priority: flake-evidence
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5
