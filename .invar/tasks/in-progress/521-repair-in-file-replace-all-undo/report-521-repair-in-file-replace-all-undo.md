@@ -1,16 +1,24 @@
 ## In plain words
 
-Replace All changed the file without giving undo the removed text. I moved every replacement through the editor's normal edit and undo path. One confirmed undo now restores the full file, and one confirmed redo applies the change again.
+Replace All changed the file without giving undo the removed text. I moved every replacement through the editor's normal edit and undo path. I also restored the shared dialog button span, so the existing quit dialog and the new consent dialogs now pass their drives.
 
 ## Result
 
-The work is ready in commit `7b3572a719113989f356812fe7ec06b87580341d` (`Repair in-file Replace All undo`). I did not push, merge, or run the merge gate.
+The work is ready through commit `6476da20870dd9347fcedc757d986a599bfaa963` (`Restore shared dialog button focus span`). The main implementation remains in `7b3572a719113989f356812fe7ec06b87580341d`. I did not push, merge, or run the merge gate.
 
 Replace All now prepares exact edits in [FindInBuffer.ts](../../../../src/modules/search/FindInBuffer.ts). [Editor.ts](../../../../src/modules/editor/Editor.ts) verifies and applies those edits from the file end to its start. The editor records all line deltas in one undo state.
 
 The Find bar now shows `Aa`, `ab`, and `.*`. `Alt+C`, `Alt+W`, and `Alt+R` use the same option methods as the buttons. Each option reruns the current query at once.
 
-Replace All, its undo, and its redo now use the shared [Dialog.ts](../../../../src/modules/ui/Dialog.ts) model and [OverlayLayer.ts](../../../../src/modules/ui/OverlayLayer.ts) painter. Each dialog has exact counted copy, safe initial focus, one-key button padding, Escape cancellation, selection, and host copy.
+Replace All, its undo, and its redo now use the shared [Dialog.ts](../../../../src/modules/ui/Dialog.ts) model and [OverlayLayer.ts](../../../../src/modules/ui/OverlayLayer.ts) painter. Each dialog has exact counted copy, safe initial focus, padded buttons, Escape cancellation, selection, and host copy.
+
+## Gate repair
+
+The quit dialog opened with the correct modal state and safe `No` focus. Its painted focus span lost one blank cell on each side when I changed the shared labels. The existing quit smoke therefore saw the right words and state but never saw its required focused button surface.
+
+Commit `6476da20870dd9347fcedc757d986a599bfaa963` restores the established two-cell painted and clickable padding in [OverlayLayer.ts](../../../../src/modules/ui/OverlayLayer.ts). I did not change a timeout or assertion. The original red was the positive control for this repair.
+
+I drove the complete quit path at 10 and 100,000 lines. `No`, Escape, a second `Ctrl+Q`, outside click, the close control, keyboard `Yes`, and mouse `Yes` all behaved correctly.
 
 ## Main changes
 
@@ -67,6 +75,8 @@ The new smoke also exposed a pre-satisfied `Ctrl+H` wait and a mouse-release rac
 - `bunx tsc --noEmit`: exit 0.
 - `bun run build`: exit 0.
 - `bun scripts/harness/smoke-search-mouse-harness.ts`: `ALL-PASS`.
+- `bun scripts/harness/smoke-quit-confirmation-harness.ts`: `ALL-PASS` at 10 and 100,000 lines.
+- `bun scripts/harness/smoke-panel-chrome-harness.ts`: one isolated run, two concurrent full runs, and the final loaded run reported `ALL-PASS`.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --all`: exit 0 across 42 record files.
 - `node .claude/skills/invariants/scripts/check_invariants.mjs --refs`: 1,395 annotations and 287 lattice links resolved, 0 problems.
 - `bash scripts/conventions-gate.sh`: `PASS`.
@@ -110,11 +120,12 @@ MISSING: `HarnessInput` rejects a modified Enter chord such as `Control+Shift+En
 
 - Name drift: the shared dialog model and overlay slot are still named `quitConfirmation` in [Bootstrap.ts](../../../../src/modules/app/Bootstrap.ts), [RootView.ts](../../../../src/modules/ui/RootView.ts), and [OverlayLayer.ts](../../../../src/modules/ui/OverlayLayer.ts). They now serve quit, Replace All, undo, and redo. I did not start a rename sweep in this task.
 - Contract gap: no current search record governs in-file bulk consent, undo, redo, or stale-edit reporting. The design proposes a broader bulk record, but the brief forbids adding it without user approval.
-- No other runtime bycatch reproduced.
+- Contract gap: the search smoke says `Cancel` has one-key padding, but it checks only for the substring ` Cancel `. A two-cell surface also passes. I left the smoke unchanged because the gate amendment forbids assertion weakening and the quit contract requires its established span.
+- Pre-existing intermittent panel wait: the first isolated panel run timed out at the 100,000-line rapid expand cycle. It did not reach the listed drag assertion. The next isolated run passed, two concurrent full runs passed, and the final loaded run passed. I changed no panel code, wait, timeout, or assertion.
 
 ## Ready state
 
-Commit `7b3572a719113989f356812fe7ec06b87580341d` contains all task changes. I did not stage or change the dispatcher-owned files below.
+Commit `6476da20870dd9347fcedc757d986a599bfaa963` is the READY tip. I did not stage or change the dispatcher-owned files below.
 
 ```text
  M AGENTS.md
