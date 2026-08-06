@@ -857,3 +857,24 @@ test('closing one of several instances still promotes a survivor of the same spa
   expect(host.activeId.value).toBe('pane-instance-2');
   expect(host.has('database')).toBe(true);
 });
+
+test('closing an active singleton group preserves the fallback split group', () => {
+  const host = new PanelHost.Class();
+  host.register(fakeContent('pane-instance-1', 'terminal'));
+  host.register(fakeContent('pane-instance-2', 'terminal'));
+  host.register(fakeContent('pane-instance-3', 'terminal'));
+  host.split(['pane-instance-1', 'pane-instance-2']);
+  host.showContent('pane-instance-3');
+
+  host.closeOpenContent('pane-instance-3');
+
+  expect(host.panelGroups().map((group) => group.contentIds)).toEqual([
+    ['pane-instance-1', 'pane-instance-2'],
+  ]);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'pane-instance-1',
+    'pane-instance-2',
+  ]);
+  expect(host.has('pane-instance-1')).toBe(true);
+  expect(host.has('pane-instance-2')).toBe(true);
+});

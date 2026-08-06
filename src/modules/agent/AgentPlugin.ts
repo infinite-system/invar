@@ -67,7 +67,6 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
   >();
   protected disposeCommands: (() => void) | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
-  protected disposeStatusBar: (() => void) | null = null;
   protected disposeSystemNotes: (() => void) | null = null;
   protected disposePanelContentLifecycle: (() => void) | null = null;
   protected skillPopup: AgentSkillPopup.Model | null = null;
@@ -200,20 +199,6 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
         run: () => this.testNarrationVoice(),
       },
     ]);
-    this.disposeStatusBar = context.statusBarSegments.register({
-      segments: () => [],
-      controls: () => [
-        {
-          identifier: 'agent',
-          icon: context.theme.agentIcon,
-          label: 'Toggle Agent',
-          active:
-            context.bottomPanelHost.visible.value &&
-            context.bottomPanelHost.visibleContentsOfKind(this.kind).length > 0,
-          run: () => this.togglePane(),
-        },
-      ],
-    });
     this.disposeStatusProjection =
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
@@ -304,8 +289,6 @@ class $AgentPlugin implements ApplicationContributor, PaneRuntime {
     this.disposeCommands = null;
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
-    this.disposeStatusBar?.();
-    this.disposeStatusBar = null;
     this.disposeSystemNotes?.();
     this.disposeSystemNotes = null;
     this.disposePanelContentLifecycle?.();

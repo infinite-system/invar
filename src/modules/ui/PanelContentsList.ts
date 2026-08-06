@@ -18,13 +18,16 @@ class $PanelContentsList {
       column: number;
       row: number;
     }) => void = () => {},
+    protected readonly requestOpenTask: (identifier: string) => void = () => {},
   ) {}
 
   protected readonly minimumWidth = 10;
   protected readonly maximumWidth = 40;
   protected draggingRow: PanelContentsListRow | null = null;
   protected hoveredRowIndex = -1;
-  protected hoveredAction: 'split' | 'close' | null = null;
+  protected hoveredAction: PanelContentsListAction | null = null;
+  protected headerHovered = false;
+  protected headerPressed = false;
 
   protected get headerLabel(): string {
     const activeSpace = this.panelHost.activeSpace;
@@ -51,6 +54,9 @@ class $PanelContentsList {
                 title: content.instanceLabel ?? content.title,
                 visible: this.panelHost.isContentVisible(identifier),
                 active: identifier === focusedIdentifier,
+                hasTaskSource:
+                  content.task?.sourcePath !== null &&
+                  content.task !== undefined,
               },
             ]
           : [];
@@ -78,25 +84,27 @@ class $PanelContentsList {
   render(
     palette: Palette,
     glyphVocabulary: InterfaceGlyphVocabulary,
+    taskRecordGlyph: string,
   ): StyledText {
     const rows = this.rows;
     // invariant: The add control keeps one button appearance (src/modules/ui/ui.invariants.md)
     // ONE control in ONE form, whether or not the list has rows. An emptied list
     // used to swap this button for the bare words "Add Terminal", which reads as a
     // label: the user could not tell the only way back was clickable.
-    const headerText = `+ ${this.headerLabel} ▾`;
+    const headerText = ` + ${this.headerLabel} ▾`;
     const headerBody = WrapText.Class.clipToWidth(headerText, this.width, '…');
     const headerPadding = ' '.repeat(
       Math.max(0, this.width - WrapText.Class.displayWidth(headerBody)),
     );
+    const headerColor =
+      this.headerHovered || this.headerPressed ? palette.accent : palette.fg;
+    const headerChunk = fg(headerColor)(`${headerBody}${headerPadding}`);
     const chunks: TextChunk[] = [
-      // A full-width bar in the accent tone on the selection ground: it reads as
-      // a control rather than as text that happens to start with a plus. The bar
-      // starts at the list's own first column, so every row control below it
-      // keeps its column arithmetic — a leading pad here shifts the whole list.
-      bg(palette.selection)(
-        fg(palette.accent)(`${headerBody}${headerPadding}`),
-      ),
+      this.headerPressed
+        ? bg(palette.selection)(headerChunk)
+        : this.headerHovered
+          ? bg(palette.cursorLine)(headerChunk)
+          : bg(palette.panel)(headerChunk),
       fg(palette.fg)('\n\n'),
     ];
     rows.forEach((row, rowIndex) => {
@@ -110,10 +118,13 @@ class $PanelContentsList {
               : glyphVocabulary.panelConnectorMiddle;
       const prefix = row.memberCount === 1 ? ' ' : `${groupMark} `;
       const controlsVisible = rowIndex === this.hoveredRowIndex;
-      const controlsWidth = 6;
+      const overlay = this.rowControlOverlay(row);
+      const rowTextEndColumn = controlsVisible
+        ? overlay.startColumn
+        : this.width;
       const titleColumns = Math.max(
-        1,
-        this.width - WrapText.Class.displayWidth(prefix) - controlsWidth,
+        0,
+        rowTextEndColumn - WrapText.Class.displayWidth(prefix),
       );
       const clippedTitle = WrapText.Class.clipToWidth(
         row.title,
@@ -129,23 +140,24 @@ class $PanelContentsList {
         : row.visible
           ? palette.fg
           : palette.dim;
-      const rowChunk = row.active
-        ? bg(palette.selection)(fg(color)(rowText))
-        : fg(color)(rowText);
+      const rowBackground = row.active ? palette.selection : palette.panel;
+      const rowChunk = bg(rowBackground)(fg(color)(rowText));
       chunks.push(rowChunk);
       if (controlsVisible) {
-        const splitText = ` ${glyphVocabulary.panelSplit} `;
-        const closeText = ` ${glyphVocabulary.panelClose} `;
-        chunks.push(
-          this.hoveredAction === 'split'
-            ? bg(palette.cursorLine)(fg(palette.accent)(splitText))
-            : fg(color)(splitText),
-          this.hoveredAction === 'close'
-            ? bg(palette.cursorLine)(fg(palette.accent)(closeText))
-            : fg(color)(closeText),
-        );
-      } else {
-        chunks.push(fg(color)(' '.repeat(controlsWidth)));
+        for (const control of overlay.controls) {
+          const glyph =
+            control.action === 'task'
+              ? taskRecordGlyph
+              : control.action === 'split'
+                ? glyphVocabulary.panelSplit
+                : glyphVocabulary.panelClose;
+          const text = ` ${glyph} `;
+          chunks.push(
+            this.hoveredAction === control.action
+              ? bg(palette.cursorLine)(fg(palette.accent)(text))
+              : bg(rowBackground)(fg(color)(text)),
+          );
+        }
       }
       if (rowIndex < rows.length - 1) chunks.push(fg(palette.fg)('\n'));
     });
@@ -159,22 +171,25 @@ class $PanelContentsList {
     screenRow = localRow,
   ): boolean {
     if (localRow === 0) {
+      this.headerPressed = true;
       this.requestAdd({ column: screenColumn, row: screenRow });
       return true;
     }
     const row = this.rows[localRow - 2];
     if (!row) return false;
     this.draggingRow = row;
-    if (localColumn >= this.width - 3) {
-      this.panelHost.closeOpenContent(row.identifier);
-      this.draggingRow = null;
-      return true;
-    }
-    if (localColumn >= this.width - 6) {
-      this.requestSplit(row.identifier, {
-        column: screenColumn,
-        row: screenRow,
-      });
+    const control = this.controlAt(row, localColumn);
+    if (control) {
+      if (control.action === 'close') {
+        this.panelHost.closeOpenContent(row.identifier);
+      } else if (control.action === 'split') {
+        this.requestSplit(row.identifier, {
+          column: screenColumn,
+          row: screenRow,
+        });
+      } else {
+        this.requestOpenTask(row.identifier);
+      }
       this.draggingRow = null;
       return true;
     }
@@ -183,36 +198,40 @@ class $PanelContentsList {
   }
 
   pointerMove(localColumn: number, localRow: number): boolean {
+    const nextHeaderHovered = localRow === 0;
     const nextRowIndex = this.rows[localRow - 2] ? localRow - 2 : -1;
-    const nextAction =
-      nextRowIndex < 0
-        ? null
-        : localColumn >= this.width - 3
-          ? 'close'
-          : localColumn >= this.width - 6
-            ? 'split'
-            : null;
+    const row = nextRowIndex < 0 ? undefined : this.rows[nextRowIndex];
+    const nextAction = row
+      ? (this.controlAt(row, localColumn)?.action ?? null)
+      : null;
     const changed =
+      nextHeaderHovered !== this.headerHovered ||
       nextRowIndex !== this.hoveredRowIndex ||
       nextAction !== this.hoveredAction;
+    this.headerHovered = nextHeaderHovered;
     this.hoveredRowIndex = nextRowIndex;
     this.hoveredAction = nextAction;
     return changed;
   }
 
   pointerOut(): void {
+    this.headerHovered = false;
+    this.headerPressed = false;
     this.hoveredRowIndex = -1;
     this.hoveredAction = null;
   }
 
   tooltipAt(localColumn: number, localRow: number): string | null {
     if (localRow === 0) return `Add ${this.headerLabel} instance`;
-    if (!this.rows[localRow - 2]) return null;
-    return localColumn >= this.width - 3
-      ? 'Close instance'
-      : localColumn >= this.width - 6
+    const row = this.rows[localRow - 2];
+    const action = row ? this.controlAt(row, localColumn)?.action : null;
+    return action === 'task'
+      ? 'Open tasks.json'
+      : action === 'split'
         ? 'Split instance'
-        : null;
+        : action === 'close'
+          ? 'Close instance'
+          : null;
   }
 
   pointerDrag(localColumn: number, localRow?: number): boolean {
@@ -239,6 +258,36 @@ class $PanelContentsList {
 
   pointerUp(): void {
     this.draggingRow = null;
+    this.headerPressed = false;
+  }
+
+  protected rowControlOverlay(
+    row: PanelContentsListRow,
+  ): PanelContentsListControlOverlay {
+    const actions: readonly PanelContentsListAction[] = row.hasTaskSource
+      ? ['task', 'split', 'close']
+      : ['split', 'close'];
+    const startColumn = Math.max(0, this.width - actions.length * 3);
+    return {
+      startColumn,
+      controls: actions.map((action, index) => ({
+        action,
+        startColumn: startColumn + index * 3,
+        endColumnExclusive: startColumn + (index + 1) * 3,
+      })),
+    };
+  }
+
+  protected controlAt(
+    row: PanelContentsListRow,
+    column: number,
+  ): PanelContentsListControlSegment | null {
+    return (
+      this.rowControlOverlay(row).controls.find(
+        (control) =>
+          column >= control.startColumn && column < control.endColumnExclusive,
+      ) ?? null
+    );
   }
 }
 
@@ -257,4 +306,18 @@ export interface PanelContentsListRow {
   readonly title: string;
   readonly visible: boolean;
   readonly active: boolean;
+  readonly hasTaskSource: boolean;
+}
+
+export type PanelContentsListAction = 'task' | 'split' | 'close';
+
+export interface PanelContentsListControlSegment {
+  readonly action: PanelContentsListAction;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+export interface PanelContentsListControlOverlay {
+  readonly startColumn: number;
+  readonly controls: readonly PanelContentsListControlSegment[];
 }

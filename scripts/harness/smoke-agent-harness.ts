@@ -10,16 +10,6 @@ import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function statusButtonColumn(
-  driver: PtyTestDriver.Model,
-  label: string,
-): number {
-  const statusBarRow = driver.snapshot().rows - 1;
-  const column = driver.snapshot().rowText(statusBarRow).lastIndexOf(label);
-  if (column < 0) throw new Error(`Status button is not visible: ${label}`);
-  return column + Math.floor(label.length / 2);
-}
-
 function runAgentUnitTests(repositoryRoot: string): void {
   HarnessSmoke.Class.requireChildSuccess(
     'agent-core unit tests pass',
@@ -62,7 +52,7 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness agent: boot and status-bar button ==');
+  console.log('== harness agent: boot and shared panel status control ==');
   const bootStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -75,49 +65,16 @@ try {
   );
   HarnessSmoke.Class.pass('agent pane is hidden at boot');
   await driver.awaitScreenChange();
-  const agentButtonColumn = statusButtonColumn(driver, ' ✦ ');
-  driver.sendMouse({
-    kind: 'press',
-    column: agentButtonColumn,
-    row: Number(bootStatus.height) - 1,
-    button: 'left',
-  });
-  driver.sendMouse({
-    kind: 'release',
-    column: agentButtonColumn,
-    row: Number(bootStatus.height) - 1,
-    button: 'left',
-  });
-  const openStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the agent pane is visible and active with screen height published',
-    (status) =>
-      status.panelVisible === true &&
-      status.terminalVisible === false &&
-      status.panelActiveContentKind === 'agent' &&
-      typeof status.height === 'number',
+  const statusBarText = driver
+    .snapshot()
+    .rowText(Number(bootStatus.height) - 1);
+  HarnessSmoke.Class.requireCondition(
+    !statusBarText.includes(' ✦ ') && statusBarText.includes(' ❯ '),
+    'the agent has no separate status button beside the shared panel control',
   );
-  HarnessSmoke.Class.pass('status-bar agent button opens the agent pane');
-  driver.sendMouse({
-    kind: 'press',
-    column: statusButtonColumn(driver, ' ✦ '),
-    row: Number(openStatus.height) - 1,
-    button: 'left',
-  });
-  driver.sendMouse({
-    kind: 'release',
-    column: statusButtonColumn(driver, ' ✦ '),
-    row: Number(openStatus.height) - 1,
-    button: 'left',
-  });
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'status condition: status.terminalVisible === false',
-    (status) => status.terminalVisible === false,
+  HarnessSmoke.Class.pass(
+    'agent remains reachable through its chord without a second status button',
   );
-  HarnessSmoke.Class.pass('status-bar agent button hides the agent pane');
 
   console.log('== harness agent: chord, composer, and echo round trip ==');
   driver.sendRawInput('\x1b[27;6;97~');
