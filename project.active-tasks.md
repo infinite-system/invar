@@ -6,12 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #515 [find-replace-research-and-design](.invar/tasks/in-progress/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md)  [building]
+## IN-PROGRESS (4)
+- #517 [codex-compaction-threshold-steer](.invar/tasks/in-progress/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md)  [building]
+  `tmux attach -t invar/517-codex-compaction-threshold-steer`
+- #515 [find-replace-research-and-design](.invar/tasks/in-progress/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/515-find-replace-research-and-design`
 - #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/in-progress/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md)  [building]
   `tmux attach -t invar/514-terminal-instance-lifecycle-and-panel-chrome`
-- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/in-progress/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md)  [building]
+- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/in-progress/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/513-drops-into-agents-paste-the-remote-path`
 
 ## USER-DIRECTED (15)
