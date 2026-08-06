@@ -1,7 +1,7 @@
 # 536 — workspace replace consent history
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

@@ -1,0 +1,15 @@
+{
+  "task": 536,
+  "slug": "workspace-replace-consent-history",
+  "branch": "fleet/536-workspace-replace-consent-history",
+  "worktree": ".invar/worktrees/536-workspace-replace-consent-history",
+  "tmuxSession": "invar/536-workspace-replace-consent-history",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-536-workspace-replace-consent-history.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "9f60027f07c8ea86a0cf2e8386a04b7d86d681d3",
+  "startedAt": "2026-08-06T14:24:55-04:00"
+}
