@@ -1074,8 +1074,8 @@ class $OverlayLayer {
     const questionLines =
       this.dependencies.quitConfirmation.message.value.split('\n');
     const hint = this.dependencies.quitConfirmation.hint.value;
-    const yesLabel = ` ${this.dependencies.quitConfirmation.confirmLabel.value} `;
-    const noLabel = ` ${this.dependencies.quitConfirmation.cancelLabel.value} `;
+    const yesLabel = `  ${this.dependencies.quitConfirmation.confirmLabel.value}  `;
+    const noLabel = `  ${this.dependencies.quitConfirmation.cancelLabel.value}  `;
     const buttonGap = '    ';
     const buttonRowWidth =
       TextCoordinates.Class.lineWidth(yesLabel) +
@@ -1603,7 +1603,7 @@ class $OverlayLayer {
       const desiredWidth = this.contentDerivedDialogWidth(
         [
           ...this.dependencies.quitConfirmation.message.value.split('\n'),
-          ` ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value} `,
+          `  ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value}  `,
           this.dependencies.quitConfirmation.hint.value,
         ],
         84,
