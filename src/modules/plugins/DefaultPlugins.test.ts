@@ -10,6 +10,7 @@ test('the shipped application registers its built in contributions', () => {
     ]),
   ).toEqual([
     ['file-tree', 'File Tree'],
+    ['workspace-search', 'Search'],
     ['git', 'Git'],
     ['markdown', 'Markdown'],
     ['language', 'Language Intelligence'],
@@ -30,12 +31,13 @@ test('the shipped application registers its built in contributions', () => {
     contributors.flatMap(
       (contributor) => contributor.primaryDockContentIdentifiers ?? [],
     ),
-  ).toEqual(['files', 'git', 'extensions']);
+  ).toEqual(['files', 'search', 'git', 'extensions']);
   expect(
     contributors.map(
       (contributor) => contributor.workspaceContributor !== undefined,
     ),
   ).toEqual([
+    true,
     true,
     true,
     true,

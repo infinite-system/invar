@@ -21,6 +21,7 @@ import { DatabaseProviderPlugin } from '../database/DatabaseProviderPlugin';
 import { DatabaseConsumerPlugin } from '../database/DatabaseConsumerPlugin';
 import { VuePlugin } from '../vue/VuePlugin';
 import { AgentPlugin } from '../agent/AgentPlugin';
+import { WorkspaceSearchContributor } from '../search/WorkspaceSearchContributor';
 
 class $DefaultPlugins {
   static createSourceTextViews(): SourceTextViewProvider {
@@ -30,6 +31,7 @@ class $DefaultPlugins {
   static create(): ApplicationContributor[] {
     return [
       new FileTreeContributor.Class(),
+      new WorkspaceSearchContributor.Class(),
       new GitPlugin.Class(),
       new MarkdownPlugin.Class(),
       new LspPlugin.Class(),

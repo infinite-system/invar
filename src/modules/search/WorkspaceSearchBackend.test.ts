@@ -392,6 +392,18 @@ describe('WorkspaceSearchWorkspace live-document overlay', () => {
     expect(
       results.some((result) => result.relativePath === 'removed.txt'),
     ).toBe(false);
+    expect(workspaceSearch.resultTree.rows.map((row) => row.kind)).toEqual([
+      'file',
+      'match',
+    ]);
+
+    workspaceSearch.replacementInput.setValue('REPLACED');
+    await workspaceSearch.search();
+    expect(workspaceSearch.resultTree.rows.map((row) => row.kind)).toEqual([
+      'file',
+      'match',
+      'replacementPreview',
+    ]);
 
     workspaceSearch.queryInput.setValue('document');
     expect(await workspaceSearch.search()).toHaveLength(2);

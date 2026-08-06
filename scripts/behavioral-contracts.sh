@@ -1322,6 +1322,13 @@ else
   bad "go-to-line PTY drive failed"
 fi
 
+echo "== CONTRACT workspace-search: the left dock searches, opens, copies, scrolls, caps, and explains missing ripgrep =="
+if "$BUN" "$DIR/harness/smoke-workspace-search-harness.ts"; then
+  pass "workspace Search mouse, keyboard, scale, copy, cap, scroll, and unavailable arms hold"
+else
+  bad "workspace Search PTY drive failed"
+fi
+
 echo "== CONTRACT breadcrumbs: one navigation owner, readable live-theme separators, and a hover highlight one cell wider than the segment on each side =="
 if COLORTERM=truecolor "$BUN" "$DIR/harness/smoke-breadcrumb-harness.ts"; then
   pass "breadcrumb controls, contrast, scale parity, live theme derivation, and hover geometry hold"

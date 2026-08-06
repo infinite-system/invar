@@ -239,7 +239,36 @@ class $RootView {
       id: 'sidebar-body',
       content: '',
     });
+    const primaryDockVerticalScrollBarState = {
+      applyingGeometry: false,
+      reportedToTrueScale: 1,
+    };
+    const primaryDockVerticalScrollBar = new SolidThumbScrollBar.Class(
+      renderer,
+      {
+        id: 'primary-dock-scrollbar-v',
+        orientation: 'vertical',
+        position: 'absolute',
+        width: 1,
+        showArrows: false,
+        visible: false,
+        zIndex: 50,
+        onChange: (position) => {
+          if (primaryDockVerticalScrollBarState.applyingGeometry) return;
+          const content = primaryDockHost.activeContent;
+          if (!content?.scrollToLine) return;
+          content.haltScrollMomentum?.();
+          content.scrollToLine(
+            Math.round(
+              position * primaryDockVerticalScrollBarState.reportedToTrueScale,
+            ),
+          );
+          renderer.requestRender();
+        },
+      },
+    );
     sidebar.add(sidebarBody);
+    sidebar.add(primaryDockVerticalScrollBar);
     // The editor column stacks a breadcrumb row and a 1-row TAB BAR above the bordered editor area. Wrapping (rather than
     // adding the tab bar INSIDE editorArea) leaves editorArea's border, gutter/code layout, scrollbar
     // geometry, and layout-anchored caret coords (codeBody.x/y) completely unchanged.
@@ -1869,6 +1898,28 @@ class $RootView {
           }) ?? sidebarBody.content)
         : '';
       sidebarBody.fg = palette.fg;
+      if (
+        primaryDockContent?.attachViewportScrollPort &&
+        !contentsWithScrollPort.has(primaryDockContent)
+      ) {
+        primaryDockContent.attachViewportScrollPort(paneScrollPort);
+        contentsWithScrollPort.add(primaryDockContent);
+      }
+      if (primaryDockHost.visible.value) {
+        updatePaneVerticalScrollBar(
+          primaryDockContent,
+          {
+            container: sidebar,
+            body: sidebarBody,
+            verticalScrollBar: primaryDockVerticalScrollBar,
+            verticalScrollBarState: primaryDockVerticalScrollBarState,
+          },
+          primaryDockWidth,
+          palette,
+        );
+      } else {
+        primaryDockVerticalScrollBar.visible = false;
+      }
       synchronizePrimaryDockSplitters(palette);
       // The editor column is painted through the SAME seam as every dock and panel cell. Its default
       // content is the one native-surface citizen: the resolver hands it the region, it paints the
@@ -2537,9 +2588,14 @@ class $RootView {
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
       tickHostedPaneScroll(dtSeconds: number): boolean {
         let moving =
-          rightDockHost.visible.value && rightDockHost.activeContent
-            ? (rightDockHost.activeContent.tickScroll?.(dtSeconds) ?? false)
+          primaryDockHost.visible.value && primaryDockHost.activeContent
+            ? (primaryDockHost.activeContent.tickScroll?.(dtSeconds) ?? false)
             : false;
+        moving =
+          rightDockHost.visible.value && rightDockHost.activeContent
+            ? (rightDockHost.activeContent.tickScroll?.(dtSeconds) ?? false) ||
+              moving
+            : moving;
         for (const cell of panelHost.resolvedCells) {
           moving = (cell.content.tickScroll?.(dtSeconds) ?? false) || moving;
         }
