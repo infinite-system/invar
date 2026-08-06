@@ -33,7 +33,11 @@ class $NativeFileDialog {
   protected static availableCommand(
     startingDirectory: string,
   ): string[] | null {
-    if (Processes.Class.which('zenity')) {
+    const graphicalLinuxSession = Boolean(
+      Environment.Class.env('DISPLAY') ||
+      Environment.Class.env('WAYLAND_DISPLAY'),
+    );
+    if (graphicalLinuxSession && Processes.Class.which('zenity')) {
       return [
         'zenity',
         '--file-selection',
@@ -41,7 +45,7 @@ class $NativeFileDialog {
         `--filename=${startingDirectory}/`,
       ];
     }
-    if (Processes.Class.which('kdialog')) {
+    if (graphicalLinuxSession && Processes.Class.which('kdialog')) {
       return ['kdialog', '--getopenfilename', startingDirectory, '*'];
     }
     if (Processes.Class.which('osascript')) {

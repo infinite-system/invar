@@ -1945,9 +1945,14 @@ function gradientWord(
     .join('');
 }
 
-// Folders whose worktree has shown at least one changed line this session —
-// the sticky exploring→building transition.
-const firstEditSeen = new Set<string>();
+/** The current worktree delta is the one phase generator for both watch surfaces. */
+export function taskPhaseForLineDelta(
+  lineDelta: { added: number; removed: number } | null,
+): 'exploring' | 'building' {
+  return lineDelta !== null && lineDelta.added + lineDelta.removed > 0
+    ? 'building'
+    : 'exploring';
+}
 
 /** One in-progress task's fleet-only facts, all anchored to the main Invar checkout. */
 export function readTaskFleetFacts(
@@ -1958,9 +1963,6 @@ export function readTaskFleetFacts(
     record.directoryState === 'in-progress'
       ? readTaskLineDelta(fleetRepositoryRoot, record.folderName)
       : null;
-  if (lineDelta !== null && lineDelta.added + lineDelta.removed > 0) {
-    firstEditSeen.add(record.folderName);
-  }
   const worktreePath = join(
     fleetRepositoryRoot,
     '.invar',
@@ -1969,7 +1971,7 @@ export function readTaskFleetFacts(
   );
   return {
     lineDelta,
-    phase: firstEditSeen.has(record.folderName) ? 'building' : 'exploring',
+    phase: taskPhaseForLineDelta(lineDelta),
     worktreePath: existsSync(worktreePath) ? worktreePath : null,
   };
 }
@@ -2110,16 +2112,13 @@ function live(
   for (const record of records) {
     const { round, ready } = builderStanding(tasksRoot, record);
     const delta = lineDeltaCache.get(record.folderName) ?? null;
-    const hasEdits = delta !== null && delta.added + delta.removed > 0;
-    if (hasEdits) firstEditSeen.add(record.folderName);
-    const exploring = !firstEditSeen.has(record.folderName);
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const groupForMotionElapsed = (currentMotionElapsedMilliseconds = 0) =>
       projectTasksWatchTaskGroup({
         taskNumber: record.taskNumber,
         label: record.folderName.replace(/^\d+-/, ''),
         standing: ready ? 'ready' : 'building',
-        phase: ready ? null : exploring ? 'exploring' : 'building',
+        phase: ready ? null : taskPhaseForLineDelta(delta),
         round,
         durationLabel:
           startedAt === null ? '' : formatDuration(Date.now() - startedAt),

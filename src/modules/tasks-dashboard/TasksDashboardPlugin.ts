@@ -397,6 +397,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       tasksRowRebuilds: observationCounts.rowRebuilds,
       tasksFleetScopeMatches: overview.fleetScopeMatches.value,
       tasksActionNotice: overview.actionNotice.value?.message ?? null,
+      tasksGatePhase: overview.gateGlance.value?.phase ?? null,
       tasksGateExitCode: overview.gateGlance.value?.exitCode ?? null,
       tasksLastAction: this.lastAction,
     };

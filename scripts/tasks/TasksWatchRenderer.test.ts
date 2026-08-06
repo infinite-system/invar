@@ -4,8 +4,16 @@ import {
   TASKS_BUILDING_BREATH_FRAMES,
   TASKS_MOTION_STEP_MILLISECONDS,
   TASKS_MOTION_STEPS_PER_SECOND,
+  taskPhaseForLineDelta,
   tasksMotionStepAtElapsed,
 } from './tasks-status';
+
+test('the current line delta gives both watch surfaces the same phase', () => {
+  expect(taskPhaseForLineDelta(null)).toBe('exploring');
+  expect(taskPhaseForLineDelta({ added: 0, removed: 0 })).toBe('exploring');
+  expect(taskPhaseForLineDelta({ added: 1, removed: 0 })).toBe('building');
+  expect(taskPhaseForLineDelta({ added: 0, removed: 1 })).toBe('building');
+});
 
 test('the first dashboard frame enters the alternate screen inside DEC 2026', () => {
   const output = TasksWatchRenderer.Class.frame(

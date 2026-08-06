@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Drive the Files-header Open control through its in-app and native-dialog tiers. The first arm
-// disables native dialogs, browses above the workspace, and opens an outside file with the visible
-// read-only badge. The second arm puts a deterministic zenity stub on PATH and opens the shared
+// runs without a graphical session, browses above the workspace, and opens an outside file with
+// the visible read-only badge. The second arm puts a deterministic zenity stub on PATH and opens the shared
 // 100,000-line scale file without opening the in-app popup.
 //
 // Run: bun scripts/harness/smoke-file-open-harness.ts
@@ -48,7 +48,10 @@ HarnessSmoke.Class.requireCondition(
   `shared scale fixture builds: ${scaleResult.stderr.toString()}`,
 );
 
-async function clickOpenControl(driver: PtyTestDriver.Model): Promise<void> {
+async function clickOpenControl(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<void> {
   const openFileGlyph = ThemeIcons.Class.glyphFor('unicode', 'fileTreeOpen');
   const beforeHover = await driver.awaitGridCondition(
     'the Files header paints its Open control',
@@ -56,6 +59,10 @@ async function clickOpenControl(driver: PtyTestDriver.Model): Promise<void> {
   );
   const position = beforeHover.findText(openFileGlyph);
   if (!position) throw new Error('The Files-header Open control vanished');
+  HarnessSmoke.Class.requireCondition(
+    (await HarnessSmoke.Class.readStatus(statusPath)).tooltipVisible !== true,
+    'positive control: the Open tooltip starts hidden',
+  );
   driver.sendMouse({
     kind: 'move',
     column: position.column,
@@ -67,6 +74,16 @@ async function clickOpenControl(driver: PtyTestDriver.Model): Promise<void> {
     (snapshot) =>
       snapshot.cell(position.row, position.column)?.background !==
       beforeHover.cell(position.row, position.column)?.background,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Open control routes its tooltip through the sidebar',
+    (status) => status.tooltipVisible === true,
+  );
+  await driver.awaitGridCondition(
+    'the Open control states its action before the click',
+    (snapshot) => snapshot.findText('Open file') !== null,
   );
   driver.sendMouseClick({
     column: position.column,
@@ -86,7 +103,8 @@ try {
     homeDirectory: tierOneHome,
     environment: {
       TUI_STATUS_PATH: tierOneStatusPath,
-      INVAR_DISABLE_NATIVE_DIALOG: '1',
+      DISPLAY: '',
+      WAYLAND_DISPLAY: '',
     },
   });
   try {
@@ -100,7 +118,7 @@ try {
       tierOneDriver.snapshot().findText('OUTSIDE_READ_ONLY') === null,
       'positive control starts before the outside file is visible',
     );
-    await clickOpenControl(tierOneDriver);
+    await clickOpenControl(tierOneDriver, tierOneStatusPath);
     const openedPickerStatus = await HarnessSmoke.Class.awaitStatus(
       tierOneDriver,
       tierOneStatusPath,
@@ -181,6 +199,7 @@ try {
     environment: {
       TUI_STATUS_PATH: tierTwoStatusPath,
       PATH: `${dialogBinaryDirectory}:${process.env.PATH ?? ''}`,
+      DISPLAY: ':99',
     },
   });
   try {
@@ -194,7 +213,7 @@ try {
       tierTwoDriver.snapshot().findText('ScaleRecord0000000') === null,
       'positive control starts before the large file is visible',
     );
-    await clickOpenControl(tierTwoDriver);
+    await clickOpenControl(tierTwoDriver, tierTwoStatusPath);
     await tierTwoDriver.awaitGridCondition(
       'the native dialog selection opens the 100,000-line file',
       (snapshot) => snapshot.findText('ScaleRecord0000000') !== null,
