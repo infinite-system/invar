@@ -1,0 +1,15 @@
+{
+  "task": 521,
+  "slug": "repair-in-file-replace-all-undo",
+  "branch": "fleet/521-repair-in-file-replace-all-undo",
+  "worktree": ".invar/worktrees/521-repair-in-file-replace-all-undo",
+  "tmuxSession": "invar/521-repair-in-file-replace-all-undo",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-521-repair-in-file-replace-all-undo.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "9e805aaf5b8e44dcb90a8e44c4f89e8c54f99fae",
+  "startedAt": "2026-08-06T03:20:59-04:00"
+}
