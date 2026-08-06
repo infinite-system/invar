@@ -298,6 +298,7 @@ class $AgentPaneContent implements PaneContent {
       identifier: this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER,
       document: this.transcriptSearchDocument,
       replaceAllowed: false,
+      displayPath: this.transcriptSearchDocument.path,
       revealMatch: (match) => this.revealTranscriptMatch(match),
     };
   }

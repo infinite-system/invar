@@ -196,73 +196,67 @@ src/modules/app/AppStatusProjection.test.ts`
 
 ### Find bar controls are mouse-clickable buttons
 
-**Invariant:** Every FindBar action — previous match, next match, the case toggle, replace, replace-all,
-and the find↔replace mode switch — is reachable by a mouse click on a rendered glyph button, and a click
+**Invariant:** Every FindBar action — previous match, next match, the case, whole-word, and regex
+toggles, replace, replace-all, and the find↔replace mode switch — is reachable by a mouse click, and a click
 runs the SAME FindBar method its keyboard chord runs. The button hit-zones are the exact columns the
 renderer drew that frame (one geometry source), so a drawn button and its clickable rectangle can never
 disagree.
 
 **Scope:** `FindBarRenderer.render` (button glyphs + returned `FindBarButtonZone[]`) and the
-`OverlayLayer` find-bar `onMouseDown` dispatch. The mode-toggle button appears only when the bound pane
+`OverlayLayer` find-bar `onMouseUp` dispatch. The mode-toggle button appears only when the bound pane
 allows replacement.
 
 **Mechanism:** `FindBarRenderer` lays out the button row left-to-right, accumulating each button's
 `[startColumn, endColumn)` as it emits the chunk, and returns those zones with the `StyledText`.
-`OverlayLayer` stores the zones each frame and, on `onMouseDown`, resolves the local (row, column) to a
+`OverlayLayer` stores the zones each frame and, on `onMouseUp`, resolves the local (row, column) to a
 zone and calls the matching `FindBar` method (`previous`/`next`/`toggleCaseSensitive`/`replaceCurrent`/
-`replaceAll`/`switchMode`) — the same methods the keyboard action-handlers call. Glyphs come from the
+`toggleWholeWord`/`toggleRegex`/`replaceAll`/`switchMode`) — the same methods or request controller the
+keyboard action-handlers call. Glyphs come from the
 theme find-icon ladder (nerd → unicode → ascii), each one cell so the columns stay aligned.
 
 **Generates:** a fully mouse-operable find/replace bar; keyboard and mouse converging on one behaviour;
 button rectangles that track the render.
 
 **Evidence:** `src/modules/ui/FindBarRenderer.ts`; `src/modules/ui/OverlayLayer.ts` `runFindButton` +
-`findBarText.onMouseDown`; `src/modules/search/FindBar.ts`; `scripts/smoke-search-mouse.sh` (clicks the
-next, Aa, and replace-all buttons and asserts the match advances, case flips + re-filters, and the
-document mutates).
+`findBarText.onMouseUp`; `src/modules/search/FindBar.ts`;
+`scripts/harness/smoke-search-mouse-harness.ts` (clicks next, Aa, ab, .*, and replace-all, then
+confirms undo and redo).
 
 **Impossible if true:** a FindBar action with no clickable button; a button whose click runs different
 logic than its keyboard chord; a click landing in a drawn button's cells doing nothing (hit-zone and
 render disagreeing).
 
-**Verification:** `bun test src/modules/search/FindBar.test.ts && bash scripts/smoke-search-mouse.sh`
+**Verification:** `bun test src/modules/search/FindBar.test.ts && bun scripts/harness/smoke-search-mouse-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-08-06
 
-### Case sensitivity is a live toggle that re-runs the query
+### Find options re-run the active query
 
-**Invariant:** The FindBar carries a case-sensitivity option; flipping it (the Aa button or the Alt+C
-chord) immediately re-runs the active query so the match set, the current-match index, and the counter
-reflect the new mode in the same frame — the toggle is never a latent flag applied only on the next
-keystroke.
+**Invariant:** If the user flips the FindBar case, whole-word, or regex option, then the active query
+runs again before the next frame with the selected option.
 
-**Scope:** `FindBar.toggleCaseSensitive`, `FindInBuffer.caseSensitive` + `createRegularExpression`, the
-`find.toggleCaseSensitive` action-handler, and the Aa button state in `FindBarRenderer`.
+**Scope:** `FindBar.toggleCaseSensitive`, `toggleWholeWord`, and `toggleRegex`; their `FindInBuffer`
+refs; the Alt+C, Alt+W, and Alt+R actions; and the Aa, ab, and .* buttons in `FindBarRenderer`.
 
-**Mechanism:** `FindInBuffer.createRegularExpression` selects the `g` vs `gi` flags from
-`caseSensitive.value`. `FindBar.toggleCaseSensitive` flips that ref and calls `engine.findAll()` in the
-same call, so `matches` and `currentMatchIndex` are recomputed before the next paint. The Aa button
-renders with a highlighted background while the option is on, driven by `FindBar.caseSensitive`.
+**Mechanism:** Each `FindBar` toggle flips its `FindInBuffer` ref and calls `engine.findAll()` in the
+same call. `FindBarRenderer` reads the same refs to paint each active button.
 
-**Generates:** live case-sensitive search; a visible on/off affordance; identical behaviour from the
-button and the keyboard.
+**Generates:** live search options; visible on/off states; identical button and keyboard behavior.
 
-**Evidence:** `src/modules/search/FindBar.ts` `toggleCaseSensitive`; `src/modules/search/FindInBuffer.ts`
-`createRegularExpression`; `src/modules/keybindings/keybindings.defaults.ts` (`find.toggleCaseSensitive`
-= Alt+C); `scripts/smoke-search-mouse.sh` (Aa click turns case on and the count drops from 4 to the
-single case-exact match).
+**Evidence:** `src/modules/search/FindBar.ts`; `src/modules/search/FindInBuffer.ts`;
+`src/modules/keybindings/KeybindingDefaults.ts`; `src/modules/ui/FindBarRenderer.ts`;
+`scripts/harness/smoke-search-mouse-harness.ts`.
 
-**Impossible if true:** toggling case-sensitivity without the match count changing for a query that has
-case-differing matches; the counter still showing the old mode's matches after a toggle; the Aa button
-showing no active state while case-sensitivity is on.
+**Impossible if true:** a Find option changes but matches still use its old value; an enabled Aa, ab,
+or .* button has no active state; a visible option has no keyboard path.
 
-**Verification:** `bun test src/modules/search/FindInBuffer.test.ts src/modules/search/FindBar.test.ts && bash scripts/smoke-search-mouse.sh`
+**Verification:** `bun test src/modules/search/FindInBuffer.test.ts src/modules/search/FindBar.test.ts && bun scripts/harness/smoke-search-mouse-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-08-06
 
 ### The open-project path input is a live directory navigator
 

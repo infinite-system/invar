@@ -26,6 +26,10 @@ import type {
   LanguageRange,
 } from './LanguageProvider.interface';
 import type { DocumentSyntaxReader } from '../syntax/DocumentSyntaxSource.interface';
+import type {
+  TextEdit,
+  TextEditBatchMetadata,
+} from '../text/TextEdit.interface';
 
 export interface SourceTextView extends LiveBuffer {
   // --- the document and the view state over it ---------------------------
@@ -106,6 +110,12 @@ export interface SourceTextView extends LiveBuffer {
     fallbackRange: LanguageRange,
   ): void;
   replaceRangeAsUndoStep(range: LanguageRange, replacementText: string): void;
+  applyTextEditsAsUndoStep(
+    edits: readonly TextEdit[],
+    metadata: TextEditBatchMetadata,
+  ): number;
+  readonly nextUndoMetadata: TextEditBatchMetadata | null;
+  readonly nextRedoMetadata: TextEditBatchMetadata | null;
   performUndo(): void;
   performRedo(): void;
   save(): boolean;

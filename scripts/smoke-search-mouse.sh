@@ -12,7 +12,7 @@
 #
 # invariant: Search results are click-set and highlight-shown (src/modules/search/search.invariants.md)
 # invariant: Find bar controls are mouse-clickable buttons (src/modules/search/search.invariants.md)
-# invariant: Case sensitivity is a live toggle that re-runs the query (src/modules/search/search.invariants.md)
+# invariant: Find options re-run the active query (src/modules/search/search.invariants.md)
 # invariant: The open-project path input is a live directory navigator (src/modules/search/search.invariants.md)
 # invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
 set -uo pipefail

@@ -23,6 +23,10 @@ import type { EditorContributions } from './EditorContributions';
 import type { DocumentFoldState } from '../text/DocumentFoldState.interface';
 import type { SourceTextView } from '../workspace/SourceTextView.interface';
 import type { DocumentSyntaxReader } from '../syntax/DocumentSyntaxSource.interface';
+import type {
+  TextEdit,
+  TextEditBatchMetadata,
+} from '../text/TextEdit.interface';
 
 // The editor: owns a document, a cursor, and a viewport, and coordinates movement, selection,
 // editing, and scroll.
@@ -549,7 +553,10 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
 
   // --- editing --------------------------------------------------------------
 
-  protected captureBefore(kind: EditKind): void {
+  protected captureBefore(
+    kind: EditKind,
+    metadata?: TextEditBatchMetadata,
+  ): void {
     const now = Clock.Class.now();
     this.undo.begin(
       {
@@ -559,6 +566,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
         },
         kind,
         at: now,
+        metadata,
       },
       now,
     );
@@ -902,6 +910,48 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   }
 
   // --- undo/redo ------------------------------------------------------------
+
+  get nextUndoMetadata(): TextEditBatchMetadata | null {
+    return this.undo.nextUndoMetadata;
+  }
+
+  get nextRedoMetadata(): TextEditBatchMetadata | null {
+    return this.undo.nextRedoMetadata;
+  }
+
+  // invariant: Undo records deltas not whole-document snapshots (src/modules/editor/editor.invariants.md)
+  applyTextEditsAsUndoStep(
+    edits: readonly TextEdit[],
+    metadata: TextEditBatchMetadata,
+  ): number {
+    if (this.readOnly.value || !this.hasDocument.value) return 0;
+    const applicableEdits = edits.filter(
+      (edit) =>
+        this.document.sliceRange(
+          { line: edit.start.line, col: edit.start.column },
+          { line: edit.end.line, col: edit.end.column },
+        ) === edit.expectedText,
+    );
+    if (applicableEdits.length === 0) return 0;
+    this.recordOrdinaryEdit();
+    this.captureBefore('other', {
+      ...metadata,
+      bulkItemCount: applicableEdits.length,
+    });
+    const descendingEdits = [...applicableEdits].sort(
+      (firstEdit, secondEdit) =>
+        secondEdit.start.line - firstEdit.start.line ||
+        secondEdit.start.column - firstEdit.start.column,
+    );
+    for (const edit of descendingEdits) {
+      this.document.replaceRange(
+        { line: edit.start.line, col: edit.start.column },
+        { line: edit.end.line, col: edit.end.column },
+        edit.replacementText,
+      );
+    }
+    return applicableEdits.length;
+  }
 
   performUndo(): void {
     this.recordOrdinaryEdit();

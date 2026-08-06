@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { TextDocument } from '../text/TextDocument';
+import type { TextEdit } from '../text/TextEdit.interface';
 import { FindInBuffer } from './FindInBuffer';
 
 function createFindInBuffer(text: string): {
@@ -12,6 +13,19 @@ function createFindInBuffer(text: string): {
     document,
     findInBuffer: new FindInBuffer.Class(document),
   };
+}
+
+function applyTextEdits(
+  document: TextDocument.Instance,
+  edits: readonly TextEdit[],
+): void {
+  for (const edit of [...edits].reverse()) {
+    document.replaceRange(
+      { line: edit.start.line, col: edit.start.column },
+      { line: edit.end.line, col: edit.end.column },
+      edit.replacementText,
+    );
+  }
 }
 
 describe('FindInBuffer matching', () => {
@@ -95,7 +109,10 @@ describe('FindInBuffer replacement', () => {
     findInBuffer.findAll();
     findInBuffer.next();
 
-    expect(findInBuffer.replaceCurrent()).toBe(true);
+    const edit = findInBuffer.replaceCurrent();
+    expect(edit).not.toBeNull();
+    applyTextEdits(document, edit ? [edit] : []);
+    findInBuffer.findAll();
     expect(document.text).toBe('red blue red');
     expect(findInBuffer.matchCount).toBe(2);
     expect(findInBuffer.matches.value).toEqual([
@@ -104,15 +121,16 @@ describe('FindInBuffer replacement', () => {
     ]);
   });
 
-  test('replaceAll applies every change through one document batch and updates matches', () => {
+  test('replaceAll returns exact edits without mutating the document', () => {
     const { document, findInBuffer } = createFindInBuffer('cat cat\ncat');
     findInBuffer.queryInput.setValue('cat');
     findInBuffer.replacementInput.setValue('dog');
-    const revisionBeforeReplacement = document.revision.value;
-
-    expect(findInBuffer.replaceAll()).toBe(3);
+    const edits = findInBuffer.replaceAll();
+    expect(edits).toHaveLength(3);
+    expect(document.text).toBe('cat cat\ncat');
+    applyTextEdits(document, edits);
+    findInBuffer.findAll();
     expect(document.text).toBe('dog dog\ndog');
-    expect(document.revision.value).toBe(revisionBeforeReplacement + 1);
     expect(findInBuffer.matchCount).toBe(0);
     expect(findInBuffer.currentMatch).toBeNull();
   });
@@ -124,11 +142,17 @@ describe('FindInBuffer replacement', () => {
     findInBuffer.replacementInput.setValue('$1:[$2]');
     findInBuffer.findAll();
 
-    expect(findInBuffer.replaceCurrent()).toBe(true);
+    const currentEdit = findInBuffer.replaceCurrent();
+    expect(currentEdit).not.toBeNull();
+    applyTextEdits(document, currentEdit ? [currentEdit] : []);
+    findInBuffer.findAll();
     expect(document.text).toBe('left:[12] right=7');
     expect(findInBuffer.matchCount).toBe(1);
 
-    expect(findInBuffer.replaceAll()).toBe(1);
+    const remainingEdits = findInBuffer.replaceAll();
+    expect(remainingEdits).toHaveLength(1);
+    applyTextEdits(document, remainingEdits);
+    findInBuffer.findAll();
     expect(document.text).toBe('left:[12] right:[7]');
     expect(findInBuffer.matchCount).toBe(0);
   });

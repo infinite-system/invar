@@ -379,6 +379,7 @@ class $Bootstrap {
     let openFindTarget = (
       _target: import('../search/FindBar').FindBarTarget,
     ): void => {};
+    let requestFindReplaceAll = (): void => {};
     let focusedPanelCaretAnchor = (): {
       column: number;
       row: number;
@@ -758,6 +759,7 @@ class $Bootstrap {
       toggleRightDock,
       activateQuickOpenSelection,
       revealFindMatch,
+      () => requestFindReplaceAll(),
       layoutSlots,
     );
     focusedPanelCaretAnchor = () => view.focusedPanelCaretAnchor();
@@ -1474,6 +1476,9 @@ class $Bootstrap {
       void findBar.engine?.matches.value;
       void findBar.engine?.currentMatchIndex.value; // repaint the match counter on next/prev
       void findBar.caseSensitive; // repaint the case toggle on flip
+      void findBar.wholeWord;
+      void findBar.useRegex;
+      void findBar.bulkFlowState.value;
       void shortcutHelp.open.value; // repaint the cheat-sheet on open/close and scroll
       void shortcutHelp.scrollTop.value;
       void commands.selectedIndex.value;
@@ -1754,6 +1759,71 @@ class $Bootstrap {
       );
     };
 
+    requestFindReplaceAll = (): void => {
+      const request = findBar.replaceAll();
+      if (!request) return;
+      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
+        quitConfirmation.show({
+          identifier: 'replace-all-in-file',
+          title: 'Replace all in this file',
+          message:
+            `Replace ${request.metadata.bulkItemCount} items in ` +
+            `${request.metadata.displayPath}?\n\n` +
+            'The editor will record one undo step.',
+          confirmLabel: 'Replace',
+          cancelLabel: 'Cancel',
+          onConfirm: () => {
+            findBar.applyReplaceAll(request);
+            revealFindMatch();
+          },
+          onCancel: () => findBar.cancelReplaceAll(),
+        }),
+      );
+      findBar.bulkFlowState.value = 'awaitingConsent';
+    };
+
+    const requestEditorUndo = (): void => {
+      const editor = workspaceSet.activeEditor;
+      const metadata = editor.nextUndoMetadata;
+      if (metadata?.label !== 'Replace All in file') {
+        editor.performUndo();
+        return;
+      }
+      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
+        quitConfirmation.show({
+          identifier: 'undo-replace-all-in-file',
+          title: 'Undo Replace All',
+          message:
+            `Undo will revert ${metadata.bulkItemCount} items in ` +
+            `${metadata.displayPath}.`,
+          confirmLabel: 'Undo',
+          cancelLabel: 'Cancel',
+          onConfirm: () => editor.performUndo(),
+        }),
+      );
+    };
+
+    const requestEditorRedo = (): void => {
+      const editor = workspaceSet.activeEditor;
+      const metadata = editor.nextRedoMetadata;
+      if (metadata?.label !== 'Replace All in file') {
+        editor.performRedo();
+        return;
+      }
+      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
+        quitConfirmation.show({
+          identifier: 'redo-replace-all-in-file',
+          title: 'Redo Replace All',
+          message:
+            `Redo will replace ${metadata.bulkItemCount} items in ` +
+            `${metadata.displayPath}.`,
+          confirmLabel: 'Redo',
+          cancelLabel: 'Cancel',
+          onConfirm: () => editor.performRedo(),
+        }),
+      );
+    };
+
     CommandDefaults.Class.registerDefaultCommands(commands, {
       workspaceSet,
       theme,
@@ -1799,6 +1869,8 @@ class $Bootstrap {
         workspace.editor.gotoBottom();
       },
       quit: requestQuit,
+      undo: requestEditorUndo,
+      redo: requestEditorRedo,
       requestRender: () => app.requestRender(),
       toggleActivityBar: () => {
         settings.showActivityBar.value = !settings.showActivityBar.value;
@@ -2157,6 +2229,15 @@ class $Bootstrap {
         findBar.toggleCaseSensitive();
         revealFindMatch();
       },
+      'find.toggleWholeWord': () => {
+        findBar.toggleWholeWord();
+        revealFindMatch();
+      },
+      'find.toggleRegex': () => {
+        findBar.toggleRegex();
+        revealFindMatch();
+      },
+      'dialog.copy': () => publishCopyResult(view.dialogCopySelection()),
       'focus.toggle': () => workspaceSet.active.toggleFocus(),
       'settings.toggle': () => {
         if (settingsPanel.open.value) settingsPanel.close();
@@ -2401,12 +2482,12 @@ class $Bootstrap {
       'editor.undo': () => {
         const workspace = workspaceSet.active;
         if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspace.editor.performUndo();
+          requestEditorUndo();
       },
       'editor.redo': () => {
         const workspace = workspaceSet.active;
         if (workspace.editorSurfaces.activeDocumentIsKeyboardTarget)
-          workspace.editor.performRedo();
+          requestEditorRedo();
       },
       'editor.moveLineUp': () => workspaceSet.activeEditor.moveLineUp(),
       'editor.moveLineDown': () => workspaceSet.activeEditor.moveLineDown(),
@@ -2481,7 +2562,7 @@ class $Bootstrap {
         return;
       }
       if (key.name === 'return') {
-        if (key.ctrl && key.shift) findBar.replaceAll();
+        if (key.ctrl && key.shift) requestFindReplaceAll();
         else if (key.ctrl) findBar.replaceCurrent();
         else if (key.shift) findBar.previous();
         else findBar.next();
@@ -2530,6 +2611,21 @@ class $Bootstrap {
         return;
       }
       if (quitConfirmation.open.value) {
+        const dialogResolution = keybindings.resolve(
+          {
+            name: key.name,
+            ctrl: key.ctrl,
+            shift: key.shift,
+            option: key.option || key.meta,
+            super: key.super,
+          },
+          'dialog',
+          Date.now(),
+        );
+        if (dialogResolution.action) {
+          dispatchAction(dialogResolution.action, key);
+          return;
+        }
         if (key.name === 'escape') quitConfirmation.dismiss();
         else if (key.name === 'left') quitConfirmation.focusPrevious();
         else if (key.name === 'right' || key.name === 'tab')

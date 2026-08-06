@@ -71,6 +71,7 @@ import type { Dialog } from './Dialog';
 import { PaneSplitters } from './PaneSplitters';
 import { SplitterElement } from './SplitterElement';
 import { Logging } from '../system/Logging';
+import { Files } from '../system/Files';
 import { Momentum } from '../system/Momentum';
 import type { TabStrip } from './TabStrip';
 import type { PanelHost } from './PanelHost';
@@ -132,6 +133,7 @@ class $RootView {
     toggleRightDock: () => void,
     activateQuickOpen: () => void,
     revealFindMatch: () => void,
+    requestFindReplaceAll: () => void,
     layoutSlots: LayoutSlots.Instance,
   ): RootView {
     const root = renderer.root;
@@ -1769,6 +1771,12 @@ class $RootView {
         identifier: `source:${editor.document.path}`,
         document: editor.document,
         replaceAllowed: !editor.readOnly.value,
+        displayPath: Files.Class.relative(
+          workspaceSet.active.root,
+          editor.document.path,
+        ),
+        applyTextEditsAsUndoStep: (edits, metadata) =>
+          editor.applyTextEditsAsUndoStep(edits, metadata),
         revealMatch: (match) => {
           editorContentMount.contributedSurface?.yieldKeyboardToSourceEditor();
           workspaceSet.active.revealSourceLocation(match.line, match.endColumn);
@@ -2343,6 +2351,7 @@ class $RootView {
       workspaceSet,
       activateQuickOpen,
       revealFindMatch,
+      requestFindReplaceAll,
     });
     const scrollbarSync = new ScrollbarSync.Class({
       renderer,
@@ -2543,6 +2552,7 @@ class $RootView {
       hoverHasSelection: () => hoverCard.hasSelection(),
       hoverCopySelection: () => hoverCard.copySelection(),
       settingsCopySelection: () => overlayLayer.copySettingsSelection(),
+      dialogCopySelection: () => overlayLayer.copyDialogSelection(),
       observeHoverRepaint: () => {
         void hoverCard.paintRevision.value;
       },
@@ -2685,6 +2695,7 @@ export interface RootView {
   hoverCopySelection(): Promise<number>;
   /** Copy the Settings overlay's selected text through the shared clipboard authority. */
   settingsCopySelection(): Promise<number>;
+  dialogCopySelection(): Promise<number>;
   /** Read the hover card's reactive paint signal inside the frame effect so an ASYNC hover landing
    *  (which no keypress/mouse-move accompanies) still triggers a repaint that projects the card. */
   observeHoverRepaint(): void;

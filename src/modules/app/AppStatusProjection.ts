@@ -109,6 +109,9 @@ class $AppStatusProjection {
       findCurrentMatchIndex:
         ports.findBar.engine?.currentMatchIndex.value ?? -1,
       findCaseSensitive: ports.findBar.caseSensitive,
+      findWholeWord: ports.findBar.wholeWord,
+      findUseRegex: ports.findBar.useRegex,
+      findBulkFlowState: ports.findBar.bulkFlowState.value,
       sourceFindQuery: editor.hasDocument.value
         ? (ports.findBar.engineFor(`source:${editor.document.path}`)?.query
             .value ?? '')
@@ -133,6 +136,9 @@ class $AppStatusProjection {
       goToLineNotice: ports.goToLinePrompt.notice.value,
       quitConfirmationOpen: ports.quitConfirmation.open.value,
       quitConfirmationFocusedChoice: ports.quitConfirmation.focusedChoice.value,
+      quitConfirmationIdentifier: ports.quitConfirmation.identifier.value,
+      quitConfirmationTitle: ports.quitConfirmation.title.value,
+      quitConfirmationMessage: ports.quitConfirmation.message.value,
       paletteOpen: ports.commands.open.value,
       paletteQuery: ports.commands.open.value ? ports.commands.query.value : '',
       paletteMatches: ports.commands.open.value
@@ -383,7 +389,15 @@ export interface AppStatusProjectionPorts {
   >;
   readonly findBar: Pick<
     InstanceType<typeof FindBar.Class>,
-    'open' | 'mode' | 'target' | 'engine' | 'caseSensitive' | 'engineFor'
+    | 'open'
+    | 'mode'
+    | 'target'
+    | 'engine'
+    | 'caseSensitive'
+    | 'wholeWord'
+    | 'useRegex'
+    | 'bulkFlowState'
+    | 'engineFor'
   >;
   readonly quickOpen: Pick<
     InstanceType<typeof QuickOpen.Class>,
@@ -401,7 +415,10 @@ export interface AppStatusProjectionPorts {
     GoToLinePrompt.Model,
     'open' | 'input' | 'notice'
   >;
-  readonly quitConfirmation: Pick<Dialog.Model, 'open' | 'focusedChoice'>;
+  readonly quitConfirmation: Pick<
+    Dialog.Model,
+    'open' | 'focusedChoice' | 'identifier' | 'title' | 'message'
+  >;
   readonly settingsPanel: Pick<
     InstanceType<typeof SettingsPanel.Class>,
     'open' | 'selectedIndex' | 'rows' | 'descriptors'
