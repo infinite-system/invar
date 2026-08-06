@@ -1,9 +1,9 @@
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
+import { ByteArrays } from '../system/ByteArrays';
 import { Files } from '../system/Files';
 import { TextInputModel } from '../text/TextInputModel';
-import { TextCoordinates } from '../text/TextCoordinates';
-import type { TextEdit } from '../text/TextEdit.interface';
+import { TextByteCoordinates } from '../text/TextByteCoordinates';
 import type { DocumentHandle } from '../workspace/DocumentHandle';
 import type { SourceTextView } from '../workspace/SourceTextView.interface';
 import { TextArena } from '../workspace/TextArena';
@@ -12,6 +12,10 @@ import {
   type TextPatchDirection,
   type TextPatchVerification,
 } from '../workspace/TextPatch';
+import {
+  TextPatchApplication,
+  type VerifiedTextPatch,
+} from '../workspace/TextPatchApplication';
 import type { WorkspaceUndoCoordinator } from '../workspace/WorkspaceUndoCoordinator';
 import { TextSearchPattern } from './TextSearchPattern';
 import {
@@ -102,6 +106,10 @@ class $WorkspaceSearchWorkspace {
     return ref<WorkspaceSearchFlowState>('idle');
   }
 
+  get bulkFlowState() {
+    return ref<WorkspaceSearchBulkFlowState>('idle');
+  }
+
   get queryGeneration() {
     return ref(0);
   }
@@ -167,12 +175,12 @@ class $WorkspaceSearchWorkspace {
   prepareReplace(
     results: readonly WorkspaceSearchResult[] = this.resultTree.selectedResults(),
   ): WorkspacePreparedReplacement {
-    this.flowState.value = 'verifyingReplace';
+    this.bulkFlowState.value = 'verifyingReplace';
     const arena = new TextArena.Class();
     const entries = this.createEntriesFromResults(arena, results);
     const classification = this.classify(entries, 'apply');
     this.publishClassification(classification);
-    this.flowState.value = 'awaitingReplaceConsent';
+    this.bulkFlowState.value = 'awaitingReplaceConsent';
     return {
       direction: 'apply',
       arena,
@@ -214,7 +222,7 @@ class $WorkspaceSearchWorkspace {
         prepared.transaction.identifier,
       );
     }
-    this.flowState.value = 'ready';
+    this.bulkFlowState.value = 'idle';
   }
 
   applyPreparedAction(
@@ -225,13 +233,7 @@ class $WorkspaceSearchWorkspace {
       return { appliedEntries: [], driftedEntries: [], failedEntries: [] };
     }
     const eligibleEntries = prepared.safeEntries;
-    const applyingState =
-      prepared.direction === 'apply'
-        ? 'applying'
-        : prepared.direction === 'undo'
-          ? 'undoing'
-          : 'redoing';
-    this.flowState.value = applyingState;
+    this.bulkFlowState.value = this.applyingState(prepared.direction);
     const outcome = this.applyEntries(eligibleEntries, prepared.direction);
     const initiallySkippedCount =
       prepared.driftedEntries.length + prepared.failedEntries.length;
@@ -248,7 +250,6 @@ class $WorkspaceSearchWorkspace {
 
     if (prepared.direction === 'apply') {
       this.finishInitialReplacement(outcome);
-      this.flowState.value = 'applied';
     } else if (prepared.transaction) {
       prepared.transaction.state =
         prepared.direction === 'undo' ? 'undone' : 'applied';
@@ -257,16 +258,15 @@ class $WorkspaceSearchWorkspace {
           this.providerIdentifier,
           prepared.transaction.identifier,
         );
-        this.flowState.value = 'undone';
       } else {
         this.options.undoCoordinator?.markRedone(
           this.providerIdentifier,
           prepared.transaction.identifier,
         );
-        this.flowState.value = 'applied';
       }
       this.activeTransactionIdentifier.value = prepared.transaction.identifier;
     }
+    this.bulkFlowState.value = this.completedState(prepared.direction);
     return outcome;
   }
 
@@ -274,8 +274,7 @@ class $WorkspaceSearchWorkspace {
     transaction: WorkspaceReplacementTransaction,
     direction: 'undo' | 'redo',
   ): WorkspacePreparedReplacement {
-    this.flowState.value =
-      direction === 'undo' ? 'verifyingUndo' : 'verifyingRedo';
+    this.bulkFlowState.value = this.verifyingState(direction);
     const expectedState = direction === 'undo' ? 'applied' : 'undone';
     const entries = transaction.patches.flatMap((patch, index) =>
       patch.state === expectedState
@@ -291,8 +290,7 @@ class $WorkspaceSearchWorkspace {
     const classification = this.classify(entries, direction);
     this.publishClassification(classification);
     this.activeTransactionIdentifier.value = transaction.identifier;
-    this.flowState.value =
-      direction === 'undo' ? 'awaitingUndoConsent' : 'awaitingRedoConsent';
+    this.bulkFlowState.value = this.awaitingConsentState(direction);
     return {
       direction,
       arena: transaction.arena,
@@ -305,28 +303,54 @@ class $WorkspaceSearchWorkspace {
     };
   }
 
+  protected applyingState(
+    direction: TextPatchDirection,
+  ): WorkspaceSearchBulkFlowState {
+    if (direction === 'apply') return 'applying';
+    if (direction === 'undo') return 'undoing';
+    return 'redoing';
+  }
+
+  protected completedState(
+    direction: TextPatchDirection,
+  ): WorkspaceSearchBulkFlowState {
+    return direction === 'undo' ? 'undone' : 'applied';
+  }
+
+  protected verifyingState(
+    direction: 'undo' | 'redo',
+  ): WorkspaceSearchBulkFlowState {
+    return direction === 'undo' ? 'verifyingUndo' : 'verifyingRedo';
+  }
+
+  protected awaitingConsentState(
+    direction: 'undo' | 'redo',
+  ): WorkspaceSearchBulkFlowState {
+    return direction === 'undo' ? 'awaitingUndoConsent' : 'awaitingRedoConsent';
+  }
+
   protected createEntriesFromResults(
     arena: TextArena.Instance,
     results: readonly WorkspaceSearchResult[],
   ): WorkspacePreparedEntry[] {
-    const encoder = new TextEncoder();
     const orderedResults = [...results].sort(
-      (first, second) =>
-        first.absolutePath.localeCompare(second.absolutePath) ||
-        first.baselineByteOffset - second.baselineByteOffset,
+      (firstResult, secondResult) =>
+        firstResult.absolutePath.localeCompare(secondResult.absolutePath) ||
+        firstResult.baselineByteOffset - secondResult.baselineByteOffset,
     );
     return orderedResults.map((result, index) => {
-      const previous = orderedResults[index - 1];
-      const next = orderedResults[index + 1];
-      const removedBytes = encoder.encode(result.matchedText);
+      const previousResult = orderedResults[index - 1];
+      const nextResult = orderedResults[index + 1];
+      const removedBytes = TextByteCoordinates.Class.encode(result.matchedText);
       const previousEnd =
-        previous?.absolutePath === result.absolutePath
-          ? previous.baselineByteOffset +
-            encoder.encode(previous.matchedText).byteLength
+        previousResult?.absolutePath === result.absolutePath
+          ? previousResult.baselineByteOffset +
+            TextByteCoordinates.Class.encode(previousResult.matchedText)
+              .byteLength
           : Number.NEGATIVE_INFINITY;
       const nextStart =
-        next?.absolutePath === result.absolutePath
-          ? next.baselineByteOffset
+        nextResult?.absolutePath === result.absolutePath
+          ? nextResult.baselineByteOffset
           : Number.POSITIVE_INFINITY;
       const beforeLength = Math.min(
         result.beforeContextBytes.byteLength,
@@ -345,7 +369,9 @@ class $WorkspaceSearchWorkspace {
           searchGeneration: this.queryGeneration.value,
           baselineByteOffset: result.baselineByteOffset,
           removedBytes,
-          insertedBytes: encoder.encode(result.replacementText),
+          insertedBytes: TextByteCoordinates.Class.encode(
+            result.replacementText,
+          ),
           beforeContextBytes: result.beforeContextBytes.slice(
             result.beforeContextBytes.byteLength - beforeLength,
           ),
@@ -369,25 +395,13 @@ class $WorkspaceSearchWorkspace {
     const driftedEntries: WorkspacePreparedEntry[] = [];
     const failedEntries: WorkspaceFailedEntry[] = [];
     for (const pathEntries of this.entriesByPath(entries).values()) {
-      let source: WorkspaceReplacementSource;
-      try {
-        source = this.readSource(pathEntries[0]!.patch.path);
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        failedEntries.push(...pathEntries.map((entry) => ({ entry, reason })));
-        continue;
-      }
-      if (source.readOnly) {
-        failedEntries.push(
-          ...pathEntries.map((entry) => ({
-            entry,
-            reason: 'File is read-only.',
-          })),
-        );
+      const sourceResult = this.sourceForEntries(pathEntries);
+      failedEntries.push(...sourceResult.failedEntries);
+      if (!sourceResult.source) {
         continue;
       }
       const verifications = TextPatch.Class.verifyGroup(
-        source.bytes,
+        sourceResult.source.bytes,
         pathEntries.map((entry) => entry.patch),
         direction,
       );
@@ -408,37 +422,28 @@ class $WorkspaceSearchWorkspace {
     const driftedEntries: WorkspacePreparedEntry[] = [];
     const failedEntries: WorkspaceFailedEntry[] = [];
     for (const pathEntries of this.entriesByPath(entries).values()) {
-      let source: WorkspaceReplacementSource;
-      try {
-        source = this.readSource(pathEntries[0]!.patch.path);
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        failedEntries.push(...pathEntries.map((entry) => ({ entry, reason })));
-        continue;
-      }
-      if (source.readOnly) {
-        failedEntries.push(
-          ...pathEntries.map((entry) => ({
-            entry,
-            reason: 'File is read-only.',
-          })),
-        );
+      const sourceResult = this.sourceForEntries(pathEntries);
+      failedEntries.push(...sourceResult.failedEntries);
+      if (!sourceResult.source) {
         continue;
       }
       const currentEntries: WorkspacePreparedEntry[] = [];
       for (const entry of pathEntries) {
-        const verification = entry.patch.verify(source.bytes, direction);
+        const verification = entry.patch.verify(
+          sourceResult.source.bytes,
+          direction,
+        );
         if (verification.byteOffset === undefined) driftedEntries.push(entry);
         else currentEntries.push({ ...entry, verification });
       }
       if (currentEntries.length === 0) continue;
-      const replacement = this.replacementFor(
-        source.bytes,
-        currentEntries,
+      const replacement = TextPatchApplication.Class.apply(
+        sourceResult.source.bytes,
+        this.verifiedPatches(currentEntries),
         direction,
       );
       const writeFailure = this.writeReplacement(
-        source,
+        sourceResult.source,
         currentEntries,
         replacement.bytes,
         direction,
@@ -463,47 +468,6 @@ class $WorkspaceSearchWorkspace {
     return { appliedEntries, driftedEntries, failedEntries };
   }
 
-  protected replacementFor(
-    sourceBytes: Uint8Array,
-    entries: readonly WorkspacePreparedEntry[],
-    direction: TextPatchDirection,
-  ): WorkspaceByteReplacement {
-    const ordered = [...entries].sort(
-      (first, second) =>
-        this.verifiedByteOffset(first) - this.verifiedByteOffset(second),
-    );
-    const finalByteOffsets = new Map<TextPatch.Instance, number>();
-    const chunks: Uint8Array[] = [];
-    let sourceByteOffset = 0;
-    let finalByteOffset = 0;
-    for (const entry of ordered) {
-      const subjectByteOffset = this.verifiedByteOffset(entry);
-      const subjectBytes = entry.patch.subjectBytes(direction);
-      const replacementBytes = entry.patch.replacementBytes(direction);
-      if (subjectByteOffset < sourceByteOffset) {
-        throw new Error('Workspace text patches overlap.');
-      }
-      const unchanged = sourceBytes.slice(sourceByteOffset, subjectByteOffset);
-      chunks.push(unchanged, replacementBytes);
-      finalByteOffset += unchanged.byteLength;
-      finalByteOffsets.set(entry.patch, finalByteOffset);
-      finalByteOffset += replacementBytes.byteLength;
-      sourceByteOffset = subjectByteOffset + subjectBytes.byteLength;
-    }
-    chunks.push(sourceBytes.slice(sourceByteOffset));
-    const byteLength = chunks.reduce(
-      (total, chunk) => total + chunk.byteLength,
-      0,
-    );
-    const bytes = new Uint8Array(byteLength);
-    let writeOffset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, writeOffset);
-      writeOffset += chunk.byteLength;
-    }
-    return { bytes, finalByteOffsets };
-  }
-
   protected writeReplacement(
     source: WorkspaceReplacementSource,
     entries: readonly WorkspacePreparedEntry[],
@@ -511,15 +475,19 @@ class $WorkspaceSearchWorkspace {
     direction: TextPatchDirection,
   ): string {
     if (source.view) {
-      const edits = entries.map((entry) =>
-        this.textEditFor(source.bytes, entry, direction),
+      const edits = TextPatchApplication.Class.textEdits(
+        source.bytes,
+        this.verifiedPatches(entries),
+        direction,
       );
       const appliedCount =
         source.view.applyTextEditsAsExternalTransaction(edits);
       if (appliedCount !== edits.length)
         return 'Open document changed before mutation.';
-      const writtenBytes = new TextEncoder().encode(source.view.document.text);
-      if (!this.bytesEqual(writtenBytes, replacementBytes)) {
+      const writtenBytes = TextByteCoordinates.Class.encode(
+        source.view.document.text,
+      );
+      if (!ByteArrays.Class.equal(writtenBytes, replacementBytes)) {
         return 'Open document read-back did not match the replacement.';
       }
       return '';
@@ -532,53 +500,40 @@ class $WorkspaceSearchWorkspace {
     return result.replaced ? '' : result.reason;
   }
 
-  protected textEditFor(
-    sourceBytes: Uint8Array,
-    entry: WorkspacePreparedEntry,
-    direction: TextPatchDirection,
-  ): TextEdit {
-    const startByteOffset = this.verifiedByteOffset(entry);
-    const subjectBytes = entry.patch.subjectBytes(direction);
-    const decoder = new TextDecoder('utf-8', { fatal: true });
-    return {
-      start: this.positionAtByteOffset(sourceBytes, startByteOffset),
-      end: this.positionAtByteOffset(
-        sourceBytes,
-        startByteOffset + subjectBytes.byteLength,
-      ),
-      expectedText: decoder.decode(subjectBytes),
-      replacementText: decoder.decode(entry.patch.replacementBytes(direction)),
-    };
+  protected verifiedPatches(
+    entries: readonly WorkspacePreparedEntry[],
+  ): readonly VerifiedTextPatch[] {
+    return entries.map((entry) => {
+      if (!entry.verification) {
+        throw new Error('A workspace replacement entry is not verified.');
+      }
+      return { patch: entry.patch, verification: entry.verification };
+    });
   }
 
-  protected positionAtByteOffset(
-    sourceBytes: Uint8Array,
-    byteOffset: number,
-  ): { line: number; column: number } {
-    const prefix = new TextDecoder('utf-8', { fatal: true }).decode(
-      sourceBytes.slice(0, byteOffset),
-    );
-    const lineBreak = /\r\n|\n|\r/g;
-    let line = 0;
-    let lineStart = 0;
-    let match: RegExpExecArray | null;
-    while ((match = lineBreak.exec(prefix)) !== null) {
-      line++;
-      lineStart = match.index + match[0].length;
+  protected sourceForEntries(
+    entries: readonly WorkspacePreparedEntry[],
+  ): WorkspaceReplacementSourceResult {
+    let source: WorkspaceReplacementSource;
+    try {
+      source = this.readSource(entries[0]!.patch.path);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      return {
+        source: null,
+        failedEntries: entries.map((entry) => ({ entry, reason })),
+      };
     }
-    const lineText = prefix.slice(lineStart);
-    return {
-      line,
-      column: TextCoordinates.Class.u16ToGrapheme(lineText, lineText.length),
-    };
-  }
-
-  protected verifiedByteOffset(entry: WorkspacePreparedEntry): number {
-    const byteOffset = entry.verification?.byteOffset;
-    if (byteOffset === undefined) {
-      throw new Error('A workspace replacement entry is not verified.');
+    if (source.readOnly) {
+      return {
+        source: null,
+        failedEntries: entries.map((entry) => ({
+          entry,
+          reason: 'File is read-only.',
+        })),
+      };
     }
-    return byteOffset;
+    return { source, failedEntries: [] };
   }
 
   protected readSource(path: string): WorkspaceReplacementSource {
@@ -588,13 +543,13 @@ class $WorkspaceSearchWorkspace {
         throw new Error('Binary files cannot be replaced.');
       return {
         path,
-        bytes: new TextEncoder().encode(view.document.text),
+        bytes: TextByteCoordinates.Class.encode(view.document.text),
         view,
         readOnly: view.readOnly.value,
       };
     }
     const bytes = Files.Class.readBytes(path);
-    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    TextByteCoordinates.Class.decode(bytes);
     return { path, bytes, view: null, readOnly: Files.Class.isReadOnly(path) };
   }
 
@@ -715,14 +670,6 @@ class $WorkspaceSearchWorkspace {
       ),
     ];
     return lines.join('\n');
-  }
-
-  protected bytesEqual(first: Uint8Array, second: Uint8Array): boolean {
-    if (first.byteLength !== second.byteLength) return false;
-    for (let byteIndex = 0; byteIndex < first.byteLength; byteIndex++) {
-      if (first[byteIndex] !== second[byteIndex]) return false;
-    }
-    return true;
   }
 
   queueSearch(): void {
@@ -925,10 +872,10 @@ export interface WorkspaceSearchWorkspaceOptions {
 }
 
 export type WorkspaceSearchFlowState =
+  'idle' | 'queued' | 'searching' | 'ready' | 'unavailable' | 'failed';
+
+export type WorkspaceSearchBulkFlowState =
   | 'idle'
-  | 'queued'
-  | 'searching'
-  | 'ready'
   | 'verifyingReplace'
   | 'awaitingReplaceConsent'
   | 'applying'
@@ -939,9 +886,7 @@ export type WorkspaceSearchFlowState =
   | 'undone'
   | 'verifyingRedo'
   | 'awaitingRedoConsent'
-  | 'redoing'
-  | 'unavailable'
-  | 'failed';
+  | 'redoing';
 
 export interface WorkspacePreparedReplacement {
   readonly direction: TextPatchDirection;
@@ -985,7 +930,7 @@ interface WorkspaceReplacementSource {
   readonly readOnly: boolean;
 }
 
-interface WorkspaceByteReplacement {
-  readonly bytes: Uint8Array;
-  readonly finalByteOffsets: ReadonlyMap<TextPatch.Instance, number>;
+interface WorkspaceReplacementSourceResult {
+  readonly source: WorkspaceReplacementSource | null;
+  readonly failedEntries: readonly WorkspaceFailedEntry[];
 }

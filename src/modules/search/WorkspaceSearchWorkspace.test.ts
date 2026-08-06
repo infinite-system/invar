@@ -145,6 +145,10 @@ describe('WorkspaceSearchWorkspace', () => {
         'changed',
       );
       const preparedReplacement = workspaceSearch.prepareReplace();
+      expect(workspaceSearch.flowState.value).toBe('idle');
+      expect(workspaceSearch.bulkFlowState.value).toBe(
+        'awaitingReplaceConsent',
+      );
       expect(preparedReplacement.safeEntries).toHaveLength(2);
       expect(preparedReplacement.failedEntries).toHaveLength(1);
       const replacementOutcome =
@@ -158,6 +162,8 @@ describe('WorkspaceSearchWorkspace', () => {
       expect(readFileSync(firstPath, 'utf8')).toBe('first changed value\n');
       expect(readFileSync(secondPath, 'utf8')).toBe('second changed value\n');
       expect(readFileSync(readOnlyPath, 'utf8')).toBe(readOnlySource);
+      expect(workspaceSearch.flowState.value).toBe('idle');
+      expect(workspaceSearch.bulkFlowState.value).toBe('applied');
       const transaction = workspaceSearch.historySnapshot()[0]!;
       expect(transaction.patches).toHaveLength(2);
       expect(
@@ -169,13 +175,17 @@ describe('WorkspaceSearchWorkspace', () => {
 
       const undo = workspaceSearch.prepareUndo();
       expect(undo?.safeEntries).toHaveLength(2);
+      expect(workspaceSearch.bulkFlowState.value).toBe('awaitingUndoConsent');
       workspaceSearch.applyPreparedAction(undo!);
+      expect(workspaceSearch.bulkFlowState.value).toBe('undone');
       expect(readFileSync(firstPath, 'utf8')).toBe(firstSource);
       expect(readFileSync(secondPath, 'utf8')).toBe(secondSource);
 
       const redo = workspaceSearch.prepareRedo();
       expect(redo?.safeEntries).toHaveLength(2);
+      expect(workspaceSearch.bulkFlowState.value).toBe('awaitingRedoConsent');
       workspaceSearch.applyPreparedAction(redo!);
+      expect(workspaceSearch.bulkFlowState.value).toBe('applied');
       expect(readFileSync(firstPath, 'utf8')).toBe('first changed value\n');
       expect(readFileSync(secondPath, 'utf8')).toBe('second changed value\n');
     } finally {

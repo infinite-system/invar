@@ -1,6 +1,8 @@
 import { Static } from 'ivue/extras';
 import { Files } from '../system/Files';
 import { Processes } from '../system/Processes';
+import { TextByteCoordinates } from '../text/TextByteCoordinates';
+import { TextPatch } from '../workspace/TextPatch';
 import {
   TextSearchPattern,
   type TextSearchMatch,
@@ -35,26 +37,11 @@ class $WorkspaceSearchBackend {
   }
 
   static sourceContext(sourceText: string): WorkspaceSearchSourceContext {
-    const encoder = new TextEncoder();
-    const sourceBytes = encoder.encode(sourceText);
-    const lineStartByteOffsets = [0];
-    const lineBreak = /\r\n|\n|\r/g;
-    let previousLineStartUtf16Offset = 0;
-    let nextLineStartByteOffset = 0;
-    let lineBreakMatch: RegExpExecArray | null;
-    while ((lineBreakMatch = lineBreak.exec(sourceText)) !== null) {
-      const nextLineStartUtf16Offset =
-        lineBreakMatch.index + lineBreakMatch[0].length;
-      nextLineStartByteOffset += encoder.encode(
-        sourceText.slice(
-          previousLineStartUtf16Offset,
-          nextLineStartUtf16Offset,
-        ),
-      ).byteLength;
-      lineStartByteOffsets.push(nextLineStartByteOffset);
-      previousLineStartUtf16Offset = nextLineStartUtf16Offset;
-    }
-    return { sourceBytes, lineStartByteOffsets };
+    return {
+      sourceBytes: TextByteCoordinates.Class.encode(sourceText),
+      lineStartByteOffsets:
+        TextByteCoordinates.Class.lineStartByteOffsets(sourceText),
+    };
   }
 
   static resultForMatchInSource(
@@ -64,17 +51,18 @@ class $WorkspaceSearchBackend {
     replacementText: string,
     sourceContext: WorkspaceSearchSourceContext,
   ): WorkspaceSearchResult {
-    const encoder = new TextEncoder();
     const lineStartByteOffset =
       sourceContext.lineStartByteOffsets[match.line] ?? 0;
     const baselineByteOffset =
       lineStartByteOffset +
-      encoder.encode(match.lineText.slice(0, match.startUtf16Offset))
-        .byteLength;
-    const removedByteLength = encoder.encode(
+      TextByteCoordinates.Class.encode(
+        match.lineText.slice(0, match.startUtf16Offset),
+      ).byteLength;
+    const removedByteLength = TextByteCoordinates.Class.encode(
       match.lineText.slice(match.startUtf16Offset, match.endUtf16Offset),
     ).byteLength;
-    const beforeStart = Math.max(0, baselineByteOffset - 64);
+    const contextByteLength = TextPatch.Class.CONTEXT_BYTE_LENGTH;
+    const beforeStart = Math.max(0, baselineByteOffset - contextByteLength);
     const afterStart = baselineByteOffset + removedByteLength;
     return {
       relativePath,
@@ -94,7 +82,10 @@ class $WorkspaceSearchBackend {
       ),
       afterContextBytes: sourceContext.sourceBytes.slice(
         afterStart,
-        Math.min(sourceContext.sourceBytes.byteLength, afterStart + 64),
+        Math.min(
+          sourceContext.sourceBytes.byteLength,
+          afterStart + contextByteLength,
+        ),
       ),
     };
   }

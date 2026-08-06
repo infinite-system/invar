@@ -23,6 +23,7 @@ import { PtyTestDriver } from './PtyTestDriver';
 
 interface WorkspaceSearchStatus {
   workspaceSearchFlowState?: string;
+  workspaceSearchBulkFlowState?: string;
   workspaceSearchQueryGeneration?: number;
   workspaceSearchResultCount?: number;
   workspaceSearchSelectedCount?: number;
@@ -822,7 +823,10 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       driver,
       statusPath,
       `replace scale ${lineCount}: undo restores the source and dirty state`,
-      (status) => status.workspaceSearchFlowState === 'undone' && !status.dirty,
+      (status) =>
+        status.workspaceSearchFlowState === 'ready' &&
+        status.workspaceSearchBulkFlowState === 'undone' &&
+        !status.dirty,
     );
     await driver.awaitGridCondition(
       `replace scale ${lineCount}: the editor paints the restored source`,
@@ -849,7 +853,10 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       driver,
       statusPath,
       `replace scale ${lineCount}: redo reapplies one item`,
-      (status) => status.workspaceSearchFlowState === 'applied' && status.dirty,
+      (status) =>
+        status.workspaceSearchFlowState === 'ready' &&
+        status.workspaceSearchBulkFlowState === 'applied' &&
+        status.dirty,
     );
     if (lineCount === 10) {
       snapshot = driver.snapshot();

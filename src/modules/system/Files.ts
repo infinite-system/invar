@@ -28,6 +28,7 @@ import {
 } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { ByteArrays } from './ByteArrays';
 
 class $Files {
   static get pathSeparator(): string {
@@ -154,7 +155,7 @@ class $Files {
     let temporaryPath = '';
     try {
       const currentBytes = readFileSync(path);
-      if (!this.bytesEqual(currentBytes, expectedBytes)) {
+      if (!ByteArrays.Class.equal(currentBytes, expectedBytes)) {
         return { replaced: false, reason: 'changed' };
       }
       const mode = statSync(path).mode;
@@ -169,7 +170,7 @@ class $Files {
       renameSync(temporaryPath, path);
       temporaryPath = '';
       const writtenBytes = readFileSync(path);
-      if (!this.bytesEqual(writtenBytes, replacementBytes)) {
+      if (!ByteArrays.Class.equal(writtenBytes, replacementBytes)) {
         return { replaced: false, reason: 'read-back' };
       }
       return { replaced: true, reason: '' };
@@ -239,14 +240,6 @@ class $Files {
         }
       }
     }
-  }
-
-  protected static bytesEqual(first: Uint8Array, second: Uint8Array): boolean {
-    if (first.byteLength !== second.byteLength) return false;
-    for (let byteIndex = 0; byteIndex < first.byteLength; byteIndex++) {
-      if (first[byteIndex] !== second[byteIndex]) return false;
-    }
-    return true;
   }
 }
 

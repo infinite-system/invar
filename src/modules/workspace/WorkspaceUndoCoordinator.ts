@@ -119,6 +119,30 @@ class $WorkspaceUndoCoordinator {
     ) {
       return false;
     }
+    return this.requestTransaction(direction, transaction);
+  }
+
+  requestLatest(
+    direction: ExternalUndoDirection,
+    providerIdentifier: string,
+  ): boolean {
+    const requiredState = direction === 'undo' ? 'applied' : 'undone';
+    const transaction = [...this.transactions]
+      .reverse()
+      .find(
+        (candidate) =>
+          candidate.providerIdentifier === providerIdentifier &&
+          candidate.state === requiredState,
+      );
+    return transaction
+      ? this.requestTransaction(direction, transaction)
+      : false;
+  }
+
+  protected requestTransaction(
+    direction: ExternalUndoDirection,
+    transaction: WorkspaceUndoTransactionRecord,
+  ): boolean {
     if (
       (direction === 'undo' && transaction.state !== 'applied') ||
       (direction === 'redo' && transaction.state !== 'undone') ||
@@ -126,14 +150,14 @@ class $WorkspaceUndoCoordinator {
     ) {
       return false;
     }
-    const provider = this.providers.get(reference.providerIdentifier);
+    const provider = this.providers.get(transaction.providerIdentifier);
     if (!provider) return false;
     transaction.pendingDirection = direction;
     try {
       if (direction === 'undo') {
-        provider.requestUndo(reference.transactionIdentifier);
+        provider.requestUndo(transaction.transactionIdentifier);
       } else {
-        provider.requestRedo(reference.transactionIdentifier);
+        provider.requestRedo(transaction.transactionIdentifier);
       }
     } catch (error) {
       transaction.pendingDirection = null;

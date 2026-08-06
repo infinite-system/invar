@@ -44,9 +44,9 @@ class $WorkspaceSearchContributor
         workspace.workspaceSearch.providerIdentifier,
         {
           requestUndo: (transactionIdentifier) =>
-            this.paneContent?.requestUndo(workspace, transactionIdentifier),
+            this.paneContent?.showUndoRequest(workspace, transactionIdentifier),
           requestRedo: (transactionIdentifier) =>
-            this.paneContent?.requestRedo(workspace, transactionIdentifier),
+            this.paneContent?.showRedoRequest(workspace, transactionIdentifier),
         },
       );
     return {
@@ -327,6 +327,7 @@ class $WorkspaceSearchContributor
     const search = application.workspaceSet.active.workspaceSearch;
     return {
       workspaceSearchFlowState: search.flowState.value,
+      workspaceSearchBulkFlowState: search.bulkFlowState.value,
       workspaceSearchQueryGeneration: search.queryGeneration.value,
       workspaceSearchResultCount: search.resultCount,
       workspaceSearchSelectedCount: search.resultTree.selectedCount,

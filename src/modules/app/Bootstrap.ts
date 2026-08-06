@@ -86,7 +86,7 @@ import { TaskLauncher } from '../tasks/TaskLauncher';
 import { TaskNoticePaneContent } from '../tasks/TaskNoticePaneContent';
 import { Tasks } from '../tasks/Tasks';
 import { GoToLinePrompt } from '../navigation/GoToLinePrompt';
-import { Dialog } from '../ui/Dialog';
+import { Dialog, type DialogOptions } from '../ui/Dialog';
 import type { SourceTextViewProvider } from '../workspace/SourceTextView.interface';
 import { PathDropController } from './PathDropController';
 import { FileOpenController } from './FileOpenController';
@@ -387,6 +387,7 @@ class $Bootstrap {
     let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
     let persistPanelWorkspaceState = (): void => {};
     let copyPaneSelection = (_content: PaneContent): void => {};
+    let confirm = (_options: DialogOptions): void => {};
     let replacePaneWithRuntime = (
       _identifier: string,
       _runtimeKind: string,
@@ -409,17 +410,15 @@ class $Bootstrap {
           panelHost.closeSpace(identifier);
           return;
         }
-        overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
-          quitConfirmation.show({
-            identifier: 'panel-container-close',
-            message:
-              `Close ${space.label} and its ${instanceCount} ` +
-              `${instanceCount === 1 ? 'instance' : 'instances'}?`,
-            confirmLabel: 'Yes',
-            cancelLabel: 'No',
-            onConfirm: () => panelHost.closeSpace(identifier),
-          }),
-        );
+        confirm({
+          identifier: 'panel-container-close',
+          message:
+            `Close ${space.label} and its ${instanceCount} ` +
+            `${instanceCount === 1 ? 'instance' : 'instances'}?`,
+          confirmLabel: 'Yes',
+          cancelLabel: 'No',
+          onConfirm: () => panelHost.closeSpace(identifier),
+        });
       },
     });
     const acceptsAnyPane = (): boolean => true;
@@ -521,6 +520,11 @@ class $Bootstrap {
       shortcutHelp: () => shortcutHelp.close(),
       quitConfirmation: () => quitConfirmation.dismiss(),
     });
+    confirm = (dialogOptions): void => {
+      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
+        quitConfirmation.show(dialogOptions),
+      );
+    };
     const statusBarSegments = new StatusBarSegments.Class();
     const statusProjectionContributions =
       new StatusProjectionContributions.Class();
@@ -556,6 +560,7 @@ class $Bootstrap {
         contextMenu,
         boundedListPopup,
         dialog: quitConfirmation,
+        confirm: (dialogOptions) => confirm(dialogOptions),
         findBar,
         overlayCoordinator,
         statusBarSegments,
@@ -1759,37 +1764,33 @@ class $Bootstrap {
       }
       if (workspaceSet.active.pendingCloseTabIndex.value >= 0)
         workspaceSet.active.cancelCloseTab();
-      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
-        quitConfirmation.show({
-          identifier: 'quit',
-          message: 'Are you sure you want to quit?',
-          confirmLabel: 'Yes',
-          cancelLabel: 'No',
-          onConfirm: () => confirmQuit(),
-        }),
-      );
+      confirm({
+        identifier: 'quit',
+        message: 'Are you sure you want to quit?',
+        confirmLabel: 'Yes',
+        cancelLabel: 'No',
+        onConfirm: () => confirmQuit(),
+      });
     };
 
     requestFindReplaceAll = (): void => {
       const request = findBar.replaceAll();
       if (!request) return;
-      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
-        quitConfirmation.show({
-          identifier: 'replace-all-in-file',
-          title: 'Replace all in this file',
-          message:
-            `Replace ${request.metadata.bulkItemCount} items in ` +
-            `${request.metadata.displayPath}?\n\n` +
-            'The editor will record one undo step.',
-          confirmLabel: 'Replace',
-          cancelLabel: 'Cancel',
-          onConfirm: () => {
-            findBar.applyReplaceAll(request);
-            revealFindMatch();
-          },
-          onCancel: () => findBar.cancelReplaceAll(),
-        }),
-      );
+      confirm({
+        identifier: 'replace-all-in-file',
+        title: 'Replace all in this file',
+        message:
+          `Replace ${request.metadata.bulkItemCount} items in ` +
+          `${request.metadata.displayPath}?\n\n` +
+          'The editor will record one undo step.',
+        confirmLabel: 'Replace',
+        cancelLabel: 'Cancel',
+        onConfirm: () => {
+          findBar.applyReplaceAll(request);
+          revealFindMatch();
+        },
+        onCancel: () => findBar.cancelReplaceAll(),
+      });
       findBar.bulkFlowState.value = 'awaitingConsent';
     };
 
@@ -1800,18 +1801,16 @@ class $Bootstrap {
         editor.performUndo();
         return;
       }
-      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
-        quitConfirmation.show({
-          identifier: 'undo-replace-all-in-file',
-          title: 'Undo Replace All',
-          message:
-            `Undo will revert ${metadata.bulkItemCount} items in ` +
-            `${metadata.displayPath}.`,
-          confirmLabel: 'Undo',
-          cancelLabel: 'Cancel',
-          onConfirm: () => editor.performUndo(),
-        }),
-      );
+      confirm({
+        identifier: 'undo-replace-all-in-file',
+        title: 'Undo Replace All',
+        message:
+          `Undo will revert ${metadata.bulkItemCount} items in ` +
+          `${metadata.displayPath}.`,
+        confirmLabel: 'Undo',
+        cancelLabel: 'Cancel',
+        onConfirm: () => editor.performUndo(),
+      });
     };
 
     const requestEditorRedo = (): void => {
@@ -1821,18 +1820,16 @@ class $Bootstrap {
         editor.performRedo();
         return;
       }
-      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
-        quitConfirmation.show({
-          identifier: 'redo-replace-all-in-file',
-          title: 'Redo Replace All',
-          message:
-            `Redo will replace ${metadata.bulkItemCount} items in ` +
-            `${metadata.displayPath}.`,
-          confirmLabel: 'Redo',
-          cancelLabel: 'Cancel',
-          onConfirm: () => editor.performRedo(),
-        }),
-      );
+      confirm({
+        identifier: 'redo-replace-all-in-file',
+        title: 'Redo Replace All',
+        message:
+          `Redo will replace ${metadata.bulkItemCount} items in ` +
+          `${metadata.displayPath}.`,
+        confirmLabel: 'Redo',
+        cancelLabel: 'Cancel',
+        onConfirm: () => editor.performRedo(),
+      });
     };
 
     CommandDefaults.Class.registerDefaultCommands(commands, {

@@ -89,6 +89,126 @@ class $Workspace {
     () => void
   >();
   protected resourcesSuspended = false;
+  // Browser-style Go Back / Go Forward: every meaningful jump records both the location left and
+  // the location reached, so Alt+Left and Alt+Right can walk the trail.
+  navigationHistory = this.createNavigationHistory();
+  // The provider that makes every buffer view for this workspace. Resolve it only when a caller
+  // needs a view, so document-only workspaces need no editor surface.
+  protected sourceTextViewProvider: SourceTextViewProvider | null = null;
+  protected readonly viewsByLiveBuffer = new Map<LiveBuffer, SourceTextView>();
+  protected emptySourceTextView: SourceTextView | null = null;
+  // Optional live settings sources attach to every existing and future source-text view.
+  protected settingsSource: Settings.Instance | null = null;
+  protected codeFoldingEnabledSource: Ref<boolean> | null = null;
+
+  get focus() {
+    return ref<Focus>('editor');
+  }
+  get primaryPaneContentIdentifier() {
+    return ref('');
+  }
+  get name() {
+    return ref('');
+  }
+  get worktreeName() {
+    return ref<string | null>(null);
+  }
+  get pendingCloseTabIndex() {
+    return ref(-1);
+  }
+
+  protected get sourceTextViews(): SourceTextViewProvider {
+    if (this.sourceTextViewProvider) return this.sourceTextViewProvider;
+    const provider = this.options.createSourceTextViews?.();
+    if (!provider) {
+      throw new Error(
+        'This workspace was built without a source-text view provider, so it holds documents ' +
+          'but cannot show them. Pass createSourceTextViews to WorkspaceOptions.',
+      );
+    }
+    this.sourceTextViewProvider = provider;
+    return provider;
+  }
+
+  /** The registry that view contributions attach to — one per workspace. */
+  get editorContributions(): SourceTextViewContributions {
+    return this.sourceTextViews.contributions;
+  }
+
+  protected get emptyView(): SourceTextView {
+    this.emptySourceTextView ??= this.createSourceTextView();
+    return this.emptySourceTextView;
+  }
+
+  /** Every live view: the buffer views plus the empty one, once it has been asked for. */
+  protected get sourceTextViewsInUse(): readonly SourceTextView[] {
+    const views = [...this.viewsByLiveBuffer.values()];
+    if (this.emptySourceTextView) views.push(this.emptySourceTextView);
+    return views;
+  }
+
+  protected get languageProvider(): LanguageProvider | null {
+    return this.provider<LanguageProvider>('language');
+  }
+
+  /** The active tab document, only while the editor surface presents that document.
+   *  invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md) */
+  protected get languageRequestDocument(): TextDocument.Model | null {
+    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
+    const document = this.buffers.activeDocumentHandle?.document ?? null;
+    if (!document || !document.path) return null;
+    return document;
+  }
+
+  /** The active buffer is a previewable image that replaces code text on the editor surface. */
+  // invariant: An image buffer replaces the code text and leaves other files untouched (src/modules/image/image.invariants.md)
+  get activeFileIsImage(): boolean {
+    const document = this.languageRequestDocument;
+    return (
+      document !== null &&
+      ImageDecoders.Class.supports(Files.Class.extname(document.path))
+    );
+  }
+
+  /** The source-text view currently presented by the editor surface. */
+  get editor(): SourceTextView {
+    if (!this.editorSurfaces.activeDocumentIsPresented) return this.emptyView;
+    const activeBuffer = this.buffers.activeBuffer;
+    return (
+      (activeBuffer && this.viewsByLiveBuffer.get(activeBuffer)) ??
+      this.emptyView
+    );
+  }
+
+  get activeDocumentHandle(): DocumentHandle.Model | null {
+    return this.buffers.activeDocumentHandle;
+  }
+
+  protected get flingMomentum(): MomentumOptions {
+    const settings = this.settingsSource;
+    if (!settings) return Momentum.Class.verticalOptions;
+    return {
+      impulse: settings.scrollAccelGain.value,
+      max: settings.verticalFlingCeiling.value,
+      decayPerSec: settings.scrollFriction.value,
+      stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
+      maximumGlideDurationMilliseconds:
+        settings.maximumGlideDurationMilliseconds.value,
+    };
+  }
+
+  get tabDetail(): string {
+    for (const contribution of this.contributions) {
+      const detail = contribution.tabDetail;
+      if (detail) return detail;
+    }
+    return '';
+  }
+
+  /** Number of source-text views bound to open buffers. */
+  get sourceTextViewsForOpenBuffers(): number {
+    return this.viewsByLiveBuffer.size;
+  }
 
   registerContributor(contributor: WorkspaceContributor): () => void {
     const existingDisposer = this.contributorDisposers.get(contributor);
@@ -132,49 +252,6 @@ class $Workspace {
   unregisterContributor(contributor: WorkspaceContributor): void {
     this.contributorDisposers.get(contributor)?.();
   }
-  // Browser-style Go Back / Go Forward: every meaningful jump (go-to-definition, opening a file
-  // from the tree / quick-open / a hover or a rendered reference) records the location left AND the
-  // location arrived at, so Alt+Left / Alt+Right can walk the trail. Reactive so the UI can show
-  // enabled/disabled affordances.
-  navigationHistory = this.createNavigationHistory();
-  // The provider that makes every buffer view for this workspace. The host never learns what it
-  // returns. Resolved LAZILY so a workspace whose caller only wants documents, tabs, or
-  // contributions — the common shape in tests and in headless callers — needs no view at all.
-  protected sourceTextViewProvider: SourceTextViewProvider | null = null;
-  // Which view backs each live buffer. The buffer set drives a deliberately minimal `LiveBuffer`
-  // surface, so this map — not a cast — is how the seams below get back the view they were handed,
-  // and how the global-preference attachments walk the live views. A provider that returns the
-  // view itself maps it to itself; one that returns a wrapper does not, and neither case asks the
-  // host to assert anything.
-  protected readonly viewsByLiveBuffer = new Map<LiveBuffer, SourceTextView>();
-  // The document-less view shown whenever the active buffer is not the subject of the editor
-  // surface: no tab open, or a contributed surface presenting something else. One instance serves
-  // both — they were two identical empty views, and "empty" is the whole of either's behaviour.
-  protected emptySourceTextView: SourceTextView | null = null;
-
-  protected get sourceTextViews(): SourceTextViewProvider {
-    if (this.sourceTextViewProvider) return this.sourceTextViewProvider;
-    const provider = this.options.createSourceTextViews?.();
-    if (!provider) {
-      throw new Error(
-        'This workspace was built without a source-text view provider, so it holds documents ' +
-          'but cannot show them. Pass createSourceTextViews to WorkspaceOptions.',
-      );
-    }
-    this.sourceTextViewProvider = provider;
-    return provider;
-  }
-
-  /** The registry that view contributions attach to — one per workspace. */
-  get editorContributions(): SourceTextViewContributions {
-    return this.sourceTextViews.contributions;
-  }
-
-  protected get emptyView(): SourceTextView {
-    this.emptySourceTextView ??= this.createSourceTextView();
-    return this.emptySourceTextView;
-  }
-
   protected createSourceTextView(): SourceTextView {
     const view = this.sourceTextViews.createView();
     view.attachDocumentSyntax(this.documentSyntax);
@@ -188,12 +265,6 @@ class $Workspace {
     return view;
   }
 
-  /** Every live view: the buffer views plus the empty one, once it has been asked for. */
-  protected get sourceTextViewsInUse(): readonly SourceTextView[] {
-    const views = [...this.viewsByLiveBuffer.values()];
-    if (this.emptySourceTextView) views.push(this.emptySourceTextView);
-    return views;
-  }
   protected createNavigationHistory() {
     return new NavigationHistory.Class();
   }
@@ -264,24 +335,6 @@ class $Workspace {
     for (const contribution of this.contributions) {
       contribution.documentBecameActive?.(handle.path);
     }
-  }
-
-  protected get languageProvider(): LanguageProvider | null {
-    return this.provider<LanguageProvider>('language');
-  }
-
-  /**
-   * The document a language request is ABOUT: the active tab's, taken from its stable handle, and
-   * only while that document is the text on screen. It is a document question, so it is answered
-   * from the document side of the buffer — no view is consulted, and none has to exist.
-   *
-   * invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
-   */
-  protected get languageRequestDocument(): TextDocument.Model | null {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
-    const document = this.buffers.activeDocumentHandle?.document ?? null;
-    if (!document || !document.path) return null;
-    return document;
   }
 
   /** Push the active buffer's current text to every installed semantic provider. */
@@ -404,46 +457,12 @@ class $Workspace {
     return true;
   }
 
-  /** The active buffer is a previewable image — any extension the ImageDecoders registry supports
-   *  (.png/.jpg/.jpeg today; the registry is the ONE source of truth, no extension list here) —
-   *  RootView renders it as half-block cells instead of the binary-file text. Never true with no
-   *  document open, or while a contributed surface presents something other than this buffer. */
-  // invariant: An image buffer replaces the code text and leaves other files untouched (src/modules/image/image.invariants.md)
-  get activeFileIsImage(): boolean {
-    const document = this.languageRequestDocument;
-    return (
-      document !== null &&
-      ImageDecoders.Class.supports(Files.Class.extname(document.path))
-    );
-  }
-
-  /** The view whose text is the subject of the editor surface: the active tab's buffer view, else
-   *  the document-less empty view — which is also what a contributed surface presenting something
-   *  else leaves behind. All movement/render/edit target this one. */
-  get editor(): SourceTextView {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return this.emptyView;
-    const activeBuffer = this.buffers.activeBuffer;
-    return (
-      (activeBuffer && this.viewsByLiveBuffer.get(activeBuffer)) ??
-      this.emptyView
-    );
-  }
-
-  get activeDocumentHandle(): DocumentHandle.Model | null {
-    return this.buffers.activeDocumentHandle;
-  }
   nextViewPaint(): Promise<void> {
     return (
       this.options.awaitNextViewPaint?.() ??
       new Promise((resolve) => setImmediate(resolve))
     );
   }
-
-  // Optional live settings source: when attached, the vertical scroll-momentum profile reads its
-  // ceiling / gain / friction from the reactive Settings store so the settings panel LIVE-APPLIES
-  // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default.
-  protected settingsSource: Settings.Instance | null = null;
-  protected codeFoldingEnabledSource: Ref<boolean> | null = null;
 
   attachCodeFolding(enabled: Ref<boolean>): void {
     this.codeFoldingEnabledSource = enabled;
@@ -464,38 +483,6 @@ class $Workspace {
       contribution.settingsAttached?.(settings);
     }
   }
-  protected get flingMomentum(): MomentumOptions {
-    const settings = this.settingsSource;
-    if (!settings) return Momentum.Class.verticalOptions;
-    return {
-      impulse: settings.scrollAccelGain.value,
-      max: settings.verticalFlingCeiling.value,
-      decayPerSec: settings.scrollFriction.value,
-      stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
-      maximumGlideDurationMilliseconds:
-        settings.maximumGlideDurationMilliseconds.value,
-    };
-  }
-  get focus() {
-    return ref<Focus>('editor');
-  }
-  get primaryPaneContentIdentifier() {
-    return ref('');
-  }
-  get name() {
-    return ref('');
-  }
-  get worktreeName() {
-    return ref<string | null>(null);
-  }
-  get tabDetail(): string {
-    for (const contribution of this.contributions) {
-      const detail = contribution.tabDetail;
-      if (detail) return detail;
-    }
-    return '';
-  }
-
   open(root: string, beforeContributionsOpen?: () => void): void {
     this.root = root;
     const absoluteRoot = Files.Class.absolute(root);
@@ -530,14 +517,6 @@ class $Workspace {
     this.emptySourceTextView = null;
     this.disposeLanguageProviderRouter();
     this.providers.dispose();
-  }
-
-  /** How many views are bound to open buffers right now. A LOAD-INVARIANT count, and the observable
-   *  proof that a release really released: it goes to zero when the pane showing these views is
-   *  withdrawn, and back up as buffers are opened again. The document-less empty view is excluded —
-   *  it is rebuilt on demand by any reader, so counting it would hide the leak this measures. */
-  get sourceTextViewsForOpenBuffers(): number {
-    return this.viewsByLiveBuffer.size;
   }
 
   /** Release every view this workspace's provider made. The DOCUMENTS stay — they are the buffers'
@@ -790,11 +769,6 @@ class $Workspace {
     this.editorSurfaces.releaseOccupying();
     this.buffers.cycle(delta);
     this.focus.value = 'editor';
-  }
-
-  /** Pending dirty-tab-close confirmation: the tab index awaiting y/N, or -1 when none. */
-  get pendingCloseTabIndex() {
-    return ref(-1);
   }
 
   /** Whether closing tab `index` needs a dirty-discard confirmation first. */

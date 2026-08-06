@@ -80,6 +80,32 @@ test('duplicate exact contexts are ambiguous instead of guessed', () => {
   ).toEqual({ kind: 'ambiguous' });
 });
 
+test('recorded patches reject context outside the shared geometry', () => {
+  const arena = new TextArena.Class();
+  expect(() =>
+    TextPatch.Class.createRecorded(arena, {
+      path: '/one.txt',
+      searchGeneration: 1,
+      baselineByteOffset: 65,
+      removedBytes: encode('OLD'),
+      insertedBytes: encode('NEW'),
+      beforeContextBytes: encode('a'.repeat(65)),
+      afterContextBytes: new Uint8Array(),
+    }),
+  ).toThrow('Recorded text patch context exceeds the shared bound.');
+  expect(() =>
+    TextPatch.Class.createRecorded(arena, {
+      path: '/one.txt',
+      searchGeneration: 1,
+      baselineByteOffset: 2,
+      removedBytes: encode('OLD'),
+      insertedBytes: encode('NEW'),
+      beforeContextBytes: encode('abc'),
+      afterContextBytes: new Uint8Array(),
+    }),
+  ).toThrow('Recorded text patch context starts before its file.');
+});
+
 test('a file group verifies every neighboring patch against one unchanged source', () => {
   const arena = new TextArena.Class();
   const source = encode('first OLD middle OLD last');
