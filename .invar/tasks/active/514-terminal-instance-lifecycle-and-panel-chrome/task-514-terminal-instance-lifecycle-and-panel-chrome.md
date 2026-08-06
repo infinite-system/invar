@@ -48,3 +48,23 @@ reissued; Every registered panel content is reachable
 (ui.invariants.md); Panel controls share paint and hit geometry;
 status-bar contribution records (#405/#356 seams — the button change
 goes through statusBarSegments, no core special case).
+
+## Item 5 (user, same session): the tasks.json glyph moves
+
+The Open-tasks.json glyph (from #503) moves from the pane frame
+header's top-left corner to the hover-button cluster on the RIGHT of
+the instance rows — one cluster, one geometry, one hover style.
+
+## Conductor's driven evidence (2026-08-05 ~22:45, fresh reloads x2)
+
+CONFIRMED on screen: the status-bar right cluster paints
+"✦  ❯  ⚙  ?  <clock>  ▥" — separate agent (✦) and terminal (❯)
+creation buttons exist beside the panel affordance; the welcome text
+still shows the #354 Ctrl+P mislabel. NOT yet reproduced: the
+over-removal — BLOCKED by early-boot drive flakiness seen twice:
+after reload, Ctrl+J + waitForStatus(panelVisible,true) PASSES while
+the panel is absent from the captured grid, later probes time out on
+"+ Plugin" visibility, and graph responses report settled:false
+persistently on that boot. Builder's first job: make the fresh-boot
+drive honest (that fix may BE part of the lifecycle bug), then run
+the user's protocol verbatim.
