@@ -2,11 +2,11 @@
 
 ## In plain words
 
-Invar had a workspace search engine, but users had no panel to use it. I added that panel, then removed five copied rules found in review. Search now uses shared wrapping and geometry, keeps all options on one row, and supports `Alt+I` and `Alt+D`.
+Invar had a workspace search engine, but users had no panel to use it. I added that panel, then removed copied rules found in review. A second scrollbar and stale neighbor drives also caused gate failures. Search now uses the shared generators, and all five gate drives pass alone and together.
 
 ## Result
 
-Commit `7c571aa2` adds the left-dock Search surface from the [task brief](brief-535-1-left-dock-search-surface.md). Commit `db857fa9` closes the five findings from the [structural brief](brief-535-2-2.md).
+Commit `7c571aa2` adds the left-dock Search surface from the [task brief](brief-535-1-left-dock-search-surface.md). Commit `db857fa9` closes the five findings from the [structural brief](brief-535-2-2.md). Commit `81a419ee` closes the gate failures from the [gate-red brief](brief-535-3-3.md).
 
 The surface has four shared text fields: Search, Replace, Files to include, and Files to exclude. It has Aa, ab, regex, and ignore-file toggles with hover, pressed, and on states.
 
@@ -28,13 +28,32 @@ The Search contributor performs the idempotent activity-slot migration. Fresh or
 4. Dedicated options row: the four field definitions contain only fields at [WorkspaceSearchPaneRenderer.ts](../../../../src/modules/search/WorkspaceSearchPaneRenderer.ts):28. The four option definitions start at line 50, and one row lays them out from line 139. The forced-width path is gone.
 5. Keyboard paths: [WorkspaceSearchContributor.ts](../../../../src/modules/search/WorkspaceSearchContributor.ts):127 binds `Alt+I` to `workspaceSearch.toggleIgnoreFiles`. Line 132 binds `Alt+D` to `workspaceSearch.dismissMatch`. Their commands register at lines 267 and 273. The selected-match action reaches [WorkspaceSearchPaneContent.ts](../../../../src/modules/search/WorkspaceSearchPaneContent.ts):353.
 
+## Gate-red amendment
+
+1. Quick Open PATH confinement: [smoke-quickopen-harness.ts](../../../../scripts/harness/smoke-quickopen-harness.ts):34 creates one private binary directory. Lines 38-39 add only `setsid` and `git`. Lines 445-453 give that PATH only to the degraded app. Line 525 removes the directory. The old filter removed `/usr/bin` because it contained `rg`, which also removed `setsid` and `git`. No process environment escaped to a sibling.
+2. Canonical activity order: [smoke-activitybar-harness.ts](../../../../scripts/harness/smoke-activitybar-harness.ts):531 asserts `files,search,git`. Lines 970-978 derive the Git row from that order instead of assuming one Down press.
+3. Plugin-manifest navigation: [smoke-plugin-manifest-harness.ts](../../../../scripts/harness/smoke-plugin-manifest-harness.ts):493 uses the existing visible-row selector. One Down press had selected Search, not Git.
+4. Workspace-layout clicks: [smoke-workspace-layout-isolation-harness.ts](../../../../scripts/harness/smoke-workspace-layout-isolation-harness.ts):107 gets each glyph from the theme ladder. Lines 122-145 find its live painted row and click it. The drive no longer stores rows from the old activity order.
+5. One primary-dock scrollbar: [ScrollbarSync.ts](../../../../src/modules/ui/ScrollbarSync.ts):64 creates the one shared vertical bar. Lines 369-374 apply active-content geometry to it. [RootView.ts](../../../../src/modules/ui/RootView.ts):1872 attaches the Search scroll port, and lines 2545-2558 tick primary-dock momentum. Commit `81a419ee` deletes the second bar that the first task round added.
+
+The three remaining timeouts had these three-clock results.
+
+| Drive | Input clock | Model clock | Painted-frame clock | Fix |
+| --- | --- | --- | --- | --- |
+| Workspace layout | The click landed on stored row 10. | The active item became Structure, not Tasks. | The Tasks pane never painted. | Find the requested icon on the current screen before each click. |
+| Settings applied | Ten wheel events reached the File Tree. | `treeScrollTop` changed, and the status frame settled. | Thickness 1 painted two staggered dim columns. The pre-Search base painted one. | Delete the duplicate bar and keep `ScrollbarSync` as the generator. |
+| Plugin manifest | One Down press reached the list. | Search became selected because it now follows Files. | Git never gained the selected marker. | Use the existing visible-label row selector. |
+
+The Search smoke keeps its separate missing-ripgrep arm. [smoke-workspace-search-harness.ts](../../../../scripts/harness/smoke-workspace-search-harness.ts):546 creates a private binary directory with only `setsid`. Lines 551-556 pass it only to that app. Lines 575-608 require the exact unavailable state and all five painted message rows.
+
 ## Main code
 
 - [WorkspaceSearchContributor.ts](../../../../src/modules/search/WorkspaceSearchContributor.ts) registers the activity item, commands, chords, status, and order migration.
 - [WorkspaceSearchPaneContent.ts](../../../../src/modules/search/WorkspaceSearchPaneContent.ts) owns input, pointer, copy, file-open, and shared-scroll behavior.
 - [WorkspaceSearchPaneRenderer.ts](../../../../src/modules/search/WorkspaceSearchPaneRenderer.ts) paints the four fields, controls, summaries, errors, groups, matches, and previews.
 - [WorkspaceSearchResultTree.ts](../../../../src/modules/search/WorkspaceSearchResultTree.ts) owns grouping, collapse, dismissal, selection, the visible window, and limit rows.
-- [RootView.ts](../../../../src/modules/ui/RootView.ts) gives the primary dock the shared thumb and hosted-pane momentum tick.
+- [ScrollbarSync.ts](../../../../src/modules/ui/ScrollbarSync.ts) owns the shared primary-dock thumb.
+- [RootView.ts](../../../../src/modules/ui/RootView.ts) attaches the Search scroll port and ticks hosted-pane momentum.
 - [Sidebar.ts](../../../../src/modules/ui/Sidebar.ts) forwards pointer drag, release, and drag-end to primary-dock content.
 - [smoke-workspace-search-harness.ts](../../../../scripts/harness/smoke-workspace-search-harness.ts) is the permanent PTY contract.
 
@@ -93,7 +112,7 @@ The panel painted the full message across five wrapped rows.
 
 ## Verification
 
-The final unit pass completed after the structural amendment: 2,485 tests passed, 0 failed, with 72,804 assertions across 383 files.
+The final unit pass completed after the gate-red amendment: 2,485 tests passed, 0 failed, with 72,804 assertions across 383 files.
 
 These final checks passed:
 
@@ -104,6 +123,19 @@ These final checks passed:
 - `bun scripts/harness/smoke-workspace-search-harness.ts`: `ALL-PASS`
 - `git show --check 7c571aa2`
 - `git show --check db857fa9`
+- `git show --check 81a419ee`
+
+The five required drives passed alone with exit 0:
+
+- `bun scripts/harness/smoke-quickopen-harness.ts`
+- `bun scripts/harness/smoke-activitybar-harness.ts`
+- `bun scripts/harness/smoke-workspace-layout-isolation-harness.ts`
+- `bun scripts/harness/smoke-settings-applied-harness.ts`
+- `bun scripts/harness/smoke-workspace-search-harness.ts`
+
+The same five commands ran at the same time. Every process exited 0. Quick Open, Activity Bar, Settings, and workspace Search ended `ALL-PASS`. Workspace layout isolation ended `ALL PASS`.
+
+The related `bun scripts/harness/smoke-plugin-manifest-harness.ts` neighbor also passed alone with exit 0.
 
 I ran `bash scripts/behavioral-contracts.sh` once, as required. It ended `FAILURES` because the new Search smoke read two old grids after status-only waits.
 
@@ -121,6 +153,10 @@ I planted four defects and removed each plant.
 The permanent smoke also rejects a planted idle result state and wrong open file before it trusts live state.
 
 For the structural round, I changed the `Alt+D` binding to `Alt+X`. The permanent smoke failed with `Timed out waiting for Alt+D dismisses the selected match`. I restored `Alt+D`, and the same smoke passed.
+
+For the gate-red round, I planted the old `files,git,search` order in the new activity check. The drive exited 1 with `FAIL the default primary-dock order places Search between Files and Git`. I restored `files,search,git`, and the same drive ended `ALL-PASS`.
+
+The existing Settings check was also a positive control for the scrollbar reduction. It failed at `2/3` with both generators, then passed at `1/3` after the duplicate was removed. I did not change that assertion.
 
 ## Invariant verdicts
 
@@ -147,4 +183,4 @@ No unrelated runtime defect reproduced twice.
 
 ## Worktree state
 
-The task diff is committed in `7c571aa2` and `db857fa9`. The worktree still contains dispatch-owned [AGENTS.md](../../../../AGENTS.md) and [BUILDER-FUNDAMENTALS.md](../../../../.invar/worktrees/535-left-dock-search-surface/BUILDER-FUNDAMENTALS.md) changes. I preserved them and did not include them in either commit.
+The task diff is committed in `7c571aa2`, `db857fa9`, and `81a419ee`. The worktree still contains dispatch-owned [AGENTS.md](../../../../AGENTS.md) and [BUILDER-FUNDAMENTALS.md](../../../../.invar/worktrees/535-left-dock-search-surface/BUILDER-FUNDAMENTALS.md) changes. I preserved them and did not include them in any task commit.

@@ -1,7 +1,7 @@
 # 535 — left dock search surface
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 1d759ad5 — Milestone 4: the visible Search — activity icon, left-dock panel, streaming result tree, click-to-line; conductor-driven both arms; structural round closed all reviewer findings.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
