@@ -28,6 +28,7 @@ fundamentals_files=(
   ".claude/skills/ivue/SKILL.md"
   ".claude/skills/drive-pty/SKILL.md"
   ".claude/skills/ste-expression/SKILL.md"
+  ".claude/skills/ui-design/SKILL.md"
   ".claude/skills/conductor/SKILL.md"
 )
 
@@ -39,6 +40,7 @@ builder_fundamentals_files=(
   ".claude/skills/ivue/SKILL.md"
   ".claude/skills/drive-pty/SKILL.md"
   ".claude/skills/ste-expression/SKILL.md"
+  ".claude/skills/ui-design/SKILL.md"
 )
 
 print_file() {
