@@ -2,8 +2,8 @@
 // This contract drives the left-dock Search surface through the real PTY.
 // Run it with `bun scripts/harness/smoke-workspace-search-harness.ts`.
 // ALL-PASS means mouse and keyboard search, option toggles, match dismissal, exact match opening,
-// result copy, shared scrolling, replacement consent, undo, redo, the 20,000-match cap, and the
-// missing-ripgrep message hold at 10 and 100,000 lines.
+// result copy, PageDown, wheel momentum, painted thumb drag, replacement consent, undo, redo, the
+// 20,000-match cap, and the missing-ripgrep message hold at 10 and 100,000 lines.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
@@ -20,6 +20,7 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { dragBetweenCells } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
+import { dragScrollbarThumb } from './ScrollbarThumbDrag';
 
 interface WorkspaceSearchStatus {
   workspaceSearchFlowState?: string;
@@ -84,6 +85,33 @@ function searchPaneRectangle(snapshot: HarnessSnapshot.Model): {
     width: rightBorder - leftBorder - 1,
     height: snapshot.rows - header.row - 4,
   };
+}
+
+function searchVerticalThumbPosition(snapshot: HarnessSnapshot.Model): {
+  column: number;
+  row: number;
+} {
+  const rectangle = searchPaneRectangle(snapshot);
+  const firstThumbRow = rectangle.top;
+  for (
+    let column = rectangle.left + rectangle.width - 1;
+    column >= rectangle.left;
+    column -= 1
+  ) {
+    const firstThumbCell = snapshot.cell(firstThumbRow, column);
+    const secondThumbCell = snapshot.cell(firstThumbRow + 1, column);
+    const firstTrackCell = snapshot.cell(firstThumbRow + 2, column);
+    if (
+      firstThumbCell &&
+      secondThumbCell &&
+      firstTrackCell &&
+      firstThumbCell.background === secondThumbCell.background &&
+      firstThumbCell.background !== firstTrackCell.background
+    ) {
+      return { column, row: firstThumbRow };
+    }
+  }
+  throw new Error('FAIL the Search vertical thumb is not painted');
 }
 
 function searchActivityRow(snapshot: HarnessSnapshot.Model): number {
@@ -535,6 +563,46 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
         statusPath,
         'wheel momentum advances the same Search result scroll position',
         (status) => Number(status.workspaceSearchScrollTop) > pageTop,
+      );
+      const scrollSnapshot = await driver.awaitSnapshot(
+        (candidate) => candidate.findText('DRIVE-LINE') !== null,
+      );
+      const thumbPosition = searchVerticalThumbPosition(scrollSnapshot);
+      const selectionCharsBeforeThumbDrag = Number(
+        HarnessSmoke.Class.readStatus(statusPath)
+          .workspaceSearchSelectionChars ?? 0,
+      );
+      const thumbPositions = await dragScrollbarThumb(driver, statusPath, {
+        name: 'workspaceSearchVertical',
+        positionName: 'workspaceSearchScrollTop',
+        pressColumn: thumbPosition.column,
+        pressRow: thumbPosition.row,
+        moveColumns: [
+          thumbPosition.column,
+          thumbPosition.column,
+          thumbPosition.column,
+        ],
+        moveRows: [
+          thumbPosition.row + 3,
+          thumbPosition.row + 6,
+          thumbPosition.row + 9,
+        ],
+      });
+      HarnessSmoke.Class.requireCondition(
+        thumbPositions.length === 4 &&
+          thumbPositions.every(
+            (position, positionIndex) =>
+              positionIndex === 0 ||
+              position > (thumbPositions[positionIndex - 1] ?? position),
+          ),
+        `the Search thumb advances after every pressed-pointer move (${thumbPositions.join('→')})`,
+      );
+      HarnessSmoke.Class.requireCondition(
+        Number(
+          HarnessSmoke.Class.readStatus(statusPath)
+            .workspaceSearchSelectionChars ?? 0,
+        ) === selectionCharsBeforeThumbDrag,
+        'the Search thumb drag leaves result text selection unchanged',
       );
     }
     HarnessSmoke.Class.pass(

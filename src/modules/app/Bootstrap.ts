@@ -35,6 +35,7 @@ import { Tooltip } from '../ui/Tooltip';
 import { Settings, type PanelWorkspacePaneState } from '../settings/Settings';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { FindBar } from '../search/FindBar';
+import { SearchCountText } from '../search/SearchCountText';
 import { QuickOpen } from '../search/QuickOpen';
 import { Files } from '../system/Files';
 import { StatusChannel } from '../system/StatusChannel';
@@ -1780,7 +1781,7 @@ class $Bootstrap {
         identifier: 'replace-all-in-file',
         title: 'Replace all in this file',
         message:
-          `Replace ${request.metadata.bulkItemCount} items in ` +
+          `Replace ${request.metadata.bulkItemCount} ${SearchCountText.Class.itemNoun(request.metadata.bulkItemCount)} in ` +
           `${request.metadata.displayPath}?\n\n` +
           'The editor will record one undo step.',
         confirmLabel: 'Replace',
@@ -1805,7 +1806,7 @@ class $Bootstrap {
         identifier: 'undo-replace-all-in-file',
         title: 'Undo Replace All',
         message:
-          `Undo will revert ${metadata.bulkItemCount} items in ` +
+          `Undo will revert ${metadata.bulkItemCount} ${SearchCountText.Class.itemNoun(metadata.bulkItemCount)} in ` +
           `${metadata.displayPath}.`,
         confirmLabel: 'Undo',
         cancelLabel: 'Cancel',
@@ -1824,7 +1825,7 @@ class $Bootstrap {
         identifier: 'redo-replace-all-in-file',
         title: 'Redo Replace All',
         message:
-          `Redo will replace ${metadata.bulkItemCount} items in ` +
+          `Redo will replace ${metadata.bulkItemCount} ${SearchCountText.Class.itemNoun(metadata.bulkItemCount)} in ` +
           `${metadata.displayPath}.`,
         confirmLabel: 'Redo',
         cancelLabel: 'Cancel',

@@ -240,13 +240,53 @@ try {
     snapshot.textRows().some((rowText) => rowText.includes('2 of 4')),
     'next button advances the rendered counter to 2 of 4',
   );
-  driver.sendMouse({
+  const restCaseCell = snapshot.cell(
+    buttonGeometry.row,
+    buttonGeometry.caseColumn,
+  );
+  if (!restCaseCell) throw new Error('FAIL Find Aa rest cell is missing');
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: buttonGeometry.caseColumn,
+    row: buttonGeometry.row,
+    button: 'left',
+  });
+  const hoveredCaseSnapshot = await driver.awaitGridCondition(
+    'the Find Aa button paints its hover state',
+    (candidate) =>
+      candidate.cell(buttonGeometry.row, buttonGeometry.caseColumn)
+        ?.background !== restCaseCell.background,
+  );
+  const hoveredCaseCell = hoveredCaseSnapshot.cell(
+    buttonGeometry.row,
+    buttonGeometry.caseColumn,
+  );
+  driver.sendMouseWithoutFrameExpectation({
     kind: 'press',
     column: buttonGeometry.caseColumn,
     row: buttonGeometry.row,
     button: 'left',
   });
-  driver.sendMouse({
+  const pressedCaseSnapshot = await driver.awaitGridCondition(
+    'the Find Aa button paints its pressed state',
+    (candidate) => {
+      const cell = candidate.cell(
+        buttonGeometry.row,
+        buttonGeometry.caseColumn,
+      );
+      return cell?.background !== hoveredCaseCell?.background;
+    },
+  );
+  const pressedCaseCell = pressedCaseSnapshot.cell(
+    buttonGeometry.row,
+    buttonGeometry.caseColumn,
+  );
+  HarnessSmoke.Class.requireCondition(
+    pressedCaseCell !== null &&
+      pressedCaseCell.foreground !== pressedCaseCell.background,
+    'the pressed Find Aa label keeps contrast against its background',
+  );
+  driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
     column: buttonGeometry.caseColumn,
     row: buttonGeometry.row,
@@ -347,7 +387,12 @@ try {
     'Replace All consent copy is visible',
     (candidate) =>
       candidate.findText('Replace all in this file') !== null &&
+      candidate.findText('Replace 1 item in sample.txt?') !== null &&
       candidate.findText('The editor will record one undo step.') !== null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    snapshot.findText('Replace 1 item in sample.txt?') !== null,
+    'one replacement uses singular item copy',
   );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText(' Cancel ') !== null,
