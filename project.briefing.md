@@ -11,7 +11,7 @@ CRONS ARMED (:07 orchestration 9abac598, :37 sweep a472671f).
 fleet-watch Monitor armed; on resume re-arm if heartbeat stale:
 Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true).
 
-STATE UPDATE: #514 READY (untriaged — triage at landing). ONLY #518 STILL BUILDING (DIED ~00:40, RECOVERED: WIP-committed, relaunch.sh resumed the conversation, steered to continue + re-read task tail; QUIET events immediately after are stale). Was: #514 panel batch — SEVEN concerns now
+CONVEYOR RUNNING: ALL FIVE READY (513, 515, 514, 517, 518 — all untriaged except 513/515; triage each at ITS landing: read report, convert bycatch + instrument asks, review any contract edits at the gate). ZERO builders live. GATE-513 STARTED at /tmp/gate-513.log (monitor b4wbv6q3l, death-reporting). ON ITS GREEN: land 513 (GATE_LOG land.sh), then FOR EACH of 515, 514, 517, 518 in that order: merge main in ITS worktree, fresh gate + death monitor, triage report, land, next. Known pre-existing red allowed: plugin-manifest (#504). Rebuild dist/iv after 514 and 518 (code-heavy). THEN the Find/Replace milestones from 515 landed design, in its order. 518 note: builder died and was resumed; its WIP commit is in history; transcript pipe was re-attached. Was: #514 panel batch — SEVEN concerns now
 (over-removal protocol, ONE toggle panel button, hover bg unify +
 OVERLAY hover grammar refined item 3, + Terminal polish, glyph to
 right cluster, expand-trap item 6, fresh-boot drive dishonesty
