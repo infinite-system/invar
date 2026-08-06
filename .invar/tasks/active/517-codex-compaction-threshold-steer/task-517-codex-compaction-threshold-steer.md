@@ -39,3 +39,17 @@ compaction (or study the rollout structure of tonight's long
 sessions), and confirm the post-compaction context carries AGENTS.md
 content. If it does NOT: the threshold steer becomes the primary
 defense and this task's report says so loudly.
+
+## Preferred mechanism (2026-08-06): the codex notify hook
+
+Codex's config.toml supports `notify` — an external program invoked
+with a JSON payload on agent-turn-complete. That is a per-turn,
+codex-paid heartbeat: our notify program can check the lane's rollout
+usage each turn and fire the near-compact steer EVENT-DRIVEN, no
+polling. Work: dispatch plants a per-worktree codex config (or
+profile) registering the notify program; the program is a small
+self-tested script (lane identity from cwd/payload; threshold check;
+steer or marker-file for fleet-watch). Verify the payload shape
+against current codex docs FIRST — the CLI moves fast and this task
+file's knowledge may lag. Fleet-watch polling remains the fallback
+arm if notify proves unreliable.
