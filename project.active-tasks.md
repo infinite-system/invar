@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #537 [find-replace-doctrine-pass](.invar/tasks/in-progress/537-find-replace-doctrine-pass/task-537-find-replace-doctrine-pass.md)  [building]
+- #537 [find-replace-doctrine-pass](.invar/tasks/in-progress/537-find-replace-doctrine-pass/task-537-find-replace-doctrine-pass.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/537-find-replace-doctrine-pass`
 
 ## USER-DIRECTED (13)
@@ -61,7 +61,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (33)
+## FLAKE-EVIDENCE (34)
+- #538 [panel-chrome-flake-second-wave](.invar/tasks/active/538-panel-chrome-flake-second-wave/task-538-panel-chrome-flake-second-wave.md)
 - #531 [scrollbars-grid-timeout-sighting](.invar/tasks/active/531-scrollbars-grid-timeout-sighting/task-531-scrollbars-grid-timeout-sighting.md)
 - #519 [terminal-toggle-gesture-flake](.invar/tasks/active/519-terminal-toggle-gesture-flake/task-519-terminal-toggle-gesture-flake.md)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
