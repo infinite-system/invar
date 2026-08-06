@@ -1,7 +1,7 @@
 # 534 — workspace search backend
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

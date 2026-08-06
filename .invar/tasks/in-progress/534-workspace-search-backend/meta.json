@@ -1,0 +1,15 @@
+{
+  "task": 534,
+  "slug": "workspace-search-backend",
+  "branch": "fleet/534-workspace-search-backend",
+  "worktree": ".invar/worktrees/534-workspace-search-backend",
+  "tmuxSession": "invar/534-workspace-search-backend",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-534-workspace-search-backend.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "9af9ac463b4ca42f2c5e3f9325903276cff2ab3c",
+  "startedAt": "2026-08-06T11:07:01-04:00"
+}
