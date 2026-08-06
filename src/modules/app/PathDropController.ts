@@ -141,6 +141,7 @@ class $PathDropController {
 export namespace PathDropController {
   export const $Class = Static($PathDropController);
   export let Class = $Class;
+  export type Model = InstanceType<typeof Class>;
 }
 
 export interface PathDropControllerDependencies {

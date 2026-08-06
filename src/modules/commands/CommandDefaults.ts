@@ -43,6 +43,12 @@ class $CommandDefaults {
         run: () => context.workspaceSet.cycle(-1),
       },
       {
+        id: 'file.open',
+        title: 'File: Open...',
+        category: 'File',
+        run: context.openFile,
+      },
+      {
         id: 'file.save',
         title: 'File: Save',
         category: 'File',
@@ -268,6 +274,7 @@ export interface CommandContext {
   workspaceSet: WorkspaceSet.Instance;
   theme: Theme.Instance;
   openWorkspaceFolder: () => void;
+  openFile: () => void;
   openGoToLine: () => void;
   toggleWordWrap: () => void;
   wordWrapEnabled: () => boolean;
