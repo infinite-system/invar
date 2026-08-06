@@ -1,6 +1,10 @@
 import { Static } from 'ivue/extras';
 
 class $Processes {
+  static which(command: string): string | null {
+    return Bun.which(command);
+  }
+
   /**
    * Spawn an external tool from an argument vector without a shell, under the shared hermetic
    * environment policy. Callers own streaming, exit handling, and launch-failure containment.

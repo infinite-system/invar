@@ -27,6 +27,7 @@ describe('FileTreePaneContent', () => {
       },
     ];
     let activationCount = 0;
+    const commandRuns: string[] = [];
     const workspaceFocus = ref<'editor' | 'primaryPane'>('editor');
     const pane = new FileTreePaneContent.Class(
       {
@@ -45,6 +46,7 @@ describe('FileTreePaneContent', () => {
           glyph: () => 'F',
           icon: () => 'f',
         },
+        commands: { run: (command: string) => commandRuns.push(command) },
         requestRender: () => {},
       } as never,
       () =>
@@ -72,9 +74,14 @@ describe('FileTreePaneContent', () => {
     } as never);
     expect(pane.tooltipAt(9, 0)).toBe('Reveal open file');
     expect(pane.tooltipAt(8, 0)).toBe('Reveal open file');
-    expect(pane.tooltipAt(7, 0)).toBeNull();
+    expect(pane.tooltipAt(7, 0)).toBe('Open file');
+    expect(pane.tooltipAt(6, 0)).toBe('Open file');
+    expect(pane.tooltipAt(5, 0)).toBe('Open file');
+    expect(pane.tooltipAt(4, 0)).toBeNull();
     expect(pane.tooltipAt(11, 0)).toBeNull();
     expect(pane.tooltipAt(9, 1)).toBeNull();
+    expect(pane.onPointerDown(7, 0)).toBe(true);
+    expect(commandRuns).toEqual(['file.open']);
     expect(pane.onPointerDown(0, 2)).toBe(true);
     expect(tree.selectedIndex.value).toBe(1);
     expect(workspaceFocus.value).toBe('primaryPane');

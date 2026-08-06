@@ -71,8 +71,8 @@ minor version.
 
 The capability list contains exact method names or namespace wildcards.
 Version 1 reserves `drop.*`, `dialog.*`, `fs.*`, and `pty.*`. Version 1.0
-implements only `drop.upload`. A request for an unadvertised method fails
-with `METHOD_NOT_FOUND`.
+implements `drop.upload` on the server and `dialog.request` on the client. A
+request for an unadvertised method fails with `METHOD_NOT_FOUND`.
 
 ## Requests and errors
 
@@ -82,6 +82,13 @@ contains the file bytes. A successful response returns `path`, `size`, and
 `~/.cache/invar/dropzone/<sha256>-<safe-name>`. It removes entries older than
 24 hours and then removes the oldest entries until the directory is at most
 1 GiB. A single file larger than the cap is rejected.
+
+`dialog.request` has no parameters in version 1.0. The client opens its native
+file picker. A cancelled picker returns `path: null`. A selected local file is
+uploaded through `drop.upload`, and the response returns the resulting remote
+dropzone `path`. The server passes that path to Invar through the private
+session socket named by `INVAR_CHANNEL_SOCKET`. The local source path never
+enters the interactive PTY or the remote process.
 
 An error is an object with `code`, `message`, and optional `data`. Codes in
 1.0 are `BAD_REQUEST`, `METHOD_NOT_FOUND`, `UNSUPPORTED_VERSION`,

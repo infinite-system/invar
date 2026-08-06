@@ -1243,6 +1243,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: quick-open harness" bun scripts/harness/smoke-quickopen-harness.ts
   parallel_safe_smoke "smoke: navigation-history harness" bun scripts/harness/smoke-navigation-history-harness.ts
   parallel_safe_smoke "smoke: open-project harness" bun scripts/harness/smoke-openproject-harness.ts
+  parallel_safe_smoke "smoke: file-open picker harness" bun scripts/harness/smoke-file-open-harness.ts
   parallel_safe_smoke "smoke: activitybar harness" bun scripts/harness/smoke-activitybar-harness.ts
   parallel_safe_smoke "smoke: panel-split harness" bun scripts/harness/smoke-panel-split-harness.ts
   # Panel geometry is active product work in #459. Under ambient load this

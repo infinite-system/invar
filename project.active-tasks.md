@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #511 [inversion-design-and-sync-census](.invar/tasks/in-progress/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md)  [building]
+## IN-PROGRESS (1)
+- #511 [inversion-design-and-sync-census](.invar/tasks/in-progress/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/511-inversion-design-and-sync-census`
-- #510 [the-open-button-picker-tiers](.invar/tasks/in-progress/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md)  [building]
-  `tmux attach -t invar/510-the-open-button-picker-tiers`
 
 ## USER-DIRECTED (15)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
@@ -151,7 +149,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 220 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 221 — full log: project.tasks-completed.md)
+- #510 [the-open-button-picker-tiers](.invar/tasks/completed/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md) — 6cc66819 — the Open button: client-native over ssh, local-native, in-app browser
 - #509 [iv-ssh-the-channel-client](.invar/tasks/completed/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md) — b5794429 — iv ssh: byte-perfect passthrough + the RPC channel; dropzone works
 - #508 [local-drop-opens-the-dropped-file](.invar/tasks/completed/508-local-drop-opens-the-dropped-file/task-508-local-drop-opens-the-dropped-file.md) — 3cbd082e — dropped files open by kind; outside-root reads only
 - #506 [constructor-first-and-the-constants-role-table](.invar/tasks/completed/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md) — b27235a9 — constructor first everywhere; constants have one form per role
@@ -166,4 +165,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #493 [ast-query-imports-and-literal-census-modes](.invar/tasks/completed/493-ast-query-imports-and-literal-census-modes/task-493-ast-query-imports-and-literal-census-modes.md) — bc6ad755 — ast-query: imports-of + literals census modes with self-test
 - #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/completed/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md) — 86a01a2c — markdown syntax through the provider seam; core vocabulary zero
 - #491 [editor-shared-generators-move-home](.invar/tasks/completed/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md) — cf1befd4 — editor generators move to core text; monitoring rides the provider seam
-- #490 [chord-and-command-relocation-sweep](.invar/tasks/completed/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md) — c343b38f — plugin chords and labels relocated; ShortcutHelp reads live layers

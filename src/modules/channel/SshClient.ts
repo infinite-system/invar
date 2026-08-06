@@ -1,12 +1,13 @@
 import { Static } from 'ivue/extras';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { OpenPty } from '../system/OpenPty';
 import { Processes } from '../system/Processes';
 import { BracketedPathPaste } from './BracketedPathPaste';
 import { ChannelClient } from './ChannelClient';
 import { ChannelDropNotification } from './ChannelDropNotification';
+import { NativeFileDialog } from '../system/NativeFileDialog';
 
 class $SshClient {
   static async main(argumentsList: string[]): Promise<number> {
@@ -36,8 +37,12 @@ class $SshClient {
     sshArguments: string[],
     remoteArguments: string[],
     remoteExecutable = 'iv',
+    channelSocketPath?: string,
   ): SshCommands {
     const common = ['ssh', '-S', controlSocketPath];
+    const remoteEnvironment = channelSocketPath
+      ? `INVAR_CHANNEL_SOCKET=${this.shellArgument(channelSocketPath)} `
+      : '';
     const remoteCommand = [remoteExecutable, ...remoteArguments]
       .map((argument) => this.shellArgument(argument))
       .join(' ');
@@ -57,9 +62,14 @@ class $SshClient {
         ...common,
         '-T',
         ...sshArguments,
-        `${this.shellArgument(remoteExecutable)} --channel-server`,
+        `${remoteEnvironment}${this.shellArgument(remoteExecutable)} --channel-server`,
       ],
-      interactive: [...common, '-tt', ...sshArguments, remoteCommand],
+      interactive: [
+        ...common,
+        '-tt',
+        ...sshArguments,
+        `${remoteEnvironment}${remoteCommand}`,
+      ],
       close: [...common, '-O', 'exit', ...sshArguments],
     };
   }
@@ -99,6 +109,7 @@ class $SshClient {
       this.sshArguments,
       this.remoteArguments,
       process.env.INVAR_REMOTE_IV_COMMAND ?? 'iv',
+      `/tmp/invar-channel-${basename(this.controlDirectory)}.sock`,
     );
     const stopForSignal = (signal: NodeJS.Signals): void => {
       this.interactiveProcess?.kill(signal);
@@ -131,8 +142,11 @@ class $SshClient {
       stderr: 'pipe',
     });
     this.channelProcess = channelProcess;
-    const channelClient = new ChannelClient.Class((bytes) =>
-      channelProcess.stdin.write(bytes),
+    let channelClient: ChannelClient.Model;
+    channelClient = new ChannelClient.Class(
+      (bytes) => channelProcess.stdin.write(bytes),
+      (method, parameters) =>
+        this.handleChannelRequest(method, parameters, channelClient),
     );
     const channelRead = this.readChannel(channelProcess.stdout, channelClient);
     await channelClient.negotiate();
@@ -191,6 +205,23 @@ class $SshClient {
       channelProcess.kill();
       await channelRead.catch(() => undefined);
     }
+  }
+
+  protected async handleChannelRequest(
+    method: string,
+    parameters: Record<string, unknown>,
+    channelClient: ChannelClient.Model,
+  ): Promise<Record<string, unknown>> {
+    void parameters;
+    if (method !== 'dialog.request') {
+      throw new Error(`Unsupported method ${method}`);
+    }
+    const result = await NativeFileDialog.Class.pickFile(process.cwd());
+    if (!result.available)
+      throw new Error('No native file dialog is available');
+    if (!result.path) return { path: null };
+    const upload = await channelClient.upload(result.path);
+    return { path: upload.path };
   }
 
   protected async readChannel(
