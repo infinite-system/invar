@@ -42,3 +42,21 @@ contribution, pane registration, buffers, undo, Processes) + the
 proposed invariant records (flyweight-undo, verification, consent)
 as PROPOSALS + a milestone split for implementation. No
 implementation beyond throwaway probes.
+
+## VS Code parity study (user addition, same session)
+
+Research how VS Code implements workspace search/replace — from its
+docs (code.visualstudio.com codebase-wide search pages, which carry
+screenshots) and its architecture notes: it also drives ripgrep. The
+design doc must enumerate its surface and judge each element for
+Invar:
+- Query toggles: match case (Aa), whole word (ab), regex (.*) — all
+  three wanted here.
+- files-to-include / files-to-exclude glob fields + the "use default
+  excludes" toggle (our equivalent: workspace ignores + .gitignore).
+- Results tree grouped by file, match counts, inline replace PREVIEW
+  (old -> new shown per match before committing), dismiss-per-match.
+- Replace-all confirmation modal with counts (ours adds the undo-side
+  consent + drift reporting).
+Screenshot-derived layout notes are welcome in the doc (describe;
+do not embed binaries in the repo).
