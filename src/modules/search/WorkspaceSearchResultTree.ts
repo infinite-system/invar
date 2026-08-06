@@ -50,6 +50,12 @@ class $WorkspaceSearchResultTree {
     return Math.max(0, this.results.length - this.dismissedResultKeys.size);
   }
 
+  selectedResults(): readonly WorkspaceSearchResult[] {
+    return this.results.filter(
+      (result) => !this.dismissedResultKeys.has(this.resultKey(result)),
+    );
+  }
+
   reset(): void {
     this.results = [];
     this.limited = false;

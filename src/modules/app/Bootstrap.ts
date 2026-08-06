@@ -555,6 +555,7 @@ class $Bootstrap {
         bottomPanelHost: panelHost,
         contextMenu,
         boundedListPopup,
+        dialog: quitConfirmation,
         findBar,
         overlayCoordinator,
         statusBarSegments,

@@ -59,6 +59,22 @@ class $TextPatch {
     );
   }
 
+  static createRecorded(
+    arena: TextArena.Instance,
+    options: TextPatchRecordedOptions,
+  ): TextPatch.Instance {
+    return new this(
+      arena,
+      options.path,
+      options.searchGeneration,
+      options.baselineByteOffset,
+      arena.store(options.removedBytes),
+      arena.intern(options.insertedBytes),
+      arena.store(options.beforeContextBytes),
+      arena.store(options.afterContextBytes),
+    );
+  }
+
   static verifyGroup(
     sourceBytes: Uint8Array,
     patches: readonly TextPatch.Instance[],
@@ -190,6 +206,11 @@ export interface TextPatchCreateOptions {
   readonly baselineByteOffset: number;
   readonly removedBytes: Uint8Array;
   readonly insertedBytes: Uint8Array;
+}
+
+export interface TextPatchRecordedOptions extends TextPatchCreateOptions {
+  readonly beforeContextBytes: Uint8Array;
+  readonly afterContextBytes: Uint8Array;
 }
 
 export type TextPatchVerification =

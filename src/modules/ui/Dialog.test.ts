@@ -62,4 +62,25 @@ describe('Dialog', () => {
     expect(dialog.open.value).toBe(true);
     expect(dialog.focusedChoice.value).toBe('no');
   });
+
+  test('one-action alerts focus their only action and ignore focus movement', () => {
+    let closeCount = 0;
+    const dialog = new Dialog.Class();
+
+    dialog.show({
+      identifier: 'alert',
+      message: 'Close this alert.',
+      singleAction: true,
+      onConfirm: () => {
+        closeCount += 1;
+      },
+    });
+    expect(dialog.focusedChoice.value).toBe('yes');
+    dialog.focusNext();
+    expect(dialog.focusedChoice.value).toBe('yes');
+    dialog.activateFocusedChoice();
+
+    expect(closeCount).toBe(1);
+    expect(dialog.open.value).toBe(false);
+  });
 });

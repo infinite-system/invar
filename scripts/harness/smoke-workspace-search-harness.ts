@@ -2,8 +2,8 @@
 // This contract drives the left-dock Search surface through the real PTY.
 // Run it with `bun scripts/harness/smoke-workspace-search-harness.ts`.
 // ALL-PASS means mouse and keyboard search, option toggles, match dismissal, exact match opening,
-// result copy, shared scrolling, the 20,000-match cap, and the missing-ripgrep message hold at
-// 10 and 100,000 lines.
+// result copy, shared scrolling, replacement consent, undo, redo, the 20,000-match cap, and the
+// missing-ripgrep message hold at 10 and 100,000 lines.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
@@ -34,6 +34,11 @@ interface WorkspaceSearchStatus {
   workspaceSearchErrorMessage?: string;
   cursorLineIndex?: number;
   activeBuffer?: string | null;
+  dirty?: boolean;
+  workspaceSearchAppliedCount?: number;
+  workspaceSearchDriftedCount?: number;
+  workspaceSearchFailedCount?: number;
+  workspaceSearchSkippedCount?: number;
 }
 
 function searchReady(
@@ -285,6 +290,8 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
 
     const targetLineIndex = lineCount - 1;
     const targetMarker = `DRIVE-LINE-${String(lineCount).padStart(6, '0')}`;
+    const visibleTargetMarker =
+      lineCount === 100_000 ? targetMarker.slice(0, -1) : targetMarker;
     let generation = Number(
       HarnessSmoke.Class.readStatus(statusPath)
         .workspaceSearchQueryGeneration ?? 0,
@@ -303,7 +310,8 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
         paneRectangle.top += 6;
         paneRectangle.height -= 6;
         return (
-          snapshot.findTextInRectangle(targetMarker, paneRectangle) !== null
+          snapshot.findTextInRectangle(visibleTargetMarker, paneRectangle) !==
+          null
         );
       },
     );
@@ -538,6 +546,381 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
   }
 }
 
+async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
+  const fixture = await HarnessSmoke.Class.createDriveScaleFixture(lineCount);
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-workspace-replace-home-${lineCount}-`),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+  await Bun.write(
+    join(homeDirectory, '.config', 'invar', 'settings.json'),
+    '{"glyphMode":"unicode"}\n',
+  );
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixture.workspaceRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory,
+    environment: { TUI_STATUS_PATH: statusPath, NERD_FONT: '0' },
+  });
+  const targetMarker = `DRIVE-LINE-${String(lineCount).padStart(6, '0')}`;
+  const visibleTargetMarker =
+    lineCount === 100_000 ? targetMarker.slice(0, -1) : targetMarker;
+  const replacementText = `REPLACED-${String(lineCount)}`;
+
+  try {
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: the shared scale fixture is visible`,
+      (snapshot) => snapshot.findText(`scale-${lineCount}.txt`) !== null,
+      15_000,
+    );
+    if (lineCount === 10) {
+      const plantedUnappliedStatus: WorkspaceSearchStatus = {
+        workspaceSearchResultCount: 1,
+        workspaceSearchAppliedCount: 0,
+        workspaceSearchDriftedCount: 0,
+        workspaceSearchFailedCount: 0,
+        workspaceSearchSkippedCount: 0,
+        dirty: false,
+      };
+      HarnessSmoke.Class.requireCondition(
+        !(
+          plantedUnappliedStatus.workspaceSearchResultCount === 0 &&
+          plantedUnappliedStatus.workspaceSearchAppliedCount === 1 &&
+          plantedUnappliedStatus.workspaceSearchDriftedCount === 0 &&
+          plantedUnappliedStatus.workspaceSearchFailedCount === 0 &&
+          plantedUnappliedStatus.workspaceSearchSkippedCount === 0 &&
+          plantedUnappliedStatus.dirty === true
+        ),
+        'the replacement completion check rejects an unapplied result',
+      );
+    }
+
+    driver.sendKeys('Control+Shift+f');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: Search focuses the query`,
+      (status) => status.workspaceSearchActiveField === 'query',
+    );
+    driver.sendText(targetMarker);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: the unique query returns one item`,
+      (status) =>
+        status.workspaceSearchFlowState === 'ready' &&
+        status.workspaceSearchResultCount === 1,
+    );
+    let snapshot = await driver.awaitGridCondition(
+      `replace scale ${lineCount}: the target item is visible`,
+      (candidate) => {
+        const candidateRectangle = searchPaneRectangle(candidate);
+        candidateRectangle.top += 6;
+        candidateRectangle.height -= 6;
+        return (
+          candidate.findTextInRectangle(
+            visibleTargetMarker,
+            candidateRectangle,
+          ) !== null
+        );
+      },
+    );
+    const resultRectangle = searchPaneRectangle(snapshot);
+    resultRectangle.top += 6;
+    resultRectangle.height -= 6;
+    const matchPosition = snapshot.findTextInRectangle(
+      visibleTargetMarker,
+      resultRectangle,
+    );
+    if (!matchPosition) throw new Error('FAIL replacement target is missing');
+    clickCell(driver, matchPosition.column + 4, matchPosition.row);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: the target file and line open`,
+      (status) => resultOpened(status, fixture.filePath, lineCount - 1),
+    );
+
+    const paneRectangle = searchPaneRectangle(driver.snapshot());
+    clickCell(driver, paneRectangle.left + 2, paneRectangle.top + 1);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: the replacement field receives focus`,
+      (status) => status.workspaceSearchActiveField === 'replacement',
+    );
+    driver.sendText(replacementText);
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: the replacement preview is visible`,
+      (candidate) => candidate.findText(`→ ${replacementText}`) !== null,
+    );
+    snapshot = driver.snapshot();
+    const replaceAllPosition = snapshot.findText('Replace All');
+    if (!replaceAllPosition) throw new Error('FAIL Replace All is not visible');
+    clickCell(
+      driver,
+      replaceAllPosition.column + Math.floor('Replace All'.length / 2),
+      replaceAllPosition.row,
+    );
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      true,
+    );
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: consent names one item and one file`,
+      (candidate) =>
+        candidate.findText('Replace 1 item across 1 file?') !== null &&
+        candidate.findText('Cancel') !== null,
+    );
+    driver.sendKeys('Escape');
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      false,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: Escape keeps the item unchanged`,
+      (status) =>
+        status.workspaceSearchResultCount === 1 && status.dirty === false,
+    );
+
+    if (lineCount === 10) {
+      snapshot = driver.snapshot();
+      const currentPaneRectangle = searchPaneRectangle(snapshot);
+      const editorRectangle = {
+        left: currentPaneRectangle.left + currentPaneRectangle.width + 1,
+        top: 0,
+        width:
+          snapshot.columns -
+          currentPaneRectangle.left -
+          currentPaneRectangle.width -
+          1,
+        height: snapshot.rows,
+      };
+      const sourcePosition = snapshot.findTextInRectangle(
+        `${targetMarker} content at scale`,
+        editorRectangle,
+      );
+      if (!sourcePosition)
+        throw new Error('FAIL the source line is not visible for drift');
+      clickCell(driver, sourcePosition.column + 5, sourcePosition.row);
+      driver.sendText('X');
+      await driver.awaitGridCondition(
+        'replace drift: the editor paints the changed match',
+        (candidate) => candidate.findText('DRIVEX-LINE-000010') !== null,
+      );
+      snapshot = driver.snapshot();
+      const driftReplacePosition = snapshot.findText('Replace All');
+      if (!driftReplacePosition)
+        throw new Error('FAIL Replace All is missing for drift');
+      clickCell(
+        driver,
+        driftReplacePosition.column + Math.floor('Replace All'.length / 2),
+        driftReplacePosition.row,
+      );
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'quitConfirmation.open',
+        true,
+      );
+      await driver.awaitGridCondition(
+        'replace drift: consent names the changed item and zero safe items',
+        (candidate) =>
+          candidate.findText(
+            '1 of 1 items changed since this search and will be skipped.',
+          ) !== null &&
+          candidate.findText('Replace 0 safe items across 0 files?') !== null,
+      );
+      driver.sendKeys('Escape');
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'quitConfirmation.open',
+        false,
+      );
+      const changedPosition = driver.snapshot().findText('DRIVEX-LINE-000010');
+      if (!changedPosition)
+        throw new Error('FAIL the drifted source line is missing');
+      clickCell(driver, changedPosition.column, changedPosition.row);
+      driver.sendKeys('Control+z');
+      await driver.awaitGridCondition(
+        'replace drift: ordinary undo restores the searched match',
+        (candidate) =>
+          candidate.findText(`${targetMarker} content at scale`) !== null,
+      );
+    }
+
+    snapshot = driver.snapshot();
+    const confirmedReplaceAllPosition = snapshot.findText('Replace All');
+    if (!confirmedReplaceAllPosition)
+      throw new Error('FAIL Replace All disappeared after cancel');
+    clickCell(
+      driver,
+      confirmedReplaceAllPosition.column + Math.floor('Replace All'.length / 2),
+      confirmedReplaceAllPosition.row,
+    );
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      true,
+    );
+    driver.sendKeys('Tab');
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.focusedChoice',
+      'yes',
+    );
+    driver.sendKeys('Enter');
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      false,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: one item applies with no skip`,
+      (status) =>
+        status.workspaceSearchResultCount === 0 &&
+        status.workspaceSearchAppliedCount === 1 &&
+        status.workspaceSearchDriftedCount === 0 &&
+        status.workspaceSearchFailedCount === 0 &&
+        status.workspaceSearchSkippedCount === 0 &&
+        status.dirty === true,
+    );
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: the editor paints the replacement`,
+      (candidate) =>
+        candidate.findText(`${replacementText} content at scale`) !== null,
+    );
+
+    snapshot = driver.snapshot();
+    const undoPosition = snapshot.findText('Undo');
+    if (!undoPosition) throw new Error('FAIL workspace Undo is not visible');
+    clickCell(driver, undoPosition.column + 2, undoPosition.row);
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      true,
+    );
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: undo consent names one item and one file`,
+      (candidate) =>
+        candidate.findText('Undo will revert 1 item across 1 file.') !== null,
+    );
+    driver.sendKeys('Tab', 'Enter');
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      false,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: undo restores the source and dirty state`,
+      (status) => status.workspaceSearchFlowState === 'undone' && !status.dirty,
+    );
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: the editor paints the restored source`,
+      (candidate) =>
+        candidate.findText(`${targetMarker} content at scale`) !== null,
+    );
+
+    snapshot = driver.snapshot();
+    const redoPosition = snapshot.findText('Redo');
+    if (!redoPosition) throw new Error('FAIL workspace Redo is not visible');
+    clickCell(driver, redoPosition.column + 2, redoPosition.row);
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      true,
+    );
+    driver.sendKeys('Tab', 'Enter');
+    await GraphClient.Class.awaitValue(
+      statusPath,
+      'quitConfirmation.open',
+      false,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `replace scale ${lineCount}: redo reapplies one item`,
+      (status) => status.workspaceSearchFlowState === 'applied' && status.dirty,
+    );
+    if (lineCount === 10) {
+      snapshot = driver.snapshot();
+      const replacementPosition = snapshot.findText(
+        `${replacementText} content at scale`,
+      );
+      if (!replacementPosition)
+        throw new Error('FAIL replacement line is missing for undo drift');
+      clickCell(
+        driver,
+        replacementPosition.column + 3,
+        replacementPosition.row,
+      );
+      driver.sendText('X');
+      await driver.awaitGridCondition(
+        'undo drift: the editor paints the changed replacement',
+        (candidate) => candidate.findText('REPXLACED-10') !== null,
+      );
+      snapshot = driver.snapshot();
+      const driftUndoPosition = snapshot.findText('Undo');
+      if (!driftUndoPosition)
+        throw new Error('FAIL workspace Undo is missing for drift');
+      clickCell(driver, driftUndoPosition.column + 2, driftUndoPosition.row);
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'quitConfirmation.open',
+        true,
+      );
+      await driver.awaitGridCondition(
+        'undo drift: consent names the changed item and zero safe items',
+        (candidate) =>
+          candidate.findText(
+            '1 of 1 items changed since replacement and will be skipped.',
+          ) !== null &&
+          candidate.findText(
+            'Undo will revert 0 safe items across 0 files.',
+          ) !== null,
+      );
+      driver.sendKeys('Escape');
+      await GraphClient.Class.awaitValue(
+        statusPath,
+        'quitConfirmation.open',
+        false,
+      );
+      const changedReplacementPosition = driver
+        .snapshot()
+        .findText('REPXLACED-10');
+      if (!changedReplacementPosition)
+        throw new Error('FAIL changed replacement is missing after cancel');
+      clickCell(
+        driver,
+        changedReplacementPosition.column,
+        changedReplacementPosition.row,
+      );
+      driver.sendKeys('Control+z');
+      await driver.awaitGridCondition(
+        'undo drift: ordinary undo restores the replacement text',
+        (candidate) =>
+          candidate.findText(`${replacementText} content at scale`) !== null,
+      );
+    }
+    HarnessSmoke.Class.pass(
+      `replace scale ${lineCount}: consent, cancel, replace, undo, and redo passed`,
+    );
+  } finally {
+    await driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(fixture.workspaceRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
 async function driveUnavailable(): Promise<void> {
   const fixture = await HarnessSmoke.Class.createDriveScaleFixture(10);
   const homeDirectory = mkdtempSync(
@@ -617,5 +1000,7 @@ async function driveUnavailable(): Promise<void> {
 
 await driveScale(10);
 await driveScale(100_000);
+await driveReplacementScale(10);
+await driveReplacementScale(100_000);
 await driveUnavailable();
 console.log('smoke-workspace-search-harness: ALL-PASS');

@@ -176,27 +176,30 @@ class $WorkspaceSearchPaneRenderer {
     );
 
     const resultStartRow = this.RESULT_START_ROW;
-    const availableResultRows = Math.max(0, context.height - resultStartRow);
+    const actionRow = Math.max(resultStartRow, context.height - 1);
+    const availableResultRows = Math.max(0, actionRow - resultStartRow);
     const errorMessage = context.workspace.errorMessage.value;
+    let renderedContentRowCount = 0;
     if (errorMessage) {
       const messageLines = WrapText.Class.wrap(
         errorMessage,
         Math.max(1, context.width - 2),
       );
-      messageLines.slice(0, availableResultRows).forEach((line, index) => {
+      const visibleMessageLines = messageLines.slice(0, availableResultRows);
+      renderedContentRowCount = visibleMessageLines.length;
+      visibleMessageLines.forEach((line, index) => {
         chunks.push(
           fg(context.palette.warning)(
             TextCoordinates.Class.padToDisplayWidth(` ${line}`, context.width),
           ),
         );
-        if (index < Math.min(messageLines.length, availableResultRows) - 1) {
+        if (index < visibleMessageLines.length - 1) {
           chunks.push(fg(context.palette.fg)('\n'));
         }
       });
-      return { text: new StyledText(chunks), fields, buttons, caret };
     }
 
-    const rows = context.workspace.resultTree.rows;
+    const rows = errorMessage ? [] : context.workspace.resultTree.rows;
     const firstVisible = context.workspace.resultTree.scrollTop.value;
     const visibleRows = rows.slice(
       firstVisible,
@@ -230,17 +233,78 @@ class $WorkspaceSearchPaneRenderer {
       }
       if (row.kind === 'match' && row.result) {
         buttons.push({
+          action: 'replaceMatch',
+          row: screenRow,
+          startColumn: Math.max(0, context.width - 6),
+          endColumn: Math.max(0, context.width - 3),
+          result: row.result,
+          disabled: dismissed,
+        });
+        buttons.push({
           action: 'dismissMatch',
           row: screenRow,
           startColumn: Math.max(0, context.width - 3),
           endColumn: context.width,
           result: row.result,
+          disabled: dismissed,
         });
       }
       if (visibleIndex < visibleRows.length - 1) {
         chunks.push(fg(context.palette.fg)('\n'));
       }
     });
+    renderedContentRowCount = Math.max(
+      renderedContentRowCount,
+      visibleRows.length,
+    );
+    let currentRow =
+      renderedContentRowCount > 0
+        ? resultStartRow + renderedContentRowCount - 1
+        : resultStartRow;
+    while (currentRow < actionRow) {
+      chunks.push(fg(context.palette.fg)('\n'));
+      currentRow++;
+      if (currentRow < actionRow) {
+        chunks.push(
+          fg(context.palette.fg)(
+            TextCoordinates.Class.padToDisplayWidth('', context.width),
+          ),
+        );
+      }
+    }
+    let actionStartColumn = 0;
+    const actionDefinitions: readonly WorkspaceSearchActionDefinition[] = [
+      {
+        action: 'replaceAll',
+        label: 'Replace All',
+        disabled: context.workspace.resultTree.selectedCount === 0,
+      },
+      {
+        action: 'undo',
+        label: 'Undo',
+        disabled: !context.workspace.canUndo,
+      },
+      {
+        action: 'redo',
+        label: 'Redo',
+        disabled: !context.workspace.canRedo,
+      },
+    ];
+    for (const definition of actionDefinitions) {
+      if (actionStartColumn >= context.width) break;
+      const actionButton = this.button(
+        definition.action,
+        definition.label,
+        actionRow,
+        actionStartColumn,
+        context,
+        false,
+        definition.disabled,
+      );
+      chunks.push(...actionButton.chunks);
+      buttons.push(actionButton.zone);
+      actionStartColumn = actionButton.zone.endColumn;
+    }
     return { text: new StyledText(chunks), fields, buttons, caret };
   }
 
@@ -278,10 +342,10 @@ class $WorkspaceSearchPaneRenderer {
       );
     }
     const lineNumber = String((row.result?.line ?? 0) + 1).padStart(4, ' ');
-    const dismiss = ` ${context.closeGlyph} `;
+    const controls = ` ${context.replaceGlyph}  ${context.closeGlyph} `;
     const previewWidth = Math.max(
       0,
-      context.width - lineNumber.length - dismiss.length - 2,
+      context.width - lineNumber.length - controls.length - 2,
     );
     const preview = TextCoordinates.Class.displayColumnWindow(
       row.result?.lineText ?? '',
@@ -289,7 +353,7 @@ class $WorkspaceSearchPaneRenderer {
       previewWidth,
     );
     return TextCoordinates.Class.padToDisplayWidth(
-      ` ${lineNumber} ${preview}${dismiss}`,
+      ` ${lineNumber} ${preview}${controls}`,
       context.width,
     );
   }
@@ -339,6 +403,7 @@ class $WorkspaceSearchPaneRenderer {
     startColumn: number,
     context: WorkspaceSearchPaneRenderContext,
     active: boolean,
+    disabled = false,
   ): { chunks: TextChunk[]; zone: WorkspaceSearchButtonZone } {
     const width = Math.min(
       TextCoordinates.Class.lineWidth(` ${label} `),
@@ -350,19 +415,25 @@ class $WorkspaceSearchPaneRenderer {
     );
     const hovered = context.hoveredButton === action;
     const pressed = context.pressedButton === action;
-    const background = pressed
-      ? context.palette.accent
-      : active
-        ? context.palette.selection
-        : hovered
-          ? context.palette.cursorLine
-          : context.palette.panel;
+    const background = disabled
+      ? context.palette.panel
+      : pressed
+        ? context.palette.accent
+        : active
+          ? context.palette.selection
+          : hovered
+            ? context.palette.cursorLine
+            : context.palette.panel;
     return {
       chunks: [
         bg(background)(
-          fg(active || pressed ? context.palette.accent : context.palette.fg)(
-            text,
-          ),
+          fg(
+            disabled
+              ? context.palette.dim
+              : active || pressed
+                ? context.palette.accent
+                : context.palette.fg,
+          )(text),
         ),
       ],
       zone: {
@@ -371,6 +442,7 @@ class $WorkspaceSearchPaneRenderer {
         startColumn,
         endColumn: startColumn + width,
         result: null,
+        disabled,
       },
     };
   }
@@ -416,7 +488,11 @@ export type WorkspaceSearchButtonAction =
   | 'toggleWholeWord'
   | 'toggleRegex'
   | 'toggleIgnoreFiles'
-  | 'dismissMatch';
+  | 'replaceMatch'
+  | 'dismissMatch'
+  | 'replaceAll'
+  | 'undo'
+  | 'redo';
 
 export interface WorkspaceSearchFieldZone {
   readonly field: WorkspaceSearchField;
@@ -432,6 +508,7 @@ export interface WorkspaceSearchButtonZone {
   readonly endColumn: number;
   readonly result:
     import('./WorkspaceSearchBackend').WorkspaceSearchResult | null;
+  readonly disabled: boolean;
 }
 
 export interface WorkspaceSearchPaneRenderContext {
@@ -447,6 +524,7 @@ export interface WorkspaceSearchPaneRenderContext {
   readonly foldOpenGlyph: string;
   readonly foldClosedGlyph: string;
   readonly closeGlyph: string;
+  readonly replaceGlyph: string;
   readonly ellipsisCell: string;
   readonly selectionRanges: readonly (SelectionSpanRange | null)[];
 }
@@ -465,7 +543,14 @@ interface WorkspaceSearchFieldDefinition {
 }
 
 interface WorkspaceSearchOptionDefinition {
-  readonly action: Exclude<WorkspaceSearchButtonAction, 'dismissMatch'>;
+  readonly action:
+    'toggleCase' | 'toggleWholeWord' | 'toggleRegex' | 'toggleIgnoreFiles';
   readonly label: string;
   readonly active: boolean;
+}
+
+interface WorkspaceSearchActionDefinition {
+  readonly action: 'replaceAll' | 'undo' | 'redo';
+  readonly label: string;
+  readonly disabled: boolean;
 }

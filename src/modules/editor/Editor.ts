@@ -962,6 +962,34 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     return applicableEdits.length;
   }
 
+  /** Apply a verified workspace transaction without copying its patch text into editor history. */
+  applyTextEditsAsExternalTransaction(edits: readonly TextEdit[]): number {
+    if (this.readOnly.value || !this.hasDocument.value || edits.length === 0)
+      return 0;
+    const everyEditStillMatches = edits.every(
+      (edit) =>
+        this.document.sliceRange(
+          { line: edit.start.line, col: edit.start.column },
+          { line: edit.end.line, col: edit.end.column },
+        ) === edit.expectedText,
+    );
+    if (!everyEditStillMatches) return 0;
+    this.recordOrdinaryEdit();
+    const descendingEdits = [...edits].sort(
+      (firstEdit, secondEdit) =>
+        secondEdit.start.line - firstEdit.start.line ||
+        secondEdit.start.column - firstEdit.start.column,
+    );
+    for (const edit of descendingEdits) {
+      this.document.replaceRange(
+        { line: edit.start.line, col: edit.start.column },
+        { line: edit.end.line, col: edit.end.column },
+        edit.replacementText,
+      );
+    }
+    return edits.length;
+  }
+
   attachExternalUndoRequestHandler(
     handler: ExternalUndoRequestHandler | null,
   ): void {

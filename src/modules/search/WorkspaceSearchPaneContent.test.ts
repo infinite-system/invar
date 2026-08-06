@@ -48,9 +48,12 @@ test('the Search pane keeps one focus cycle and reruns toggled queries', () => {
       endColumn: 3,
       startUtf16Offset: 10,
       endUtf16Offset: 13,
+      baselineByteOffset: 10,
       matchedText: 'old',
       lineText: 'old value',
       replacementText: 'new',
+      beforeContextBytes: new Uint8Array(),
+      afterContextBytes: new Uint8Array(),
     },
   ]);
   workspaceSearch.resultTree.setSelection(0);

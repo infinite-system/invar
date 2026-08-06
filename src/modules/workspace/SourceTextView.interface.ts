@@ -115,6 +115,7 @@ export interface SourceTextView extends LiveBuffer, ExternalUndoHistory {
     edits: readonly TextEdit[],
     metadata: TextEditBatchMetadata,
   ): number;
+  applyTextEditsAsExternalTransaction(edits: readonly TextEdit[]): number;
   readonly nextUndoMetadata: TextEditBatchMetadata | null;
   readonly nextRedoMetadata: TextEditBatchMetadata | null;
   performUndo(): void;

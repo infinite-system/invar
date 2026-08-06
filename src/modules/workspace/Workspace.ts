@@ -204,8 +204,18 @@ class $Workspace {
     return new WorkspaceSearchWorkspace.Class({
       workspaceRoot: () => this.root,
       openDocumentHandles: () => this.buffers.attachedDocumentHandles(),
+      sourceTextViewForPath: (path) => this.sourceTextViewForPath(path),
+      undoCoordinator: this.workspaceUndoCoordinator,
       backend: this.options.workspaceSearchBackend,
     });
+  }
+
+  protected sourceTextViewForPath(path: string): SourceTextView | null {
+    return (
+      [...this.viewsByLiveBuffer.values()].find(
+        (view) => view.document.path === path,
+      ) ?? null
+    );
   }
   protected createBufferSet() {
     // This seam is the SOLE creator of a buffer view, so every live buffer in the set came from

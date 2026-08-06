@@ -18,6 +18,87 @@ class $WorkspaceSearchBackend {
     return 20_000;
   }
 
+  static resultForMatch(
+    relativePath: string,
+    absolutePath: string,
+    match: TextSearchMatch,
+    replacementText: string,
+    sourceText: string,
+  ): WorkspaceSearchResult {
+    return this.resultForMatchInSource(
+      relativePath,
+      absolutePath,
+      match,
+      replacementText,
+      this.sourceContext(sourceText),
+    );
+  }
+
+  static sourceContext(sourceText: string): WorkspaceSearchSourceContext {
+    const encoder = new TextEncoder();
+    const sourceBytes = encoder.encode(sourceText);
+    const lineStartByteOffsets = [0];
+    const lineBreak = /\r\n|\n|\r/g;
+    let previousLineStartUtf16Offset = 0;
+    let nextLineStartByteOffset = 0;
+    let lineBreakMatch: RegExpExecArray | null;
+    while ((lineBreakMatch = lineBreak.exec(sourceText)) !== null) {
+      const nextLineStartUtf16Offset =
+        lineBreakMatch.index + lineBreakMatch[0].length;
+      nextLineStartByteOffset += encoder.encode(
+        sourceText.slice(
+          previousLineStartUtf16Offset,
+          nextLineStartUtf16Offset,
+        ),
+      ).byteLength;
+      lineStartByteOffsets.push(nextLineStartByteOffset);
+      previousLineStartUtf16Offset = nextLineStartUtf16Offset;
+    }
+    return { sourceBytes, lineStartByteOffsets };
+  }
+
+  static resultForMatchInSource(
+    relativePath: string,
+    absolutePath: string,
+    match: TextSearchMatch,
+    replacementText: string,
+    sourceContext: WorkspaceSearchSourceContext,
+  ): WorkspaceSearchResult {
+    const encoder = new TextEncoder();
+    const lineStartByteOffset =
+      sourceContext.lineStartByteOffsets[match.line] ?? 0;
+    const baselineByteOffset =
+      lineStartByteOffset +
+      encoder.encode(match.lineText.slice(0, match.startUtf16Offset))
+        .byteLength;
+    const removedByteLength = encoder.encode(
+      match.lineText.slice(match.startUtf16Offset, match.endUtf16Offset),
+    ).byteLength;
+    const beforeStart = Math.max(0, baselineByteOffset - 64);
+    const afterStart = baselineByteOffset + removedByteLength;
+    return {
+      relativePath,
+      absolutePath,
+      line: match.line,
+      startColumn: match.startColumn,
+      endColumn: match.endColumn,
+      startUtf16Offset: match.startUtf16Offset,
+      endUtf16Offset: match.endUtf16Offset,
+      baselineByteOffset,
+      matchedText: match.matchedText,
+      lineText: match.lineText,
+      replacementText,
+      beforeContextBytes: sourceContext.sourceBytes.slice(
+        beforeStart,
+        baselineByteOffset,
+      ),
+      afterContextBytes: sourceContext.sourceBytes.slice(
+        afterStart,
+        Math.min(sourceContext.sourceBytes.byteLength, afterStart + 64),
+      ),
+    };
+  }
+
   constructor(readonly options: WorkspaceSearchBackendOptions = {}) {}
 
   protected activeSearch: ActiveWorkspaceSearch | null = null;
@@ -219,36 +300,23 @@ class $WorkspaceSearchBackend {
     const remainingMatchCount = this.maximumMatchCount - results.length;
     const localMatches = pattern.matchesInText(text, remainingMatchCount + 1);
     const acceptedMatches = localMatches.slice(0, remainingMatchCount);
+    const sourceContext = (
+      this.constructor as typeof $WorkspaceSearchBackend
+    ).sourceContext(text);
     const fileResults = acceptedMatches.map((match) =>
-      this.resultForMatch(relativePath, absolutePath, match, request, pattern),
+      (
+        this.constructor as typeof $WorkspaceSearchBackend
+      ).resultForMatchInSource(
+        relativePath,
+        absolutePath,
+        match,
+        pattern.expandReplacement(request.replacementText, match),
+        sourceContext,
+      ),
     );
     results.push(...fileResults);
     if (fileResults.length > 0) onFileResults?.(fileResults);
     return localMatches.length > remainingMatchCount;
-  }
-
-  protected resultForMatch(
-    relativePath: string,
-    absolutePath: string,
-    match: TextSearchMatch,
-    request: WorkspaceSearchRequest,
-    pattern: TextSearchPattern.Instance,
-  ): WorkspaceSearchResult {
-    return {
-      relativePath,
-      absolutePath,
-      line: match.line,
-      startColumn: match.startColumn,
-      endColumn: match.endColumn,
-      startUtf16Offset: match.startUtf16Offset,
-      endUtf16Offset: match.endUtf16Offset,
-      matchedText: match.matchedText,
-      lineText: match.lineText,
-      replacementText: pattern.expandReplacement(
-        request.replacementText,
-        match,
-      ),
-    };
   }
 
   protected candidatePathFromJson(line: string): string | null {
@@ -335,6 +403,11 @@ export interface WorkspaceSearchRequest {
   readonly skippedAbsolutePaths: readonly string[];
 }
 
+export interface WorkspaceSearchSourceContext {
+  readonly sourceBytes: Uint8Array;
+  readonly lineStartByteOffsets: readonly number[];
+}
+
 export interface WorkspaceSearchResult {
   readonly relativePath: string;
   readonly absolutePath: string;
@@ -343,9 +416,12 @@ export interface WorkspaceSearchResult {
   readonly endColumn: number;
   readonly startUtf16Offset: number;
   readonly endUtf16Offset: number;
+  readonly baselineByteOffset: number;
   readonly matchedText: string;
   readonly lineText: string;
   readonly replacementText: string;
+  readonly beforeContextBytes: Uint8Array;
+  readonly afterContextBytes: Uint8Array;
 }
 
 export interface WorkspaceSearchBackendResult {

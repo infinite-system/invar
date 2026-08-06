@@ -1074,13 +1074,16 @@ class $OverlayLayer {
     const questionLines =
       this.dependencies.quitConfirmation.message.value.split('\n');
     const hint = this.dependencies.quitConfirmation.hint.value;
+    const singleAction = this.dependencies.quitConfirmation.singleAction.value;
     const yesLabel = `  ${this.dependencies.quitConfirmation.confirmLabel.value}  `;
     const noLabel = `  ${this.dependencies.quitConfirmation.cancelLabel.value}  `;
     const buttonGap = '    ';
     const buttonRowWidth =
       TextCoordinates.Class.lineWidth(yesLabel) +
-      TextCoordinates.Class.lineWidth(buttonGap) +
-      TextCoordinates.Class.lineWidth(noLabel);
+      (singleAction
+        ? 0
+        : TextCoordinates.Class.lineWidth(buttonGap) +
+          TextCoordinates.Class.lineWidth(noLabel));
     const buttonRowLeft = Math.max(
       0,
       Math.floor((interiorWidth - buttonRowWidth) / 2),
@@ -1098,15 +1101,18 @@ class $OverlayLayer {
     const centeredQuestion = questionLines.map(centeredLine).join('\n');
     const buttonRow = questionLines.length + 2;
     const buttonLine =
-      ' '.repeat(buttonRowLeft) + yesLabel + buttonGap + noLabel;
+      ' '.repeat(buttonRowLeft) +
+      yesLabel +
+      (singleAction ? '' : buttonGap + noLabel);
     const centeredHint = centeredLine(hint);
     const text = new StyledText([
       fg(palette.fg)('\n'),
       fg(palette.fg)(`${centeredQuestion}\n\n`),
       fg(palette.fg)(' '.repeat(buttonRowLeft)),
       buttonChunk('yes', yesLabel),
-      fg(palette.fg)(buttonGap),
-      buttonChunk('no', noLabel),
+      ...(singleAction
+        ? []
+        : [fg(palette.fg)(buttonGap), buttonChunk('no', noLabel)]),
       fg(palette.fg)(`\n\n${centeredLine(hint)}`),
     ]);
     const yesStartColumn = buttonRowLeft;
@@ -1123,12 +1129,17 @@ class $OverlayLayer {
           endColumn: yesStartColumn + TextCoordinates.Class.lineWidth(yesLabel),
           choice: 'yes',
         },
-        {
-          row: buttonRow,
-          startColumn: noStartColumn,
-          endColumn: noStartColumn + TextCoordinates.Class.lineWidth(noLabel),
-          choice: 'no',
-        },
+        ...(singleAction
+          ? []
+          : [
+              {
+                row: buttonRow,
+                startColumn: noStartColumn,
+                endColumn:
+                  noStartColumn + TextCoordinates.Class.lineWidth(noLabel),
+                choice: 'no' as const,
+              },
+            ]),
       ],
       lines: [
         '',
@@ -1603,7 +1614,9 @@ class $OverlayLayer {
       const desiredWidth = this.contentDerivedDialogWidth(
         [
           ...this.dependencies.quitConfirmation.message.value.split('\n'),
-          `  ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value}  `,
+          this.dependencies.quitConfirmation.singleAction.value
+            ? `  ${this.dependencies.quitConfirmation.confirmLabel.value}  `
+            : `  ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value}  `,
           this.dependencies.quitConfirmation.hint.value,
         ],
         84,
