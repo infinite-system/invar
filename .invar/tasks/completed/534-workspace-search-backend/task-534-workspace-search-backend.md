@@ -1,7 +1,7 @@
 # 534 — workspace search backend
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 7ab4bbf3 — Milestone 3: bounded streaming workspace search with one query compiler, honest rg-unavailable state, cap/cancel/overlay proven; no visible change, conductor-verified on an rg-less machine.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
