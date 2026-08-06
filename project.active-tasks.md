@@ -16,7 +16,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/in-progress/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/514-terminal-instance-lifecycle-and-panel-chrome`
 
-## USER-DIRECTED (15)
+## USER-DIRECTED (16)
+- #521 [repair-in-file-replace-all-undo](.invar/tasks/active/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
 - #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/active/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
