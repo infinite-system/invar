@@ -241,11 +241,16 @@ test('the tab line hit test resolves every lens label and the cycle glyph', () =
       TasksDashboardPaneRenderer.Class.hitTestTabLine(tab.endColumn - 1),
     ).toEqual({ kind: 'lens', lens: tab.lens });
   }
-  expect(
-    TasksDashboardPaneRenderer.Class.hitTestTabLine(
-      TasksDashboardPaneRenderer.Class.cycleGlyphColumn(),
-    ),
-  ).toEqual({ kind: 'cycle' });
+  const cycleRange = TasksDashboardPaneRenderer.Class.cycleRange();
+  for (
+    let column = cycleRange.startColumn;
+    column < cycleRange.endColumn;
+    column += 1
+  ) {
+    expect(TasksDashboardPaneRenderer.Class.hitTestTabLine(column)).toEqual({
+      kind: 'cycle',
+    });
+  }
   expect(TasksDashboardPaneRenderer.Class.hitTestTabLine(24)).toBe(null);
 });
 
@@ -422,23 +427,23 @@ test('selected and hovered tabs paint exactly one padding cell on both sides', (
     {
       lens: 'live',
       label: 'LIVE',
-      text: '| LIVE ',
+      text: ' LIVE ',
       startColumn: 0,
-      endColumn: 7,
+      endColumn: 6,
     },
     {
       lens: 'active',
       label: 'ACTIVE',
-      text: '| ACTIVE ',
-      startColumn: 7,
-      endColumn: 16,
+      text: ' ACTIVE ',
+      startColumn: 6,
+      endColumn: 14,
     },
     {
       lens: 'done',
       label: 'DONE',
-      text: '| DONE |',
-      startColumn: 16,
-      endColumn: 24,
+      text: ' DONE ',
+      startColumn: 14,
+      endColumn: 20,
     },
   ]);
   const styled = TasksDashboardPaneRenderer.Class.render(
@@ -451,9 +456,9 @@ test('selected and hovered tabs paint exactly one padding cell on both sides', (
     text: string;
     bg?: { toString(): string };
   }>;
-  const activeChunk = chunks.find((chunk) => chunk.text === '| ACTIVE ');
-  const hoveredChunk = chunks.find((chunk) => chunk.text === '| DONE |');
-  const inactiveChunk = chunks.find((chunk) => chunk.text === '| LIVE ');
+  const activeChunk = chunks.find((chunk) => chunk.text === ' ACTIVE ');
+  const hoveredChunk = chunks.find((chunk) => chunk.text === ' DONE ');
+  const inactiveChunk = chunks.find((chunk) => chunk.text === ' LIVE ');
   expect(activeChunk?.bg?.toString()).toBe(
     RGBA.fromHex(ThemePalettes.Class.DARK.selection).toString(),
   );

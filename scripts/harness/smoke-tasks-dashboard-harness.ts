@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // The tasks dashboard pane through the real PTY: the three lenses over a real .invar/tasks tree,
 // the cycling overview, momentum scrolling, hover overlays, selection and OSC 52 copy, the absent-tree degrade,
-// isolated missing/running/finished gate registry facts, and the Extensions uninstall/reinstall
+// isolated missing/running/finished gate facts in the shared READY detail, and the Extensions uninstall/reinstall
 // symmetry.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
@@ -21,6 +21,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FrameDump } from '../../src/modules/system/FrameProbe';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
+import {
+  projectTasksWatchTaskGroup,
+  type TasksWatchTextSegment,
+  type TasksWatchTextTone,
+} from '../tasks/tasks-status';
 import { HarnessSmoke } from './HarnessSmoke';
 import { dragBetweenCells } from './HarnessSmokeSupport';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -41,6 +47,56 @@ async function awaitFrameDump(
     await Bun.sleep(10);
   }
   throw new Error(`Timed out waiting for FrameProbe: ${description}`);
+}
+
+function projectedSegmentTonesMatch(
+  frameDump: FrameDump,
+  marker: string,
+  markerOffset: number,
+  segments: readonly TasksWatchTextSegment[],
+): boolean {
+  const palette = ThemePalettes.Class.DARK;
+  const toneColours: Record<TasksWatchTextTone, string> = {
+    foreground: palette.fg,
+    strong: palette.fg,
+    dim: palette.dim,
+    success: palette.added,
+    warning: palette.warning,
+    error: palette.error,
+    accent: palette.accent,
+    round: '#d7af5f',
+    motion: palette.accent,
+  };
+  for (const row of frameDump.rows) {
+    const markerColumn = codePointSequenceStart(
+      Array.from(row.text),
+      Array.from(marker),
+    );
+    if (markerColumn < 0) continue;
+    let column = markerColumn - markerOffset;
+    const laneByDeclaredColour = new Map<string, string>();
+    for (const segment of segments) {
+      const declaredColour = segment.color ?? toneColours[segment.tone];
+      const segmentWidth = Array.from(segment.text).length;
+      const lanes = row.fg.slice(column, column + segmentWidth);
+      const actualLane = lanes[0];
+      if (
+        actualLane === undefined ||
+        lanes.length !== segmentWidth ||
+        lanes.some((lane) => lane !== actualLane) ||
+        (laneByDeclaredColour.has(declaredColour) &&
+          laneByDeclaredColour.get(declaredColour) !== actualLane)
+      ) {
+        return false;
+      }
+      laneByDeclaredColour.set(declaredColour, actualLane);
+      column += segmentWidth;
+    }
+    return (
+      new Set(laneByDeclaredColour.values()).size === laneByDeclaredColour.size
+    );
+  }
+  return false;
 }
 
 async function awaitTasksClipboardEmission(
@@ -215,7 +271,7 @@ function contiguousLensHeader(snapshot: HarnessSnapshot.Model): boolean {
 }
 
 function lensHeaderTextIsContiguous(text: string): boolean {
-  return text.includes('| LIVE | ACTIVE | DONE |');
+  return text.includes(' LIVE  ACTIVE  DONE ');
 }
 
 function motionFrameWorkIsFlat(
@@ -235,7 +291,7 @@ function motionFrameWorkIsFlat(
 }
 
 function rightDockThumbRows(snapshot: HarnessSnapshot.Model): number[] {
-  const headerPosition = snapshot.findText('| LIVE | ACTIVE | DONE |');
+  const headerPosition = snapshot.findText(' LIVE  ACTIVE  DONE ');
   if (!headerPosition) return [];
   const trackColumn = snapshot.columns - 2;
   const thumbRows: number[] = [];
@@ -572,23 +628,94 @@ try {
   HarnessSmoke.Class.pass(
     'the live lens lists the in-progress fixture with the standing vocabulary',
   );
+  const readyProjection = projectTasksWatchTaskGroup({
+    taskNumber: 902,
+    label: 'planted-ready',
+    standing: 'ready',
+    phase: null,
+    round: 2,
+    durationLabel: '',
+    addedLines: null,
+    removedLines: null,
+    identity: '',
+    sessionName: 'planted-dead-session',
+    sessionAvailable: false,
+    gateGlance: null,
+    animationElapsedMilliseconds: 0,
+    nowMilliseconds: 0,
+  });
+  const readyToneProjection = readyProjection.detail;
+  const visibleReadyToneSegments = readyToneProjection.segments.slice(0, 2);
+  const readyToneMarker = '! DEGRADED';
+  const readyToneMarkerOffset = readyToneProjection.segments
+    .map((segment) => segment.text)
+    .join('')
+    .indexOf(readyToneMarker);
+  const readyToneFrame = await awaitFrameDump(
+    framePath,
+    (frameDump) =>
+      frameDump.rows.some((row) => row.text.includes(readyToneMarker)),
+    'the pane frame contains the READY tone marker',
+  );
   HarnessSmoke.Class.requireCondition(
-    !lensHeaderTextIsContiguous('| LIVE |  | ACTIVE |  | DONE |'),
-    'positive control: the former gapped lens header fails the contiguous-header check',
+    projectedSegmentTonesMatch(
+      readyToneFrame,
+      readyToneMarker,
+      readyToneMarkerOffset,
+      visibleReadyToneSegments,
+    ),
+    'each READY segment paints exactly its declared number of tone cells',
+  );
+  const plantedWrongToneSegments = visibleReadyToneSegments.map((segment) =>
+    segment.tone === 'warning'
+      ? { ...segment, color: ThemePalettes.Class.DARK.dim }
+      : segment,
+  );
+  HarnessSmoke.Class.requireCondition(
+    !projectedSegmentTonesMatch(
+      readyToneFrame,
+      readyToneMarker,
+      readyToneMarkerOffset,
+      plantedWrongToneSegments,
+    ),
+    'positive control: one planted wrong declared tone fails the pane-cell comparison',
+  );
+  const readyTitleFrameRow = readyToneFrame.rows.find((row) =>
+    row.text.includes('#902 planted-ready'),
+  );
+  const readyNumberColumn = readyTitleFrameRow
+    ? codePointSequenceStart(
+        Array.from(readyTitleFrameRow.text),
+        Array.from('#902'),
+      )
+    : -1;
+  HarnessSmoke.Class.requireCondition(
+    readyTitleFrameRow !== undefined &&
+      readyProjection.title.segments.some(
+        (segment) => segment.text === '#902' && segment.tone === 'strong',
+      ) &&
+      readyNumberColumn >= 0 &&
+      readyTitleFrameRow.attrs
+        .slice(readyNumberColumn, readyNumberColumn + 4)
+        .every((attributes) => attributes !== 0) &&
+      readyTitleFrameRow.attrs[readyNumberColumn + 5] === 0,
+    'the shared strong task-number segment paints bold cells beside a normal label',
+  );
+  HarnessSmoke.Class.requireCondition(
+    !lensHeaderTextIsContiguous('| LIVE | ACTIVE | DONE |'),
+    'positive control: the old literal-pipe header fails the contiguous-header check',
   );
   HarnessSmoke.Class.requireCondition(
     contiguousLensHeader(driver.snapshot()),
     'the lens header is one contiguous segmented control',
   );
-  const lensHeaderPosition = driver
-    .snapshot()
-    .findText('| LIVE | ACTIVE | DONE |');
+  const lensHeaderPosition = driver.snapshot().findText(' LIVE  ACTIVE  DONE ');
   if (!lensHeaderPosition)
     throw new Error(
       'The contiguous lens header disappeared before boundary clicks',
     );
   driver.sendMouseClick({
-    column: lensHeaderPosition.column + 7,
+    column: lensHeaderPosition.column + 6,
     row: lensHeaderPosition.row,
     button: 'left',
   });
@@ -599,7 +726,7 @@ try {
     (status) => status.tasksLens === 'active',
   );
   driver.sendMouseClick({
-    column: lensHeaderPosition.column + 16,
+    column: lensHeaderPosition.column + 14,
     row: lensHeaderPosition.row,
     button: 'left',
   });
@@ -610,7 +737,7 @@ try {
     (status) => status.tasksLens === 'done',
   );
   driver.sendMouseClick({
-    column: lensHeaderPosition.column + 6,
+    column: lensHeaderPosition.column + 5,
     row: lensHeaderPosition.row,
     button: 'left',
   });
@@ -722,7 +849,9 @@ try {
   HarnessSmoke.Class.pass(
     'the contiguous filters and hover overlay survive boundaries, fast sweeps, insertion, and removal',
   );
-  HarnessSmoke.Class.pass('a missing registry adds no gate row');
+  HarnessSmoke.Class.pass(
+    'a missing registry keeps gate text in the READY detail',
+  );
   writeFileSync(
     isolatedGateLogPath,
     '== merge-gate: behavioral contracts ==\n',
@@ -736,13 +865,15 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'a running gate adds one row while its exit code stays null',
+    'a running gate keeps the CLI row shape while its exit code stays null',
     (status) =>
-      status.tasksGateExitCode === null && Number(status.tasksRows) === 5,
+      status.tasksGatePhase === 'behavioral contracts' &&
+      status.tasksGateExitCode === null &&
+      Number(status.tasksRows) === 4,
   );
-  await driver.awaitGridCondition(
-    'the running gate row names its current phase',
-    (snapshot) => snapshot.findText('Gate: running behaviora') !== null,
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('Gate:') === null,
+    'the running gate does not add a pane-only row',
   );
   writeFileSync(
     isolatedGateLogPath,
@@ -756,13 +887,13 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'a finished gate keeps its row and publishes exit zero',
+    'a finished gate keeps the CLI row shape and publishes exit zero',
     (status) =>
-      status.tasksGateExitCode === 0 && Number(status.tasksRows) === 5,
+      status.tasksGateExitCode === 0 && Number(status.tasksRows) === 4,
   );
-  await driver.awaitGridCondition(
-    'the finished gate row states that its phase passed',
-    (snapshot) => snapshot.findText('Gate: passed behaviora') !== null,
+  HarnessSmoke.Class.requireCondition(
+    driver.snapshot().findText('Gate:') === null,
+    'the finished gate does not add a pane-only row',
   );
   rmSync(isolatedGateRegistryPath);
   rmSync(isolatedGateLogPath);
@@ -774,8 +905,9 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'removing the isolated registry removes the gate row',
-    (status) => Number(status.tasksRows) === 4,
+    'removing the isolated registry keeps the CLI row shape',
+    (status) =>
+      status.tasksGatePhase === null && Number(status.tasksRows) === 4,
   );
   HarnessSmoke.Class.pass(
     'missing, running, and finished gate registry states stay inside the fixture',
@@ -1118,9 +1250,9 @@ try {
   const darkActiveBackground = tabBackgroundLane(darkActiveFrame, 'ACTIVE');
   HarnessSmoke.Class.requireCondition(
     darkActiveBackground !== null &&
-      darkActiveBackground.lane === darkActiveBackground.before &&
+      darkActiveBackground.lane !== darkActiveBackground.before &&
       darkActiveBackground.lane !== darkActiveBackground.after,
-    'the Active label and its owned shared border use one selected background',
+    'the padded Active segment uses one selected background',
   );
   driver.sendKeys('Control+,');
   await HarnessSmoke.Class.awaitStatus(
@@ -1158,9 +1290,9 @@ try {
   const lightActiveBackground = tabBackgroundLane(lightActiveFrame, 'ACTIVE');
   HarnessSmoke.Class.requireCondition(
     lightActiveBackground !== null &&
-      lightActiveBackground.lane === lightActiveBackground.before &&
+      lightActiveBackground.lane !== lightActiveBackground.before &&
       lightActiveBackground.lane !== lightActiveBackground.after,
-    'the live light theme preserves the shared-border Active projection with a new theme tone',
+    'the live light theme preserves the padded Active projection with a new theme tone',
   );
   HarnessSmoke.Class.pass(
     'the active lens stays one row and its padded selected tab follows the live theme',

@@ -50,11 +50,14 @@ class $Sidebar {
       renderer.requestRender();
     };
     sidebar.onMouseMove = (event) => {
-      tooltip.clear();
-      primaryDockHost.activeContent?.onPointerMove?.(
-        localColumn(event.x),
-        localRow(event.y),
-      );
+      const content = primaryDockHost.activeContent;
+      const pointerColumn = localColumn(event.x);
+      const pointerRow = localRow(event.y);
+      content?.onPointerMove?.(pointerColumn, pointerRow);
+      const tooltipText = content?.tooltipAt?.(pointerColumn, pointerRow);
+      if (tooltipText) tooltip.point(tooltipText, event.x, event.y);
+      else tooltip.clear();
+      renderer.requestRender();
     };
     sidebar.onMouseOut = () => {
       primaryDockHost.activeContent?.onPointerOut?.();

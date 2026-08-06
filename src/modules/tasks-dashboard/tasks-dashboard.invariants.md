@@ -404,16 +404,17 @@ src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts` and
 
 ### Dashboard controls state their selection and next action
 
-**Invariant:** If the lens control paints, then it is the contiguous
-`| LIVE | ACTIVE | DONE |` segmented group with no dead cell between lenses. Every segment uses
-the same rest, hover, and selected grammar from one half-open geometry. If automatic lens cycling
-is stopped or running, then the cycle control shows and explains the next activation.
+**Invariant:** If the lens control paints, then `LIVE`, `ACTIVE`, and `DONE` form one contiguous
+segmented group with no literal separators or dead cells. Every lens and cycle segment includes
+one padding cell on each side. Paint, hover, tooltip, and activation use the same half-open
+geometry. If automatic lens cycling is stopped or running, then the cycle control shows and
+explains the next activation.
 
 **Scope:** `TasksDashboardPaneRenderer.renderTabLine`, `lensTabs`, `hitTestTabLine`, and
 `tooltipForTabLineTarget`; `TasksDashboardPaneContent.tooltipAt` and the tab-line
 pointer-down path.
 
-**Mechanism:** `lensTabs` generates adjacent half-open ranges and their complete border text.
+**Mechanism:** `lensTabs` and `cycleRange` generate adjacent half-open ranges and padded text.
 `renderTabLine` paints those exact strings. `hitTestTabLine` reads the same ranges. Selected and
 hovered backgrounds come from the current palette. The cycle glyph comes from
 `TaskActionIconSet`, and `PaneContent.tooltipAt` routes it to the shared tooltip host.
@@ -431,8 +432,8 @@ palette chunks, and tooltip polarities); `src/modules/tasks-dashboard/TasksDashb
 (start and stop activation); `scripts/harness/smoke-tasks-dashboard-harness.ts` (FrameProbe
 padding and live theme switch).
 
-**Impossible if true:** Two border cells or a blank cell between adjacent lenses; a border cell
-that activates no lens; paint and hit geometry disagreeing; a theme switch keeping the old
+**Impossible if true:** A literal pipe or dead cell between adjacent lenses; a padding cell that
+activates no control; paint and hit geometry disagreeing; a theme switch keeping the old
 selection tone; a running control advertising start; a second click that cannot stop cycling.
 
 **Verification:** `bun test src/modules/tasks-dashboard/TasksDashboardPaneRenderer.test.ts

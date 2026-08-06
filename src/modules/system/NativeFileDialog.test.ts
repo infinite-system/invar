@@ -7,6 +7,8 @@ import { Processes } from './Processes';
 
 const originalProcessesClass = Processes.Class;
 const originalDisableValue = process.env.INVAR_DISABLE_NATIVE_DIALOG;
+const originalDisplayValue = process.env.DISPLAY;
+const originalWaylandDisplayValue = process.env.WAYLAND_DISPLAY;
 
 afterEach(() => {
   Processes.Class = originalProcessesClass;
@@ -15,9 +17,15 @@ afterEach(() => {
   } else {
     process.env.INVAR_DISABLE_NATIVE_DIALOG = originalDisableValue;
   }
+  if (originalDisplayValue === undefined) delete process.env.DISPLAY;
+  else process.env.DISPLAY = originalDisplayValue;
+  if (originalWaylandDisplayValue === undefined)
+    delete process.env.WAYLAND_DISPLAY;
+  else process.env.WAYLAND_DISPLAY = originalWaylandDisplayValue;
 });
 
 test('native picker probes through Processes and launches the first available dialog', async () => {
+  process.env.DISPLAY = ':0';
   const directory = mkdtempSync(join(tmpdir(), 'invar-native-dialog-'));
   const pickedPath = join(directory, 'file.ts');
   writeFileSync(pickedPath, 'picked');
@@ -52,6 +60,7 @@ test('native picker probes through Processes and launches the first available di
 });
 
 test('native picker distinguishes unavailable tools from a cancelled dialog', async () => {
+  process.env.DISPLAY = ':0';
   class UnavailableProcesses extends Processes.$Class {
     static override which(): string | null {
       return null;
@@ -97,4 +106,29 @@ test('native picker distinguishes unavailable tools from a cancelled dialog', as
     available: false,
     path: null,
   });
+});
+
+test('a Linux dialog binary without a graphical session falls through to the in-app picker', async () => {
+  delete process.env.DISPLAY;
+  delete process.env.WAYLAND_DISPLAY;
+  let launchCount = 0;
+  class HeadlessProcesses extends Processes.$Class {
+    static override which(command: string): string | null {
+      return command === 'zenity' || command === 'kdialog'
+        ? `/stub/${command}`
+        : null;
+    }
+
+    static override async run() {
+      launchCount += 1;
+      return { code: 0, stdout: '', stderr: '', ok: true };
+    }
+  }
+  Processes.Class = HeadlessProcesses;
+
+  await expect(NativeFileDialog.Class.pickFile('/workspace')).resolves.toEqual({
+    available: false,
+    path: null,
+  });
+  expect(launchCount).toBe(0);
 });

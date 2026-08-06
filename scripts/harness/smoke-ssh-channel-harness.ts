@@ -400,6 +400,7 @@ try {
       INVAR_REMOTE_IV_COMMAND: remoteExecutablePath,
       INVAR_DIALOG_PICK_PATH: pickerPath,
       PATH: `${dialogBinaryDirectory}:${process.env.PATH ?? ''}`,
+      DISPLAY: ':99',
     },
     retainFullOutput: true,
   });

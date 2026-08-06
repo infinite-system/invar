@@ -10,7 +10,7 @@
 // COST TRACKS WHAT IS OBSERVED. A hidden pane owns no timer. While observed, a cheap
 // state-directory stamp decides whether the tree is re-read. Fleet and session facts are sampled
 // only for painted task rows. Durations re-derive once a minute for that same painted window. The
-// motion clock asks for a paint only while a painted row or gate moves.
+// motion clock asks for a paint only while a painted task detail moves.
 //
 // invariant: Task truth lives in the folders the CLI reads (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: The CLI lenses are the dashboard's one generator (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
@@ -263,7 +263,9 @@ class $TasksDashboardOverview {
     );
     if (
       this.gateGlance.value?.exitCode === null &&
-      visibleRows.some((row) => row.kind === 'gate')
+      visibleRows.some(
+        (row) => row.kind === 'detail' && row.standing === 'ready',
+      )
     ) {
       return true;
     }
@@ -498,8 +500,6 @@ class $TasksDashboardOverview {
           'Fleet extras describe the main Invar checkout only.',
         ),
       );
-    } else if (this.available.value && this.gateGlance.value !== null) {
-      fleetRows.push(this.nonTaskRow('gate', ''));
     }
     this.rows.value = [...fleetRows, ...rows];
     this.rowRebuilds += this.rows.value.length;
@@ -599,7 +599,7 @@ class $TasksDashboardOverview {
   }
 
   protected nonTaskRow(
-    kind: 'group' | 'scope' | 'gate',
+    kind: 'group' | 'scope',
     label: string,
   ): TasksDashboardRow {
     return {
@@ -897,7 +897,7 @@ export type TasksDashboardLens = 'live' | 'active' | 'done';
 
 /** One paintable row: a priority-group heading or a selectable task line. */
 export interface TasksDashboardRow {
-  kind: 'group' | 'scope' | 'gate' | 'task' | 'detail';
+  kind: 'group' | 'scope' | 'task' | 'detail';
   /** Group rows: the heading text. Task rows: the task's short name (folder minus number). */
   label: string;
   folderName: string | null;
