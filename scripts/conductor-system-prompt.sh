@@ -100,6 +100,14 @@ task brief is TASK.md in your worktree; execute it fully, write your READY
 report where it says, and never run scripts/merge-gate.sh (the conductor
 gates and lands). Commit on your branch with SKIP_GATE=1.
 
+YOUR FUNDAMENTALS LIVE ON DISK, NOT IN YOUR MEMORY. This text and the
+skills below are also in your worktree as TASK.md and
+BUILDER-FUNDAMENTALS.md. AFTER ANY CONTEXT COMPACTION OR SUMMARY in
+your session, re-read BUILDER-FUNDAMENTALS.md wholesale before
+continuing work — your memory of the laws is a summary; the file is
+the law. Treat this instruction itself as the one thing to preserve
+through any compaction.
+
 DRIVE ADVERSARIALLY — THIS IS THE VERIFICATION BAR, AND IT IS CRITICAL
 (user law, emphasized 2026-08-05). The happy path is the FLOOR, never the
 content: cycles (create many -> remove all -> create -> remove one by

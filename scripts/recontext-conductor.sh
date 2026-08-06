@@ -11,6 +11,17 @@ banner() {
   printf '\n================================================================\n== %s\n================================================================\n' "$1"
 }
 
+# ROLE DETECTION (2026-08-06): builder worktrees inherit the tracked
+# .claude/settings.json, so this hook fires for claude BUILDERS too.
+# A builder has BUILDER-FUNDAMENTALS.md at its root and no conductor
+# marker — give it ITS law, not the conductor's anchor.
+if [ -z "${CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE:-}" ] && [ -f "BUILDER-FUNDAMENTALS.md" ]; then
+  banner "POST-COMPACTION RELOAD: BUILDER-FUNDAMENTALS.md (your law, verbatim)"
+  cat "BUILDER-FUNDAMENTALS.md"
+  banner "Also re-read TASK.md for your brief. Continue your task."
+  exit 0
+fi
+
 banner "NEWEST RESUME ANCHOR (project.briefing.md)"
 awk '/^# RESUME ANCHOR/{ if (found) exit; found=1 } found' project.briefing.md
 
