@@ -110,7 +110,15 @@ inputs queues its render request in a microtask, after the coarse reactive effec
 mutations; this includes the final settling deadline, which has no later cadence tick to repair a
 stale frame. State-changing input that can race an already queued frame uses
 `RenderRequest.afterCurrentTurn`, because OpenTUI may coalesce its same-turn request before the
-reactive projection reaches that frame. Boot requests and observes a completed frame without a
+reactive projection reaches that frame. That per-site discipline protects the pixels; the
+published snapshot gets a structural backstop instead of a site census: the frame tick
+re-publishes `AppStatusProjection` at the settle boundary (harness-observing runs only), so the
+flushed status always reflects the model of the frame that settles. Without it, a close() that
+mutates renderables synchronously can ride an already-queued frame, settle with the effect's
+previous projection, and leave the status file stale for as long as the app stays quiescent —
+the #529 panel-chrome contention flake, where "add header press cancels cleanly",
+"two rapid expand clicks complete one symmetric cycle", and the splitter drag-span wait all
+starved on that last-frame skew. Boot requests and observes a completed frame without a
 timeout fallback, then marks the app started and uses the same next-turn capability for the semantic
 frame. Each boot barrier observes its projected frame directly; it does not wait for renderer-wide
 idle, which includes unrelated terminal capability work. `ready=true` therefore cannot precede the
@@ -129,12 +137,18 @@ pending until its requested frame completes); `app/__tests__/frame-effect.test.t
 (revision + cursor change re-run the effect; `$stopEffects` stops it);
 `scripts/harness/smoke-tree-scroll-harness.ts` (settled boot publishes 60 modeled rows and paints
 one of them). Confirmed end-to-end by `scripts/smoke-editor.sh`: booting, opening a file, and typing
-bump `bufferRevision` and repaint the real terminal via the side channel.
+bump `bufferRevision` and repaint the real terminal via the side channel. The settle-boundary
+republish is exercised by task #529's `probe-529-press-cancel-loop.ts` (in that task's
+`.invar/tasks` folder, which moves with the task lifecycle): pre-fix, status froze at the
+pre-close popup state within a few iterations while the screen showed it closed; post-fix, 100
+iterations clean.
 
 **Impossible if true:** an async result (LSP diagnostic, git refresh) that changes model state but
 does not repaint until the next keystroke; a final animation tick publishing stale focus, panel,
 or scroll projection because its synchronized frame preceded the reactive paint; a state-changing
 input whose only repaint request is coalesced into an in-flight frame before the new projection; a
+settled status file that disagrees with the model of its own settled frame while the app is
+quiescent (the starved-wait shape: screen shows the transition, status.json never does); a
 settled `ready=true` boot publishing a nonzero `treeRows` model while the Files pane remains blank;
 a render pass that mutates model state; an effect-per-item render graph.
 
@@ -145,7 +159,7 @@ exercised end-to-end once git/LSP is wired into the editor (M4/M5).
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-08-06
 
 ### Render load is attributed at the contribution boundary
 
