@@ -1358,7 +1358,54 @@ async function driveTerminalLifecycleProtocol(
     if (!expand) throw new Error('Missing expand control before rapid cycle');
     const frameBeforeRapidCycle = Number(status.frame);
     clickSegment(driver, tabBar(status).row, expand);
-    clickSegment(driver, tabBar(status).row, expand);
+    // The expand cycle RELOCATES the tab row (the expanded panel substitutes the
+    // editor-center rows, layout.invariants.md), so the Restore control is not at
+    // the cell the Expand click used. A second blind click at that stale cell only
+    // reached Restore while the renderer's per-frame hit grid still held the
+    // pre-expand generation; under gate load a render lands between the clicks and
+    // the second press dispatches into the panel body instead — the #538
+    // second-wave flake (both post-#529 gate logs; the task's looping probe
+    // reproduced it 4 of 4 under 4-way contention and deterministically with a
+    // planted settle between the clicks). Aim the second activation at the
+    // control's CURRENT cell and prove the hit grid resolves it there through the
+    // hover reveal — the same yoke as the splitter edge drags below — then click.
+    // The cycle stays as fast as the app can actually accept an aimed second
+    // activation; no timeout moved, no assertion weakened.
+    const expandedStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the first rapid expand click reaches the expanded state',
+      (candidate) => candidate.panelExpanded === true,
+    );
+    const expandedTabBar = tabBar(expandedStatus);
+    const restoreSegment = expandedTabBar.controls.find(
+      (control) => control.action === 'expand',
+    );
+    if (!restoreSegment) {
+      throw new Error('Missing restore control after the rapid expand click');
+    }
+    const restoreColumn =
+      restoreSegment.startColumn +
+      Math.floor(
+        (restoreSegment.endColumnExclusive - restoreSegment.startColumn) / 2,
+      );
+    driver.sendMouse({
+      kind: 'move',
+      column: restoreColumn,
+      row: expandedTabBar.row,
+      button: 'none',
+    });
+    await driver.awaitGridCondition(
+      'the restore control reveals its hover background at its moved cell',
+      (candidate) =>
+        candidate.cell(expandedTabBar.row, restoreColumn)?.background ===
+        Number.parseInt(darkPalette.cursorLine.slice(1), 16),
+    );
+    driver.sendMouseClick({
+      column: restoreColumn,
+      row: expandedTabBar.row,
+      button: 'left',
+    });
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
