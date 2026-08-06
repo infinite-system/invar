@@ -27,6 +27,10 @@ class $BracketedPathPaste {
     return `'${path.replaceAll("'", "'\"'\"'")}'`;
   }
 
+  static shellQuotedPaths(paths: readonly string[]): string {
+    return paths.map((path) => this.shellQuote(path)).join(' ');
+  }
+
   protected static shellWords(text: string): string[] {
     const words: string[] = [];
     let word = '';
@@ -162,7 +166,7 @@ class $BracketedPathPaste {
         remotePaths.push(await this.upload(localPath));
       this.forward(
         new TextEncoder().encode(
-          remotePaths.map(bracketedPathPasteClass.shellQuote).join(' '),
+          bracketedPathPasteClass.shellQuotedPaths(remotePaths),
         ),
       );
     }

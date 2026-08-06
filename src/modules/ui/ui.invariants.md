@@ -2540,39 +2540,51 @@ scripts/harness/smoke-panel-split-harness.ts`
 ### Bracketed paste survives stream chunking
 
 **Invariant:** If a bracketed paste sequence reaches Invar in arbitrary input chunks, then exactly
-one complete UTF-8 payload is emitted; one or more existing path tokens route as a path drop, and
-all other payloads route to the focused input surface.
+one complete UTF-8 payload is emitted. One or more existing path tokens become one shell-quoted
+paste when the focused pane declares that route; otherwise they open by file kind. Every other
+payload routes to the focused input surface.
 
 **Scope:** OpenTUI `StdinParser`, `Bootstrap` paste dispatch, `PathDropController`,
 `ApplicationContributions.openDroppedPath`, `PanelHost.handlePaste`,
-`TerminalPaneContent.handlePaste`, `AgentPaneContent.handlePaste`, and `OpenPty.write`.
+`PaneContent.acceptsDroppedPathPaste`, `TerminalPaneContent.handlePaste`,
+`AgentPaneContent.handlePaste`, `TerminalInstance.pasteUserInput`, and `OpenPty.write`.
 
 **Components:**
 - Stream assembly — one complete UTF-8 payload leaves `StdinParser`.
-- Path-drop routing — shell-quoted existing paths route before focused input.
+- Focused path delivery — terminal and agent panes receive one space-separated shell-quoted path
+  paste and the editor opens nothing.
+- Open fallback — without a focused path-paste pane, existing paths open by file kind.
 - Focused fallback — every payload that is not a path drop reaches only the focused input surface.
 
 **Mechanism:** OpenTUI's stream parser retains split start marker, payload, and end marker bytes
 until it emits one paste event. `PathDropController` accepts only complete token sets whose resolved
-paths all exist. `Bootstrap` sends every rejected set through the focused pane seam, and
-`OpenPty.write` queues partial libc writes until every terminal payload byte crosses the PTY.
+paths all exist, then offers one shell-quoted text payload to the focused-pane callback before it
+opens anything. `Bootstrap` accepts that route only when the focused content declares
+`acceptsDroppedPathPaste`. `TerminalInstance.pasteUserInput` restores the child bracketed-paste
+markers when the child enabled that mode. `OpenPty.write` queues partial libc writes until every
+terminal payload byte crosses the PTY. The agent composer receives the same payload through its
+existing semantic paste method.
 
 **Generates:** Marker-edge input fixtures; exact 10-byte, 1 KB, and 64 KB terminal and composer
-drives; shell-quoted multi-file drops; typed path text that never opens a file; large terminal
+drives; local terminal and agent path delivery; remote dropzone path delivery after upload;
+editor-focused open-by-kind fallback; typed path text that never opens a file; large terminal
 payloads that cannot truncate on a partial PTY write.
 
 **Rejected alternatives:** Send every harness paste as one write — real terminals split large
 payloads and both bracketed-paste markers across PTY chunks.
 
 **Evidence:** `scripts/harness/BracketedPasteInput.test.ts`;
-`scripts/harness/smoke-paste-harness.ts`; `src/modules/system/OpenPty.ts`.
+`scripts/harness/smoke-paste-harness.ts`; `scripts/harness/smoke-ssh-channel-harness.ts`;
+`src/modules/terminal/TerminalInstance.test.ts`; `src/modules/system/OpenPty.ts`.
 
 **Impossible if true:** A split marker becomes typed text; one paste produces multiple composer
-insertions; a typed unbracketed path opens a file; a complete existing-path drop reaches the shell;
-a 64 KB terminal paste loses a suffix; non-path paste reaches the editor while a pane owns focus.
+insertions; a typed unbracketed path opens a file; a focused terminal or agent drop opens an editor
+buffer; a remote child receives the local path instead of the uploaded dropzone path; a 64 KB
+terminal paste loses a suffix; non-path paste reaches the editor while a pane owns focus.
 
-**Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts && bun
-scripts/harness/smoke-paste-harness.ts`
+**Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts
+src/modules/terminal/TerminalInstance.test.ts && bun scripts/harness/smoke-paste-harness.ts && bun
+scripts/harness/smoke-ssh-channel-harness.ts`
 
 **Status:** established
 

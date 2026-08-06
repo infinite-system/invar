@@ -1,14 +1,16 @@
 #!/usr/bin/env bun
 // Drive `iv ssh` through a real local PTY and a spawned localhost sshd. The first arm uploads the
-// shared small and 100,000-line scale files, drives the remote Open control through a stub client
-// dialog, proves that local paths never reach SSH, and observes remote Invar open each stored file.
+// shared small and 100,000-line scale files, pastes each remote dropzone path into a focused remote
+// terminal, closes that pane while an independently gated upload is live, and drives the remote Open
+// control through a stub client dialog. The race arm releases the upload only after the graph proves
+// that the pane closed, then sends the same notification the ssh wrapper would send.
 // The second arm sends the keyboard invariant's pass-through byte set to the existing raw-byte
 // reporter through the same wrapper. A deliberately wrong byte expectation is the assertion's
 // positive control.
 //
 // Run: bun scripts/harness/smoke-ssh-channel-harness.ts
-// Read: every arm prints PASS; `ALL-PASS` means PTY, resize, picker request, upload, notification,
-// scale, and byte fidelity all held through one OpenSSH control-master connection.
+// Read: every arm prints PASS; `ALL-PASS` means focused routing, PTY, resize, picker request,
+// upload, notification, scale, and byte fidelity held through one OpenSSH control-master connection.
 import {
   chmodSync,
   mkdtempSync,
@@ -17,11 +19,18 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { HarnessInput } from './HarnessInput';
+import { GraphClient } from './GraphClient';
 import { pass, requireCondition } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import {
+  ChannelClient,
+  type ChannelUploadResult,
+} from '../../src/modules/channel/ChannelClient';
+import { ChannelDropNotification } from '../../src/modules/channel/ChannelDropNotification';
+import { ChannelFrame } from '../../src/modules/channel/ChannelFrame';
 
 const repositoryRoot = process.cwd();
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'invar-ssh-channel-'));
@@ -116,6 +125,114 @@ async function awaitRemoteSize(width: number, height: number): Promise<void> {
   throw new Error(
     `remote Invar status did not reach ${width}x${height}; last status was ${observedStatus}`,
   );
+}
+
+async function awaitRemoteStatus(
+  description: string,
+  predicate: (status: Record<string, unknown>) => boolean,
+): Promise<Record<string, unknown>> {
+  const deadline = Date.now() + 15_000;
+  let observedStatus = '';
+  while (Date.now() < deadline) {
+    try {
+      observedStatus = readFileSync(remoteStatusPath, 'utf8');
+      const status = JSON.parse(observedStatus) as Record<string, unknown>;
+      if (predicate(status)) return status;
+    } catch {
+      // The atomic status file does not exist yet or is between publications.
+    }
+    await Bun.sleep(10);
+  }
+  throw new Error(`${description}; last status was ${observedStatus}`);
+}
+
+async function requireRemoteGraphValue(
+  path: string,
+  expectedValue: unknown,
+): Promise<void> {
+  const response = await GraphClient.Class.query(
+    remoteStatusPath,
+    path,
+    'settle',
+  );
+  requireCondition(
+    JSON.stringify(response.value) === JSON.stringify(expectedValue),
+    `remote graph ${path} is ${JSON.stringify(expectedValue)} after the driven step; ` +
+      `received ${JSON.stringify(response.value)}`,
+  );
+}
+
+function beginGatedIndependentUpload(
+  sshArgumentVector: readonly string[],
+  localPath: string,
+): {
+  readonly firstDataFrameWritten: Promise<void>;
+  readonly release: () => void;
+  readonly result: Promise<ChannelUploadResult>;
+} {
+  const channelProcess = Bun.spawn(
+    [
+      'ssh',
+      ...sshArgumentVector,
+      '--',
+      remoteExecutablePath,
+      '--channel-server',
+    ],
+    { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
+  );
+  let releaseUpload = (): void => {};
+  const uploadRelease = new Promise<void>((resolve) => {
+    releaseUpload = resolve;
+  });
+  let publishFirstDataFrame = (): void => {};
+  const firstDataFrameWritten = new Promise<void>((resolve) => {
+    publishFirstDataFrame = resolve;
+  });
+  let firstDataFrameSeen = false;
+  let writeChain = Promise.resolve();
+  const channelClient = new ChannelClient.Class((bytes) => {
+    const ownedBytes = bytes.slice();
+    writeChain = writeChain.then(async () => {
+      channelProcess.stdin.write(ownedBytes);
+      if (
+        !firstDataFrameSeen &&
+        ownedBytes[6] === ChannelFrame.Class.FRAME_KIND.StreamData
+      ) {
+        firstDataFrameSeen = true;
+        publishFirstDataFrame();
+        await uploadRelease;
+      }
+    });
+  });
+  const channelRead = (async (): Promise<void> => {
+    for await (const bytes of channelProcess.stdout)
+      channelClient.receive(new Uint8Array(bytes));
+  })();
+  const result = (async (): Promise<ChannelUploadResult> => {
+    try {
+      const uploadResult = await channelClient.upload(localPath);
+      await writeChain;
+      channelProcess.stdin.end();
+      const exitCode = await channelProcess.exited;
+      requireCondition(
+        exitCode === 0,
+        `independent upload channel exits cleanly: ${await new Response(channelProcess.stderr).text()}`,
+      );
+      await channelRead;
+      return uploadResult;
+    } finally {
+      channelClient.close();
+      channelProcess.kill();
+    }
+  })();
+  return { firstDataFrameWritten, release: releaseUpload, result };
+}
+
+function uploadedPath(localPath: string): string {
+  const sha256 = new Bun.CryptoHasher('sha256')
+    .update(readFileSync(localPath))
+    .digest('hex');
+  return join(dropzoneDirectory, `${sha256}-${basename(localPath)}`);
 }
 
 function byteLines(text: string): string[] {
@@ -291,31 +408,112 @@ try {
       (snapshot) => snapshot.findText('start.txt') !== null,
       30_000,
     );
+    applicationDriver.sendKeys('Control+j');
+    await awaitRemoteStatus(
+      'the remote terminal receives focus before the drop',
+      (status) =>
+        status.terminalFocused === true &&
+        status.panelActiveContentKind === 'terminal' &&
+        status.activeBuffer === null,
+    );
+    await requireRemoteGraphValue('panelHost.focused', true);
+    await requireRemoteGraphValue('panelHost.focusedContent.kind', 'terminal');
+    await requireRemoteGraphValue('workspaceSet.activeDocument', null);
     const smallPath = join(scaleDirectory, 'small.ts');
+    const uploadedSmallPath = uploadedPath(smallPath);
+    applicationDriver.sendText('set -- ');
     applicationDriver.sendPaste(smallPath);
+    applicationDriver.sendText(
+      `; if [ "$1" = '${uploadedSmallPath}' ]; then printf 'REMOTE_DROPZONE=YES\\n'; else printf 'REMOTE_DROPZONE=NO\\n'; fi`,
+    );
+    applicationDriver.sendKeys('Enter');
     await applicationDriver.awaitSnapshot(
-      (snapshot) => snapshot.findText('SmallRecord') !== null,
+      (snapshot) => snapshot.findText('REMOTE_DROPZONE=YES') !== null,
       30_000,
     );
+    await requireRemoteGraphValue('panelHost.focused', true);
+    await requireRemoteGraphValue('panelHost.focusedContent.kind', 'terminal');
+    await requireRemoteGraphValue('workspaceSet.activeDocument', null);
     requireCondition(
       !applicationDriver.recordedOutput().includes(smallPath),
       'small local path never reached SSH output',
     );
-    pass('small file uploaded and remote Invar opened the dropzone copy');
+    pass(
+      'small file uploaded before its dropzone path reached the remote child',
+    );
 
     const largePath = join(scaleDirectory, 'huge.ts');
+    const uploadedLargePath = uploadedPath(largePath);
+    applicationDriver.sendText('set -- ');
     applicationDriver.sendPaste(largePath);
+    applicationDriver.sendText(
+      `; if [ "$1" = '${uploadedLargePath}' ]; then printf 'REMOTE_LARGE_DROPZONE=YES\\n'; else printf 'REMOTE_LARGE_DROPZONE=NO\\n'; fi`,
+    );
+    applicationDriver.sendKeys('Enter');
     await applicationDriver.awaitSnapshot(
-      (snapshot) => snapshot.findText('ScaleRecord0000000') !== null,
+      (snapshot) => snapshot.findText('REMOTE_LARGE_DROPZONE=YES') !== null,
       60_000,
     );
+    await requireRemoteGraphValue('panelHost.focused', true);
+    await requireRemoteGraphValue('panelHost.focusedContent.kind', 'terminal');
+    await requireRemoteGraphValue('workspaceSet.activeDocument', null);
     requireCondition(
       !applicationDriver.recordedOutput().includes(largePath),
       'large local path never reached SSH output',
     );
     pass(
-      '100,000-line file uploaded and remote Invar opened the dropzone copy',
+      '100,000-line file uploaded before its dropzone path reached the remote child',
     );
+    await awaitRemoteStatus(
+      'the focused remote terminal keeps both drops out of the editor',
+      (status) =>
+        status.terminalFocused === true && status.activeBuffer === null,
+    );
+    pass('focused remote drops opened no editor buffer');
+
+    console.log('== iv ssh: focused pane closes during upload ==');
+    const gatedUpload = beginGatedIndependentUpload(
+      commonSshArguments,
+      largePath,
+    );
+    await gatedUpload.firstDataFrameWritten;
+    await requireRemoteGraphValue('panelHost.focused', true);
+    await requireRemoteGraphValue('panelHost.focusedContent.kind', 'terminal');
+    await requireRemoteGraphValue('workspaceSet.activeDocument', null);
+    applicationDriver.sendKeys('Control+j');
+    await GraphClient.Class.awaitValue(
+      remoteStatusPath,
+      'panelHost.visible',
+      false,
+    );
+    await requireRemoteGraphValue('panelHost.visible', false);
+    await requireRemoteGraphValue('panelHost.focused', false);
+    await requireRemoteGraphValue('workspaceSet.activeDocument', null);
+    gatedUpload.release();
+    const gatedUploadResult = await gatedUpload.result;
+    requireCondition(
+      gatedUploadResult.path === uploadedLargePath,
+      'the gated upload resolved to the expected remote dropzone path',
+    );
+    applicationDriver.sendPaste(
+      ChannelDropNotification.Class.encode(gatedUploadResult.path),
+    );
+    await GraphClient.Class.awaitValue(
+      remoteStatusPath,
+      'workspaceSet.activeDocument.path',
+      gatedUploadResult.path,
+      30_000,
+    );
+    await requireRemoteGraphValue('panelHost.visible', false);
+    await requireRemoteGraphValue('panelHost.focused', false);
+    await requireRemoteGraphValue(
+      'workspaceSet.activeDocument.path',
+      gatedUploadResult.path,
+    );
+    pass(
+      'a pane closed during upload could not receive the later notification',
+    );
+    pass('the post-upload notification fell back to editor open-by-kind');
 
     const openFileGlyphs = (['nerd', 'unicode', 'ascii'] as const).map(
       (glyphLevel) => ThemeIcons.Class.glyphFor(glyphLevel, 'fileTreeOpen'),

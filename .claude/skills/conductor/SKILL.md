@@ -99,6 +99,12 @@ worktree-local hook policy that keeps formatting and skips the full merge gate.
 The conductor still gates the combined tree at landing. Manually cut worktrees
 do not get this policy.
 
+**DRIVE ADVERSARIALLY is part of every brief's verification bar** (user
+doctrine 2026-08-05, encoded in the drive-pty skill's verification law):
+briefs for stateful surfaces name a VARIATION PROTOCOL (cycles, boundary
+counts, order variations, assert-after-every-step), and a READY report
+that drove only the happy path goes back for the variations.
+
 **PLAIN WORDS FIRST — `## In plain words` is required in every brief AND
 every report.** Two or three sentences a ten-year-old could follow: what is
 wrong now, what must be true after. `dispatch.sh` and `round-brief.sh` refuse
@@ -363,6 +369,13 @@ intersects the diff's modules. The round brief demands one sweep and one
 per-smoke table (green / fixed-then-green with mechanism / red-outside-diff
 with merge-base proof). Same generator as family 4: enumerate the surface
 independently, never sample it through the sieve.
+
+**A doctrine edit while builders are LIVE requires a sync steer.** The
+fundamentals injection is a dispatch-time snapshot, and a builder's worktree
+carries pre-edit skill files — so mid-flight builders silently miss new laws
+(2026-08-06: #514 had three of seven doctrine updates, by steer only). When a
+skill in either fundamentals list changes, steer every live builder to read
+the MAINLINE file by absolute path, naming what changed.
 
 **round-brief.sh and steer.sh never share a command block.** The filing can
 REFUSE (missing section, dead link) after the steer already landed, handing

@@ -147,6 +147,8 @@ class $AgentPaneContent implements PaneContent {
   readonly frameHeaderRows = 1;
   readonly icon = '✦';
   readonly keybindingContext = 'agent';
+  // invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
+  readonly acceptsDroppedPathPaste = true;
 
   /** The editable, wrapping, cap-scrolled composer (the second text surface). */
   protected readonly composer = new AgentComposer.Class();
