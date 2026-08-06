@@ -12,12 +12,36 @@ import {
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 import { EditorSourceTextViewProviderFactory } from '../editor/EditorSourceTextViewProviderFactory';
+import {
+  WorkspaceSearchBackend,
+  type WorkspaceSearchProcess,
+} from '../search/WorkspaceSearchBackend';
 
-function createWorkspace() {
+function createWorkspace(
+  workspaceSearchBackend?: WorkspaceSearchBackend.Instance,
+) {
   return new Workspace.Class({
     createSourceTextViews: () =>
       EditorSourceTextViewProviderFactory.Class.create(),
+    workspaceSearchBackend,
   });
+}
+
+function completedSearchProcess(relativePath: string): WorkspaceSearchProcess {
+  const ripgrepMessage = `${JSON.stringify({
+    type: 'match',
+    data: { path: { text: relativePath } },
+  })}\n`;
+  return {
+    stdout: new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(ripgrepMessage));
+        controller.close();
+      },
+    }),
+    exited: Promise.resolve(0),
+    kill: () => {},
+  };
 }
 
 let workspaceDirectory = '';
@@ -42,7 +66,12 @@ afterEach(() => {
 
 describe('Workspace editor buffer tabs (item 10a)', () => {
   test('each workspace owns independent workspace-search state', async () => {
-    const firstWorkspace = createWorkspace();
+    const firstWorkspace = createWorkspace(
+      new WorkspaceSearchBackend.Class({
+        resolveRipgrepPath: () => '/resolved-tools/rg',
+        spawnProcess: () => completedSearchProcess('file1.txt'),
+      }),
+    );
     const secondWorkspace = createWorkspace();
     firstWorkspace.open(workspaceDirectory);
     secondWorkspace.open(workspaceDirectory);
