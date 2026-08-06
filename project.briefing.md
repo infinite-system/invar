@@ -4,6 +4,25 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 63b — 2026-08-05 ~20:25 EDT — 84% GAUGE: WAVE 508/509 MID-FLIGHT
+
+CRONS DISARMED (user order stands). #506 LANDED (constructor-first +
+role table; dist/iv rebuilt). DRAFT STATE EXISTS (.invar/tasks/draft/)
+— 508 was blessed and SPLIT: #508 M1 local drop = READY (report
+triaged: route table proven, mode-2004 premise had drifted — app
+already emitted DECSET 2004; builder kept one seam + smoke asserts;
+outside-root = read-only badge, record refinement PROPOSED not
+written) — HELD for gate because #509 M2 iv ssh (THE MUST) is still
+BUILDING (protocol doc first, RPC namespaces reserved, byte sweep
+through wrapper, dropzone upload, localhost-sshd smoke). ON 509 READY:
+gate+land 508 then 509 serially (fresh gates, monitors, land.sh with
+GATE_LOG); then dispatch #510 M3 picker + #511 M4 inversion doc
+(active, sequenced). PARKED: 507. Other queue: #504 (structure
+uninstall — LAST gate residual), #505. Landing recipe + dispatch
+repairs are in anchor 63 below. dist/iv rebuild after each landing.
+
+---
+
 # RESUME ANCHOR 63 — 2026-08-05 ~19:55 EDT — CHECKPOINT AT 82%: 506 GATING, 508 AWAITS REVIEW
 
 CRONS REMAIN DISARMED (user order stands; do not re-arm). fleet-watch
@@ -106,26 +125,9 @@ hygiene, 7 historical worktrees. Next-wave candidates: #498, #438,
 
 ---
 
-# RESUME ANCHOR 58b — 2026-08-03 ~23:10 EDT — WAVE COMPLETE + RECORDS WRITTEN + #501 LANDED
-
-Since anchor 58: the five confirmed records are WRITTEN and landed
-through the full gate (bae22b50) — readiness-driven PTY reads,
-Shift+drag host selection, pane-identity reservation, core-carries-no-
-plugin-vocabulary (ratchet-verified), applicationGlobal focus
-refinement + ui ripple. #501 (restored task panes minted extra
-spaces — the user's first bug report) landed same evening; dist/iv
-rebuilt. User said MORE BUGS are coming — hold experiments (pacing
-policy), keep lanes free, drive each report before filing (ui-task
-loop). Post-compaction rule now in doctrine: read an instrument's
-skill BEFORE first use; never fall back to retired patterns on
-friction. Remaining user-decision queue: #464 retire call, #460-463
-hygiene, 7 historical worktrees. Next-wave candidates: #498, #438,
-#499, #496, #497, #489.
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 58b — 2026-08-03 ~23:10 EDT — WAVE COMPLETE + RECORDS WRITTEN + #501 LANDED
 - RESUME ANCHOR 58 — 2026-08-03 ~19:25 EDT — DECOUPLING WAVE COMPLETE
 - RESUME ANCHOR 57 — 2026-08-03 ~14:05 EDT — GOAL: DECOUPLING WAVE, FULLY LANDED
 - RESUME ANCHOR 56 — 2026-08-03 ~11:10 EDT — LAND #485, THEN PRESENT THE NUMBER
