@@ -871,3 +871,16 @@ for me, i am sleeping, decide the best way and do it", "of course you
 have to check the tasks after they are done", "you must verify
 coherence before briefing me, if it's not delivered you relaunch the
 agents to finish it or make new tasks to finish it".
+
+## 2026-08-06 — the sandbox ships tools the target lacks (#534 ripgrep)
+
+The backend's tests were green for the builder and red at the gate for
+one reason: the codex sandbox ships ripgrep; the target machine does
+not. Family 9 at product level. Rules: (1) any external-binary
+dependency resolves through ONE injectable seam whose ABSENT arm is a
+tested, user-visible state naming the remedy — never a generic failure;
+(2) a brief that introduces an external tool names the target-machine
+check (`which <tool>`) as part of the end state; (3) the conductor's
+acceptance run uses the FULL test suite, not the changed module's
+folder — the second residual lived one module over from where the first
+was fixed.
