@@ -17,8 +17,11 @@ monitors, GATE_LOG land.sh, rebuild dist/iv after code landings.
 (2) From 515's landed milestone split: dispatch the Find/Replace
 IMPLEMENTATION wave in its stated order (each brief cites the
 ui-design doctrine chapters — it is now INJECTED automatically), land
-serially. (2b) #517 (codex compaction lifecycle, fable) DISPATCHED ~00:30 by user
-order — lands in the serial queue with the rest. (3) If lanes idle after that: #504 (structure uninstall,
+serially. (2b) #517 (codex compaction lifecycle, fable) + #518 (live tasks pane
+matches tasks:watch — hover buttons, whole-group hover, full-line
+coloring, scroll+copy, ONE shared renderer; codex) BOTH DISPATCHED by
+user order pre-sleep — land in the serial queue with the rest (three
+lanes live: 514, 517, 518; at cap). (3) If lanes idle after that: #504 (structure uninstall,
 last gate residual) then #505. NO experiments. The ui-design skill
 exists (.claude/skills/ui-design/SKILL.md, six chapters) — 515's
 design must comply (already steered). Morning queue: #514's tooltip
