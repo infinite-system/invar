@@ -1,7 +1,7 @@
 # 521 — repair in-file Replace All undo
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 2b633367 — Replace All undo repaired through the editor delta path with consent dialogs, toggles, and scale-parity drives; Find/Replace milestone 1 complete.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
