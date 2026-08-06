@@ -240,7 +240,9 @@ test('activation registers the dock pane, commands, keybindings, setting, and st
   expect(snapshot.tasksRows).toBe(0);
   recording.commandRunners.get('view.showTasks')?.();
   expect(recording.snapshot().tasksAvailable).toBe(true);
-  expect(recording.snapshot().tasksRows).toBe(2);
+  // The pinned fleet root differs from this workspace, so one scope row
+  // precedes the task's title and detail rows.
+  expect(recording.snapshot().tasksRows).toBe(3);
   plugin.disposeApplication();
   rmSync(workspaceRoot, { recursive: true, force: true });
 });
@@ -350,9 +352,9 @@ test('the detail row attaches through the terminal runtime and states a missing 
   recording.commandRunners.get('view.showTasks')?.();
   const pane = recording.dockContents[0]!;
   pane.onResize(60, 10);
-  // Task row, detail row. Hover reveals the detail row's first pinned action.
-  expect(pane.onPointerMove?.(5, 2)).toBe(true);
-  expect(pane.onPointerDown?.(45, 2)).toBe(true);
+  // Scope row, task row, detail row. Hover reveals the detail row's first pinned action.
+  expect(pane.onPointerMove?.(5, 3)).toBe(true);
+  expect(pane.onPointerDown?.(45, 3)).toBe(true);
   expect(recording.runtimeRequests).toHaveLength(1);
   expect(recording.runtimeRequests[0]?.kind).toBe('terminal');
   expect(recording.runtimeRequests[0]?.request.process).toEqual({
@@ -360,7 +362,7 @@ test('the detail row attaches through the terminal runtime and states a missing 
     arguments: ['attach', '-t', 'invar/901-planted-building'],
   });
   // The fourth pinned action is report; this fixture has none.
-  expect(pane.onPointerDown?.(57, 2)).toBe(true);
+  expect(pane.onPointerDown?.(57, 3)).toBe(true);
   expect(recording.snapshot().tasksActionNotice).toBe(
     'No latest report exists for #901.',
   );

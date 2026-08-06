@@ -3138,7 +3138,7 @@ class $Bootstrap {
             rightDockHost.visible.value &&
             !view.rightDockContainsPoint(event.x, event.y)
           ) {
-            view.clearRightDockPointer();
+            view.clearRightDockContentPointer();
           }
           if (event.type === 'down') tooltip.clear(); // any click hides the tooltip, wherever it lands
           if (event.type === 'down' && completionPopup.open) {

@@ -540,13 +540,16 @@ class $RootView {
     };
     rightDockBody.onMouseUp = endRightDockContentDrag;
     rightDockBody.onMouseDragEnd = endRightDockContentDrag;
-    const clearRightDockPointer = (): void => {
+    const clearRightDockContentPointer = (): void => {
       rightDockHost.activeContent?.onPointerOut?.();
+    };
+    const clearRightDockPointerAndTooltip = (): void => {
+      clearRightDockContentPointer();
       tooltip.clear();
       renderer.requestRender();
     };
-    rightDockBody.onMouseOut = clearRightDockPointer;
-    rightDockBox.onMouseOut = clearRightDockPointer;
+    rightDockBody.onMouseOut = clearRightDockPointerAndTooltip;
+    rightDockBox.onMouseOut = clearRightDockPointerAndTooltip;
     rightDockBody.onMouseScroll = (event) => {
       const direction = event.scroll?.direction;
       if (direction !== 'up' && direction !== 'down') return;
@@ -2565,7 +2568,7 @@ class $RootView {
       rightDockViewportColumns,
       rightDockViewportRows,
       rightDockContainsPoint,
-      clearRightDockPointer,
+      clearRightDockContentPointer,
       activityBarContainsPoint,
       layoutGeometry: () => layoutSlotGeometry,
       splitterRegions: () => {
@@ -2705,7 +2708,7 @@ export interface RootView {
   rightDockViewportRows(): number;
   rightDockContainsPoint(x: number, y: number): boolean;
   /** Clear pointer state owned by the active right-dock content after the root sees an outside move. */
-  clearRightDockPointer(): void;
+  clearRightDockContentPointer(): void;
   activityBarContainsPoint(x: number, y: number): boolean;
   layoutGeometry(): LayoutSlotGeometry;
   splitterRegions(): Record<
