@@ -80,3 +80,35 @@ test('rootArgument maps argv[2] to the boot root', () => {
     process.argv = originalArgv;
   }
 });
+
+test('ssh dispatches to the channel client without booting the app', async () => {
+  const originalArgv = process.argv;
+  process.argv = [
+    originalArgv[0] as string,
+    originalArgv[1] as string,
+    'ssh',
+    'host',
+  ];
+  const exits: number[] = [];
+  const calls: string[][] = [];
+  class $ChannelDispatch extends AppLoader.$Class {
+    static override get SshClient() {
+      return class {
+        static async main(argumentsList: string[]): Promise<number> {
+          calls.push(argumentsList);
+          return 23;
+        }
+      } as unknown as typeof import('../channel/SshClient').SshClient.Class;
+    }
+    static override exitProcess(code: number): void {
+      exits.push(code);
+    }
+  }
+  try {
+    expect(await $ChannelDispatch.handleChannelCommand()).toBe(true);
+  } finally {
+    process.argv = originalArgv;
+  }
+  expect(calls).toEqual([['host']]);
+  expect(exits).toEqual([23]);
+});

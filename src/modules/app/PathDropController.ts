@@ -86,6 +86,13 @@ class $PathDropController {
     const paths = pathDropControllerClass.existingPaths(text, workspace.root);
     if (paths.length === 0) return false;
 
+    return this.handlePaths(paths);
+  }
+
+  handlePaths(paths: readonly string[]): boolean {
+    if (paths.length === 0) return false;
+    const workspace = this.dependencies.workspaceSet.active;
+
     const directoryPaths: string[] = [];
     for (const path of paths) {
       if (Files.Class.isDir(path)) {

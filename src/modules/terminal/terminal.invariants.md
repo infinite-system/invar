@@ -252,7 +252,7 @@ resize behavior for the integrated terminal and the harness.
 **Rejected alternatives:** Copy the FFI declarations into the harness — two allocators can drift in
 window sizing, descriptor ownership, or platform fallback.
 
-**Evidence:** `src/modules/terminal/OpenPty.ts`; `src/modules/terminal/OpenPtyBackend.ts`;
+**Evidence:** `src/modules/system/OpenPty.ts`; `src/modules/terminal/OpenPtyBackend.ts`;
 `scripts/harness/PtyTestDriver.ts`; `scripts/harness/PtyTestDriver.test.ts`.
 
 **Impossible if true:** a second `openpty` symbol declaration in the harness; a harness resize that
@@ -289,16 +289,16 @@ twice left the real smoke green, so it did not control the defect. Send a harnes
 message — real terminals would stay broken. Prefer `layoutCanvas.width` and `height` when positive —
 those values are one layout frame old during shrink.
 
-**Evidence:** `src/modules/terminal/OpenPty.ts`;
+**Evidence:** `src/modules/system/OpenPty.ts`;
 `src/modules/app/Bootstrap.ts`; `src/modules/ui/RootView.ts`;
-`src/modules/terminal/OpenPty.test.ts` (`a failed PTY window resize names the ioctl and errno`);
+`src/modules/system/OpenPty.test.ts` (`a failed PTY window resize names the ioctl and errno`);
 `scripts/harness/smoke-markdown-harness.ts` (120 by 40 to 60 by 25 at 10 and 100,000 lines).
 
 **Impossible if true:** `TIOCSWINSZ` failing silently; the harness emulator showing 60 columns while
 published width remains 120; published width becoming 60 while layout still uses 120 columns; a
 mouse or keyboard byte being required before renderer geometry changes.
 
-**Verification:** `bun test src/modules/terminal/OpenPty.test.ts`; `bun
+**Verification:** `bun test src/modules/system/OpenPty.test.ts`; `bun
 scripts/harness/smoke-markdown-harness.ts`; restore the old positive-canvas preference in
 `synchronizeLayoutGeometry` and confirm that published width reaches 60 while the smoke times out
 with the preview still running past column 60.
@@ -331,7 +331,7 @@ window and reports `EAGAIN`.
 input while Invar renders output; ordered chunk delivery; idle quiescence with no write polling at
 rest; integrated-terminal and harness keystrokes that reach the descriptor without a timer clamp.
 
-**Evidence:** `src/modules/terminal/OpenPty.ts`; `src/modules/terminal/OpenPty.test.ts` `a saturated
+**Evidence:** `src/modules/system/OpenPty.ts`; `src/modules/system/OpenPty.test.ts` `a saturated
 PTY write leaves the event loop responsive`, `a genuine asynchronous PTY write failure names its
 errno`, and `a keystroke write needs no timer turn`;
 `scripts/harness/smoke-terminal-backpressure-harness.ts`.
@@ -341,7 +341,7 @@ running; the harness and application each waiting for the other to drain the sam
 `EAGAIN`/`EWOULDBLOCK` being raised as a terminal failure; a write retry timer firing while the queue
 is empty; a keystroke-sized payload still queued when `write` returns.
 
-**Verification:** `bun test src/modules/terminal/OpenPty.test.ts && bun
+**Verification:** `bun test src/modules/system/OpenPty.test.ts && bun
 scripts/harness/smoke-terminal-backpressure-harness.ts && bash scripts/behavioral-contracts.sh`
 
 **Status:** provisional
@@ -669,8 +669,8 @@ holds no worker hostage).
 alive during shutdown. Raising `UV_THREADPOOL_SIZE` — moves the cliff instead of removing it, and
 taxes every quiet pane one thread.
 
-**Evidence:** `src/modules/terminal/OpenPty.ts` (the TTY ReadStream read path);
-`src/modules/terminal/OpenPty.test.ts`; the #458 diagnosis (exact four-reader boundary;
+**Evidence:** `src/modules/system/OpenPty.ts` (the TTY ReadStream read path);
+`src/modules/system/OpenPty.test.ts`; the #458 diagnosis (exact four-reader boundary;
 `UV_THREADPOOL_SIZE=64` control un-broke it alone; landed a3fb876e).
 
 **Impossible if true:** a terminal with a live shell and no painted output while other quiet

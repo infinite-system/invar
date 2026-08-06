@@ -175,3 +175,7 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
 | `scripts/harness/smoke-move-line-harness.ts` | assertions 7 → 6, waits 8 → 8. The inline child-exit assertion moved into the shared requireChildSuccess helper (same check, now with failure output printed); not a lost claim. |
 | `scripts/harness/smoke-pixel-preview-harness.ts` | assertions 39 → 38, waits 50 → 50. Same helper conversion, same reason. |
 | `scripts/harness/smoke-voice-picker-harness.ts` | assertions 9 → 8, waits 17 → 17. Same helper conversion, same reason. |
+
+## 2026-08-05 — OpenPty relocation (#509 r2)
+
+| `src/modules/terminal/OpenPty.test.ts` | assertions 11 → 0, waits 5 → 0. FILE MOVED, not removed: git mv to `src/modules/system/OpenPty.test.ts` with the allocator (the shared-generator relocation the coupling ratchet forced); all 11 assertions and 5 waits live at the new path unchanged. Conductor-declared at the gate. |

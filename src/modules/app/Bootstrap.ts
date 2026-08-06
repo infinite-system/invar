@@ -47,6 +47,7 @@ import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
 import { KeybindingMac } from '../keybindings/KeybindingMac';
 import { Environment } from '../system/Environment';
 import { Logging } from '../system/Logging';
+import { ChannelDropNotification } from '../channel/ChannelDropNotification';
 import { HandlerGuard } from './HandlerGuard';
 import { TerminalSession } from './TerminalSession';
 import {
@@ -2986,6 +2987,11 @@ class $Bootstrap {
     // keyTick's dispatch order so paste lands exactly where typing would.
     const pasteTick = (text: string): void => {
       if (!text) return;
+      const channelDropPaths = ChannelDropNotification.Class.decode(text);
+      if (channelDropPaths) {
+        pathDropController.handlePaths(channelDropPaths);
+        return;
+      }
       if (pathDropController.handlePaste(text)) return;
       if (panelHost.visible.value && panelHost.focused.value) {
         panelHost.handlePaste(text);
