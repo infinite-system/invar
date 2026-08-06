@@ -308,6 +308,16 @@ These five rules close that hole. They are MUSTS, not guidance.
    Drive on a FRESH app instance — a warm server predating the branch
    shows the old code and lies (a stale server
    can still show a removed button).
+   **The acceptance has TWO ARMS — drive the behavior, read the
+   structure.** Alongside the drive, review the branch diff structurally
+   (stat first, then the load-bearing files): seams at the shared
+   generator, not duplicated and not over-unified; new code in its right
+   module home; no second engine beside an existing one; no forbidden
+   capability re-introduced; ivue and file-grammar shapes by eye where
+   the mechanical gates cannot judge. The gate's ratchets check COUNTS;
+   this arm checks JUDGMENT — an over-unified seam or a parallel engine
+   is invisible to every counter. Structural findings go back in the
+   same refinement round as visual ones, while the builder is warm.
 2. **BRIEFS STATE THE DELIVERABLE TWICE: code and visual.** Every brief
    names what the code must do AND what the user must SEE (or explicitly
    states "no visible change"). Every mockup carries one line separating
