@@ -115,8 +115,9 @@ frame][panel-projection] is the root of the ui family. It says a host projects a
   MATCHED inside a pane context would be eaten. The record makes the matched binding's declared
   context the test, so the host never prefix-matches an action name.
 - [Bracketed paste survives stream chunking][paste] assembles a second input kind once. Existing
-  path tokens leave through the application path-drop seam; every other payload continues through
-  the same focused-pane seam. Its fallback is [panel-keys] for a payload that arrives in pieces.
+  path tokens enter the focused pane when it declares the path-paste route, or leave through the
+  application open-by-kind seam. Every other payload continues through the same focused-pane seam.
+  Its fallback is [panel-keys] for a payload that arrives in pieces.
 - [Visible panel contents own separate headed regions][headed-regions] and
   [Each panel instance owns one independent session][instance-session] separate PRESENCE from
   IDENTITY. The first says two contents coexist rather than becoming tabs; the second says each

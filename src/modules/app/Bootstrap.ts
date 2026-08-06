@@ -589,6 +589,11 @@ class $Bootstrap {
       droppedPathOpeners: applicationContributions,
       boundedListPopup,
       overlayCoordinator,
+      pasteIntoFocusedPane: (text) => {
+        if (!panelHost.visible.value || !panelHost.focused.value) return false;
+        if (!panelHost.focusedContent?.acceptsDroppedPathPaste) return false;
+        return panelHost.handlePaste(text);
+      },
       focusEditor: () => {
         panelHost.blur();
         primaryDockHost.blur();
