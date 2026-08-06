@@ -4,6 +4,48 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 67 — 2026-08-06 01:53 EDT — GATE-513 RED DIAGNOSED AND FIXED; RERUN LIVE
+
+/goal ACTIVE (user asleep): "get it all done in the right sequence".
+CRONS ARMED (:07 orchestration, :37 sweep). fleet-watch Monitor: re-arm if
+heartbeat stale: Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true).
+
+GATE-513 round 1 was RED with two MAIN-SIDE pre-existing defects, both fixed
+in main commit 33b4b57a and merged into 513's worktree (22dfcaf1):
+(1) TasksDashboardPlugin.test.ts was env-coupled — the scope row it counts
+only renders when INVAR_FLEET_REPOSITORY_ROOT differs from the temp
+workspace (green in builder worktrees, red on main checkout; family 9).
+Env now pinned in the test file, both polarities verified.
+(2) AGENTS.md skills index lacked the ui-design line (conductor authorship
+omission). Both were independently reported as bycatch by 514 and 518 —
+already converted, nothing more to file for them.
+
+GATE-513 RERUN live at /tmp/gate-513-r2.log (registered in
+/tmp/fleet-watch-gates; Monitor b8oxv0phy watches the GATE_EXIT sentinel).
+ON GREEN: land 513 via GATE_LOG=/tmp/gate-513-r2.log land.sh, then FOR EACH
+of 515, 514, 517, 518 in that order: merge main into ITS worktree, fresh
+gate + monitor, land, next. Known allowed red: plugin-manifest (#504).
+Rebuild dist/iv after 514 and 518. THEN dispatch Find/Replace milestones
+from 515's landed design in its order (milestone 1 = in-file Replace-All
+undo bug). Then #504/#505 if lanes idle.
+
+TRIAGE DONE (all three formerly-untriaged reports read):
+- 514: seven concerns answered, invariant table clean (several refines at
+  the gate — review contract diffs at landing). Bycatch: Ctrl+P welcome
+  wording (already a filed sighting) + the tasks-dashboard red (fixed).
+- 517: land normally; CONVERT FOUR BYCATCH AT ITS LANDING: (a) codex hooks
+  engine probe task (pre/post_compact + session_start hooks.json — could
+  replace notify differencing); (b) dispatch.sh comment drift x2 (DRY_RUN
+  echo + FLEET DEFAULTS block still say codex HIGH; code says MEDIUM) —
+  small conductor fix; (c) relaunch.sh `codex resume --last` cwd-scoping
+  suspect — two-lane probe task; (d) steer.sh/fleet-watch.sh duplicated
+  rollout resolver — distillation task.
+- 518: bycatch was the AGENTS.md index gap (fixed). Commit 6304c18f.
+
+MORNING QUEUE unchanged (tooltip wording, agent-button removal, record
+refinements 503/495/489/508 + 515 four, #512, overlay hover grammar into
+ui-design ch.1 after 514/518 land).
+
 # RESUME ANCHOR 66 — 2026-08-06 ~00:45 EDT — FINAL PRE-COMPACT CHECKPOINT; NIGHT SEQUENCE RUNNING
 
 /goal ACTIVE (user asleep): "get it all done in the right sequence".
