@@ -10,24 +10,24 @@ answer. The helper looks at how full the memory is. Near the limit it says
 "save your work now". Right after a squeeze it says "go re-read your rule
 files". It says each thing exactly once per squeeze, so nobody gets spammed.
 
-I also proved a good surprise: codex already puts the whole AGENTS.md file
+I also proved a good surprise: codex already puts the whole [AGENTS.md](../../../../AGENTS.md) file
 back into its memory after every squeeze, on its own.
 
 ## The empirical answer the brief demanded (loudly)
 
-**Codex DOES re-include the worktree's AGENTS.md after its own mid-session
+**Codex DOES re-include the worktree's [AGENTS.md](../../../../AGENTS.md) after its own mid-session
 compaction.** Proven on last night's #514 (terminal instance lifecycle)
 rollout, which compacted twice
 (`~/.codex/sessions/2026/08/05/rollout-2026-08-05T22-47-12-019fd4f7-….jsonl`,
 lines 494 and 1486). Each `compacted` event's `replacement_history` carries
-the full `# AGENTS.md instructions for <worktree>` message (24,550 chars =
+the full agent-instructions message for the worktree (24,550 chars =
 the whole 24,511-byte file), plus the task message and every user steer. So
-the dispatch-injected AGENTS.md fundamentals tier (commit `d54ddcc4`) is a
+the dispatch-injected [AGENTS.md](../../../../AGENTS.md) fundamentals tier (commit `d54ddcc4`) is a
 real post-compaction reload, not an assumption. The threshold steer is
 therefore the ACTIVE arm, not the only defense. Caveat worth knowing: the
 injected fundamentals are ~170KB, so that mechanical reload will re-spend
 roughly 40k tokens of each fresh window (#514 predated the injection; its
-re-included AGENTS.md was the bare 24KB law).
+re-included [AGENTS.md](../../../../AGENTS.md) was the bare 24KB law).
 
 ## Doc verification (brief step 1) — all premises re-verified on 0.146.1
 
@@ -62,7 +62,7 @@ re-included AGENTS.md was the bare 24KB law).
    - WARN arm at >=70%: "compaction imminent — commit WIP now", once per
      compaction generation.
    - DETECT arm on the >=60% -> <=20% edge: generation++, steer "re-read
-     BUILDER-FUNDAMENTALS.md and TASK.md wholesale", with the generation
+     the on-disk fundamentals and task files wholesale", with the generation
      number in the text.
    - Idempotence, all four required layers: edge-triggered marker updated
      every turn; per-lane generation counter (a steered generation never
@@ -129,7 +129,7 @@ show notify silence in production, that is the trigger to add it.
   `pre_compact`/`post_compact`/`session_start`/`session_end` events and
   Claude-style hook semantics. A `post_compact` hook would replace the
   usage-differencing detection with a direct signal (and `session_start`
-  could replace the TASK.md opening send). Payload shape and registration
+  could replace the opening task-file send). Payload shape and registration
   path unverified — a future task should probe it the way this one probed
   notify.
 - **Comment drift, `scripts/fleet/dispatch.sh` (two sites):** the DRY_RUN
