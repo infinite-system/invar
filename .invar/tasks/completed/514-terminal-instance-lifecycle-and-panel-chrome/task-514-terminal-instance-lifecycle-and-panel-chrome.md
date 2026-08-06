@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — aee4a082 — Panel chrome rebuilt: one no-create bottom-panel toggle through the status seam, overlay hover grammar on instance rows, expand-trap fixed, fresh-boot drive honesty via a completed-frame boundary; three gate rounds, contract refines landed with the code.
 
 ## In plain words (user, 2026-08-05, verbatim intents)
 
@@ -80,3 +80,14 @@ expand with a split active; chords and buttons both. Name the exact
 trapped state (graph evidence), fix, and ratchet the cycle into the
 protocol smoke. Doctrine: a button that opens a state must offer the
 symmetric exit (ui-design chapter 1 toggle semantics).
+
+## Item 3 refined (user, 2026-08-06): the overlay hover grammar
+
+The terminal instance rows adopt the same hover grammar as #518's
+tasks pane: NO reserved-empty button cells — at rest the row shows
+its full text edge to edge; on hover the action icons OVERLAY the
+right end while the text truncates with an ellipsis; unhover
+restores. Truncation point + icon cells share one geometry
+generator; the transition shifts nothing. (This supersedes any
+reserved-gutter reading of the original hover item; the background
+unification requirement stands.)

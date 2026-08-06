@@ -269,7 +269,7 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   echo "dispatch: DRY RUN — every guard passed, no side effect taken."
   echo "  task:        #${task_number} ${slug}"
   echo "  engine:      ${declared_engine:-$engine}   model: ${declared_model:-fleet-default}   effort: ${declared_effort:-fleet-default}"
-  echo "               (fleet defaults at launch: codex -> gpt-5.6-sol high; claude -> fable medium)"
+  echo "               (fleet defaults at launch: codex -> gpt-5.6-sol medium; claude -> fable medium)"
   echo "  environment: ${declared_environment:-unset} (host: $(uname -s | tr '[:upper:]' '[:lower:]'))"
   echo "  branch:      ${branch}"
   echo "  worktree:    ${worktree_path}"
@@ -593,10 +593,10 @@ fi
 # are not valid CLI aliases); codex 5.6-sol -> gpt-5.6-sol (matches the footer
 # of every codex session tonight). Effort: claude --effort <level>; codex
 # -c model_reasoning_effort=<level>; 'default' means say nothing.
-# FLEET DEFAULTS (user policy 2026-07-29), applied when the task file is
+# FLEET DEFAULTS (user policy 2026-07-30), applied when the task file is
 # silent; an explicit field ALWAYS wins, including one-off overrides like
 # "sol medium" or "sonnet" written into the task file:
-#   codex          -> gpt-5.6-sol at HIGH, always
+#   codex          -> gpt-5.6-sol at MEDIUM (high by explicit assignment)
 #   claude general -> fable at MEDIUM (high only for complex work, by explicit
 #                     assignment with the reason in Assignment note)
 #   opus           -> MEDIUM, always, unless the user says otherwise
@@ -611,6 +611,14 @@ case "$engine" in
     effective_effort="${declared_effort:-medium}"
     [ "$effective_effort" = "default" ] && effective_effort="medium"
     model_flags="${model_flags} -c model_reasoning_effort=${effective_effort}"
+    # COMPACTION LIFECYCLE (#517): codex invokes this program after every
+    # turn (payload verified live on 0.146.1, codex-tui and codex_exec). It
+    # warns the lane before compaction (~70% of the window) and steers the
+    # doctrine re-read after detecting one (usage-collapse edge), through
+    # steer.sh. Flag-only registration: nothing worktree-local is planted,
+    # so land.sh has only /tmp state files to clear. The token must stay
+    # space-free — agent_command expands unquoted below.
+    model_flags="${model_flags} -c notify=[\"${repository_root}/scripts/fleet/codex-compaction-notify.sh\"]"
     ;;
   claude)
     agent_command="claude --dangerously-skip-permissions"

@@ -104,6 +104,7 @@ test('one controller routes plugin files, text files, external files, and folder
           openOverlay();
         },
       } as never,
+      pasteIntoFocusedPane: () => false,
       focusEditor: () => {},
       screenSize: () => ({ columns: 120, rows: 40 }),
     });
@@ -130,5 +131,44 @@ test('one controller routes plugin files, text files, external files, and folder
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
     rmSync(externalRoot, { recursive: true, force: true });
+  }
+});
+
+test('a focused path-paste pane receives quoted paths before any file opens', () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'invar-path-drop-focus-'));
+  try {
+    const firstPath = join(fixtureRoot, 'first file.txt');
+    const secondPath = join(fixtureRoot, "second'file.txt");
+    writeFileSync(firstPath, 'first');
+    writeFileSync(secondPath, 'second');
+    const pastedTexts: string[] = [];
+    const openedFiles: string[] = [];
+    const controller = new PathDropController.Class({
+      workspaceSet: {
+        active: {
+          root: fixtureRoot,
+          openFileInTab: (path: string) => openedFiles.push(path),
+        },
+      } as never,
+      droppedPathOpeners: {
+        openDroppedPath: () => false,
+      } as never,
+      boundedListPopup: {} as never,
+      overlayCoordinator: {} as never,
+      pasteIntoFocusedPane: (text) => {
+        pastedTexts.push(text);
+        return true;
+      },
+      focusEditor: () => {},
+      screenSize: () => ({ columns: 120, rows: 40 }),
+    });
+
+    expect(controller.handlePaths([firstPath, secondPath])).toBe(true);
+    expect(pastedTexts).toEqual([
+      `'${firstPath}' '${secondPath.replaceAll("'", "'\"'\"'")}'`,
+    ]);
+    expect(openedFiles).toEqual([]);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });

@@ -4,6 +4,123 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 68 — 2026-08-06 ~02:15 EDT — 513+515 LANDED; 514 IN ROUND 2; GATES HELD
+
+/goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch Monitor live.
+
+LANDED THIS RUN: #513 -> 22c80f69 (bycatch converted: #519 Ctrl+J flake,
+#520 DriveSession paste gesture). #515 -> b27d892b (design doc landed;
+milestone 1 filed as #521; two contract proposals stay in morning queue).
+#522 filed (scoped clickText, from 514 instrument feedback). Main-side
+fixes earlier: 33b4b57a (env-pinned tasks-dashboard test + ui-design
+AGENTS.md index line).
+
+NOW: #514 builder is LIVE in ROUND 2 (steer confirmed 02:1x). Gate-514 was
+RED: four neighboring terminal-focus smokes time out (workspace-tabs,
+database, paste, scrollbars) + workspace-layout-isolation pin leak + two
+stale coverage declarations. Brief: brief-514-2-2.md in its folder. NO
+GATES while this builder is live — 517/518 gating HOLDS until 514 is READY
+(fleet-watch fires READY on its report).
+
+ON 514 READY: fresh gate in ITS worktree (merge main first), land with
+/tmp/land-514-message.md (already written), then 517 (CONVERT ITS FOUR
+BYCATCH at landing: codex hooks probe task, dispatch.sh comment drift fix,
+resume --last cwd suspect probe, rollout-resolver distillation), then 518
+(merge main, gate, land; rebuild dist/iv after 514 and 518). THEN dispatch
+#521 (Find/Replace milestone 1). Then #504/#505.
+
+Known allowed red: plugin-manifest contention (#504). Landing procedure:
+GATE_LOG=<log> land.sh <n> <slug> <message-file> <summary>; it refuses
+until bycatch is converted (BYCATCH_TRIAGED=1 after converting).
+
+MORNING QUEUE unchanged (tooltip wording, agent-button removal, record
+refinements 503/495/489/508 + 515 four, #512, overlay hover grammar into
+ui-design ch.1 after 514/518 land).
+
+# RESUME ANCHOR 67 — 2026-08-06 01:53 EDT — GATE-513 RED DIAGNOSED AND FIXED; RERUN LIVE
+
+/goal ACTIVE (user asleep): "get it all done in the right sequence".
+CRONS ARMED (:07 orchestration, :37 sweep). fleet-watch Monitor: re-arm if
+heartbeat stale: Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true).
+
+GATE-513 round 1 was RED with two MAIN-SIDE pre-existing defects, both fixed
+in main commit 33b4b57a and merged into 513's worktree (22dfcaf1):
+(1) TasksDashboardPlugin.test.ts was env-coupled — the scope row it counts
+only renders when INVAR_FLEET_REPOSITORY_ROOT differs from the temp
+workspace (green in builder worktrees, red on main checkout; family 9).
+Env now pinned in the test file, both polarities verified.
+(2) AGENTS.md skills index lacked the ui-design line (conductor authorship
+omission). Both were independently reported as bycatch by 514 and 518 —
+already converted, nothing more to file for them.
+
+GATE-513 RERUN live at /tmp/gate-513-r2.log (registered in
+/tmp/fleet-watch-gates; Monitor b8oxv0phy watches the GATE_EXIT sentinel).
+ON GREEN: land 513 via GATE_LOG=/tmp/gate-513-r2.log land.sh, then FOR EACH
+of 515, 514, 517, 518 in that order: merge main into ITS worktree, fresh
+gate + monitor, land, next. Known allowed red: plugin-manifest (#504).
+Rebuild dist/iv after 514 and 518. THEN dispatch Find/Replace milestones
+from 515's landed design in its order (milestone 1 = in-file Replace-All
+undo bug). Then #504/#505 if lanes idle.
+
+TRIAGE DONE (all three formerly-untriaged reports read):
+- 514: seven concerns answered, invariant table clean (several refines at
+  the gate — review contract diffs at landing). Bycatch: Ctrl+P welcome
+  wording (already a filed sighting) + the tasks-dashboard red (fixed).
+- 517: land normally; CONVERT FOUR BYCATCH AT ITS LANDING: (a) codex hooks
+  engine probe task (pre/post_compact + session_start hooks.json — could
+  replace notify differencing); (b) dispatch.sh comment drift x2 (DRY_RUN
+  echo + FLEET DEFAULTS block still say codex HIGH; code says MEDIUM) —
+  small conductor fix; (c) relaunch.sh `codex resume --last` cwd-scoping
+  suspect — two-lane probe task; (d) steer.sh/fleet-watch.sh duplicated
+  rollout resolver — distillation task.
+- 518: bycatch was the AGENTS.md index gap (fixed). Commit 6304c18f.
+
+MORNING QUEUE unchanged (tooltip wording, agent-button removal, record
+refinements 503/495/489/508 + 515 four, #512, overlay hover grammar into
+ui-design ch.1 after 514/518 land).
+
+# RESUME ANCHOR 66 — 2026-08-06 ~00:45 EDT — FINAL PRE-COMPACT CHECKPOINT; NIGHT SEQUENCE RUNNING
+
+/goal ACTIVE (user asleep): "get it all done in the right sequence".
+CRONS ARMED (:07 orchestration 9abac598, :37 sweep a472671f).
+fleet-watch Monitor armed; on resume re-arm if heartbeat stale:
+Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true).
+
+CONVEYOR RUNNING: ALL FIVE READY (513, 515, 514, 517, 518 — all untriaged except 513/515; triage each at ITS landing: read report, convert bycatch + instrument asks, review any contract edits at the gate). ZERO builders live. GATE-513 STARTED at /tmp/gate-513.log (monitor b4wbv6q3l, death-reporting). ON ITS GREEN: land 513 (GATE_LOG land.sh), then FOR EACH of 515, 514, 517, 518 in that order: merge main in ITS worktree, fresh gate + death monitor, triage report, land, next. Known pre-existing red allowed: plugin-manifest (#504). Rebuild dist/iv after 514 and 518 (code-heavy). THEN the Find/Replace milestones from 515 landed design, in its order. 518 note: builder died and was resumed; its WIP commit is in history; transcript pipe was re-attached. Was: #514 panel batch — SEVEN concerns now
+(over-removal protocol, ONE toggle panel button, hover bg unify +
+OVERLAY hover grammar refined item 3, + Terminal polish, glyph to
+right cluster, expand-trap item 6, fresh-boot drive dishonesty
+first); #517 codex compaction lifecycle via notify (warn ~70%,
+post-compact usage-collapse edge detect, 4-layer idempotence,
+verify AGENTS.md recompaction + payload against current docs);
+#518 tasks pane = tasks:watch — SIX items (identical via ONE shared
+renderer, overlay hover grammar, full-line row coloring fix,
+whole-group hover unit, scroll+copy chapters 5/6, segmented
+LIVE|ACTIVE|DONE control, 60fps one-heartbeat motion, timeless
+count-based asserts). Two steers PENDING fleet-watch confirmation
+(514 overlay grammar, 518 fps) — check steers.log/STEER_LOST.
+
+READY-HELD: #517 ALSO READY (report untriaged — triage at landing turn: read report, convert bycatch/asks, then land in sequence). #513 (drop-onto-agents paste; capability-declared) and
+#515 (Find/Replace design: SIX milestones, FOUR proposed records,
+found in-file Replace-All-cannot-undo bug = milestone 1).
+
+LANDING ORDER when lanes quiet: 513 -> 515 -> 514 -> 517 -> 518,
+serial, merge main + fresh gate + death-monitor each, GATE_LOG
+land.sh, convert bycatch/instrument feedback each, rebuild dist/iv
+after code landings. THEN dispatch the Find/Replace milestones from
+515's landed design IN ITS ORDER (builders auto-primed: fundamentals
+now = ibr, invariants, ivue, drive-pty with the full adversarial+
+completeness+coherence laws, ste, ui-design six chapters; codex also
+gets worktree AGENTS.md injection; claude gets system-prompt +
+role-aware compact hook). THEN #504, #505 if lanes idle. NO
+experiments. DOCTRINE RULE: any skill edit while builders live =
+sync steer to mainline paths (conductor skill has it). Morning
+queue: #514 tooltip wording + agent-button removal confirmation;
+record refinements (503/495/489/508 proposals + 515's four); #512;
+overlay hover grammar -> ui-design chapter 1 after 514/518 land.
+
+---
+
 # RESUME ANCHOR 65 — 2026-08-05 ~23:40 EDT — NIGHT GOAL 2: LAND ALL, THEN THE FIND/REPLACE WAVE
 
 /goal (user asleep): "get it all done in the right sequence" + ui-design
@@ -17,8 +134,11 @@ monitors, GATE_LOG land.sh, rebuild dist/iv after code landings.
 (2) From 515's landed milestone split: dispatch the Find/Replace
 IMPLEMENTATION wave in its stated order (each brief cites the
 ui-design doctrine chapters — it is now INJECTED automatically), land
-serially. (2b) #517 (codex compaction lifecycle, fable) DISPATCHED ~00:30 by user
-order — lands in the serial queue with the rest. (3) If lanes idle after that: #504 (structure uninstall,
+serially. (2b) #517 (codex compaction lifecycle, fable) + #518 (live tasks pane
+matches tasks:watch — hover buttons, whole-group hover, full-line
+coloring, scroll+copy, ONE shared renderer; codex) BOTH DISPATCHED by
+user order pre-sleep — land in the serial queue with the rest (three
+lanes live: 514, 517, 518; at cap). (3) If lanes idle after that: #504 (structure uninstall,
 last gate residual) then #505. NO experiments. The ui-design skill
 exists (.claude/skills/ui-design/SKILL.md, six chapters) — 515's
 design must comply (already steered). Morning queue: #514's tooltip
@@ -111,35 +231,9 @@ change first (fold into drive-pty skill at next pass).
 
 ---
 
-# RESUME ANCHOR 62 — 2026-08-04 ~04:25 EDT — THE NIGHT GOAL IS MET
-
-CRONS DISARMED BY USER ORDER (2026-08-04 ~20:20, verbatim "disarm
-loops"): both the :07 orchestration loop and the :37 sweep are
-STOPPED. The conductor skill's re-arm-on-restart rule is SUSPENDED
-until the user re-arms — a resumed session must NOT recreate them
-unbidden. fleet-watch (the Monitor) stays armed.
-
-All seven landed: #438 (hook policy; builder commits self-skip the
-gate), #494 (monitor log race), #371 (git-watch sequenced), #461
-(scrollbars residual DEAD — first clean gates in days), #499 (smokes
-print child failures + self-describe homes), #489 (drive batch: drag,
-log surface, --show, loud showScreen), #498 (five frame chords ride
-applicationGlobal; Ctrl+P stays terminal-owned by byte proof).
-dist/iv rebuilt. Bycatch converted: #504 (structure uninstall,
-pre-existing, proven on main — the LAST standing gate residual),
-#505 (Quick Open dead on comparison focus + Ctrl+Shift+O sweep).
-Conveyor lessons recorded: one dispatch per command; never
-grep-filter a dispatcher; coverage declarations go stale when main
-moves under a branch (re-base at the gate with reasons — consider a
-delta-based ratchet, daylight design question). MORNING QUEUE FOR THE
-USER: #498's decisions table (Ctrl+P/F1/etc. stay pane-owned); #503 +
-#495 + #489 record refinements (propose-only, unwritten); #504/#505
-dispatch call; the Escape-selection suspect (#489 bycatch).
-
----
-
 ## Condensed history (pruned anchors — full text in git)
 
+- RESUME ANCHOR 62 — 2026-08-04 ~04:25 EDT — THE NIGHT GOAL IS MET
 - RESUME ANCHOR 60 — 2026-08-04 ~01:45 EDT — TASKS ARE TERMINALS; PRIMING IS MECHANICAL
 - RESUME ANCHOR 59 — 2026-08-04 ~00:10 EDT — BUG NIGHT CLOSED; FLEET AT ZERO
 - RESUME ANCHOR 58b — 2026-08-03 ~23:10 EDT — WAVE COMPLETE + RECORDS WRITTEN + #501 LANDED

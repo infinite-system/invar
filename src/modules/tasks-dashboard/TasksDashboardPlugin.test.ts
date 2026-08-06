@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +8,30 @@ import { ThemePalettes } from '../theme/ThemePalettes';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { TasksDashboardPlugin } from './TasksDashboardPlugin';
+
+// The plugin resolves the fleet repository root through the
+// INVAR_FLEET_REPOSITORY_ROOT env override. When the override is unset, a
+// temp workspace IS its own fleet root, `fleetScopeMatches` flips true, and
+// the scope row these tests count disappears — the suite then passes or
+// fails with the runner's environment (seen live: green in builder
+// worktrees, red on the main checkout). Pin the override so the row
+// composition is the same everywhere.
+const originalFleetRootOverride = process.env.INVAR_FLEET_REPOSITORY_ROOT;
+
+beforeAll(() => {
+  process.env.INVAR_FLEET_REPOSITORY_ROOT = join(
+    tmpdir(),
+    'tasks-dashboard-plugin-fleet-root-elsewhere',
+  );
+});
+
+afterAll(() => {
+  if (originalFleetRootOverride === undefined) {
+    delete process.env.INVAR_FLEET_REPOSITORY_ROOT;
+  } else {
+    process.env.INVAR_FLEET_REPOSITORY_ROOT = originalFleetRootOverride;
+  }
+});
 
 class $AvailableSessionTasksDashboardPlugin
   extends TasksDashboardPlugin.$Class

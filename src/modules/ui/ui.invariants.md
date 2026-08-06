@@ -45,34 +45,36 @@ a FrameProbe check that rendered-row count stays bounded while wheel-scrolling a
 
 ### Status text is assembled from ordered contributions
 
-**Invariant:** If text appears in the status bar, then it comes from an ordered
-`StatusBarSegmentContribution`; the status host joins segments without naming their domains and
-owns the row's one-cell left margin.
+**Invariant:** If domain text or a domain control appears in the status bar, then it comes from an
+ordered `StatusBarSegmentContribution`; the status host joins segments and projects controls without
+naming their domains, and owns the row's one-cell left margin.
 
-**Scope:** `StatusBarSegments`, `CoreStatusBarSegments`, the source-control blame segment, and
-`StatusBar`.
+**Scope:** `StatusBarSegments`, `CoreStatusBarSegments`, the source-control blame segment, the shared
+bottom-panel control, and `StatusBar`.
 
 **Mechanism:** Core registers its ordinary workspace/editor segments and plugins register their
-segments during application activation. `StatusBar` supplies a generic context, joins the registry
-result, and prefixes one space. Segments carry no private leading margin. The source-control blame
-segment starts with the tiered `statusUser` glyph, one space, then its author and date.
+segments during application activation. Bootstrap registers the one bottom-panel toggle through the
+same seam. `StatusBar` supplies a generic context, joins the registry result, projects its first
+control through one generic renderable, and prefixes one space. Segments carry no private leading
+margin. The source-control blame segment starts with the tiered `statusUser` glyph, one space, then
+its author and date.
 
 **Generates:** Existing non-plugin status text and plugin-owned blame text through one projection
-surface; project and author rows aligned by one margin authority; icon, space, and author cells
-that stay stable across glyph tiers.
+surface; one bottom-panel button with the same toggle as Ctrl+J; project and author rows aligned by
+one margin authority; icon, space, and author cells that stay stable across glyph tiers.
 
 **Evidence:** `StatusBarSegments.ts`; `CoreStatusBarSegments.ts`; `StatusBar.ts`;
 `GitPlugin.ts` `segments`.
 
-**Impossible if true:** `StatusBar` importing or querying a concrete plugin controller; plugin
-status text requiring a new host field or rendering branch.
+**Impossible if true:** `StatusBar` importing or querying a concrete plugin controller; separate
+Agent and Terminal status buttons; plugin text or controls requiring a new host rendering branch.
 
 **Verification:** `bun test src/modules/ui/StatusBarSegments.test.ts
 src/modules/ui/CoreStatusBarSegments.test.ts src/modules/git/GitPlugin.test.ts`.
 
 **Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-08-05
 
 ### Plugin panes use the shared pane and popup hosts
 
@@ -363,49 +365,60 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 ### Panel controls share paint and hit geometry
 
-**Invariant:** If the bottom panel paints an editor action, pane Add, container Add, Expand/Restore,
-or Close, then one two-row projection determines the displayed segments and the screen columns that
-activate them. The upper splitter row contains editor actions, a draggable span, and panel
-controls. The lower row contains closable container tabs and container Add.
+**Invariant:** If the bottom panel paints pane Add, container Add, Expand/Restore, Close, Split, or
+Open tasks.json, then the owning projection determines both the displayed segments and the screen
+columns that activate them. The splitter row contains a draggable span and panel controls. The tab
+row contains closable container tabs and container Add. The instances list contains its contextual
+Add and one generated right-side overlay cluster per hovered row.
 
-**Scope:** `PanelTabBar`, the bottom-panel splitter and content-container tab rows in `RootView`,
-and the `PanelAddPopup` adapter. The contents-list row controls and status-bar buttons are outside
-this rule.
+**Scope:** `PanelTabBar`, `PanelContentsList`, the bottom-panel splitter and content-container tab
+rows in `RootView`, and the `PanelAddPopup` adapter. Status-bar buttons are outside this rule.
 
-**Mechanism:** `PanelTabBar.project` reserves the upper row's right controls and one drag cell before
-it admits whole three-cell editor actions contributed through `CommandRegistry.actionsForSurface`.
-It separately projects lower-row container tabs and container Add. It returns both rows' paint and
-hit segments with the action, tab-close, drag, and control rectangles. It clips each container label
+**Mechanism:** `PanelTabBar.project` reserves the splitter row's right controls and projects the
+tab-row container tabs, container Add, and instances toggle separately. In expanded mode it reserves
+the splitter-control width at the tab row's right edge, so the restore control remains painted and
+hit-testable. It returns both rows' paint and hit segments with tab-close, drag, and control
+rectangles. It clips each container label
 before it appends the close glyph, so narrow paint and hit bounds stay identical. Its `*AtColumn`
 methods resolve pointer input only from the returned half-open ranges. `RootView` retains the one
-projection, paints its four text segments, and points the shared `Tooltip` at each hovered action or
+projection, paints its tab and splitter segments, and points the shared `Tooltip` at each hovered
 control. Hover uses `palette.cursorLine`; Close uses `palette.fg`, not `palette.error`. Container Add
 opens the shared bounded list for outer containers. Pane Add opens the same popup host for Terminal,
 AI Agent (Claude), and Invar Agent windows in the active terminal container. Expand toggles the host
-layout override, and Close hides the whole panel without disposing its contents. Editor actions
-dispatch by command id. A container-tab Close removes the projected space by identifier.
+layout override, and Close hides the whole panel without disposing its contents. A container-tab
+Close removes the projected space by identifier. `PanelContentsList.rowControlOverlay` creates the
+task, split, and close cluster and its text truncation boundary once from the row and list width.
+Paint, tooltips, and pointer input all read that projection. At rest, the title uses the full row and
+no button cells are reserved. On hover, the title keeps its left edge, truncates with an ellipsis at
+the generated boundary, and the cluster replaces only its right tail. Unhover restores the full
+title. Idle controls use the row's background; only the hovered control uses
+`palette.cursorLine`.
 
-**Generates:** Editor buttons followed by an always-present drag segment and stable panel actions;
-closable content-container tabs that survive cell resizing; identical paint and pointer boundaries;
-tooltips and hover highlights for every control; one shared dropdown implementation; distinct
-whole-panel and content-container close actions.
+**Generates:** An always-present drag segment and stable panel actions; closable content-container
+tabs that survive cell resizing; identical paint and pointer boundaries; tooltips and hover
+highlights for every control; one shared dropdown implementation; distinct whole-panel and
+content-container close actions; a symmetric exit from expanded mode.
 
 **Evidence:** `src/modules/ui/PanelTabBar.ts`; `src/modules/ui/PanelTabBar.test.ts`;
 `src/modules/ui/PanelAddPopup.ts`; `src/modules/ui/RootView.ts`;
-`src/modules/ui/PanelAddPopup.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
+`src/modules/ui/PanelAddPopup.test.ts`; `src/modules/ui/PanelContentsList.test.ts`;
+`scripts/harness/smoke-panel-chrome-harness.ts`.
 
 **Impossible if true:** A zero-width drag segment; an editor action surviving while the drag segment
 disappears; a painted control column invoking a neighboring action; a narrow tab row
 leaving an invisible clickable control; Add reimplementing popup placement or row-hit math; Close
 targeting whichever content happens to be active instead of the projected tab identifier; a hovered
-control changing an un-hovered sibling; Close painting in the theme error color.
+control changing an un-hovered sibling; Close painting in the theme error color; tab controls
+covering the Restore control while expanded; a tasks.json glyph outside its generated row cluster;
+blank button cells reserved at the right edge of an unhovered instance row; hover shifting a row or
+one of its siblings.
 
 **Verification:** `bun test src/modules/ui/PanelTabBar.test.ts
 src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-31
+**Last refined:** 2026-08-05
 
 ### Panel content order is one persisted sequence
 
@@ -2527,39 +2540,51 @@ scripts/harness/smoke-panel-split-harness.ts`
 ### Bracketed paste survives stream chunking
 
 **Invariant:** If a bracketed paste sequence reaches Invar in arbitrary input chunks, then exactly
-one complete UTF-8 payload is emitted; one or more existing path tokens route as a path drop, and
-all other payloads route to the focused input surface.
+one complete UTF-8 payload is emitted. One or more existing path tokens become one shell-quoted
+paste when the focused pane declares that route; otherwise they open by file kind. Every other
+payload routes to the focused input surface.
 
 **Scope:** OpenTUI `StdinParser`, `Bootstrap` paste dispatch, `PathDropController`,
 `ApplicationContributions.openDroppedPath`, `PanelHost.handlePaste`,
-`TerminalPaneContent.handlePaste`, `AgentPaneContent.handlePaste`, and `OpenPty.write`.
+`PaneContent.acceptsDroppedPathPaste`, `TerminalPaneContent.handlePaste`,
+`AgentPaneContent.handlePaste`, `TerminalInstance.pasteUserInput`, and `OpenPty.write`.
 
 **Components:**
 - Stream assembly — one complete UTF-8 payload leaves `StdinParser`.
-- Path-drop routing — shell-quoted existing paths route before focused input.
+- Focused path delivery — terminal and agent panes receive one space-separated shell-quoted path
+  paste and the editor opens nothing.
+- Open fallback — without a focused path-paste pane, existing paths open by file kind.
 - Focused fallback — every payload that is not a path drop reaches only the focused input surface.
 
 **Mechanism:** OpenTUI's stream parser retains split start marker, payload, and end marker bytes
 until it emits one paste event. `PathDropController` accepts only complete token sets whose resolved
-paths all exist. `Bootstrap` sends every rejected set through the focused pane seam, and
-`OpenPty.write` queues partial libc writes until every terminal payload byte crosses the PTY.
+paths all exist, then offers one shell-quoted text payload to the focused-pane callback before it
+opens anything. `Bootstrap` accepts that route only when the focused content declares
+`acceptsDroppedPathPaste`. `TerminalInstance.pasteUserInput` restores the child bracketed-paste
+markers when the child enabled that mode. `OpenPty.write` queues partial libc writes until every
+terminal payload byte crosses the PTY. The agent composer receives the same payload through its
+existing semantic paste method.
 
 **Generates:** Marker-edge input fixtures; exact 10-byte, 1 KB, and 64 KB terminal and composer
-drives; shell-quoted multi-file drops; typed path text that never opens a file; large terminal
+drives; local terminal and agent path delivery; remote dropzone path delivery after upload;
+editor-focused open-by-kind fallback; typed path text that never opens a file; large terminal
 payloads that cannot truncate on a partial PTY write.
 
 **Rejected alternatives:** Send every harness paste as one write — real terminals split large
 payloads and both bracketed-paste markers across PTY chunks.
 
 **Evidence:** `scripts/harness/BracketedPasteInput.test.ts`;
-`scripts/harness/smoke-paste-harness.ts`; `src/modules/system/OpenPty.ts`.
+`scripts/harness/smoke-paste-harness.ts`; `scripts/harness/smoke-ssh-channel-harness.ts`;
+`src/modules/terminal/TerminalInstance.test.ts`; `src/modules/system/OpenPty.ts`.
 
 **Impossible if true:** A split marker becomes typed text; one paste produces multiple composer
-insertions; a typed unbracketed path opens a file; a complete existing-path drop reaches the shell;
-a 64 KB terminal paste loses a suffix; non-path paste reaches the editor while a pane owns focus.
+insertions; a typed unbracketed path opens a file; a focused terminal or agent drop opens an editor
+buffer; a remote child receives the local path instead of the uploaded dropzone path; a 64 KB
+terminal paste loses a suffix; non-path paste reaches the editor while a pane owns focus.
 
-**Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts && bun
-scripts/harness/smoke-paste-harness.ts`
+**Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts
+src/modules/terminal/TerminalInstance.test.ts && bun scripts/harness/smoke-paste-harness.ts && bun
+scripts/harness/smoke-ssh-channel-harness.ts`
 
 **Status:** established
 
@@ -2573,9 +2598,10 @@ it holds none.
 
 **Scope:** `PanelContentsList` header projection and the panel content area's empty notice.
 
-**Mechanism:** The header renders `+ <label> ▾` on a full-width accent bar at the list's own
-first column, with no leading pad, so the control reads as a target AND every row control below
-it keeps its column arithmetic. When the panel resolves no cells, `RootView` mounts a dim notice
+**Mechanism:** The header renders ` + <label> ▾` across the list width. It starts on the panel
+background, uses `palette.cursorLine` while hovered, and uses `palette.selection` while pressed. Its
+one leading space belongs to the header text and does not change the row-control geometry below.
+When the panel resolves no cells, `RootView` mounts a dim notice
 in the content area rather than leaving a void, in the same shape the editor column uses when no
 editor is installed.
 
@@ -2584,22 +2610,22 @@ always was, and the empty area names the gesture.
 
 **Rejected alternatives:** Swapping the button for the bare words `Add Terminal` when the list
 empties — the user reported this exact behaviour as the defect: the only way back looked like a
-label. Padding the button on its left — a one-cell leading pad shifts the anchor every row
-control resolves from, which silently moved the close target one column off.
+label. Painting the idle header as selected makes an untouched action look active.
 
 **Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/RootView.ts`
 (`panelEmptyNotice`); `src/modules/ui/PanelContentsList.test.ts`, whose assertion was inverted
 when this contract changed.
 
-**Impossible if true:** An instances list showing no add control, or showing it as plain text; a
-panel with zero instances painting an unexplained empty region.
+**Impossible if true:** An instances list showing no add control, showing it as plain text, or
+painting it selected before interaction; a panel with zero instances painting an unexplained empty
+region; the header losing its leading space.
 
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts` and
 `bun scripts/harness/smoke-panel-chrome-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-08-03
+**Last refined:** 2026-08-05
 
 ### An emptied space survives its last instance
 
@@ -2612,8 +2638,10 @@ space regardless of kind. `closeSpace` is the deliberate container-close path an
 **Mechanism:** Closing an instance and closing a container are different gestures with different
 blast radius. Two seams enforce it. The space list keeps a space that is active even when its
 content list empties, so the panel cannot silently adopt another plugin's space. The last-cell
-fallback searches only the ACTIVE SPACE's content identifiers, so it can never promote a pane
-belonging to another space into the space the user is looking at.
+fallback searches only the ACTIVE SPACE's content identifiers. If the closed cell was the active
+singleton group, it selects the fallback's persisted group and loads that group before the next
+persistence pass. The pass therefore cannot rewrite a surviving split from a temporary single-cell
+layout.
 
 **Generates:** The empty-panel Add row — an emptied terminal space still knows it is a terminal
 space, so its Add control offers terminals. It also generates the rule that a plugin's pane can
@@ -2625,9 +2653,9 @@ Database pane the user never opened, in the tab they opened for terminals. Promo
 `orderedContents[0]` on the last close — the registry spans every space, so the fallback reached
 outside the space that owned the gesture.
 
-**Evidence:** `src/modules/ui/PanelHost.ts` (`detachContent` space retention and space-scoped
-fallback); `src/modules/ui/PanelHost.test.ts`, whose two arms both fail when either half is
-reverted: the space must survive AND a same-space survivor must still be promoted.
+**Evidence:** `src/modules/ui/PanelHost.ts` (`detachContent` space retention and group-scoped
+fallback); `src/modules/ui/PanelHost.test.ts`; the exact graph sequence in
+`scripts/harness/smoke-panel-chrome-harness.ts`.
 
 **Impossible if true:** A user closing the last instance of one space can never be shown content
 belonging to a different space, and can never lose the tab they opened.
@@ -2637,7 +2665,7 @@ belonging to a different space, and can never lose the tab they opened.
 
 **Status:** provisional
 
-**Last refined:** 2026-08-02
+**Last refined:** 2026-08-05
 
 ### Every registered panel content is reachable
 
@@ -2667,8 +2695,9 @@ nobody added became visible.
 
 **Evidence:** `src/modules/ui/PanelContentFactories.ts` and
 `src/modules/ui/PanelContentFactories.test.ts`; `src/modules/ui/PanelHost.test.ts` restore
-cases; `scripts/harness/smoke-panel-split-harness.ts`, which drives the empty panel and the
-registered-but-unreachable guard. The probe that printed the defect before the repair is
+cases; `scripts/harness/smoke-panel-split-harness.ts` and
+`scripts/harness/smoke-panel-chrome-harness.ts`, which drive the empty panel, fallback splits, and
+the registered-but-unreachable guard. The probe that printed the earlier defect before repair is
 `probe-459-empty-dock.ts` in this task's folder: `panelContentIds` held `database` while `panelCellIds`
 and the list rows did not, and it survived closing every terminal.
 
@@ -2682,7 +2711,7 @@ must name the same set, and an emptied panel must keep its Add row.
 
 **Status:** provisional
 
-**Last refined:** 2026-08-02
+**Last refined:** 2026-08-05
 
 ### A pane runtime owns its processes
 

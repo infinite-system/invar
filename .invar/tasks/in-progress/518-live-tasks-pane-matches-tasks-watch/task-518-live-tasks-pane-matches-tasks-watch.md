@@ -41,3 +41,33 @@ under momentum at both fixture scales; select + copy row text
 (clipboardEmissions); the uncolored-space fix asserted by cell
 color; compare pane vs tasks:watch side-by-side (drive both, diff
 the layouts) — identical is the bar.
+
+## Item 5 (user, same session): the LIVE/ACTIVE/DONE segment control
+
+The pane's filter buttons currently render with gaps:
+`| LIVE |  | ACTIVE |  | DONE |`. Make them one contiguous segmented
+control: `| LIVE | ACTIVE | DONE |` — shared borders, no dead cells
+between segments, one hover/active grammar across the group
+(ui-design chapter 1; the whole group is one geometry generator).
+
+## Item 1 refined (user, same session): hover buttons OVERLAY the text
+
+No cells are ever reserved-empty for buttons. At rest, the row shows
+its full text edge to edge. ON HOVER, the button icons appear over
+the right end of the row and the text truncates with an ellipsis to
+make room: rest = full text, hover = truncated-text… + icons in the
+freed cells. On unhover the full text returns. The truncation point
+and the icon cells share one geometry generator; the transition must
+not shift the row or its siblings.
+
+## Item 6 (user, same session): 60fps motion parity
+
+The pane renders its live motion at 60fps like tasks:watch now does —
+same animation heartbeat, same smoothness (the watch-parity motion
+records in the tasks contracts are the reference). Constraints: the
+render load stays attributed at the contribution boundary and flat
+per frame (no per-row timers — one heartbeat driving the visible
+rows, the pane's motion stops when unobserved per the monitoring
+discipline). Smoke assertions stay COUNT/ORDER-based (timeless gate
+law) — fps itself is verified by driving and by the existing
+watch-parity contract shapes, never by a wall-clock assertion.

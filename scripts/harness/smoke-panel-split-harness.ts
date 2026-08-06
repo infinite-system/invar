@@ -107,21 +107,49 @@ async function driveSharedCloseGlyphTier(
       `${glyphLevel} close-glyph drive opens one editor tab`,
       (status) => Number(status.bufferTabCount) > 0,
     );
-    let snapshot = await tierDriver.awaitGridCondition(
-      `${glyphLevel} status bar exposes terminal and agent controls`,
+    const snapshot = await tierDriver.awaitGridCondition(
+      `${glyphLevel} status bar exposes one shared panel control`,
       (candidate) =>
         candidate.findText(` ${terminalIcon} `) !== null &&
-        candidate.findText(` ${agentIcon} `) !== null,
+        candidate.findText(` ${agentIcon} `) === null,
     );
     clickCell(
       tierDriver,
       statusButtonColumn(snapshot, ` ${terminalIcon} `),
       snapshot.rows - 1,
     );
+    const emptyPanelStatus = await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} shared control opens an empty panel`,
+      (status) =>
+        status.panelVisible === true &&
+        Array.isArray(status.panelContentIds) &&
+        status.panelContentIds.length === 0,
+    );
+    const emptyPanelGeometry = emptyPanelStatus.panelSeparatorGeometry as {
+      tabRow: number;
+      spaceAdd: {
+        startColumn: number;
+        endColumnExclusive: number;
+      } | null;
+    };
+    const pluginAdd = emptyPanelGeometry.spaceAdd;
+    if (!pluginAdd) throw new Error('Missing Plugin Add control');
+    clickCell(tierDriver, pluginAdd.startColumn + 1, emptyPanelGeometry.tabRow);
     await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
-      `${glyphLevel} terminal opens in the panel`,
+      `${glyphLevel} Plugin Add chooser selects Terminal`,
+      (status) =>
+        status.boundedListPopupOpen === true &&
+        status.boundedListPopupSelectedIdentifier === 'terminal',
+    );
+    tierDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} Terminal Add creates one terminal`,
       (status) =>
         Array.isArray(status.panelCellKinds) &&
         status.panelCellKinds.includes('terminal'),
@@ -161,20 +189,85 @@ async function driveSharedCloseGlyphTier(
         tierDriver.snapshot().findText('Close Terminal?') === null,
       `${glyphLevel} instance close paints no confirmation dialog`,
     );
-    snapshot = tierDriver.snapshot();
+    const listToggle = (
+      closedTerminalStatus.panelSeparatorGeometry as {
+        tabRow: number;
+        instancesToggle: {
+          startColumn: number;
+          endColumnExclusive: number;
+        } | null;
+      }
+    ).instancesToggle;
+    if (!listToggle) throw new Error('Missing instances-list toggle');
     clickCell(
       tierDriver,
-      statusButtonColumn(snapshot, ` ${terminalIcon} `),
-      snapshot.rows - 1,
+      listToggle.startColumn + 1,
+      Number(
+        (closedTerminalStatus.panelSeparatorGeometry as { tabRow: number })
+          .tabRow,
+      ),
     );
+    const emptyListStatus = await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} empty Terminal list opens before recreation`,
+      (status) =>
+        status.panelListVisible === true &&
+        typeof status.panelListGeometry === 'object',
+    );
+    const emptyListGeometry = emptyListStatus.panelListGeometry as {
+      left: number;
+      top: number;
+    };
+    clickCell(tierDriver, emptyListGeometry.left + 2, emptyListGeometry.top);
     await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
-      `${glyphLevel} terminal reopens before the container arm`,
+      `${glyphLevel} pane Add chooser selects Terminal`,
+      (status) =>
+        status.boundedListPopupOpen === true &&
+        status.boundedListPopupSelectedIdentifier === 'terminal',
+    );
+    tierDriver.sendKeys('Enter');
+    const recreatedTerminalStatus = await HarnessSmoke.Class.awaitStatus(
+      tierDriver,
+      tierStatusPath,
+      `${glyphLevel} terminal recreates before the container arm`,
       (status) =>
         Array.isArray(status.panelContentKinds) &&
         status.panelContentKinds.includes('terminal'),
     );
+    if (recreatedTerminalStatus.panelListVisible === true) {
+      const recreatedListToggle = (
+        recreatedTerminalStatus.panelSeparatorGeometry as {
+          tabRow: number;
+          instancesToggle: {
+            startColumn: number;
+            endColumnExclusive: number;
+          } | null;
+        }
+      ).instancesToggle;
+      if (!recreatedListToggle) {
+        throw new Error('Missing recreated instances-list toggle');
+      }
+      clickCell(
+        tierDriver,
+        recreatedListToggle.startColumn + 1,
+        Number(
+          (
+            recreatedTerminalStatus.panelSeparatorGeometry as {
+              tabRow: number;
+            }
+          ).tabRow,
+        ),
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        tierDriver,
+        tierStatusPath,
+        `${glyphLevel} recreated Terminal list closes before the agent chord`,
+        (status) => status.panelListVisible === false,
+      );
+    }
     await HarnessSmoke.Class.requestPanelContainerClose(
       tierDriver,
       'Terminal',
@@ -199,12 +292,7 @@ async function driveSharedCloseGlyphTier(
     HarnessSmoke.Class.pass(
       `${glyphLevel} container close states one instance and defaults to No`,
     );
-    snapshot = tierDriver.snapshot();
-    clickCell(
-      tierDriver,
-      statusButtonColumn(snapshot, ` ${agentIcon} `),
-      snapshot.rows - 1,
-    );
+    tierDriver.sendRawInput('\x1b[27;6;97~');
     const splitStatus = await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
@@ -293,8 +381,8 @@ try {
     15_000,
   );
   HarnessSmoke.Class.pass('panel hidden at boot');
-  let statusBarSnapshot = await driver.awaitGridCondition(
-    'the terminal status button is visible before opening the panel',
+  const statusBarSnapshot = await driver.awaitGridCondition(
+    'the shared panel status button is visible before opening the panel',
     (candidate) => candidate.findText(' ❯ ') !== null,
   );
   clickCell(
@@ -302,6 +390,34 @@ try {
     statusButtonColumn(statusBarSnapshot, ' ❯ '),
     statusBarSnapshot.rows - 1,
   );
+  const emptyPanelStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the shared status control opens the panel without creating a terminal',
+    (status) =>
+      status.panelVisible === true &&
+      Array.isArray(status.panelContentIds) &&
+      status.panelContentIds.length === 0,
+  );
+  const emptyPanelGeometry = emptyPanelStatus.panelSeparatorGeometry as {
+    tabRow: number;
+    spaceAdd: {
+      startColumn: number;
+      endColumnExclusive: number;
+    } | null;
+  };
+  const pluginAdd = emptyPanelGeometry.spaceAdd;
+  if (!pluginAdd) throw new Error('Missing Plugin Add control');
+  clickCell(driver, pluginAdd.startColumn + 1, emptyPanelGeometry.tabRow);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Plugin Add chooser selects Terminal',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupSelectedIdentifier === 'terminal',
+  );
+  driver.sendKeys('Enter');
   let openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -328,11 +444,7 @@ try {
   console.log(
     '== harness panel-split: Agent opens full width, then its row explicitly adds a split ==',
   );
-  clickCell(
-    driver,
-    statusButtonColumn(driver.snapshot(), ' ✦ '),
-    driver.snapshot().rows - 1,
-  );
+  driver.sendRawInput('\x1b[27;6;97~');
   openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

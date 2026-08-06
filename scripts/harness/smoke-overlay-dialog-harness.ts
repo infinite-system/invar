@@ -507,11 +507,13 @@ function underlyingInteractionState(
 }
 
 function underlyingVisibilityState(status: HarnessStatus): {
+  panelVisible: unknown;
   terminalVisible: unknown;
   primaryDockVisible: unknown;
   rightDockVisible: unknown;
 } {
   return {
+    panelVisible: status.panelVisible,
     terminalVisible: status.terminalVisible,
     primaryDockVisible: status.primaryDockVisible,
     rightDockVisible: status.rightDockVisible,
@@ -1369,7 +1371,7 @@ try {
   );
   await closeSettingsWithEscape(driver, statusPath, 'editor');
 
-  await clickStatusMarker(driver, ' ❯ ');
+  driver.sendKeys('Control+j');
   await awaitStatusPublication(
     statusPath,
     'the terminal panel is visible',
@@ -1458,7 +1460,7 @@ try {
     (candidate) =>
       candidate.panelVisible === false && candidate.terminalVisible === false,
   );
-  await clickStatusMarker(driver, ' ✦ ');
+  driver.sendKeys('Control+Shift+a');
   await awaitStatusPublication(
     statusPath,
     'the agent-only panel is visible',
@@ -1473,11 +1475,16 @@ try {
   console.log(
     '== harness overlays: Escape closes from contents-list and popup focus ==',
   );
-  await clickStatusMarker(driver, ' ❯ ');
-  // Open by MOUSE here, not Shift+F1. At this point the terminal panel holds focus,
-  // and a focused terminal forwards keystrokes to the child shell — so the binding
-  // never reaches the application. The status control is focus-independent, and this
-  // same helper already proves the path earlier in this smoke.
+  driver.sendKeys('Control+j');
+  await awaitStatusPublication(
+    statusPath,
+    'the terminal regains focus before the contents-list overlay cases',
+    (candidate) =>
+      candidate.panelVisible === true &&
+      candidate.terminalFocused === true &&
+      candidate.panelActiveContentKind === 'terminal',
+  );
+  // Open by mouse here, not Shift+F1. A focused terminal forwards that chord to its child shell.
   await clickStatusMarker(driver, '?');
   status = await awaitStatusPublication(
     statusPath,

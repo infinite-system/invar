@@ -109,6 +109,7 @@ try {
   pass('bracketed-paste mode is enabled');
 
   const textPath = join(fixtureRoot, 'paste.txt');
+  const secondTextPath = join(fixtureRoot, 'second paste.txt');
   driver.sendRawInputWithoutFrameExpectation(textPath);
   driver.sendKeys('Control+j');
   await awaitStatusPublication(
@@ -126,6 +127,29 @@ try {
     'an unbracketed path does not trigger drop routing',
   );
   pass('an unbracketed path did not open a file');
+
+  driver.sendText('set -- ');
+  driver.sendPaste(`'${textPath}' "${secondTextPath}"`);
+  await awaitStatusPublication(
+    statusPath,
+    'the focused terminal keeps the dropped paths out of the editor',
+    (status) =>
+      status.activeBuffer === null &&
+      status.terminalFocused === true &&
+      status.panelActiveContentKind === 'terminal',
+  );
+  driver.sendText(
+    '; printf \'DROP_COUNT=%s FIRST=%s SECOND=%s\\n\' "$#" "$(basename "$1")" "$(basename "$2")"',
+  );
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (snapshot) =>
+      snapshot.findText(
+        'DROP_COUNT=2 FIRST=paste.txt SECOND=second paste.txt',
+      ) !== null,
+  );
+  pass('a focused terminal received two shell-quoted dropped paths');
+  pass('the focused-terminal drop opened no editor buffer');
   driver.sendKeys('Control+j');
   await awaitStatusPublication(
     statusPath,
@@ -195,7 +219,6 @@ try {
   );
   pass('an outside-root drop has a visible read-only badge');
 
-  const secondTextPath = join(fixtureRoot, 'second paste.txt');
   driver.sendPaste(`'${textPath}' "${secondTextPath}"`);
   await awaitStatusPublication(
     statusPath,
@@ -454,6 +477,24 @@ try {
   );
   const agentPaneText = (snapshot: HarnessSnapshot.Model): string =>
     paneWindowText(snapshot, pasteAgentPaneLeft, pasteAgentPaneColumns);
+  driver.sendPaste(`'${textPath}' "${secondTextPath}"`);
+  await driver.awaitSnapshot(
+    (snapshot) =>
+      agentPaneText(snapshot).includes("paste.txt'") &&
+      agentPaneText(snapshot).includes("secondpaste.txt'"),
+  );
+  await awaitStatusPublication(
+    statusPath,
+    'the focused agent keeps dropped paths out of the editor',
+    (status) =>
+      status.activeBuffer === textPath &&
+      status.panelActiveContentKind === 'agent',
+  );
+  pass('a focused agent received two shell-quoted dropped paths');
+  driver.sendRawInput('\x1b[127;5u');
+  await driver.awaitSnapshot(
+    (snapshot) => !agentPaneText(snapshot).includes("secondpaste.txt'"),
+  );
   for (const payloadByteCount of [10, 1024, 65_536]) {
     const payloadSuffix = `-END${payloadByteCount}`;
     const payload = exactSizePayload(

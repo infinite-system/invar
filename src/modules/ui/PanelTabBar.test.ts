@@ -3,7 +3,7 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { PanelTabBar } from './PanelTabBar';
 
-function project(paneCount: number, width = 80) {
+function project(paneCount: number, width = 80, expanded = false) {
   return PanelTabBar.Class.project({
     width,
     spaces: [
@@ -30,7 +30,7 @@ function project(paneCount: number, width = 80) {
     activeSpaceKind: 'terminal',
     paneCount,
     paneListExpanded: false,
-    expanded: false,
+    expanded,
     focused: true,
     hoveredTabIdentifier: null,
     editorActions: [
@@ -142,6 +142,13 @@ test('the splitter keeps only frame controls and the tab row always exposes inst
   expect(projection.spaceAdd?.tooltip).toBe('Add Plugin');
   expect(projection.instancesToggle?.tooltip).toBe('Show Instances');
   expect(projection.instancesToggle?.endColumn).toBe(80);
+});
+
+test('an expanded panel reserves its restore controls beside the tab controls', () => {
+  const projection = project(2, 80, true);
+  expect(projection.tabRightInsetWidth).toBe(projection.splitterControlWidth);
+  expect(projection.instancesToggle?.endColumn).toBe(74);
+  expect(projection.controls[0]?.startColumn).toBe(74);
 });
 
 test('the drag span paints from the first cell inside its full hit width', () => {

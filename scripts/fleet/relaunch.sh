@@ -34,8 +34,10 @@ build_resume_command() {
   local engine="$1" model="$2" effort="$3"
   case "$engine" in
     codex)
-      printf 'codex --dangerously-bypass-approvals-and-sandbox -m gpt-%s -c model_reasoning_effort=%s resume --last' \
-        "$model" "$effort"
+      # The compaction-lifecycle notify program (#517) is a per-launch flag,
+      # so a resumed lane must re-register it or lose the warn/steer arms.
+      printf 'codex --dangerously-bypass-approvals-and-sandbox -m gpt-%s -c model_reasoning_effort=%s -c notify=["%s/scripts/fleet/codex-compaction-notify.sh"] resume --last' \
+        "$model" "$effort" "$repository_root"
       ;;
     claude)
       printf 'claude --dangerously-skip-permissions --model %s --effort %s --continue' \
@@ -58,6 +60,12 @@ if [ "${1:-}" = "--self-test" ]; then
   case "$command_line" in
     *'resume --last') ;;
     *) echo "FAIL codex resume arm: $command_line"; failures=1 ;;
+  esac
+  # A resumed codex lane must re-register the compaction notify program
+  # (#517) — the registration is a per-launch flag, not persistent config.
+  case "$command_line" in
+    *'notify=["'*'/scripts/fleet/codex-compaction-notify.sh"]'*) ;;
+    *) echo "FAIL codex notify re-registration arm: $command_line"; failures=1 ;;
   esac
   # claude arm: --continue present.
   command_line="$(build_resume_command claude opus medium)"

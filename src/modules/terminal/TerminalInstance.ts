@@ -133,6 +133,15 @@ class $TerminalInstance {
     this.backend.write(bytes);
   }
 
+  pasteUserInput(text: string): void {
+    if (!text) return;
+    this.sendUserInput(
+      this.emulator.isBracketedPasteEnabled
+        ? `\x1b[200~${text}\x1b[201~`
+        : text,
+    );
+  }
+
   stageTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
     return this.terminalCommandController.stageTerminalCommand(command);
   }
