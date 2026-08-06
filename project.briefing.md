@@ -4,7 +4,7 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
-# RESUME ANCHOR 74 — 2026-08-06 ~07:40 EDT — NINE LANDED; GATE FLAKE KILLED; IDLE FOR MORNING
+# RESUME ANCHOR 74 — 2026-08-06 07:21 EDT — NINE LANDED; GATE FLAKE KILLED; IDLE FOR MORNING
 
 /goal COMPLETE (user asleep). Crons armed (:07, :37). fleet-watch live.
 ZERO builders, ZERO gates, checkout clean.
