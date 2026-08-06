@@ -49,3 +49,13 @@ The pane's filter buttons currently render with gaps:
 control: `| LIVE | ACTIVE | DONE |` — shared borders, no dead cells
 between segments, one hover/active grammar across the group
 (ui-design chapter 1; the whole group is one geometry generator).
+
+## Item 1 refined (user, same session): hover buttons OVERLAY the text
+
+No cells are ever reserved-empty for buttons. At rest, the row shows
+its full text edge to edge. ON HOVER, the button icons appear over
+the right end of the row and the text truncates with an ellipsis to
+make room: rest = full text, hover = truncated-text… + icons in the
+freed cells. On unhover the full text returns. The truncation point
+and the icon cells share one geometry generator; the transition must
+not shift the row or its siblings.
