@@ -225,7 +225,19 @@ emit_sprawl_events() {
   local rate_kb=$((SPRAWL_RATE_MB * 1024))
   local reasons=""
   if [ "$available_kb" -lt "$floor_kb" ]; then
-    reasons="disk floor breached: $((available_kb / 1024 / 1024))G free < ${SPRAWL_FLOOR_GB}G"
+    # A STANDING floor breach repeats only when the whole-GB tier DROPS.
+    # A steady 7G-free condition already alerted; re-alerting every window
+    # tells the conductor nothing and costs a wake each time. The tier
+    # stamp resets when free space recovers above the floor.
+    local free_gb=$((available_kb / 1024 / 1024))
+    local last_tier=""
+    [ -f "${SPRAWL_THROTTLE_STAMP}.tier" ] && last_tier="$(cat "${SPRAWL_THROTTLE_STAMP}.tier" 2>/dev/null)"
+    if [ -z "$last_tier" ] || [ "$free_gb" -lt "$last_tier" ]; then
+      reasons="disk floor breached: ${free_gb}G free < ${SPRAWL_FLOOR_GB}G"
+      echo "$free_gb" > "${SPRAWL_THROTTLE_STAMP}.tier"
+    fi
+  else
+    rm -f "${SPRAWL_THROTTLE_STAMP}.tier"
   fi
   if [ -n "$previous_kb" ] && [ $((previous_kb - available_kb)) -gt "$rate_kb" ]; then
     reasons="${reasons:+${reasons}; }rapid fill: $(((previous_kb - available_kb) / 1024))MB consumed in one cycle"
