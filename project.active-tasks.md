@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #536 [workspace-replace-consent-history](.invar/tasks/in-progress/536-workspace-replace-consent-history/task-536-workspace-replace-consent-history.md)  [building]
-  `tmux attach -t invar/536-workspace-replace-consent-history`
-
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -158,7 +154,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 236 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 237 — full log: project.tasks-completed.md)
+- #536 [workspace-replace-consent-history](.invar/tasks/completed/536-workspace-replace-consent-history/task-536-workspace-replace-consent-history.md) — 3a006e4f — Milestone 5: workspace replace with counted consent, per-item drift, undo/redo through one coordinator; structural round moved the patch engine to workspace/ and split the state machines; conductor-driven twice.
 - #535 [left-dock-search-surface](.invar/tasks/completed/535-left-dock-search-surface/task-535-left-dock-search-surface.md) — 1d759ad5 — Milestone 4: the visible Search — activity icon, left-dock panel, streaming result tree, click-to-line; conductor-driven both arms; structural round closed all reviewer findings.
 - #534 [workspace-search-backend](.invar/tasks/completed/534-workspace-search-backend/task-534-workspace-search-backend.md) — 7ab4bbf3 — Milestone 3: bounded streaming workspace search with one query compiler, honest rg-unavailable state, cap/cancel/overlay proven; no visible change, conductor-verified on an rg-less machine.
 - #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/completed/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md) — 129fc4b9 — Tasks header segments without pipes; Open button works headless with tooltip; phase parity via one pure helper; full cell-level parity table; conductor acceptance-driven before landing.
@@ -173,4 +170,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/completed/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md) — 22c80f69 — Dropped files paste as remote-usable paths into the focused agent/terminal pane via the PaneContent drop capability.
 - #511 [inversion-design-and-sync-census](.invar/tasks/completed/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md) — 86d4388b — inversion: measured (70 sync sites) and deferred
 - #510 [the-open-button-picker-tiers](.invar/tasks/completed/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md) — 6cc66819 — the Open button: client-native over ssh, local-native, in-app browser
-- #509 [iv-ssh-the-channel-client](.invar/tasks/completed/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md) — b5794429 — iv ssh: byte-perfect passthrough + the RPC channel; dropzone works
