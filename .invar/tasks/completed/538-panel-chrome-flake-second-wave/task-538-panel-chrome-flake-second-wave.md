@@ -1,7 +1,7 @@
 # 538 — panel chrome flake second wave
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — 0cd8aab6 — The panel-chrome contention flake's third lost-gesture member killed: hover-verified aim after layout moves the control; 15/15 contention green.
 Engine: claude
 Environment: linux
 Model: fable-5
