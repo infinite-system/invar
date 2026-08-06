@@ -54,6 +54,30 @@ conductor at landing, so what you name today the next builder holds
 tomorrow. Nine builders shaped this skill's current surface that way in its
 first two nights.
 
+## DRIVE ADVERSARIALLY — the verification law (user doctrine, 2026-08-05)
+
+The happy path is the smoke's FLOOR, never its content. Whatever you
+build, verify it by DRIVING VARIATIONS until it breaks or clearly
+will not:
+
+- CYCLES: create several -> remove ALL -> create again -> remove one
+  by one. Lifecycles break at re-entry, not first entry.
+- BOUNDARY COUNTS: zero, one, many, all. The bug lives at 0 and at
+  "remove the last one" far more often than at 3.
+- ORDER VARIATIONS: same actions, different orders; interleave
+  surfaces (create terminal, open dialog, remove terminal, close
+  dialog); do things while other things are mid-flight.
+- ASSERT AFTER EVERY STEP, not at the end: read the graph state
+  (lists, counts, focus) after each action — an end-state assertion
+  hides which step corrupted it (#514's over-removal hid exactly
+  this way).
+- BREAK IT ON PURPOSE: the action your feature makes possible, done
+  twice, cancelled midway, repeated fast — before the report claims
+  done.
+The READY report names the variation protocol driven, not just the
+assertions written. A report showing only the happy path is
+incomplete by definition.
+
 Two instruments, one contract. INPUT always travels through the real PTY as
 bytes a real terminal could produce — the founding harness invariant; there
 is no teleport path and none may be added. OBSERVATION has two eyes: the

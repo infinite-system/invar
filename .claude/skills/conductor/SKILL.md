@@ -99,6 +99,12 @@ worktree-local hook policy that keeps formatting and skips the full merge gate.
 The conductor still gates the combined tree at landing. Manually cut worktrees
 do not get this policy.
 
+**DRIVE ADVERSARIALLY is part of every brief's verification bar** (user
+doctrine 2026-08-05, encoded in the drive-pty skill's verification law):
+briefs for stateful surfaces name a VARIATION PROTOCOL (cycles, boundary
+counts, order variations, assert-after-every-step), and a READY report
+that drove only the happy path goes back for the variations.
+
 **PLAIN WORDS FIRST — `## In plain words` is required in every brief AND
 every report.** Two or three sentences a ten-year-old could follow: what is
 wrong now, what must be true after. `dispatch.sh` and `round-brief.sh` refuse
