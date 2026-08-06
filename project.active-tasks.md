@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #509 [iv-ssh-the-channel-client](.invar/tasks/in-progress/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md)  [building]
+## IN-PROGRESS (1)
+- #509 [iv-ssh-the-channel-client](.invar/tasks/in-progress/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/509-iv-ssh-the-channel-client`
-- #508 [local-drop-opens-the-dropped-file](.invar/tasks/in-progress/508-local-drop-opens-the-dropped-file/task-508-local-drop-opens-the-dropped-file.md)  [building]
-  `tmux attach -t invar/508-local-drop-opens-the-dropped-file`
 
 ## USER-DIRECTED (17)
 - #511 [inversion-design-and-sync-census](.invar/tasks/active/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md)
@@ -31,7 +29,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (30)
+## VERIFICATION-INTEGRITY (31)
+- #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
 - #460 [gate-contention-tier-evidence-asymmetry](.invar/tasks/active/460-gate-contention-tier-evidence-asymmetry/task-460-gate-contention-tier-evidence-asymmetry.md)
@@ -152,7 +151,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 218 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 219 — full log: project.tasks-completed.md)
+- #508 [local-drop-opens-the-dropped-file](.invar/tasks/completed/508-local-drop-opens-the-dropped-file/task-508-local-drop-opens-the-dropped-file.md) — 3cbd082e — dropped files open by kind; outside-root reads only
 - #506 [constructor-first-and-the-constants-role-table](.invar/tasks/completed/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md) — b27235a9 — constructor first everywhere; constants have one form per role
 - #503 [a-task-is-a-terminal-pane-not-a-kind](.invar/tasks/completed/503-a-task-is-a-terminal-pane-not-a-kind/task-503-a-task-is-a-terminal-pane-not-a-kind.md) — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json
 - #502 [dead-task-panes-must-not-restore](.invar/tasks/completed/502-dead-task-panes-must-not-restore/task-502-dead-task-panes-must-not-restore.md) — aa80511f — dead task panes drop at restore; layouts heal; ratchet tightens to 33
@@ -167,4 +167,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #491 [editor-shared-generators-move-home](.invar/tasks/completed/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md) — cf1befd4 — editor generators move to core text; monitoring rides the provider seam
 - #490 [chord-and-command-relocation-sweep](.invar/tasks/completed/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md) — c343b38f — plugin chords and labels relocated; ShortcutHelp reads live layers
 - #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/completed/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md) — da15f209 — drive layer: drag, log surface, --show, loud showScreen
-- #488 [core-to-plugin-coupling-census](.invar/tasks/completed/488-core-to-plugin-coupling-census/task-488-core-to-plugin-coupling-census.md) — c9cafd4f — coupling census: 115 vocabulary + 15 import sites, ranked, wave filed
