@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: medium
-State: IN-PROGRESS
+State: COMPLETED — d9e05771 — Global chords survive read-only focus via one routing fact (ownsRawKeyInput); comparison Ctrl+P fixed at the generator; Ctrl+Shift+O sighting refuted with a locking smoke.
 
 ## In plain words
 
