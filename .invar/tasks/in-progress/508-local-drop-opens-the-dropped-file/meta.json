@@ -1,0 +1,15 @@
+{
+  "task": 508,
+  "slug": "local-drop-opens-the-dropped-file",
+  "branch": "fleet/508-local-drop-opens-the-dropped-file",
+  "worktree": ".invar/worktrees/508-local-drop-opens-the-dropped-file",
+  "tmuxSession": "invar/508-local-drop-opens-the-dropped-file",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-508-local-drop-opens-the-dropped-file.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "b9360598a9829af391daba3b4d82fe9aacc28947",
+  "startedAt": "2026-08-05T20:05:47-04:00"
+}

@@ -6,7 +6,14 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (15)
+## IN-PROGRESS (1)
+- #508 [local-drop-opens-the-dropped-file](.invar/tasks/in-progress/508-local-drop-opens-the-dropped-file/task-508-local-drop-opens-the-dropped-file.md)  [building]
+  `tmux attach -t invar/508-local-drop-opens-the-dropped-file`
+
+## USER-DIRECTED (18)
+- #511 [inversion-design-and-sync-census](.invar/tasks/active/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md)
+- #510 [the-open-button-picker-tiers](.invar/tasks/active/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md)
+- #509 [iv-ssh-the-channel-client](.invar/tasks/active/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
 - #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/active/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
