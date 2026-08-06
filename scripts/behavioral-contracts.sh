@@ -1329,6 +1329,13 @@ else
   bad "breadcrumb PTY drive failed"
 fi
 
+echo "== CONTRACT iv-ssh-channel: terminal bytes and drop uploads share one SSH connection without sharing a byte route =="
+if "$BUN" "$DIR/harness/smoke-ssh-channel-harness.ts"; then
+  pass "iv ssh framing, small/large upload, remote open, resize, exit code, OSC 52, and keyboard byte sweep hold"
+else
+  bad "iv ssh channel PTY drive failed"
+fi
+
 echo ""
 if [ "$fail" = 0 ]; then echo "behavioral-contracts: ALL-PASS"; else echo "behavioral-contracts: FAILURES"; fi
 exit "$fail"

@@ -20,6 +20,8 @@ import { VendorPluginRuntime } from '../vendors/VendorPluginRuntime';
 import { VendorPluginInstaller } from '../vendors/VendorPluginInstaller';
 import { NetworkAdmission } from '../vendors/NetworkAdmission';
 import { Files } from '../system/Files';
+import { SshClient } from '../channel/SshClient';
+import { ChannelServer } from '../channel/ChannelServer';
 
 class $AppLoader {
   /** Boot the app from process state: argv → options, wire the signal handlers, and route any boot
@@ -27,12 +29,33 @@ class $AppLoader {
   static async main(): Promise<void> {
     try {
       IvueStaticGetterCapability.Class.assertAvailable();
+      if (await this.handleChannelCommand()) return;
       if (await this.handlePluginCommand()) return;
       const booted = await this.bootApp();
       this.wireSignals(booted);
     } catch (error) {
       this.handleFatal(error);
     }
+  }
+
+  static get SshClient() {
+    return SshClient.Class;
+  }
+
+  static get ChannelServer() {
+    return ChannelServer.Class;
+  }
+
+  static async handleChannelCommand(): Promise<boolean> {
+    if (process.argv[2] === 'ssh') {
+      this.exitProcess(await this.SshClient.main(process.argv.slice(3)));
+      return true;
+    }
+    if (process.argv[2] === '--channel-server') {
+      await this.ChannelServer.main();
+      return true;
+    }
+    return false;
   }
 
   /** Assemble BootOptions from process state and boot — the overridable construction seam (a test
@@ -129,7 +152,9 @@ class $AppLoader {
 
   /** The workspace root from argv (`invar <root>`), or undefined for the cwd default. */
   static rootArgument(): string | undefined {
-    return process.argv[2] === 'plugin' ? undefined : process.argv[2];
+    return ['plugin', 'ssh', '--channel-server'].includes(process.argv[2] ?? '')
+      ? undefined
+      : process.argv[2];
   }
 
   /** Keep the process alive; the renderer owns the event loop via stdin. Signals route to the app's
