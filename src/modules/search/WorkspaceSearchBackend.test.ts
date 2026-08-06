@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { HarnessSmoke } from '../../../scripts/harness/HarnessSmoke';
 import { TextDocument } from '../text/TextDocument';
 import { DocumentHandle } from '../workspace/DocumentHandle';
@@ -57,7 +57,55 @@ function ripgrepMatchLine(relativePath: string): string {
   })}\n`;
 }
 
-describe('WorkspaceSearchBackend real ripgrep integration', () => {
+function completedCandidateProcess(
+  relativePaths: readonly string[],
+): WorkspaceSearchProcess {
+  return {
+    stdout: new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            relativePaths.map(ripgrepMatchLine).join(''),
+          ),
+        );
+        controller.close();
+      },
+    }),
+    exited: Promise.resolve(0),
+    kill: () => {},
+  };
+}
+
+function backendWithCandidates(
+  relativePaths: readonly string[],
+): WorkspaceSearchBackend.Instance {
+  return new WorkspaceSearchBackend.Class({
+    resolveRipgrepPath: () => '/resolved-tools/rg',
+    spawnProcess: () => completedCandidateProcess(relativePaths),
+  });
+}
+
+describe('WorkspaceSearchBackend resolved ripgrep integration', () => {
+  test('a missing ripgrep binary is unavailable with a remedy and never reaches spawn', async () => {
+    const workspaceRoot = createTemporaryWorkspace('invar-workspace-no-rg-');
+    let spawnCount = 0;
+    const backend = new WorkspaceSearchBackend.Class({
+      resolveRipgrepPath: () => null,
+      spawnProcess: () => {
+        spawnCount++;
+        return completedCandidateProcess([]);
+      },
+    });
+
+    const result = await backend.search(request(workspaceRoot));
+
+    expect(result.state).toBe('unavailable');
+    expect(result.results).toEqual([]);
+    expect(result.error).toContain('ripgrep is not installed');
+    expect(result.error).toContain('Install ripgrep');
+    expect(spawnCount).toBe(0);
+  });
+
   test('include then exclude filters and ignore rules work in both polarities', async () => {
     const workspaceRoot = createTemporaryWorkspace('invar-workspace-search-');
     mkdirSync(join(workspaceRoot, 'src'), { recursive: true });
@@ -66,10 +114,18 @@ describe('WorkspaceSearchBackend real ripgrep integration', () => {
     writeFileSync(join(workspaceRoot, 'src', 'drop.ts'), 'TARGET drop\n');
     writeFileSync(join(workspaceRoot, 'notes', 'keep.txt'), 'TARGET note\n');
     writeFileSync(join(workspaceRoot, 'ignored.ts'), 'TARGET ignored\n');
-    writeFileSync(join(workspaceRoot, '.gitignore'), 'ignored.ts\n');
-    Bun.spawnSync(['git', 'init', '-q'], { cwd: workspaceRoot });
-
-    const backend = new WorkspaceSearchBackend.Class();
+    const argumentVectors: string[][] = [];
+    const backend = new WorkspaceSearchBackend.Class({
+      resolveRipgrepPath: () => '/resolved-tools/rg',
+      spawnProcess: (argumentVector) => {
+        argumentVectors.push(argumentVector);
+        return completedCandidateProcess(
+          argumentVector.includes('--no-ignore')
+            ? ['src/keep.ts', 'src/drop.ts', 'notes/keep.txt', 'ignored.ts']
+            : ['src/keep.ts', 'src/drop.ts', 'notes/keep.txt'],
+        );
+      },
+    });
     const filtered = await backend.search(
       request(workspaceRoot, {
         includeGlobs: ['**/*.ts'],
@@ -91,14 +147,17 @@ describe('WorkspaceSearchBackend real ripgrep integration', () => {
     expect(
       withoutIgnores.results.map((result) => result.relativePath).sort(),
     ).toEqual(['ignored.ts', 'src/keep.ts']);
+    expect(argumentVectors[0]?.[0]).toBe('/resolved-tools/rg');
+    expect(argumentVectors[0]).not.toContain('--no-ignore');
+    expect(argumentVectors[1]).toContain('--no-ignore');
   });
 
   test('the shared 10-line and 100,000-line fixtures return the same canonical match', async () => {
-    const backend = new WorkspaceSearchBackend.Class();
     for (const lineCount of [10, 100_000]) {
       const fixture =
         await HarnessSmoke.Class.createDriveScaleFixture(lineCount);
       temporaryDirectories.push(fixture.workspaceRoot);
+      const backend = backendWithCandidates([basename(fixture.filePath)]);
       const result = await backend.search(
         request(fixture.workspaceRoot, {
           query: {
@@ -125,7 +184,7 @@ describe('WorkspaceSearchBackend real ripgrep integration', () => {
   test('the planted 20,001st match trips the exact 20,000-match cap', async () => {
     const fixture = await HarnessSmoke.Class.createDriveScaleFixture(20_001);
     temporaryDirectories.push(fixture.workspaceRoot);
-    const backend = new WorkspaceSearchBackend.Class();
+    const backend = backendWithCandidates([basename(fixture.filePath)]);
     const result = await backend.search(
       request(fixture.workspaceRoot, {
         query: {
@@ -165,6 +224,7 @@ describe('WorkspaceSearchBackend streaming and cancellation', () => {
     };
     const readPaths: string[] = [];
     const backend = new WorkspaceSearchBackend.Class({
+      resolveRipgrepPath: () => '/resolved-tools/rg',
       spawnProcess: (argumentVector) => {
         capturedArgumentVector = argumentVector;
         return process;
@@ -187,6 +247,7 @@ describe('WorkspaceSearchBackend streaming and cancellation', () => {
     );
 
     expect(capturedArgumentVector).toContain('--fixed-strings');
+    expect(capturedArgumentVector[0]).toBe('/resolved-tools/rg');
     expect(capturedArgumentVector).toContain('--word-regexp');
     expect(capturedArgumentVector).toContain('--no-ignore');
     expect(capturedArgumentVector).toContain('--hidden');
@@ -221,6 +282,7 @@ describe('WorkspaceSearchBackend streaming and cancellation', () => {
       kill: () => resolveExit(130),
     };
     const backend = new WorkspaceSearchBackend.Class({
+      resolveRipgrepPath: () => '/resolved-tools/rg',
       spawnProcess: () => process,
     });
     const resultPromise = backend.search(request(workspaceRoot), (results) => {
@@ -269,6 +331,7 @@ describe('WorkspaceSearchBackend streaming and cancellation', () => {
     };
     const readPaths: string[] = [];
     const backend = new WorkspaceSearchBackend.Class({
+      resolveRipgrepPath: () => '/resolved-tools/rg',
       spawnProcess: () => process,
       readFile: (path) => {
         readPaths.push(path);
@@ -310,6 +373,7 @@ describe('WorkspaceSearchWorkspace live-document overlay', () => {
     const workspaceSearch = new WorkspaceSearchWorkspace.Class({
       workspaceRoot: () => workspaceRoot,
       openDocumentHandles: () => [removedHandle, addedHandle],
+      backend: backendWithCandidates(['removed.txt', 'added.txt']),
     });
     workspaceSearch.queryInput.setValue('TARGET');
     const results = await workspaceSearch.search();

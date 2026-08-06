@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { WorkspaceSearchBackend } from './WorkspaceSearchBackend';
 import { WorkspaceSearchWorkspace } from './WorkspaceSearchWorkspace';
 
 describe('WorkspaceSearchWorkspace', () => {
@@ -35,6 +36,22 @@ describe('WorkspaceSearchWorkspace', () => {
     expect(await workspaceSearch.search()).toEqual([]);
     expect(workspaceSearch.flowState.value).toBe('failed');
     expect(workspaceSearch.errorMessage.value).toContain('open workspace');
+    workspaceSearch.dispose();
+  });
+
+  test('missing ripgrep stays distinct from search failure and names the remedy', async () => {
+    const workspaceSearch = new WorkspaceSearchWorkspace.Class({
+      workspaceRoot: () => '/workspace',
+      openDocumentHandles: () => [],
+      backend: new WorkspaceSearchBackend.Class({
+        resolveRipgrepPath: () => null,
+      }),
+    });
+    workspaceSearch.queryInput.setValue('query');
+
+    expect(await workspaceSearch.search()).toEqual([]);
+    expect(workspaceSearch.flowState.value).toBe('unavailable');
+    expect(workspaceSearch.errorMessage.value).toContain('Install ripgrep');
     workspaceSearch.dispose();
   });
 });

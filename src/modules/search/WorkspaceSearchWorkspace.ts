@@ -134,6 +134,11 @@ class $WorkspaceSearchWorkspace {
       this.flowState.value = 'idle';
       return this.results;
     }
+    if (backendResult.state === 'unavailable') {
+      this.flowState.value = 'unavailable';
+      this.errorMessage.value = backendResult.error;
+      return this.results;
+    }
     if (backendResult.state === 'failed') {
       this.flowState.value = 'failed';
       this.errorMessage.value = backendResult.error;
@@ -273,4 +278,4 @@ export interface WorkspaceSearchWorkspaceOptions {
 }
 
 export type WorkspaceSearchFlowState =
-  'idle' | 'searching' | 'ready' | 'failed';
+  'idle' | 'searching' | 'ready' | 'unavailable' | 'failed';

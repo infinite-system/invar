@@ -42,10 +42,21 @@ class $WorkspaceSearchBackend {
       };
     }
 
+    const ripgrepPath = this.resolveRipgrepPath();
+    if (ripgrepPath === null) {
+      return {
+        state: 'unavailable',
+        results: [],
+        limited: false,
+        error:
+          'Workspace search is unavailable because ripgrep is not installed. Install ripgrep, make rg available in PATH, and restart Invar.',
+      };
+    }
+
     let process: WorkspaceSearchProcess;
     try {
       process = this.spawn(
-        this.argumentVector(request, pattern),
+        this.argumentVector(ripgrepPath, request, pattern),
         request.workspaceRoot,
       );
     } catch (error) {
@@ -252,11 +263,12 @@ class $WorkspaceSearchBackend {
   }
 
   protected argumentVector(
+    ripgrepPath: string,
     request: WorkspaceSearchRequest,
     pattern: TextSearchPattern.Instance,
   ): string[] {
     const argumentVector = [
-      'rg',
+      ripgrepPath,
       '--json',
       '--line-number',
       '--with-filename',
@@ -271,6 +283,13 @@ class $WorkspaceSearchBackend {
     }
     argumentVector.push('-e', pattern.ripgrepPattern, '.');
     return argumentVector;
+  }
+
+  protected resolveRipgrepPath(): string | null {
+    if (this.options.resolveRipgrepPath) {
+      return this.options.resolveRipgrepPath();
+    }
+    return Processes.Class.which('rg');
   }
 
   protected relativePath(workspaceRoot: string, absolutePath: string): string {
@@ -330,7 +349,7 @@ export interface WorkspaceSearchResult {
 }
 
 export interface WorkspaceSearchBackendResult {
-  readonly state: 'ready' | 'cancelled' | 'failed';
+  readonly state: 'ready' | 'cancelled' | 'unavailable' | 'failed';
   readonly results: readonly WorkspaceSearchResult[];
   readonly limited: boolean;
   readonly error: string;
@@ -348,6 +367,7 @@ export interface WorkspaceSearchProcess {
 }
 
 export interface WorkspaceSearchBackendOptions {
+  readonly resolveRipgrepPath?: () => string | null;
   readonly spawnProcess?: (
     argumentVector: string[],
     workingDirectory: string,

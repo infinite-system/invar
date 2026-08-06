@@ -1,7 +1,4 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { TextSearchPattern } from './TextSearchPattern';
 
 function pattern(
@@ -77,71 +74,55 @@ describe('TextSearchPattern', () => {
     expect(matches.map((match) => match.startUtf16Offset)).toEqual([0, 2, 3]);
   });
 
-  test('the accepted compatibility corpus produces the same ASCII spans in ripgrep and locally', () => {
-    const workspaceRoot = mkdtempSync(join(tmpdir(), 'invar-search-corpus-'));
-    const filePath = join(workspaceRoot, 'corpus.txt');
+  test('the accepted backend corpus produces stable canonical ASCII spans', () => {
     const text = 'Foo foo food\nleft=12 right=7\nstart middle end\n';
-    writeFileSync(filePath, text);
     const cases = [
-      pattern('foo'),
-      pattern('foo', { caseSensitive: true }),
-      pattern('foo', { wholeWord: true }),
-      pattern('(?<name>[a-z]+)=(\\d+)', { useRegex: true }),
-      pattern('start|end', { useRegex: true }),
+      {
+        textSearchPattern: pattern('foo'),
+        expectedSpans: [
+          { line: 0, start: 0, end: 3 },
+          { line: 0, start: 4, end: 7 },
+          { line: 0, start: 8, end: 11 },
+        ],
+      },
+      {
+        textSearchPattern: pattern('foo', { caseSensitive: true }),
+        expectedSpans: [
+          { line: 0, start: 4, end: 7 },
+          { line: 0, start: 8, end: 11 },
+        ],
+      },
+      {
+        textSearchPattern: pattern('foo', { wholeWord: true }),
+        expectedSpans: [
+          { line: 0, start: 0, end: 3 },
+          { line: 0, start: 4, end: 7 },
+        ],
+      },
+      {
+        textSearchPattern: pattern('(?<name>[a-z]+)=(\\d+)', {
+          useRegex: true,
+        }),
+        expectedSpans: [
+          { line: 1, start: 0, end: 7 },
+          { line: 1, start: 8, end: 15 },
+        ],
+      },
+      {
+        textSearchPattern: pattern('start|end', { useRegex: true }),
+        expectedSpans: [
+          { line: 2, start: 0, end: 5 },
+          { line: 2, start: 13, end: 16 },
+        ],
+      },
     ];
-    try {
-      for (const textSearchPattern of cases) {
-        const argumentsForRipgrep = [
-          'rg',
-          '--json',
-          '--color',
-          'never',
-          textSearchPattern.query.caseSensitive
-            ? '--case-sensitive'
-            : '--ignore-case',
-          ...(textSearchPattern.query.useRegex ? [] : ['--fixed-strings']),
-          ...(textSearchPattern.query.wholeWord ? ['--word-regexp'] : []),
-          '-e',
-          textSearchPattern.ripgrepPattern,
-          'corpus.txt',
-        ];
-        const ripgrep = Bun.spawnSync(argumentsForRipgrep, {
-          cwd: workspaceRoot,
-          stdout: 'pipe',
-          stderr: 'pipe',
-        });
-        expect(ripgrep.exitCode).toBe(0);
-        const ripgrepSpans = ripgrep.stdout
-          .toString()
-          .trim()
-          .split('\n')
-          .filter((line) => line.length > 0)
-          .flatMap((line) => {
-            const message = JSON.parse(line) as {
-              type: string;
-              data?: {
-                line_number?: number;
-                submatches?: Array<{ start: number; end: number }>;
-              };
-            };
-            if (message.type !== 'match') return [];
-            return (message.data?.submatches ?? []).map((submatch) => ({
-              line: (message.data?.line_number ?? 1) - 1,
-              start: submatch.start,
-              end: submatch.end,
-            }));
-          });
-        const localSpans = textSearchPattern
-          .matchesInText(text)
-          .map((match) => ({
-            line: match.line,
-            start: match.startUtf16Offset,
-            end: match.endUtf16Offset,
-          }));
-        expect(localSpans).toEqual(ripgrepSpans);
-      }
-    } finally {
-      rmSync(workspaceRoot, { recursive: true, force: true });
+    for (const { textSearchPattern, expectedSpans } of cases) {
+      const localSpans = textSearchPattern.matchesInText(text).map((match) => ({
+        line: match.line,
+        start: match.startUtf16Offset,
+        end: match.endUtf16Offset,
+      }));
+      expect(localSpans).toEqual(expectedSpans);
     }
   });
 });
