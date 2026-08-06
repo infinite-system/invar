@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (4)
+## IN-PROGRESS (5)
+- #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/in-progress/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md)  [building]
+  `tmux attach -t invar/518-live-tasks-pane-matches-tasks-watch`
 - #517 [codex-compaction-threshold-steer](.invar/tasks/in-progress/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md)  [building]
   `tmux attach -t invar/517-codex-compaction-threshold-steer`
 - #515 [find-replace-research-and-design](.invar/tasks/in-progress/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md)  [READY delivered — builder idle, awaiting landing]
