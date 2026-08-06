@@ -38,6 +38,7 @@ import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { DocumentSyntax } from '../syntax/DocumentSyntax';
 import { LanguageProviderRouter } from './LanguageProviderRouter';
 import { WorkspaceUndoCoordinator } from './WorkspaceUndoCoordinator';
+import { WorkspaceSearchWorkspace } from '../search/WorkspaceSearchWorkspace';
 
 // A workspace: one project root with its open buffers, documents, and generic contribution
 // lifecycle. WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -73,6 +74,7 @@ class $Workspace {
   // tab, never replaces. Flyweight — a bounded recent set (and any dirty background buffer) holds
   // live documents; older clean tabs dehydrate to a light handle and rehydrate on activation.
   buffers = this.createBufferSet();
+  workspaceSearch = this.createWorkspaceSearchWorkspace();
   documentLifecycle = new DocumentLifecycle.Class();
   workspaceUndoCoordinator = this.createWorkspaceUndoCoordinator();
   gutterDecorations = new GutterDecorations.Class();
@@ -195,6 +197,12 @@ class $Workspace {
   }
   protected createWorkspaceUndoCoordinator() {
     return new WorkspaceUndoCoordinator.Class();
+  }
+  protected createWorkspaceSearchWorkspace() {
+    return new WorkspaceSearchWorkspace.Class({
+      workspaceRoot: () => this.root,
+      openDocumentHandles: () => this.buffers.attachedDocumentHandles(),
+    });
   }
   protected createBufferSet() {
     // This seam is the SOLE creator of a buffer view, so every live buffer in the set came from
@@ -500,6 +508,7 @@ class $Workspace {
 
   /** Tear down owned resources with effects, handles, or subprocesses. */
   dispose(): void {
+    this.workspaceSearch.dispose();
     for (const disposeContribution of [...this.contributorDisposers.values()]) {
       disposeContribution();
     }

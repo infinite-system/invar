@@ -41,6 +41,21 @@ afterEach(() => {
 });
 
 describe('Workspace editor buffer tabs (item 10a)', () => {
+  test('each workspace owns independent workspace-search state', async () => {
+    const firstWorkspace = createWorkspace();
+    const secondWorkspace = createWorkspace();
+    firstWorkspace.open(workspaceDirectory);
+    secondWorkspace.open(workspaceDirectory);
+    firstWorkspace.workspaceSearch.queryInput.setValue('file 1');
+
+    expect(firstWorkspace.workspaceSearch.queryInput.value).toBe('file 1');
+    expect(secondWorkspace.workspaceSearch.queryInput.value).toBe('');
+    expect(await firstWorkspace.workspaceSearch.search()).toHaveLength(1);
+    expect(firstWorkspace.workspaceSearch.flowState.value).toBe('ready');
+    firstWorkspace.dispose();
+    secondWorkspace.dispose();
+  });
+
   test('opening files ADDS tabs and activates the newest; reopening focuses the existing tab', () => {
     const workspace = createWorkspace();
     workspace.openFileInTab(filePaths[0]!);

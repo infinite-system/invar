@@ -54,6 +54,14 @@ class $OpenBufferSet {
     return this.entries.value.filter((entry) => entry.buffer !== null).length;
   }
 
+  /** Every handle whose live document is attached now. Workspace search uses this one enumeration
+   *  seam to replace disk candidates with unsaved document truth. */
+  attachedDocumentHandles(): readonly DocumentHandle.Model[] {
+    return this.entries.value.flatMap((entry) =>
+      entry.documentHandle.document === null ? [] : [entry.documentHandle],
+    );
+  }
+
   /**
    * What each open tab RETAINS right now: whether it holds a live document, and how many UTF-16
    * units that document carries. A dehydrated entry retains a path, a position, and nothing else,

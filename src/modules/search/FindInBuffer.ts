@@ -1,9 +1,9 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import type { TextDocument } from '../text/TextDocument';
-import { TextCoordinates } from '../text/TextCoordinates';
 import { TextInputModel } from '../text/TextInputModel';
 import type { TextEdit } from '../text/TextEdit.interface';
+import { TextSearchPattern, type TextSearchMatch } from './TextSearchPattern';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $FindInBuffer {
@@ -12,7 +12,8 @@ class $FindInBuffer {
     this.replacementInputModel = this.createTextInput();
   }
 
-  protected replacementContexts: MatchReplacementContext[] = [];
+  protected textSearchMatches: readonly TextSearchMatch[] = [];
+  protected textSearchPattern: TextSearchPattern.Instance | null = null;
   protected readonly queryInputModel: TextInputModel.Model;
   protected readonly replacementInputModel: TextInputModel.Model;
 
@@ -68,55 +69,19 @@ class $FindInBuffer {
   }
 
   findAll(): readonly FindInBufferMatch[] {
-    const regularExpression = this.createRegularExpression();
-    if (regularExpression === null) {
+    const textSearchPattern = this.createTextSearchPattern();
+    if (!textSearchPattern.valid) {
       this.clearMatches();
       return this.matches.value;
     }
-
-    const matches: FindInBufferMatch[] = [];
-    const replacementContexts: MatchReplacementContext[] = [];
-    for (let lineIndex = 0; lineIndex < this.document.lineCount; lineIndex++) {
-      const lineText = this.document.line(lineIndex);
-      regularExpression.lastIndex = 0;
-      let regularExpressionMatch: RegExpExecArray | null;
-      while (
-        (regularExpressionMatch = regularExpression.exec(lineText)) !== null
-      ) {
-        const startUtf16Offset = regularExpressionMatch.index;
-        const endUtf16Offset =
-          startUtf16Offset + regularExpressionMatch[0].length;
-        matches.push({
-          line: lineIndex,
-          startColumn: TextCoordinates.Class.u16ToGrapheme(
-            lineText,
-            startUtf16Offset,
-          ),
-          endColumn: TextCoordinates.Class.u16ToGrapheme(
-            lineText,
-            endUtf16Offset,
-          ),
-        });
-        replacementContexts.push({
-          matchedText: regularExpressionMatch[0],
-          capturedTexts: regularExpressionMatch.slice(1),
-          namedCapturedTexts: regularExpressionMatch.groups,
-          prefixText: lineText.slice(0, startUtf16Offset),
-          suffixText: lineText.slice(endUtf16Offset),
-          startUtf16Offset,
-          endUtf16Offset,
-        });
-
-        // Global regular expressions do not advance after an empty match.
-        if (regularExpressionMatch[0].length === 0) {
-          regularExpression.lastIndex = startUtf16Offset + 1;
-        }
-      }
-    }
-
-    this.matches.value = matches;
-    this.replacementContexts = replacementContexts;
-    this.currentMatchIndex.value = matches.length > 0 ? 0 : -1;
+    this.textSearchPattern = textSearchPattern;
+    this.textSearchMatches = textSearchPattern.matchesInDocument(this.document);
+    this.matches.value = this.textSearchMatches.map((match) => ({
+      line: match.line,
+      startColumn: match.startColumn,
+      endColumn: match.endColumn,
+    }));
+    this.currentMatchIndex.value = this.matches.value.length > 0 ? 0 : -1;
     return this.matches.value;
   }
 
@@ -141,109 +106,53 @@ class $FindInBuffer {
   }
 
   replaceCurrent(): TextEdit | null {
-    const replacementContext =
-      this.replacementContexts[this.currentMatchIndex.value];
+    const textSearchMatch =
+      this.textSearchMatches[this.currentMatchIndex.value];
     const currentMatch = this.currentMatch;
-    if (currentMatch === null || replacementContext === undefined) return null;
-    return this.textEdit(currentMatch, replacementContext);
+    if (currentMatch === null || textSearchMatch === undefined) return null;
+    return this.textEdit(currentMatch, textSearchMatch);
   }
 
   replaceAll(): readonly TextEdit[] {
     this.findAll();
     return this.matches.value.flatMap((match, matchIndex) => {
-      const replacementContext = this.replacementContexts[matchIndex];
-      return replacementContext
-        ? [this.textEdit(match, replacementContext)]
-        : [];
+      const textSearchMatch = this.textSearchMatches[matchIndex];
+      return textSearchMatch ? [this.textEdit(match, textSearchMatch)] : [];
     });
   }
 
   protected textEdit(
     match: FindInBufferMatch,
-    replacementContext: MatchReplacementContext,
+    textSearchMatch: TextSearchMatch,
   ): TextEdit {
+    const textSearchPattern = this.textSearchPattern;
+    if (textSearchPattern === null) {
+      throw new Error('A replacement requires a completed text search.');
+    }
     return {
       start: { line: match.line, column: match.startColumn },
       end: { line: match.line, column: match.endColumn },
-      expectedText: replacementContext.matchedText,
-      replacementText: this.expandReplacement(
+      expectedText: textSearchMatch.matchedText,
+      replacementText: textSearchPattern.expandReplacement(
         this.replacement.value,
-        replacementContext,
+        textSearchMatch,
       ),
     };
   }
 
-  protected escapeRegularExpression(text: string): string {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  protected expandReplacement(
-    replacement: string,
-    context: MatchReplacementContext,
-  ): string {
-    return replacement.replace(
-      /\$(\$|&|`|'|<([^>]+)>|(\d{1,2}))/g,
-      (
-        replacementToken,
-        substitutionToken: string,
-        capturedName: string | undefined,
-        capturedNumberText: string | undefined,
-      ) => {
-        if (substitutionToken === '$') return '$';
-        if (substitutionToken === '&') return context.matchedText;
-        if (substitutionToken === '`') return context.prefixText;
-        if (substitutionToken === "'") return context.suffixText;
-        if (capturedName !== undefined) {
-          if (context.namedCapturedTexts === undefined) return replacementToken;
-          return context.namedCapturedTexts[capturedName] ?? '';
-        }
-
-        const capturedNumber = Number(capturedNumberText);
-        if (
-          capturedNumber > 0 &&
-          capturedNumber <= context.capturedTexts.length
-        ) {
-          return context.capturedTexts[capturedNumber - 1] ?? '';
-        }
-
-        if (capturedNumberText?.length === 2) {
-          const firstCapturedNumber = Number(capturedNumberText[0]);
-          if (
-            firstCapturedNumber > 0 &&
-            firstCapturedNumber <= context.capturedTexts.length
-          ) {
-            return (
-              (context.capturedTexts[firstCapturedNumber - 1] ?? '') +
-              capturedNumberText[1]
-            );
-          }
-        }
-        return replacementToken;
-      },
-    );
-  }
-
-  protected createRegularExpression(): RegExp | null {
-    if (this.query.value.length === 0) return null;
-    const querySource = this.useRegex.value
-      ? this.query.value
-      : this.escapeRegularExpression(this.query.value);
-    const regularExpressionSource = this.wholeWord.value
-      ? `\\b(?:${querySource})\\b`
-      : querySource;
-    try {
-      return new RegExp(
-        regularExpressionSource,
-        this.caseSensitive.value ? 'g' : 'gi',
-      );
-    } catch {
-      return null;
-    }
+  protected createTextSearchPattern(): TextSearchPattern.Instance {
+    return new TextSearchPattern.Class({
+      text: this.query.value,
+      caseSensitive: this.caseSensitive.value,
+      wholeWord: this.wholeWord.value,
+      useRegex: this.useRegex.value,
+    });
   }
 
   protected clearMatches(): void {
     this.matches.value = [];
-    this.replacementContexts = [];
+    this.textSearchMatches = [];
+    this.textSearchPattern = null;
     this.currentMatchIndex.value = -1;
   }
 }
@@ -258,14 +167,4 @@ export interface FindInBufferMatch {
   line: number;
   startColumn: number;
   endColumn: number;
-}
-
-interface MatchReplacementContext {
-  matchedText: string;
-  capturedTexts: readonly (string | undefined)[];
-  namedCapturedTexts: Readonly<Record<string, string | undefined>> | undefined;
-  prefixText: string;
-  suffixText: string;
-  startUtf16Offset: number;
-  endUtf16Offset: number;
 }
