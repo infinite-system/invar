@@ -5,6 +5,7 @@
 // invariant: Dashboard motion exists only while observed (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Each dashboard lens has one stable row shape (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Dashboard controls state their selection and next action (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
 import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
@@ -21,6 +22,7 @@ import { TextCoordinates } from '../text/TextCoordinates';
 import type { TaskActionIconSet } from '../theme/ThemeIcons';
 import type { Palette } from '../theme/ThemePalettes';
 import { WrapText } from '../ui/WrapText';
+import type { SelectionSpanRange } from '../ui/TextSelectionModel';
 import type {
   TasksDashboardActionNotice,
   TasksDashboardLens,
@@ -40,9 +42,7 @@ class $TasksDashboardPaneRenderer {
     const tabs: LensTab[] = [];
     let column = 0;
     for (const [labelIndex, [lens, label]] of labels.entries()) {
-      const text = `${labelIndex === 0 ? '|' : ''} ${label} ${
-        labelIndex === labels.length - 1 ? '|' : ''
-      }`;
+      const text = `| ${label} ${labelIndex === labels.length - 1 ? '|' : ''}`;
       tabs.push({
         lens,
         label,
@@ -107,6 +107,35 @@ class $TasksDashboardPaneRenderer {
     return cycling
       ? 'Stop automatic lens cycling'
       : 'Start automatic lens cycling';
+  }
+
+  static textForRow(
+    context: TasksDashboardRenderContext,
+    row: TasksDashboardRow,
+  ): string {
+    if (row.kind === 'group' || row.kind === 'scope') return ` ${row.label}`;
+    if (row.kind === 'gate') {
+      const gate = context.gateGlance;
+      return gate === null
+        ? ' Gate: no fleet gate registry.'
+        : gate.exitCode === null
+          ? ` Gate: running ${gate.phase}`
+          : gate.exitCode === 0
+            ? ` Gate: passed ${gate.phase}`
+            : ` Gate: failed ${gate.phase}`;
+    }
+    if (context.lens === 'live') {
+      return this.taskGroupLine(context, row)
+        .segments.map((segment) => segment.text)
+        .join('');
+    }
+    const glyph = context.lens === 'done' ? '✔' : ' ';
+    return [
+      ` ${glyph} #${row.taskNumber} ${row.label}`,
+      row.attachment ? ` — ${row.attachment}` : '',
+      row.durationLabel ? `  ${row.durationLabel}` : '',
+      row.identity ? `  ${row.identity}` : '',
+    ].join('');
   }
 
   static render(context: TasksDashboardRenderContext): StyledText {
@@ -252,7 +281,7 @@ class $TasksDashboardPaneRenderer {
     const decorate = (chunk: TextChunk): TextChunk =>
       rowBackground ? bg(rowBackground)(chunk) : chunk;
     if (row.kind === 'detail') {
-      this.renderDetailRow(context, chunks, row, decorate);
+      this.renderDetailRow(context, chunks, row, decorate, rowIndex);
       return;
     }
     if (row.kind === 'group' || row.kind === 'scope') {
@@ -278,6 +307,7 @@ class $TasksDashboardPaneRenderer {
         line,
         decorate,
         context.innerWidth,
+        rowIndex,
       );
       return;
     }
@@ -305,6 +335,7 @@ class $TasksDashboardPaneRenderer {
       pieces,
       decorate,
       this.actionProjection(context, row)?.textEndColumn ?? context.innerWidth,
+      rowIndex,
     );
     this.renderActions(context, chunks, row, decorate);
   }
@@ -314,6 +345,7 @@ class $TasksDashboardPaneRenderer {
     chunks: TextChunk[],
     row: TasksDashboardRow,
     decorate: (chunk: TextChunk) => TextChunk,
+    rowIndex: number,
   ): void {
     const notice =
       context.actionNotice?.taskNumber === row.taskNumber
@@ -328,7 +360,14 @@ class $TasksDashboardPaneRenderer {
         : ([[` ${notice}`, context.palette.warning]] as Array<
             [string, string]
           >);
-    this.renderPieces(context, chunks, pieces, decorate, maximumWidth);
+    this.renderPieces(
+      context,
+      chunks,
+      pieces,
+      decorate,
+      maximumWidth,
+      rowIndex,
+    );
     this.renderActions(context, chunks, row, decorate);
   }
 
@@ -400,6 +439,7 @@ class $TasksDashboardPaneRenderer {
     line: TasksWatchTextLine,
     decorate: (chunk: TextChunk) => TextChunk,
     maximumWidth: number,
+    rowIndex: number,
   ): void {
     this.renderPieces(
       context,
@@ -407,6 +447,7 @@ class $TasksDashboardPaneRenderer {
       this.projectedPieces(context, line),
       decorate,
       maximumWidth,
+      rowIndex,
     );
   }
 
@@ -459,6 +500,7 @@ class $TasksDashboardPaneRenderer {
     pieces: Array<[string, string]>,
     decorate: (chunk: TextChunk) => TextChunk,
     maximumWidth: number,
+    rowIndex: number,
   ): void {
     const fullWidth = pieces.reduce(
       (width, [text]) => width + WrapText.Class.displayWidth(text),
@@ -471,26 +513,61 @@ class $TasksDashboardPaneRenderer {
       maximumWidth - (truncated ? ellipsisWidth : 0),
     );
     let consumed = 0;
+    const selectionRange = context.selectionRanges[rowIndex] ?? null;
+    const pushText = (text: string, colour: string): void => {
+      const width = WrapText.Class.displayWidth(text);
+      if (width === 0) return;
+      const pieceStart = consumed;
+      const pieceEnd = consumed + width;
+      const selectedStart =
+        selectionRange === null
+          ? pieceEnd
+          : Math.max(pieceStart, selectionRange.start);
+      const selectedEnd =
+        selectionRange === null
+          ? pieceStart
+          : Math.min(pieceEnd, selectionRange.end);
+      if (selectedStart >= selectedEnd) {
+        chunks.push(decorate(fg(colour)(text)));
+        consumed += width;
+        return;
+      }
+      const before = WrapText.Class.sliceByDisplayCells(
+        text,
+        0,
+        selectedStart - pieceStart,
+      );
+      const selectedText = WrapText.Class.sliceByDisplayCells(
+        text,
+        selectedStart - pieceStart,
+        selectedEnd - pieceStart,
+      );
+      const after = WrapText.Class.sliceByDisplayCells(
+        text,
+        selectedEnd - pieceStart,
+        width,
+      );
+      if (before.length > 0) chunks.push(decorate(fg(colour)(before)));
+      if (selectedText.length > 0)
+        chunks.push(bg(context.palette.selection)(fg(colour)(selectedText)));
+      if (after.length > 0) chunks.push(decorate(fg(colour)(after)));
+      consumed += width;
+    };
     for (const [text, colour] of pieces) {
       const remaining = Math.max(0, contentWidth - consumed);
       if (remaining === 0) break;
       const clipped = WrapText.Class.clipToWidth(text, remaining, '');
-      chunks.push(decorate(fg(colour)(clipped)));
-      consumed += WrapText.Class.displayWidth(clipped);
+      pushText(clipped, colour);
     }
     if (truncated) {
-      chunks.push(decorate(fg(context.palette.dim)(context.ellipsisCell)));
-      consumed += ellipsisWidth;
+      pushText(context.ellipsisCell, context.palette.dim);
     }
-    chunks.push(
-      decorate(
-        fg(context.palette.fg)(
-          TextCoordinates.Class.padToDisplayWidth(
-            '',
-            Math.max(0, maximumWidth - consumed),
-          ),
-        ),
+    pushText(
+      TextCoordinates.Class.padToDisplayWidth(
+        '',
+        Math.max(0, maximumWidth - consumed),
       ),
+      context.palette.fg,
     );
   }
 
@@ -591,4 +668,5 @@ export interface TasksDashboardRenderContext {
   taskActionIcons: TaskActionIconSet;
   ellipsisCell: string;
   hoveredTabLineTarget: TasksDashboardTabLineTarget | null;
+  selectionRanges: readonly (SelectionSpanRange | null)[];
 }

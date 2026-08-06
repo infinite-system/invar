@@ -359,6 +359,47 @@ test('fleet extras state their main-checkout scope and do no unrelated reads', (
   rmSync(root, { recursive: true, force: true });
 });
 
+test('an owned fleet worktree reads the same fleet facts as the CLI watch', () => {
+  const fleetRoot = mkdtempSync(join(tmpdir(), 'tasks-dashboard-fleet-'));
+  const workspaceRoot = join(
+    fleetRoot,
+    '.invar',
+    'worktrees',
+    '910-owned-worktree',
+  );
+  writeTask(
+    join(workspaceRoot, '.invar', 'tasks'),
+    'in-progress',
+    '910-owned-worktree',
+    ['State: IN-PROGRESS'],
+  );
+  let fleetReadCount = 0;
+  const overview = new TasksDashboardOverview.Class({
+    workspaceRoot: () => workspaceRoot,
+    isObserved: () => true,
+    requestRender: () => {},
+    cycleSeconds: () => 10,
+    fleetRepositoryRoot: () => fleetRoot,
+    readTaskFleetFacts: () => {
+      fleetReadCount += 1;
+      return {
+        lineDelta: { added: 0, removed: 0 },
+        phase: 'exploring',
+        worktreePath: workspaceRoot,
+      };
+    },
+    readFleetGateGlance: () => null,
+    readTmuxSessionNames: () => new Set(),
+  });
+  overview.startObservation();
+  expect(overview.fleetScopeMatches.value).toBe(true);
+  expect(overview.rows.value[0]?.kind).toBe('task');
+  expect(overview.rows.value[0]?.phase).toBe('exploring');
+  expect(fleetReadCount).toBeGreaterThan(0);
+  overview.dispose();
+  rmSync(fleetRoot, { recursive: true, force: true });
+});
+
 function makeWorkspaceRootForScope(): string {
   const root = mkdtempSync(join(tmpdir(), 'tasks-dashboard-scope-'));
   writeTask(join(root, '.invar', 'tasks'), 'in-progress', '910-scope', [

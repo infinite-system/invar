@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // The tasks dashboard pane through the real PTY: the three lenses over a real .invar/tasks tree,
-// the cycling overview, selection opening the task record in the editor, the absent-tree degrade,
+// the cycling overview, momentum scrolling, hover overlays, selection and OSC 52 copy, the absent-tree degrade,
 // isolated missing/running/finished gate registry facts, and the Extensions uninstall/reinstall
 // symmetry.
 //
@@ -9,6 +9,7 @@
 // invariant: The tasks dashboard is a pane content citizen (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: An absent task tree is stated, never blank (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 // invariant: Harness fleet facts are isolated from host state (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
+// invariant: Task pane scrolling and copy use shared seams (src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
 import {
   chmodSync,
   mkdirSync,
@@ -21,6 +22,7 @@ import { join } from 'node:path';
 import type { FrameDump } from '../../src/modules/system/FrameProbe';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import { HarnessSmoke } from './HarnessSmoke';
+import { dragBetweenCells } from './HarnessSmokeSupport';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -39,6 +41,35 @@ async function awaitFrameDump(
     await Bun.sleep(10);
   }
   throw new Error(`Timed out waiting for FrameProbe: ${description}`);
+}
+
+async function awaitTasksClipboardEmission(
+  driver: PtyTestDriver.Model,
+  previousEmissionCount: number,
+  expectedText: string,
+): Promise<void> {
+  const deadline = performance.now() + 5_000;
+  while (performance.now() < deadline) {
+    const emissions = driver.clipboardEmissions();
+    if (emissions.length > previousEmissionCount) {
+      const emission = emissions[previousEmissionCount];
+      HarnessSmoke.Class.requireCondition(
+        emissions.length === previousEmissionCount + 1,
+        'the Tasks copy adds exactly one OSC 52 emission in order',
+      );
+      HarnessSmoke.Class.requireCondition(
+        emission?.decodedText === expectedText &&
+          emission.hasValidBase64Payload &&
+          emission.synchronizedFrameDepth === 0,
+        `the Tasks OSC 52 payload is exactly ${JSON.stringify(expectedText)}`,
+      );
+      return;
+    }
+    await Bun.sleep(10);
+  }
+  throw new Error(
+    `Timed out waiting for the Tasks OSC 52 payload ${JSON.stringify(expectedText)}`,
+  );
 }
 
 function codePointSequenceStart(
@@ -124,6 +155,101 @@ function taskActionGlyphCellsAreReadable(
     cycleCell.characters === actionIcons.cycleStart &&
     cycleCell.foreground !== cycleCell.background
   );
+}
+
+function taskActionsAreAbsent(
+  snapshot: HarnessSnapshot.Model,
+  taskTitle: string,
+): boolean {
+  const taskTitlePosition = snapshot.findText(taskTitle);
+  if (!taskTitlePosition) return false;
+  const taskGroupText =
+    snapshot.rowText(taskTitlePosition.row) +
+    snapshot.rowText(taskTitlePosition.row + 1);
+  const actionIcons = ThemeIcons.Class.taskActionIconsFor('unicode');
+  return [
+    actionIcons.session,
+    actionIcons.workspace,
+    actionIcons.taskRecord,
+    actionIcons.latestBrief,
+    actionIcons.latestReport,
+  ].every((glyph) => !taskGroupText.includes(glyph));
+}
+
+function taskGroupHoverCoversFullRows(
+  snapshot: HarnessSnapshot.Model,
+  taskTitle: string,
+): boolean {
+  const taskTitlePosition = snapshot.findText(taskTitle);
+  if (!taskTitlePosition) return false;
+  const titleRow = taskTitlePosition.row;
+  const detailRow = titleRow + 1;
+  const groupStartColumn = taskTitlePosition.column - 2;
+  const groupEndColumn = snapshot.columns - 1;
+  const titleBackground = snapshot.cell(titleRow, groupStartColumn)?.background;
+  const detailBackground = snapshot.cell(
+    detailRow,
+    groupStartColumn,
+  )?.background;
+  if (
+    titleBackground === undefined ||
+    detailBackground === undefined ||
+    titleBackground !== detailBackground
+  ) {
+    return false;
+  }
+  for (const row of [titleRow, detailRow]) {
+    for (let column = groupStartColumn; column < groupEndColumn; column += 1) {
+      if (snapshot.cell(row, column)?.background !== titleBackground) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function contiguousLensHeader(snapshot: HarnessSnapshot.Model): boolean {
+  return snapshot
+    .textRows()
+    .some((rowText) => lensHeaderTextIsContiguous(rowText));
+}
+
+function lensHeaderTextIsContiguous(text: string): boolean {
+  return text.includes('| LIVE | ACTIVE | DONE |');
+}
+
+function motionFrameWorkIsFlat(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  minimumFrameAdvance: number,
+): boolean {
+  return (
+    Number(after.tasksAnimationPaint) - Number(before.tasksAnimationPaint) >=
+      minimumFrameAdvance &&
+    Number(after.tasksTaskTreeReads) === Number(before.tasksTaskTreeReads) &&
+    Number(after.tasksFleetFactProbes) ===
+      Number(before.tasksFleetFactProbes) &&
+    Number(after.tasksSessionProbes) === Number(before.tasksSessionProbes) &&
+    Number(after.tasksRowRebuilds) === Number(before.tasksRowRebuilds)
+  );
+}
+
+function rightDockThumbRows(snapshot: HarnessSnapshot.Model): number[] {
+  const headerPosition = snapshot.findText('| LIVE | ACTIVE | DONE |');
+  if (!headerPosition) return [];
+  const trackColumn = snapshot.columns - 2;
+  const thumbRows: number[] = [];
+  for (let row = headerPosition.row + 1; row < snapshot.rows - 2; row += 1) {
+    const trackCell = snapshot.cell(row, trackColumn);
+    const neighborCell = snapshot.cell(row, trackColumn - 1);
+    if (
+      trackCell?.characters === ' ' &&
+      trackCell.background !== neighborCell?.background
+    ) {
+      thumbRows.push(row);
+    }
+  }
+  return thumbRows;
 }
 
 function visibleTickWorkIsBounded(
@@ -446,6 +572,156 @@ try {
   HarnessSmoke.Class.pass(
     'the live lens lists the in-progress fixture with the standing vocabulary',
   );
+  HarnessSmoke.Class.requireCondition(
+    !lensHeaderTextIsContiguous('| LIVE |  | ACTIVE |  | DONE |'),
+    'positive control: the former gapped lens header fails the contiguous-header check',
+  );
+  HarnessSmoke.Class.requireCondition(
+    contiguousLensHeader(driver.snapshot()),
+    'the lens header is one contiguous segmented control',
+  );
+  const lensHeaderPosition = driver
+    .snapshot()
+    .findText('| LIVE | ACTIVE | DONE |');
+  if (!lensHeaderPosition)
+    throw new Error(
+      'The contiguous lens header disappeared before boundary clicks',
+    );
+  driver.sendMouseClick({
+    column: lensHeaderPosition.column + 7,
+    row: lensHeaderPosition.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the first shared border belongs to Active without a dead cell',
+    (status) => status.tasksLens === 'active',
+  );
+  driver.sendMouseClick({
+    column: lensHeaderPosition.column + 16,
+    row: lensHeaderPosition.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the second shared border belongs to Done without a dead cell',
+    (status) => status.tasksLens === 'done',
+  );
+  driver.sendMouseClick({
+    column: lensHeaderPosition.column + 6,
+    row: lensHeaderPosition.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the last Live cell returns to Live without a gap',
+    (status) => status.tasksLens === 'live',
+  );
+  const restSnapshot = await driver.awaitGridCondition(
+    'rest shows task text without reserved action cells',
+    (snapshot) =>
+      taskActionsAreAbsent(snapshot, '#902 planted-ready') &&
+      taskActionsAreAbsent(snapshot, '#901 planted-building'),
+  );
+  HarnessSmoke.Class.requireCondition(
+    rightDockThumbRows(restSnapshot).length === 0,
+    'a four-row lens does not paint a false scrollbar thumb',
+  );
+  const readyRestPosition = restSnapshot.findText('#902 planted-ready');
+  if (!readyRestPosition)
+    throw new Error('The READY task disappeared before hover checks');
+  driver.sendMouse({
+    kind: 'move',
+    column: readyRestPosition.column + 4,
+    row: readyRestPosition.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'hover overlays actions, truncates text, and colors both full rows',
+    (snapshot) => {
+      const readyPosition = snapshot.findText('#902 planted-ready');
+      if (!readyPosition) return false;
+      return (
+        taskActionGlyphCellsAreReadable(snapshot, '#902 planted-ready') &&
+        snapshot.rowText(readyPosition.row + 1).includes('…') &&
+        taskGroupHoverCoversFullRows(snapshot, '#902 planted-ready')
+      );
+    },
+  );
+  const buildingRestPosition = driver
+    .snapshot()
+    .findText('#901 planted-building');
+  if (!buildingRestPosition)
+    throw new Error('The building task disappeared before hover sweeps');
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: buildingRestPosition.column + 3,
+    row: buildingRestPosition.row,
+    button: 'none',
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: buildingRestPosition.column + 3,
+    row: buildingRestPosition.row + 1,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'a fast title-to-detail sweep keeps the building task one hover group',
+    (snapshot) =>
+      taskActionGlyphCellsAreReadable(snapshot, '#901 planted-building') &&
+      taskGroupHoverCoversFullRows(snapshot, '#901 planted-building'),
+  );
+  const temporaryTaskFolder = join(
+    tasksRoot,
+    'in-progress',
+    '904-stationary-hover-row',
+  );
+  writeTask(tasksRoot, 'in-progress', '904-stationary-hover-row', [
+    'State: IN-PROGRESS',
+  ]);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a new task appears while the pointer stays on one body row',
+    (status) => Number(status.tasksRows) === 6,
+  );
+  await driver.awaitGridCondition(
+    'the stationary pointer now hovers the replacement task under that row',
+    (snapshot) =>
+      taskActionGlyphCellsAreReadable(snapshot, '#902 planted-ready') &&
+      taskActionsAreAbsent(snapshot, '#901 planted-building'),
+  );
+  rmSync(temporaryTaskFolder, { recursive: true, force: true });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'removing the inserted task restores the original row order',
+    (status) => Number(status.tasksRows) === 4,
+  );
+  await driver.awaitGridCondition(
+    'the stationary pointer returns hover to the building task after removal',
+    (snapshot) =>
+      taskActionGlyphCellsAreReadable(snapshot, '#901 planted-building') &&
+      taskActionsAreAbsent(snapshot, '#902 planted-ready'),
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: 80,
+    row: 20,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'unhover removes every action overlay and restores both task rows',
+    (snapshot) =>
+      taskActionsAreAbsent(snapshot, '#902 planted-ready') &&
+      taskActionsAreAbsent(snapshot, '#901 planted-building'),
+  );
+  HarnessSmoke.Class.pass(
+    'the contiguous filters and hover overlay survive boundaries, fast sweeps, insertion, and removal',
+  );
   HarnessSmoke.Class.pass('a missing registry adds no gate row');
   writeFileSync(
     isolatedGateLogPath,
@@ -504,6 +780,20 @@ try {
   HarnessSmoke.Class.pass(
     'missing, running, and finished gate registry states stay inside the fixture',
   );
+  const readableGlyphSnapshot = await driver.awaitGridCondition(
+    'the READY task is painted after the missing registry refresh',
+    (snapshot) => snapshot.findText('#902 planted-ready') !== null,
+  );
+  const readableGlyphTaskPosition =
+    readableGlyphSnapshot.findText('#902 planted-ready');
+  if (!readableGlyphTaskPosition)
+    throw new Error('The awaited READY task has no painted position');
+  driver.sendMouse({
+    kind: 'move',
+    column: readableGlyphTaskPosition.column + 3,
+    row: readableGlyphTaskPosition.row,
+    button: 'none',
+  });
   await driver.awaitGridCondition(
     'the 150 by 40 dashboard paints every Unicode task action glyph',
     (snapshot) =>
@@ -520,6 +810,32 @@ try {
   );
   HarnessSmoke.Class.pass(
     'watch-parity motion runs while the pane is observed',
+  );
+  const motionWorkBefore = HarnessSmoke.Class.readStatus(statusPath);
+  const motionFrameTarget = Number(motionWorkBefore.tasksAnimationPaint) + 8;
+  const motionWorkAfter = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'eight more animation samples run without data work',
+    (status) => Number(status.tasksAnimationPaint) >= motionFrameTarget,
+  );
+  HarnessSmoke.Class.requireCondition(
+    !motionFrameWorkIsFlat(
+      motionWorkBefore,
+      {
+        ...motionWorkAfter,
+        tasksRowRebuilds: Number(motionWorkAfter.tasksRowRebuilds) + 1,
+      },
+      8,
+    ),
+    'positive control: one planted row rebuild fails the flat motion-frame contract',
+  );
+  HarnessSmoke.Class.requireCondition(
+    motionFrameWorkIsFlat(motionWorkBefore, motionWorkAfter, 8),
+    'animation samples advance while task reads, probes, and row rebuilds stay flat',
+  );
+  HarnessSmoke.Class.pass(
+    'one visible animation heartbeat advances count-ordered frames with flat attributed work',
   );
   driver.sendKeys('Control+Alt+b');
   await HarnessSmoke.Class.awaitStatus(
@@ -576,6 +892,39 @@ try {
       snapshot.findText('#902 planted-ready') !== null,
   );
   HarnessSmoke.Class.pass('an unpainted tasks tab owns no heartbeat');
+
+  console.log('== tasks dashboard: task text selects and copies ==');
+  const copyTaskPosition = driver.snapshot().findText('#901 planted-building');
+  if (!copyTaskPosition)
+    throw new Error('The building title disappeared before selection');
+  await dragBetweenCells(
+    driver,
+    copyTaskPosition.column,
+    copyTaskPosition.row,
+    copyTaskPosition.column + '#901 planted-building'.length - 1,
+    copyTaskPosition.row,
+  );
+  const clipboardEmissionCount = driver.clipboardEmissions().length;
+  const copyCompletionCount = Number(
+    HarnessSmoke.Class.readStatus(statusPath).clipboardCopyCompletionCount ?? 0,
+  );
+  driver.sendRawInputWithoutFrameExpectation('\x03');
+  await awaitTasksClipboardEmission(
+    driver,
+    clipboardEmissionCount,
+    '#901 planted-building',
+  );
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'the Tasks selection copy completes after its OSC 52 emission',
+    (status) =>
+      Number(status.clipboardCopyCompletionCount) === copyCompletionCount + 1 &&
+      Number(status.lastCopyChars) === '#901 planted-building'.length,
+  );
+  HarnessSmoke.Class.pass(
+    'a pointer-selected task title copies once through the shared OSC 52 seam',
+  );
 
   console.log(
     '== tasks dashboard: row actions state misses and open artifacts ==',
@@ -672,7 +1021,7 @@ try {
   );
   await driver.awaitGridCondition(
     'the dead session states a degraded live row',
-    (snapshot) => snapshot.rowText(sessionDetailRow).includes('! DEGRADE'),
+    (snapshot) => snapshot.rowText(sessionDetailRow).includes('! DEG'),
   );
   writeFileSync(
     join(tasksRoot, 'in-progress', '902-planted-ready', 'meta.json'),
@@ -736,11 +1085,29 @@ try {
     'the active lens groups the waiting fixture by priority',
     (status) => status.tasksLens === 'active' && Number(status.tasksRows) === 2,
   );
+  const activeHoverSnapshot = await driver.awaitGridCondition(
+    'the stationary pointer overlays the Active row without moving it',
+    (snapshot) =>
+      snapshot.findText('#903 plant…') !== null &&
+      snapshot
+        .rowText(snapshot.findText('#903 plant…')?.row ?? -1)
+        .includes(ThemeIcons.Class.taskActionIconsFor('unicode').workspace),
+  );
+  const activeHoverPosition = activeHoverSnapshot.findText('#903 plant…');
+  if (!activeHoverPosition)
+    throw new Error('The Active hover row disappeared before unhover');
+  driver.sendMouse({
+    kind: 'move',
+    column: activeHoverPosition.column,
+    row: activeHoverPosition.row + 2,
+    button: 'none',
+  });
   await driver.awaitGridCondition(
-    'the active lens paints a capitalized group and one truncated task row',
+    'the active lens paints a capitalized group and one full-width task row',
     (snapshot) =>
       snapshot.findText('User-directed (1)') !== null &&
-      snapshot.findText('#903 plant…') !== null &&
+      snapshot.findText('#903 planted-waiting') !== null &&
+      taskActionsAreAbsent(snapshot, '#903 planted-waiting') &&
       snapshot.findText('user-directed (1)') === null,
   );
   const darkActiveFrame = await awaitFrameDump(
@@ -751,9 +1118,9 @@ try {
   const darkActiveBackground = tabBackgroundLane(darkActiveFrame, 'ACTIVE');
   HarnessSmoke.Class.requireCondition(
     darkActiveBackground !== null &&
-      darkActiveBackground.lane !== darkActiveBackground.before &&
+      darkActiveBackground.lane === darkActiveBackground.before &&
       darkActiveBackground.lane !== darkActiveBackground.after,
-    'the Active label and exactly one padding cell on both sides share the selected background',
+    'the Active label and its owned shared border use one selected background',
   );
   driver.sendKeys('Control+,');
   await HarnessSmoke.Class.awaitStatus(
@@ -791,9 +1158,9 @@ try {
   const lightActiveBackground = tabBackgroundLane(lightActiveFrame, 'ACTIVE');
   HarnessSmoke.Class.requireCondition(
     lightActiveBackground !== null &&
-      lightActiveBackground.lane !== lightActiveBackground.before &&
+      lightActiveBackground.lane === lightActiveBackground.before &&
       lightActiveBackground.lane !== lightActiveBackground.after,
-    'the live light theme preserves the exact padded Active projection with a new theme tone',
+    'the live light theme preserves the shared-border Active projection with a new theme tone',
   );
   HarnessSmoke.Class.pass(
     'the active lens stays one row and its padded selected tab follows the live theme',
@@ -807,8 +1174,10 @@ try {
     (status) => status.tasksLens === 'done' && Number(status.tasksRows) === 1,
   );
   await driver.awaitGridCondition(
-    'the done lens paints one truncated task row',
-    (snapshot) => snapshot.findText('#905 plant…') !== null,
+    'the done lens paints one full-width task name without reserved actions',
+    (snapshot) =>
+      snapshot.findText('#905 planted-landed') !== null &&
+      taskActionsAreAbsent(snapshot, '#905 planted-landed'),
   );
   HarnessSmoke.Class.pass('the done lens stays one row at the default width');
 
@@ -870,6 +1239,17 @@ try {
     'stop holds the current lens selected',
     (status) => status.tasksCycling === false && status.tasksLens === 'live',
   );
+  const lightThemeReadyPosition = driver
+    .snapshot()
+    .findText('#902 planted-ready');
+  if (!lightThemeReadyPosition)
+    throw new Error('The READY row disappeared before the light-theme hover');
+  driver.sendMouse({
+    kind: 'move',
+    column: lightThemeReadyPosition.column + 3,
+    row: lightThemeReadyPosition.row,
+    button: 'none',
+  });
   await driver.awaitGridCondition(
     'the attach icon remains readable after the live light-theme switch',
     (snapshot) => {
@@ -1032,6 +1412,20 @@ try {
       status.rightDockFocused === true &&
       status.tasksAvailable === true,
   );
+  const narrowReadyPosition = await narrowDriver
+    .awaitGridCondition(
+      'the narrow READY row appears before its hover overlay',
+      (snapshot) => snapshot.findText('#902 planted-ready') !== null,
+    )
+    .then((snapshot) => snapshot.findText('#902 planted-ready'));
+  if (!narrowReadyPosition)
+    throw new Error('The narrow READY row disappeared before hover');
+  narrowDriver.sendMouse({
+    kind: 'move',
+    column: narrowReadyPosition.column + 3,
+    row: narrowReadyPosition.row,
+    button: 'none',
+  });
   await narrowDriver.awaitGridCondition(
     'the 120 by 36 dashboard paints every Unicode task action glyph',
     (snapshot) =>
@@ -1080,6 +1474,20 @@ try {
       status.rightDockActiveContent === 'tasks' &&
       status.tasksAvailable === true,
   );
+  const asciiReadyPosition = await asciiDriver
+    .awaitGridCondition(
+      'the ASCII READY row appears before its hover overlay',
+      (snapshot) => snapshot.findText('#902 planted-ready') !== null,
+    )
+    .then((snapshot) => snapshot.findText('#902 planted-ready'));
+  if (!asciiReadyPosition)
+    throw new Error('The ASCII READY row disappeared before hover');
+  asciiDriver.sendMouse({
+    kind: 'move',
+    column: asciiReadyPosition.column + 3,
+    row: asciiReadyPosition.row,
+    button: 'none',
+  });
   await asciiDriver.awaitGridCondition(
     'the ASCII attach action paints a non-blank fallback cell',
     (snapshot) => {
@@ -1225,6 +1633,22 @@ try {
       snapshot.findText('#1499 scale-row') !== null &&
       snapshot.findText('#1000 scale-row') === null,
   );
+  const largeThumbRowsBeforeScroll = rightDockThumbRows(largeDriver.snapshot());
+  HarnessSmoke.Class.requireCondition(
+    largeThumbRowsBeforeScroll.length >= 2,
+    'the large Tasks lens paints the shared minimum-size vertical thumb',
+  );
+  const largeBuildingPosition = largeDriver
+    .snapshot()
+    .findText('#1499 scale-row');
+  if (!largeBuildingPosition)
+    throw new Error('The leading scale row disappeared before hover');
+  largeDriver.sendMouse({
+    kind: 'move',
+    column: largeBuildingPosition.column + 3,
+    row: largeBuildingPosition.row,
+    button: 'none',
+  });
   await largeDriver.awaitGridCondition(
     'the large fixture keeps every visible Unicode task action glyph readable',
     (snapshot) =>
@@ -1313,6 +1737,28 @@ try {
     (snapshot) =>
       snapshot.findText('#1499 scale-row') === null &&
       snapshot.findText('#1479 scale-row') !== null,
+  );
+  for (let wheelEvent = 0; wheelEvent < 120; wheelEvent += 1) {
+    largeDriver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      column: 110,
+      row: 20,
+      direction: 'down',
+    });
+  }
+  const largeThumbRowsAfterScroll = await largeDriver
+    .awaitGridCondition(
+      'more row-count input moves the minimum thumb along its track',
+      (snapshot) =>
+        JSON.stringify(rightDockThumbRows(snapshot)) !==
+        JSON.stringify(largeThumbRowsBeforeScroll),
+    )
+    .then((snapshot) => rightDockThumbRows(snapshot));
+  HarnessSmoke.Class.requireCondition(
+    largeThumbRowsAfterScroll.length >= 2 &&
+      JSON.stringify(largeThumbRowsAfterScroll) !==
+        JSON.stringify(largeThumbRowsBeforeScroll),
+    'the shared Tasks thumb moves from the same scroll position as the rows',
   );
   HarnessSmoke.Class.pass(
     'an off-screen live row owns no dashboard motion timer',

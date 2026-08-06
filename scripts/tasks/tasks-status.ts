@@ -1466,6 +1466,72 @@ export function projectTasksWatchTaskGroup(
       ),
     );
   }
+  if (input.standing === 'ready') {
+    const gate = input.gateGlance;
+    if (gate === null) {
+      detailSegments.push(
+        tasksWatchTextSegment(' — awaiting landing', 'success', '32'),
+      );
+    } else if (gate.exitCode === 0) {
+      const finishedAgo =
+        gate.finishedAtMilliseconds === null
+          ? ''
+          : ` ${formatDuration(
+              input.nowMilliseconds - gate.finishedAtMilliseconds,
+            )} ago`;
+      detailSegments.push(
+        tasksWatchTextSegment(
+          `  ⛩ last gate green${finishedAgo}`,
+          'success',
+          '32',
+        ),
+      );
+    } else if (gate.exitCode !== null) {
+      const finishedAgo =
+        gate.finishedAtMilliseconds === null
+          ? ''
+          : ` ${formatDuration(
+              input.nowMilliseconds - gate.finishedAtMilliseconds,
+            )} ago`;
+      detailSegments.push(
+        tasksWatchTextSegment(
+          `  ⛩ last gate red (exit ${gate.exitCode})${finishedAgo}`,
+          'error',
+          '31',
+        ),
+      );
+    } else {
+      const gateLabel = `gate: ${gate.phase}`;
+      detailSegments.push(tasksWatchTextSegment('  ', 'dim', '2'));
+      for (
+        let gateLetterIndex = 0;
+        gateLetterIndex < gateLabel.length;
+        gateLetterIndex += 1
+      ) {
+        const colour =
+          TASKS_GATE_RAMP[
+            (gateLetterIndex + motionStep) % TASKS_GATE_RAMP.length
+          ]!;
+        detailSegments.push(
+          tasksWatchTextSegment(
+            gateLabel[gateLetterIndex] ?? '',
+            'motion',
+            colour.ansi,
+            colour.color,
+          ),
+        );
+      }
+      detailSegments.push(
+        tasksWatchTextSegment(
+          ` ${formatDuration(
+            input.nowMilliseconds - gate.startedAtMilliseconds,
+          )}`,
+          'accent',
+          '36',
+        ),
+      );
+    }
+  }
   if (input.durationLabel.length > 0) {
     detailSegments.push(
       tasksWatchTextSegment(`  ${input.durationLabel}`, 'accent', '36'),
@@ -2048,45 +2114,31 @@ function live(
     if (hasEdits) firstEditSeen.add(record.folderName);
     const exploring = !firstEditSeen.has(record.folderName);
     const startedAt = startedAtMilliseconds(tasksRoot, record);
+    const groupForMotionElapsed = (currentMotionElapsedMilliseconds = 0) =>
+      projectTasksWatchTaskGroup({
+        taskNumber: record.taskNumber,
+        label: record.folderName.replace(/^\d+-/, ''),
+        standing: ready ? 'ready' : 'building',
+        phase: ready ? null : exploring ? 'exploring' : 'building',
+        round,
+        durationLabel:
+          startedAt === null ? '' : formatDuration(Date.now() - startedAt),
+        addedLines: delta?.added ?? null,
+        removedLines: delta?.removed ?? null,
+        identity: agentIdentity(record) ?? '',
+        sessionName: record.tmuxSession,
+        sessionAvailable: null,
+        gateGlance: gateGlanceCache,
+        animationElapsedMilliseconds: currentMotionElapsedMilliseconds,
+        nowMilliseconds: Date.now(),
+      });
     const lineForMotionElapsed = (currentMotionElapsedMilliseconds = 0) =>
       renderTasksWatchTextLineAnsi(
-        projectTasksWatchTaskGroup({
-          taskNumber: record.taskNumber,
-          label: record.folderName.replace(/^\d+-/, ''),
-          standing: ready ? 'ready' : 'building',
-          phase: ready ? null : exploring ? 'exploring' : 'building',
-          round,
-          durationLabel:
-            startedAt === null ? '' : formatDuration(Date.now() - startedAt),
-          addedLines: delta?.added ?? null,
-          removedLines: delta?.removed ?? null,
-          identity: agentIdentity(record) ?? '',
-          sessionName: record.tmuxSession,
-          sessionAvailable: null,
-          gateGlance: gateGlanceCache,
-          animationElapsedMilliseconds: currentMotionElapsedMilliseconds,
-          nowMilliseconds: Date.now(),
-        }).detail,
+        groupForMotionElapsed(currentMotionElapsedMilliseconds).detail,
       );
     const rowAnimates =
       !ready || (gateGlanceCache !== null && gateGlanceCache.exitCode === null);
-    const group = projectTasksWatchTaskGroup({
-      taskNumber: record.taskNumber,
-      label: record.folderName.replace(/^\d+-/, ''),
-      standing: ready ? 'ready' : 'building',
-      phase: ready ? null : exploring ? 'exploring' : 'building',
-      round,
-      durationLabel:
-        startedAt === null ? '' : formatDuration(Date.now() - startedAt),
-      addedLines: delta?.added ?? null,
-      removedLines: delta?.removed ?? null,
-      identity: agentIdentity(record) ?? '',
-      sessionName: record.tmuxSession,
-      sessionAvailable: null,
-      gateGlance: gateGlanceCache,
-      animationElapsedMilliseconds: motionElapsedMilliseconds ?? 0,
-      nowMilliseconds: Date.now(),
-    });
+    const group = groupForMotionElapsed(motionElapsedMilliseconds ?? 0);
     outputLine(renderTasksWatchTextLineAnsi(group.title));
     if (rowAnimates && outputAnimatedLine !== undefined) {
       outputAnimatedLine((animationElapsedMilliseconds) =>

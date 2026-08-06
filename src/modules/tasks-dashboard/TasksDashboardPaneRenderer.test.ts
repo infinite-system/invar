@@ -5,6 +5,7 @@ import {
   TASKS_BUILDING_BREATH_FRAMES,
   TASKS_EXPLORING_GLYPHS,
   TASKS_MOTION_STEP_MILLISECONDS,
+  projectTasksWatchTaskGroup,
 } from '../../../scripts/tasks/tasks-status';
 import {
   TasksDashboardPaneRenderer,
@@ -52,7 +53,7 @@ function makeContext(
     available: true,
     windowTop: 0,
     selectedIndex: -1,
-    hoveredIndex: -1,
+    hoveredTaskNumber: null,
     paneFocused: false,
     palette: ThemePalettes.Class.DARK,
     height: 10,
@@ -72,6 +73,7 @@ function makeContext(
     },
     ellipsisCell: '…',
     hoveredTabLineTarget: null,
+    selectionRanges: [],
     ...overrides,
   };
 }
@@ -80,6 +82,8 @@ test('the live lens gives every task one title row and one status row', () => {
   const rendered = renderedText(
     TasksDashboardPaneRenderer.Class.render(
       makeContext({
+        innerWidth: 80,
+        viewportWidth: 79,
         rows: [
           taskRow({
             taskNumber: 902,
@@ -128,6 +132,47 @@ test('the live lens gives every task one title row and one status row', () => {
   expect(renderedRows[4]).toContain('building  10m');
   expect(renderedRows[4]).not.toContain('#901 planted-building');
   expect(rendered).toContain('codex·unknown·default');
+});
+
+test('the pane text is the CLI watch task-group projection without a second layout', () => {
+  const titleRow = taskRow({
+    standing: 'building',
+    phase: 'exploring',
+    round: 3,
+    durationLabel: '12m',
+    addedLines: 17,
+    removedLines: 4,
+    identity: 'codex·5.6-sol·high',
+    sessionName: 'invar/901-planted-task',
+    sessionAvailable: true,
+  });
+  const detailRow = { ...titleRow, kind: 'detail' as const };
+  const context = makeContext({
+    rows: [titleRow, detailRow],
+    animationElapsedMilliseconds: 2 * TASKS_MOTION_STEP_MILLISECONDS,
+  });
+  const projection = projectTasksWatchTaskGroup({
+    taskNumber: 901,
+    label: 'planted-task',
+    standing: 'building',
+    phase: 'exploring',
+    round: 3,
+    durationLabel: '12m',
+    addedLines: 17,
+    removedLines: 4,
+    identity: 'codex·5.6-sol·high',
+    sessionName: 'invar/901-planted-task',
+    sessionAvailable: true,
+    gateGlance: null,
+    animationElapsedMilliseconds: 2 * TASKS_MOTION_STEP_MILLISECONDS,
+    nowMilliseconds: Date.now(),
+  });
+  expect(TasksDashboardPaneRenderer.Class.textForRow(context, titleRow)).toBe(
+    projection.title.segments.map((segment) => segment.text).join(''),
+  );
+  expect(TasksDashboardPaneRenderer.Class.textForRow(context, detailRow)).toBe(
+    projection.detail.segments.map((segment) => segment.text).join(''),
+  );
 });
 
 test('the done lens paints the check, the landing attachment, and the duration', () => {
@@ -193,7 +238,7 @@ test('the tab line hit test resolves every lens label and the cycle glyph', () =
       TasksDashboardPaneRenderer.Class.hitTestTabLine(tab.startColumn),
     ).toEqual({ kind: 'lens', lens: tab.lens });
     expect(
-      TasksDashboardPaneRenderer.Class.hitTestTabLine(tab.endColumn),
+      TasksDashboardPaneRenderer.Class.hitTestTabLine(tab.endColumn - 1),
     ).toEqual({ kind: 'lens', lens: tab.lens });
   }
   expect(
@@ -201,7 +246,7 @@ test('the tab line hit test resolves every lens label and the cycle glyph', () =
       TasksDashboardPaneRenderer.Class.cycleGlyphColumn(),
     ),
   ).toEqual({ kind: 'cycle' });
-  expect(TasksDashboardPaneRenderer.Class.hitTestTabLine(6)).toBe(null);
+  expect(TasksDashboardPaneRenderer.Class.hitTestTabLine(24)).toBe(null);
 });
 
 test('the cycling glyph reflects start and stop through theme-owned icons', () => {
@@ -277,8 +322,8 @@ test('live motion advances through the CLI-exported phase frames', () => {
   expect(exploringSecond).not.toBe(exploringFirst);
 });
 
-test('the pinned row actions share one hit and tooltip geometry', () => {
-  const context = makeContext({});
+test('hover overlays row actions through one hit and truncation geometry', () => {
+  const context = makeContext({ hoveredTaskNumber: 901 });
   const row = taskRow({
     kind: 'detail',
     sessionName: 'invar/901-planted-task',
@@ -299,7 +344,12 @@ test('the pinned row actions share one hit and tooltip geometry', () => {
   expect(
     renderedText(
       TasksDashboardPaneRenderer.Class.render(
-        makeContext({ rows: [row], innerWidth: 60, viewportWidth: 59 }),
+        makeContext({
+          rows: [row],
+          innerWidth: 60,
+          viewportWidth: 59,
+          hoveredTaskNumber: 901,
+        }),
       ),
     ),
   ).toContain(' S  W  T  B  R ');
@@ -342,18 +392,54 @@ test('active and done tasks stay on one row and truncate through the shared elli
       ),
     );
     expect(rendered.split('\n')).toHaveLength(2);
-    expect(rendered).toContain('#901 planted…');
+    expect(rendered).toContain('#901 planted-task-with-a…');
     expect(rendered).not.toContain('planted-task-with-a-long-name');
-    expect(rendered).toContain(' W  T  B  R ');
+    expect(rendered).not.toContain(' W  T  B  R ');
+    const hovered = renderedText(
+      TasksDashboardPaneRenderer.Class.render(
+        makeContext({
+          lens,
+          innerWidth: 28,
+          viewportWidth: 27,
+          hoveredTaskNumber: 901,
+          rows: [
+            taskRow({
+              label: 'planted-task-with-a-long-name',
+              attachment: lens === 'done' ? 'merged 1a2b3c4d' : '',
+              identity: 'codex·5.6-sol·high',
+            }),
+          ],
+        }),
+      ),
+    );
+    expect(hovered).toContain('… W  T  B  R ');
   }
 });
 
 test('selected and hovered tabs paint exactly one padding cell on both sides', () => {
   const tabs = TasksDashboardPaneRenderer.Class.lensTabs();
   expect(tabs).toEqual([
-    { lens: 'live', label: 'LIVE', startColumn: 0, endColumn: 5 },
-    { lens: 'active', label: 'ACTIVE', startColumn: 7, endColumn: 14 },
-    { lens: 'done', label: 'DONE', startColumn: 16, endColumn: 21 },
+    {
+      lens: 'live',
+      label: 'LIVE',
+      text: '| LIVE ',
+      startColumn: 0,
+      endColumn: 7,
+    },
+    {
+      lens: 'active',
+      label: 'ACTIVE',
+      text: '| ACTIVE ',
+      startColumn: 7,
+      endColumn: 16,
+    },
+    {
+      lens: 'done',
+      label: 'DONE',
+      text: '| DONE |',
+      startColumn: 16,
+      endColumn: 24,
+    },
   ]);
   const styled = TasksDashboardPaneRenderer.Class.render(
     makeContext({
@@ -365,9 +451,9 @@ test('selected and hovered tabs paint exactly one padding cell on both sides', (
     text: string;
     bg?: { toString(): string };
   }>;
-  const activeChunk = chunks.find((chunk) => chunk.text === ' ACTIVE ');
-  const hoveredChunk = chunks.find((chunk) => chunk.text === ' DONE ');
-  const inactiveChunk = chunks.find((chunk) => chunk.text === ' LIVE ');
+  const activeChunk = chunks.find((chunk) => chunk.text === '| ACTIVE ');
+  const hoveredChunk = chunks.find((chunk) => chunk.text === '| DONE |');
+  const inactiveChunk = chunks.find((chunk) => chunk.text === '| LIVE ');
   expect(activeChunk?.bg?.toString()).toBe(
     RGBA.fromHex(ThemePalettes.Class.DARK.selection).toString(),
   );
