@@ -3,6 +3,7 @@ import { ref, shallowRef } from 'vue';
 import type { TextDocument } from '../text/TextDocument';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { TextInputModel } from '../text/TextInputModel';
+import type { TextEdit } from '../text/TextEdit.interface';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $FindInBuffer {
@@ -139,76 +140,37 @@ class $FindInBuffer {
     return this.currentMatch;
   }
 
-  replaceCurrent(): boolean {
+  replaceCurrent(): TextEdit | null {
     const replacementContext =
       this.replacementContexts[this.currentMatchIndex.value];
     const currentMatch = this.currentMatch;
-    if (currentMatch === null || replacementContext === undefined) return false;
-
-    const replacedMatchIndex = this.currentMatchIndex.value;
-    if (currentMatch.startColumn !== currentMatch.endColumn) {
-      this.document.deleteRange(
-        { line: currentMatch.line, col: currentMatch.startColumn },
-        { line: currentMatch.line, col: currentMatch.endColumn },
-      );
-    }
-    const replacementText = this.expandReplacement(
-      this.replacement.value,
-      replacementContext,
-    );
-    if (replacementText.length > 0) {
-      if (/\r|\n/.test(replacementText)) {
-        this.document.insertMultiline(
-          currentMatch.line,
-          currentMatch.startColumn,
-          replacementText,
-        );
-      } else {
-        this.document.insertInline(
-          currentMatch.line,
-          currentMatch.startColumn,
-          replacementText,
-        );
-      }
-    }
-
-    this.findAll();
-    if (this.matchCount > 0) {
-      this.currentMatchIndex.value = Math.min(
-        replacedMatchIndex,
-        this.matchCount - 1,
-      );
-    }
-    return true;
+    if (currentMatch === null || replacementContext === undefined) return null;
+    return this.textEdit(currentMatch, replacementContext);
   }
 
-  replaceAll(): number {
+  replaceAll(): readonly TextEdit[] {
     this.findAll();
-    const replacementCount = this.matchCount;
-    if (replacementCount === 0) return 0;
-
-    const updatedLines = Array.from(
-      { length: this.document.lineCount },
-      (_, lineIndex) => this.document.line(lineIndex),
-    );
-    for (let matchIndex = replacementCount - 1; matchIndex >= 0; matchIndex--) {
-      const match = this.matches.value[matchIndex];
+    return this.matches.value.flatMap((match, matchIndex) => {
       const replacementContext = this.replacementContexts[matchIndex];
-      if (match === undefined || replacementContext === undefined) continue;
-      const lineText = updatedLines[match.line] ?? '';
-      updatedLines[match.line] =
-        lineText.slice(0, replacementContext.startUtf16Offset) +
-        this.expandReplacement(this.replacement.value, replacementContext) +
-        lineText.slice(replacementContext.endUtf16Offset);
-    }
+      return replacementContext
+        ? [this.textEdit(match, replacementContext)]
+        : [];
+    });
+  }
 
-    // TextDocument.replaceAll is the available batch boundary: every replacement is committed as
-    // one document mutation (and therefore can be captured as one undo step by the editor caller).
-    this.document.replaceAll(
-      updatedLines.join(this.document.eol).split(/\r?\n/),
-    );
-    this.findAll();
-    return replacementCount;
+  protected textEdit(
+    match: FindInBufferMatch,
+    replacementContext: MatchReplacementContext,
+  ): TextEdit {
+    return {
+      start: { line: match.line, column: match.startColumn },
+      end: { line: match.line, column: match.endColumn },
+      expectedText: replacementContext.matchedText,
+      replacementText: this.expandReplacement(
+        this.replacement.value,
+        replacementContext,
+      ),
+    };
   }
 
   protected escapeRegularExpression(text: string): string {

@@ -5,7 +5,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Search results are click-set and highlight-shown (src/modules/search/search.invariants.md)
 // invariant: Find bar controls are mouse-clickable buttons (src/modules/search/search.invariants.md)
-// invariant: Case sensitivity is a live toggle that re-runs the query (src/modules/search/search.invariants.md)
+// invariant: Find options re-run the active query (src/modules/search/search.invariants.md)
 // invariant: The open-project path input is a live directory navigator (src/modules/search/search.invariants.md)
 // invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
@@ -53,6 +53,19 @@ function findButtonGeometry(snapshot: HarnessSnapshot.Model): {
     if (caseColumn >= 0 && rowText.includes('esc')) return { row, caseColumn };
   }
   throw new Error('FAIL could not locate the Find bar Aa button');
+}
+
+function findReplaceAllPosition(snapshot: HarnessSnapshot.Model): {
+  row: number;
+  column: number;
+} {
+  const buttonGeometry = findButtonGeometry(snapshot);
+  const rowText = snapshot.rowText(buttonGeometry.row);
+  const regexColumn = rowText.indexOf('.*', buttonGeometry.caseColumn);
+  const replaceAllLabelColumn = rowText.indexOf(' R ', regexColumn + 2);
+  if (replaceAllLabelColumn < 0)
+    throw new Error('FAIL could not locate the Replace All button');
+  return { row: buttonGeometry.row, column: replaceAllLabelColumn + 1 };
 }
 
 function warningAlert(snapshot: HarnessSnapshot.Model): {
@@ -249,10 +262,46 @@ try {
   HarnessSmoke.Class.pass(
     'Aa click enables case sensitivity and immediately re-filters',
   );
+  snapshot = driver.snapshot();
+  const wholeWordPosition = snapshot.findText('ab');
+  const regexPosition = snapshot.findText('.*');
+  if (!wholeWordPosition || !regexPosition)
+    throw new Error('FAIL Find option buttons are not visible');
+  for (const position of [wholeWordPosition, regexPosition]) {
+    driver.sendMouse({
+      kind: 'press',
+      column: position.column,
+      row: position.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: position.column,
+      row: position.row,
+      button: 'left',
+    });
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'whole-word and regex buttons publish their active state',
+    (status) => status.findWholeWord === true && status.findUseRegex === true,
+  );
+  HarnessSmoke.Class.pass('ab and .* are visible live option buttons');
 
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Escape closes Find before opening Replace',
+    (status) => status.findOpen === false,
+  );
   driver.sendKeys('Control+h');
-  await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Replace') !== null,
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Ctrl+H opens replace mode',
+    (status) => status.findMode === 'replace',
   );
   const replaceBaselineStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -261,35 +310,146 @@ try {
     (status) => typeof status.bufferRevision === 'number',
   );
   const revisionBeforeReplace = Number(replaceBaselineStatus.bufferRevision);
-  buttonGeometry = findButtonGeometry(driver.snapshot());
-  const replaceAllColumn = buttonGeometry.caseColumn + 9;
+  snapshot = await driver.awaitGridCondition(
+    'the Replace All button is painted',
+    (candidate) => {
+      try {
+        findReplaceAllPosition(candidate);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
+  const replaceAllPosition = findReplaceAllPosition(snapshot);
   driver.sendMouse({
     kind: 'press',
-    column: replaceAllColumn,
-    row: buttonGeometry.row,
+    column: replaceAllPosition.column,
+    row: replaceAllPosition.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: replaceAllColumn,
-    row: buttonGeometry.row,
+    column: replaceAllPosition.column,
+    row: replaceAllPosition.row,
     button: 'left',
   });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Replace All waits in the shared dialog with safe focus',
+    (status) =>
+      status.quitConfirmationIdentifier === 'replace-all-in-file' &&
+      status.quitConfirmationFocusedChoice === 'no' &&
+      status.findBulkFlowState === 'awaitingConsent',
+  );
+  snapshot = await driver.awaitGridCondition(
+    'Replace All consent copy is visible',
+    (candidate) =>
+      candidate.findText('Replace all in this file') !== null &&
+      candidate.findText('The editor will record one undo step.') !== null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    snapshot.findText(' Cancel ') !== null,
+    'the safe Cancel action has one-key padding',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Escape cancels Replace All without a mutation',
+    (status) =>
+      status.quitConfirmationOpen === false &&
+      Number(status.bufferRevision) === revisionBeforeReplace,
+  );
+  driver.sendKeys('Control+h');
+  snapshot = await driver.awaitSnapshot((candidate) => {
+    try {
+      findReplaceAllPosition(candidate);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  const repeatedReplaceAllPosition = findReplaceAllPosition(snapshot);
+  driver.sendMouse({
+    kind: 'press',
+    column: repeatedReplaceAllPosition.column,
+    row: repeatedReplaceAllPosition.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: repeatedReplaceAllPosition.column,
+    row: repeatedReplaceAllPosition.row,
+    button: 'left',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the repeated Replace All reaches consent again',
+    (status) => status.quitConfirmationIdentifier === 'replace-all-in-file',
+  );
+  driver.sendKeys('Left', 'Enter');
   const replacedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'status condition: Number(status.bufferRevision) > revisionBeforeReplace && status.findMatchCount === 0',
     (status) =>
       Number(status.bufferRevision) > revisionBeforeReplace &&
-      status.findMatchCount === 0,
+      status.findMatchCount === 0 &&
+      status.dirty === true,
   );
   HarnessSmoke.Class.pass(
     `replace-all click mutated the document (${revisionBeforeReplace} to ${String(replacedStatus.bufferRevision)})`,
   );
-  driver.sendKeys('Escape');
-  await driver.awaitGridCondition(
-    'Escape closes Find before Command Palette input',
-    (candidate) => candidate.findText('Find / Replace') === null,
+  driver.sendKeys('Control+z');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'one undo opens the bulk confirmation',
+    (status) =>
+      status.quitConfirmationIdentifier === 'undo-replace-all-in-file' &&
+      status.quitConfirmationFocusedChoice === 'no',
+  );
+  driver.sendKeys('Left', 'Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'confirmed undo restores the exact original lines',
+    (status) =>
+      JSON.stringify(status.editorLines) ===
+        JSON.stringify([
+          'Alpha alpha ALPHA beta',
+          'second line',
+          'Alpha again here',
+          '',
+        ]) && status.dirty === false,
+  );
+  driver.sendKeys('Control+y');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'one redo opens the bulk confirmation',
+    (status) =>
+      status.quitConfirmationIdentifier === 'redo-replace-all-in-file' &&
+      status.quitConfirmationFocusedChoice === 'no',
+  );
+  driver.sendKeys('Left', 'Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'confirmed redo re-applies the bulk edit',
+    (status) =>
+      Number(status.bufferRevision) > revisionBeforeReplace &&
+      status.dirty === true &&
+      JSON.stringify(status.editorLines) ===
+        JSON.stringify([
+          'Alpha  ALPHA beta',
+          'second line',
+          'Alpha again here',
+          '',
+        ]),
   );
 
   console.log(

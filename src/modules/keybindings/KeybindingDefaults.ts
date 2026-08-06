@@ -452,6 +452,21 @@ class $KeybindingDefaults {
         action: 'find.toggleCaseSensitive',
         context: 'find',
       },
+      {
+        chord: { key: 'w', alt: true },
+        action: 'find.toggleWholeWord',
+        context: 'find',
+      },
+      {
+        chord: { key: 'r', alt: true },
+        action: 'find.toggleRegex',
+        context: 'find',
+      },
+      {
+        chord: { key: 'c', ctrl: true },
+        action: 'dialog.copy',
+        context: 'dialog',
+      },
 
       // --- context menu (modal while open: Bootstrap resolves ONLY in this context and consumes
       //     everything unbound by closing the menu — see the modal block in Bootstrap.onKey) ---

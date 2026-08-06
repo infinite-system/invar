@@ -7,6 +7,10 @@ import { ref, shallowRef } from 'vue';
 import type { TextDocument } from '../text/TextDocument';
 import type { TextInputAction, TextInputModel } from '../text/TextInputModel';
 import { FindInBuffer, type FindInBufferMatch } from './FindInBuffer';
+import type {
+  TextEdit,
+  TextEditBatchMetadata,
+} from '../text/TextEdit.interface';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $FindBar {
@@ -35,6 +39,9 @@ class $FindBar {
   get targetRef() {
     return shallowRef<FindBarTarget | null>(null);
   }
+  get bulkFlowState() {
+    return ref<FindBarBulkFlowState>('ready');
+  }
   get engine(): FindInBuffer.Instance | null {
     return this.engineRef.value;
   }
@@ -59,6 +66,7 @@ class $FindBar {
         identifier,
         document,
         replaceAllowed: true,
+        displayPath: document.path,
         revealMatch: () => {},
       },
       mode,
@@ -88,6 +96,7 @@ class $FindBar {
   close(): void {
     this.open.value = false;
     this.replaceFocused.value = false;
+    this.bulkFlowState.value = 'ready';
   }
 
   /** True while typing should edit the REPLACEMENT field (replace mode + that field focused). */
@@ -134,13 +143,33 @@ class $FindBar {
   get caseSensitive(): boolean {
     return this.engine?.caseSensitive.value ?? false;
   }
+  get wholeWord(): boolean {
+    return this.engine?.wholeWord.value ?? false;
+  }
+  get useRegex(): boolean {
+    return this.engine?.useRegex.value ?? false;
+  }
 
   /** Flip case-sensitivity on the active engine and re-run the query so matches reflect it at once. */
-  // invariant: Case sensitivity is a live toggle that re-runs the query (src/modules/search/search.invariants.md)
+  // invariant: Find options re-run the active query (src/modules/search/search.invariants.md)
   toggleCaseSensitive(): void {
     const engine = this.engine;
     if (!engine) return;
     engine.caseSensitive.value = !engine.caseSensitive.value;
+    engine.findAll();
+  }
+
+  toggleWholeWord(): void {
+    const engine = this.engine;
+    if (!engine) return;
+    engine.wholeWord.value = !engine.wholeWord.value;
+    engine.findAll();
+  }
+
+  toggleRegex(): void {
+    const engine = this.engine;
+    if (!engine) return;
+    engine.useRegex.value = !engine.useRegex.value;
     engine.findAll();
   }
 
@@ -159,14 +188,67 @@ class $FindBar {
     this.engine?.previous();
   }
   replaceCurrent(): void {
-    if (!this.engine) return;
-    this.engine.replaceCurrent();
+    const engine = this.engine;
+    const target = this.target;
+    if (!engine || !target?.applyTextEditsAsUndoStep) return;
+    const edit = engine.replaceCurrent();
+    if (!edit) return;
+    target.applyTextEditsAsUndoStep([edit], {
+      label: 'Replace in file',
+      bulkItemCount: 1,
+      displayPath: target.displayPath,
+    });
     this.engine.findAll(); // the document changed — re-derive matches + counts
   }
-  replaceAll(): void {
-    if (!this.engine) return;
-    this.engine.replaceAll();
-    this.engine.findAll();
+
+  replaceAll(): FindBarReplaceAllRequest | null {
+    const engine = this.engine;
+    const target = this.target;
+    if (
+      !engine ||
+      !target?.applyTextEditsAsUndoStep ||
+      this.bulkFlowState.value !== 'ready'
+    ) {
+      return null;
+    }
+    this.bulkFlowState.value = 'verifying';
+    const edits = engine.replaceAll();
+    if (edits.length === 0) {
+      this.bulkFlowState.value = 'ready';
+      return null;
+    }
+    const request = {
+      edits,
+      metadata: {
+        label: 'Replace All in file',
+        bulkItemCount: edits.length,
+        displayPath: target.displayPath,
+      },
+    } satisfies FindBarReplaceAllRequest;
+    this.bulkFlowState.value = 'awaitingConsent';
+    return request;
+  }
+
+  applyReplaceAll(request: FindBarReplaceAllRequest): number {
+    const target = this.target;
+    if (
+      !target?.applyTextEditsAsUndoStep ||
+      this.bulkFlowState.value !== 'awaitingConsent'
+    ) {
+      return 0;
+    }
+    this.bulkFlowState.value = 'applying';
+    const appliedCount = target.applyTextEditsAsUndoStep(
+      request.edits,
+      request.metadata,
+    );
+    this.engine?.findAll();
+    this.bulkFlowState.value = 'ready';
+    return appliedCount;
+  }
+
+  cancelReplaceAll(): void {
+    this.bulkFlowState.value = 'ready';
   }
 }
 
@@ -178,11 +260,24 @@ export namespace FindBar {
 
 export type FindBarMode = 'find' | 'replace';
 
+export type FindBarBulkFlowState =
+  'ready' | 'verifying' | 'awaitingConsent' | 'applying';
+
+export interface FindBarReplaceAllRequest {
+  readonly edits: readonly TextEdit[];
+  readonly metadata: TextEditBatchMetadata;
+}
+
 /** One independently searchable text pane. The identifier preserves its query/matches while focus
  * moves to another pane; revealMatch is the pane's sole scroll/selection writer. */
 export interface FindBarTarget {
   identifier: string;
   document: TextDocument.Instance;
   replaceAllowed: boolean;
+  displayPath: string;
+  applyTextEditsAsUndoStep?(
+    edits: readonly TextEdit[],
+    metadata: TextEditBatchMetadata,
+  ): number;
   revealMatch(match: FindInBufferMatch): void;
 }

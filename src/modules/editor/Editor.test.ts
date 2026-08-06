@@ -76,6 +76,77 @@ test('a contributed range replacement is exactly one undo step', () => {
   editor.dispose();
 });
 
+test('a verified text-edit batch is one delta undo step with redo metadata', () => {
+  const editor = openWith('cat cat\ncat');
+  editor.cursor.set(1, 2);
+  const metadata = {
+    label: 'Replace All in file',
+    bulkItemCount: 3,
+    displayPath: 'test.ts',
+  };
+  const appliedCount = editor.applyTextEditsAsUndoStep(
+    [
+      {
+        start: { line: 0, column: 0 },
+        end: { line: 0, column: 3 },
+        expectedText: 'cat',
+        replacementText: 'dog',
+      },
+      {
+        start: { line: 0, column: 4 },
+        end: { line: 0, column: 7 },
+        expectedText: 'cat',
+        replacementText: 'dog',
+      },
+      {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: 3 },
+        expectedText: 'cat',
+        replacementText: 'dog',
+      },
+    ],
+    metadata,
+  );
+
+  expect(appliedCount).toBe(3);
+  expect(editor.document.text).toBe('dog dog\ndog');
+  expect(editor.nextUndoMetadata).toEqual(metadata);
+  expect({
+    line: editor.cursor.line.value,
+    col: editor.cursor.col.value,
+  }).toEqual({ line: 1, col: 2 });
+  editor.performUndo();
+  expect(editor.document.text).toBe('cat cat\ncat');
+  expect(editor.nextRedoMetadata).toEqual(metadata);
+  editor.performRedo();
+  expect(editor.document.text).toBe('dog dog\ndog');
+  editor.dispose();
+});
+
+test('a stale text edit is skipped before the batch starts', () => {
+  const editor = openWith('cat');
+  const appliedCount = editor.applyTextEditsAsUndoStep(
+    [
+      {
+        start: { line: 0, column: 0 },
+        end: { line: 0, column: 3 },
+        expectedText: 'dog',
+        replacementText: 'bird',
+      },
+    ],
+    {
+      label: 'Replace All in file',
+      bulkItemCount: 1,
+      displayPath: 'test.ts',
+    },
+  );
+
+  expect(appliedCount).toBe(0);
+  expect(editor.document.text).toBe('cat');
+  expect(editor.nextUndoMetadata).toBeNull();
+  editor.dispose();
+});
+
 test('typing notifies contributions after the character lands', () => {
   const editor = openWith('value');
   const editorContributions = new EditorContributions.Class();

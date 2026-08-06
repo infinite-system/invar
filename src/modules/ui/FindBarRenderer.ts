@@ -10,7 +10,7 @@
 //
 // invariant: Renderables hold no model state (src/modules/ui/ui.invariants.md)
 // invariant: Find bar controls are mouse-clickable buttons (src/modules/search/search.invariants.md)
-// invariant: Case sensitivity is a live toggle that re-runs the query (src/modules/search/search.invariants.md)
+// invariant: Find options re-run the active query (src/modules/search/search.invariants.md)
 // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
@@ -93,6 +93,8 @@ class $FindBarRenderer {
     pushButton('previous', findIcons.previous, palette.fg, false);
     pushButton('next', findIcons.next, palette.fg, false);
     pushButton('toggleCase', 'Aa', palette.fg, findBar.caseSensitive);
+    pushButton('toggleWholeWord', 'ab', palette.fg, findBar.wholeWord);
+    pushButton('toggleRegex', '.*', palette.fg, findBar.useRegex);
     if (replaceMode) {
       pushButton('replace', findIcons.replace, palette.fg, false);
       pushButton('replaceAll', findIcons.replaceAll, palette.fg, false);
@@ -134,7 +136,14 @@ export namespace FindBarRenderer {
 }
 
 export type FindBarButtonAction =
-  'previous' | 'next' | 'toggleCase' | 'replace' | 'replaceAll' | 'toggleMode';
+  | 'previous'
+  | 'next'
+  | 'toggleCase'
+  | 'toggleWholeWord'
+  | 'toggleRegex'
+  | 'replace'
+  | 'replaceAll'
+  | 'toggleMode';
 
 /** A drawn button's hit-rect in the bar body's own coordinates (row 0 = the bar's first content line). */
 export interface FindBarButtonZone {

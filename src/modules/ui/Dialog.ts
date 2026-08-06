@@ -4,6 +4,7 @@ import { ref } from 'vue';
 /** One modal dialog model for confirmations and prompts. */
 class $Dialog {
   protected confirmAction: (() => void) | null = null;
+  protected cancelAction: (() => void) | null = null;
 
   get open() {
     return ref(false);
@@ -38,14 +39,22 @@ class $Dialog {
     this.cancelLabel.value = options.cancelLabel ?? 'No';
     this.hint.value = options.hint ?? 'Left/Right or Tab, then Enter';
     this.confirmAction = options.onConfirm;
+    this.cancelAction = options.onCancel ?? null;
     this.focusedChoice.value = 'no';
     this.open.value = true;
   }
 
   dismiss(): void {
+    const cancelAction = this.cancelAction;
+    this.closeWithoutCancel();
+    cancelAction?.();
+  }
+
+  protected closeWithoutCancel(): void {
     this.open.value = false;
     this.focusedChoice.value = 'no';
     this.confirmAction = null;
+    this.cancelAction = null;
   }
 
   select(choice: DialogChoice): void {
@@ -65,8 +74,12 @@ class $Dialog {
     if (!this.open.value) return;
     const confirmed = this.focusedChoice.value === 'yes';
     const confirmAction = this.confirmAction;
-    this.dismiss();
-    if (confirmed) confirmAction?.();
+    if (confirmed) {
+      this.closeWithoutCancel();
+      confirmAction?.();
+    } else {
+      this.dismiss();
+    }
   }
 }
 
@@ -86,4 +99,5 @@ export interface DialogOptions {
   readonly cancelLabel?: string;
   readonly hint?: string;
   readonly onConfirm: () => void;
+  readonly onCancel?: () => void;
 }

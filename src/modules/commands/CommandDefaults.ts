@@ -62,14 +62,14 @@ class $CommandDefaults {
         title: 'Edit: Undo',
         category: 'Edit',
         when: hasDocument,
-        run: () => getEditor().performUndo(),
+        run: context.undo,
       },
       {
         id: 'edit.redo',
         title: 'Edit: Redo',
         category: 'Edit',
         when: hasDocument,
-        run: () => getEditor().performRedo(),
+        run: context.redo,
       },
       {
         id: 'edit.deletePreviousWord',
@@ -280,6 +280,8 @@ export interface CommandContext {
   wordWrapEnabled: () => boolean;
   goToBottom: () => void;
   quit: () => void;
+  undo: () => void;
+  redo: () => void;
   requestRender: () => void;
   toggleActivityBar: () => void;
   toggleRightDock: () => void;

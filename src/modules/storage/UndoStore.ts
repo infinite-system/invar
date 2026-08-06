@@ -5,6 +5,7 @@
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 // invariant: Undo records deltas not whole-document snapshots (src/modules/editor/editor.invariants.md)
 import { Static } from 'ivue/extras';
+import type { TextEditBatchMetadata } from '../text/TextEdit.interface';
 
 class $UndoStore {
   protected static get MAXIMUM_DEPTH(): number {
@@ -36,6 +37,12 @@ class $UndoStore {
   get depth(): number {
     return this.undoStack.length;
   }
+  get nextUndoMetadata(): TextEditBatchMetadata | null {
+    return this.undoStack[this.undoStack.length - 1]?.metadata ?? null;
+  }
+  get nextRedoMetadata(): TextEditBatchMetadata | null {
+    return this.redoStack[this.redoStack.length - 1]?.metadata ?? null;
+  }
 
   /**
    * Begin the state BEFORE an edit. The state is not retained until the
@@ -62,6 +69,7 @@ class $UndoStore {
       beforeCursor: state.beforeCursor,
       changes: [],
       kind: state.kind,
+      metadata: state.metadata,
     };
     this.activeStateIsPending = true;
   }
@@ -137,6 +145,7 @@ export interface UndoStateStart {
   readonly beforeCursor: UndoCursor;
   readonly kind: EditKind;
   readonly at: number;
+  readonly metadata?: TextEditBatchMetadata;
 }
 
 export interface UndoState {
@@ -144,5 +153,6 @@ export interface UndoState {
   readonly beforeCursor: UndoCursor;
   readonly changes: UndoChange[];
   readonly kind: EditKind;
+  readonly metadata?: TextEditBatchMetadata;
   afterCursor?: UndoCursor;
 }

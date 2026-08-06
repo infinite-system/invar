@@ -115,6 +115,7 @@ class $ReadOnlyTextBuffer {
       identifier,
       document: this.document,
       replaceAllowed: false,
+      displayPath: this.document.path,
       revealMatch,
     };
   }

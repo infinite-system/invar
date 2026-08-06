@@ -248,13 +248,47 @@ class $OverlayLayer {
       visible: false,
       zIndex: 124,
     });
-    this.quitConfirmationText = new TextRenderable(renderer, {
+    this.quitConfirmationText = new SelectableText.Class(renderer, {
       id: 'quit-confirmation-text',
       content: '',
       selectable: false,
     });
     this.quitConfirmationBox.add(this.quitConfirmationText);
     root.add(this.quitConfirmationBox);
+    this.quitConfirmationViewport = this.createOverlayViewport(
+      'quit-confirmation',
+      this.quitConfirmationBox,
+      () => ({
+        contentRows: this.quitConfirmationRenderedLines.length,
+        contentColumns: this.quitConfirmationViewportColumns,
+        viewportRows: this.quitConfirmationViewportRows,
+        viewportColumns: this.quitConfirmationViewportColumns,
+      }),
+      () => this.requestPaint(),
+      {
+        positionAtCell: (screenColumn, screenRow) =>
+          this.quitConfirmationPositionAtCell(screenColumn, screenRow),
+        begin: (position) => this.quitConfirmationSelection.begin(position),
+        extend: (position) => this.quitConfirmationSelection.extend(position),
+        finish: () => this.quitConfirmationSelection.finish(),
+        lineGraphemeCount: (line) =>
+          TextCoordinates.Class.lineWidth(
+            this.quitConfirmationRenderedLines[line] ?? '',
+          ),
+        viewportRectangle: () => ({
+          leftColumn: Number(this.quitConfirmationText.x),
+          rightColumn:
+            Number(this.quitConfirmationText.x) +
+            this.quitConfirmationViewportColumns -
+            1,
+          topRow: Number(this.quitConfirmationText.y),
+          bottomRow:
+            Number(this.quitConfirmationText.y) +
+            this.quitConfirmationViewportRows -
+            1,
+        }),
+      },
+    );
     this.quitConfirmationDismissal = this.createModalDismissal(
       'quit-confirmation',
       123,
@@ -262,13 +296,19 @@ class $OverlayLayer {
       () => dependencies.quitConfirmation.dismiss(),
     );
     this.quitConfirmationText.onMouseDown = (event) => {
+      this.quitConfirmationViewport.beginDrag(event.x, event.y);
       const localRow = event.y - this.quitConfirmationText.y;
       const localColumn = event.x - this.quitConfirmationText.x;
       const button = this.quitConfirmationButtonAt(localRow, localColumn);
       if (!button) return;
+      this.quitConfirmationViewport.endDrag();
       dependencies.quitConfirmation.select(button.choice);
       dependencies.quitConfirmation.activateFocusedChoice();
     };
+    this.quitConfirmationText.onMouseDrag = (event: MouseEvent) =>
+      this.quitConfirmationViewport.dragTo(event.x, event.y);
+    this.quitConfirmationText.onMouseUp = () =>
+      this.quitConfirmationViewport.endDrag();
     this.quitConfirmationText.onMouseMove = (event) => {
       const localRow = event.y - this.quitConfirmationText.y;
       const localColumn = event.x - this.quitConfirmationText.x;
@@ -472,7 +512,7 @@ class $OverlayLayer {
     };
     // Find bar action buttons: hit-test the pointer against the zones the renderer drew this frame.
     // invariant: Find bar controls are mouse-clickable buttons (src/modules/search/search.invariants.md)
-    this.findBarText.onMouseDown = (event) => {
+    this.findBarText.onMouseUp = (event) => {
       const localRow = event.y - this.findBarText.y;
       const localColumn = event.x - this.findBarText.x;
       const button = this.findBarButtonZones.find(
@@ -581,7 +621,7 @@ class $OverlayLayer {
   protected readonly confirmText: TextRenderable;
   protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
   protected readonly quitConfirmationBox: BoxRenderable;
-  protected readonly quitConfirmationText: TextRenderable;
+  protected readonly quitConfirmationText: SelectableText.Model;
   protected readonly quitConfirmationDismissal: ModalOverlayDismissal.Model;
   protected readonly settingsBox: BoxRenderable;
   protected readonly settingsText: SelectableText.Model;
@@ -596,6 +636,7 @@ class $OverlayLayer {
   protected readonly commandPaletteViewport: ScrollableTextViewport.Instance;
   protected readonly quickOpenViewport: ScrollableTextViewport.Instance;
   protected readonly settingsViewport: ScrollableTextViewport.Instance;
+  protected readonly quitConfirmationViewport: ScrollableTextViewport.Instance;
   protected readonly shortcutHelpViewport: ScrollableTextViewport.Instance;
   protected readonly contextMenuViewport: ScrollableTextViewport.Instance;
   protected commandPaletteContentRows = 0;
@@ -617,10 +658,15 @@ class $OverlayLayer {
   protected previousSettingsSelectedIndex = -1;
   protected previousShortcutHelpOpen = false;
   protected previousContextMenuOpen = false;
+  protected previousQuitConfirmationOpen = false;
   protected previousContextMenuSelectedIndex = -1;
   // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
   // invariant: Seams are drawn at the shared generator (project.invariants.md)
   protected readonly settingsSelection = new TextSelectionModel.Class();
+  protected readonly quitConfirmationSelection = new TextSelectionModel.Class();
+  protected quitConfirmationRenderedLines: readonly string[] = [];
+  protected quitConfirmationViewportRows = 1;
+  protected quitConfirmationViewportColumns = 1;
   protected settingsRenderedLines: readonly SettingsRenderedLine[] = [];
   protected readonly dialogBoundsByName = new Map<
     OverlayDialogName,
@@ -969,13 +1015,20 @@ class $OverlayLayer {
         findBar.toggleCaseSensitive();
         revealFindMatch();
         break;
+      case 'toggleWholeWord':
+        findBar.toggleWholeWord();
+        revealFindMatch();
+        break;
+      case 'toggleRegex':
+        findBar.toggleRegex();
+        revealFindMatch();
+        break;
       case 'replace':
         findBar.replaceCurrent();
         revealFindMatch();
         break;
       case 'replaceAll':
-        findBar.replaceAll();
-        revealFindMatch();
+        this.dependencies.requestFindReplaceAll();
         break;
       case 'toggleMode':
         findBar.switchMode();
@@ -1013,11 +1066,16 @@ class $OverlayLayer {
   protected quitConfirmationContent(
     palette: Palette,
     interiorWidth: number,
-  ): { text: StyledText; buttonZones: QuitConfirmationButtonZone[] } {
-    const question = this.dependencies.quitConfirmation.message.value;
+  ): {
+    text: StyledText;
+    buttonZones: QuitConfirmationButtonZone[];
+    lines: readonly string[];
+  } {
+    const questionLines =
+      this.dependencies.quitConfirmation.message.value.split('\n');
     const hint = this.dependencies.quitConfirmation.hint.value;
-    const yesLabel = `  ${this.dependencies.quitConfirmation.confirmLabel.value}  `;
-    const noLabel = `  ${this.dependencies.quitConfirmation.cancelLabel.value}  `;
+    const yesLabel = ` ${this.dependencies.quitConfirmation.confirmLabel.value} `;
+    const noLabel = ` ${this.dependencies.quitConfirmation.cancelLabel.value} `;
     const buttonGap = '    ';
     const buttonRowWidth =
       TextCoordinates.Class.lineWidth(yesLabel) +
@@ -1037,9 +1095,14 @@ class $OverlayLayer {
         : this.quitConfirmationHoveredChoice === choice
           ? bg(palette.cursorLine)(fg(palette.accent)(label))
           : fg(palette.dim)(label);
+    const centeredQuestion = questionLines.map(centeredLine).join('\n');
+    const buttonRow = questionLines.length + 2;
+    const buttonLine =
+      ' '.repeat(buttonRowLeft) + yesLabel + buttonGap + noLabel;
+    const centeredHint = centeredLine(hint);
     const text = new StyledText([
       fg(palette.fg)('\n'),
-      fg(palette.fg)(`${centeredLine(question)}\n\n`),
+      fg(palette.fg)(`${centeredQuestion}\n\n`),
       fg(palette.fg)(' '.repeat(buttonRowLeft)),
       buttonChunk('yes', yesLabel),
       fg(palette.fg)(buttonGap),
@@ -1055,19 +1118,86 @@ class $OverlayLayer {
       text,
       buttonZones: [
         {
-          row: 3,
+          row: buttonRow,
           startColumn: yesStartColumn,
           endColumn: yesStartColumn + TextCoordinates.Class.lineWidth(yesLabel),
           choice: 'yes',
         },
         {
-          row: 3,
+          row: buttonRow,
           startColumn: noStartColumn,
           endColumn: noStartColumn + TextCoordinates.Class.lineWidth(noLabel),
           choice: 'no',
         },
       ],
+      lines: [
+        '',
+        ...questionLines.map(centeredLine),
+        '',
+        buttonLine,
+        '',
+        centeredHint,
+      ],
     };
+  }
+
+  protected quitConfirmationPositionAtCell(
+    screenColumn: number,
+    screenRow: number,
+  ): { line: number; column: number } | null {
+    const localRow = screenRow - Number(this.quitConfirmationText.y);
+    const line = this.quitConfirmationViewport.scrollTop + localRow;
+    if (
+      localRow < 0 ||
+      localRow >= this.quitConfirmationViewportRows ||
+      line < 0 ||
+      line >= this.quitConfirmationRenderedLines.length
+    ) {
+      return null;
+    }
+    return {
+      line,
+      column: Math.max(0, screenColumn - Number(this.quitConfirmationText.x)),
+    };
+  }
+
+  protected paintQuitConfirmationSelection(): void {
+    const span = this.quitConfirmationSelection.normalized();
+    if (!span || !this.dependencies.quitConfirmation.open.value) {
+      this.quitConfirmationText.clearSelectionRange();
+      return;
+    }
+    const [start, end] = span;
+    this.quitConfirmationText.setSelectionRange(
+      Math.max(0, Math.min(start.column, this.quitConfirmationViewportColumns)),
+      Math.max(0, Math.min(start.line, this.quitConfirmationViewportRows - 1)),
+      Math.max(0, Math.min(end.column, this.quitConfirmationViewportColumns)),
+      Math.max(0, Math.min(end.line, this.quitConfirmationViewportRows - 1)),
+    );
+  }
+
+  dialogHasSelection(): boolean {
+    return (
+      this.dependencies.quitConfirmation.open.value &&
+      this.quitConfirmationSelection.hasSelection()
+    );
+  }
+
+  // invariant: Copy reaches the host terminal (src/modules/system/system.invariants.md)
+  async copyDialogSelection(): Promise<number> {
+    if (!this.dialogHasSelection()) return 0;
+    const text = this.quitConfirmationSelection.selectedText(
+      (line, startCell, endCell) =>
+        WrapText.Class.sliceByDisplayCells(
+          this.quitConfirmationRenderedLines[line] ?? '',
+          startCell,
+          endCell ?? Number.MAX_SAFE_INTEGER,
+        ),
+      '\n',
+    );
+    if (!text) return 0;
+    await Clipboard.Class.copy(text);
+    return text.length;
   }
   /** Visible binding rows in the cheat-sheet (interior minus its fixed instruction line). */
   shortcutHelpViewportRows(): number {
@@ -1116,6 +1246,7 @@ class $OverlayLayer {
       commandPalette: this.commandPaletteViewport.scrollTop,
       quickOpen: this.quickOpenViewport.scrollTop,
       settingsPanel: this.settingsViewport.scrollTop,
+      quitConfirmation: this.quitConfirmationViewport.scrollTop,
       shortcutHelp: this.shortcutHelpViewport.scrollTop,
       contextMenu: this.contextMenuViewport.scrollTop,
     };
@@ -1137,6 +1268,10 @@ class $OverlayLayer {
         contentRows: this.settingsContentRows,
         viewportRows: this.settingsViewportRows,
       },
+      quitConfirmation: {
+        contentRows: this.quitConfirmationRenderedLines.length,
+        viewportRows: this.quitConfirmationViewportRows,
+      },
       shortcutHelp: {
         contentRows: this.shortcutHelpContentRows,
         viewportRows: this.shortcutHelpVisibleRows,
@@ -1155,6 +1290,8 @@ class $OverlayLayer {
       animating = this.quickOpenViewport.tick(deltaSeconds) || animating;
     if (this.dependencies.settingsPanel.open.value)
       animating = this.settingsViewport.tick(deltaSeconds) || animating;
+    if (this.dependencies.quitConfirmation.open.value)
+      animating = this.quitConfirmationViewport.tick(deltaSeconds) || animating;
     if (this.dependencies.shortcutHelp.open.value)
       animating = this.shortcutHelpViewport.tick(deltaSeconds) || animating;
     if (this.dependencies.contextMenu.open.value)
@@ -1465,14 +1602,15 @@ class $OverlayLayer {
     if (this.dependencies.quitConfirmation.open.value) {
       const desiredWidth = this.contentDerivedDialogWidth(
         [
-          this.dependencies.quitConfirmation.message.value,
-          `  ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value}  `,
+          ...this.dependencies.quitConfirmation.message.value.split('\n'),
+          ` ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value} `,
           this.dependencies.quitConfirmation.hint.value,
         ],
-        44,
+        84,
         2,
       );
-      const desiredHeight = 9;
+      const desiredHeight =
+        8 + this.dependencies.quitConfirmation.message.value.split('\n').length;
       const quitGeometry = this.updateOverlayDialog(
         this.quitConfirmationBox,
         this.quitConfirmationDismissal,
@@ -1494,17 +1632,41 @@ class $OverlayLayer {
         palette,
         quitGeometry.interiorWidth,
       );
+      this.quitConfirmationRenderedLines = content.lines;
+      this.quitConfirmationViewportRows = Math.max(
+        1,
+        quitGeometry.interiorHeight,
+      );
+      this.quitConfirmationViewportColumns = Math.max(
+        1,
+        quitGeometry.interiorWidth,
+      );
+      if (!this.previousQuitConfirmationOpen) {
+        this.quitConfirmationViewport.reset();
+        this.quitConfirmationSelection.clear();
+      }
       this.quitConfirmationText.content = content.text;
+      this.quitConfirmationText.selectionBg = palette.selection;
+      this.paintQuitConfirmationSelection();
       this.quitConfirmationButtonZones = content.buttonZones;
+      this.quitConfirmationViewport.updateScrollbars({
+        top: 0,
+        left: 0,
+        width: quitGeometry.interiorWidth,
+        height: quitGeometry.interiorHeight,
+      });
     } else {
       this.hideOverlayDialog(
         'quitConfirmation',
         this.quitConfirmationBox,
         this.quitConfirmationDismissal,
+        this.quitConfirmationViewport,
       );
       this.quitConfirmationButtonZones = [];
       this.quitConfirmationHoveredChoice = null;
     }
+    this.previousQuitConfirmationOpen =
+      this.dependencies.quitConfirmation.open.value;
     // Settings panel overlay — sectioned, with a clickable widget per row (steppers / toggle / arrows).
     if (settingsPanel.open.value) {
       const settingsRows = settingsPanel.rows();
@@ -1876,6 +2038,7 @@ export interface OverlayLayerDependencies {
   activateQuickOpen: () => void;
   /** Reveal the find bar's current match through the bound pane (the sole scroll/selection writer). */
   revealFindMatch: () => void;
+  requestFindReplaceAll: () => void;
 }
 
 interface QuitConfirmationButtonZone {
