@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #521 [repair-in-file-replace-all-undo](.invar/tasks/in-progress/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md)  [building]
+- #521 [repair-in-file-replace-all-undo](.invar/tasks/in-progress/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/521-repair-in-file-replace-all-undo`
 
 ## USER-DIRECTED (15)
@@ -108,7 +108,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (41)
+## ARCHITECTURE-HYGIENE (43)
+- #527 [harness-modified-key-chords](.invar/tasks/active/527-harness-modified-key-chords/task-527-harness-modified-key-chords.md)
+- #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
 - #525 [shared-lane-rollout-resolver](.invar/tasks/active/525-shared-lane-rollout-resolver/task-525-shared-lane-rollout-resolver.md)
 - #523 [codex-hooks-engine-probe](.invar/tasks/active/523-codex-hooks-engine-probe/task-523-codex-hooks-engine-probe.md)
 - #522 [drive-scoped-text-click-gesture](.invar/tasks/active/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)

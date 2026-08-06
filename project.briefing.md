@@ -4,6 +4,32 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 70 — 2026-08-06 ~03:25 EDT — ALL FIVE LANDED; #521 DISPATCHED
+
+/goal ACTIVE (user asleep): night sequence COMPLETE on the landing side.
+Crons armed (:07, :37). fleet-watch live.
+
+LANDED TONIGHT: #513 22c80f69, #515 b27d892b, #514 aee4a082 (3 rounds),
+#517 7583d179, #518 9aaca56b (2 rounds; round 2 fixed the dock-unhover
+global-tooltip-clearing bug). dist/iv rebuilt at 03:20 on final main.
+Filed from bycatch: #519-#525.
+
+NOW: #521 (Find/Replace milestone 1 — Replace All undo repair) DISPATCHED
+to codex sol high; lane invar/521-repair-in-file-replace-all-undo; brief
+brief-521-1-*.md (design doc sections 5/6/9/13/14 as spec; four proposed
+records NOT law — user confirms). fleet-watch fires on its READY/DEATH.
+On READY: fresh gate in its worktree, triage report, land.
+
+AFTER 521 (if user still away): #504 (structure uninstall gate residual),
+#505 (Quick Open dead on comparison focus) — both filed. Do NOT dispatch
+milestones 2+ without the user; milestone order is in the design doc.
+
+MORNING QUEUE: #514 tooltip wording + agent-button removal confirmation;
+record refinements (503 three, 495 pointer, 489 stale click, 508
+confined-root, 515's four proposals); #512 mkfifo policy; overlay hover
+grammar into ui-design ch.1 (514/518 landing evidence exists now).
+Known allowed red: plugin-manifest contention (#504).
+
 # RESUME ANCHOR 69 — 2026-08-06 ~03:20 EDT — FOUR OF FIVE LANDED; GATE-518 LIVE
 
 /goal ACTIVE (user asleep). Crons armed (:07, :37). fleet-watch live.
