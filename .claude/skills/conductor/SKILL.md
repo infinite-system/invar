@@ -318,6 +318,31 @@ These five rules close that hole. They are MUSTS, not guidance.
    this arm checks JUDGMENT — an over-unified seam or a parallel engine
    is invisible to every counter. Structural findings go back in the
    same refinement round as visual ones, while the builder is warm.
+   **THE STRUCTURAL REVIEW CHECKLIST (give the subagent exactly this).**
+   The reviewer reads the repo's ivue skill and the touched module's
+   invariants first, then answers FIVE questions, each PASS or FINDING
+   with file:line and one sentence:
+   1. SEAMS — does new code compose through the landed seams, or does
+      it re-implement engine/query/policy logic that already exists?
+      Grep the new files for the old capability's identifiers.
+   2. OVER-UNIFICATION — is one generator serving two genuinely
+      different behaviors (one table driving both fields and options;
+      one toggle serving create and no-create)? The tell: escape
+      hatches, forcedWidth-style overrides, placement by accident.
+   3. MODULE HOMES — new code in its right module; shell files
+      (RootView, Bootstrap, Sidebar) wiring-only; no domain logic in
+      the shell.
+   4. IVUE CONFORMANCE by eye — ref-getters for state, plain getters
+      derived, thin closures, namespace exports, statics read live,
+      constants in their role table; compare against the nearest
+      sibling surface for the house form.
+   5. DUPLICATION — copied blocks between the new files, and between
+      new files and existing generators (wrap, render-context,
+      geometry constants); two sources for one geometry is always a
+      finding.
+   The reviewer ends with SOUND or NEEDS-ROUND, no code blocks over
+   three lines. NEEDS-ROUND findings go into the next round-brief as
+   numbered items with the reviewer's file:line evidence.
    **Delegate the reading, keep the driving.** The structural arm on a
    large diff goes to a background review subagent (opus at medium for
    judgment-heavy reads) returning a compact verdict with file:line
