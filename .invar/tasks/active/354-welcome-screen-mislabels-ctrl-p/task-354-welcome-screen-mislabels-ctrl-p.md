@@ -25,3 +25,5 @@ assertion rather than adding a new smoke.
 Welcome screen says "Ctrl+P command palette"; a real Ctrl+P drive
 opened Quick Open; F1 opened the palette. Stale label reappeared on
 later boots. Second independent sighting; still user-visible.
+
+## Third sighting (#510, 2026-08-05): reproduced twice more in fresh drives.
