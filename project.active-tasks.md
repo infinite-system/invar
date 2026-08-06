@@ -112,7 +112,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (38)
+## ARCHITECTURE-HYGIENE (39)
+- #522 [drive-scoped-text-click-gesture](.invar/tasks/active/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)
 - #520 [drive-session-framed-paste-gesture](.invar/tasks/active/520-drive-session-framed-paste-gesture/task-520-drive-session-framed-paste-gesture.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
