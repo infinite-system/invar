@@ -1,0 +1,15 @@
+{
+  "task": 511,
+  "slug": "inversion-design-and-sync-census",
+  "branch": "fleet/511-inversion-design-and-sync-census",
+  "worktree": ".invar/worktrees/511-inversion-design-and-sync-census",
+  "tmuxSession": "invar/511-inversion-design-and-sync-census",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-511-inversion-design-and-sync-census.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "1e349da2b62a9ccf58c6fc0478f4b24914fd7d19",
+  "startedAt": "2026-08-05T21:56:49-04:00"
+}

@@ -6,12 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #511 [inversion-design-and-sync-census](.invar/tasks/in-progress/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md)  [building]
+  `tmux attach -t invar/511-inversion-design-and-sync-census`
 - #510 [the-open-button-picker-tiers](.invar/tasks/in-progress/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md)  [building]
   `tmux attach -t invar/510-the-open-button-picker-tiers`
 
-## USER-DIRECTED (16)
-- #511 [inversion-design-and-sync-census](.invar/tasks/active/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md)
+## USER-DIRECTED (15)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
 - #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/active/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
