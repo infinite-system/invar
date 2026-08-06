@@ -269,7 +269,7 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   echo "dispatch: DRY RUN — every guard passed, no side effect taken."
   echo "  task:        #${task_number} ${slug}"
   echo "  engine:      ${declared_engine:-$engine}   model: ${declared_model:-fleet-default}   effort: ${declared_effort:-fleet-default}"
-  echo "               (fleet defaults at launch: codex -> gpt-5.6-sol high; claude -> fable medium)"
+  echo "               (fleet defaults at launch: codex -> gpt-5.6-sol medium; claude -> fable medium)"
   echo "  environment: ${declared_environment:-unset} (host: $(uname -s | tr '[:upper:]' '[:lower:]'))"
   echo "  branch:      ${branch}"
   echo "  worktree:    ${worktree_path}"
@@ -593,10 +593,10 @@ fi
 # are not valid CLI aliases); codex 5.6-sol -> gpt-5.6-sol (matches the footer
 # of every codex session tonight). Effort: claude --effort <level>; codex
 # -c model_reasoning_effort=<level>; 'default' means say nothing.
-# FLEET DEFAULTS (user policy 2026-07-29), applied when the task file is
+# FLEET DEFAULTS (user policy 2026-07-30), applied when the task file is
 # silent; an explicit field ALWAYS wins, including one-off overrides like
 # "sol medium" or "sonnet" written into the task file:
-#   codex          -> gpt-5.6-sol at HIGH, always
+#   codex          -> gpt-5.6-sol at MEDIUM (high by explicit assignment)
 #   claude general -> fable at MEDIUM (high only for complex work, by explicit
 #                     assignment with the reason in Assignment note)
 #   opus           -> MEDIUM, always, unless the user says otherwise
