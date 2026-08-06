@@ -5,7 +5,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: medium
-State: IN-PROGRESS
+State: COMPLETED — 86d4388b — inversion: measured (70 sync sites) and deferred
 
 DESIGN ONLY: how the 12 capability classes become remote proxies over
 the 509 protocol (local Invar, remote fs/git/pty/LSP), with the
