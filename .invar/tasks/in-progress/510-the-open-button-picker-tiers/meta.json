@@ -1,0 +1,15 @@
+{
+  "task": 510,
+  "slug": "the-open-button-picker-tiers",
+  "branch": "fleet/510-the-open-button-picker-tiers",
+  "worktree": ".invar/worktrees/510-the-open-button-picker-tiers",
+  "tmuxSession": "invar/510-the-open-button-picker-tiers",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-510-the-open-button-picker-tiers.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "d5275903fef1d47a3ee251998be46a7fbb6bfcdf",
+  "startedAt": "2026-08-05T21:54:50-04:00"
+}
