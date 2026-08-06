@@ -41,3 +41,11 @@ under momentum at both fixture scales; select + copy row text
 (clipboardEmissions); the uncolored-space fix asserted by cell
 color; compare pane vs tasks:watch side-by-side (drive both, diff
 the layouts) — identical is the bar.
+
+## Item 5 (user, same session): the LIVE/ACTIVE/DONE segment control
+
+The pane's filter buttons currently render with gaps:
+`| LIVE |  | ACTIVE |  | DONE |`. Make them one contiguous segmented
+control: `| LIVE | ACTIVE | DONE |` — shared borders, no dead cells
+between segments, one hover/active grammar across the group
+(ui-design chapter 1; the whole group is one geometry generator).
