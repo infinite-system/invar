@@ -38,6 +38,8 @@ import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { DocumentSyntax } from '../syntax/DocumentSyntax';
 import { LanguageProviderRouter } from './LanguageProviderRouter';
 import { WorkspaceUndoCoordinator } from './WorkspaceUndoCoordinator';
+import { WorkspaceSearchWorkspace } from '../search/WorkspaceSearchWorkspace';
+import type { WorkspaceSearchBackend } from '../search/WorkspaceSearchBackend';
 
 // A workspace: one project root with its open buffers, documents, and generic contribution
 // lifecycle. WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -51,6 +53,7 @@ import { WorkspaceUndoCoordinator } from './WorkspaceUndoCoordinator';
 
 class $Workspace {
   constructor(protected readonly options: WorkspaceOptions = {}) {
+    this.workspaceSearch = this.createWorkspaceSearchWorkspace();
     for (const contributor of options.contributors ?? []) {
       this.registerContributor(contributor);
     }
@@ -73,6 +76,7 @@ class $Workspace {
   // tab, never replaces. Flyweight — a bounded recent set (and any dirty background buffer) holds
   // live documents; older clean tabs dehydrate to a light handle and rehydrate on activation.
   buffers = this.createBufferSet();
+  workspaceSearch: WorkspaceSearchWorkspace.Model;
   documentLifecycle = new DocumentLifecycle.Class();
   workspaceUndoCoordinator = this.createWorkspaceUndoCoordinator();
   gutterDecorations = new GutterDecorations.Class();
@@ -195,6 +199,13 @@ class $Workspace {
   }
   protected createWorkspaceUndoCoordinator() {
     return new WorkspaceUndoCoordinator.Class();
+  }
+  protected createWorkspaceSearchWorkspace() {
+    return new WorkspaceSearchWorkspace.Class({
+      workspaceRoot: () => this.root,
+      openDocumentHandles: () => this.buffers.attachedDocumentHandles(),
+      backend: this.options.workspaceSearchBackend,
+    });
   }
   protected createBufferSet() {
     // This seam is the SOLE creator of a buffer view, so every live buffer in the set came from
@@ -500,6 +511,7 @@ class $Workspace {
 
   /** Tear down owned resources with effects, handles, or subprocesses. */
   dispose(): void {
+    this.workspaceSearch.dispose();
     for (const disposeContribution of [...this.contributorDisposers.values()]) {
       disposeContribution();
     }
@@ -833,6 +845,7 @@ export type Focus = 'editor' | 'primaryPane';
 export interface WorkspaceOptions {
   awaitNextViewPaint?: () => Promise<void>;
   contributors?: readonly WorkspaceContributor[];
+  workspaceSearchBackend?: WorkspaceSearchBackend.Instance;
   /** Supplies this workspace's buffer views. Called once, lazily, the first time a view is
    *  needed — a workspace that is only asked about documents, tabs, or contributions builds none. */
   createSourceTextViews?: () => SourceTextViewProvider;
