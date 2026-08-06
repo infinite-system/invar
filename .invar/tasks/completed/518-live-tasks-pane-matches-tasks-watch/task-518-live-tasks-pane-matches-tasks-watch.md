@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — 9aaca56b — Tasks pane and tasks:watch share ONE renderer: overlay hover grammar, segmented LIVE|ACTIVE|DONE, full-line coloring, 60fps one-heartbeat motion; round 2 fixed the global-tooltip-clearing dock bug.
 
 ## In plain words (user, 2026-08-06, verbatim intents)
 

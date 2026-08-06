@@ -1,10 +1,16 @@
 ## In plain words
 
-The Tasks pane used to leave blank button cells, split one task across two hover areas, and show gaps between its filters. I made the pane and `tasks:watch` build each two-row task from one shared generator. The pane now shows full text at rest, overlays its buttons on hover, scrolls and copies text, and runs visible motion from one 60 fps heartbeat.
+The Tasks pane used to leave blank button cells, split one task across two hover areas, and show gaps between its filters. I made the pane and `tasks:watch` build each two-row task from one shared generator. After main pinned the fleet root, I corrected the extra scope row and stopped Tasks unhover from erasing tooltips on other surfaces.
 
 ## Result
 
-#518 (live Tasks pane matches tasks watch) is READY at commit `6304c18faa66a768d1761873dacbee5906a1d6bf`.
+#518 (live Tasks pane matches tasks watch) is READY at commit `0606d76a683f77ad39b3ccb957cf285980da24b0`.
+
+## Round 2 repair
+
+- Main pins `INVAR_FLEET_REPOSITORY_ROOT` outside the temporary workspace in [the plugin tests](../../../../src/modules/tasks-dashboard/TasksDashboardPlugin.test.ts). The stable live projection is therefore one scope row, one task title row, and one detail row. The test now expects `3` rows and hits the actions on visible row `3`.
+- The root mouse handler used the right dock's full pointer-exit callback for every move outside the dock. That callback also cleared the global tooltip after diagnostics or editor controls had set it. [RootView](../../../../src/modules/ui/RootView.ts) now separates dock-content unhover from dock-local tooltip cleanup, and [Bootstrap](../../../../src/modules/app/Bootstrap.ts) calls only the content cleanup.
+- The panel chrome drive kept the merged status-control and `Ctrl+J` lifecycle semantics. Its failure was later in the same drive, when the global tooltip clear erased the word-wrap tooltip.
 
 - [The shared task projection](../../../../scripts/tasks/tasks-status.ts) now generates the title row, detail row, tones, phase, duration, line counts, round, READY state, session data, and gate data. Both the CLI and [the pane renderer](../../../../src/modules/tasks-dashboard/TasksDashboardPaneRenderer.ts) consume it.
 - Rest rows use every available text cell. Hover uses one action projection for the ellipsis point and half-open icon ranges. The icons cover the right end without moving the row or its siblings. Leaving the dock restores the full text.
@@ -45,7 +51,14 @@ The adversarial drive covered fast title-to-detail hover sweeps, unhover and re-
 - `git diff --check`: PASS.
 - Worktree after commit: clean.
 
-`bun run check` reached all code checks after the task's static-getter correction, but exited `1` for the pre-existing skill-index gap recorded under Bycatch.
+Round 2 required commands on commit `0606d76a683f77ad39b3ccb957cf285980da24b0`:
+
+- `bun test src/modules/tasks-dashboard/`: PASS, `46` tests and `201` expectations.
+- `bun scripts/harness/smoke-diagnostics-harness.ts`: `ALL-PASS` for both `tsgo` and `typescript-language-server`.
+- `bun scripts/harness/smoke-panel-chrome-harness.ts`: `ALL-PASS` at the `10`-line and `100000`-line scales, plus `120x40` and `88x24` chrome sizes.
+- `bun scripts/harness/smoke-tasks-dashboard-harness.ts`: PASS after the host pointer split.
+- `bunx tsc --noEmit`: PASS after the merge repair.
+- Invariant checker: PASS, `1393` annotations, `287` lattice links, `0` problems.
 
 ## Invariants
 
@@ -60,11 +73,15 @@ The adversarial drive covered fast title-to-detail hover sweeps, unhover and re-
 
 CONFUSING: `waitForHoverState()` timed out with “row 0 reveals hover controls” while the screen already showed the correct Tasks hover. Direct pointer moves, grid conditions, cell colors, and published state were clear and repeatable. The named hover helper needs a pane-aware target or clearer scope text.
 
+EASY in round 2: both smoke screens kept the target control painted while its tooltip stayed absent. This made the shared tooltip erasure visible without a timeout change.
+
 ## Bycatch
 
-- Contract-layer gap, reproduced twice: `bun run check` reports that `.claude/skills/ui-design` exists but [AGENTS.md](../../../../AGENTS.md) does not mention it in the skills index. The remaining convention checks pass. I did not edit this shared law inside the Tasks task.
+- RESOLVED BY MERGED MAIN: [AGENTS.md](../../../../AGENTS.md) now indexes `.claude/skills/ui-design`. This was the contract-layer gap in the first READY report.
 - No runtime defect outside the task scope appeared twice.
 
 ## Commit
 
 `6304c18faa66a768d1761873dacbee5906a1d6bf` — `Make the live Tasks pane match tasks watch`
+
+`0606d76a683f77ad39b3ccb957cf285980da24b0` — `Keep dock unhover from clearing other tooltips`
