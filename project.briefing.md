@@ -4,6 +4,40 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 74 — 2026-08-06 ~07:40 EDT — NINE LANDED; GATE FLAKE KILLED; IDLE FOR MORNING
+
+/goal COMPLETE (user asleep). Crons armed (:07, :37). fleet-watch live.
+ZERO builders, ZERO gates, checkout clean.
+
+LANDED TONIGHT (nine): #513, #515, #514, #517, #518, #521, #504, #505,
+and #529 -> cef91323 (55m, 2 rounds — round 2 was placeholder-results
+discipline: the report filed READY with FINAL_CONTENTION_RESULT tokens;
+sent back; real numbers came green). #529 killed the gate's own flake:
+settle-boundary status republish (starved publisher, 6 of 7 sightings) +
+hover-verified edge drags (native hit-grid race, 1 of 7). The record
+"Rendering is one coarse frame effect" refined with the starved-wait
+impossible-shape. Both #529 gates were FULLY green — the flake did not
+fire on the gates carrying its fix. dist/iv rebuilt 07:4x.
+
+THREE-CLOCKS LESSON (candidate for project.conductor.md at next sweep):
+the emulator screen, the native hit grid, and the settled status file
+are three clocks; a wait mixing clocks without a yoke (settle republish
+/ hover reveal) is the flake class. Also: a READY whose verification
+section holds template tokens is not READY — check for placeholder
+words before gating (new conductor check).
+
+FILED: #519-#531 (latest: #530 blind-press census, #531 scrollbars grid
+one-sighting evidence-hold). NOTHING dispatchable without the user:
+hold discipline per anchor 73 stands.
+
+MORNING QUEUE (unchanged plus): night summary (NINE landed; gates caught
+two real UI bugs + their own flake); decisions (#514 tooltip wording,
+agent-button removal, #526 rename, milestone 2 go/no-go, #512); record
+refinements (503 three, 495, 489, 508, 515 four, 504 two, 505 two, 529
+one applied-at-gate to re-confirm); overlay hover grammar into ui-design
+ch.1; #529's two instrument asks (hit-grid echo verb, cell-attribute
+hover wait) fold into #530.
+
 # RESUME ANCHOR 73 — 2026-08-06 ~05:35 EDT — EIGHT LANDED; USER-DIRECTED BACKLOG DRAINED; HOLDING FOR MORNING
 
 /goal COMPLETE on the dispatchable side (user asleep). Crons armed
