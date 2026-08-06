@@ -1876,6 +1876,43 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
           ),
         );
         const edgeTargetRow = Math.max(0, rowBeforeEdgeDrag + rowDelta);
+        // Hover precedes click (the house gesture rule), and here it is load-bearing: the press
+        // dispatches through the renderer's per-frame hit grid, which can lag the painted frame the
+        // grid wait above verified. The hover REVEAL (the splitter strip brightens to the palette
+        // foreground) is dispatched through that same hit grid, so observing it proves the grid
+        // resolves the splitter at this exact cell before the press relies on it. Pressing blind
+        // right after a relayout is how the #529 census lost this drag under gate load.
+        const splitterHoverTone = Number.parseInt(
+          ThemePalettes.Class.DARK.fg.slice(1),
+          16,
+        );
+        // Park OFF the splitter first and wait for the reveal to drop: the previous drag leaves
+        // the pointer ON the moved strip, so without the absence step the presence wait below
+        // would be pre-satisfied by the still-hovered strip and prove nothing.
+        driver.sendMouse({
+          kind: 'move',
+          column: edgeColumn,
+          row: Math.max(0, rowBeforeEdgeDrag - 3),
+          button: 'none',
+        });
+        await driver.awaitGridCondition(
+          `${columns}-column the splitter drops its hover tone before the ${edgeName} drag`,
+          (candidate) =>
+            candidate.cell(rowBeforeEdgeDrag, edgeColumn)?.foreground !==
+            splitterHoverTone,
+        );
+        driver.sendMouse({
+          kind: 'move',
+          column: edgeColumn,
+          row: rowBeforeEdgeDrag,
+          button: 'none',
+        });
+        await driver.awaitGridCondition(
+          `${columns}-column the splitter reveals its hover tone on ${edgeName}`,
+          (candidate) =>
+            candidate.cell(rowBeforeEdgeDrag, edgeColumn)?.foreground ===
+            splitterHoverTone,
+        );
         driver.sendMouse({
           kind: 'press',
           column: edgeColumn,

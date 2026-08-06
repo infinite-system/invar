@@ -1683,6 +1683,16 @@ class $Bootstrap {
           renderer.requestRender();
         }
       }
+      // Re-publish the projection AT the settle boundary (harness runs only). The paint effect's
+      // publish can be one frame stale here: a close() mutates renderables synchronously, an
+      // already-scheduled frame paints the new state and settles, and the effect's re-publish +
+      // requestRender lands after this flush with no further frame to carry it — the status file
+      // then holds the pre-close state for as long as the app stays quiescent, and every status
+      // wait on the closing transition starves (the panel-chrome contention flake, #529).
+      // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
+      if (StatusChannel.Class.observing) {
+        AppStatusProjection.Class.publish(applicationComposition);
+      }
       StatusChannel.Class.settle(frame);
       // Settle-mode graph answers fire HERE — the same boundary the status
       // projection publishes at, so a graph wait never observes a state no
