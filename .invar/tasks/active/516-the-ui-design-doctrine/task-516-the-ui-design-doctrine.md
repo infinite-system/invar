@@ -43,3 +43,20 @@ with thirty seconds, every rule with its WHY and its source cited;
 plus a one-line addition proposal for the builder-fundamentals list
 (user decides whether it joins the injection). Propose-only for any
 invariant record changes it suggests.
+
+## The component inventory (user-confirmed, 2026-08-05)
+
+The doctrine is organized around these first-class chapters, and
+EVERY FUTURE WINDOW/SURFACE must satisfy all of them:
+- BUTTONS (states, paddings, glyph rules, hit geometry)
+- DIALOGS (the overlay family, consent copy, focus/Escape)
+- FLOWS (multi-step interactions: confirmations, pickers, wizards —
+  how steps chain, how they cancel)
+- TEXT INPUTS (the shared input model, binding)
+- SCROLL AREAS (momentum discipline, thumb rules, one-generator-per-
+  position)
+- COPY TEXT CAPABILITY — universal: any surface presenting text
+  (panes, dialogs, results lists, scroll areas) supports selection
+  and copy through the shared selection + clipboard seams (the
+  Shift+drag/OSC 52 story generalized). A window where text cannot
+  be selected and copied is a doctrine violation by definition.
