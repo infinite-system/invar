@@ -1,0 +1,15 @@
+{
+  "task": 513,
+  "slug": "drops-into-agents-paste-the-remote-path",
+  "branch": "fleet/513-drops-into-agents-paste-the-remote-path",
+  "worktree": ".invar/worktrees/513-drops-into-agents-paste-the-remote-path",
+  "tmuxSession": "invar/513-drops-into-agents-paste-the-remote-path",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-513-drops-into-agents-paste-the-remote-path.md",
+  "engine": "codex",
+  "environment": "any",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "4020bd0b7c66e7ab7c16f4be678812408176dde0",
+  "startedAt": "2026-08-05T22:42:06-04:00"
+}

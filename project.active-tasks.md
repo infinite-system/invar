@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (16)
-- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/active/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md)
+## IN-PROGRESS (1)
+- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/in-progress/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md)  [building]
+  `tmux attach -t invar/513-drops-into-agents-paste-the-remote-path`
+
+## USER-DIRECTED (15)
 - #505 [quick-open-dead-after-comparison-focus](.invar/tasks/active/505-quick-open-dead-after-comparison-focus/task-505-quick-open-dead-after-comparison-focus.md)
 - #504 [structure-uninstall-withdrawal-times-out](.invar/tasks/active/504-structure-uninstall-withdrawal-times-out/task-504-structure-uninstall-withdrawal-times-out.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
