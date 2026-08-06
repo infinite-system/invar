@@ -25,7 +25,7 @@ LIVE|ACTIVE|DONE control, 60fps one-heartbeat motion, timeless
 count-based asserts). Two steers PENDING fleet-watch confirmation
 (514 overlay grammar, 518 fps) — check steers.log/STEER_LOST.
 
-READY-HELD: #513 (drop-onto-agents paste; capability-declared) and
+READY-HELD: #517 ALSO READY (report untriaged — triage at landing turn: read report, convert bycatch/asks, then land in sequence). #513 (drop-onto-agents paste; capability-declared) and
 #515 (Find/Replace design: SIX milestones, FOUR proposed records,
 found in-file Replace-All-cannot-undo bug = milestone 1).
 
