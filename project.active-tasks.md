@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #509 [iv-ssh-the-channel-client](.invar/tasks/in-progress/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/509-iv-ssh-the-channel-client`
-
 ## USER-DIRECTED (17)
 - #511 [inversion-design-and-sync-census](.invar/tasks/active/511-inversion-design-and-sync-census/task-511-inversion-design-and-sync-census.md)
 - #510 [the-open-button-picker-tiers](.invar/tasks/active/510-the-open-button-picker-tiers/task-510-the-open-button-picker-tiers.md)
@@ -151,7 +147,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 219 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 220 — full log: project.tasks-completed.md)
+- #509 [iv-ssh-the-channel-client](.invar/tasks/completed/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md) — b5794429 — iv ssh: byte-perfect passthrough + the RPC channel; dropzone works
 - #508 [local-drop-opens-the-dropped-file](.invar/tasks/completed/508-local-drop-opens-the-dropped-file/task-508-local-drop-opens-the-dropped-file.md) — 3cbd082e — dropped files open by kind; outside-root reads only
 - #506 [constructor-first-and-the-constants-role-table](.invar/tasks/completed/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md) — b27235a9 — constructor first everywhere; constants have one form per role
 - #503 [a-task-is-a-terminal-pane-not-a-kind](.invar/tasks/completed/503-a-task-is-a-terminal-pane-not-a-kind/task-503-a-task-is-a-terminal-pane-not-a-kind.md) — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json
@@ -166,4 +163,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #492 [markdown-syntax-rides-the-provider-seam](.invar/tasks/completed/492-markdown-syntax-rides-the-provider-seam/task-492-markdown-syntax-rides-the-provider-seam.md) — 86a01a2c — markdown syntax through the provider seam; core vocabulary zero
 - #491 [editor-shared-generators-move-home](.invar/tasks/completed/491-editor-shared-generators-move-home/task-491-editor-shared-generators-move-home.md) — cf1befd4 — editor generators move to core text; monitoring rides the provider seam
 - #490 [chord-and-command-relocation-sweep](.invar/tasks/completed/490-chord-and-command-relocation-sweep/task-490-chord-and-command-relocation-sweep.md) — c343b38f — plugin chords and labels relocated; ShortcutHelp reads live layers
-- #489 [drive-layer-drag-and-diagnostic-log](.invar/tasks/completed/489-drive-layer-drag-and-diagnostic-log/task-489-drive-layer-drag-and-diagnostic-log.md) — da15f209 — drive layer: drag, log surface, --show, loud showScreen

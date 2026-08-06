@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #509 [iv-ssh-the-channel-client](.invar/tasks/completed/509-iv-ssh-the-channel-client/task-509-iv-ssh-the-channel-client.md) — b5794429 — iv ssh: byte-perfect passthrough + the RPC channel; dropzone works
 - #508 [local-drop-opens-the-dropped-file](.invar/tasks/completed/508-local-drop-opens-the-dropped-file/task-508-local-drop-opens-the-dropped-file.md) — 3cbd082e — dropped files open by kind; outside-root reads only
 - #506 [constructor-first-and-the-constants-role-table](.invar/tasks/completed/506-constructor-first-and-the-constants-role-table/task-506-constructor-first-and-the-constants-role-table.md) — b27235a9 — constructor first everywhere; constants have one form per role
 - #503 [a-task-is-a-terminal-pane-not-a-kind](.invar/tasks/completed/503-a-task-is-a-terminal-pane-not-a-kind/task-503-a-task-is-a-terminal-pane-not-a-kind.md) — 88f0bd90 — tasks are terminal panes with metadata; glyph opens tasks.json

@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — b5794429 — iv ssh: byte-perfect passthrough + the RPC channel; dropzone works
 
 ## In plain words
 
