@@ -944,8 +944,9 @@ implementation resources.
 
 **Components:**
 - *Contributors register projections* — they may attach workspace lifecycle state and register
-  panes, decorations, commands, title actions, status segments, settings schema, or keybinding
-  defaults; they do not answer document position queries through the plugin boundary.
+  panes, decorations, commands, title actions, status segments, settings schema, keybinding
+  defaults, or dropped-path openers; they do not answer document position queries through the
+  plugin boundary.
 - *Providers answer questions* — they accept domain inputs and return domain answers; they do not
   register or paint host surfaces.
 - *Hosted runtimes exchange streams* — domain-specific `*Backend` contracts own external
@@ -954,17 +955,18 @@ implementation resources.
 
 **Mechanism:** `ApplicationContributor.workspaceContributor` opts a contributor into the narrower
 workspace lifecycle instead of making every application contributor fabricate it.
-`ApplicationContributions` scopes settings, keybindings, and panes to the contributor activation and
-unregisters them together. The host calls `LanguageProvider` for semantic answers. `AgentSession`
-and `TerminalInstance` alone translate their injected backend streams into reactive state. Because
-authority comes from the outward contract, `LspWorkspaceProvider` may
+`ApplicationContributions` scopes settings, keybindings, panes, and dropped-path openers to the
+contributor activation and unregisters them together. The host calls `LanguageProvider` for
+semantic answers. `AgentSession` and `TerminalInstance` alone translate their injected backend
+streams into reactive state. Because authority comes from the outward contract,
+`LspWorkspaceProvider` may
 privately own a `LanguageClient` and its LSP process without becoming a
 hosted-runtime plugin.
 
 **Generates:** Separate contribution, provider, and hosted-runtime seams; an application-only
 Extensions contributor; an LSP plugin that wires `LanguageProvider` without
 giving that provider canvas authority; process backends that remain below
-reactive owners.
+reactive owners; file-kind routing that withdraws with its contributor.
 
 **Rejected alternatives:** One universal plugin interface — grants unused hooks and lets provider
 or runtime authority leak into the canvas. Classify by private resources — misclassifies
@@ -975,19 +977,20 @@ Collapse providers and hosted runtimes — erases the request-answer versus owne
 `src/modules/workspace/WorkspaceContributor.interface.ts`;
 `src/modules/workspace/LanguageProvider.interface.ts`;
 `src/modules/agent/AgentBackend.interface.ts`;
-`src/modules/terminal/TerminalBackend.interface.ts`; `src/modules/plugins/DefaultPlugins.test.ts`.
+`src/modules/terminal/TerminalBackend.interface.ts`; `src/modules/plugins/DefaultPlugins.test.ts`;
+`src/modules/media/MediaPlugin.test.ts`.
 
 **Impossible if true:** A provider painting or registering a pane; a contributor answering
 completion or definition queries through its contribution contract; a backend mutating ivue refs
 instead of delivering events or bytes to its owner; an application-only contributor implementing
-empty workspace lifecycle methods.
+empty workspace lifecycle methods; a disabled contributor claiming a dropped path.
 
 **Verification:** `bunx tsc --noEmit && bun test src/modules/plugins/DefaultPlugins.test.ts
 src/modules/git/GitPlugin.test.ts && bash scripts/conventions-gate.sh`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-08-05
 
 ### No action requires a memorized motion
 

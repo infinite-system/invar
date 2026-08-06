@@ -8,6 +8,7 @@ import { Theme } from '../theme/Theme';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { PanelHost } from '../ui/PanelHost';
 import { PaneRuntimes } from '../ui/PaneRuntimes';
+import type { PaneRuntimeRequest } from '../ui/PaneRuntime.interface';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import { MediaPlugin } from './MediaPlugin';
 
@@ -19,6 +20,10 @@ class AbsentFfmpegMediaPlugin extends MediaPlugin.$Class {
 
 function activatedMediaPlugin(currentPane: () => PaneContent | null) {
   const releasedPaneIdentifiers: string[] = [];
+  const openedRuntimePanes: Array<{
+    runtimeKind: string;
+    request: PaneRuntimeRequest;
+  }> = [];
   const settings = new Settings.Class();
   const keybindings = new KeybindingRegistry.Class();
   const commands = new CommandRegistry.Class();
@@ -37,6 +42,10 @@ function activatedMediaPlugin(currentPane: () => PaneContent | null) {
     paneRuntimes,
     bottomPanelHost: new PanelHost.Class(),
     statusProjectionContributions,
+    openRuntimePane: (runtimeKind: string, request: PaneRuntimeRequest) => {
+      openedRuntimePanes.push({ runtimeKind, request });
+      return true;
+    },
     currentPaneOfKind: () => currentPane(),
     releasePane: (identifier: string) => {
       releasedPaneIdentifiers.push(identifier);
@@ -62,10 +71,53 @@ function activatedMediaPlugin(currentPane: () => PaneContent | null) {
     manager,
     paneRuntimes,
     plugin,
+    openedRuntimePanes,
     releasedPaneIdentifiers,
     statusProjectionContributions,
   };
 }
+
+test('dropped image and video paths open media runtime panes', () => {
+  const context = activatedMediaPlugin(() => null);
+  context.manager.activateAll();
+
+  expect(
+    context.manager.openDroppedPath({
+      path: '/tmp/picture.png',
+      readOnly: false,
+    }),
+  ).toBe(true);
+  expect(
+    context.manager.openDroppedPath({
+      path: '/tmp/movie.mp4',
+      readOnly: true,
+    }),
+  ).toBe(true);
+  expect(
+    context.manager.openDroppedPath({
+      path: '/tmp/notes.txt',
+      readOnly: false,
+    }),
+  ).toBe(false);
+  expect(
+    context.openedRuntimePanes.map(({ runtimeKind, request }) => ({
+      runtimeKind,
+      label: request.label,
+      resourcePath: request.resourcePath,
+    })),
+  ).toEqual([
+    {
+      runtimeKind: 'media',
+      label: 'picture.png',
+      resourcePath: '/tmp/picture.png',
+    },
+    {
+      runtimeKind: 'media',
+      label: 'movie.mp4 [read-only]',
+      resourcePath: '/tmp/movie.mp4',
+    },
+  ]);
+});
 
 test('media runtime, commands, keys, and status withdraw together', () => {
   let currentPane: PaneContent | null = null;
@@ -124,6 +176,12 @@ test('media runtime, commands, keys, and status withdraw together', () => {
   expect(
     context.statusProjectionContributions.snapshot().mediaMode,
   ).toBeUndefined();
+  expect(
+    context.manager.openDroppedPath({
+      path: '/tmp/picture.png',
+      readOnly: false,
+    }),
+  ).toBe(false);
   expect(context.releasedPaneIdentifiers).toEqual(['media-demo']);
   context.manager.dispose();
 });

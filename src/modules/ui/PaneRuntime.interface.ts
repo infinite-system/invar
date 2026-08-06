@@ -68,6 +68,9 @@ export interface PaneRuntimeRequest {
   readonly workingDirectory: string;
   /** An explicitly declared process instead of the runtime's default one. */
   readonly process?: PaneRuntimeProcess;
+  /** An existing file or directory the runtime was asked to present. The runtime decides whether
+   *  the resource belongs to its kind. */
+  readonly resourcePath?: string;
 }
 
 /** A declared process a runtime must start instead of its default. A CLI agent profile

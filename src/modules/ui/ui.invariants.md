@@ -2527,20 +2527,26 @@ scripts/harness/smoke-panel-split-harness.ts`
 ### Bracketed paste survives stream chunking
 
 **Invariant:** If a bracketed paste sequence reaches Invar in arbitrary input chunks, then exactly
-one complete UTF-8 payload is routed to the focused terminal child or agent composer.
+one complete UTF-8 payload is emitted; one or more existing path tokens route as a path drop, and
+all other payloads route to the focused input surface.
 
-**Scope:** OpenTUI `StdinParser`, `Bootstrap` paste dispatch, `PanelHost.handlePaste`,
-`TerminalPaneContent.handlePaste`, `AgentPaneContent.handlePaste`, and `OpenPty.write`. Editor and
-single-line overlay routing keeps the same dispatcher but is outside the two real-host acceptance
-paths.
+**Scope:** OpenTUI `StdinParser`, `Bootstrap` paste dispatch, `PathDropController`,
+`ApplicationContributions.openDroppedPath`, `PanelHost.handlePaste`,
+`TerminalPaneContent.handlePaste`, `AgentPaneContent.handlePaste`, and `OpenPty.write`.
+
+**Components:**
+- Stream assembly — one complete UTF-8 payload leaves `StdinParser`.
+- Path-drop routing — shell-quoted existing paths route before focused input.
+- Focused fallback — every payload that is not a path drop reaches only the focused input surface.
 
 **Mechanism:** OpenTUI's stream parser retains split start marker, payload, and end marker bytes
-until it emits one paste event. `Bootstrap` dispatches that complete text through the focused pane
-seam, and `OpenPty.write` queues partial libc writes on a non-blocking descriptor until every
-terminal payload byte crosses the PTY.
+until it emits one paste event. `PathDropController` accepts only complete token sets whose resolved
+paths all exist. `Bootstrap` sends every rejected set through the focused pane seam, and
+`OpenPty.write` queues partial libc writes until every terminal payload byte crosses the PTY.
 
 **Generates:** Marker-edge input fixtures; exact 10-byte, 1 KB, and 64 KB terminal and composer
-drives; large terminal payloads that cannot truncate on a partial PTY write.
+drives; shell-quoted multi-file drops; typed path text that never opens a file; large terminal
+payloads that cannot truncate on a partial PTY write.
 
 **Rejected alternatives:** Send every harness paste as one write — real terminals split large
 payloads and both bracketed-paste markers across PTY chunks.
@@ -2549,15 +2555,15 @@ payloads and both bracketed-paste markers across PTY chunks.
 `scripts/harness/smoke-paste-harness.ts`; `src/modules/terminal/OpenPty.ts`.
 
 **Impossible if true:** A split marker becomes typed text; one paste produces multiple composer
-insertions; a 64 KB terminal paste loses a suffix because libc accepted only a partial write; paste
-reaches the editor while a terminal or agent pane owns focus.
+insertions; a typed unbracketed path opens a file; a complete existing-path drop reaches the shell;
+a 64 KB terminal paste loses a suffix; non-path paste reaches the editor while a pane owns focus.
 
 **Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts && bun
 scripts/harness/smoke-paste-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-08-05
 
 ### The add control keeps one button appearance
 

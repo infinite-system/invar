@@ -54,11 +54,45 @@ class $FfmpegVideoSource implements VideoFrameSource {
     ];
   }
 
+  static fileArgumentVector(
+    ffmpegPath: string,
+    sourcePath: string,
+    width: number,
+    height: number,
+    framesPerSecond: number,
+    outputPath = '-',
+  ): string[] {
+    const pixelWidth = Math.max(1, Math.floor(width));
+    const pixelHeight = Math.max(2, Math.floor(height));
+    const frameRate = Math.max(1, Math.floor(framesPerSecond));
+    return [
+      ffmpegPath,
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-i',
+      sourcePath,
+      '-an',
+      '-threads',
+      '1',
+      '-vf',
+      `fps=${frameRate},scale=${pixelWidth}:${pixelHeight}:force_original_aspect_ratio=decrease,` +
+        `pad=${pixelWidth}:${pixelHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
+      '-pix_fmt',
+      'rgba',
+      '-f',
+      'rawvideo',
+      outputPath,
+    ];
+  }
+
   constructor(
     ffmpegPath: string,
     width: number,
     height: number,
     framesPerSecond = 15,
+    sourcePath?: string,
   ) {
     const pipeDirectory = mkdtempSync(join(tmpdir(), 'invar-media-'));
     this.pipeDirectory = pipeDirectory;
@@ -85,20 +119,29 @@ class $FfmpegVideoSource implements VideoFrameSource {
       throw error;
     }
     try {
-      this.subprocess = Processes.Class.spawn(
-        FfmpegVideoSource.Class.sampleArgumentVector(
-          ffmpegPath,
-          width,
-          height,
-          framesPerSecond,
-          pipePath,
-        ),
-        {
-          stdin: 'ignore',
-          stdout: 'ignore',
-          stderr: 'ignore',
-        },
-      );
+      const ffmpegVideoSourceClass = this
+        .constructor as typeof $FfmpegVideoSource;
+      const argumentVector = sourcePath
+        ? ffmpegVideoSourceClass.fileArgumentVector(
+            ffmpegPath,
+            sourcePath,
+            width,
+            height,
+            framesPerSecond,
+            pipePath,
+          )
+        : FfmpegVideoSource.Class.sampleArgumentVector(
+            ffmpegPath,
+            width,
+            height,
+            framesPerSecond,
+            pipePath,
+          );
+      this.subprocess = Processes.Class.spawn(argumentVector, {
+        stdin: 'ignore',
+        stdout: 'ignore',
+        stderr: 'ignore',
+      });
     } catch (error) {
       closeSync(this.readFileDescriptor);
       rmSync(pipeDirectory, { recursive: true, force: true });

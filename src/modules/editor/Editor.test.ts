@@ -5,6 +5,9 @@ import { UndoStore } from '../storage/UndoStore';
 import { Clock } from '../system/Clock';
 import { EditorContributions } from './EditorContributions';
 import { ReadOnlyTextBuffer } from '../text/ReadOnlyTextBuffer';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 afterEach(() => Clock.Class.freeze(null));
 
@@ -150,6 +153,23 @@ test('save writes the buffer and clears dirty', () => {
   // markSaved is exercised via document
   editor.document.markSaved();
   expect(editor.document.dirty).toBe(false);
+});
+
+test('save never writes a file opened read-only', () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'invar-read-only-save-'));
+  const fixturePath = join(fixtureRoot, 'outside.txt');
+  try {
+    writeFileSync(fixturePath, 'opened value');
+    const editor = new Editor.Class();
+    editor.openFile(fixturePath, true);
+    writeFileSync(fixturePath, 'external value');
+
+    expect(editor.save()).toBe(false);
+    expect(readFileSync(fixturePath, 'utf8')).toBe('external value');
+    editor.dispose();
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test('undo reverts an edit; redo re-applies it', () => {

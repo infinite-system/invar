@@ -119,6 +119,7 @@ export interface StatusSnapshot {
   activeWorkspace: string | null;
   workspaces: string[];
   activeBuffer: string | null;
+  activeBufferReadOnly?: boolean;
   bufferRevision: number;
   dirty: boolean;
   cursor: { line: number; col: number } | null;

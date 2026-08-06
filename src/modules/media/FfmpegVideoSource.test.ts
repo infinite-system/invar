@@ -38,3 +38,26 @@ test('the sample picture holds its scale instead of zooming into flat detail', (
   expect(endScale).toBe(startScale);
   expect(morphAmplitude).toBeGreaterThan(0);
 });
+
+test('a dropped video is scaled and padded to the pane frame', () => {
+  const argumentsList = FfmpegVideoSource.Class.fileArgumentVector(
+    '/tools/ffmpeg',
+    '/tmp/movie with spaces.mp4',
+    80,
+    48,
+    15,
+    '/tmp/dropped-video.rgba',
+  );
+
+  expect(argumentsList[argumentsList.indexOf('-i') + 1]).toBe(
+    '/tmp/movie with spaces.mp4',
+  );
+  expect(argumentsList[argumentsList.indexOf('-vf') + 1]).toContain(
+    'scale=80:48:force_original_aspect_ratio=decrease',
+  );
+  expect(argumentsList[argumentsList.indexOf('-vf') + 1]).toContain(
+    'pad=80:48',
+  );
+  expect(argumentsList).toContain('-an');
+  expect(argumentsList.at(-1)).toBe('/tmp/dropped-video.rgba');
+});

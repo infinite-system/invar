@@ -5,7 +5,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
 // invariant: Bracketed paste survives stream chunking (src/modules/ui/ui.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -26,6 +26,11 @@ const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-paste-harness-home-'));
 const statusPath = join(fixtureRoot, 'status.json');
 
 await Bun.write(join(fixtureRoot, 'paste.txt'), 'paste fixture\n');
+await Bun.write(join(fixtureRoot, 'second paste.txt'), 'second fixture\n');
+await Bun.write(join(fixtureRoot, 'dropped picture.png'), 'invalid image');
+await Bun.write(join(fixtureRoot, 'dropped movie.mp4'), 'invalid video');
+mkdirSync(join(fixtureRoot, 'dropped folder'));
+await Bun.write(join(homeDirectory, 'outside drop.txt'), 'outside fixture\n');
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
@@ -92,22 +97,131 @@ function exactSizePayload(
 }
 
 try {
-  console.log('== harness paste: open a file and focus the editor ==');
+  console.log('== harness paste: dropped paths route by kind ==');
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('paste.txt') !== null,
     15_000,
   );
-  driver.sendKeys('Enter');
+  requireCondition(
+    driver.outputSequenceCount('\x1b[?2004h') > 0,
+    'the app enables bracketed-paste mode before accepting a drop',
+  );
+  pass('bracketed-paste mode is enabled');
+
+  const textPath = join(fixtureRoot, 'paste.txt');
+  driver.sendRawInputWithoutFrameExpectation(textPath);
+  driver.sendKeys('Control+j');
+  await awaitStatusPublication(
+    statusPath,
+    'a later panel chord proves the unbracketed path bytes were processed',
+    (status) => status.panelVisible === true,
+  );
+  const unbracketedStatus = await awaitStatusPublication(
+    statusPath,
+    'the unbracketed path leaves the editor unopened',
+    (status) => status.activeBuffer === null,
+  );
+  requireCondition(
+    unbracketedStatus.activeBuffer === null,
+    'an unbracketed path does not trigger drop routing',
+  );
+  pass('an unbracketed path did not open a file');
+  driver.sendKeys('Control+j');
+  await awaitStatusPublication(
+    statusPath,
+    'the panel closes before the framed drop cases',
+    (status) => status.panelVisible === false,
+  );
+
+  const imagePath = join(fixtureRoot, 'dropped picture.png');
+  driver.sendPaste(`'${imagePath}'`);
+  await awaitStatusPublication(
+    statusPath,
+    'the single-quoted image path opens a media pane',
+    (status) =>
+      status.panelActiveContentKind === 'media' &&
+      status.panelActiveContentLabel === 'dropped picture.png' &&
+      status.mediaMode === 'image',
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('IMAGE UNAVAILABLE') !== null,
+  );
+  pass('a single-quoted image drop opened a visible media pane');
+
+  const videoPath = join(fixtureRoot, 'dropped movie.mp4');
+  driver.sendPaste(videoPath.replaceAll(' ', '\\ '));
+  await awaitStatusPublication(
+    statusPath,
+    'the escaped video path opens a media pane',
+    (status) =>
+      status.panelActiveContentKind === 'media' &&
+      status.panelActiveContentLabel === 'dropped movie.mp4' &&
+      status.mediaMode === 'video',
+  );
+  pass('an escaped video drop opened a media pane');
+
+  const directoryPath = join(fixtureRoot, 'dropped folder');
+  driver.sendPaste(`"${directoryPath}"`);
+  await awaitStatusPublication(
+    statusPath,
+    'the double-quoted folder path opens the workspace offer',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupTitle === 'Open dropped folder' &&
+      status.boundedListPopupSelectedIdentifier === directoryPath,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Open dropped folder') !== null,
+  );
+  pass('a directory drop opened the workspace offer');
+  driver.sendKeys('Escape');
+  await awaitStatusPublication(
+    statusPath,
+    'the folder offer closes before the next drop',
+    (status) => status.boundedListPopupOpen === false,
+  );
+
+  const outsidePath = join(homeDirectory, 'outside drop.txt');
+  driver.sendPaste(`"${outsidePath}"`);
+  await awaitStatusPublication(
+    statusPath,
+    'the outside-root path opens as a read-only buffer',
+    (status) =>
+      status.activeBuffer === outsidePath &&
+      status.activeBufferReadOnly === true,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('outside drop.txt [read-only]') !== null,
+  );
+  pass('an outside-root drop has a visible read-only badge');
+
+  const secondTextPath = join(fixtureRoot, 'second paste.txt');
+  driver.sendPaste(`'${textPath}' "${secondTextPath}"`);
+  await awaitStatusPublication(
+    statusPath,
+    'a two-file drop opens both text buffers and activates the last one',
+    (status) => status.activeBuffer === secondTextPath,
+  );
+  pass('a multi-file drop opened both text paths');
+
+  driver.sendPaste(`'${textPath}'`);
+  await awaitStatusPublication(
+    statusPath,
+    'the in-root text path opens editable in the editor',
+    (status) =>
+      status.activeBuffer === textPath &&
+      status.activeBufferReadOnly === false &&
+      status.focus === 'editor',
+  );
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('paste fixture') !== null,
   );
-  driver.sendKeys('Right');
   await awaitStatusPublication(
     statusPath,
-    'the opened paste fixture has editor focus',
+    'the dropped paste fixture has editor focus',
     (status) => status.focus === 'editor',
   );
-  pass('editor is ready for bracketed paste');
+  pass('a dropped text file is ready for bracketed paste');
 
   console.log(
     '== harness paste: single-line editor paste inserts at the caret ==',

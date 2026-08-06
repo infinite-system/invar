@@ -73,6 +73,41 @@ test('missing ffmpeg is an explicit visible notice', () => {
   pane.dispose();
 });
 
+test('a dropped image is a still media pane', () => {
+  const pane = new MediaPaneContent.Class({
+    identifier: 'media-image',
+    label: 'picture.png',
+    mode: 'image',
+    columns: 12,
+    rows: 6,
+    framesPerSecond: 15,
+    pixelTerminal: recordingPixelTerminal(),
+    loadImage: () => ({
+      width: 1,
+      height: 2,
+      rgba: Uint8Array.from([255, 0, 0, 255, 0, 0, 255, 255]),
+    }),
+  });
+  const projection = pane.render({
+    width: 12,
+    height: 6,
+    palette: ThemePalettes.Class.DARK,
+    glyphLevel: 'unicode',
+    colorDepth: 'truecolor',
+    graphicsTier: 'halfblock',
+    focused: true,
+  });
+
+  expect(pane.title).toBe('picture.png');
+  expect(pane.mediaMode).toBe('image');
+  expect(projection.chunks.some((chunk) => chunk.text.includes('▀'))).toBe(
+    true,
+  );
+  pane.togglePaused();
+  expect(pane.paused).toBe(false);
+  pane.dispose();
+});
+
 test('space pauses and resumes without replacing the working set', () => {
   const pane = new MediaPaneContent.Class({
     identifier: 'media-demo',
