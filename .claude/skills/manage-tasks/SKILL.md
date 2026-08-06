@@ -262,7 +262,7 @@ One task, one folder, forever. `git mv` between states. Never `cp`, never `rm`. 
 accompanies every move, so the task system's history is the audit trail.
 
 
-## The parked state (added 2026-08-05, user decision)
+## The parked state
 
 `parked` = deliberately shelved BY USER DECISION. The task file
 records the reason VERBATIM and the revisit trigger (usually: the
@@ -274,7 +274,7 @@ be driven). Enter and leave by `git mv` + a dated note, like every
 state move.
 
 
-## The draft state (added 2026-08-05, user decision)
+## The draft state
 
 `draft` = a filed spec/brief AWAITING USER REVIEW before any
 dispatch. Drafts are logged in the repo (never /tmp-only), carry

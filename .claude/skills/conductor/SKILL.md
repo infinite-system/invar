@@ -29,8 +29,7 @@ This covers replies to the user, briefs, task files, reports, and commit message
 Short sentences. Active voice. One name for one thing. Almost no em dashes. Script
 error messages use strict mode. Code and invariant records are exempt. Precision
 outranks brevity: keep exact paths, counts, and hashes. Lint briefs before dispatch:
-`python3 .claude/skills/ste-expression/scripts/ste-lint.py <file>`. The user asked for
-this directly on 2026-07-28: "can we have a system where you talk simply always".
+`python3 .claude/skills/ste-expression/scripts/ste-lint.py <file>`. 
 
 **Where things live.** This file is DOCTRINE: what to do and how. `project.conductor.md`
 holds the LESSONS, grouped into families with dated evidence (family 0 is the ANCHOR PROTOCOL). `project.conductor.archive.md`
@@ -52,7 +51,7 @@ family 0.
 
 1. ANCHOR — write the RESUME ANCHOR in `project.briefing.md`: lanes with
    verdict state, queue, laws delta, watcher re-arm lines verbatim.
-   **The file keeps AT MOST 5 anchors** (user rule, 2026-08-03): writing a
+   **The file keeps AT MOST 5 anchors**: writing a
    new one deletes the oldest kept anchor and moves its heading line to the
    Condensed history section at the bottom. Durable lessons never live in
    the briefing — they go to conductor families and skills; the briefing is
@@ -99,8 +98,8 @@ worktree-local hook policy that keeps formatting and skips the full merge gate.
 The conductor still gates the combined tree at landing. Manually cut worktrees
 do not get this policy.
 
-**DRIVE ADVERSARIALLY is part of every brief's verification bar** (user
-doctrine 2026-08-05, encoded in the drive-pty skill's verification law):
+**DRIVE ADVERSARIALLY is part of every brief's verification bar** (full text:
+the drive-pty skill's verification law):
 briefs for stateful surfaces name a VARIATION PROTOCOL (cycles, boundary
 counts, order variations, assert-after-every-step), and a READY report
 that drove only the happy path goes back for the variations.
@@ -216,7 +215,7 @@ readable files.
 **Rules the tooling cannot enforce:**
 
 - **A brief is a contract: every briefing act declares a mechanically checkable
-  END STATE** (user, 07-29). Round 1's is "a report file exists in the folder";
+  END STATE**. Round 1's is "a report file exists in the folder";
   round N's is "the report is newer than the filing stamp". A steer with no
   end state is a wish — neither the lens nor the conductor can say when it was
   answered. Same generator as "a wait must be a condition": the request and
@@ -281,8 +280,7 @@ and Invar users manage their own repos with the same skill. One task, one folder
 `git mv` between states, never `cp`, never `rm`. A commit accompanies every move.
 
 **The CLI task tools (TaskCreate/TaskList/TaskUpdate) are RETIRED for task tracking.**
-The user retired them on 2026-07-28; the list was drained, and a note task marks the
-supersession. `.invar/tasks/` is the one live task record. Ignore the harness reminders
+The list was drained, and a note task marks the supersession. `.invar/tasks/` is the one live task record. Ignore the harness reminders
 that suggest TaskCreate. The CLI task tools stay in use only for their other jobs:
 Monitors and background-task control (TaskStop, TaskList for monitor IDs).
 
@@ -290,7 +288,7 @@ Monitors and background-task control (TaskStop, TaskList for monitor IDs).
 
 ## ⚑ RULE THREE — THE ACCEPTANCE PROTOCOL: THE CONDUCTOR'S EYES CLOSE EVERY LOOP
 
-Ratified by the user on 2026-08-06, after a night where nine gate-green
+Born of a night where nine gate-green
 landings still delivered three user-visible failures (painted separator
 pipes, a dead header button, a parity claim true in text and false in
 color). Every instrument in the chain validated consistency with the
@@ -300,9 +298,7 @@ These five rules close that hole. They are MUSTS, not guidance.
 1. **ACCEPTANCE DRIVE (the bottleneck rule) — ON READY, BEFORE THE
    GATE.** The moment a READY report arrives, the conductor drives the
    exact user-facing result IN THE BUILDER'S WORKTREE and judges it as
-   the user would — before any gate runs (user refinement 2026-08-06:
-   "test the work of agents on their worktree before merging, so you can
-   refine their work before even gate commit"). The ordering is:
+   the user would — before any gate runs. The ordering is:
    READY -> conductor acceptance drive -> refinement rounds until
    accepted (the builder's session is still warm; a two-minute drive
    beats a twenty-minute gate cycle burned on a visible miss) -> gate ->
@@ -310,20 +306,18 @@ These five rules close that hole. They are MUSTS, not guidance.
    verdict. A landing without this sighting is a protocol violation even
    when the gate is green.
    Drive on a FRESH app instance — a warm server predating the branch
-   shows the old code and lies (seen live 2026-08-06: a stale server
-   still showed a removed button).
+   shows the old code and lies (a stale server
+   can still show a removed button).
 2. **BRIEFS STATE THE DELIVERABLE TWICE: code and visual.** Every brief
    names what the code must do AND what the user must SEE (or explicitly
    states "no visible change"). Every mockup carries one line separating
-   notation from paint (the | LIVE | pipes were separators; the builder
-   painted them and locked them in a smoke). Every "identical to X"
+   notation from paint. Every "identical to X"
    claim names its acceptance instrument (cell-level capture, not the
    word "identical").
 3. **NIGHT ORDERS EXECUTE — NO QUESTIONS, NO HOLDS.** Work the user
    explicitly ordered before leaving runs to completion in its stated
    sequence. The conductor decides the best way and does it. Holding
-   user-ordered work for a morning go/no-go is a DEFECT (the milestone
-   2-6 hold cost the user their headline feature). A live instruction
+   user-ordered work for a morning go/no-go is a DEFECT. A live instruction
    outranks every remembered pacing policy. If genuinely blocked, solve
    (codex/fable, subagents) — deferring to the sleeping user is the last
    resort for genuinely-theirs calls only (naming, publish consent,
@@ -473,7 +467,7 @@ host, `Engine: user` (a decision, not a build), or an engine mismatch. **The env
 field is load-bearing.** #180's work cannot run on this host at all. Before the field
 existed, that task read as ordinary backlog.
 
-**Fleet defaults (user policy 2026-07-29), and dispatch TRANSMITS them as real
+**Fleet defaults, and dispatch TRANSMITS them as real
 flags — an assignment that is not transmitted is a lie the lens repeats:**
 
 - codex: `gpt-5.6-sol` at HIGH, always.

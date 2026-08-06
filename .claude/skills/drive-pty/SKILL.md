@@ -39,7 +39,7 @@ bun scripts/harness/DriveSession.ts --stop             # done: kill your server
   servers running when your task ends; a `timeout`-killed server LEAKS its
   inner app — always `--stop`.
 - `bun run drive` is an ALIAS for DriveSession.ts (the one-shot Drive.ts
-  was REMOVED 2026-08-03 by user policy). Every invocation is fluent:
+  was REMOVED). Every invocation is fluent:
   `bun run drive -- --serve`, `-- --attach "…"`, `-- --eval "…"`,
   `-- --home DIR` for persistent state. There is no flag-per-key mode.
 - Mirror, trail, and humanPace exist for HUMAN-WATCHED sessions only — skip
@@ -54,7 +54,7 @@ conductor at landing, so what you name today the next builder holds
 tomorrow. Nine builders shaped this skill's current surface that way in its
 first two nights.
 
-## DRIVE ADVERSARIALLY — the verification law (user doctrine, 2026-08-05)
+## DRIVE ADVERSARIALLY — the verification law
 
 WHY THIS EXISTS: a bug you find while building costs minutes; the same
 bug found at the conductor's gate costs a round trip; found by the user,
@@ -356,7 +356,7 @@ a path never contains `.value`.
   only (a value that never survives to a frame). It adds an edge to the
   reactive graph and reports mid-update states: reach for awaitValue first,
   always. It never fires on the value already held.
-- `await app.set(path, value)` — EXPERIMENT ONLY (user decision 2026-08-02):
+- `await app.set(path, value)` — EXPERIMENT ONLY:
   bypasses the user's input path, so it never appears in verification;
   smokes and gates drive real gestures. `reactive: false` in the answer
   means a plain-field write — nothing repaints, by design.
