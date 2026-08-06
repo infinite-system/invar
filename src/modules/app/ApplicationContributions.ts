@@ -15,11 +15,16 @@ import type {
   ApplicationContributionEntry,
   ApplicationContributor,
   DockSide,
+  DroppedPathOpener,
+  DroppedPathOpeners,
+  DroppedPathRequest,
 } from './ApplicationContributor.interface';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: The composition graph reaches every installed contributor (src/modules/system/system.invariants.md)
-class $ApplicationContributions implements ApplicationContributionCatalog {
+class $ApplicationContributions
+  implements ApplicationContributionCatalog, DroppedPathOpeners
+{
   constructor(
     protected readonly orderedContributors: readonly ApplicationContributor[],
     protected readonly options: ApplicationContributionsOptions,
@@ -31,6 +36,10 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
   >();
   protected readonly failures = new Map<string, string>();
   protected readonly keyObservers = new Set<(key: KeyEvent) => void>();
+  protected readonly droppedPathOpeners = new Map<
+    string,
+    Set<DroppedPathOpener>
+  >();
 
   get revision() {
     return ref(0);
@@ -86,6 +95,17 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     for (const observer of this.keyObservers) observer(key);
   }
 
+  openDroppedPath(request: DroppedPathRequest): boolean {
+    for (const contributor of this.orderedContributors) {
+      for (const opener of this.droppedPathOpeners.get(
+        contributor.identifier,
+      ) ?? []) {
+        if (opener(request)) return true;
+      }
+    }
+    return false;
+  }
+
   protected activate(contributor: ApplicationContributor): void {
     if (this.activeContributions.has(contributor.identifier)) return;
     const registrationDisposers: (() => void)[] = [];
@@ -99,6 +119,18 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         this.options.requestRender,
       ),
       applicationContributions: this,
+      registerDroppedPathOpener: (opener) => {
+        const openers =
+          this.droppedPathOpeners.get(contributor.identifier) ?? new Set();
+        openers.add(opener);
+        this.droppedPathOpeners.set(contributor.identifier, openers);
+        registrationDisposers.push(() => {
+          openers.delete(opener);
+          if (openers.size === 0) {
+            this.droppedPathOpeners.delete(contributor.identifier);
+          }
+        });
+      },
       registerKeybindings: (bindings) => {
         registrationDisposers.push(
           this.options.keybindings.registerPluginLayer(
@@ -298,6 +330,7 @@ export namespace ApplicationContributions {
 export type ApplicationContributionsOptions = Omit<
   ApplicationContributionContext,
   | 'applicationContributions'
+  | 'registerDroppedPathOpener'
   | 'registerKeybindings'
   | 'registerKeyObserver'
   | 'registerKeybindingGuard'

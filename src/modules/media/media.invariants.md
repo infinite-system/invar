@@ -142,15 +142,18 @@ memory; a planted frame-retention list passing the contract.
 timers, pixel placements, ffmpeg process, and panes disappear together. The host retains no media
 type, construction path, or fallback state.
 
-**Scope:** `MediaPlugin`, `DefaultPlugins`, the generic `PaneRuntime` and `PaneContent` ports, and the
-plugin-removal build.
+**Scope:** `MediaPlugin`, `DefaultPlugins`,
+`ApplicationContributionContext.registerDroppedPathOpener`, the generic `PaneRuntime` and
+`PaneContent` ports, and the plugin-removal build.
 
-**Mechanism:** `MediaPlugin` registers one runtime, commands, keybindings, and status projection
-through `ApplicationContributionContext`. It tracks every pane it creates and releases them before it
-withdraws the runtime. The only composition-edge reference is the default-plugin manifest.
+**Mechanism:** `MediaPlugin` registers one runtime, dropped-path opener, commands, keybindings, and
+status projection through `ApplicationContributionContext`. Activation scopes every registration,
+so withdrawal removes the path opener with the runtime. The plugin tracks every pane it creates and
+releases them before it withdraws the runtime. The only composition-edge reference is the
+default-plugin manifest.
 
-**Generates:** Command-palette entry and Add-menu discovery when installed; a clean host build after
-the module and its manifest entry are removed; no hidden animation after uninstall.
+**Generates:** Command-palette and Add-menu discovery when installed; dropped image and video path
+claims; a clean host build after removal; no hidden animation after uninstall.
 
 **Rejected alternatives:** Add a media branch to `Bootstrap` or `RootView`. That makes the host name a
 plugin and leaves cleanup decisions behind after removal.
@@ -159,8 +162,8 @@ plugin and leaves cleanup decisions behind after removal.
 `scripts/harness/smoke-media-harness.ts`; the removal build recorded in the task report.
 
 **Impossible if true:** A host file importing a media class; a disabled media pane still rendering;
-media status keys surviving uninstall; deleting the module leaving a TypeScript error outside the
-default manifest.
+a disabled media plugin claiming a dropped path; media status keys surviving uninstall; deleting
+the module leaving a TypeScript error outside the default manifest.
 
 **Verification:** `bun test src/modules/media/MediaPlugin.test.ts && bun
 scripts/harness/smoke-media-harness.ts`; copy the checkout, remove `src/modules/media/` and its two
@@ -168,7 +171,7 @@ default-manifest lines, then run `bunx tsc --noEmit`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-29
+**Last refined:** 2026-08-05
 
 ### Missing ffmpeg is loud and harmless
 

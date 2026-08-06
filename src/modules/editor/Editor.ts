@@ -398,15 +398,19 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     this.revealCursorMapped('reading');
   }
 
-  openFile(path: string): void {
+  openFile(path: string, readOnly = false): void {
     this.recordOrdinaryEdit();
     this.document.loadFromFile(path);
     this.placeCursor(0, 0);
     this.cursor.clearSelection();
     this.viewport.scrollTop.value = 0;
     this.hasDocument.value = true;
-    this.readOnly.value = this.document.binary.value;
+    this.readOnly.value = this.document.binary.value || readOnly;
     this.undo.clear();
+  }
+
+  setReadOnly(readOnly: boolean): void {
+    this.readOnly.value = this.document.binary.value || readOnly;
   }
 
   // --- LiveBuffer surface (the OpenBufferSet flyweight drives these) --------
@@ -962,7 +966,9 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   }
 
   save(): boolean {
-    if (!this.hasDocument.value || !this.document.path) return false;
+    if (this.readOnly.value || !this.hasDocument.value || !this.document.path) {
+      return false;
+    }
     Files.Class.write(this.document.path, this.document.text);
     this.document.markSaved();
     return true;

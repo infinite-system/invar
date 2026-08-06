@@ -74,6 +74,9 @@ export interface ApplicationContributionContext {
     provider: EditorColumnDefaultProvider,
   ) => EditorColumnDefaultHostPort;
   readonly applicationContributions: ApplicationContributionCatalog;
+  /** Register one path-opening projection. Registration follows contributor activation, so a
+   *  disabled contributor cannot claim a path. */
+  readonly registerDroppedPathOpener: (opener: DroppedPathOpener) => void;
   readonly registerKeybindings: (bindings: readonly Keybinding[]) => void;
   readonly registerKeyObserver: (observer: (key: KeyEvent) => void) => void;
   readonly registerKeybindingGuard: (
@@ -127,6 +130,17 @@ export interface ApplicationContributionCatalog {
   readonly revision: Readonly<Ref<number>>;
   entries(): readonly ApplicationContributionEntry[];
   setEnabled(identifier: string, enabled: boolean): void;
+}
+
+export interface DroppedPathRequest {
+  readonly path: string;
+  readonly readOnly: boolean;
+}
+
+export type DroppedPathOpener = (request: DroppedPathRequest) => boolean;
+
+export interface DroppedPathOpeners {
+  openDroppedPath(request: DroppedPathRequest): boolean;
 }
 
 export interface ApplicationContributionEntry {

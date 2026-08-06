@@ -23,6 +23,7 @@ const SingleHydratedDocumentOpenBufferSetClass = Reactive(
 class FakeBuffer implements LiveBuffer {
   disposed = false;
   dirty = false;
+  readOnly = false;
   protected position: BufferPosition = {
     cursorLine: 0,
     cursorColumn: 0,
@@ -31,6 +32,9 @@ class FakeBuffer implements LiveBuffer {
   };
   constructor(readonly path: string) {}
   openFile(): void {}
+  setReadOnly(readOnly: boolean): void {
+    this.readOnly = readOnly;
+  }
   snapshotPosition(): BufferPosition {
     return { ...this.position };
   }
@@ -47,8 +51,9 @@ function makeSet(singleHydratedDocument = false) {
   const createdHandles: DocumentHandle.Model[] = [];
   const disposed: FakeBuffer[] = [];
   const seams: OpenBufferSetSeams = {
-    createBuffer: (path, documentHandle) => {
+    createBuffer: (path, documentHandle, readOnly) => {
       const buffer = new FakeBuffer(path);
+      buffer.readOnly = readOnly;
       created.push(buffer);
       createdHandles.push(documentHandle);
       return buffer;
@@ -78,6 +83,18 @@ describe('open / focus', () => {
     expect(set.count).toBe(3); // no duplicate tab
     expect(set.tabs()[0]!.active).toBe(true);
     void created;
+  });
+
+  test('a read-only tab stays read-only through focus and rehydration', () => {
+    const { set, created } = makeSet(true);
+    set.open('outside.ts', { readOnly: true });
+    expect(set.tabs()[0]?.readOnly).toBe(true);
+    expect((set.activeBuffer as FakeBuffer).readOnly).toBe(true);
+
+    set.open('inside.ts');
+    set.activate(0);
+    expect(created.at(-1)?.path).toBe('outside.ts');
+    expect(created.at(-1)?.readOnly).toBe(true);
   });
 });
 
