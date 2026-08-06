@@ -5,7 +5,7 @@ Engine: codex
 Environment: any
 Model: 5.6-sol
 Effort: high
-State: IN-PROGRESS
+State: COMPLETED — e0606727 — Structure uninstall now withdraws its space (extension teardown got its own host path); the standing plugin-manifest gate red is closed; two Scope refinements proposed for morning review.
 
 ## In plain words
 
