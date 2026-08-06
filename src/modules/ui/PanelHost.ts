@@ -1485,8 +1485,8 @@ class $PanelHost {
   }
   /** Toggle one registered content's visible region. Opening a second content places both side by
    *  side in panel order and focuses the newly opened region. Closing one split region leaves
-   *  the other mounted; closing the only region hides the slot. This is the one action shared by each
-   *  content's status-bar button and keyboard accelerator. */
+   *  the other mounted; closing the only region hides the slot. Generic host visibility uses
+   *  toggle() instead. */
   toggleContent(id: string): void {
     if (!this.contents.has(id)) return;
     if (!this.visible.value) {

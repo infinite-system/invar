@@ -741,7 +741,16 @@ async function driveTerminalLifecycleProtocol(
       (status) => status.ready === true,
       15_000,
     );
-    driver.sendKeys('Control+j');
+    const statusControlSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line generic panel status control is visible`,
+      (candidate) =>
+        candidate.rowText(candidate.rows - 1).lastIndexOf(' ❯ ') >= 0,
+    );
+    const statusBarRow = statusControlSnapshot.rows - 1;
+    const statusControlStart = statusControlSnapshot
+      .rowText(statusBarRow)
+      .lastIndexOf(' ❯ ');
+    clickCell(driver, statusControlStart + 1, statusBarRow);
     let status = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,

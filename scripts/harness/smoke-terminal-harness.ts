@@ -817,45 +817,9 @@ try {
   HarnessSmoke.Class.pass('second status-bar click hides the panel');
 
   console.log(
-    '== harness terminal: Ctrl+J opens the panel and Add creates the real nested shell ==',
+    '== harness terminal: Ctrl+J opens and focuses the real nested shell ==',
   );
   driver.sendKeys('Control+j');
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'Ctrl+J opens the same empty panel without creating a terminal',
-    (status) =>
-      status.panelVisible === true &&
-      status.terminalVisible === false &&
-      Array.isArray(status.panelContentIds) &&
-      status.panelContentIds.length === 0,
-  );
-  const emptyPanelSnapshot = await driver.awaitGridCondition(
-    'the empty panel paints its visible Plugin Add control',
-    (snapshot) => snapshot.findText('+ Plugin') !== null,
-  );
-  const pluginAddPosition = emptyPanelSnapshot.findText('+ Plugin');
-  if (!pluginAddPosition) throw new Error('Missing Plugin Add control');
-  driver.sendMouse({
-    kind: 'move',
-    column: pluginAddPosition.column + 2,
-    row: pluginAddPosition.row,
-    button: 'none',
-  });
-  driver.sendMouseClick({
-    column: pluginAddPosition.column + 2,
-    row: pluginAddPosition.row,
-    button: 'left',
-  });
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the Plugin Add chooser selects Terminal',
-    (status) =>
-      status.boundedListPopupOpen === true &&
-      status.boundedListPopupSelectedIdentifier === 'terminal',
-  );
-  driver.sendKeys('Enter');
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -867,9 +831,7 @@ try {
       Number(status.terminalColumns) > 0 &&
       Number(status.terminalRows) > 0,
   );
-  HarnessSmoke.Class.pass(
-    'Ctrl+J opened the panel and its Add control created the focused terminal',
-  );
+  HarnessSmoke.Class.pass('Ctrl+J opened and focused the terminal content');
   const initialColumns = Number(openedStatus.terminalColumns);
   const initialRows = Number(openedStatus.terminalRows);
   const initialChildColumns = initialColumns - 4;
