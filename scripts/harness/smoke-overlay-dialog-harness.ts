@@ -1326,10 +1326,50 @@ try {
     (candidate) => candidate.settingsOpen === false,
   );
   const underlyingVisibilityBeforeNextPress = underlyingVisibilityState(status);
+  // #530 blind-press census: the saved outside cell was discovered while the
+  // Settings dialog was still OPEN. Pressing it again straight after the
+  // close status lands is a class-C blind press — the renderer's native hit
+  // grid can still hold the open-dialog frame, and the press is consumed by
+  // the phantom modal instead of the status action. Prove the close painted,
+  // re-aim fresh, and prove the hit grid resolves the control through its
+  // hover reveal (the status action points its Toggle Bottom Panel tooltip
+  // when the hover reaches it) — the #538 canonical aim form.
+  const postDismissalSnapshot = await driver.awaitGridCondition(
+    'Settings is no longer painted before the post-dismissal press',
+    (candidate) => candidate.findText('Settings') === null,
+  );
+  const postDismissalActionPosition = discoveredOutsideActionPosition(
+    postDismissalSnapshot,
+    dialogBounds(status, 'settingsPanel')!,
+    'the post-dismissal status action',
+  );
+  // Park off the status row first: the dismissal press left the pointer on
+  // this very control, so without the absence step the tooltip wait below
+  // would be pre-satisfied and prove nothing (the #529 park-off rule).
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: postDismissalActionPosition.column,
+    row: 0,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the status action tooltip drops before the re-aim',
+    (candidate) => candidate.findText('Toggle Bottom Panel') === null,
+  );
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: postDismissalActionPosition.column + 1,
+    row: postDismissalActionPosition.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the post-dismissal status action reveals its hover tooltip',
+    (candidate) => candidate.findText('Toggle Bottom Panel') !== null,
+  );
   clickCell(
     driver,
-    settingsOutsidePosition.column,
-    settingsOutsidePosition.row,
+    postDismissalActionPosition.column,
+    postDismissalActionPosition.row,
   );
   await awaitStatusPublication(
     statusPath,
@@ -1525,9 +1565,18 @@ try {
     (candidate) => candidate.paletteOpen === true,
   );
   driver.sendText('Keyboard Shortcuts');
+  // #530 blind-press census: 'Help:' alone can match an INTERMEDIATE refilter
+  // frame while later keystrokes are still relocating rows. Require the full
+  // typed query to be painted too — once the last keystroke's echo is on
+  // screen no further refilter is in flight, so the aimed row is final. The
+  // palette's list renderable itself has not moved since it opened, so the
+  // press dispatches to the right element even across the refilters (the #530
+  // element-boundary rule).
   snapshot = await driver.awaitGridCondition(
-    'the single-token Help anchor identifies the interior palette row',
-    (candidate) => candidate.findText('Help:') !== null,
+    'the fully typed query and the Help anchor identify the final palette row',
+    (candidate) =>
+      candidate.findText('Keyboard Shortcuts') !== null &&
+      candidate.findText('Help:') !== null,
   );
   const shortcutCommandPosition = markerPosition(snapshot, 'Help:');
   clickCell(

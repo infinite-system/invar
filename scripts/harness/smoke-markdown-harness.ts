@@ -811,6 +811,38 @@ async function driveUpwardLinkAndDoubleClickAtScale(
       repaintedSnapshot,
       'external up link',
     );
+    // #530 blind-press census: the Ctrl+Tab return repaints the preview, and the native hit
+    // grid can lag the painted frame by one render — a blind press could dispatch to the
+    // renderable that owned the cell before the tab switch. Prove the hit grid resolves the
+    // preview body through the RESOLVABLE sibling link's hover reveal (the external link's own
+    // hover never publishes markdownHoveredReference — external schemes resolve to no path;
+    // bycatch). Both links live in one preview renderable, and within-element positions are
+    // dispatch-safe once the element owns the grid. Park the pointer off-target first so a
+    // stale hover cannot pre-satisfy the wait.
+    const repaintedLive = previewMarkerPosition(
+      repaintedSnapshot,
+      'live up link',
+    );
+    linkDriver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} the parked pointer drops any stale hovered reference`,
+      (status) => status.markdownHoveredReference === null,
+    );
+    linkDriver.sendMouse({
+      kind: 'move',
+      column: repaintedLive.column + 2,
+      row: repaintedLive.row,
+      button: 'none',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      linkDriver,
+      linkStatusPath,
+      `${scaleLabel} the repainted preview resolves the live link hover before the external clicks`,
+      (status) =>
+        String(status.markdownHoveredReference).endsWith('/upward-target.ts'),
+    );
     clickCell(linkDriver, repaintedExternal.column + 2, repaintedExternal.row);
     clickCell(linkDriver, repaintedExternal.column + 2, repaintedExternal.row);
     await HarnessSmoke.Class.awaitStatus(
@@ -1012,6 +1044,9 @@ async function driveTerminalShrinkAtScale(
       `${fixtureLineCount}-line narrow view`,
     );
     const narrowButton = previewButton(narrowActionSnapshot);
+    // #530 blind-press census: the wait above proves the button at its FINAL published layout
+    // position on the current frame; the residual one-native-render hit-grid window is argued
+    // in the census table.
     clickCell(scaleDriver, narrowButton.column, narrowButton.row);
     await HarnessSmoke.Class.awaitStatus(
       scaleDriver,
@@ -1274,6 +1309,9 @@ async function driveTerminalShrinkAtScale(
       restoredScaleSnapshot,
       jumpMarker,
     );
+    // #530 blind-press census: the wait above only accepts a 140-column frame with the marker
+    // painted RIGHT of the source pane — the structure dock's returned final layout; the
+    // residual one-native-render hit-grid window is argued in the census table.
     clickCell(scaleDriver, tocMarker.column, tocMarker.row);
     const followedStatus = await HarnessSmoke.Class.awaitStatus(
       scaleDriver,
@@ -1318,6 +1356,36 @@ async function driveTerminalShrinkAtScale(
     if (fixtureLineCount === 500 || fixtureLineCount === 100_000) {
       console.log(
         `== harness markdown: ${fixtureLineCount}-line trailing body row hit boundary ==`,
+      );
+      // #530 blind-press census: the TOC click just scrolled both panes, so the native hit
+      // grid can lag the painted frame by one render. The jump marker is an authored link, so
+      // prove the hit grid resolves it at the aimed cell through its own hover reveal
+      // (markdownHoveredReference) before the press. Park the pointer off-target first so a
+      // stale hover cannot pre-satisfy the wait.
+      scaleDriver.sendMouse({
+        kind: 'move',
+        column: 0,
+        row: 0,
+        button: 'none',
+      });
+      await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line the parked pointer drops any stale hovered reference`,
+        (status) => status.markdownHoveredReference === null,
+      );
+      scaleDriver.sendMouse({
+        kind: 'move',
+        column: followedPreview.column,
+        row: followedPreview.row,
+        button: 'none',
+      });
+      await HarnessSmoke.Class.awaitStatus(
+        scaleDriver,
+        scaleStatusPath,
+        `${fixtureLineCount}-line the scrolled preview resolves the jump link hover before the press`,
+        (status) =>
+          String(status.markdownHoveredReference).endsWith('/README.md'),
       );
       scaleDriver.sendMouse({
         kind: 'press',
@@ -1763,6 +1831,26 @@ try {
   console.log(
     '== harness markdown: tables align by display cells and clip inside narrow panes ==',
   );
+  // #530 bycatch fix: the auto-open wait above proves 'Rendered row 01' but
+  // not the table rows, and under gate load the tables paint a frame later —
+  // the bare reads below then throw on a stale frame. Wait for all three
+  // table markers before reading their geometry.
+  // The wait mirrors the reads exactly (previewRowContaining slices the
+  // pane's columns): on a torn mid-paint frame a marker straddling the right
+  // boundary passes a start-column check but fails the sliced read.
+  snapshot = await driver.awaitGridCondition(
+    'the preview paints all three alignment-table rows before their reads',
+    (candidate) => {
+      try {
+        previewRowContaining(candidate, 'Left');
+        previewRowContaining(candidate, 'alpha');
+        previewRowContaining(candidate, '漢');
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
   const headerTableRow = previewRowContaining(snapshot, 'Left');
   const asciiTableRow = previewRowContaining(snapshot, 'alpha');
   const wideTableRow = previewRowContaining(snapshot, '漢');
@@ -1904,6 +1992,18 @@ try {
   );
   // Drag the divider back and confirm the wide table layout returns.
   const narrowSourceBorderColumn = sourceBorderColumn(narrowSnapshot);
+  // #530 blind-press census: the first drag just relocated the divider, and the native hit grid
+  // can lag the painted frame by one render. The divider has no hover reveal (bycatch), so
+  // anchor on its glyph painted at the exact aimed cell; the residual one-native-render
+  // hit-grid window is argued in the #530 census table.
+  await driver.awaitGridCondition(
+    'the split divider paints at the drag-back press cell',
+    (candidate) =>
+      candidate.findText('╭─Preview') !== null &&
+      sourceBorderColumn(candidate) === narrowSourceBorderColumn &&
+      candidate.cell(narrowDragRow, narrowSourceBorderColumn - 1)
+        ?.characters === '│',
+  );
   driver.sendMouse({
     kind: 'press',
     column: narrowSourceBorderColumn - 1,
@@ -2032,6 +2132,9 @@ try {
     },
   );
   button = previewButton(snapshot);
+  // #530 blind-press census: the wait above proves the button at its settled dock-free right
+  // edge (column > columns - 12) on the current frame — its FINAL position; the residual
+  // one-native-render hit-grid window is argued in the census table.
   clickCell(driver, button.column, button.row);
   snapshot = await driver.awaitSnapshot((candidate) =>
     previewHasMarker(candidate, 'target.ts'),
@@ -2087,6 +2190,9 @@ try {
   );
   const readmeTabPosition = snapshot.findText('README.md');
   if (!readmeTabPosition) throw new Error('FAIL README tab missing');
+  // #530 blind-press census: opening target.ts APPENDS its tab after README
+  // (OpenBufferSet.open pushes new entries), so README's tab cell never moved — a
+  // within-element press, dispatch-safe under the hit-grid lag mechanism.
   clickCell(driver, readmeTabPosition.column + 2, readmeTabPosition.row);
   snapshot = await driver.awaitGridCondition(
     'the returned README preview paints its heading and link tones',
@@ -2291,9 +2397,54 @@ try {
     'the repaired source saves before later tab-layout contracts run',
     (status) => status.dirty === false,
   );
+  // #530 blind-press census: the paste plus Ctrl+Home just moved the preview content, and the
+  // native hit grid can lag the painted frame by one render. Re-read the link position from a
+  // CURRENT frame (the repairedSnapshot position is stale), then prove the hit grid resolves
+  // the repaired link at the aimed cell through its own hover reveal (markdownHoveredReference)
+  // before the ctrl-click. Park the pointer off-target first so a stale hover cannot
+  // pre-satisfy the wait.
+  driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the parked pointer drops any stale hovered reference before the repaired-link click',
+    (status) => status.markdownHoveredReference === null,
+  );
+  const provenLinkSnapshot = await driver.awaitGridCondition(
+    'the repaired link paints with the accent tone on the current frame',
+    (candidate) => {
+      try {
+        const candidatePosition = previewMarkerPosition(
+          candidate,
+          'the missing note',
+        );
+        return (
+          candidate.cell(candidatePosition.row, candidatePosition.column)
+            ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent)
+        );
+      } catch {
+        return false;
+      }
+    },
+  );
   const resolvableLinkPosition = previewMarkerPosition(
-    repairedSnapshot,
+    provenLinkSnapshot,
     'the missing note',
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: resolvableLinkPosition.column,
+    row: resolvableLinkPosition.row,
+    button: 'none',
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the repaired link resolves its hover at the aimed cell before the ctrl-click',
+    (status) =>
+      String(status.markdownHoveredReference).endsWith(
+        `/task-${movedTaskFolderName}.md`,
+      ),
   );
   driver.sendMouse({
     kind: 'press',
@@ -2378,6 +2529,17 @@ try {
   const dividerTargetColumn =
     ratioBefore <= 0.3 ? dividerColumn - 10 : dividerColumn + 10;
   const dividerRow = previewBorder(snapshot).row + 7;
+  // #530 blind-press census: the Go to File return just remounted the preview split, and the
+  // native hit grid can lag the painted frame by one render. The divider has no hover reveal
+  // (bycatch), so anchor on its glyph painted at the exact aimed cell; the residual
+  // one-native-render hit-grid window is argued in the #530 census table.
+  await driver.awaitGridCondition(
+    'the split divider paints at the divider press cell',
+    (candidate) =>
+      candidate.findText('╭─Preview') !== null &&
+      sourceBorderColumn(candidate) === sourceColumnBefore &&
+      candidate.cell(dividerRow, dividerColumn)?.characters === '│',
+  );
   driver.sendMouse({
     kind: 'press',
     column: dividerColumn,
@@ -2449,6 +2611,17 @@ try {
   );
   const preview = previewBorder(snapshot);
   const selectionColumn = preview.column + 5;
+  // #530 blind-press census: the preview just remounted, and the native hit grid can lag the
+  // painted frame by one render. Body cells have no hover reveal, so anchor on the pane's
+  // post-remount frame at the aimed region (left border cell painted beside the selection-start
+  // row); the residual one-native-render hit-grid window is argued in the #530 census table.
+  await driver.awaitGridCondition(
+    'the remounted preview paints its left border beside the selection start cell',
+    (candidate) =>
+      candidate.findText('╭─Preview') !== null &&
+      previewBorder(candidate).column === preview.column &&
+      candidate.cell(preview.row + 3, preview.column)?.characters === '│',
+  );
   driver.sendMouse({
     kind: 'press',
     column: selectionColumn,
@@ -2552,6 +2725,20 @@ try {
       candidate.findText('╭─Preview') !== null,
   );
   const reopenedPreview = previewBorder(snapshot);
+  // #530 blind-press census: the Find bar just closed and returned its rows, and the native hit
+  // grid can lag the painted frame by one render. Body cells have no hover reveal, so anchor on
+  // the pane's post-close frame at the aimed region (left border cell painted beside the
+  // focus-click row); the residual one-native-render hit-grid window is argued in the #530
+  // census table.
+  await driver.awaitGridCondition(
+    'the preview left border paints beside the focus-click cell after Find closes',
+    (candidate) =>
+      candidate.findText('╭─Find') === null &&
+      candidate.findText('╭─Preview') !== null &&
+      previewBorder(candidate).column === reopenedPreview.column &&
+      candidate.cell(reopenedPreview.row + 2, reopenedPreview.column)
+        ?.characters === '│',
+  );
   clickCell(driver, reopenedPreview.column + 5, reopenedPreview.row + 2);
   await HarnessSmoke.Class.awaitStatus(
     driver,

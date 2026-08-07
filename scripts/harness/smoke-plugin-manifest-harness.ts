@@ -1173,7 +1173,16 @@ try {
       `Extensions opens before selecting ${rowLabel}`,
       (status) => status.sidebarView === 'extensions',
     );
-    const extensionsHeading = driver.snapshot().findText('Extensions');
+    // #530 blind-press census: the status wait proves the MODEL switched, not that the
+    // Extensions surface PAINTED. Aim from a frame that shows the heading so the press
+    // cannot target a pre-relayout frame. The sidebar renderable itself is position-stable
+    // across this switch (the dock does not move), so the heading press is safe once the
+    // paint is proven.
+    const extensionsHeadingSnapshot = await driver.awaitGridCondition(
+      `the Extensions surface paints its heading before selecting ${rowLabel}`,
+      (candidate) => candidate.findText('Extensions') !== null,
+    );
+    const extensionsHeading = extensionsHeadingSnapshot.findText('Extensions');
     if (!extensionsHeading)
       throw new Error('The Extensions heading is not visible');
     driver.sendMouse({
@@ -1304,6 +1313,9 @@ try {
     });
   };
 
+  // #530 blind-press census: no overlay moved or closed before this press; the gear sits in
+  // the position-stable structure heading and the aim snapshot proves it is painted, so a
+  // hover reveal is not required here.
   clickVisibleText('⛭ 1');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -1348,6 +1360,13 @@ try {
       status.structureDepth === 2 &&
       status.structureDepthIsOverridden === false,
   );
+  // #530 blind-press census: the context menu just CLOSED and its renderable can still own
+  // the hit-grid cells for one native render. Aim the gear press only after the menu rows
+  // are gone from the painted grid.
+  await driver.awaitGridCondition(
+    'the closed depth menu is gone from the grid before the gear press',
+    (candidate) => candidate.findText('Depth 0') === null,
+  );
   clickVisibleText('⛭ 2');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -1355,7 +1374,43 @@ try {
     'the depth gear reopens over the updated setting',
     (status) => status.contextMenuOpen === true,
   );
-  clickVisibleText('Depth 1');
+  // #530 blind-press census: the context menu just OPENED and may not yet own its hit-grid
+  // cells. Park off, hover the row, and await the menu's own cursorLine hover highlight
+  // (OverlayLayer paints hovered context-menu rows with palette.cursorLine) before pressing.
+  const depthMenuRowSnapshot = await driver.awaitGridCondition(
+    'the reopened depth menu paints its Depth 1 row',
+    (candidate) => candidate.findText('Depth 1') !== null,
+  );
+  const depthOneRowPosition = depthMenuRowSnapshot.findText('Depth 1');
+  if (!depthOneRowPosition)
+    throw new Error('The checked Depth 1 position is absent');
+  const contextMenuHoverBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.cursorLine.slice(1),
+    16,
+  );
+  driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+  await driver.awaitGridCondition(
+    'the Depth 1 row drops any stale hover background before the aim',
+    (candidate) =>
+      candidate.cell(depthOneRowPosition.row, depthOneRowPosition.column)
+        ?.background !== contextMenuHoverBackground,
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: depthOneRowPosition.column,
+    row: depthOneRowPosition.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the Depth 1 row reveals its hover background at the aimed cell',
+    (candidate) =>
+      candidate.cell(depthOneRowPosition.row, depthOneRowPosition.column)
+        ?.background === contextMenuHoverBackground,
+  );
+  driver.sendMouseClick({
+    column: depthOneRowPosition.column,
+    row: depthOneRowPosition.row,
+  });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -2142,6 +2197,34 @@ try {
     Math.floor(
       (finalPanelClose.endColumnExclusive - finalPanelClose.startColumn) / 2,
     );
+  // #530 blind-press census: Ctrl+Shift+Y just reopened the panel, so its heading controls
+  // may not yet own their hit-grid cells. Park off, hover the Close cell, and await the
+  // tab bar's cursorLine hover background (PanelTabBar paints hovered controls with
+  // palette.cursorLine) before pressing — the reveal dispatches through the same hit grid
+  // the press will use.
+  const panelCloseHoverBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.cursorLine.slice(1),
+    16,
+  );
+  driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+  await driver.awaitGridCondition(
+    'the panel Close cell drops any stale hover background before the aim',
+    (candidate) =>
+      candidate.cell(finalPanelHeading.row, finalPanelCloseColumn)
+        ?.background !== panelCloseHoverBackground,
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: finalPanelCloseColumn,
+    row: finalPanelHeading.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the panel Close control reveals its hover background at the aimed cell',
+    (candidate) =>
+      candidate.cell(finalPanelHeading.row, finalPanelCloseColumn)
+        ?.background === panelCloseHoverBackground,
+  );
   driver.sendMouse({
     kind: 'press',
     column: finalPanelCloseColumn,

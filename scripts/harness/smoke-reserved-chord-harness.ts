@@ -229,8 +229,13 @@ try {
     'Ctrl+Shift+X opens Extensions from the focused task terminal',
   );
 
+  // #530 blind-press census: Ctrl+Shift+X just relaid the sidebar out. Require the
+  // Extensions surface PAINTED on the same frame that supplies the click coordinates so
+  // the aim snapshot cannot be a pre-relayout frame.
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('RESERVED-CHORD-TASK') !== null,
+    (candidate) =>
+      candidate.findText('Extensions') !== null &&
+      candidate.findText('RESERVED-CHORD-TASK') !== null,
   );
   HarnessSmoke.Class.clickText(driver, snapshot, 'RESERVED-CHORD-TASK');
   await awaitStatus(
@@ -264,8 +269,12 @@ try {
     'Ctrl+Shift+X opens Extensions from the focused agent pane',
   );
 
+  // #530 blind-press census: same relayout hazard as above — Ctrl+Shift+X just switched
+  // focus to Extensions; aim only from a frame that also shows the Extensions surface.
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Ask Claude') !== null,
+    (candidate) =>
+      candidate.findText('Extensions') !== null &&
+      candidate.findText('Ask Claude') !== null,
   );
   HarnessSmoke.Class.clickText(driver, snapshot, 'Ask Claude');
   await awaitStatus(

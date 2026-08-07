@@ -647,7 +647,35 @@ async function selectLayoutPreset(
     presetPosition !== null,
     `the layouts popup lists the named ${presetName} preset`,
   );
-  clickCell(driver, presetPosition!.column + 1, presetPosition!.row);
+  // #530 blind-press census: the bounded layouts popup just APPEARED and may not yet own
+  // its hit-grid cells. Park off, hover the preset row, and await the row's own hover
+  // repaint (its cell attributes change against the pre-hover frame — the reveal
+  // smoke-bounded-list-popup-harness gates) before pressing.
+  const presetAimPoint = {
+    column: presetPosition!.column + 1,
+    row: presetPosition!.row,
+  };
+  driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+  const parkedPopupSnapshot = await driver.awaitGridCondition(
+    `the layouts popup still paints ${presetName} after the pointer parks off`,
+    (candidate) => candidate.findText(presetName) !== null,
+  );
+  const presetRestAppearance = splitterAppearanceAt(
+    parkedPopupSnapshot,
+    presetAimPoint,
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: presetAimPoint.column,
+    row: presetAimPoint.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    `the hovered ${presetName} row changes its painted attributes before the press`,
+    (candidate) =>
+      splitterAppearanceAt(candidate, presetAimPoint) !== presetRestAppearance,
+  );
+  clickCell(driver, presetAimPoint.column, presetAimPoint.row);
   const status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

@@ -213,15 +213,47 @@ try {
   );
   snapshot = driver.snapshot();
   let buttonGeometry = findButtonGeometry(snapshot);
+  // #530 blind-press census: the Find bar just appeared, so the hit grid can
+  // lag the painted frame by one native render. Park the pointer off the bar,
+  // then hover the next button and await its own hover reveal before pressing.
+  const nextButtonColumn = buttonGeometry.caseColumn - 4;
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: 0,
+    row: snapshot.rows - 1,
+    button: 'none',
+  });
+  const nextRestSnapshot = await driver.awaitGridCondition(
+    'the Find next button rests unhovered before the aim',
+    (candidate) =>
+      candidate.cell(buttonGeometry.row, nextButtonColumn) !== null,
+  );
+  const nextRestCell = nextRestSnapshot.cell(
+    buttonGeometry.row,
+    nextButtonColumn,
+  );
+  if (!nextRestCell) throw new Error('FAIL Find next rest cell is missing');
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: nextButtonColumn,
+    row: buttonGeometry.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the Find next button paints its hover state',
+    (candidate) =>
+      candidate.cell(buttonGeometry.row, nextButtonColumn)?.background !==
+      nextRestCell.background,
+  );
   driver.sendMouse({
     kind: 'press',
-    column: buttonGeometry.caseColumn - 4,
+    column: nextButtonColumn,
     row: buttonGeometry.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: buttonGeometry.caseColumn - 4,
+    column: nextButtonColumn,
     row: buttonGeometry.row,
     button: 'left',
   });
@@ -302,25 +334,67 @@ try {
   HarnessSmoke.Class.pass(
     'Aa click enables case sensitivity and immediately re-filters',
   );
-  snapshot = driver.snapshot();
-  const wholeWordPosition = snapshot.findText('ab');
-  const regexPosition = snapshot.findText('.*');
-  if (!wholeWordPosition || !regexPosition)
-    throw new Error('FAIL Find option buttons are not visible');
-  for (const position of [wholeWordPosition, regexPosition]) {
+  // #530 blind-press census: the old loop pressed both option buttons from
+  // one stale snapshot; the second press could land on a moved control. Each
+  // press is now separately aimed with a park-off + hover reveal, and the
+  // second aim uses a fresh snapshot taken after the first toggle's status
+  // effect.
+  const pressFindOptionButton = async (
+    buttonText: string,
+    description: string,
+  ): Promise<void> => {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'move',
+      column: 0,
+      row: driver.snapshot().rows - 1,
+      button: 'none',
+    });
+    const restSnapshot = await driver.awaitGridCondition(
+      `the Find ${description} button is painted before the aim`,
+      (candidate) => candidate.findText(buttonText) !== null,
+    );
+    const buttonPosition = restSnapshot.findText(buttonText);
+    if (!buttonPosition)
+      throw new Error(`FAIL Find ${description} button is not visible`);
+    const restCell = restSnapshot.cell(
+      buttonPosition.row,
+      buttonPosition.column,
+    );
+    if (!restCell)
+      throw new Error(`FAIL Find ${description} rest cell is missing`);
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'move',
+      column: buttonPosition.column,
+      row: buttonPosition.row,
+      button: 'none',
+    });
+    await driver.awaitGridCondition(
+      `the Find ${description} button paints its hover state`,
+      (candidate) =>
+        candidate.cell(buttonPosition.row, buttonPosition.column)
+          ?.background !== restCell.background,
+    );
     driver.sendMouse({
       kind: 'press',
-      column: position.column,
-      row: position.row,
+      column: buttonPosition.column,
+      row: buttonPosition.row,
       button: 'left',
     });
     driver.sendMouse({
       kind: 'release',
-      column: position.column,
-      row: position.row,
+      column: buttonPosition.column,
+      row: buttonPosition.row,
       button: 'left',
     });
-  }
+  };
+  await pressFindOptionButton('ab', 'whole-word');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the whole-word button publishes its active state',
+    (status) => status.findWholeWord === true,
+  );
+  await pressFindOptionButton('.*', 'regex');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

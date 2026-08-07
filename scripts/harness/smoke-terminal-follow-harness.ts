@@ -927,6 +927,29 @@ class $SmokeTerminalFollowHarness {
       column += Number(cellColumns[precedingIndex]) + 1;
     }
     const row = panel.top + Math.max(1, Math.floor(panel.height / 2));
+    // #530 blind-press census: the aim comes from status geometry alone, and the target cell
+    // may have been created by the immediately preceding chord. Require the pane to have
+    // PAINTED at the computed region (any non-space glyph in the cell's column span — the
+    // terminal prompt or the agent composer both qualify) before pressing. The residual
+    // body press has no hover reveal (pane bodies paint none), so the paint proof is the
+    // strongest observable condition here and the press is argued safe on it.
+    const paintedCellWidth = Number(cellColumns[targetCell.index]);
+    await this.requiredDriver.awaitGridCondition(
+      `the ${contentKind} pane paints at its computed panel region before ${label}`,
+      (candidate) => {
+        for (
+          let paintedRow = panel.top;
+          paintedRow < panel.top + panel.height;
+          paintedRow += 1
+        ) {
+          const spanText = candidate
+            .rowText(paintedRow)
+            .slice(column, column + Math.max(1, paintedCellWidth - 2));
+          if (spanText.trim().length > 0) return true;
+        }
+        return false;
+      },
+    );
     this.requiredDriver.sendMouse({
       kind: 'press',
       column,
