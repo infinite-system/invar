@@ -1831,6 +1831,17 @@ try {
   console.log(
     '== harness markdown: tables align by display cells and clip inside narrow panes ==',
   );
+  // #530 bycatch fix: the auto-open wait above proves 'Rendered row 01' but
+  // not the table rows, and under gate load the tables paint a frame later —
+  // the bare reads below then throw on a stale frame. Wait for all three
+  // table markers before reading their geometry.
+  snapshot = await driver.awaitGridCondition(
+    'the preview paints all three alignment-table rows before their reads',
+    (candidate) =>
+      previewHasMarker(candidate, 'Left') &&
+      previewHasMarker(candidate, 'alpha') &&
+      previewHasMarker(candidate, '漢'),
+  );
   const headerTableRow = previewRowContaining(snapshot, 'Left');
   const asciiTableRow = previewRowContaining(snapshot, 'alpha');
   const wideTableRow = previewRowContaining(snapshot, '漢');
