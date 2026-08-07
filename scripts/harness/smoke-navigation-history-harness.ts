@@ -10,6 +10,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -393,9 +394,14 @@ try {
   console.log(
     '== harness navigation history: padded breadcrumb buttons drive the same history ==',
   );
+  // #530 blind-press census: the history cluster alone also paints on the PRE-switch
+  // frame, so the aim additionally requires a post-switch marker (the beta.ts pane body)
+  // on the SAME frame that supplies the coordinates.
   const snapshot = await driver.awaitGridCondition(
-    'the breadcrumb row renders both fat history controls',
-    (candidate) => candidate.findText(' ❮  ❯ ') !== null,
+    'the breadcrumb row renders both fat history controls on the beta.ts frame',
+    (candidate) =>
+      candidate.findText(' ❮  ❯ ') !== null &&
+      candidate.findText('beta one') !== null,
   );
   const historyPosition = snapshot.findText(' ❮  ❯ ');
   const breadcrumbRow = historyPosition?.row ?? -1;
@@ -403,6 +409,33 @@ try {
   HarnessSmoke.Class.requireCondition(
     breadcrumbRow >= 0 && backColumn >= 0,
     `breadcrumb buttons rendered (❮ at col ${backColumn}, row ${breadcrumbRow})`,
+  );
+  // #530 blind-press census: the buffer switch just rebuilt the breadcrumb renderable, so
+  // its hit-grid ownership can lag the paint. Park off, hover the back button, and await
+  // its cursorLine hover highlight (the padded three-cell reveal smoke-breadcrumb-harness
+  // gates) before pressing — the reveal dispatches through the same hit grid as the press.
+  const breadcrumbHoverBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.cursorLine.slice(1),
+    16,
+  );
+  driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+  await driver.awaitGridCondition(
+    'the back breadcrumb drops any stale hover highlight before the aim',
+    (candidate) =>
+      candidate.cell(breadcrumbRow, backColumn)?.background !==
+      breadcrumbHoverBackground,
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: backColumn,
+    row: breadcrumbRow,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the back breadcrumb reveals its hover highlight at the aimed cell',
+    (candidate) =>
+      candidate.cell(breadcrumbRow, backColumn)?.background ===
+      breadcrumbHoverBackground,
   );
   driver.sendMouse({
     kind: 'press',

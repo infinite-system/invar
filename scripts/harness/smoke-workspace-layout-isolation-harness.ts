@@ -17,6 +17,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import {
   awaitStatus,
   dragBetweenCells,
@@ -147,10 +148,10 @@ function clickActivityItem(identifier: string): void {
 }
 
 /** Click one of the panel tab bar's own controls, addressed through the geometry the app paints. */
-function clickPanelControl(
+async function clickPanelControl(
   status: Record<string, unknown>,
   action: string,
-): void {
+): Promise<void> {
   if (action === 'pane-list') {
     const separator = status.panelSeparatorGeometry as
       | {
@@ -168,12 +169,33 @@ function clickPanelControl(
     const column = Math.floor(
       (control.startColumn + control.endColumnExclusive - 1) / 2,
     );
+    // #530 blind-press census: the tab row was just resized by the preceding split, so the
+    // control's hit-grid owner can lag the paint. Park off, hover the aimed cell, and await
+    // the tab bar's shared cursorLine hover background (the hoverProvenClickSegment reveal
+    // from smoke-panel-chrome-harness.ts) before pressing.
+    const controlHoverBackground = Number.parseInt(
+      ThemePalettes.Class.DARK.cursorLine.slice(1),
+      16,
+    );
+    driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+    await driver.awaitGridCondition(
+      `the ${action} control drops any stale hover background before the aim`,
+      (candidate) =>
+        candidate.cell(separator.tabRow, column)?.background !==
+        controlHoverBackground,
+    );
     driver.sendMouse({
       kind: 'move',
       column,
       row: separator.tabRow,
-      button: 'left',
+      button: 'none',
     });
+    await driver.awaitGridCondition(
+      `the ${action} control reveals its hover background at the aimed cell`,
+      (candidate) =>
+        candidate.cell(separator.tabRow, column)?.background ===
+        controlHoverBackground,
+    );
     driver.sendMouse({
       kind: 'press',
       column,
@@ -337,7 +359,7 @@ try {
     'workspace A groups two panes in its selected container',
     (status) => (status.panelCellIds as unknown[]).length >= 2,
   );
-  clickPanelControl(groupedStatus, 'pane-list');
+  await clickPanelControl(groupedStatus, 'pane-list');
   const pinnedStatus = await awaitStatus(
     driver,
     statusPath,
@@ -347,6 +369,27 @@ try {
   // The list docks to the panel's right edge; its splitter sits immediately left of it.
   const pinnedRegion = pinnedStatus.panelListGeometry as ScreenRectangle;
   const pinnedWidth = pinnedRegion.width;
+  // #530 blind-press census: the contents list just APPEARED, so its splitter's hit-grid
+  // owner can lag the paint. Require the list PAINTED at its published region (any
+  // non-space glyph inside the rectangle — the pinned list always shows its pane rows)
+  // before aiming the drag. The splitter itself paints no hover reveal, so the paint proof
+  // is the strongest observable condition and the residual drag is argued safe on it.
+  await driver.awaitGridCondition(
+    'the pinned contents list paints at its published region before the drag',
+    (candidate) => {
+      for (
+        let paintedRow = pinnedRegion.top;
+        paintedRow < pinnedRegion.top + pinnedRegion.height;
+        paintedRow += 1
+      ) {
+        const spanText = candidate
+          .rowText(paintedRow)
+          .slice(pinnedRegion.left, pinnedRegion.left + pinnedRegion.width);
+        if (spanText.trim().length > 0) return true;
+      }
+      return false;
+    },
+  );
   await dragBetweenCells(
     driver,
     pinnedRegion.left - 1,

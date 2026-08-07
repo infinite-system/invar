@@ -1164,6 +1164,42 @@ try {
       tmuxSession: 'planted-new-session',
     }),
   );
+  // #530 blind-press census: the meta.json rewrite invalidated the hover
+  // proof above — the row can repaint and the hit grid can lag by one native
+  // render. Await the post-rewrite row (the degraded marker clears because
+  // planted-new-session exists in the fake tmux list), park the pointer off
+  // the row, drop the stale tooltip, then re-hover the action cell and await
+  // its post-rewrite tooltip before pressing.
+  await driver.awaitGridCondition(
+    'the rewritten meta clears the degraded marker from the live row',
+    (snapshot) => !snapshot.rowText(sessionDetailRow).includes('! DEG'),
+  );
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: 0,
+    row: driver.snapshot().rows - 1,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the stale missing-session tooltip is dropped before the re-aim',
+    (snapshot) =>
+      snapshot.findText(
+        'Builder tmux session is missing: planted-dead-session',
+      ) === null,
+  );
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: sessionActionColumn,
+    row: sessionDetailRow,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'the session action tooltip names the rewritten attach target',
+    (snapshot) =>
+      snapshot.findText(
+        'Attach to builder tmux session: planted-new-session',
+      ) !== null,
+  );
   driver.sendMouseClick({
     column: sessionActionColumn,
     row: sessionDetailRow,

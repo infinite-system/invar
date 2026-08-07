@@ -218,16 +218,31 @@ try {
       status.boundedListPopupOpen === false,
   );
   pass('palette outside dismissal consumed the buffer-count press');
+  // #530 blind-press census: the status wait proves the palette MODEL closed, not that its
+  // renderable released the hit-grid cells — a just-closed overlay can still consume a
+  // press for one native render. Require the palette chrome GONE from the painted grid and
+  // aim the second press from that same fresh frame.
+  const dismissedPaletteSnapshot = await driver.awaitGridCondition(
+    'the dismissed palette chrome is gone from the grid before the badge press',
+    (candidate) => candidate.findText('Command Palette') === null,
+  );
+  const uncoveredBadgePosition = dismissedPaletteSnapshot.findText(badgeMarker);
+  requireCondition(
+    uncoveredBadgePosition !== null,
+    'the buffer-count badge is still painted after the palette dismissal',
+  );
+  if (!uncoveredBadgePosition)
+    throw new Error('The uncovered buffer-count badge position is absent');
   driver.sendMouse({
     kind: 'press',
-    column: badgePosition.column,
-    row: badgePosition.row,
+    column: uncoveredBadgePosition.column,
+    row: uncoveredBadgePosition.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: badgePosition.column,
-    row: badgePosition.row,
+    column: uncoveredBadgePosition.column,
+    row: uncoveredBadgePosition.row,
     button: 'left',
   });
   await assertOnlyOverlay(

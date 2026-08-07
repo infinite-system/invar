@@ -337,16 +337,30 @@ try {
   );
   HarnessSmoke.Class.pass('Escape returns typing to the composer');
 
+  // #530 blind-press census: the saved searchIconPosition predates the find bar opening and
+  // closing, so both the icon's cell and its hit-grid owner may have moved. Re-find the icon
+  // on a fresh frame just before the press and aim at the fresh coordinates.
+  const reopenedIconSnapshot = await driver.awaitGridCondition(
+    'the themed search icon paints again after the find bar closes',
+    (candidate) =>
+      themedAgentSearchIconPosition(candidate, footerRegion) !== null,
+  );
+  const freshSearchIconPosition = themedAgentSearchIconPosition(
+    reopenedIconSnapshot,
+    footerRegion,
+  );
+  if (!freshSearchIconPosition)
+    throw new Error('Search icon disappeared before the reopen press');
   driver.sendMouse({
     kind: 'press',
-    column: searchIconPosition.column,
-    row: searchIconPosition.row,
+    column: freshSearchIconPosition.column,
+    row: freshSearchIconPosition.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: searchIconPosition.column,
-    row: searchIconPosition.row,
+    column: freshSearchIconPosition.column,
+    row: freshSearchIconPosition.row,
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(

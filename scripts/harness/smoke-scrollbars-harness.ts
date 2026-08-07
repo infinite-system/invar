@@ -660,6 +660,15 @@ async function proveContinuousScrollbarThumbDrag(
     if (!previewVerticalTarget) {
       throw new Error('The Markdown preview vertical drag target is absent.');
     }
+    // #530 blind-press census: the drag target assumes the preview sits at
+    // scroll position 0, but only the SOURCE's return to 0 was awaited above.
+    // Await the preview's own position before pressing its thumb.
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line preview returns to scroll position 0 before its thumb drag`,
+      (candidate) => Number(candidate.markdownPreviewScrollTop) === 0,
+    );
     const verticalPositions = await dragScrollbarThumb(
       driver,
       statusPath,
@@ -1384,6 +1393,27 @@ async function clickPanelHeadingAction(
   const column =
     control.startColumn +
     Math.floor((control.endColumnExclusive - control.startColumn) / 2);
+  // #530 blind-press census: the pane just opened, so the hit grid can lag
+  // the painted frame by one native render. Park the pointer off the heading,
+  // await any stale hover background dropped, then hover the control and
+  // await its own cursorLine hover reveal before pressing (the canonical
+  // hover-proven click from smoke-panel-chrome-harness.ts).
+  const hoverBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.cursorLine.slice(1),
+    16,
+  );
+  driver.sendMouse({ kind: 'move', column, row: 0, button: 'none' });
+  await driver.awaitGridCondition(
+    `the ${action} panel heading control drops any stale hover background before the aim`,
+    (candidate) =>
+      candidate.cell(heading.row, column)?.background !== hoverBackground,
+  );
+  driver.sendMouse({ kind: 'move', column, row: heading.row, button: 'none' });
+  await driver.awaitGridCondition(
+    `the ${action} panel heading control reveals its hover background at the aimed cell`,
+    (candidate) =>
+      candidate.cell(heading.row, column)?.background === hoverBackground,
+  );
   driver.sendMouse({
     kind: 'press',
     column,

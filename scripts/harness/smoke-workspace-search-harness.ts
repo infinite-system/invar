@@ -564,6 +564,33 @@ async function driveScale(lineCount: 10 | 100_000): Promise<void> {
         'wheel momentum advances the same Search result scroll position',
         (status) => Number(status.workspaceSearchScrollTop) > pageTop,
       );
+      // #530 blind-press census: wheel momentum can still move the scroll
+      // after the awaitStatus above returns, so a thumb measured now can be
+      // stale by press time. Await a SETTLED scroll position first: two
+      // consecutive frame-settle reads of the same graph value agree.
+      const settleDeadline = Date.now() + 15_000;
+      let previousSettledScrollTop: unknown = null;
+      for (;;) {
+        const settledScrollTop = (
+          await GraphClient.Class.query(
+            statusPath,
+            'workspaceSet.active.workspaceSearch.resultTree.scrollTop',
+            'settle',
+          )
+        ).value;
+        if (
+          previousSettledScrollTop !== null &&
+          settledScrollTop === previousSettledScrollTop
+        ) {
+          break;
+        }
+        previousSettledScrollTop = settledScrollTop;
+        if (Date.now() > settleDeadline) {
+          throw new Error(
+            'FAIL the Search scroll position never settled after wheel momentum',
+          );
+        }
+      }
       const scrollSnapshot = await driver.awaitSnapshot(
         (candidate) => candidate.findText('DRIVE-LINE') !== null,
       );
@@ -759,6 +786,16 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
     );
 
     if (lineCount === 10) {
+      // #530 blind-press census: the graph close above proves state, not
+      // paint. Await the consent text gone before aiming the next press —
+      // the just-closed overlay can still own the hit-grid cell for one
+      // native render. The editor body has no hover reveal; the residual
+      // one-native-render window is argued in the census table.
+      await driver.awaitGridCondition(
+        'replace drift: the cancelled consent dialog is no longer painted',
+        (candidate) =>
+          candidate.findText('Replace 1 item across 1 file?') === null,
+      );
       snapshot = driver.snapshot();
       const currentPaneRectangle = searchPaneRectangle(snapshot);
       const editorRectangle = {
@@ -811,6 +848,16 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
         'quitConfirmation.open',
         false,
       );
+      // #530 blind-press census: await the drift consent text gone before
+      // aiming; the editor body has no hover reveal — the residual
+      // one-native-render window is argued in the census table.
+      await driver.awaitGridCondition(
+        'replace drift: the drift consent dialog is no longer painted',
+        (candidate) =>
+          candidate.findText(
+            '1 of 1 items changed since this search and will be skipped.',
+          ) === null,
+      );
       const changedPosition = driver.snapshot().findText('DRIVEX-LINE-000010');
       if (!changedPosition)
         throw new Error('FAIL the drifted source line is missing');
@@ -823,6 +870,20 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       );
     }
 
+    // #530 blind-press census: on the 100,000-line path the press below
+    // directly follows the graph-proven Escape close — await the consent
+    // text gone before aiming (on the 10-line path the drift dialog absence
+    // is proven above). No hover reveal on Replace All's surface is
+    // exercised here; the residual one-native-render window is argued in
+    // the census table.
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: no consent dialog remains painted before Replace All`,
+      (candidate) =>
+        candidate.findText('Replace 1 item across 1 file?') === null &&
+        candidate.findText(
+          '1 of 1 items changed since this search and will be skipped.',
+        ) === null,
+    );
     snapshot = driver.snapshot();
     const confirmedReplaceAllPosition = snapshot.findText('Replace All');
     if (!confirmedReplaceAllPosition)
@@ -911,6 +972,13 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       'quitConfirmation.open',
       true,
     );
+    // #530 blind-press census: prove the redo consent text painted while
+    // open, so the absence wait after the close is not pre-satisfied.
+    await driver.awaitGridCondition(
+      `replace scale ${lineCount}: redo consent names one item and one file`,
+      (candidate) =>
+        candidate.findText('Redo will replace 1 item across 1 file.') !== null,
+    );
     driver.sendKeys('Tab', 'Enter');
     await GraphClient.Class.awaitValue(
       statusPath,
@@ -927,6 +995,15 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
         status.dirty,
     );
     if (lineCount === 10) {
+      // #530 blind-press census: await the redo consent text gone before
+      // aiming; the editor body has no hover reveal — the residual
+      // one-native-render window is argued in the census table.
+      await driver.awaitGridCondition(
+        'undo drift: the redo consent dialog is no longer painted',
+        (candidate) =>
+          candidate.findText('Redo will replace 1 item across 1 file.') ===
+          null,
+      );
       snapshot = driver.snapshot();
       const replacementPosition = snapshot.findText(
         `${replacementText} content at scale`,
@@ -968,6 +1045,16 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
         statusPath,
         'quitConfirmation.open',
         false,
+      );
+      // #530 blind-press census: await the undo-drift consent text gone
+      // before aiming; the editor body has no hover reveal — the residual
+      // one-native-render window is argued in the census table.
+      await driver.awaitGridCondition(
+        'undo drift: the undo consent dialog is no longer painted',
+        (candidate) =>
+          candidate.findText(
+            'Undo will revert 0 safe items across 0 files.',
+          ) === null,
       );
       const changedReplacementPosition = driver
         .snapshot()
