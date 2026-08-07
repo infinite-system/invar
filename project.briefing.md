@@ -4,6 +4,28 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 79 — 2026-08-06 21:10 EDT — #530 LANDED; DAY CLOSED; FLEET IDLE
+
+Anchors 77-78 stand. Since: #530 -> d8a4a840 (44m — the blind-press
+census: 321 presses judged across 76 smokes, 39 movable-target sites
+fixed with hover-verified aim, 20 argued safe with grounds, census
+script committed; the lost-gesture class is closed by SWEEP). #531 now
+holds TWO scrollbars sightings — the third dispatches it. Disk
+recovered to 7.0G after gate scratch cleared (tier alert fired once at
+6G as designed; user notified via terminal push; rm still permission-
+blocked; hard stop 5G).
+
+DAY TOTALS: eleven landings (504, 505 morning wave; 532-538 + 530),
+Find/Replace complete end-to-end, RULE THREE ratified + two-arm
+acceptance + review checklist + mid-flight sampling encoded, sentinel
+tier-gated, three flake classes killed.
+
+FLEET IDLE. AWAITING USER: record-refinement batch (design section 12
+four + hit-grid clock law + ~10 smaller), #526 rename, maintenance
+queue #519, #520, #522-#525, #527, #528, #531 (two-sighting hold).
+No further self-dispatch planned. Crons (:07, :37) + fleet-watch
+(Monitor b232awcbw, tier-gated) armed.
+
 # RESUME ANCHOR 78 — 2026-08-06 19:49 EDT — #538 LANDED; FLEET IDLE; AWAITING USER
 
 All of anchor 77 stands (Find/Replace complete, six milestones, whole-
