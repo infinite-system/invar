@@ -4,6 +4,19 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 80 — 2026-08-07 17:45 EDT — LOOPS DISARMED BY USER
+
+Anchor 79 stands (eleven landings 2026-08-06, Find/Replace complete,
+fleet idle, decision queue awaiting the user). CHANGE: the user disarmed
+both crons ("ok disarm loops for now") — the :07 orchestration loop and
+the :37 sweep are DELETED from the session. Do NOT re-arm them without
+the user's word; on session restart, ASK before re-arming rather than
+following the skill's re-arm-on-restart list (this instruction
+supersedes it until the user says otherwise). fleet-watch Monitor
+(b232awcbw) stays armed — event wakes only, no clock.
+
+Fleet: zero builders, zero gates, checkout clean, disk ~7G.
+
 # RESUME ANCHOR 79 — 2026-08-06 21:10 EDT — #530 LANDED; DAY CLOSED; FLEET IDLE
 
 Anchors 77-78 stand. Since: #530 -> d8a4a840 (44m — the blind-press
