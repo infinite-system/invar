@@ -1,0 +1,15 @@
+{
+  "task": 530,
+  "slug": "blind-press-suite-census",
+  "branch": "fleet/530-blind-press-suite-census",
+  "worktree": ".invar/worktrees/530-blind-press-suite-census",
+  "tmuxSession": "invar/530-blind-press-suite-census",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-low-530-blind-press-suite-census.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "b9553ac53b4b32abccf4242b6c70b6047fdab8f9",
+  "startedAt": "2026-08-06T20:25:48-04:00"
+}

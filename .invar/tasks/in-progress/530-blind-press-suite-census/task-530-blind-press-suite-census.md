@@ -1,7 +1,7 @@
 # 530 — blind press suite census
 
 Priority: verification-integrity
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5
