@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { GlyphLevel } from '../../src/modules/theme/TerminalCapabilities';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -28,6 +29,37 @@ function clickCell(
   driver.sendMouse({ kind: 'move', column, row, button: 'none' });
   driver.sendMouse({ kind: 'press', column, row, button: 'left' });
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
+}
+
+/** #530 blind-press census: hover-verified activation for a control whose
+ *  renderable a prior action just created or moved (a just-opened panel's tab
+ *  row, a just-pinned list's add header). The press dispatches through the
+ *  renderer's per-frame native hit grid, which can lag the painted frame
+ *  (#529 diagnosis) — the shared cursorLine hover background is dispatched
+ *  through that same grid, so awaiting it at the aimed cell proves the grid
+ *  resolves the control there before the press. Parks the pointer at the
+ *  origin first so a stale hover cannot pre-satisfy the reveal wait. */
+async function hoverProvenClickCell(
+  driver: PtyTestDriver.Model,
+  column: number,
+  row: number,
+  description: string,
+): Promise<void> {
+  const hoverBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.cursorLine.slice(1),
+    16,
+  );
+  driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+  await driver.awaitGridCondition(
+    `${description} drops any stale hover background before the aim`,
+    (candidate) => candidate.cell(row, column)?.background !== hoverBackground,
+  );
+  driver.sendMouse({ kind: 'move', column, row, button: 'none' });
+  await driver.awaitGridCondition(
+    `${description} reveals its hover background at the aimed cell`,
+    (candidate) => candidate.cell(row, column)?.background === hoverBackground,
+  );
+  clickCell(driver, column, row);
 }
 
 function statusButtonColumn(
@@ -136,7 +168,12 @@ async function driveSharedCloseGlyphTier(
     };
     const pluginAdd = emptyPanelGeometry.spaceAdd;
     if (!pluginAdd) throw new Error('Missing Plugin Add control');
-    clickCell(tierDriver, pluginAdd.startColumn + 1, emptyPanelGeometry.tabRow);
+    await hoverProvenClickCell(
+      tierDriver,
+      pluginAdd.startColumn + 1,
+      emptyPanelGeometry.tabRow,
+      `${glyphLevel} Plugin Add on the just-opened panel`,
+    );
     await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
@@ -219,7 +256,12 @@ async function driveSharedCloseGlyphTier(
       left: number;
       top: number;
     };
-    clickCell(tierDriver, emptyListGeometry.left + 2, emptyListGeometry.top);
+    await hoverProvenClickCell(
+      tierDriver,
+      emptyListGeometry.left + 2,
+      emptyListGeometry.top,
+      `${glyphLevel} add header of the just-pinned list`,
+    );
     await HarnessSmoke.Class.awaitStatus(
       tierDriver,
       tierStatusPath,
@@ -408,7 +450,12 @@ try {
   };
   const pluginAdd = emptyPanelGeometry.spaceAdd;
   if (!pluginAdd) throw new Error('Missing Plugin Add control');
-  clickCell(driver, pluginAdd.startColumn + 1, emptyPanelGeometry.tabRow);
+  await hoverProvenClickCell(
+    driver,
+    pluginAdd.startColumn + 1,
+    emptyPanelGeometry.tabRow,
+    'the Plugin Add on the just-opened panel',
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

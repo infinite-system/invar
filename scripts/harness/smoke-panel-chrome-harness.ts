@@ -117,6 +117,42 @@ function clickCell(
   driver.sendMouseClick({ column, row, button: 'left' });
 }
 
+/** #530 blind-press census: hover-verified activation for a tab-row segment
+ *  whose renderable a prior action just moved, created, or resized. The press
+ *  dispatches through the renderer's per-frame native hit grid, which can lag
+ *  the painted frame (#529 diagnosis), so a blind press right after a
+ *  relocation can be consumed by the renderable that USED to own the cell.
+ *  The hover reveal (the shared cursorLine hover background, #514 hover law)
+ *  dispatches through that same hit grid — observing it at the aimed cell
+ *  proves the grid resolves the segment there before the press relies on it.
+ *  Parks the pointer on the workspace strip first so a stale still-hovered
+ *  segment cannot pre-satisfy the reveal wait (the #529 park-off rule). */
+async function hoverProvenClickSegment(
+  driver: PtyTestDriver.Model,
+  row: number,
+  segment: { startColumn: number; endColumnExclusive: number },
+  description: string,
+): Promise<void> {
+  const column =
+    segment.startColumn +
+    Math.floor((segment.endColumnExclusive - segment.startColumn) / 2);
+  const hoverBackground = Number.parseInt(
+    ThemePalettes.Class.DARK.cursorLine.slice(1),
+    16,
+  );
+  driver.sendMouse({ kind: 'move', column, row: 0, button: 'none' });
+  await driver.awaitGridCondition(
+    `${description} drops any stale hover background before the aim`,
+    (candidate) => candidate.cell(row, column)?.background !== hoverBackground,
+  );
+  driver.sendMouse({ kind: 'move', column, row, button: 'none' });
+  await driver.awaitGridCondition(
+    `${description} reveals its hover background at the aimed cell`,
+    (candidate) => candidate.cell(row, column)?.background === hoverBackground,
+  );
+  driver.sendMouseClick({ column, row, button: 'left' });
+}
+
 async function driveLegacyPersistedPaneRestore(): Promise<void> {
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'invar-panel-legacy-identity-'),
@@ -708,28 +744,91 @@ async function driveTerminalLifecycleProtocol(
     );
   };
 
+  // #530 blind-press census: every lifecycle-list press below follows an
+  // add/remove/split/expand that just relaid out the list, so each wrapper
+  // proves the hit grid resolves its control through the control's own hover
+  // reveal before pressing (the add header paints the shared cursorLine hover
+  // background; row controls only exist while hovered and announce themselves
+  // through their tooltips). A blind press here is the #538 lost-gesture shape.
+  const hoverBackgroundTone = Number.parseInt(
+    ThemePalettes.Class.DARK.cursorLine.slice(1),
+    16,
+  );
+
+  const parkPointerOffList = async (
+    column: number,
+    row: number,
+  ): Promise<void> => {
+    driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+    await driver.awaitGridCondition(
+      'the lifecycle list drops any stale hover paint before the aim',
+      (candidate) =>
+        candidate.cell(row, column)?.background !== hoverBackgroundTone,
+    );
+  };
+
   const addInstance = async (identifier = 'terminal'): Promise<void> => {
     const geometry = listGeometry();
-    clickCell(driver, geometry.left + 2, geometry.top);
+    const headerColumn = geometry.left + 2;
+    await parkPointerOffList(geometry.left + 1, geometry.top);
+    driver.sendMouse({
+      kind: 'move',
+      column: headerColumn,
+      row: geometry.top,
+      button: 'none',
+    });
+    await driver.awaitGridCondition(
+      'the add header reveals its hover background before the press',
+      (candidate) =>
+        candidate.cell(geometry.top, geometry.left + 1)?.background ===
+        hoverBackgroundTone,
+    );
+    clickCell(driver, headerColumn, geometry.top);
     await choosePopupItem(identifier);
   };
 
-  const closeRow = (rowIndex: number): void => {
+  const closeRow = async (rowIndex: number): Promise<void> => {
     const geometry = listGeometry();
-    clickCell(
-      driver,
-      geometry.left + geometry.width - 2,
-      geometry.top + 2 + rowIndex,
+    const closeColumn = geometry.left + geometry.width - 2;
+    const row = geometry.top + 2 + rowIndex;
+    driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+    await driver.awaitGridCondition(
+      'the row close reveal drops before the aim',
+      (candidate) => candidate.findText('Close instance') === null,
     );
+    driver.sendMouse({
+      kind: 'move',
+      column: closeColumn,
+      row,
+      button: 'none',
+    });
+    await driver.awaitGridCondition(
+      'the hovered row reveals its Close instance control before the press',
+      (candidate) => candidate.findText('Close instance') !== null,
+    );
+    clickCell(driver, closeColumn, row);
   };
 
   const splitRow = async (rowIndex: number): Promise<void> => {
     const geometry = listGeometry();
-    clickCell(
-      driver,
-      geometry.left + geometry.width - 5,
-      geometry.top + 2 + rowIndex,
+    const splitColumn = geometry.left + geometry.width - 5;
+    const row = geometry.top + 2 + rowIndex;
+    driver.sendMouse({ kind: 'move', column: 0, row: 0, button: 'none' });
+    await driver.awaitGridCondition(
+      'the row split reveal drops before the aim',
+      (candidate) => candidate.findText('Split instance') === null,
     );
+    driver.sendMouse({
+      kind: 'move',
+      column: splitColumn,
+      row,
+      button: 'none',
+    });
+    await driver.awaitGridCondition(
+      'the hovered row reveals its Split instance control before the press',
+      (candidate) => candidate.findText('Split instance') !== null,
+    );
+    clickCell(driver, splitColumn, row);
     await choosePopupItem('terminal');
   };
 
@@ -759,7 +858,12 @@ async function driveTerminalLifecycleProtocol(
     );
     const listToggle = tabBar(status).instancesToggle;
     if (!listToggle) throw new Error('Missing instances-list toggle');
-    clickSegment(driver, tabBar(status).tabRow, listToggle);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).tabRow,
+      listToggle,
+      'the instances toggle on the just-opened panel',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -962,21 +1066,21 @@ async function driveTerminalLifecycleProtocol(
       rightEdgeCloseSnapshot.findText('Close instance') !== null,
       `${lineCount}-line truncation and overlay controls fill the same row width`,
     );
-    closeRow(0);
+    await closeRow(0);
     await exactState(
       'removing terminal 1',
       ['pane-instance-2', 'pane-instance-3'],
       [['pane-instance-2'], ['pane-instance-3']],
       ['pane-instance-3'],
     );
-    closeRow(0);
+    await closeRow(0);
     await exactState(
       'removing terminal 2',
       ['pane-instance-3'],
       [['pane-instance-3']],
       ['pane-instance-3'],
     );
-    closeRow(0);
+    await closeRow(0);
     await exactState('removing the last terminal', [], [], []);
     await GraphClient.Class.awaitValue(
       statusPath,
@@ -1013,7 +1117,7 @@ async function driveTerminalLifecycleProtocol(
       [['pane-instance-4'], ['pane-instance-5'], ['pane-instance-6']],
       ['pane-instance-6'],
     );
-    closeRow(1);
+    await closeRow(1);
     await exactState(
       'removing the middle recreated terminal',
       ['pane-instance-4', 'pane-instance-6'],
@@ -1102,7 +1206,7 @@ async function driveTerminalLifecycleProtocol(
       ['pane-instance-11'],
     );
 
-    closeRow(4);
+    await closeRow(4);
     await exactState(
       'removing the normal terminal',
       [
@@ -1121,7 +1225,7 @@ async function driveTerminalLifecycleProtocol(
       ],
       ['pane-instance-11'],
     );
-    closeRow(4);
+    await closeRow(4);
     await exactState(
       'removing the Invar agent',
       [
@@ -1138,7 +1242,7 @@ async function driveTerminalLifecycleProtocol(
       ],
       ['pane-instance-11'],
     );
-    closeRow(4);
+    await closeRow(4);
     const survivingIds = [
       'pane-instance-4',
       'pane-instance-6',
@@ -1206,7 +1310,12 @@ async function driveTerminalLifecycleProtocol(
       (control) => control.action === 'expand',
     );
     if (!expand) throw new Error('Missing lifecycle restore control');
-    clickSegment(driver, tabBar(status).row, expand);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).row,
+      expand,
+      'the restore control on the relocated expanded row',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -1226,7 +1335,12 @@ async function driveTerminalLifecycleProtocol(
     );
     if (!expand)
       throw new Error('Missing lifecycle expand control before toggle');
-    clickSegment(driver, tabBar(status).row, expand);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).row,
+      expand,
+      'the expand control after the restore relocation',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -1268,7 +1382,12 @@ async function driveTerminalLifecycleProtocol(
     );
     if (!expand)
       throw new Error('Missing lifecycle expand control before resize');
-    clickSegment(driver, tabBar(status).row, expand);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).row,
+      expand,
+      'the expand control after the Ctrl+J reopen',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -1289,7 +1408,12 @@ async function driveTerminalLifecycleProtocol(
       (control) => control.action === 'expand',
     );
     if (!expand) throw new Error('Missing resized lifecycle restore control');
-    clickSegment(driver, tabBar(status).row, expand);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).row,
+      expand,
+      'the restore control after the 100x32 resize',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -1308,7 +1432,12 @@ async function driveTerminalLifecycleProtocol(
       (control) => control.action === 'expand',
     );
     if (!expand) throw new Error('Missing expand control before create/remove');
-    clickSegment(driver, tabBar(status).row, expand);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).row,
+      expand,
+      'the expand control after the resized restore',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -1322,7 +1451,7 @@ async function driveTerminalLifecycleProtocol(
       [...survivingGroups, ['pane-instance-12']],
       ['pane-instance-12'],
     );
-    closeRow(4);
+    await closeRow(4);
     status = await exactState(
       'removing terminal 12 while expanded',
       survivingIds,
@@ -1357,7 +1486,12 @@ async function driveTerminalLifecycleProtocol(
     );
     if (!expand) throw new Error('Missing expand control before rapid cycle');
     const frameBeforeRapidCycle = Number(status.frame);
-    clickSegment(driver, tabBar(status).row, expand);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).row,
+      expand,
+      'the expand control opening the rapid cycle',
+    );
     // The expand cycle RELOCATES the tab row (the expanded panel substitutes the
     // editor-center rows, layout.invariants.md), so the Restore control is not at
     // the cell the Expand click used. A second blind click at that stale cell only
@@ -1430,6 +1564,17 @@ async function driveTerminalLifecycleProtocol(
     const firstCellColumns = Number(splitCellColumns[0] ?? 0);
     const dividerColumn = panelLeft + firstCellColumns;
     const dividerRow = dragRemovalGeometry.top + 4;
+    // #530 blind-press census: the rapid expand cycle just relocated the whole
+    // panel body, so prove the measured divider cell matches the CURRENT
+    // painted frame before pressing on it. The divider has no known hover
+    // reveal (bycatch: instrument ask), so this paint anchor is the strongest
+    // available proof; the residual one-native-render hit-grid window is
+    // argued in the #530 census table.
+    await driver.awaitGridCondition(
+      `${lineCount}-line split divider paints at its measured cell`,
+      (candidate) =>
+        candidate.cell(dividerRow, dividerColumn)?.characters === '│',
+    );
     driver.sendMouse({
       kind: 'move',
       column: dividerColumn,
@@ -1486,7 +1631,7 @@ async function driveTerminalLifecycleProtocol(
       survivingGroups,
       ['pane-instance-4', 'pane-instance-7'],
     );
-    closeRow(0);
+    await closeRow(0);
     await exactState(
       'removing the active split member after the drag releases',
       ['pane-instance-6', 'pane-instance-7', 'pane-instance-8'],
@@ -1747,7 +1892,12 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
     );
     const initialSpaceAdd = tabBar(status).spaceAdd;
     if (!initialSpaceAdd) throw new Error('Missing initial Add geometry');
-    clickSegment(driver, tabBar(status).tabRow, initialSpaceAdd);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).tabRow,
+      initialSpaceAdd,
+      'the space Add on the panel Ctrl+Shift+a just opened',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -2457,7 +2607,12 @@ async function driveAtSize(columns: number, rows: number): Promise<void> {
       (control) => control.action === 'expand',
     );
     if (!expand) throw new Error('Missing Expand geometry');
-    clickSegment(driver, tabBar(status).row, expand);
+    await hoverProvenClickSegment(
+      driver,
+      tabBar(status).row,
+      expand,
+      'the expand control on the panel Ctrl+J just reopened',
+    );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
