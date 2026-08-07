@@ -1835,12 +1835,21 @@ try {
   // not the table rows, and under gate load the tables paint a frame later —
   // the bare reads below then throw on a stale frame. Wait for all three
   // table markers before reading their geometry.
+  // The wait mirrors the reads exactly (previewRowContaining slices the
+  // pane's columns): on a torn mid-paint frame a marker straddling the right
+  // boundary passes a start-column check but fails the sliced read.
   snapshot = await driver.awaitGridCondition(
     'the preview paints all three alignment-table rows before their reads',
-    (candidate) =>
-      previewHasMarker(candidate, 'Left') &&
-      previewHasMarker(candidate, 'alpha') &&
-      previewHasMarker(candidate, '漢'),
+    (candidate) => {
+      try {
+        previewRowContaining(candidate, 'Left');
+        previewRowContaining(candidate, 'alpha');
+        previewRowContaining(candidate, '漢');
+        return true;
+      } catch {
+        return false;
+      }
+    },
   );
   const headerTableRow = previewRowContaining(snapshot, 'Left');
   const asciiTableRow = previewRowContaining(snapshot, 'alpha');
