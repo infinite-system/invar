@@ -1,7 +1,7 @@
 # 530 — blind press suite census
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — d8a4a840 — The lost-gesture class closed suite-wide: 321 presses censused, 39 movable-target sites fixed with hover-verified aim, 20 argued safe; census script committed for re-runs.
 Engine: claude
 Environment: linux
 Model: fable-5

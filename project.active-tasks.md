@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #530 [blind-press-suite-census](.invar/tasks/in-progress/530-blind-press-suite-census/task-530-blind-press-suite-census.md)  [building]
-  `tmux attach -t invar/530-blind-press-suite-census`
-
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -157,7 +153,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 239 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 240 — full log: project.tasks-completed.md)
 - #538 [panel-chrome-flake-second-wave](.invar/tasks/completed/538-panel-chrome-flake-second-wave/task-538-panel-chrome-flake-second-wave.md) — 0cd8aab6 — The panel-chrome contention flake's third lost-gesture member killed: hover-verified aim after layout moves the control; 15/15 contention green.
 - #537 [find-replace-doctrine-pass](.invar/tasks/completed/537-find-replace-doctrine-pass/task-537-find-replace-doctrine-pass.md) — 0a2b12f0 — Milestone 6: doctrine pass over both search surfaces — counts pluralize, button state tiers complete, scrollbar proven; the six-milestone Find/Replace build is closed.
 - #536 [workspace-replace-consent-history](.invar/tasks/completed/536-workspace-replace-consent-history/task-536-workspace-replace-consent-history.md) — 3a006e4f — Milestone 5: workspace replace with counted consent, per-item drift, undo/redo through one coordinator; structural round moved the patch engine to workspace/ and split the state machines; conductor-driven twice.
@@ -165,6 +161,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #534 [workspace-search-backend](.invar/tasks/completed/534-workspace-search-backend/task-534-workspace-search-backend.md) — 7ab4bbf3 — Milestone 3: bounded streaming workspace search with one query compiler, honest rg-unavailable state, cap/cancel/overlay proven; no visible change, conductor-verified on an rg-less machine.
 - #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/completed/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md) — 129fc4b9 — Tasks header segments without pipes; Open button works headless with tooltip; phase parity via one pure helper; full cell-level parity table; conductor acceptance-driven before landing.
 - #532 [workspace-undo-transaction-core](.invar/tasks/completed/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md) — accf2bc8 — Milestone 2 data core: reverse-patch transactions, interned arena, workspace undo coordinator with lifecycle-safe external references; no visible change, conductor-driven.
+- #530 [blind-press-suite-census](.invar/tasks/completed/530-blind-press-suite-census/task-530-blind-press-suite-census.md) — d8a4a840 — The lost-gesture class closed suite-wide: 321 presses censused, 39 movable-target sites fixed with hover-verified aim, 20 argued safe; census script committed for re-runs.
 - #529 [panel-chrome-rapid-expand-flake](.invar/tasks/completed/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md) — cef91323 — Gate flake killed: settle-boundary status republish (starved publisher) + hover-verified edge drags (hit-grid race); 20/20 contention green; record refined with the starved-wait impossible-shape.
 - #521 [repair-in-file-replace-all-undo](.invar/tasks/completed/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md) — 2b633367 — Replace All undo repaired through the editor delta path with consent dialogs, toggles, and scale-parity drives; Find/Replace milestone 1 complete.
 - #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/completed/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md) — 9aaca56b — Tasks pane and tasks:watch share ONE renderer: overlay hover grammar, segmented LIVE|ACTIVE|DONE, full-line coloring, 60fps one-heartbeat motion; round 2 fixed the global-tooltip-clearing dock bug.
@@ -172,4 +169,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #516 [the-ui-design-doctrine](.invar/tasks/completed/516-the-ui-design-doctrine/task-516-the-ui-design-doctrine.md) — ACTIVE
 - #515 [find-replace-research-and-design](.invar/tasks/completed/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md) — b27d892b — Find/Replace full design landed: two surfaces, reverse-patch transactions, dialog copy, four proposed records, six milestones; milestone 1 filed as #521.
 - #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/completed/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md) — aee4a082 — Panel chrome rebuilt: one no-create bottom-panel toggle through the status seam, overlay hover grammar on instance rows, expand-trap fixed, fresh-boot drive honesty via a completed-frame boundary; three gate rounds, contract refines landed with the code.
-- #513 [drops-into-agents-paste-the-remote-path](.invar/tasks/completed/513-drops-into-agents-paste-the-remote-path/task-513-drops-into-agents-paste-the-remote-path.md) — 22c80f69 — Dropped files paste as remote-usable paths into the focused agent/terminal pane via the PaneContent drop capability.

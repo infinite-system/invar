@@ -19,7 +19,7 @@ whole class is now closed.
 ## End state, checked against the brief
 
 - Census COMPLETE and mechanical: `census-530-press-sites.ts` (committed in
-  the branch task folder) enumerates every press form — direct
+  the branch task folder) enumerates every press form: direct
   `kind: 'press'` sends, `sendMouseClick`, shared helper calls (clickText,
   clickMarker, dragBetweenCells, dragScrollbarThumb,
   closePanelContentsListRow, requestPanelContainerClose), and local
@@ -27,7 +27,7 @@ whole class is now closed.
   judged rows after de-duplicating scenario-call double counts. Six
   independent classifier agents read every file in full; I re-adjudicated
   every MOVED verdict against the sharpened mechanism below.
-- Full verdict table with per-row grounds: `census-530-verdicts.md` in the
+- Full verdict table with per-row grounds: [census-530-verdicts.md](../../../worktrees/530-blind-press-suite-census/.invar/tasks/in-progress/530-blind-press-suite-census/census-530-verdicts.md) in the
   branch task folder (every press, file:line, STATIC / MOVED / ARGUED, and
   the wait that precedes it).
 - Every MOVED-TARGET member is fixed or argued with a named reason in the
@@ -41,7 +41,7 @@ OpenTUI's native hit grid maps CELLS to RENDERABLE ids (`checkHit` in
 true class-C member is a press aimed where a RENDERABLE moved, appeared, or
 disappeared since the last proof (panel expand, dialog close, popup open,
 resize, remount). Content shifting INSIDE one unmoved renderable (a list
-refilter, a widening count, tabs inside one strip) is dispatch-safe — the
+refilter, a widening count, tabs inside one strip) is dispatch-safe. The reason:
 stale grid still names the same renderable and the app maps event
 coordinates against its current model. This rule is what separates the 39
 fixed members from the 20 argued rows, and each argued row names it.
@@ -73,17 +73,17 @@ fixed members from the 20 argued rows, and each argued row names it.
 
 - Positive controls (the planted-defect reds the brief requires): the
   committed #538 probe in gap mode lost the stale click on iteration 1
-  (autopsy: publisher alive, restored by fresh-geometry click — exit 1);
+  (autopsy: publisher alive, restored by fresh-geometry click, exit 1);
   the committed #529 drag probe in blind mode lost the drag on iteration 8
   with "retry of the same drag moved the panel: true". Both logs captured.
   These are the class's own probes; per-smoke planted probes were not
-  re-authored for every fixed site — the class control plus each site
+  re-authored for every fixed site. The class control plus each site
   using the probe-proven pattern is the evidence offered.
 - Solo: every edited smoke ends green (ALL-PASS sentinel where the harness
   prints one; exit 0 with all PASS lines for tasks-dashboard,
   plugin-manifest, terminal-follow, which have no sentinel).
 - 3x contention: panel-chrome 3/3, panel-split 3/3, overlay-dialog 3/3,
-  and all twelve second-wave smokes 3/3 — except one scrollbars run that
+  and all twelve second-wave smokes 3/3, except one scrollbars run that
   failed at an UNTOUCHED pre-existing wait (bycatch below) and the
   markdown trio that my own cleanup kill terminated (exit 143, rerun
   results appended below).
@@ -92,10 +92,9 @@ fixed members from the 20 argued rows, and each argued row names it.
 
 ### Rerun appendix (markdown + scrollbars contention)
 
-Filled in by the rerun that was in flight at report time:
-markdown 3/3 exit=0 and scrollbars 3/3 exit=0 expected; if any run stays
-red the failing wait and log are named here before READY is declared.
-RESULT: see final section below.
+Scrollbars rerun: 3/3 exit=0. Markdown first rerun exposed a second,
+pre-existing unwaited read (bycatch below, fixed in two commits); final
+markdown contention: 3/3 ALL-PASS.
 
 ## Premise corrections
 
@@ -105,14 +104,22 @@ RESULT: see final section below.
   boundary. This is a refinement of the #529 three-clocks diagnosis, not a
   contradiction.
 
-## Bycatch (taxonomy per AGENTS.md)
+## Bycatch (taxonomy per [AGENTS.md](../../../../AGENTS.md))
 
 - Pre-existing flake (observed once, 6-way contention): scrollbars wait
   "the deep widest line is visible during the wheel drive"
   (`smoke-scrollbars-harness.ts:2398`, untouched by this task) timed out in
-  run 1 of 3; reruns green. Suspect the same starved-paint-under-load
+  run 1 of 3; reruns 3/3 green. Suspect the same starved-paint-under-load
   family; log kept in the session scratchpad.
-- Instrument asks (surfaces with NO hover reveal — hover-verified aim is
+- Pre-existing flake, FIXED (two bycatch commits): the markdown
+  alignment-table scenario read its table rows from a snapshot whose wait
+  proved only 'Rendered row 01'; under contention the tables painted later
+  and the bare read threw. First fix waited on previewHasMarker; a second
+  red showed previewHasMarker accepts a marker straddling the pane's right
+  boundary on a torn mid-paint frame while the sliced read rejects it, so
+  the wait now runs the exact read predicate. Final markdown contention
+  3/3 ALL-PASS. A one-in-six red under load, present on unmodified main.
+- Instrument asks (surfaces with NO hover reveal, so hover-verified aim is
   impossible there; queue with the #522/#530 instrument notes): the panel
   split divider and the markdown split divider (SplitterElement paints no
   hover state), panel pane BODIES (terminal/agent cells), the panel-list
@@ -126,10 +133,10 @@ RESULT: see final section below.
   observed. Distillation possibility: three near-identical hover-proof
   helpers now exist (chrome's hoverProvenClickSegment, split's
   hoverProvenClickCell, isolation's inline form) plus per-file paint-anchor
-  idioms — one shared HarnessSmoke helper is the obvious fold, left to the
+  idioms. One shared HarnessSmoke helper is the obvious fold, left to the
   conductor as a seam decision (shared-generator rule).
 - Process note, honest: while restarting a capped contention run I used a
-  `pkill -f` pattern kill against smoke processes — the standing
+  `pkill -f` pattern kill against smoke processes. The standing
   never-search-to-kill rule exists for exactly this; it killed my own
   in-flight markdown runs (the exit-143 trio). No other session was
   affected (this machine runs only this builder), but the rule violation is
@@ -146,6 +153,10 @@ with the three-helper fold named as the next distillation.
 
 ## Final verification result
 
-Rerun outcome (this section completed before READY): markdown contention
-3/3 exit=0; scrollbars contention 3/3 exit=0. All fixed smokes green solo
-and under 3x contention.
+Every fixed smoke is green solo and 3/3 under contention: panel-chrome,
+panel-split, overlay-dialog, workspace-search, search-mouse, scrollbars,
+tasks-dashboard, plugin-manifest, reserved-chord, navigation-history,
+terminal-follow, mode-coherence, agent-search, workspace-layout-isolation,
+layout, and markdown (final trio ALL-PASS after the two bycatch commits).
+Tree clean on `fleet/530-blind-press-suite-census`; four commits; the
+conductor gates and lands.
