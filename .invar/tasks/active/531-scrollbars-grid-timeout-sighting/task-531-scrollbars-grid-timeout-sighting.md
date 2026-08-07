@@ -27,3 +27,11 @@ Evidence-hold task: if the scrollbars contention tier fires again, attach
 the new log here and dispatch with #529's method (loop the failing step
 solo, autopsy at timeout distinguishing screen/hit-grid/status clocks).
 Do not dispatch on one sighting.
+
+## Second sighting (2026-08-06, #530 run)
+
+- smoke-scrollbars-harness.ts:2398 "the deep widest line is visible
+  during the wheel drive" timed out once under 6-way contention (run 1
+  of 3; reruns green). Different wait from sighting 1 but same suspect
+  family (starved paint under load). Two sightings now held — one more
+  dispatches this task per its own rule.
