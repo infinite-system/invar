@@ -9,6 +9,11 @@ side-by-side diffs and staging, a command palette, settings, and tabs. Built on
 The design goal: a newcomer can learn it in ~15 minutes — every action has a visible,
 clickable affordance, and no capability requires a memorized motion.
 
+![Invar running in a terminal: workspace search results, the editor open at a match, the tasks pane, and a terminal panel](docs/invar-screenshot.svg)
+
+*A real frame from the running app — rendered cell-for-cell from the PTY grid by
+`scripts/harness/screenshot-svg.ts`, the same harness the test suite drives.*
+
 > **Why "Invar"?** [Invar](https://en.wikipedia.org/wiki/Invar) is the iron–nickel alloy
 > discovered by Charles Édouard Guillaume in 1896 — named from *invariable*, because its
 > thermal expansion is near zero. Precision clocks and measuring instruments were built
