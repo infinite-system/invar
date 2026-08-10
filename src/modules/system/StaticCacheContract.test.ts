@@ -161,7 +161,6 @@ function inspectStaticCaches(
   subjects: readonly StaticCacheSubject[],
 ): StaticCacheInspectionCore {
   const failures: string[] = [];
-  const platformSkips: string[] = [];
   let inspectedPropertyCount = 0;
 
   for (const subject of subjects) {
@@ -173,18 +172,6 @@ function inspectStaticCaches(
         firstValue = Reflect.get(subject.publishedClass, propertyName);
         secondValue = Reflect.get(subject.publishedClass, propertyName);
       } catch (error) {
-        // A `$`-getter that loads a platform capability can legitimately throw where that
-        // capability is absent — e.g. OpenPty's FFI getters (`$openPtyLibrary`,
-        // `$terminalControlLibrary`) throw "openpty not found" on macOS, which uses the native
-        // allocator instead. Its cache identity is verified on Linux, where this stays strict; on
-        // darwin a throw is a platform-skip, not a caching failure.
-        if (process.platform !== 'linux') {
-          platformSkips.push(
-            `${subject.name}.${propertyName} skipped on ${process.platform}: ` +
-              `${error instanceof Error ? error.message : String(error)}`,
-          );
-          continue;
-        }
         failures.push(
           `${subject.name}.${propertyName} threw while reading: ` +
             `${error instanceof Error ? error.message : String(error)}`,
@@ -206,12 +193,6 @@ function inspectStaticCaches(
     }
   }
 
-  if (platformSkips.length > 0) {
-    console.log(
-      `StaticCacheContract: ${platformSkips.length} platform-skipped getter(s) on ${process.platform}:\n  ` +
-        platformSkips.join('\n  '),
-    );
-  }
   return {
     failures,
     inspectedClassCount: subjects.length,
