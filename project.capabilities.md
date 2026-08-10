@@ -81,6 +81,22 @@ Last full refresh: 2026-08-07.
   `~/.cache/invar/dropzone/`, then pastes as a real remote path.
   Works against stock sshd — no server config. (Inverse mode — local
   Invar over remote fs/pty — is reserved protocol ground, not built.)
+- **A dead remote channel names its cause.** When the remote cannot
+  start Invar, the error quotes the remote's stderr and the remedy
+  (install `iv`, or set `INVAR_REMOTE_IV_COMMAND` to an absolute
+  path) — never a bare "Remote channel closed".
+
+## Platforms
+
+- **Linux and macOS, one behavior.** The full app — editor, integrated
+  terminal, agents, tasks, `iv ssh` (client and server side), monitoring
+  pane — runs on both. On macOS the PTY layer is Bun's native terminal
+  (`NativeTerminalPty`); on Linux the FFI `openpty` allocator; nothing
+  above the backend seam knows which. One-command setup:
+  `bash scripts/install.sh`. Windows is not supported (WSL2 works).
+- **The dev loop runs on macOS too.** `bun run drive`, the PTY harness,
+  and the smokes run on darwin; the full merge gate runs remotely with
+  `bash scripts/gate-remote.sh` (its orchestration is Linux-only).
 
 ## Other surfaces
 
