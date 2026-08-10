@@ -22,7 +22,7 @@ ROOT="$(cd "$DIR/.." && pwd)"
 BUN="$HOME/.bun/bin/bun"
 export PATH="$HOME/.bun/bin:$PATH"
 W="$(mktemp -d /tmp/tui-pixel-smoke.XXXXXX)"
-PNG="/tmp/ivue-cart-dark.png"
+PNG="$(cd "$(dirname "$0")" && pwd)/fixtures/image-preview-fixture.png"
 fail=0
 chk() { if [ "$2" = "$3" ]; then echo "  PASS  $1 ($2)"; else echo "  FAIL  $1: got '$2' want '$3'"; fail=1; fi; }
 cleanup() {

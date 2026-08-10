@@ -3,7 +3,7 @@
 # projection → editor mount — by driving the real TUI, not just the unit logic. Layers:
 #   A) bun test src/modules/image/  (PNG round-trips, jpeg-js round-trips, registry answers, half-block
 #      semantics; no external files)
-#   B) pure decode of the REAL /tmp/ivue-cart-dark.png (independent-encoder cross-check for the scanline
+#   B) pure decode of the REAL scripts/fixtures/image-preview-fixture.png (independent-encoder cross-check for the scanline
 #      filters, incl. Paeth) + a GENERATED tricolour-band JPEG decoded through the registry's '.jpg'
 #      instance: sane dims, rgba.length == w*h*4, band colours within lossy tolerance
 #   C) launch the app on a temp project, open the PNG via quick-open, assert activeFileIsImage + that the
@@ -20,7 +20,7 @@ BUN="$HOME/.bun/bin/bun"
 export PATH="$HOME/.bun/bin:$PATH"
 S="img-$$-preview"
 W="$(mktemp -d /tmp/tui-img-smoke.XXXXXX)"
-PNG="/tmp/ivue-cart-dark.png"
+PNG="$(cd "$(dirname "$0")" && pwd)/fixtures/image-preview-fixture.png"
 fail=0
 f()   { "$H" field "$S" "$1"; }
 chk() { if [ "$2" = "$3" ]; then echo "  PASS  $1 ($2)"; else echo "  FAIL  $1: got '$2' want '$3'"; fail=1; fi; }

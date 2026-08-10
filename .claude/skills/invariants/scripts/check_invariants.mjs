@@ -38,7 +38,7 @@ import { execSync } from 'node:child_process';
 import process from 'node:process';
 
 // Bump when schema fields or validation semantics change.
-const VERSION = '2.2.2';
+const VERSION = '2.2.3';
 
 const REALITY = '## Reality-based invariants';
 const CHOSEN = '## Chosen invariants';
@@ -721,6 +721,17 @@ function checkRefs(root) {
       continue;
     }
     if (!/invariant:/i.test(text)) continue;
+    // A rendered image is OUTPUT, not annotation-bearing source: an .svg screenshot of a code
+    // editor legitimately shows 'invariant:' text in its <text> cells, and hard-failing that as a
+    // pathless annotation blocks every merge (observed 2026-08-10: a README screenshot of the app
+    // editing its own repo turned the gate red repo-wide). Same treatment as the binary branch: a
+    // visible note, never a finding.
+    if (p.endsWith('.svg')) {
+      console.log(
+        `note: rendered image contains 'invariant:' text but is not annotation-bearing source: ${relative(root, p)}`,
+      );
+      continue;
+    }
     const fileLines = text.split('\n');
     const active = maskInert(fileLines);
     fileLines.forEach((rawLine, idx) => {
@@ -968,6 +979,7 @@ function refsFor(root, targetName) {
       continue;
     }
     if (!/invariant:/i.test(text)) continue;
+    if (p.endsWith('.svg')) continue; // rendered images are output, not annotation witnesses
     const fileLines = text.split('\n');
     const active = maskInert(fileLines);
     fileLines.forEach((rawLine, idx) => {

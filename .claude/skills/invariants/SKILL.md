@@ -400,8 +400,9 @@ values may wrap onto continuation lines and are read in full.
   but not matching the glob — rename or confirm), skipped symlinks, files over 2MB, and
   nested checkouts. Treat every note as a finding to triage, not decoration. Annotation-shaped
   comments that don't parse (typo'd suffix, wrong brackets) are hard failures, as are
-  pathless `invariant: Name` comments in code files; binary files mentioning `invariant:`
-  draw a note. Local-format contracts used as annotation targets draw a loose-harvest note.
+  pathless `invariant: Name` comments in code files; binary files and rendered `.svg` images
+  mentioning `invariant:` draw a note (a screenshot of a code editor is output, not
+  annotation-bearing source). Local-format contracts used as annotation targets draw a loose-harvest note.
 - Non-canonical (local-format) files are `SKIP`ped, not failed — **every SKIP line is a
   migration-candidate finding**, and CI that wants a hard format gate passes `--strict`
   (with `--all`), which turns SKIPs into failures. The test suite sits alongside

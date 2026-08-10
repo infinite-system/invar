@@ -894,6 +894,26 @@ test('pathless annotations in code files are flagged', () => {
   cleanup();
 });
 
+test('a rendered .svg showing invariant text draws a note, never a finding', () => {
+  const { dir, cleanup } = tmp();
+  writeFileSync(
+    join(dir, 'demo.invariants.md'),
+    contract([record('Real rule')], [record('B')]),
+  );
+  // A screenshot of a code editor: its <text> cells legitimately show annotation-shaped text
+  // (pathless AND named forms) that must not be read as annotations.
+  writeFileSync(
+    join(dir, 'screenshot.svg'),
+    '<svg><text>// invariant: Grap</text>' +
+      '<text>// invariant: Real rule (demo.invariants.md)</text></svg>\n',
+  );
+  const r = run(['--refs', dir]);
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /note: rendered image contains 'invariant:' text/);
+  assert.doesNotMatch(r.stderr, /screenshot\.svg/);
+  cleanup();
+});
+
 test('Enforcement exemptions are visible and Mechanism-conflict is noted', () => {
   const { dir, cleanup } = tmp();
   writeFileSync(

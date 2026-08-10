@@ -89,7 +89,10 @@ async function openThroughQuickOpen(
   driver.sendKeys('Enter');
 }
 
-const pngPath = '/tmp/ivue-cart-dark.png';
+const pngPath = join(
+  import.meta.dir,
+  '../fixtures/image-preview-fixture.png',
+);
 
 HarnessSmoke.Class.requireCondition(
   await Bun.file(pngPath).exists(),
