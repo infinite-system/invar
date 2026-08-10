@@ -385,7 +385,11 @@ These five rules close that hole. They are MUSTS, not guidance.
    news — relaunch the agents or file the finishing tasks and drive them
    to done. The user reads results, not excuses. Reports to the user
    lead with WHAT CHANGED ON SCREEN in their terms, verified by rule 1,
-   and state what they will NOT yet see.
+   and state what they will NOT yet see. A landing that adds or changes
+   a user-facing capability also updates its entry in
+   `project.capabilities.md` in the same action — the one-page living
+   map of what the app can do; a capability whose entry nobody wrote is
+   a capability the user rediscovers by accident.
 
 
 ## ⚑ RULE TWO — EVERY CHECK HAS TWO ARMS
