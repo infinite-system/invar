@@ -1,11 +1,17 @@
 import { expect, test } from 'bun:test';
 import { OpenPtyBackend } from './OpenPtyBackend';
 
+// OpenPtyBackend composes the LINUX FFI allocator (OpenPty), which cannot construct on the macOS
+// arm64 ABI (bun:ffi variadic limitation). macOS uses BunTerminalBackend instead; the same
+// task-argument/environment launch behavior is covered by BunTerminalBackend.test.ts. So the test
+// that CONSTRUCTS the backend is Linux-only; the class-identity test is platform-agnostic.
+const linuxTest = test.skipIf(process.platform === 'darwin');
+
 test('the live backend publishes its plain construction seam', () => {
   expect(OpenPtyBackend.Class).toBe(OpenPtyBackend.$Class);
 });
 
-test('the live backend gives task arguments and environment to its shell', async () => {
+linuxTest('the live backend gives task arguments and environment to its shell', async () => {
   const backend = new OpenPtyBackend.Class({
     shell: '/bin/sh',
     command: '/bin/sh',

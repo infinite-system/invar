@@ -1,6 +1,13 @@
 import { expect, test } from 'bun:test';
 import { OpenPty } from './OpenPty';
 
+// OpenPty is the LINUX pseudo-terminal allocator: it loads openpty/ioctl/fcntl through bun:ffi,
+// which cannot make its variadic calls on the macOS arm64 ABI. Constructing it on darwin throws
+// "openpty not found". macOS uses NativeTerminalPty instead, and the equivalent write/resize/exit
+// behavior is covered by NativeTerminalPty.test.ts and BunTerminalBackend.test.ts. So every test
+// that CONSTRUCTS OpenPty is Linux-only; the class-identity test above is platform-agnostic.
+const linuxTest = test.skipIf(process.platform === 'darwin');
+
 test('the PTY resource publishes its plain construction seam', () => {
   expect(OpenPty.Class).toBe(OpenPty.$Class);
 });
@@ -9,7 +16,7 @@ test('the PTY resource publishes its plain construction seam', () => {
 // a whole clamped millisecond between a keystroke and the bytes leaving the
 // process, on both the integrated-terminal and harness PTY write paths. An
 // empty queue on return is the observable form of "no timer turn was needed".
-test('a keystroke write needs no timer turn', async () => {
+linuxTest('a keystroke write needs no timer turn', async () => {
   const childSource = String.raw`
     import { OpenPty } from './src/modules/system/OpenPty';
 
@@ -48,7 +55,7 @@ test('a keystroke write needs no timer turn', async () => {
   expect(standardOutput).toContain('PENDING_AFTER_WRITE=0');
 });
 
-test('a saturated PTY write leaves the event loop responsive', async () => {
+linuxTest('a saturated PTY write leaves the event loop responsive', async () => {
   const childSource = String.raw`
       import { OpenPty } from './src/modules/system/OpenPty';
 
@@ -102,7 +109,7 @@ test('a saturated PTY write leaves the event loop responsive', async () => {
   expect(standardOutput).toContain('EVENT_LOOP_RESPONSIVE');
 }, 5_000);
 
-test('a normal master read-stream close resumes bytes from the live PTY', async () => {
+linuxTest('a normal master read-stream close resumes bytes from the live PTY', async () => {
   const childSource = String.raw`
     import { OpenPty } from './src/modules/system/OpenPty';
 
@@ -169,7 +176,7 @@ test('a normal master read-stream close resumes bytes from the live PTY', async 
   expect(standardOutput).toContain('READ_RESTARTED=2');
 }, 5_000);
 
-test('a genuine asynchronous PTY write failure names its errno', async () => {
+linuxTest('a genuine asynchronous PTY write failure names its errno', async () => {
   const childSource = String.raw`
     import { closeSync } from 'node:fs';
     import { OpenPty } from './src/modules/system/OpenPty';
@@ -204,7 +211,7 @@ test('a genuine asynchronous PTY write failure names its errno', async () => {
   expect(standardOutput).toContain('PTY write failed with errno 9');
 });
 
-test('a failed PTY window resize names the ioctl and errno', async () => {
+linuxTest('a failed PTY window resize names the ioctl and errno', async () => {
   const childSource = String.raw`
     import { closeSync } from 'node:fs';
     import { OpenPty } from './src/modules/system/OpenPty';

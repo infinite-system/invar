@@ -4,9 +4,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { QuietLock } from './QuietLock';
 
+// The machine-wide scheduling tests need `flock`, which is absent on stock macOS. `flock` is a
+// report-only, gracefully-degrading dependency (quiet-lock.sh proceeds unlocked without it), so on
+// a box without it the lock-behavior tests are not-applicable, not failing — the degradation tests
+// below cover the no-flock path. `brew install flock` restores the full coverage.
+const flockAvailable = Bun.which('flock') !== null;
+const flockTest = test.skipIf(!flockAvailable);
+
 const quietLockScriptPath = join(import.meta.dir, '..', 'quiet-lock.sh');
 
-test('quiet-exclusive waits for a loud-shared holder to release', async () => {
+flockTest('quiet-exclusive waits for a loud-shared holder to release', async () => {
   const testDirectory = mkdtempSync(join(tmpdir(), 'invar-quiet-lock-block-'));
   const lockFilePath = join(testDirectory, 'lock');
   const journalPath = join(testDirectory, 'journal');
@@ -74,7 +81,7 @@ test('quiet-exclusive waits for a loud-shared holder to release', async () => {
   }
 });
 
-test('quiet-exclusive warns and proceeds after its bounded wait', async () => {
+flockTest('quiet-exclusive warns and proceeds after its bounded wait', async () => {
   const testDirectory = mkdtempSync(
     join(tmpdir(), 'invar-quiet-lock-degrade-'),
   );
