@@ -236,25 +236,28 @@ agent tool reading `TerminalEmulator` directly.
 **Invariant:** If Invar or its byte-level test harness needs a pseudo-terminal, then on any one
 platform a SINGLE allocator serves the roles present there, and Invar owns at most one `openpty` FFI
 implementation. On Linux that allocator is `OpenPty` (the shared FFI wrapper) for BOTH the integrated
-terminal and the harness. On macOS the integrated terminal allocates through Bun's native PTY
-(`BunTerminalBackend` → `Bun.Terminal`) instead, because `bun:ffi` (1.3.14) cannot pass the variadic
+terminal and the harness. On macOS that allocator is `NativeTerminalPty` (a resource wrapper over Bun's
+native `Bun.Terminal`), composed by `BunTerminalBackend` for the integrated terminal and by
+`SshClient` for the `iv ssh` interactive session, because `bun:ffi` (1.3.14) cannot pass the variadic
 arguments of `OpenPty`'s `fcntl`/`ioctl` on the darwin arm64 ABI — `fcntl` silently fails to apply
 `O_NONBLOCK` and `ioctl(TIOCSWINSZ)` segfaults the process; the native PTY makes those calls in Bun's
 C++ layer with no FFI. The harness (`PtyTestDriver`) is not yet ported to the native allocator, so its
 role is unserved on macOS (the smokes run on Linux).
 
-**Scope:** `OpenPty`, `OpenPtyBackend`, `BunTerminalBackend`, `TerminalFactory` (the platform select),
-and `scripts/harness/PtyTestDriver.ts`. Child command choice, environment, and lifecycle policy remain
+**Scope:** `OpenPty`, `NativeTerminalPty`, `OpenPtyBackend`, `BunTerminalBackend`, `SshClient`
+(the `iv ssh` interactive session), `TerminalFactory` (the platform select), and
+`scripts/harness/PtyTestDriver.ts`. Child command choice, environment, and lifecycle policy remain
 consumer-owned because the integrated terminal hosts a shell while the harness hosts Invar.
 
 **Mechanism:** `OpenPty` is the one plain stateful resource that loads `openpty`, `ioctl`, and `write`,
 owns the master and slave file descriptors, exposes master-byte callbacks, and applies `TIOCSWINSZ`;
 `OpenPtyBackend` and `PtyTestDriver` compose it and only choose which child receives the slave
-descriptor. `BunTerminalBackend` composes `Bun.Terminal` — which owns the child spawn itself via
-`Bun.spawn(command, { terminal })` — behind the same `TerminalBackend` seam
-(`write`/`onData`/`resize`/`kill`/`onExit`). `TerminalFactory.createBackend` selects
-`BunTerminalBackend` on darwin and `OpenPtyBackend` elsewhere; nothing above the backend seam knows
-which allocator it got.
+descriptor. `NativeTerminalPty` wraps `Bun.Terminal` — which owns the child spawn itself via
+`Bun.spawn(command, { terminal })` — with the same surface (`onData`/`write`/`resize`/`close`, plus
+the `terminal` handle in place of a slave descriptor); `BunTerminalBackend` composes it behind the
+`TerminalBackend` seam, and `SshClient.spawnNativeInteractive` composes it for the remote session.
+`TerminalFactory.createBackend` selects `BunTerminalBackend` on darwin and `OpenPtyBackend`
+elsewhere; nothing above the backend seam knows which allocator it got.
 
 **Generates:** still exactly one FFI maintenance point (`OpenPty`); role inversion without copied PTY
 code; identical byte and resize behavior for the integrated terminal and the harness on Linux; a
@@ -265,17 +268,20 @@ drift in window sizing, descriptor ownership, or platform fallback. Force `OpenP
 swapping only its Linux ABI constants — necessary but insufficient: the variadic `fcntl`/`ioctl` calls
 underneath cannot execute on darwin arm64 through `bun:ffi` regardless of the constant values.
 
-**Evidence:** `src/modules/system/OpenPty.ts`; `src/modules/terminal/OpenPtyBackend.ts`;
+**Evidence:** `src/modules/system/OpenPty.ts`; `src/modules/system/NativeTerminalPty.ts`;
+`src/modules/system/NativeTerminalPty.test.ts`; `src/modules/terminal/OpenPtyBackend.ts`;
 `src/modules/terminal/BunTerminalBackend.ts`; `src/modules/terminal/BunTerminalBackend.test.ts`;
-`src/modules/terminal/TerminalFactory.ts`; `scripts/harness/PtyTestDriver.ts`;
+`src/modules/terminal/TerminalFactory.ts`; `src/modules/channel/SshClient.ts`;
+`src/modules/channel/SshClient.test.ts`; `scripts/harness/PtyTestDriver.ts`;
 `scripts/harness/PtyTestDriver.test.ts`.
 
-**Impossible if true:** a second `openpty` FFI symbol declaration anywhere in Invar; a Linux harness
-resize that does not use the same `TIOCSWINSZ` path as the integrated terminal; either consumer
-closing a descriptor that the shared allocator does not own; a byte path to the child that bypasses
-the `TerminalBackend` seam on either allocator.
+**Impossible if true:** a second `openpty` FFI symbol declaration anywhere in Invar; a second
+`Bun.Terminal` wrapper with its own write queue; a Linux harness resize that does not use the same
+`TIOCSWINSZ` path as the integrated terminal; either consumer closing a descriptor that the shared
+allocator does not own; a byte path to the child that bypasses the `TerminalBackend` seam on either
+allocator.
 
-**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts src/modules/terminal/BunTerminalBackend.test.ts && rg "openpty:" src/modules scripts/harness -g "*.ts"`
+**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts src/modules/terminal/BunTerminalBackend.test.ts src/modules/system/NativeTerminalPty.test.ts src/modules/channel/SshClient.test.ts && rg "openpty:" src/modules scripts/harness -g "*.ts"`
 
 **Status:** provisional
 

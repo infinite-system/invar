@@ -1,12 +1,13 @@
-// The macOS terminal backend: a shell running in Bun's native pseudo-terminal (`Bun.Terminal`).
+// The macOS terminal backend: a shell running in Bun's native pseudo-terminal, composed from the
+// shared `NativeTerminalPty` allocator exactly as `OpenPtyBackend` composes `OpenPty` on Linux.
 //
 // Why a second backend instead of `OpenPtyBackend` everywhere: `OpenPtyBackend` allocates the PTY
 // through `bun:ffi` (`OpenPty`), and two of the libc calls it needs — `fcntl` (O_NONBLOCK) and
 // `ioctl` (TIOCSWINSZ) — are variadic. Bun's FFI (1.3.14) cannot pass variadic arguments on the
-// macOS arm64 ABI: `fcntl` silently fails to apply the flag and `ioctl` segfaults the process. So the
-// FFI allocator cannot work on macOS at all. `Bun.Terminal` is Bun's native PTY (no FFI, no variadic
-// calls) and owns the child spawn itself via `Bun.spawn(cmd, { terminal })`. Linux keeps
-// `OpenPtyBackend`/`OpenPty` unchanged; `TerminalFactory` selects this backend only on darwin.
+// macOS arm64 ABI: `fcntl` silently fails to apply the flag and `ioctl` segfaults the process. So
+// the FFI allocator cannot work on macOS at all. `NativeTerminalPty` (over `Bun.Terminal`) makes
+// those calls in Bun's C++ layer with no FFI; `TerminalFactory` selects this backend only on darwin.
+// Linux keeps `OpenPtyBackend`/`OpenPty` unchanged.
 //
 // Job control needs a controlling tty; macOS has no `setsid`, so job control is absent here for
 // tier S (baseline interactivity + resize still work), matching the existing non-Linux caveat in
@@ -14,8 +15,10 @@
 //
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
 // invariant: External tools share one launch policy (src/modules/system/system.invariants.md)
+// invariant: One openpty allocator serves both PTY roles (src/modules/terminal/terminal.invariants.md)
 import { Environment } from '../system/Environment';
 import { Logging } from '../system/Logging';
+import { NativeTerminalPty } from '../system/NativeTerminalPty';
 import type { TerminalBackend } from './TerminalBackend.interface';
 import { TerminalRcfile, type TerminalRcfileHandle } from './TerminalRcfile';
 
@@ -42,24 +45,12 @@ class $BunTerminalBackend implements TerminalBackend {
       shell.split('/').pop() ??
       'shell';
 
-    // The native PTY reads from the child immediately; bytes that arrive before TerminalInstance
-    // registers `onData` are buffered in `pendingData`, exactly as the openpty backend buffers them.
-    this.terminal = new Bun.Terminal({
-      cols: columns,
-      rows,
-      name: 'xterm-256color',
-      data: (_terminal, bytes) => {
-        if (this.dataCallback) {
-          this.dataCallback(bytes);
-        } else {
-          this.pendingData.push(bytes.slice());
-        }
-      },
-      drain: () => this.drainWriteQueue(),
-    });
+    this.nativePty = new NativeTerminalPty.Class(columns, rows);
 
     // Mirror OpenPtyBackend's launch policy (clean prompt rcfile, login command form, full user
     // environment) minus the Linux-only `setsid --ctty` wrapper, since this backend is darwin-only.
+    // This interactive PTY deliberately bypasses Processes.spawn: its child needs the complete user
+    // environment, while external tools need the hermetic policy.
     this.promptRcfile =
       options.command || options.cleanPrompt === false
         ? null
@@ -79,7 +70,7 @@ class $BunTerminalBackend implements TerminalBackend {
     // invariant: Task launch accepts process contributions (src/modules/tasks/tasks.invariants.md)
     this.child = Bun.spawn(command, {
       cwd: this.cwd,
-      terminal: this.terminal,
+      terminal: this.nativePty.terminal,
       env: {
         ...process.env,
         ...options.environment,
@@ -94,18 +85,11 @@ class $BunTerminalBackend implements TerminalBackend {
     });
   }
 
-  protected readonly terminal: Bun.Terminal;
+  protected readonly nativePty: NativeTerminalPty.Model;
   protected readonly child: ReturnType<typeof Bun.spawn>;
   protected readonly promptRcfile: TerminalRcfileHandle | null;
-  protected dataCallback: ((bytes: Uint8Array) => void) | null = null;
-  protected pendingData: Uint8Array[] = [];
   protected exitCallback: ((exitCode: number | null) => void) | null = null;
   protected killed = false;
-  // Bytes accepted by `write` but not yet taken by the PTY, kept byte-accurate so a partial native
-  // write never loses or reorders the remainder. The head's already-written prefix is `writeHeadOffset`.
-  protected readonly writeQueue: Uint8Array[] = [];
-  protected writeHeadOffset = 0;
-  protected readonly textEncoder = new TextEncoder();
   readonly title: string;
   readonly cwd: string;
 
@@ -115,47 +99,11 @@ class $BunTerminalBackend implements TerminalBackend {
 
   write(data: string): void {
     if (this.killed) return;
-    const bytes = this.textEncoder.encode(data);
-    if (bytes.length === 0) return;
-    this.writeQueue.push(bytes);
-    this.drainWriteQueue();
-  }
-
-  // Push queued bytes into the native PTY without blocking. `Bun.Terminal.write` returns the byte
-  // count it accepted; a short count means the descriptor is full, so we keep the remainder and wait
-  // for the `drain` callback rather than spinning — the large-paste analogue of OpenPty's O_NONBLOCK
-  // write path, satisfied natively here.
-  protected drainWriteQueue(): void {
-    if (this.killed) return;
-    while (this.writeQueue.length > 0) {
-      const head = this.writeQueue[0]!;
-      const remaining =
-        this.writeHeadOffset === 0 ? head : head.subarray(this.writeHeadOffset);
-      let acceptedByteCount: number;
-      try {
-        acceptedByteCount = this.terminal.write(remaining);
-      } catch {
-        // The terminal closed underneath us; nothing more can be written.
-        return;
-      }
-      if (acceptedByteCount <= 0) {
-        // Descriptor full — the `drain` callback resumes this loop.
-        return;
-      }
-      if (acceptedByteCount >= remaining.length) {
-        this.writeQueue.shift();
-        this.writeHeadOffset = 0;
-      } else {
-        this.writeHeadOffset += acceptedByteCount;
-        return;
-      }
-    }
+    this.nativePty.write(data);
   }
 
   onData(callback: (bytes: Uint8Array) => void): void {
-    this.dataCallback = callback;
-    for (const bytes of this.pendingData) callback(bytes);
-    this.pendingData = [];
+    this.nativePty.onData(callback);
   }
 
   onExit(callback: (exitCode: number | null) => void): void {
@@ -164,28 +112,18 @@ class $BunTerminalBackend implements TerminalBackend {
 
   resize(columns: number, rows: number): void {
     if (this.killed) return;
-    try {
-      this.terminal.resize(columns, rows);
-    } catch {
-      // A resize after the terminal has closed is a no-op.
-    }
+    this.nativePty.resize(columns, rows);
   }
 
   kill(): void {
     if (this.killed) return;
     this.killed = true;
-    this.writeQueue.length = 0;
-    this.writeHeadOffset = 0;
     try {
       this.child.kill();
     } catch {
       /* already exited */
     }
-    try {
-      this.terminal.close();
-    } catch {
-      /* already closed */
-    }
+    this.nativePty.close();
     this.promptRcfile?.dispose();
     Logging.Class.info('BunTerminalBackend killed');
   }

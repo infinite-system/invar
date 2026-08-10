@@ -2,6 +2,7 @@ import { Static } from 'ivue/extras';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { NativeTerminalPty } from '../system/NativeTerminalPty';
 import { OpenPty } from '../system/OpenPty';
 import { Processes } from '../system/Processes';
 import { BracketedPathPaste } from './BracketedPathPaste';
@@ -89,7 +90,7 @@ class $SshClient {
   protected interactiveProcess: ReturnType<
     typeof Processes.Class.spawn
   > | null = null;
-  protected openPty: OpenPty.Model | null = null;
+  protected openPty: OpenPty.Model | NativeTerminalPty.Model | null = null;
   protected previousRawMode = false;
   protected stopping = false;
 
@@ -153,20 +154,18 @@ class $SshClient {
 
     const columns = process.stdout.columns ?? 80;
     const rows = process.stdout.rows ?? 24;
-    const openPty = new OpenPty.Class(columns, rows);
+    // The platform PTY split, same as TerminalFactory's: the FFI allocator (OpenPty) cannot run on
+    // macOS (bun:ffi cannot pass variadic fcntl/ioctl on darwin arm64), so darwin allocates the
+    // native PTY and lets it own the child spawn via the `terminal` spawn option; Linux keeps the
+    // proven slave-descriptor path with a controlling tty (`setsid --ctty`). Each helper allocates,
+    // wires the stdout sink, and spawns, in that order, so no startup bytes drop.
+    // invariant: One openpty allocator serves both PTY roles (src/modules/terminal/terminal.invariants.md)
+    const { openPty, interactiveProcess } =
+      process.platform === 'darwin'
+        ? this.spawnNativeInteractive(commands, columns, rows)
+        : this.spawnOpenPtyInteractive(commands, columns, rows);
     this.openPty = openPty;
-    openPty.onData((bytes) => process.stdout.write(bytes));
-    const interactiveCommand =
-      process.platform === 'linux'
-        ? ['setsid', '--ctty', ...commands.interactive]
-        : commands.interactive;
-    const interactiveProcess = Processes.Class.spawn(interactiveCommand, {
-      stdin: openPty.slaveFileDescriptor,
-      stdout: openPty.slaveFileDescriptor,
-      stderr: openPty.slaveFileDescriptor,
-    });
     this.interactiveProcess = interactiveProcess;
-    openPty.releaseSlaveFileDescriptor();
 
     const paste = new BracketedPathPaste.Class(
       (bytes) => openPty.write(bytes),
@@ -205,6 +204,43 @@ class $SshClient {
       channelProcess.kill();
       await channelRead.catch(() => undefined);
     }
+  }
+
+  /** Linux interactive session: the shared FFI allocator hands its slave descriptor to the child,
+   *  wrapped in `setsid --ctty` so the remote session gets job control. */
+  protected spawnOpenPtyInteractive(
+    commands: SshCommands,
+    columns: number,
+    rows: number,
+  ): InteractiveSession {
+    const openPty = new OpenPty.Class(columns, rows);
+    openPty.onData((bytes) => process.stdout.write(bytes));
+    const interactiveCommand =
+      process.platform === 'linux'
+        ? ['setsid', '--ctty', ...commands.interactive]
+        : commands.interactive;
+    const interactiveProcess = Processes.Class.spawn(interactiveCommand, {
+      stdin: openPty.slaveFileDescriptor,
+      stdout: openPty.slaveFileDescriptor,
+      stderr: openPty.slaveFileDescriptor,
+    });
+    openPty.releaseSlaveFileDescriptor();
+    return { openPty, interactiveProcess };
+  }
+
+  /** macOS interactive session: the native PTY owns the child spawn through the `terminal` spawn
+   *  option (there is no slave descriptor to hand out), still through the shared launch policy. */
+  protected spawnNativeInteractive(
+    commands: SshCommands,
+    columns: number,
+    rows: number,
+  ): InteractiveSession {
+    const openPty = new NativeTerminalPty.Class(columns, rows);
+    openPty.onData((bytes) => process.stdout.write(bytes));
+    const interactiveProcess = Processes.Class.spawn(commands.interactive, {
+      terminal: openPty.terminal,
+    });
+    return { openPty, interactiveProcess };
   }
 
   protected async handleChannelRequest(
@@ -266,4 +302,9 @@ export interface SshCommands {
   channel: string[];
   interactive: string[];
   close: string[];
+}
+
+export interface InteractiveSession {
+  openPty: OpenPty.Model | NativeTerminalPty.Model;
+  interactiveProcess: ReturnType<typeof Processes.Class.spawn>;
 }

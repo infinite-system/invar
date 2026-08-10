@@ -55,13 +55,32 @@ segfaults. Constant-swapping cannot fix it; the FFI allocator is structurally im
   main baseline** (all pre-existing charset notes in other modules; my diff adds zero).
 - Full merge gate must run on Linux (harness is macOS-blocked, unchanged).
 
+## iv ssh on macOS — FIXED in round 2 (same branch)
+
+The PTY logic was extracted to `src/modules/system/NativeTerminalPty.ts` (sibling of `OpenPty`,
+same decomposition: allocator in system/, consumers compose). `BunTerminalBackend` now composes it;
+`SshClient.runSessions` platform-branches into `spawnNativeInteractive` (native PTY owns the child
+via the `terminal` spawn option, still through `Processes.Class.spawn` — the launch-policy seam
+already forwards `terminal`) vs the untouched Linux `spawnOpenPtyInteractive` (slave fd +
+`setsid --ctty`). No write-queue duplication: one queue, in the allocator.
+
+Verified: driven test in `SshClient.test.ts` exercises `spawnNativeInteractive` with a local
+stand-in child — geometry reaches the child (stty size = 30 100), writes round-trip, clean exit —
+and the test survived a positive control (planted write no-op made it red; removing the plant made
+it green). `NativeTerminalPty.test.ts` drives the allocator directly (3 pass). The full app was
+re-driven after the refactor (boots; terminal pane renders shell output). NOT verified: a real
+`ssh` connection end-to-end — sshd on this Mac rejects loopback auth, and enabling a key is the
+user's security call. The ssh master/channel code is unchanged and portable; the residual risk is
+confined to real-ssh interaction with the native PTY (e.g. -tt allocation semantics). One
+one-minute check from the user against a real Linux host closes it.
+
 ## Bycatch
 
-- **Reported, NOT fixed — `iv ssh <host>` broken FROM a macOS client:** `SshClient.ts:156`
-  constructs `OpenPty` directly, bypassing `TerminalFactory`. Fix path: same platform branch,
-  but `Bun.Terminal` must own the interactive spawn (today it goes through
-  `Processes.Class.spawn` onto the slave fd — a launch-policy seam decision), and I cannot
-  drive-verify an ssh session from this machine. Needs its own task.
+- **Reported — 2 pre-existing channel test reds on macOS (NOT mine, verified on clean main):**
+  `ChannelClient.test.ts` ("Invalid channel session socket path") and
+  `ChannelDropNotification.test.ts` (dropzone path assertion) fail identically on unmodified main
+  on darwin — Linux-shaped path assumptions in the tests. Green on the Linux gate presumably;
+  needs a small portability task.
 - **Reported — monitoring pane empty on macOS:** `LinuxProcessSampler.ts:42` reads `/proc`,
   degrades cleanly to null samples. A darwin sampler (`ps`-based) would close it.
 - **Reported — doc drift:** `project.build.md` said `dist/invar` 5× (build outputs `dist/iv`).
@@ -71,6 +90,8 @@ segfaults. Constant-swapping cannot fix it; the FFI allocator is structurally im
 
 ## Not done / decisions for the conductor
 
-- `iv ssh` macOS port + darwin process sampler: file as tasks.
+- Real-ssh end-to-end confirmation of the darwin `iv ssh` path (needs a reachable Linux host —
+  one user run; see round 2 above).
+- Darwin process sampler for the monitoring pane + the 2 channel test portability reds: file as tasks.
 - Old `macos-openpty-port` branch: superseded — tag `orphaned/` per lifecycle.
-- Invariant refinement ratification.
+- Invariant refinement ratification (record now names `NativeTerminalPty` and covers `SshClient`).
