@@ -10,14 +10,20 @@
 import { Static } from 'ivue/extras';
 import type { TerminalBackend } from './TerminalBackend.interface';
 import { OpenPtyBackend } from './OpenPtyBackend';
+import { BunTerminalBackend } from './BunTerminalBackend';
 import { TerminalEmulator } from './TerminalEmulator';
 import { TerminalInstance } from './TerminalInstance';
 import { TerminalPaneContent } from './TerminalPaneContent';
 import type { PaneTaskMetadata } from '../ui/PaneContent.interface';
 
 class $TerminalFactory {
-  /** Build the default real backend (openpty + shell). Overridable seam. */
+  /** Build the default real backend (a shell in a PTY). Overridable seam. macOS uses Bun's native
+   *  PTY (`BunTerminalBackend`) because the `bun:ffi` openpty allocator cannot make its variadic
+   *  `fcntl`/`ioctl` calls on the macOS arm64 ABI; Linux keeps the proven `OpenPtyBackend`. */
   static createBackend(options: TerminalCreateOptions): TerminalBackend {
+    if (process.platform === 'darwin') {
+      return new BunTerminalBackend.Class(options);
+    }
     return new OpenPtyBackend.Class(options);
   }
 
