@@ -55,8 +55,10 @@ linuxTest('a keystroke write needs no timer turn', async () => {
   expect(standardOutput).toContain('PENDING_AFTER_WRITE=0');
 });
 
-linuxTest('a saturated PTY write leaves the event loop responsive', async () => {
-  const childSource = String.raw`
+linuxTest(
+  'a saturated PTY write leaves the event loop responsive',
+  async () => {
+    const childSource = String.raw`
       import { OpenPty } from './src/modules/system/OpenPty';
 
       const openPty = new OpenPty.Class();
@@ -85,32 +87,36 @@ linuxTest('a saturated PTY write leaves the event loop responsive', async () => 
       await responsivenessResult;
       await echoChild.exited;
     `;
-  const child = Bun.spawn([process.execPath, '--eval', childSource], {
-    cwd: process.cwd(),
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  const completionResult = await Promise.race([
-    child.exited.then((exitCode) => ({ kind: 'exit' as const, exitCode })),
-    Bun.sleep(3_000).then(() => ({ kind: 'timeout' as const })),
-  ]);
-  if (completionResult.kind === 'timeout') {
-    child.kill();
-    await child.exited;
-  }
-  const standardOutput = await new Response(child.stdout).text();
-  const standardError = await new Response(child.stderr).text();
+    const child = Bun.spawn([process.execPath, '--eval', childSource], {
+      cwd: process.cwd(),
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const completionResult = await Promise.race([
+      child.exited.then((exitCode) => ({ kind: 'exit' as const, exitCode })),
+      Bun.sleep(3_000).then(() => ({ kind: 'timeout' as const })),
+    ]);
+    if (completionResult.kind === 'timeout') {
+      child.kill();
+      await child.exited;
+    }
+    const standardOutput = await new Response(child.stdout).text();
+    const standardError = await new Response(child.stderr).text();
 
-  expect(completionResult.kind, standardError).toBe('exit');
-  if (completionResult.kind === 'exit') {
-    expect(completionResult.exitCode, standardError).toBe(0);
-  }
-  expect(standardOutput).toContain('WRITE_ENQUEUED');
-  expect(standardOutput).toContain('EVENT_LOOP_RESPONSIVE');
-}, 5_000);
+    expect(completionResult.kind, standardError).toBe('exit');
+    if (completionResult.kind === 'exit') {
+      expect(completionResult.exitCode, standardError).toBe(0);
+    }
+    expect(standardOutput).toContain('WRITE_ENQUEUED');
+    expect(standardOutput).toContain('EVENT_LOOP_RESPONSIVE');
+  },
+  5_000,
+);
 
-linuxTest('a normal master read-stream close resumes bytes from the live PTY', async () => {
-  const childSource = String.raw`
+linuxTest(
+  'a normal master read-stream close resumes bytes from the live PTY',
+  async () => {
+    const childSource = String.raw`
     import { OpenPty } from './src/modules/system/OpenPty';
 
     class InterruptibleOpenPty extends OpenPty.$Class {
@@ -153,31 +159,35 @@ linuxTest('a normal master read-stream close resumes bytes from the live PTY', a
     openPty.close();
     await echoChild.exited;
   `;
-  const child = Bun.spawn([process.execPath, '--eval', childSource], {
-    cwd: process.cwd(),
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  const completionResult = await Promise.race([
-    child.exited.then((exitCode) => ({ kind: 'exit' as const, exitCode })),
-    Bun.sleep(3_000).then(() => ({ kind: 'timeout' as const })),
-  ]);
-  if (completionResult.kind === 'timeout') {
-    child.kill();
-    await child.exited;
-  }
-  const standardOutput = await new Response(child.stdout).text();
-  const standardError = await new Response(child.stderr).text();
+    const child = Bun.spawn([process.execPath, '--eval', childSource], {
+      cwd: process.cwd(),
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const completionResult = await Promise.race([
+      child.exited.then((exitCode) => ({ kind: 'exit' as const, exitCode })),
+      Bun.sleep(3_000).then(() => ({ kind: 'timeout' as const })),
+    ]);
+    if (completionResult.kind === 'timeout') {
+      child.kill();
+      await child.exited;
+    }
+    const standardOutput = await new Response(child.stdout).text();
+    const standardError = await new Response(child.stderr).text();
 
-  expect(completionResult.kind, standardError).toBe('exit');
-  if (completionResult.kind === 'exit') {
-    expect(completionResult.exitCode, standardError).toBe(0);
-  }
-  expect(standardOutput).toContain('READ_RESTARTED=2');
-}, 5_000);
+    expect(completionResult.kind, standardError).toBe('exit');
+    if (completionResult.kind === 'exit') {
+      expect(completionResult.exitCode, standardError).toBe(0);
+    }
+    expect(standardOutput).toContain('READ_RESTARTED=2');
+  },
+  5_000,
+);
 
-linuxTest('a genuine asynchronous PTY write failure names its errno', async () => {
-  const childSource = String.raw`
+linuxTest(
+  'a genuine asynchronous PTY write failure names its errno',
+  async () => {
+    const childSource = String.raw`
     import { closeSync } from 'node:fs';
     import { OpenPty } from './src/modules/system/OpenPty';
 
@@ -198,18 +208,19 @@ linuxTest('a genuine asynchronous PTY write failure names its errno', async () =
     openPty.write('failure');
     setTimeout(() => process.exit(2), 1_000);
   `;
-  const child = Bun.spawn([process.execPath, '--eval', childSource], {
-    cwd: process.cwd(),
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  const exitCode = await child.exited;
-  const standardOutput = await new Response(child.stdout).text();
-  const standardError = await new Response(child.stderr).text();
+    const child = Bun.spawn([process.execPath, '--eval', childSource], {
+      cwd: process.cwd(),
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const exitCode = await child.exited;
+    const standardOutput = await new Response(child.stdout).text();
+    const standardError = await new Response(child.stderr).text();
 
-  expect(exitCode, standardError).toBe(0);
-  expect(standardOutput).toContain('PTY write failed with errno 9');
-});
+    expect(exitCode, standardError).toBe(0);
+    expect(standardOutput).toContain('PTY write failed with errno 9');
+  },
+);
 
 linuxTest('a failed PTY window resize names the ioctl and errno', async () => {
   const childSource = String.raw`
