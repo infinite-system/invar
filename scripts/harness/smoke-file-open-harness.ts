@@ -103,6 +103,11 @@ try {
     homeDirectory: tierOneHome,
     environment: {
       TUI_STATUS_PATH: tierOneStatusPath,
+      // Force the native dialog UNAVAILABLE through its explicit knob, not by clearing DISPLAY.
+      // Clearing DISPLAY is a Linux-only proxy: on macOS `osascript` needs no DISPLAY, so the
+      // dialog stays available and the app opens a REAL Finder picker instead of the in-app
+      // browser this arm asserts (it also popped a live dialog during the macOS gate).
+      INVAR_DISABLE_NATIVE_DIALOG: '1',
       DISPLAY: '',
       WAYLAND_DISPLAY: '',
     },
