@@ -301,8 +301,8 @@ class $SshClient {
         new Error(
           remoteError
             ? `Remote channel closed. Remote said: ${remoteError}\n` +
-              `(usually the remote cannot start Invar — install iv on the remote host, or set ` +
-              `INVAR_REMOTE_IV_COMMAND to its absolute path)`
+                `(usually the remote cannot start Invar — install iv on the remote host, or set ` +
+                `INVAR_REMOTE_IV_COMMAND to its absolute path)`
             : 'Remote channel closed',
         ),
       );
