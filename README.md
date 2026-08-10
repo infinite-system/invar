@@ -84,8 +84,9 @@ bun run build          # → dist/iv  (self-contained executable)
   ported. Connecting TO a Linux host from a Linux client works.
 - The monitoring pane's process sampler is Linux-only (`/proc`); it degrades to empty samples
   on macOS.
-- The development smoke/drive harness and merge gate are Linux-only; on macOS run
-  `bun test` and `bun run typecheck`.
+- The smoke/drive harness (`bun run drive`, `scripts/harness/*`) runs on macOS. The full
+  merge gate's orchestration remains Linux-only; run it remotely with
+  `bash scripts/gate-remote.sh`.
 
 ### Troubleshooting
 

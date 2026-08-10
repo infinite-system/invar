@@ -26,6 +26,7 @@ import type { StatusSnapshot } from '../system/StatusChannel';
 import { MonitoringPaneContent } from './MonitoringPaneContent';
 import { MonitoringStats } from './MonitoringStats';
 import type { MonitoredWorkspaceLedger } from './MonitoringStats';
+import { DarwinProcessSampler } from './DarwinProcessSampler';
 import { LinuxProcessSampler } from './LinuxProcessSampler';
 import type { ProcessSampler } from './ProcessSampler.interface';
 import type {
@@ -128,6 +129,9 @@ class $MonitoringPlugin implements ApplicationContributor {
   }
 
   protected createProcessSampler(): ProcessSampler {
+    if (process.platform === 'darwin') {
+      return new DarwinProcessSampler.Class();
+    }
     return new LinuxProcessSampler.Class();
   }
 

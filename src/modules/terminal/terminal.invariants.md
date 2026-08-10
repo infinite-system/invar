@@ -241,8 +241,8 @@ native `Bun.Terminal`), composed by `BunTerminalBackend` for the integrated term
 `SshClient` for the `iv ssh` interactive session, because `bun:ffi` (1.3.14) cannot pass the variadic
 arguments of `OpenPty`'s `fcntl`/`ioctl` on the darwin arm64 ABI — `fcntl` silently fails to apply
 `O_NONBLOCK` and `ioctl(TIOCSWINSZ)` segfaults the process; the native PTY makes those calls in Bun's
-C++ layer with no FFI. The harness (`PtyTestDriver`) is not yet ported to the native allocator, so its
-role is unserved on macOS (the smokes run on Linux).
+C++ layer with no FFI. The harness (`PtyTestDriver`) composes the same native allocator on darwin,
+so all three PTY roles (integrated terminal, `iv ssh`, harness) run on both platforms.
 
 **Scope:** `OpenPty`, `NativeTerminalPty`, `OpenPtyBackend`, `BunTerminalBackend`, `SshClient`
 (the `iv ssh` interactive session), `TerminalFactory` (the platform select), and
@@ -257,7 +257,8 @@ descriptor. `NativeTerminalPty` wraps `Bun.Terminal` — which owns the child sp
 the `terminal` handle in place of a slave descriptor); `BunTerminalBackend` composes it behind the
 `TerminalBackend` seam, and `SshClient.spawnNativeInteractive` composes it for the remote session.
 `TerminalFactory.createBackend` selects `BunTerminalBackend` on darwin and `OpenPtyBackend`
-elsewhere; nothing above the backend seam knows which allocator it got.
+elsewhere, and `PtyTestDriver` makes the same platform choice between the two allocators; nothing
+above the backend seam or the driver's byte loop knows which allocator it got.
 
 **Generates:** still exactly one FFI maintenance point (`OpenPty`); role inversion without copied PTY
 code; identical byte and resize behavior for the integrated terminal and the harness on Linux; a

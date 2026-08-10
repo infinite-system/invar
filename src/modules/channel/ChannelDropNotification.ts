@@ -52,8 +52,12 @@ class $ChannelDropNotification {
     const leafName = basename(path);
     if (!/^[a-f0-9]{64}-.+/u.test(leafName) || !existsSync(path)) return false;
     try {
+      // Compare resolved against resolved: the candidate path is realpath'd, so the dropzone base
+      // must be too, or a symlinked base rejects every legitimate file (macOS /var -> /private/var
+      // made this containment check false for ALL dropzone files; Linux /tmp is real, hiding it).
       const realPath = realpathSync(path);
-      return realPath.startsWith(directory + sep);
+      const realDirectory = realpathSync(directory);
+      return realPath.startsWith(realDirectory + sep);
     } catch {
       return false;
     }

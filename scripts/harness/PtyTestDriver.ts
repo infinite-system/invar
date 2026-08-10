@@ -15,6 +15,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { NativeTerminalPty } from '../../src/modules/system/NativeTerminalPty';
 import { OpenPty } from '../../src/modules/system/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import {
@@ -107,7 +108,7 @@ class $PtyTestDriver {
     return 4 * 1024 * 1024;
   }
 
-  private readonly openPty: OpenPty.Model;
+  private readonly openPty: OpenPty.Model | NativeTerminalPty.Model;
   private readonly emulator: TerminalEmulator.Model;
   private readonly quiescence = new SynchronizedOutputQuiescence.Class();
   private readonly terminalOutputAudit = new TerminalOutputAudit.Class();
@@ -165,7 +166,15 @@ class $PtyTestDriver {
     const columns = options.columns ?? 120;
     const rows = options.rows ?? 40;
     const repositoryRoot = options.repositoryRoot ?? process.cwd();
-    this.openPty = new OpenPty.Class(columns, rows);
+    // The platform PTY split, same as TerminalFactory's and SshClient's: the FFI allocator
+    // (OpenPty) cannot run on macOS (bun:ffi cannot pass variadic fcntl/ioctl on darwin arm64),
+    // so darwin drives Invar through the native allocator instead — which is what makes
+    // `bun run drive` and the smokes runnable on macOS at all.
+    // invariant: One openpty allocator serves both PTY roles (src/modules/terminal/terminal.invariants.md)
+    this.openPty =
+      process.platform === 'darwin'
+        ? new NativeTerminalPty.Class(columns, rows)
+        : new OpenPty.Class(columns, rows);
     this.emulator = new TerminalEmulator.Class(columns, rows, {
       textSizingSupported: options.textSizingSupported ?? true,
     });
@@ -201,20 +210,30 @@ class $PtyTestDriver {
       'src/main.ts',
       options.workspaceRoot,
     ];
-    const childCommand =
-      process.platform === 'linux'
-        ? ['setsid', '--ctty', ...applicationCommand]
-        : applicationCommand;
-    this.child = Bun.spawn(childCommand, {
-      cwd: repositoryRoot,
-      stdio: [
-        this.openPty.slaveFileDescriptor,
-        this.openPty.slaveFileDescriptor,
-        this.openPty.slaveFileDescriptor,
-      ],
-      env: this.childEnvironment(options),
-    });
-    this.openPty.releaseSlaveFileDescriptor();
+    if (this.openPty instanceof NativeTerminalPty.Class) {
+      // The native PTY owns the child spawn through the `terminal` spawn option; there is no
+      // slave descriptor to hand out and no setsid on darwin.
+      this.child = Bun.spawn(applicationCommand, {
+        cwd: repositoryRoot,
+        terminal: this.openPty.terminal,
+        env: this.childEnvironment(options),
+      });
+    } else {
+      const childCommand =
+        process.platform === 'linux'
+          ? ['setsid', '--ctty', ...applicationCommand]
+          : applicationCommand;
+      this.child = Bun.spawn(childCommand, {
+        cwd: repositoryRoot,
+        stdio: [
+          this.openPty.slaveFileDescriptor,
+          this.openPty.slaveFileDescriptor,
+          this.openPty.slaveFileDescriptor,
+        ],
+        env: this.childEnvironment(options),
+      });
+      this.openPty.releaseSlaveFileDescriptor();
+    }
     void this.child.exited.then(async (exitCode) => {
       if (this.disposed) return;
       // DRAIN BEFORE REPORTING. The exit event can win the race against the first read

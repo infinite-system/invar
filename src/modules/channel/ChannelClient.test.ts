@@ -44,7 +44,10 @@ test('server sends dialog.request to the client and returns its selected path', 
   }
 
   const directory = mkdtempSync(join(tmpdir(), 'invar-channel-dialog-'));
-  const socketPath = join(tmpdir(), `${basename(directory)}.sock`);
+  // The socket path must be the PRODUCTION shape: ChannelServer's whitelist accepts only
+  // /tmp/invar-channel-*.sock (exactly what SshClient provisions). Building it from tmpdir()
+  // broke on macOS, where tmpdir() is /var/folders/... — a path production never uses.
+  const socketPath = `/tmp/invar-channel-${basename(directory)}.sock`;
   const originalSocketPath = process.env.INVAR_CHANNEL_SOCKET;
   let client: ChannelClient.Model;
   const server = new DialogChannelServer((bytes) =>

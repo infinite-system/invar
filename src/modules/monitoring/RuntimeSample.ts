@@ -17,6 +17,7 @@
 // invariant: A runtime reading is a delta over a named window (src/modules/monitoring/monitoring.invariants.md)
 // invariant: The monitor names its own cost and pays it only when observed (src/modules/monitoring/monitoring.invariants.md)
 import { Static } from 'ivue/extras';
+import { DarwinProcessSampler } from './DarwinProcessSampler';
 import { LinuxProcessSampler } from './LinuxProcessSampler';
 import type {
   ProcessResourceSample,
@@ -30,6 +31,9 @@ class $RuntimeSample {
   }
 
   protected static get $processSampler(): ProcessSampler {
+    if (process.platform === 'darwin') {
+      return new DarwinProcessSampler.Class();
+    }
     return new LinuxProcessSampler.Class();
   }
 
