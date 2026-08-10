@@ -19,6 +19,8 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
+# Portable epoch_ms/epoch_ns/resolve_path — one dependency (bash 5), no BSD/GNU userland split.
+source "$DIR/portable.sh"
 
 set_gate_scratch_paths() {
   local scratch_base_directory="$1"
@@ -126,9 +128,7 @@ initialize_failure_log_directory() {
   if [ -e "$failure_log_stable_path" ] &&
     [ ! -L "$failure_log_stable_path" ]
   then
-    displaced_failure_log_path="$failure_log_stable_path.displaced.$(
-      date +%s%N
-    ).$$"
+    displaced_failure_log_path="$failure_log_stable_path.displaced.$(epoch_ns).$$"
     if mv -- "$failure_log_stable_path" "$displaced_failure_log_path"; then
       echo "merge-gate: preserved wrong-type stable failure path at"
       echo "  $displaced_failure_log_path"
@@ -162,7 +162,7 @@ preserve_failure_log() {
 report_failure_log_provenance() {
   local resolved_failure_log_path
   resolved_failure_log_path="$(
-    readlink -f "$failure_log_stable_path" 2>/dev/null || true
+    resolve_path "$failure_log_stable_path"
   )"
   echo "merge-gate: this run's failure logs: $failure_log_directory"
   if [ -n "$resolved_failure_log_path" ]; then
@@ -230,7 +230,7 @@ run_failure_log_provenance_self_test() {
     >"$first_probe_output" 2>&1
   first_probe_exit_code=$?
   first_failure_log_path="$(
-    readlink -f "$stable_failure_log_path" 2>/dev/null || true
+    resolve_path "$stable_failure_log_path"
   )"
 
   INVAR_MERGE_GATE_FAILURE_LOG_PROBE_STABLE_PATH="$stable_failure_log_path" \
@@ -239,7 +239,7 @@ run_failure_log_provenance_self_test() {
     >"$second_probe_output" 2>&1
   second_probe_exit_code=$?
   second_failure_log_path="$(
-    readlink -f "$stable_failure_log_path" 2>/dev/null || true
+    resolve_path "$stable_failure_log_path"
   )"
   displaced_failure_log_path="$(
     find "$provenance_test_directory" \
@@ -448,11 +448,11 @@ run_scratch_path_namespace_self_test() {
     [ "$concurrent_first_failure_directory" = "$concurrent_second_failure_directory" ] ||
     [ "$concurrent_first_binary_path" = "$concurrent_second_binary_path" ] ||
     [ "$(
-      readlink -f "$concurrent_first_stable_path" 2>/dev/null || true
-    )" != "$concurrent_first_failure_directory" ] ||
+      resolve_path "$concurrent_first_stable_path"
+    )" != "$(resolve_path "$concurrent_first_failure_directory")" ] ||
     [ "$(
-      readlink -f "$concurrent_second_stable_path" 2>/dev/null || true
-    )" != "$concurrent_second_failure_directory" ] ||
+      resolve_path "$concurrent_second_stable_path"
+    )" != "$(resolve_path "$concurrent_second_failure_directory")" ] ||
     [ "$(
       cat "$concurrent_first_stable_path/scratch-path-probe-failure.log" \
         2>/dev/null || true
@@ -523,8 +523,8 @@ run_scratch_path_namespace_self_test() {
       "$single_probe_output"
   )"
   if [ "$(
-    readlink -f "$single_stable_path" 2>/dev/null || true
-  )" != "$single_failure_directory" ] ||
+    resolve_path "$single_stable_path"
+  )" != "$(resolve_path "$single_failure_directory")" ] ||
     [ "$(
       cat "$single_stable_path/scratch-path-probe-failure.log" \
         2>/dev/null || true
@@ -679,7 +679,7 @@ reporting_step() {
   local name="$1"; shift
   local step_finished_milliseconds
   local step_started_milliseconds
-  step_started_milliseconds="$(date +%s%3N)"
+  step_started_milliseconds="$(epoch_ms)"
   echo "== merge-gate: $name =="
   if "$@" >/tmp/merge-gate-reporting.$$.log 2>&1; then
     sed 's/^/    | /' /tmp/merge-gate-reporting.$$.log
@@ -691,7 +691,7 @@ reporting_step() {
     failed_step_names+=("$name")
   fi
   rm -f /tmp/merge-gate-reporting.$$.log
-  step_finished_milliseconds="$(date +%s%3N)"
+  step_finished_milliseconds="$(epoch_ms)"
   echo "merge-gate timing: serial step $(
     format_duration_milliseconds \
       "$((step_finished_milliseconds - step_started_milliseconds))"
@@ -818,7 +818,7 @@ execute_registered_smoke_job() {
   local job_started_milliseconds
   local smoke_passed=0
   failure_slug="$(echo "$smoke_name" | tr -cs 'a-zA-Z0-9' '-')"
-  job_started_milliseconds="$(date +%s%3N)"
+  job_started_milliseconds="$(epoch_ms)"
 
   : >"$summary_log"
   echo none >"$retry_outcome_file"
@@ -849,7 +849,7 @@ execute_registered_smoke_job() {
     echo 1 >"$result_file"
   fi
   rm -f "$step_log"
-  job_finished_milliseconds="$(date +%s%3N)"
+  job_finished_milliseconds="$(epoch_ms)"
   echo "$((job_finished_milliseconds - job_started_milliseconds))" >"$duration_file"
 }
 

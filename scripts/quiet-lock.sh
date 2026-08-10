@@ -6,6 +6,8 @@
 quiet_lock_script_path="$(
   cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd
 )/$(basename "${BASH_SOURCE[0]}")"
+# Portable epoch_ms/epoch_ns (bash 5, no BSD/GNU date split).
+source "$(dirname "$quiet_lock_script_path")/portable.sh"
 quiet_lock_default_file_path="/tmp/invar-quiet.lock"
 quiet_lock_default_journal_path="/tmp/invar-quiet-lock.journal"
 quiet_lock_default_wait_seconds=120
@@ -45,9 +47,11 @@ quiet_lock_append_journal() {
   )"
   mkdir -p "$(dirname "$journal_path")"
   exec {journal_guard_file_descriptor}>"${journal_path}.guard"
-  flock -x "$journal_guard_file_descriptor"
+  # flock is best-effort here and absent on stock macOS; the append is a single line and the outer
+  # scheduling already degraded without it, so guard the call rather than spew "command not found".
+  command -v flock >/dev/null 2>&1 && flock -x "$journal_guard_file_descriptor"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$(date -Ins)" \
+    "$(iso_now)" \
     "$event_name" \
     "$holder_identifier" \
     "$holder_mode" \
@@ -142,10 +146,10 @@ quiet_lock_run_with_paths() {
   holder_identifier="$(
     printf '%s-%s-%s' \
       "$holder_process_identifier" \
-      "$(date +%s%N)" \
+      "$(epoch_ns)" \
       "$RANDOM"
   )"
-  acquisition_started_milliseconds="$(date +%s%3N)"
+  acquisition_started_milliseconds="$(epoch_ms)"
   quiet_lock_append_journal \
     "$journal_path" \
     "waiting" \
@@ -181,7 +185,7 @@ quiet_lock_run_with_paths() {
       "$lock_option" \
       -w "$maximum_wait_seconds" \
       "$lock_file_descriptor"; then
-      acquisition_finished_milliseconds="$(date +%s%3N)"
+      acquisition_finished_milliseconds="$(epoch_ms)"
       acquisition_wait_milliseconds="$(
         quiet_lock_elapsed_milliseconds \
           "$acquisition_started_milliseconds" \
@@ -214,7 +218,7 @@ quiet_lock_run_with_paths() {
         "$acquisition_wait_milliseconds"
       exec {lock_file_descriptor}>&-
     else
-      acquisition_finished_milliseconds="$(date +%s%3N)"
+      acquisition_finished_milliseconds="$(epoch_ms)"
       acquisition_wait_milliseconds="$(
         quiet_lock_elapsed_milliseconds \
           "$acquisition_started_milliseconds" \

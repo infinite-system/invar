@@ -144,6 +144,28 @@ else
   fi
 fi
 
+# ---- 3b. bash >= 5 for the dev gate (macOS ships 3.2; Linux already has 5) --------------------
+# The app itself needs no bash — this is only for `bun run gate` and the shell smokes, whose
+# portable primitives (scripts/portable.sh) use the bash-5 EPOCHREALTIME builtin. Advisory, not
+# fatal: a contributor who never runs the gate does not need it.
+bash_major="${BASH_VERSINFO:-0}"
+if [ "$bash_major" -ge 5 ] 2>/dev/null; then
+  ok "bash $BASH_VERSION (gate-capable)"
+elif command -v /opt/homebrew/bin/bash >/dev/null 2>&1 || command -v /usr/local/bin/bash >/dev/null 2>&1; then
+  ok "bash 5 present via Homebrew (run the gate under it, not /bin/bash)"
+else
+  warn "bash is $BASH_VERSION — the dev merge gate needs bash >= 5 (the app itself does not)."
+  if [ "$PLATFORM" = macos ] && have brew; then
+    if confirm "Install bash 5 via Homebrew (for running the gate)?" Y; then
+      brew install bash && ok "bash 5 installed (run the gate with /opt/homebrew/bin/bash)"
+    else
+      warn "Skipped bash 5 — the app runs fine; the gate needs it."
+    fi
+  else
+    warn "Install bash >= 5 if you intend to run the gate (Linux package managers ship it)."
+  fi
+fi
+
 # ---- 4. build (optional) -----------------------------------------------------
 if [ "$DO_BUILD" = 1 ]; then
   say "Building the standalone binary (bun run build)"
