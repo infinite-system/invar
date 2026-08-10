@@ -143,13 +143,21 @@ class $SshClient {
       stderr: 'pipe',
     });
     this.channelProcess = channelProcess;
+    // The remote's stderr is the only witness when the channel dies (a missing `iv` on the remote,
+    // a login-shell failure). Collect it so "Remote channel closed" can say WHY instead of leaving
+    // the user to guess — the bare message cost a real diagnosis round on 2026-08-10.
+    const remoteErrorTail = this.collectStreamTail(channelProcess.stderr);
     let channelClient: ChannelClient.Model;
     channelClient = new ChannelClient.Class(
       (bytes) => channelProcess.stdin.write(bytes),
       (method, parameters) =>
         this.handleChannelRequest(method, parameters, channelClient),
     );
-    const channelRead = this.readChannel(channelProcess.stdout, channelClient);
+    const channelRead = this.readChannel(
+      channelProcess.stdout,
+      channelClient,
+      remoteErrorTail,
+    );
     await channelClient.negotiate();
 
     const columns = process.stdout.columns ?? 80;
@@ -260,13 +268,44 @@ class $SshClient {
     return { path: upload.path };
   }
 
+  /** Accumulate a bounded tail of a remote stream (the channel's stderr) for error reporting. */
+  protected collectStreamTail(
+    stream: ReadableStream<Uint8Array>,
+    limitBytes = 4096,
+  ): { text(): string } {
+    let tail = '';
+    const decoder = new TextDecoder();
+    void (async () => {
+      try {
+        for await (const bytes of stream) {
+          tail = (tail + decoder.decode(bytes, { stream: true })).slice(
+            -limitBytes,
+          );
+        }
+      } catch {
+        // The stream ends with the process; whatever arrived is the evidence.
+      }
+    })();
+    return { text: () => tail.trim() };
+  }
+
   protected async readChannel(
     stream: ReadableStream<Uint8Array>,
     client: ChannelClient.Model,
+    remoteErrorTail?: { text(): string },
   ): Promise<void> {
     try {
       for await (const bytes of stream) client.receive(bytes);
-      client.close(new Error('Remote channel closed'));
+      const remoteError = remoteErrorTail?.text() ?? '';
+      client.close(
+        new Error(
+          remoteError
+            ? `Remote channel closed. Remote said: ${remoteError}\n` +
+              `(usually the remote cannot start Invar — install iv on the remote host, or set ` +
+              `INVAR_REMOTE_IV_COMMAND to its absolute path)`
+            : 'Remote channel closed',
+        ),
+      );
     } catch (error) {
       client.close(error);
       throw error;

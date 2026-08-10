@@ -33,6 +33,44 @@ test('ssh arguments and remote Invar arguments stay on their own sides', () => {
   );
 });
 
+// When the remote channel dies, the error must carry the remote's stderr — "Remote channel
+// closed" alone cost a real diagnosis round (2026-08-10: the actual cause, a missing `iv` on the
+// remote, was sitting unread in the piped stderr). Both arms: with stderr evidence the message
+// names it; without evidence the bare message survives unchanged.
+test('a dead channel reports the remote stderr when there is any', async () => {
+  class ProbeSshClient extends SshClient.$Class {
+    async probeReadChannel(
+      stream: ReadableStream<Uint8Array>,
+      client: Parameters<$ProbeReadChannel>[1],
+      tail?: { text(): string },
+    ) {
+      return this.readChannel(stream, client, tail);
+    }
+  }
+  type $ProbeReadChannel = ProbeSshClient['readChannel'];
+  const client = new ProbeSshClient([], []);
+  const emptyStream = () =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.close();
+      },
+    });
+  const closeErrors: unknown[] = [];
+  const fakeChannelClient = {
+    receive: () => {},
+    close: (error: unknown) => closeErrors.push(error),
+  } as never;
+
+  await client.probeReadChannel(emptyStream(), fakeChannelClient, {
+    text: () => 'bash: iv: command not found',
+  });
+  await client.probeReadChannel(emptyStream(), fakeChannelClient);
+
+  expect(String(closeErrors[0])).toContain('bash: iv: command not found');
+  expect(String(closeErrors[0])).toContain('INVAR_REMOTE_IV_COMMAND');
+  expect(String(closeErrors[1])).toBe('Error: Remote channel closed');
+});
+
 // The macOS interactive-session helper, driven with a local command standing in for the ssh
 // process. What this proves: the native PTY is allocated, the interactive child is attached
 // through the `terminal` spawn option, its output reaches the registered sink, writes reach the
