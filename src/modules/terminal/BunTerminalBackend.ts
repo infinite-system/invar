@@ -113,6 +113,14 @@ class $BunTerminalBackend implements TerminalBackend {
   resize(columns: number, rows: number): void {
     if (this.killed) return;
     this.nativePty.resize(columns, rows);
+    // Bun's native PTY updates the winsize but does not raise SIGWINCH on the child (unlike Linux's
+    // ioctl(TIOCSWINSZ), which the kernel signals automatically). Without it the shell never
+    // reflows when Invar's window resizes on macOS — deliver it explicitly, as SshClient does.
+    try {
+      this.child.kill('SIGWINCH');
+    } catch {
+      // The child has already exited.
+    }
   }
 
   kill(): void {

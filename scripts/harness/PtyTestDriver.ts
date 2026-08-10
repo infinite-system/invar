@@ -412,6 +412,17 @@ class $PtyTestDriver {
     this.markFrameExpected();
     this.emulator.resize(columns, rows);
     this.openPty.resize(columns, rows);
+    // Linux's ioctl(TIOCSWINSZ) makes the kernel raise SIGWINCH on the child's process group, which
+    // is how the driven app (OpenTUI) learns to re-query size and re-render. Bun's native PTY sets
+    // the winsize but does NOT signal the child (measured 2026-08-10), so on darwin the app would
+    // never notice a resize — deliver SIGWINCH ourselves, matching SshClient's resize path.
+    if (this.openPty instanceof NativeTerminalPty.Class) {
+      try {
+        this.child.kill('SIGWINCH');
+      } catch {
+        // The child has already exited; nothing to signal.
+      }
+    }
   }
 
   async awaitScreenChange(timeoutMilliseconds = 30_000): Promise<void> {
