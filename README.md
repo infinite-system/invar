@@ -25,15 +25,46 @@ clickable affordance, and no capability requires a memorized motion.
 > And the binary is **`iv`** — which is `vi`, reversed. On purpose. Same terminal,
 > opposite philosophy: nothing to memorize, everything visible.
 
-## Quickstart
+## Platform support
+
+| Platform | Status |
+|---|---|
+| **Linux** (x64, arm64) | ✅ Fully supported — the primary development platform. |
+| **macOS** (Apple Silicon & Intel) | ✅ Supported — editor, integrated terminal, agents, git, search all work. See [macOS notes](#macos-notes). |
+| **Windows** | ❌ Not yet supported. Use WSL2 (runs as Linux). |
+
+## Install (macOS & Linux)
+
+The only hard requirement is **[Bun](https://bun.com) ≥ 1.3.14** — it is the runtime, bundler,
+test runner, and package manager. Node/npm are not needed.
+
+**One command** — installs Bun if missing, installs dependencies, and optionally sets up
+`ripgrep` (powers find-in-files):
+
+```bash
+bash scripts/install.sh          # add --build to also compile the standalone binary
+```
+
+The script is idempotent — re-run it any time. If you just cloned and hit *"missing packages"*
+or *"command not found: bun"*, this is the fix.
+
+**Or by hand**, if you already have Bun:
 
 ```bash
 bun install
+```
+
+## Quickstart
+
+Same commands on macOS and Linux:
+
+```bash
 bun run start          # open the current directory as the workspace
 bun run dev <dir>      # open a specific directory
 ```
 
-Quit with `Ctrl+Q` or `F10`. Command palette is `F1`; fuzzy go-to-file is `Ctrl+P`.
+Quit with `Ctrl+Q` or `F10` (confirm in the dialog). Command palette is `F1`; fuzzy go-to-file
+is `Ctrl+P`; terminal panel is `` Ctrl+` `` or `Ctrl+J`.
 Full run/build/test instructions live in [`project.build.md`](./project.build.md).
 
 Build a standalone binary:
@@ -42,6 +73,28 @@ Build a standalone binary:
 bun run build          # → dist/iv  (self-contained executable)
 ./dist/iv .
 ```
+
+### macOS notes
+
+- The integrated terminal runs on Bun's native PTY (`Bun.Terminal`) on macOS; on Linux it uses
+  the shared FFI `openpty` allocator. Same behavior above the backend seam.
+- Job control inside the integrated terminal (`Ctrl+Z`, `fg`, `bg`) is not available on macOS
+  yet (no `setsid --ctty`); baseline interactivity and resize work.
+- `iv ssh <host>` (remote editing) does not work FROM a macOS client yet — its PTY path is not
+  ported. Connecting TO a Linux host from a Linux client works.
+- The monitoring pane's process sampler is Linux-only (`/proc`); it degrades to empty samples
+  on macOS.
+- The development smoke/drive harness and merge gate are Linux-only; on macOS run
+  `bun test` and `bun run typecheck`.
+
+### Troubleshooting
+
+- **`command not found: bun`** — Bun isn't on your `PATH`. Run `bash scripts/install.sh`, or add
+  `export PATH="$HOME/.bun/bin:$PATH"` to your shell profile.
+- **Missing packages / module-not-found on start** — dependencies aren't installed: run
+  `bun install` (or `bash scripts/install.sh`) from the repo root.
+- **Find-in-files does nothing** — install `ripgrep` (`brew install ripgrep` /
+  `apt install ripgrep`), or re-run `bash scripts/install.sh` and accept the ripgrep step.
 
 ## Built with Invariant-Based Reasoning (IBR)
 
