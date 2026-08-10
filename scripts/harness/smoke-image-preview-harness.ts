@@ -89,10 +89,7 @@ async function openThroughQuickOpen(
   driver.sendKeys('Enter');
 }
 
-const pngPath = join(
-  import.meta.dir,
-  '../fixtures/image-preview-fixture.png',
-);
+const pngPath = join(import.meta.dir, '../fixtures/image-preview-fixture.png');
 
 HarnessSmoke.Class.requireCondition(
   await Bun.file(pngPath).exists(),
