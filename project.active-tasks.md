@@ -6,9 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #546 [diff-view-labels-lie-for-commits](.invar/tasks/in-progress/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md)  [building]
+## IN-PROGRESS (3)
+- #546 [diff-view-labels-lie-for-commits](.invar/tasks/in-progress/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/546-diff-view-labels-lie-for-commits`
+- #528 [padding-check-substring-weakness](.invar/tasks/in-progress/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/528-padding-check-substring-weakness`
+- #523 [codex-hooks-engine-probe](.invar/tasks/in-progress/523-codex-hooks-engine-probe/task-523-codex-hooks-engine-probe.md)  [building]
+  `tmux attach -t invar/523-codex-hooks-engine-probe`
 
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
@@ -26,7 +30,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (32)
-- #528 [padding-check-substring-weakness](.invar/tasks/active/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)
+- #548 [land-refuses-committed-priming-files](.invar/tasks/active/548-land-refuses-committed-priming-files/task-548-land-refuses-committed-priming-files.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
@@ -109,10 +113,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (40)
+## ARCHITECTURE-HYGIENE (39)
 - #544 [pane-observation-predicate-distillation](.invar/tasks/active/544-pane-observation-predicate-distillation/task-544-pane-observation-predicate-distillation.md)
 - #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
-- #523 [codex-hooks-engine-probe](.invar/tasks/active/523-codex-hooks-engine-probe/task-523-codex-hooks-engine-probe.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
