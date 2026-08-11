@@ -104,7 +104,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (43)
+## ARCHITECTURE-HYGIENE (44)
+- #539 [module-constants-to-statics](.invar/tasks/active/539-module-constants-to-statics/task-539-module-constants-to-statics.md)
 - #527 [harness-modified-key-chords](.invar/tasks/active/527-harness-modified-key-chords/task-527-harness-modified-key-chords.md)
 - #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
 - #525 [shared-lane-rollout-resolver](.invar/tasks/active/525-shared-lane-rollout-resolver/task-525-shared-lane-rollout-resolver.md)
