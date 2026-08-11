@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #550 [scrollbars-drag-fixture-paint-red-on-main](.invar/tasks/in-progress/550-scrollbars-drag-fixture-paint-red-on-main/task-550-scrollbars-drag-fixture-paint-red-on-main.md)  [building]
+- #550 [scrollbars-drag-fixture-paint-red-on-main](.invar/tasks/in-progress/550-scrollbars-drag-fixture-paint-red-on-main/task-550-scrollbars-drag-fixture-paint-red-on-main.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/550-scrollbars-drag-fixture-paint-red-on-main`
 
 ## USER-DIRECTED (12)
@@ -24,7 +24,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (32)
+## VERIFICATION-INTEGRITY (33)
+- #551 [quickopen-enter-race-census](.invar/tasks/active/551-quickopen-enter-race-census/task-551-quickopen-enter-race-census.md)
 - #548 [land-refuses-committed-priming-files](.invar/tasks/active/548-land-refuses-committed-priming-files/task-548-land-refuses-committed-priming-files.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
