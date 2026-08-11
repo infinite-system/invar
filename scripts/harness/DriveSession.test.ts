@@ -11,6 +11,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DriveScriptRunner, DriveSession } from './DriveSession';
+import type { HarnessSnapshotCell } from './HarnessSnapshot';
+import { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -55,6 +57,186 @@ class $DriveSessionTest {
     throw new Error(`App pid ${processIdentifier} did not exit`);
   }
 }
+
+/** A real HarnessSnapshot built from plain text rows, so scope tests exercise
+ *  the production findTextOccurrences instead of a re-implementation. */
+function snapshotFromRows(rowTexts: readonly string[]): HarnessSnapshot.Model {
+  const columns = Math.max(...rowTexts.map((rowText) => rowText.length));
+  const cells: HarnessSnapshotCell[] = [];
+  for (let row = 0; row < rowTexts.length; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      cells.push({
+        characters: rowTexts[row]?.[column] ?? ' ',
+        row,
+        column,
+        width: 1,
+        foreground: 0,
+        background: 0,
+        isForegroundDefault: true,
+        isForegroundRgb: false,
+        isForegroundPalette: false,
+        isBackgroundDefault: true,
+        isBackgroundRgb: false,
+        isBackgroundPalette: false,
+        isBold: false,
+        isDim: false,
+        isItalic: false,
+        isUnderline: false,
+        isBlink: false,
+        isInverse: false,
+        isInvisible: false,
+        isStrikethrough: false,
+        isOverline: false,
+      });
+    }
+  }
+  return new HarnessSnapshot.Class(columns, rowTexts.length, 0, 0, cells);
+}
+
+/** A driver double whose grid is a fixed snapshot: clickText resolution runs
+ *  against the real snapshot code, and every mouse byte lands in `events`. */
+function clickRecordingDriver(
+  rowTexts: readonly string[],
+  events: { kind: string; column: number; row: number }[],
+): never {
+  const snapshot = snapshotFromRows(rowTexts);
+  const recordEvent = (event: (typeof events)[number]) => {
+    events.push(event);
+  };
+  return {
+    snapshot: () => snapshot,
+    awaitGridCondition: async (
+      description: string,
+      predicate: (candidate: HarnessSnapshot.Model) => boolean,
+    ) => {
+      if (!predicate(snapshot)) {
+        throw new Error(`condition not satisfied: ${description}`);
+      }
+      return snapshot;
+    },
+    sendMouse: recordEvent,
+    sendMouseWithoutFrameExpectation: recordEvent,
+    completedFrameObservationCount: 0,
+  } as never;
+}
+
+test('clickText unscoped clicks the FIRST of two identical texts', async () => {
+  const events: { kind: string; column: number; row: number }[] = [];
+  const session = new DriveSession.Class(
+    clickRecordingDriver(['  note.txt', '', '  note.txt  '], events),
+    '/tmp/unused',
+  ).silence();
+  await session.clickText('note.txt');
+  const press = events.find((event) => event.kind === 'press');
+  expect(press).toMatchObject({ column: 2, row: 0 });
+});
+
+test('clickText occurrence scope clicks the Nth twin, same-row twins included', async () => {
+  const events: { kind: string; column: number; row: number }[] = [];
+  const session = new DriveSession.Class(
+    clickRecordingDriver(['❯ one ❯ two', '❯ three'], events),
+    '/tmp/unused',
+  ).silence();
+  await session.clickText('❯', 0, {}, { occurrence: 2 });
+  expect(events.find((event) => event.kind === 'press')).toMatchObject({
+    column: 6,
+    row: 0,
+  });
+  events.length = 0;
+  await session.clickText('❯', 0, {}, { occurrence: 3 });
+  expect(events.find((event) => event.kind === 'press')).toMatchObject({
+    column: 0,
+    row: 1,
+  });
+});
+
+test('clickText band scope skips an identical glyph outside the band', async () => {
+  const events: { kind: string; column: number; row: number }[] = [];
+  const session = new DriveSession.Class(
+    clickRecordingDriver(
+      ['top ❯ chrome', 'editor ❯ body', 'status ❯ row'],
+      events,
+    ),
+    '/tmp/unused',
+  ).silence();
+  await session.clickText('❯', 0, {}, { band: 'statusRow' });
+  expect(events.find((event) => event.kind === 'press')).toMatchObject({
+    column: 7,
+    row: 2,
+  });
+  events.length = 0;
+  await session.clickText('❯', 0, {}, { band: 'firstRow' });
+  expect(events.find((event) => event.kind === 'press')).toMatchObject({
+    column: 4,
+    row: 0,
+  });
+});
+
+test('clickText rectangle scope composes with occurrence', async () => {
+  const events: { kind: string; column: number; row: number }[] = [];
+  const session = new DriveSession.Class(
+    clickRecordingDriver(['ab ab ab', 'ab ab ab'], events),
+    '/tmp/unused',
+  ).silence();
+  await session.clickText(
+    'ab',
+    0,
+    {},
+    { rectangle: { left: 3, top: 1, width: 5, height: 1 }, occurrence: 2 },
+  );
+  expect(events.find((event) => event.kind === 'press')).toMatchObject({
+    column: 6,
+    row: 1,
+  });
+});
+
+test('clickText scope with a missing Nth twin fails loudly, never first-match', async () => {
+  const events: { kind: string; column: number; row: number }[] = [];
+  const session = new DriveSession.Class(
+    clickRecordingDriver(['only one ❯ here'], events),
+    '/tmp/unused',
+  ).silence();
+  session.clickText('❯', 0, {}, { occurrence: 2 });
+  await expect(session.flush()).rejects.toThrow('match #2');
+  expect(events).toHaveLength(0);
+});
+
+test('clickText scope shapes are refused at call time', () => {
+  const session = new DriveSession.Class({} as never, '/tmp/unused').silence();
+  expect(() =>
+    session.clickText(
+      'x',
+      0,
+      {},
+      {
+        band: 'statusRow',
+        rectangle: { left: 0, top: 0, width: 1, height: 1 },
+      },
+    ),
+  ).toThrow('both a band and a rectangle');
+  expect(() =>
+    session.clickText('x', 0, {}, { band: 'bottomRow' as never }),
+  ).toThrow('is unknown');
+  expect(() => session.clickText('x', 0, {}, { occurrence: 0 })).toThrow(
+    '1-based integer',
+  );
+  expect(() => session.clickText('x', 0, {}, { occurrence: 1.5 })).toThrow(
+    '1-based integer',
+  );
+});
+
+test('paste sends the text as one framed gesture through the driver', async () => {
+  const pastedTexts: string[] = [];
+  const fakeDriver = {
+    sendPaste: (text: string) => {
+      pastedTexts.push(text);
+    },
+    completedFrameObservationCount: 0,
+  } as never;
+  const session = new DriveSession.Class(fakeDriver, '/tmp/unused').silence();
+  await session.paste('line one\nline two');
+  expect(pastedTexts).toEqual(['line one\nline two']);
+});
 
 test('drag presses, glides pressed, and releases — real intermediate drag moves', async () => {
   const mouseEvents: {
@@ -418,3 +600,89 @@ test('reload keeps the current app on boot failure and releases it after a succe
     await HarnessSmoke.Class.removeTemporaryDirectory(scratchRoot);
   }
 }, 60_000);
+
+test('reload honors --size by rebuilding the fixture, and a plain reload keeps it', async () => {
+  const serverDirectory = mkdtempSync(
+    join(tmpdir(), 'invar-drive-size-reload-'),
+  );
+  const serverProcess = Bun.spawn({
+    cmd: [
+      process.execPath,
+      resolve(import.meta.dir, 'DriveSession.ts'),
+      '--serve',
+      '--size',
+      '30',
+      '--server-dir',
+      serverDirectory,
+    ],
+    cwd: resolve(import.meta.dir, '../..'),
+    stdin: 'ignore',
+    stdout: 'ignore',
+    stderr: 'ignore',
+  });
+  try {
+    await $DriveSessionTest.awaitManifest(serverDirectory);
+    await DriveScriptRunner.Class.attach({
+      source: `await app.waitForText('scale-30.txt');`,
+      serverDirectory,
+    });
+
+    const reloadOutput = await DriveScriptRunner.Class.attach({
+      source: '',
+      reload: true,
+      reloadFixtureSize: 10,
+      serverDirectory,
+    });
+    expect(reloadOutput).toContain('fixture scale-10.txt');
+    await DriveScriptRunner.Class.attach({
+      source:
+        `await app.waitForText('scale-10.txt');` +
+        `const screen = await app.screen();` +
+        `if (screen.findText('scale-30.txt') !== null) {` +
+        `  throw new Error('the old 30-line fixture is still on screen');` +
+        `}`,
+      serverDirectory,
+    });
+
+    // A plain reload afterwards keeps serving the CURRENT (10-line) fixture.
+    const plainReloadOutput = await DriveScriptRunner.Class.attach({
+      source: '',
+      reload: true,
+      serverDirectory,
+    });
+    expect(plainReloadOutput).toContain('drive-server: reloaded');
+    await DriveScriptRunner.Class.attach({
+      source: `await app.waitForText('scale-10.txt');`,
+      serverDirectory,
+    });
+  } finally {
+    if ($DriveSessionTest.processIsLive(serverProcess.pid)) {
+      try {
+        await DriveScriptRunner.Class.attach({
+          source: '',
+          stop: true,
+          serverDirectory,
+        });
+      } catch {
+        serverProcess.kill();
+      }
+      if ($DriveSessionTest.processIsLive(serverProcess.pid)) {
+        serverProcess.kill();
+      }
+      await serverProcess.exited;
+    }
+    await HarnessSmoke.Class.removeTemporaryDirectory(serverDirectory);
+  }
+}, 90_000);
+
+test('attach-only flags refuse --open and --size instead of silently ignoring them', async () => {
+  await expect(
+    DriveScriptRunner.Class.main(['--attach', '', '--size', '5']),
+  ).rejects.toThrow('--size does nothing');
+  await expect(
+    DriveScriptRunner.Class.main(['--stop', '--size', '5']),
+  ).rejects.toThrow('--size does nothing');
+  await expect(
+    DriveScriptRunner.Class.main(['--reload', '--open', '/tmp']),
+  ).rejects.toThrow('--open does nothing');
+});

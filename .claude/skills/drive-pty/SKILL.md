@@ -34,7 +34,11 @@ bun scripts/harness/DriveSession.ts --stop             # done: kill your server
   sharing.
 - `--reload` boots a fresh app (new scratch home) on the same server: use it
   when accumulated state would contaminate the next question. With an
-  explicit `--home` the home is REUSED — persistence by choice.
+  explicit `--home` the home is REUSED — persistence by choice. Add
+  `--size N` to REBUILD the scale fixture at N lines on the same server;
+  the client verifies the server confirmed the new fixture and refuses an
+  unconfirmed size reload (no silent no-op). `--open` never rides an
+  attach/reload/stop — stop and re-serve to change the workspace.
 - Do not boot per probe (`--eval` cold-runs are for one-shots); do not leave
   servers running when your task ends; a `timeout`-killed server LEAKS its
   inner app — always `--stop`.
@@ -183,12 +187,24 @@ was rejected: they encode the implementation into the instrument until the
 driver is a second copy of the app. Do not add app verbs.
 
 - `moveMouse(column, row)` — a real move; hover states are real state.
-- `click(column?, row?, {alt, shift, control}?)` / `clickText(text, columnOffset?, modifiers?)` — modifier clicks (Alt+click = LSP jump) pass modifiers on press AND release
+- `click(column?, row?, {alt, shift, control}?)` / `clickText(text, columnOffset?, modifiers?, scope?)` — modifier clicks (Alt+click = LSP jump) pass modifiers on press AND release
+- `clickText` scope — WHICH twin of a repeated glyph:
+  `{ occurrence: 2 }` (1-based, row-major), `{ band: 'statusRow' | 'firstRow' }`,
+  or `{ rectangle: {left, top, width, height} }`; occurrence composes with
+  either region. Unscoped stays first-match. The wait is scoped too: a match
+  outside the scope never satisfies it, and a missing Nth twin times out
+  loudly instead of silently clicking the first.
 - `drag(fromColumn, fromRow, toColumn, toRow, modifiers?)` — press, pressed
   glide, release: text selection, thumb drags, splitter moves. Always emits
   real intermediate drag-move bytes (a teleporting press-release selects
   nothing); humanPace only spaces them for a watcher.
-- `key('Control+p', ...)` / `type('text')`
+- `key('Control+p', ...)` / `type('text')` — modified Enter/Escape/Backspace
+  chords work (`key('Control+Shift+Enter')` = find's Replace All): they go
+  out as modifyOtherKeys bytes (CSI 27), which both app parsers decode; an
+  unsupported chord still throws loudly.
+- `paste(text)` — ONE bracketed-paste frame (\x1b[200~…\x1b[201~), the byte
+  form a real terminal sends for a paste. Like type(), the gesture is not
+  the proof: chain a wait on a distinctive pasted line.
 - `scroll('up'|'down', ticks?, column?, row?)`
 - Waits: `waitFor(graphPath, value)` (the workhorse), `waitForStatus(field,
   value)`, `waitForText(text)` / `waitForTextGone(text)` (the ABSENCE wait:

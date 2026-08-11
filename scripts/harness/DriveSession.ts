@@ -35,7 +35,7 @@ import { join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import type { HarnessMouseButton } from './HarnessInput';
-import type { HarnessSnapshot } from './HarnessSnapshot';
+import type { HarnessRectangle, HarnessSnapshot } from './HarnessSnapshot';
 import { DiagnosticLog } from './DiagnosticLog';
 import { GraphClient } from './GraphClient';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -46,6 +46,17 @@ import { PtyTestDriver } from './PtyTestDriver';
 interface DriveStep {
   readonly description: string;
   readonly run: () => Promise<void>;
+}
+
+/** WHERE clickText looks, when the whole screen would find the wrong twin of
+ *  a repeated glyph. Still primitive: a region of cells or a match ordinal,
+ *  never an app concept. `band` names the two chrome rows every screen has;
+ *  `rectangle` is explicit cells; `occurrence` is the 1-based match index in
+ *  row-major order, composing with either region or standing alone. */
+export interface DriveTextScope {
+  readonly rectangle?: HarnessRectangle;
+  readonly band?: 'firstRow' | 'statusRow';
+  readonly occurrence?: number;
 }
 
 class $DriveSession {
@@ -240,52 +251,118 @@ class $DriveSession {
     );
   }
 
+  /** The scope's live region, resolved against the CURRENT screen (a band is
+   *  a row of whatever geometry the app has now, so it survives a resize). */
+  protected scopeRectangle(
+    scope: DriveTextScope,
+    screen: { columns: number; rows: number },
+  ): HarnessRectangle | undefined {
+    if (scope.band === undefined) return scope.rectangle;
+    if (scope.band === 'firstRow') {
+      return { left: 0, top: 0, width: screen.columns, height: 1 };
+    }
+    return { left: 0, top: screen.rows - 1, width: screen.columns, height: 1 };
+  }
+
   /** Click the first cell of some visible text — the user points at what they
-   *  can read, so the script says what they read. */
+   *  can read, so the script says what they read. When the same glyph paints
+   *  on two surfaces, `scope` says WHICH one is meant: a rectangle, a named
+   *  band, or the occurrence index — clickText('❯', 0, {}, { band: 'statusRow' }),
+   *  clickText('note.txt', 0, {}, { occurrence: 2 }). Unscoped stays
+   *  first-match. The wait is scoped too: a match OUTSIDE the scope never
+   *  satisfies it, and a missing Nth twin times out loudly instead of
+   *  silently clicking the first. */
   clickText(
     text: string,
     columnOffset = 0,
     modifiers: { alt?: boolean; shift?: boolean; control?: boolean } = {},
+    scope: DriveTextScope = {},
   ): this {
-    return this.step(`click text ${JSON.stringify(text)}`, async () => {
-      const snapshot = await this.driver.awaitGridCondition(
-        `${JSON.stringify(text)} is visible to click`,
-        (candidate) => candidate.findText(text) !== null,
+    // Shape-checked at CALL time, where the typo is on the caller's screen —
+    // an unknown band or a zeroth occurrence at step time would read as "the
+    // text never appeared", the wrong error for a wrong argument.
+    if (scope.band !== undefined && scope.rectangle !== undefined) {
+      throw new Error(
+        `clickText scope names both a band and a rectangle — pick one`,
       );
-      const position = snapshot.findText(text);
-      if (!position) throw new Error(`${text} vanished before the click`);
-      const column = position.column + columnOffset;
-      this.markInputFrameObservationBoundary();
-      if (this.paced) {
-        await this.glideTo(column, position.row);
-        await this.tempo(220);
-      } else {
-        this.driver.sendMouseWithoutFrameExpectation({
-          kind: 'move',
+    }
+    if (
+      scope.band !== undefined &&
+      scope.band !== 'firstRow' &&
+      scope.band !== 'statusRow'
+    ) {
+      throw new Error(
+        `clickText scope band ${JSON.stringify(scope.band)} is unknown — ` +
+          `the named bands are firstRow and statusRow`,
+      );
+    }
+    if (
+      scope.occurrence !== undefined &&
+      (!Number.isInteger(scope.occurrence) || scope.occurrence < 1)
+    ) {
+      throw new Error(
+        `clickText scope occurrence must be a 1-based integer, got ` +
+          `${JSON.stringify(scope.occurrence)}`,
+      );
+    }
+    const occurrence = scope.occurrence ?? 1;
+    const scopeDescription =
+      scope.band !== undefined
+        ? ` in ${scope.band}`
+        : scope.rectangle !== undefined
+          ? ` in rectangle`
+          : '';
+    const occurrenceDescription = occurrence === 1 ? '' : ` #${occurrence}`;
+    return this.step(
+      `click text ${JSON.stringify(text)}${occurrenceDescription}${scopeDescription}`,
+      async () => {
+        const snapshot = await this.driver.awaitGridCondition(
+          `match${occurrenceDescription} of ${JSON.stringify(text)}` +
+            `${scopeDescription} is visible to click`,
+          (candidate) =>
+            candidate.findTextOccurrences(
+              text,
+              this.scopeRectangle(scope, candidate),
+            ).length >= occurrence,
+        );
+        const position = snapshot.findTextOccurrences(
+          text,
+          this.scopeRectangle(scope, snapshot),
+        )[occurrence - 1];
+        if (!position) throw new Error(`${text} vanished before the click`);
+        const column = position.column + columnOffset;
+        this.markInputFrameObservationBoundary();
+        if (this.paced) {
+          await this.glideTo(column, position.row);
+          await this.tempo(220);
+        } else {
+          this.driver.sendMouseWithoutFrameExpectation({
+            kind: 'move',
+            column,
+            row: position.row,
+            button: 'none',
+          });
+        }
+        this.pointerColumn = column;
+        this.pointerRow = position.row;
+        this.driver.sendMouse({
+          kind: 'press',
           column,
           row: position.row,
-          button: 'none',
+          button: 'left',
+          ...modifiers,
         });
-      }
-      this.pointerColumn = column;
-      this.pointerRow = position.row;
-      this.driver.sendMouse({
-        kind: 'press',
-        column,
-        row: position.row,
-        button: 'left',
-        ...modifiers,
-      });
-      await this.tempo(90);
-      this.driver.sendMouse({
-        kind: 'release',
-        column,
-        row: position.row,
-        button: 'left',
-        ...modifiers,
-      });
-      await this.tempo(260);
-    });
+        await this.tempo(90);
+        this.driver.sendMouse({
+          kind: 'release',
+          column,
+          row: position.row,
+          button: 'left',
+          ...modifiers,
+        });
+        await this.tempo(260);
+      },
+    );
   }
 
   /** Drag: press at one cell, GLIDE there pressed, release at another —
@@ -362,6 +439,22 @@ class $DriveSession {
         // never synchronization.
         await this.tempo(105 + Math.random() * 45);
       }
+    });
+  }
+
+  /** Paste text as ONE bracketed-paste frame — the byte form a real terminal
+   *  sends when the user pastes (\x1b[200~ … \x1b[201~), so the app takes the
+   *  whole text as a paste, never as typed keys. Chain a wait on what the
+   *  paste CHANGED (waitForText on a distinctive pasted line, or a graph
+   *  condition) — like type(), the gesture itself is not the proof it
+   *  landed. */
+  paste(text: string): this {
+    const preview =
+      text.length > 24 ? `${text.slice(0, 21)}… (${text.length} chars)` : text;
+    return this.step(`paste ${JSON.stringify(preview)}`, async () => {
+      this.markInputFrameObservationBoundary();
+      this.driver.sendPaste(text);
+      await this.tempo(260);
     });
   }
 
@@ -998,7 +1091,9 @@ class $DriveScriptRunner {
     // A mirrored server has a human WATCHING — they almost certainly mean the
     // project they are standing in, not an empty scratch dir. Headless serves
     // keep the isolated temp workspace.
-    const scaleFixture =
+    // Both are LET: a `--reload --size N` request swaps in a fresh fixture,
+    // so the current fixture and workspace are server STATE, not boot facts.
+    let scaleFixture =
       options.fixtureSize === undefined
         ? null
         : await HarnessSmoke.Class.createDriveScaleFixture(options.fixtureSize);
@@ -1008,7 +1103,7 @@ class $DriveScriptRunner {
       !options.mirror
         ? this.temporaryWorkspaceRoot()
         : null;
-    const workspaceRoot =
+    let workspaceRoot =
       options.workspaceRoot ??
       scaleFixture?.workspaceRoot ??
       (options.mirror ? process.cwd() : temporaryWorkspaceRoot!);
@@ -1241,11 +1336,41 @@ class $DriveScriptRunner {
           }
           if (request.reload === true) {
             // START FRESH: ready the replacement before releasing the current
-            // app. A failed boot therefore leaves the current session live.
+            // app. A failed boot therefore leaves the current session live —
+            // including a failed fixture swap, which restores the previous
+            // fixture so later plain reloads keep serving what they served.
             try {
+              const requestedFixtureSize =
+                typeof request.fixtureSize === 'number'
+                  ? request.fixtureSize
+                  : undefined;
+              const previousScaleFixture = scaleFixture;
+              const previousWorkspaceRoot = workspaceRoot;
+              if (requestedFixtureSize !== undefined) {
+                scaleFixture =
+                  await HarnessSmoke.Class.createDriveScaleFixture(
+                    requestedFixtureSize,
+                  );
+                workspaceRoot = scaleFixture.workspaceRoot;
+              }
               const nextReloadCount = reloadCount + 1;
               const previous = active;
-              const replacement = await bootInnerApp(nextReloadCount);
+              let replacement: typeof active;
+              try {
+                replacement = await bootInnerApp(nextReloadCount);
+              } catch (thrown) {
+                if (
+                  scaleFixture !== previousScaleFixture &&
+                  scaleFixture !== null
+                ) {
+                  await HarnessSmoke.Class.removeTemporaryDirectory(
+                    scaleFixture.workspaceRoot,
+                  ).catch(() => undefined);
+                }
+                scaleFixture = previousScaleFixture;
+                workspaceRoot = previousWorkspaceRoot;
+                throw thrown;
+              }
               active = replacement;
               reloadCount = nextReloadCount;
               resizeTargetDriver = replacement.driver;
@@ -1255,10 +1380,26 @@ class $DriveScriptRunner {
                   previous.homeDirectory,
                 );
               }
+              if (
+                previousScaleFixture !== null &&
+                previousScaleFixture !== scaleFixture
+              ) {
+                await HarnessSmoke.Class.removeTemporaryDirectory(
+                  previousScaleFixture.workspaceRoot,
+                );
+              }
               this.writeServerFile(responsePath, {
                 id: request.id,
                 ok: true,
-                output: `drive-server: reloaded (fresh app #${reloadCount})`,
+                // The fixture clause is the client's PROOF the size landed —
+                // an older server that ignores fixtureSize cannot produce it,
+                // so the attach side fails loudly instead of silently keeping
+                // the old workspace (the #541 silent no-op).
+                output:
+                  `drive-server: reloaded (fresh app #${reloadCount}` +
+                  (requestedFixtureSize === undefined
+                    ? ')'
+                    : `, fixture scale-${requestedFixtureSize}.txt)`),
               });
             } catch (thrown) {
               this.writeServerFile(responsePath, {
@@ -1351,6 +1492,7 @@ class $DriveScriptRunner {
     serverDirectory?: string;
     stop?: boolean;
     reload?: boolean;
+    reloadFixtureSize?: number;
     timeoutMilliseconds?: number;
   }): Promise<string> {
     const serverDirectory =
@@ -1378,7 +1520,12 @@ class $DriveScriptRunner {
       ...(options.stop === true
         ? { stop: true }
         : options.reload === true
-          ? { reload: true }
+          ? {
+              reload: true,
+              ...(options.reloadFixtureSize === undefined
+                ? {}
+                : { fixtureSize: options.reloadFixtureSize }),
+            }
           : { source: options.source }),
     });
     const deadline = Date.now() + (options.timeoutMilliseconds ?? 60_000);
@@ -1391,6 +1538,21 @@ class $DriveScriptRunner {
           throw new Error(
             `attach: snippet failed: ${String(response.error)}` +
               `${output === '' ? '' : `\n${output}`}`,
+          );
+        }
+        // A size reload the server did not CONFIRM is the silent no-op #541
+        // exists to kill: an older server ignores unknown request fields and
+        // reports a plain reload, keeping the old workspace while the flag
+        // "worked". Require the server's own fixture clause as proof.
+        if (
+          options.reloadFixtureSize !== undefined &&
+          !output.includes(`fixture scale-${options.reloadFixtureSize}.txt`)
+        ) {
+          throw new Error(
+            `--reload --size ${options.reloadFixtureSize} was not honored: ` +
+              `the server answered ${JSON.stringify(output)} without the new ` +
+              `fixture. The server predates size reloads — stop it and ` +
+              `re-serve with --size ${options.reloadFixtureSize}.`,
           );
         }
         return output;
@@ -1531,11 +1693,28 @@ class $DriveScriptRunner {
       return;
     }
     if (stop || reload || attachSource !== undefined) {
+      // Flags that only apply when BOOTING an app must not ride an attach and
+      // silently do nothing — the #541 defect class. --size composes with
+      // --reload (rebuild the fixture); --open composes with neither.
+      if (workspaceRoot !== undefined) {
+        throw new Error(
+          '--open does nothing with --attach/--reload/--stop — the server ' +
+            'keeps its workspace. Stop the server and re-serve with --open ' +
+            'to change it.',
+        );
+      }
+      if (fixtureSize !== undefined && !reload) {
+        throw new Error(
+          '--size does nothing with --attach/--stop — it applies to --serve, ' +
+            'a one-shot run, or --reload (which rebuilds the fixture).',
+        );
+      }
       const output = await this.attach({
         source: attachSource ?? '',
         serverDirectory,
         stop,
         reload,
+        reloadFixtureSize: reload ? fixtureSize : undefined,
       });
       if (output !== '') console.log(output);
       return;
@@ -1602,7 +1781,8 @@ class $DriveScriptRunner {
       '                       an attached agent drive the app inside the app',
       "  --attach CODE        run a snippet against the RUNNING server's session",
       '  --attach-script FILE the same, from a file',
-      '  --reload             start a FRESH app (new scratch home) on the same server',
+      '  --reload             start a FRESH app (new scratch home) on the same server;',
+      '                       add --size N to rebuild the scale fixture at N lines',
       '  --stop               shut the server down',
       '  --server-dir DIR     rendezvous dir (default: keyed to this checkout,',
       '                       so each worktree gets its own server)',
@@ -1615,6 +1795,9 @@ class $DriveScriptRunner {
       "     .show('panelContentLabels')",
       "  app.show('after panel open', ['panelVisible', 'frame'])",
       '  app.drag(40, 8, 60, 12)          // press, pressed glide, release',
+      "  app.paste('line one\\nline two')  // ONE bracketed-paste frame",
+      "  app.clickText('❯', 0, {}, { band: 'statusRow' })     // scoped click",
+      "  app.clickText('note.txt', 0, {}, { occurrence: 2 })  // the 2nd twin",
       '  app.showLog(20)                  // tail the app diagnostic log',
       '  await app.logTail(20)            // the same, returned as lines',
       '',

@@ -94,6 +94,40 @@ class $HarnessSnapshot {
     return null;
   }
 
+  /** EVERY position of `marker`, row-major (top to bottom, left to right
+   *  within a row), optionally restricted to a rectangle. This is what lets a
+   *  caller address the SECOND of two identical glyphs by occurrence index
+   *  instead of hand-building a rectangle around the one it means. Matches
+   *  must fit entirely inside the rectangle; overlapping matches on one row
+   *  advance one column at a time so none is skipped. */
+  findTextOccurrences(
+    marker: string,
+    rectangle?: HarnessRectangle,
+  ): HarnessTextPosition[] {
+    const startRow =
+      rectangle === undefined ? 0 : Math.max(0, Math.floor(rectangle.top));
+    const endRowExclusive =
+      rectangle === undefined
+        ? this.rows
+        : Math.min(this.rows, Math.ceil(rectangle.top + rectangle.height));
+    const startColumn =
+      rectangle === undefined ? 0 : Math.max(0, Math.floor(rectangle.left));
+    const endColumnExclusive =
+      rectangle === undefined
+        ? this.columns
+        : Math.min(this.columns, Math.ceil(rectangle.left + rectangle.width));
+    const occurrences: HarnessTextPosition[] = [];
+    for (let row = startRow; row < endRowExclusive; row += 1) {
+      const text = this.rowText(row);
+      let column = text.indexOf(marker, startColumn);
+      while (column >= 0 && column + marker.length <= endColumnExclusive) {
+        occurrences.push({ row, column });
+        column = text.indexOf(marker, column + 1);
+      }
+    }
+    return occurrences;
+  }
+
   /** The position of `marker` inside the editor SOURCE pane, located at call time. Other panes
    *  echo the same document text (the markdown preview renders it; the structure outline lists
    *  its symbols), so a whole-grid `findText` can anchor on the wrong pane whenever those panes
