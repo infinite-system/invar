@@ -1,7 +1,7 @@
 # 550 — scrollbars drag fixture paint red on main
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — 0a3e97d0 — The scrollbars smoke was deterministically red on main (a Quick Open race masked in the contention tier); fixed via the shared helper, verified 3/3-timeout-to-2/2-pass solo.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
