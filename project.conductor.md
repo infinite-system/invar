@@ -884,3 +884,23 @@ check (`which <tool>`) as part of the end state; (3) the conductor's
 acceptance run uses the FULL test suite, not the changed module's
 folder — the second residual lived one module over from where the first
 was fixed.
+
+## 2026-08-11 — I diagnosed from a partial diff read and called a busy gate quiet (#522)
+
+Two compounding errors, both mine, both caught by the builder holding its
+ground with evidence. (1) I read #522's added chord branch in isolation
+and diagnosed "plain Escape now emits the modifyOtherKeys form" — without
+reading the `if (!hasShift && !hasAlt && !hasControl) return
+namedKeySequences[baseKey]` return SITTING ABOVE it that shields every
+plain key. A diff hunk is not the function; read the surrounding control
+flow before asserting a code path runs. (2) I called gate-522-r2 a "quiet
+single gate" and used that to upgrade a contention red to a real defect —
+but 522-r2 overlapped 524-r2, which I had launched minutes earlier. Before
+labeling a gate quiet, VERIFY no sibling gate overlapped its window
+(pgrep merge-gate at launch, or check the other registered logs' run
+spans). The builder's premise correction was right on both counts; the
+ground-truth byte probe (Escape=27, bare) settled it in one command.
+Rule reinforced (truth-over-self-protection): when a builder contradicts
+your diagnosis with a falsifiable claim, RUN THE PROBE before defending —
+the probe is one command and it is the arbiter, not either party's
+confidence.
