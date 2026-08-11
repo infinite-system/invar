@@ -1,7 +1,7 @@
 # 546 — diff view labels lie for commits
 
 Priority: user-directed
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5

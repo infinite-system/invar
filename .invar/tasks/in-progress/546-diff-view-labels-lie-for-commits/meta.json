@@ -1,0 +1,15 @@
+{
+  "task": 546,
+  "slug": "diff-view-labels-lie-for-commits",
+  "branch": "fleet/546-diff-view-labels-lie-for-commits",
+  "worktree": ".invar/worktrees/546-diff-view-labels-lie-for-commits",
+  "tmuxSession": "invar/546-diff-view-labels-lie-for-commits",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-low-546-diff-view-labels-lie-for-commits.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "351b3c9925d33eae4b3f5f05a1e9af3ddf1bc6c6",
+  "startedAt": "2026-08-11T13:34:18-04:00"
+}
