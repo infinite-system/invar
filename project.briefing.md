@@ -4,6 +4,32 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 83 — 2026-08-11 11:34 EDT — QUEUE RUNNING: 3 LANES; CRONS RE-ARMED BY USER
+
+CRONS RE-ARMED on user word "arm the loops" (supersedes anchors 80/82):
+:07 orchestration e0d3f690, :37 sweep db522e11 — session-only, 7-day
+auto-expire; verbatim prompts live in the conductor skill. fleet-watch
+Monitor blc4t5ql6 armed.
+
+THREE LANES LIVE (user: "run the queued tasks"; batched by surface):
+- 543 git-log-drilldown-diff-red (claude): the pre-existing Down+Enter
+  diff-does-not-open red; two named rivals (app path vs smoke row
+  arithmetic), drive-first.
+- 522 instrument batch (claude): #522 scoped clickText + #520 paste
+  gesture + #527 modified chords + #541 reload-size — ONE lane, four
+  items; at landing move 520/527/541 folders to completed citing the
+  same commit.
+- 524 fleet batch (claude): #524 resume--last crossing probe THEN #525
+  shared rollout resolver, dependency order, scratch-only kills by cwd.
+
+WAVE 2 after these land (dispatch as lanes free): #544 observation
+predicate distillation (waits for 543 — both touch git plugin), #519
+Ctrl+J flake, #528 padding check, #523 codex hooks probe, #526 consent
+rename (builder proposes name, USER confirms at landing). Landed today:
+#539, #531, #540 (+doctrine ch.5), #542. Evidence-holds: #545 (2
+sightings). Gating: wave style — let lanes reach READY, then gate
+serially; acceptance two-arm per RULE THREE throughout.
+
 # RESUME ANCHOR 82 — 2026-08-11 09:13 EDT — #539 + #531 LANDED; ALL KNOWN GATE FLAKES CLOSED; IDLE
 
 CRONS DISARMED (user word, stands). fleet-watch Monitor armed.
