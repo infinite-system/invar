@@ -1,0 +1,15 @@
+{
+  "task": 547,
+  "slug": "bounded-list-popup-wheel-flake",
+  "branch": "fleet/547-bounded-list-popup-wheel-flake",
+  "worktree": ".invar/worktrees/547-bounded-list-popup-wheel-flake",
+  "tmuxSession": "invar/547-bounded-list-popup-wheel-flake",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-low-547-bounded-list-popup-wheel-flake.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "07cdbcdb99ffac2b4abba9128f0841544799cd55",
+  "startedAt": "2026-08-11T15:33:49-04:00"
+}
