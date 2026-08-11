@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #542 [log-tip-observation-gate-drift](.invar/tasks/in-progress/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md)  [building]
+  `tmux attach -t invar/542-log-tip-observation-gate-drift`
+
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -21,8 +25,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (34)
-- #542 [log-tip-observation-gate-drift](.invar/tasks/active/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md)
+## VERIFICATION-INTEGRITY (33)
 - #528 [padding-check-substring-weakness](.invar/tasks/active/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)
 - #524 [relaunch-resume-last-scoping-probe](.invar/tasks/active/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
