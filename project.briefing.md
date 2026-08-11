@@ -4,6 +4,33 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 86 — 2026-08-11 16:06 EDT — #547 LANDED (REAL PRODUCT BUG); 17 THIS SESSION; HOLDING
+
+Crons armed (:07, :37). fleet-watch blc4t5ql6 armed. Fleet IDLE, clean.
+
+LANDED SINCE 85: #547 22f06fd9 — the popup-wheel "flake" was a REAL
+PRODUCT BUG: OpenTUI silently drops render requests in feed-busy /
+overlapping-async states; a wheel impulse parked unpainted until the next
+input. Fix: render-delivery watchdog in Bootstrap (re-request until a
+completed frame answers; disarms at rest). Two records refined (render
+loop never wedges; wheel impulses start their own frame sequence).
+dist/iv rebuilt. The flake-census strategy converted a 4-branch gate
+flake into a user-facing fix. SESSION TOTAL: 17.
+
+OPEN — smoke-scrollbars-harness RECURRING: it fired contention on #354
+r3/r5 and #547 gates AFTER #531 landed a fix for that same smoke today.
+A landed fix + same smoke re-flaking = a DIFFERENT wait or a reopened
+concern — needs its OWN task (#529 three-clocks method), NOT a quick
+dispatch. Noted on #545's file. This is the next flake to investigate.
+
+OTHER FLAKE HOLDS: #545 (structure scrollbar diagnostic, 2), #549
+(diff-overview, 1). Filed unstarted: #544 (observation predicate
+distillation), #548 (land refuses committed priming files).
+
+CONDUCTOR CONTEXT is very large after a long session — held further
+autonomous builder spawns rather than drop attention quality. Remaining
+backlog user-priority; no user-decision items pending.
+
 # RESUME ANCHOR 85 — 2026-08-11 15:08 EDT — #354 + #526 LANDED; FLEET IDLE; 16 LANDED THIS SESSION
 
 Crons armed (:07, :37). fleet-watch blc4t5ql6 armed. Fleet IDLE, checkout
