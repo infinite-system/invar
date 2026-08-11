@@ -1,7 +1,7 @@
 # 542 — log tip observation gate drift
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
 Engine: claude
 Environment: linux
 Model: fable-5
