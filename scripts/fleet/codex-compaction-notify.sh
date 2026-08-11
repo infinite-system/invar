@@ -60,6 +60,8 @@ STATE_DIR="${STATE_DIR:-/tmp}"
 
 script_directory="$(cd "$(dirname "$0")" && pwd)"
 STEER_PROGRAM="${STEER_PROGRAM:-${script_directory}/steer.sh}"
+# Thread-id -> rollout-file resolution is the shared resolver (#525).
+. "${script_directory}/lane-rollout.sh"
 
 # parse_payload_field <payload> <thread-id|cwd> — anchored to the fixed head
 # order so a hostile input-message cannot spoof identity fields.
@@ -76,7 +78,7 @@ parse_payload_field() {
 # last completed request occupied, or empty when the rollout has no usage yet.
 read_rollout_percent() {
   local rollout usage_line total_tokens context_window
-  rollout="$(ls -t "$HOME"/.codex/sessions/*/*/*/rollout-*"$1".jsonl 2>/dev/null | head -1)"
+  rollout="$(resolve_lane_rollout "" "" "$1")"
   [ -n "$rollout" ] || return 0
   usage_line="$(grep '"last_token_usage"' "$rollout" | tail -1)"
   [ -n "$usage_line" ] || return 0

@@ -36,6 +36,8 @@
 set -euo pipefail
 
 repository_root="$(cd "$(dirname "$0")/../.." && pwd)"
+# Lane -> session-record resolution is the shared resolver (#525).
+. "${repository_root}/scripts/fleet/lane-rollout.sh"
 tasks_in_progress="${repository_root}/.invar/tasks/in-progress"
 transcripts_directory="${repository_root}/tmp/transcripts"
 SILENT_MINUTES="${SILENT_MINUTES:-20}"
@@ -73,17 +75,14 @@ emit_steer_events() {
     task_directory="$(sed -n 's/^task_directory=//p' "$marker")"
     session_name="$(sed -n 's/^session_name=//p' "$marker")"
     message="$(sed -n 's/^message=//p' "$marker")"
-    record_file=""
+    # The search is the shared lane-rollout resolver (#525) — one seam,
+    # three callers (steer.sh, this watcher, codex-compaction-notify.sh).
+    local cwd
+    cwd=""
     if [ -n "$session_name" ] && tmux has-session -t "$session_name" 2>/dev/null; then
-      local cwd f
       cwd="$(tmux display-message -t "$session_name" -p '#{pane_current_path}' 2>/dev/null)"
-      if [ -n "$cwd" ]; then
-        for f in $(ls -1t "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | head -40); do
-          head -c 2048 "$f" 2>/dev/null | grep -qF "\"cwd\":\"$cwd\"" && { record_file="$f"; break; }
-        done
-      fi
     fi
-    [ -z "$record_file" ] && record_file="$(ls -t "$HOME"/.claude/projects/*"$(basename "$task_directory")"*/*.jsonl 2>/dev/null | head -1)"
+    record_file="$(resolve_lane_rollout "$cwd" "$(basename "$task_directory")" "")"
     if [ -n "$record_file" ] && [ -n "$fragment" ] && grep -qF -- "$fragment" "$record_file" 2>/dev/null; then
       printf '%s LANDED %s\n' "$(date '+%F %T')" "$message" >> "${task_directory}/steers.log"
       rm -f "$marker"

@@ -118,19 +118,13 @@ done
 
 # The builder's own session record: codex rollout matched by session-meta cwd
 # (identity, never content grep — the #280/#313 lesson), or the claude store
-# dir named by the worktree path. Empty when not yet identifiable.
+# dir named by the task folder. Empty when not yet identifiable. The search
+# itself is the shared lane-rollout resolver (#525) — one seam, three callers.
+. "$(dirname "$0")/lane-rollout.sh"
 find_session_record() {
-  local cwd record_file
+  local cwd
   cwd="$(tmux display-message -t "$session_name" -p '#{pane_current_path}' 2>/dev/null)"
-  [ -n "$cwd" ] || return 0
-  for record_file in $(ls -1t "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | head -40); do
-    if head -c 2048 "$record_file" 2>/dev/null | grep -qF "\"cwd\":\"$cwd\""; then
-      printf '%s' "$record_file"; return 0
-    fi
-  done
-  record_file="$(ls -t "$HOME"/.claude/projects/*"${task_folder_name}"*/*.jsonl 2>/dev/null | head -1)"
-  [ -n "$record_file" ] && printf '%s' "$record_file"
-  return 0
+  resolve_lane_rollout "$cwd" "$task_folder_name" ""
 }
 
 # A distinctive tail fragment of the message, to detect it lingering in the

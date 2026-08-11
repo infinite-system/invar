@@ -1,7 +1,7 @@
 # 524 — relaunch resume last scoping probe
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — 1d7ae96c — resume --last crossing refuted (cwd-scoped); one shared lane-rollout resolver now serves steer/fleet-watch/notify; #524+#525 landed together.
 Engine: claude
 Environment: linux
 Model: fable-5

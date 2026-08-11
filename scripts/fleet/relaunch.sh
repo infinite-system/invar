@@ -10,6 +10,14 @@
 # ready/busy markers, which broke land.sh's idle detection — this script does
 # both correctly.
 #
+# `codex resume --last` is CWD-SCOPED, not global: the #524 probe (2026-08-11,
+# codex-cli 0.146.1) killed lane A, left lane B alive with the globally
+# newest rollout, resumed in A's worktree, and got A's own conversation back.
+# Two edges the probe also pinned: with NO recorded session for the worktree,
+# resume --last silently starts a FRESH session (no crossing, but no warning
+# either), and the resolver seam for a resume-by-id fix, should a future
+# codex drop the cwd filter, is scripts/fleet/lane-rollout.sh (#525).
+#
 # The engine/model/effort come from the task's meta.json — the assignment is
 # the task file's, not the command line's.
 #
