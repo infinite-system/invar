@@ -106,13 +106,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (43)
+## ARCHITECTURE-HYGIENE (40)
 - #544 [pane-observation-predicate-distillation](.invar/tasks/active/544-pane-observation-predicate-distillation/task-544-pane-observation-predicate-distillation.md)
-- #541 [drive-reload-fixture-size](.invar/tasks/active/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md)
-- #527 [harness-modified-key-chords](.invar/tasks/active/527-harness-modified-key-chords/task-527-harness-modified-key-chords.md)
 - #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
 - #523 [codex-hooks-engine-probe](.invar/tasks/active/523-codex-hooks-engine-probe/task-523-codex-hooks-engine-probe.md)
-- #520 [drive-session-framed-paste-gesture](.invar/tasks/active/520-drive-session-framed-paste-gesture/task-520-drive-session-framed-paste-gesture.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
 - #437 [gesture-mechanics-shared-layer](.invar/tasks/active/437-gesture-mechanics-shared-layer/task-437-gesture-mechanics-shared-layer.md)
@@ -155,9 +152,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 248 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 251 — full log: project.tasks-completed.md)
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
+- #541 [drive-reload-fixture-size](.invar/tasks/completed/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md) — 333720c5 (landed with #522)
 - #540 [scrollbar-must-not-hide-content](.invar/tasks/completed/540-scrollbar-must-not-hide-content/task-540-scrollbar-must-not-hide-content.md) — 2080aa1a — The scrollbar reserves its own row — the last visible line is always readable; user ruling implemented and harvested into ui-design chapter 5.
 - #539 [module-constants-to-statics](.invar/tasks/completed/539-module-constants-to-statics/task-539-module-constants-to-statics.md) — dfb74c00 — The source tree's module-variable count reaches true zero: PluginManifest's four constants become class statics (three SCREAMING live knobs per the house table, one $-cached derived set); behavior byte-identical.
 - #538 [panel-chrome-flake-second-wave](.invar/tasks/completed/538-panel-chrome-flake-second-wave/task-538-panel-chrome-flake-second-wave.md) — 0cd8aab6 — The panel-chrome contention flake's third lost-gesture member killed: hover-verified aim after layout moves the control; 15/15 contention green.
@@ -170,4 +168,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #531 [scrollbars-grid-timeout-sighting](.invar/tasks/completed/531-scrollbars-grid-timeout-sighting/task-531-scrollbars-grid-timeout-sighting.md) — 17bdd308 — The scrollbars flake mechanism found and killed (bar overlays the last row's text; wait predicate now requires the next line); the scrollbar-hides-last-line design question is queued for the user.
 - #530 [blind-press-suite-census](.invar/tasks/completed/530-blind-press-suite-census/task-530-blind-press-suite-census.md) — d8a4a840 — The lost-gesture class closed suite-wide: 321 presses censused, 39 movable-target sites fixed with hover-verified aim, 20 argued safe; census script committed for re-runs.
 - #529 [panel-chrome-rapid-expand-flake](.invar/tasks/completed/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md) — cef91323 — Gate flake killed: settle-boundary status republish (starved publisher) + hover-verified edge drags (hit-grid race); 20/20 contention green; record refined with the starved-wait impossible-shape.
-- #525 [shared-lane-rollout-resolver](.invar/tasks/completed/525-shared-lane-rollout-resolver/task-525-shared-lane-rollout-resolver.md) — 1d7ae96c (landed with #524)

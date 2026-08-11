@@ -1,7 +1,7 @@
 # 527 — harness modified key chords
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: COMPLETED — 333720c5 (landed with #522)
 Engine: claude
 Environment: linux
 Model: fable-5
