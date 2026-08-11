@@ -1,7 +1,7 @@
 # 539 — module constants to statics
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — dfb74c00 — The source tree's module-variable count reaches true zero: PluginManifest's four constants become class statics (three SCREAMING live knobs per the house table, one $-cached derived set); behavior byte-identical.
 Engine: claude
 Environment: linux
 Model: fable-5

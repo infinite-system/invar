@@ -11,5 +11,10 @@
   "effort": "medium",
   "heldFromMain": false,
   "baseCommit": "57359a0d3e82c5557c312368fd3064aeb1dff9e4",
-  "startedAt": "2026-08-11T08:36:10-04:00"
+  "startedAt": "2026-08-11T08:36:10-04:00",
+  "round": 2,
+  "roundBriefedAtMs": 1786452425231,
+  "landedAt": "2026-08-11T08:55:35-04:00",
+  "durationMinutes": 19,
+  "mergeCommit": "dfb74c00"
 }

@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #539 [module-constants-to-statics](.invar/tasks/in-progress/539-module-constants-to-statics/task-539-module-constants-to-statics.md)  [building]
-  `tmux attach -t invar/539-module-constants-to-statics`
-
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -157,7 +153,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 240 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 241 — full log: project.tasks-completed.md)
+- #539 [module-constants-to-statics](.invar/tasks/completed/539-module-constants-to-statics/task-539-module-constants-to-statics.md) — dfb74c00 — The source tree's module-variable count reaches true zero: PluginManifest's four constants become class statics (three SCREAMING live knobs per the house table, one $-cached derived set); behavior byte-identical.
 - #538 [panel-chrome-flake-second-wave](.invar/tasks/completed/538-panel-chrome-flake-second-wave/task-538-panel-chrome-flake-second-wave.md) — 0cd8aab6 — The panel-chrome contention flake's third lost-gesture member killed: hover-verified aim after layout moves the control; 15/15 contention green.
 - #537 [find-replace-doctrine-pass](.invar/tasks/completed/537-find-replace-doctrine-pass/task-537-find-replace-doctrine-pass.md) — 0a2b12f0 — Milestone 6: doctrine pass over both search surfaces — counts pluralize, button state tiers complete, scrollbar proven; the six-milestone Find/Replace build is closed.
 - #536 [workspace-replace-consent-history](.invar/tasks/completed/536-workspace-replace-consent-history/task-536-workspace-replace-consent-history.md) — 3a006e4f — Milestone 5: workspace replace with counted consent, per-item drift, undo/redo through one coordinator; structural round moved the patch engine to workspace/ and split the state machines; conductor-driven twice.
@@ -172,4 +169,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #517 [codex-compaction-threshold-steer](.invar/tasks/completed/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md) — 7583d179 — Codex lanes survive compaction: notify-hook threshold warning, post-compaction usage-collapse detection, idempotent doctrine re-send; bycatch converted to #523-#525.
 - #516 [the-ui-design-doctrine](.invar/tasks/completed/516-the-ui-design-doctrine/task-516-the-ui-design-doctrine.md) — ACTIVE
 - #515 [find-replace-research-and-design](.invar/tasks/completed/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md) — b27d892b — Find/Replace full design landed: two surfaces, reverse-patch transactions, dialog copy, four proposed records, six milestones; milestone 1 filed as #521.
-- #514 [terminal-instance-lifecycle-and-panel-chrome](.invar/tasks/completed/514-terminal-instance-lifecycle-and-panel-chrome/task-514-terminal-instance-lifecycle-and-panel-chrome.md) — aee4a082 — Panel chrome rebuilt: one no-create bottom-panel toggle through the status seam, overlay hover grammar on instance rows, expand-trap fixed, fresh-boot drive honesty via a completed-frame boundary; three gate rounds, contract refines landed with the code.
