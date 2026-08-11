@@ -67,7 +67,10 @@ const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-move-line-harness-home-'),
 );
 
-await Bun.write(join(fixtureRoot, 'sample.ts'), 'one\ntwo\nthree');
+const fixtureFilePath = join(fixtureRoot, 'sample.ts');
+const statusPath = join(homeDirectory, 'status.json');
+
+await Bun.write(fixtureFilePath, 'one\ntwo\nthree');
 
 runGit(fixtureRoot, ['init', '-q']);
 
@@ -76,6 +79,7 @@ const driver = new PtyTestDriver.Class({
   columns: 120,
   rows: 40,
   homeDirectory,
+  environment: { TUI_STATUS_PATH: statusPath },
 });
 
 try {
@@ -84,12 +88,11 @@ try {
     (snapshot) => snapshot.findText('sample.ts') !== null,
     15_000,
   );
-  driver.sendKeys('Control+p');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('Go to File') !== null,
+  await HarnessSmoke.Class.openFileThroughQuickOpen(
+    driver,
+    statusPath,
+    fixtureFilePath,
   );
-  driver.sendText('sample');
-  driver.sendKeys('Enter');
   let snapshot = await driver.awaitSnapshot((candidate) =>
     hasVisibleOrder(candidate, ['one', 'two', 'three']),
   );

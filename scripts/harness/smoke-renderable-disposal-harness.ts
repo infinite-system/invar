@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
-// This contract stops Invar through PtyTestDriver at 10 and 100,000 lines.
+// This contract checks the welcome bindings, then stops Invar through PtyTestDriver at 10 and
+// 100,000 lines.
 // Run it with `bun scripts/harness/smoke-renderable-disposal-harness.ts`.
-// ALL-PASS means teardown exited at both scales without an OpenTUI child-removal warning.
+// ALL-PASS means the welcome named Ctrl+P and F1 correctly, and teardown stayed clean at both scales.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Harness output history stays bounded (scripts/harness/harness.invariants.md)
@@ -33,9 +34,12 @@ async function driveScale(lineCount: RenderableDisposalScale): Promise<void> {
 
   try {
     await driver.awaitGridCondition(
-      `scale ${lineCount}: the default app paints before disposal`,
+      `scale ${lineCount}: the default app paints the real welcome bindings before disposal`,
       (snapshot) =>
-        snapshot.findText('Invar — a terminal code workspace') !== null,
+        snapshot.findText('Invar — a terminal code workspace') !== null &&
+        snapshot.findText('Ctrl+P  Go to File') !== null &&
+        snapshot.findText('F1  Show All Commands') !== null &&
+        snapshot.findText('Ctrl+P command palette') === null,
     );
     await HarnessSmoke.Class.openFileThroughQuickOpen(
       driver,

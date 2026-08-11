@@ -82,7 +82,8 @@ class $SourceTextPaneContent
       '   Invar — a terminal code workspace',
       '',
       '   ↑/↓  navigate files      Enter  open / expand',
-      '   Tab  switch pane         Ctrl+P command palette',
+      '   Ctrl+P  Go to File       Tab  switch pane',
+      '   F1  Show All Commands',
       '   Ctrl+Q or F10  quit   (VS Code: Ctrl+X then Ctrl+C)',
       '',
     ].join('\n');
