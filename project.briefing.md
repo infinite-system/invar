@@ -4,6 +4,44 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 81 — 2026-08-11 08:37 EDT — #539 DISPATCHED; DOCS SPRINT DONE; GAUGE SUSPECT
+
+CRONS remain DISARMED by user word (anchor 80 rule stands: ask before
+re-arming). fleet-watch Monitor RE-ARMED (required for dispatch).
+
+LIVE: #539 module-constants-to-statics (claude fable medium, lane
+invar/539-module-constants-to-statics) — the last four module-level
+variables in src (PluginManifest) become $-cached static getters; spec
+verbatim in tmp/TASK-module-constants-to-statics.md (from the ivue-side
+Fable); brief demands the planted-const control, before/after grammar
+counts, vendors into the ratchet set if zero. On READY: two-arm
+acceptance (drive arm = no visible change + admission smokes; structure
+arm = tiny diff, conductor reads it directly), gate, land.
+
+SINCE ANCHOR 80 (all in the IVUE repo, ~15 commits): docs_v2 sprint —
+Backend ivue + Computed Seed Pattern + Keyed Version Signals pages;
+sidebar reorg (Performance section, Extras dissolved, Advanced Patterns
+= Namespace/Computed Seed/KVS/Flyweight/Static/Backend); model-layer
+headings = ivue-vs-X names; examples Further Reading (flat, curated);
+Guide nav dropdown with per-section landings + Standard; homepage
+PerfSlider (adaptive height via ResizeObserver, mobile: no swipe +
+arrows under, dot clip fixed); 'Beyond the web, at scale' five-shot
+Invar showcase (340+ classes copy, alpha/agentic note, study-example
+framing); sticky header site-wide; 2-line hamburger (base+hover pinned);
+footer divider softened. INVAR repo: scripts/harness/screenshot-svg.ts
+(PTY grid -> SVG; capture wait fixed to condition-free settle), README
+screenshot, project.capabilities.md (living map, RULE THREE upkeep).
+
+GAUGE SUSPECT: fleet-watch CHECKPOINT fired at "222%" — impossible
+(>100% would have compacted); the context gauge reads the session jsonl
+FILE, which after mid-session summarization no longer maps to live
+context. Treat context-usage.sh as BROKEN for this session; candidate
+fix task: gauge should key on the post-summary tail, not file total.
+Do not run panic protocol off this instrument again — this anchor is the
+response.
+
+Morning queue (record refinements etc.) unchanged from anchor 79.
+
 # RESUME ANCHOR 80 — 2026-08-07 17:45 EDT — LOOPS DISARMED BY USER
 
 Anchor 79 stands (eleven landings 2026-08-06, Find/Replace complete,
