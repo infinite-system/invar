@@ -11,6 +11,8 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { GraphClient } from './GraphClient';
@@ -66,6 +68,66 @@ function findReplaceAllPosition(snapshot: HarnessSnapshot.Model): {
   if (replaceAllLabelColumn < 0)
     throw new Error('FAIL could not locate the Replace All button');
   return { row: buttonGeometry.row, column: replaceAllLabelColumn + 1 };
+}
+
+interface DialogBounds {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+function parseRgbColor(hexColor: string): number {
+  return Number.parseInt(hexColor.slice(1), 16);
+}
+
+function quitConfirmationBounds(status: StatusSnapshot): DialogBounds {
+  const bounds = (
+    status.overlayDialogBounds as
+      Record<string, DialogBounds | null> | undefined
+  )?.quitConfirmation;
+  if (!bounds)
+    throw new Error('FAIL the consent dialog bounds were not published');
+  return bounds;
+}
+
+// The Cancel button paints as `  Cancel  `: two padding cells each side of the
+// label, all on the focused-button selection background. Asserting every cell of
+// that exact span (position, characters, shared background) inside the dialog's
+// published bounds is what a substring search cannot do: a mis-padded button
+// whose spaces are supplied by neighboring text has no such uniform span.
+function cancelButtonPaintsPaddedSpan(
+  snapshot: HarnessSnapshot.Model,
+  bounds: DialogBounds,
+  expectedBackground: number,
+): boolean {
+  const labelText = 'Cancel';
+  const position = snapshot.findText(labelText);
+  if (!position) return false;
+  if (position.row < bounds.top || position.row >= bounds.top + bounds.height) {
+    return false;
+  }
+  const paddingWidth = 2;
+  const buttonStartColumn = position.column - paddingWidth;
+  const buttonWidth = labelText.length + paddingWidth * 2;
+  if (
+    buttonStartColumn < bounds.left ||
+    buttonStartColumn + buttonWidth > bounds.left + bounds.width
+  ) {
+    return false;
+  }
+  return Array.from({ length: buttonWidth }, (_unusedValue, columnOffset) => {
+    const cell = snapshot.cell(position.row, buttonStartColumn + columnOffset);
+    const expectedCharacter =
+      columnOffset < paddingWidth || columnOffset >= buttonWidth - paddingWidth
+        ? ' '
+        : labelText[columnOffset - paddingWidth];
+    return (
+      cell !== null &&
+      cell.characters === expectedCharacter &&
+      cell.background === expectedBackground
+    );
+  }).every(Boolean);
 }
 
 function warningAlert(snapshot: HarnessSnapshot.Model): {
@@ -448,7 +510,7 @@ try {
     row: replaceAllPosition.row,
     button: 'left',
   });
-  await HarnessSmoke.Class.awaitStatus(
+  const consentStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'Replace All waits in the shared dialog with safe focus',
@@ -468,9 +530,26 @@ try {
     snapshot.findText('Replace 1 item in sample.txt?') !== null,
     'one replacement uses singular item copy',
   );
+  const consentBounds = quitConfirmationBounds(consentStatus);
+  const focusedButtonBackground = parseRgbColor(
+    ThemePalettes.Class.DARK.selection,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the safe Cancel action paints its own padded span',
+    (candidate) =>
+      cancelButtonPaintsPaddedSpan(
+        candidate,
+        consentBounds,
+        focusedButtonBackground,
+      ),
+  );
   HarnessSmoke.Class.requireCondition(
-    snapshot.findText(' Cancel ') !== null,
-    'the safe Cancel action has one-key padding',
+    cancelButtonPaintsPaddedSpan(
+      snapshot,
+      consentBounds,
+      focusedButtonBackground,
+    ),
+    'the safe Cancel action has key-width padding painted by the button itself',
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
