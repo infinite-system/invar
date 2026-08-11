@@ -1,6 +1,31 @@
 import { Static } from 'ivue/extras';
 
 class $PluginManifest {
+  protected static get IDENTITY_SEGMENT(): RegExp {
+    return /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+  }
+
+  protected static get SEMANTIC_VERSION(): RegExp {
+    return /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+  }
+
+  protected static get WINDOWS_DEVICE_NAME(): RegExp {
+    return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+  }
+
+  protected static get $reservedVendors(): ReadonlySet<string> {
+    const reservedVendors = new Set([
+      'invar',
+      'core',
+      'builtin',
+      'built-in',
+      'system',
+      'vendor',
+      'vendors',
+    ]);
+    return reservedVendors;
+  }
+
   static parse(value: unknown): VendorPluginManifest {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       throw new Error('plugin manifest must be an object');
@@ -11,11 +36,11 @@ class $PluginManifest {
     }
     const vendor = this.segment(candidate.vendor, 'vendor');
     const module = this.segment(candidate.module, 'module');
-    if (RESERVED_VENDORS.has(vendor) || vendor.startsWith('invar-')) {
+    if (this.$reservedVendors.has(vendor) || vendor.startsWith('invar-')) {
       throw new Error(`plugin vendor is reserved: ${vendor}`);
     }
     const version = this.string(candidate.version, 'version');
-    if (!SEMANTIC_VERSION.test(version)) {
+    if (!this.SEMANTIC_VERSION.test(version)) {
       throw new Error(`plugin version is not semantic: ${version}`);
     }
     if (candidate.invarApi !== 1) {
@@ -40,12 +65,12 @@ class $PluginManifest {
 
   protected static segment(value: unknown, field: string): string {
     const segment = this.string(value, field);
-    if (segment.length > 64 || !IDENTITY_SEGMENT.test(segment)) {
+    if (segment.length > 64 || !this.IDENTITY_SEGMENT.test(segment)) {
       throw new Error(
         `plugin ${field} is not lowercase kebab-case: ${segment}`,
       );
     }
-    if (WINDOWS_DEVICE_NAME.test(segment)) {
+    if (this.WINDOWS_DEVICE_NAME.test(segment)) {
       throw new Error(`plugin ${field} is a reserved device name: ${segment}`);
     }
     return segment;
@@ -125,17 +150,3 @@ export interface VendorKernelOverride {
   readonly export: string;
   readonly reason: string;
 }
-
-const IDENTITY_SEGMENT = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
-const SEMANTIC_VERSION =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
-const RESERVED_VENDORS = new Set([
-  'invar',
-  'core',
-  'builtin',
-  'built-in',
-  'system',
-  'vendor',
-  'vendors',
-]);
