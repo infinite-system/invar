@@ -7,14 +7,15 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #543 [git-log-drilldown-diff-red](.invar/tasks/in-progress/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)  [building]
+- #543 [git-log-drilldown-diff-red](.invar/tasks/in-progress/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/543-git-log-drilldown-diff-red`
-- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/in-progress/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)  [building]
+- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/in-progress/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/524-relaunch-resume-last-scoping-probe`
 - #522 [drive-scoped-text-click-gesture](.invar/tasks/in-progress/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)  [building]
   `tmux attach -t invar/522-drive-scoped-text-click-gesture`
 
-## USER-DIRECTED (13)
+## USER-DIRECTED (14)
+- #546 [diff-view-labels-lie-for-commits](.invar/tasks/active/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
