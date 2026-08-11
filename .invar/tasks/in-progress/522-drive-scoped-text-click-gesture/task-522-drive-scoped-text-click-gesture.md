@@ -1,7 +1,7 @@
 # 522 — drive scoped text click gesture
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5
