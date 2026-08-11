@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #542 [log-tip-observation-gate-drift](.invar/tasks/in-progress/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md)  [building]
+- #542 [log-tip-observation-gate-drift](.invar/tasks/in-progress/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/542-log-tip-observation-gate-drift`
 
 ## USER-DIRECTED (13)
@@ -60,7 +60,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (32)
+## FLAKE-EVIDENCE (33)
+- #543 [git-log-drilldown-diff-red](.invar/tasks/active/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)
 - #519 [terminal-toggle-gesture-flake](.invar/tasks/active/519-terminal-toggle-gesture-flake/task-519-terminal-toggle-gesture-flake.md)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)
@@ -107,7 +108,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (44)
+## ARCHITECTURE-HYGIENE (45)
+- #544 [pane-observation-predicate-distillation](.invar/tasks/active/544-pane-observation-predicate-distillation/task-544-pane-observation-predicate-distillation.md)
 - #541 [drive-reload-fixture-size](.invar/tasks/active/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md)
 - #527 [harness-modified-key-chords](.invar/tasks/active/527-harness-modified-key-chords/task-527-harness-modified-key-chords.md)
 - #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
