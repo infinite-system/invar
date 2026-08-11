@@ -594,6 +594,108 @@ try {
     'Open current dismissed the diff and opened working long.txt',
   );
 
+  console.log(
+    '== harness diff-overview: pane labels state each comparison kind ==',
+  );
+  // Stage the current modification, then modify the working file AGAIN: the same path now sits in
+  // BOTH sections, and each row's comparison must label its own provenance.
+  HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'long.txt']);
+  const restagedLines = [...changedLines];
+  restagedLines.push('line 122 appended after staging');
+  await Bun.write(currentPath, `${restagedLines.join('\n')}\n`);
+  driver.sendKeys('Control+g');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the panel sees one staged and one unstaged version of long.txt',
+    (status) =>
+      Number(status.gitStaged) >= 1 && Number(status.gitUnstaged) >= 1,
+  );
+  snapshot = await driver.awaitSnapshot(
+    (candidate) =>
+      candidate.findText('Staged Changes') !== null &&
+      candidate.findText('Changes') !== null,
+  );
+  const stagedHeaderPosition = snapshot.findText('Staged Changes');
+  if (!stagedHeaderPosition) throw new Error('Staged Changes header vanished');
+  const stagedFileRow = stagedHeaderPosition.row + 1;
+  const stagedFileColumn = snapshot.rowText(stagedFileRow).indexOf('long.txt');
+  HarnessSmoke.Class.requireCondition(
+    stagedFileColumn >= 0,
+    'the staged section lists long.txt directly under its header',
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: stagedFileColumn,
+    row: stagedFileRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: stagedFileColumn,
+    row: stagedFileRow,
+    button: 'left',
+  });
+  snapshot = await driver.awaitGridCondition(
+    'the staged comparison labels HEAD as base and the staged text as current',
+    (candidate) =>
+      candidate.findText('Base (HEAD) — long.txt') !== null &&
+      candidate.findText('Current (staged)') !== null &&
+      candidate.findText('Current (working)') === null,
+  );
+  HarnessSmoke.Class.pass(
+    'staged row reads Base (HEAD) / Current (staged), never Current (working)',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the staged comparison closed before the unstaged row opens',
+    (status) => status.showingDiff === false,
+  );
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Changes') !== null,
+  );
+  const changesHeaderPosition = snapshot
+    .textRows()
+    .map((rowText, rowIndex) => ({ rowText, rowIndex }))
+    .find(
+      (row) =>
+        row.rowText.includes('Changes') &&
+        !row.rowText.includes('Staged Changes'),
+    );
+  if (!changesHeaderPosition) throw new Error('Changes header vanished');
+  const unstagedFileRow = changesHeaderPosition.rowIndex + 1;
+  const unstagedFileColumn = snapshot
+    .rowText(unstagedFileRow)
+    .indexOf('long.txt');
+  HarnessSmoke.Class.requireCondition(
+    unstagedFileColumn >= 0,
+    'the unstaged section lists long.txt directly under its header',
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: unstagedFileColumn,
+    row: unstagedFileRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: unstagedFileColumn,
+    row: unstagedFileRow,
+    button: 'left',
+  });
+  snapshot = await driver.awaitGridCondition(
+    'the unstaged comparison labels the staged text as base and working as current',
+    (candidate) =>
+      candidate.findText('Base (staged) — long.txt') !== null &&
+      candidate.findText('Current (working)') !== null &&
+      candidate.findText('Base (HEAD)') === null,
+  );
+  HarnessSmoke.Class.pass(
+    'unstaged row with a staged sibling reads Base (staged) / Current (working)',
+  );
+
   driver.sendKeys('Control+q');
   console.log('smoke-diff-overview-harness: ALL-PASS');
 } finally {

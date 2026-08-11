@@ -10,6 +10,8 @@ const request: GitComparisonRequest = {
   currentVersionText: 'b\n',
   previousVersionPath: 'file.ts',
   currentVersionPath: 'file.ts',
+  previousVersionLabel: 'Base (HEAD)',
+  currentVersionLabel: 'Current (working)',
 };
 
 // The per-workspace source-control contribution, reduced to the three members the provider reads.

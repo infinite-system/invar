@@ -58,6 +58,8 @@ describe('repository contribution supersession', () => {
       currentVersionText: 'after',
       previousVersionPath: 'sample.ts @ previous',
       currentVersionPath: 'sample.ts',
+      previousVersionLabel: 'Base (HEAD)',
+      currentVersionLabel: 'Current (working)',
     };
     workspace.focusPrimaryPane('git');
 
