@@ -21,7 +21,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (33)
+## VERIFICATION-INTEGRITY (34)
+- #542 [log-tip-observation-gate-drift](.invar/tasks/active/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md)
 - #528 [padding-check-substring-weakness](.invar/tasks/active/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)
 - #524 [relaunch-resume-last-scoping-probe](.invar/tasks/active/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
