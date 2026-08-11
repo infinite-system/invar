@@ -1,6 +1,6 @@
 # #354 — welcome screen mislabels Ctrl+P as command palette
 
-State: IN-PROGRESS
+State: COMPLETED — 11edfd37 — Welcome screen names Ctrl+P (Go to File) and F1 (Show All Commands) correctly; the fix also exposed and killed a latent move-line smoke race.
 Priority: user-directed
 Engine: codex
 Environment: linux
