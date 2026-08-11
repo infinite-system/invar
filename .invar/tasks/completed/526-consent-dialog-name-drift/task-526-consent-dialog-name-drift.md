@@ -1,7 +1,7 @@
 # 526 — consent dialog name drift
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — 5c1fd790 — quitConfirmation renamed to consentDialog atomically (11 files, status string, grep-zero); no visible change.
 Engine: claude
 Environment: linux
 Model: fable-5

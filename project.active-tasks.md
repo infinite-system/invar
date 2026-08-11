@@ -6,10 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #526 [consent-dialog-name-drift](.invar/tasks/in-progress/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)  [building]
-  `tmux attach -t invar/526-consent-dialog-name-drift`
-- #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/in-progress/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)  [building]
+## IN-PROGRESS (1)
+- #354 [welcome-screen-mislabels-ctrl-p](.invar/tasks/in-progress/354-welcome-screen-mislabels-ctrl-p/task-354-welcome-screen-mislabels-ctrl-p.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/354-welcome-screen-mislabels-ctrl-p`
 
 ## USER-DIRECTED (12)
@@ -154,7 +152,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 254 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 255 — full log: project.tasks-completed.md)
 - #546 [diff-view-labels-lie-for-commits](.invar/tasks/completed/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md) — 43ab1277 — Diff labels tell the truth per comparison kind; one provenance source; #548 filed for the committed-priming-file guard.
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
