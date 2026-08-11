@@ -1,0 +1,13 @@
+[hooks.state]
+
+[hooks.state."/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/hooks.json:pre_compact:0:0"]
+trusted_hash = "sha256:36efd31b47fa939d8d6e7952952a4b413dda4e57cd8453de06770358fd298017"
+
+[hooks.state."/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/hooks.json:post_compact:0:0"]
+trusted_hash = "sha256:8634b99a228a99549b040c80b89d435b46072d056907317f587fcd0adf1c883a"
+
+[hooks.state."/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:44fe0a53a3f2555eed55b68237907606e5920c89271cc98a531cc2de8967da4e"
+
+[hooks.state."/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/hooks.json:session_end:0:0"]
+trusted_hash = "sha256:3b0204f9f025df7acd4d767f6c594b8b8bc3fa0108066446fbd45f5ba807bde0"
