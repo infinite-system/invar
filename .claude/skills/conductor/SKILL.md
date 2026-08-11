@@ -665,13 +665,30 @@ so enumerate builders by `/proc/<pid>/cwd` before committing too (`probe.sh buil
 conductor also holds its OWN heavy work while a gate runs. Take the exception deliberately
 and write down why, or HOLD.
 
-**Gates MAY overlap each other.** Blocking verdicts are ordering- and count-based, so another
-gate's load does not invalidate them. Cap the product of gates and pool workers to the
-machine's CPU, memory, and inotify capacity. Keep every gate's sessions and failure artifacts
-namespaced.
+**GATE SERIALLY BY DEFAULT.** One gate at a time. Blocking verdicts are ordering- and
+count-based, so overlap does not invalidate them mechanically — but overlap manufactures
+AMBIGUOUS reds (diff or load?), and that ambiguity is the conductor's most expensive input.
+A red I cannot explain becomes a "flake" I wave through, or a wrong diagnosis I defend. It
+ate #354's five rounds, caused #522's double-error, and hid #550's DETERMINISTIC bug in the
+lenient contention tier for days. The parallel clock-saving never actually paid: every
+ambiguous red costs a full re-gate cycle plus misdiagnosis time, which is slower than one
+honest serial wait. On a 2-3 builder night the serial cost is a few ~2m30s gates back to
+back — negligible. So: serial is the rule, not the fallback.
 
-**Land serially even after speculative gates run in parallel.** Each landing changes the
-combined tree and may require the remaining branch to integrate and verify again.
+**Overlap is the DELIBERATE exception, and it carries a classification tax.** Overlap gates
+only when (1) the branches are genuinely INDEPENDENT and (2) you accept that ANY red under
+overlap gets ONE solo re-gate before it is believed. The solo re-gate CLASSIFIES, it does
+not clear: solo-red means the finding is real (examine it); solo-green means it was
+contention this time AND that the smoke has a real ordering or environment sensitivity worth
+a flake task — a solo-only green is never a clean pass, it is evidence of fragility to
+record. Where overlap is justified (a big batch of independent, likely-green branches), cap
+the product of gates and pool workers to the machine's CPU, memory, and inotify capacity,
+and keep every gate's sessions and failure artifacts namespaced. Write down why you took the
+exception, per instance.
+
+**Land serially always.** Each landing changes the combined tree and may require the
+remaining branch to integrate and verify again — this holds even when independent gates ran
+overlapped upstream.
 
 **Use deliberate contention as a robustness probe.** A blocking red under load is a defect in
 the product or the instrument, not grounds to widen a threshold. Do not clear a harness red
@@ -1000,7 +1017,7 @@ Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (.cl
 
 (4) Append lessons to /home/parallels/dev/invar/project.conductor.md; when a lesson generalizes into doctrine, REFINE the /conductor SKILL.md and commit. If you change a cron prompt, recreate the cron AND update the skill's verbatim copy — the words are the durable artifact (crons are session-only and die on restart; this fire may be running on a restored cron proving exactly that). A cron prompt that names a RETIRED rule re-teaches it on every fire: check any rule you are about to cite by name against the skill before acting on it.
 
-(5) Fleet hygiene: verify builders by evidence (worktree writes, gate logs, branch commits — never process counts; never kill user Invar instances). Cap builders ~2-3. NO GATE WHILE ANY BUILDER IS LIVE — a gate and a builder's verification phase are the same resource, and "looks quiet" is not idle (a reading-phase builder reaches its own tests minutes later, inside the gate's window). Gates MAY overlap each other; builders are the blocker. Remember a `git commit` launches a gate you did not type, so enumerate live builders by `/proc/<pid>/cwd` before committing too. Take the exception deliberately and write down why, or HOLD. The conductor also holds its OWN heavy work (tsc/tests/smokes) while any gate runs. Verify by DRIVING the real user path. Keep the user's checkout synced to origin/main (clean ff after each landing; rebase their local doc commits on top when present). Report concisely, and run `date` before stamping a time — do not invent one.
+(5) Fleet hygiene: verify builders by evidence (worktree writes, gate logs, branch commits — never process counts; never kill user Invar instances). Cap builders ~2-3. NO GATE WHILE ANY BUILDER IS LIVE — a gate and a builder's verification phase are the same resource, and "looks quiet" is not idle (a reading-phase builder reaches its own tests minutes later, inside the gate's window). GATE SERIALLY BY DEFAULT — one gate at a time; overlap only for genuinely independent, likely-green branches AND then any red gets ONE solo re-gate to classify (solo-green is fragility to record, never a clean pass). Remember a `git commit` launches a gate you did not type, so enumerate live builders by `/proc/<pid>/cwd` before committing too. Take the exception deliberately and write down why, or HOLD. The conductor also holds its OWN heavy work (tsc/tests/smokes) while any gate runs. Verify by DRIVING the real user path. Keep the user's checkout synced to origin/main (clean ff after each landing; rebase their local doc commits on top when present). Report concisely, and run `date` before stamping a time — do not invent one.
 ```
 
 ### RETIRED: the 10-minute liveness check (was `3,13,23,33,43,53 * * * *`)
