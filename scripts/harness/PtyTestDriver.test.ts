@@ -111,6 +111,28 @@ describe('HarnessInput', () => {
     expect(HarnessInput.Class.key('Control+Shift+Up')).toBe('\x1b[1;6A');
   });
 
+  test('encodes modified Enter, Escape, and Backspace as modifyOtherKeys chords', () => {
+    // These named keys have no legacy CSI modifier form; the CSI 27 form is
+    // the one both of OpenTUI's parsers decode (13/27/127 are the codepoints).
+    expect(HarnessInput.Class.key('Control+Enter')).toBe('\x1b[27;5;13~');
+    expect(HarnessInput.Class.key('Control+Shift+Enter')).toBe('\x1b[27;6;13~');
+    expect(HarnessInput.Class.key('Shift+Enter')).toBe('\x1b[27;2;13~');
+    expect(HarnessInput.Class.key('Alt+Enter')).toBe('\x1b[27;3;13~');
+    expect(HarnessInput.Class.key('Shift+Escape')).toBe('\x1b[27;2;27~');
+    expect(HarnessInput.Class.key('Control+Backspace')).toBe('\x1b[27;5;127~');
+    // The unmodified keys keep their plain byte forms.
+    expect(HarnessInput.Class.key('Enter')).toBe('\r');
+    expect(HarnessInput.Class.key('Escape')).toBe('\x1b');
+    expect(HarnessInput.Class.key('Backspace')).toBe('\x7f');
+    // An unsupported chord still refuses loudly — never a silent guess.
+    expect(() => HarnessInput.Class.key('Control+Bogus')).toThrow(
+      'Unknown harness key name',
+    );
+    expect(() => HarnessInput.Class.key('Hyper+Enter')).toThrow(
+      'Unknown key modifier',
+    );
+  });
+
   test('maps mouse gestures and bracketed paste to protocol frames', () => {
     expect(
       HarnessInput.Class.mouse({
@@ -180,6 +202,66 @@ describe('HarnessSnapshot', () => {
       isOverline: true,
     });
     expect(snapshot.findText('X')).toEqual({ row: 0, column: 0 });
+    emulator.dispose();
+  });
+
+  test('findTextOccurrences enumerates every match row-major, scoped or whole-screen', async () => {
+    const emulator = new TerminalEmulator.Class(20, 4);
+    // Row 0: two matches on ONE row. Row 2: one match. Row 3: one match.
+    emulator.write('ab ab\r\n\r\nzz ab\r\nab end');
+    await emulator.flush();
+    const copiedCells: HarnessSnapshotCell[] = [];
+    for (let row = 0; row < emulator.rows; row++) {
+      for (let column = 0; column < emulator.columns; column++) {
+        const cell = emulator.cell(row, column);
+        if (!cell) throw new Error('expected emulator cell');
+        copiedCells.push({ ...cell, row, column });
+      }
+    }
+    const snapshot = new HarnessSnapshot.Class(
+      emulator.columns,
+      emulator.rows,
+      emulator.cursorColumn,
+      emulator.cursorRow,
+      copiedCells,
+    );
+    expect(snapshot.findTextOccurrences('ab')).toEqual([
+      { row: 0, column: 0 },
+      { row: 0, column: 3 },
+      { row: 2, column: 3 },
+      { row: 3, column: 0 },
+    ]);
+    // A rectangle keeps only the matches that fit ENTIRELY inside it.
+    expect(
+      snapshot.findTextOccurrences('ab', {
+        left: 2,
+        top: 0,
+        width: 18,
+        height: 3,
+      }),
+    ).toEqual([
+      { row: 0, column: 3 },
+      { row: 2, column: 3 },
+    ]);
+    // The last-row band — what clickText's statusRow scope resolves to.
+    expect(
+      snapshot.findTextOccurrences('ab', {
+        left: 0,
+        top: 3,
+        width: 20,
+        height: 1,
+      }),
+    ).toEqual([{ row: 3, column: 0 }]);
+    // A match cut by the rectangle's right edge does not count.
+    expect(
+      snapshot.findTextOccurrences('ab', {
+        left: 0,
+        top: 0,
+        width: 1,
+        height: 1,
+      }),
+    ).toEqual([]);
+    expect(snapshot.findTextOccurrences('missing')).toEqual([]);
     emulator.dispose();
   });
 });

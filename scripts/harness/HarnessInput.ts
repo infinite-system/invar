@@ -89,6 +89,19 @@ const modifiedFinalKeys: Readonly<Record<string, string>> = {
   F4: 'S',
 };
 
+// Named keys whose MODIFIED chords have no legacy CSI form at all (there is no
+// `\x1b[1;<mods>` final byte for Enter). xterm reports them through
+// modifyOtherKeys (CSI 27 ; <mods> ; <codepoint> ~), and BOTH of OpenTUI's
+// parsers decode that form — the kitty parser requires a trailing `u` or a
+// `mods:event` colon group, so it passes this sequence through untouched, and
+// the legacy parser matches it directly. Codepoints are the keys' ASCII bytes.
+// Tab (9) keeps its own earlier branch; Space stays a plain byte.
+const modifyOtherKeysCodepoints: Readonly<Record<string, number>> = {
+  Enter: 13,
+  Escape: 27,
+  Backspace: 127,
+};
+
 const modifiedTildeKeys: Readonly<Record<string, number>> = {
   Insert: 2,
   Delete: 3,
@@ -160,6 +173,15 @@ function $key(keyName: string): string {
   if (!hasShift && !hasAlt && !hasControl) {
     const sequence = namedKeySequences[baseKey];
     if (sequence !== undefined) return sequence;
+  }
+
+  // Modified Enter/Escape/Backspace (Control+Shift+Enter = find.replaceAll
+  // class): the modifyOtherKeys byte form, see modifyOtherKeysCodepoints.
+  const modifyOtherKeysCodepoint = modifyOtherKeysCodepoints[baseKey];
+  if (modifyOtherKeysCodepoint !== undefined) {
+    const chordModifierParameter =
+      1 + Number(hasShift) + Number(hasAlt) * 2 + Number(hasControl) * 4;
+    return `\x1b[27;${chordModifierParameter};${modifyOtherKeysCodepoint}~`;
   }
 
   const modifierParameter =
