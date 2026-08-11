@@ -4,6 +4,33 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 82 — 2026-08-11 09:13 EDT — #539 + #531 LANDED; ALL KNOWN GATE FLAKES CLOSED; IDLE
+
+CRONS DISARMED (user word, stands). fleet-watch Monitor armed.
+
+LANDED SINCE 81: #539 dfb74c00 (module-variable count = true zero; round
+2 applied the house SCREAMING rule over the external spec's $-names —
+deviation recorded), #531 17bdd308 (16m — scrollbars flake mechanism:
+horizontal bar overlays the last content row's text while its gutter
+number paints; the smoke trusted the number; predicate now requires the
+NEXT line's number; positive control against the real frozen frame;
+20/20 contention). With #529/#538/#530/#531 all landed, every known
+gate flake class is closed.
+
+USER DECISION QUEUED (user present, flagged in reply): the horizontal
+scrollbar HIDES the last visible line's text (number still paints) —
+accepted design, or a scroll-areas doctrine gap requiring the last row
+to stay readable? Plus the standing record-refinement batch.
+
+LESSON for next sweep: I chained round-brief+steer in one block again
+(#539 round 2 — filing refused after the steer landed; repaired with a
+correcting steer). The rule exists; the failure was compliance, not
+knowledge — consider making steer.sh itself REFUSE when the brief path
+its message names does not exist (mechanics-hardening candidate).
+
+Fleet idle; remaining actives are user-priority calls (#519 #520
+#522-#528 + refinements).
+
 # RESUME ANCHOR 81 — 2026-08-11 08:37 EDT — #539 DISPATCHED; DOCS SPRINT DONE; GAUGE SUSPECT
 
 CRONS remain DISARMED by user word (anchor 80 rule stands: ask before
