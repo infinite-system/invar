@@ -4,6 +4,33 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 84 — 2026-08-11 14:09 EDT — QUEUE-DRAIN WAVES DONE (14 LANDED THIS SESSION); FLEET IDLE
+
+Crons armed (:07 e0d3f690, :37 db522e11). fleet-watch blc4t5ql6 armed.
+
+LANDED THIS SESSION (14): #539 #531 #540 #542 #543 #524+#525 #522+#520+
+#527+#541 #528 #546 #523. Latest wave 3: #528 (padding check measures
+the button span), #546 (diff labels true per comparison kind — structural
+arm caught a committed 2814-line priming file, removed pre-landing),
+#523 b6fa1f5d (codex hooks proven firing, adoption proposed, notify
+stays fallback).
+
+DOCTRINE HARVESTED THIS SESSION: ui-design ch.5 "a scrollbar never hides
+content"; RULE THREE structural arm now leads with the DIFF-STAT SANITY
+CHECK (cheapest, caught #546); the read-the-whole-function + verify-gate-
+was-quiet lesson (#522 double-error); the delegated-review checklist.
+
+FILED FROM THIS SESSION'S FINDINGS (open): #544 (observation predicate
+distillation), #545/#547 (contention flake evidence-holds — structure
+scrollbar diag, popup wheel), #546-adjacent #548 (land.sh refuse
+committed priming files). #526 rename STILL WAITS FOR USER (naming).
+
+REMAINING BACKLOG is large and USER-PRIORITY (14 user-directed + ~30
+verification-integrity, many pre-session: #199 #205 #256 #341 #349 #352
+#354 #357 #361 #373 #376 #472 etc). Do NOT bulk-dispatch — the user
+picks. #354 (Ctrl+P welcome wording) is a safe standalone if idle
+capacity is wanted. Fleet idle, checkout clean.
+
 # RESUME ANCHOR 83 — 2026-08-11 11:34 EDT — QUEUE RUNNING: 3 LANES; CRONS RE-ARMED BY USER
 
 CRONS RE-ARMED on user word "arm the loops" (supersedes anchors 80/82):
