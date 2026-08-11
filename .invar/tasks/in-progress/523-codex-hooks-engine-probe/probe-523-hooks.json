@@ -1,8 +1,46 @@
 {
   "hooks": {
-    "SessionStart": [ { "hooks": [ { "type": "command", "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh SessionStart" } ] } ],
-    "SessionEnd":   [ { "hooks": [ { "type": "command", "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh SessionEnd" } ] } ],
-    "PreCompact":   [ { "hooks": [ { "type": "command", "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh PreCompact", "timeout": 30 } ] } ],
-    "PostCompact":  [ { "hooks": [ { "type": "command", "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh PostCompact", "timeout": 30 } ] } ]
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh SessionStart"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh SessionEnd"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh PreCompact",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOOK_LOG=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture.log /tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/capture-hook.sh PostCompact",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
   }
 }
