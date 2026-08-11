@@ -904,3 +904,19 @@ Rule reinforced (truth-over-self-protection): when a builder contradicts
 your diagnosis with a falsifiable claim, RUN THE PROBE before defending —
 the probe is one command and it is the arbiter, not either party's
 confidence.
+
+## 2026-08-11 — the diff-stat sanity check outperformed the delegated review
+
+Across the queue-drain waves, the single highest-value structural catch
+(a committed 2814-line BUILDER-FUNDAMENTALS priming file about to merge
+into main on a two-label task, #546) came from a two-second `git diff
+--stat` glance — "why is a label fix 3012 lines?" — not from the
+expensive opus structural review. The delegated reviews earned their keep
+on the LARGE novel diffs (#535, #536: real duplication and module-home
+findings), but on the whole-session tally the cheapest technique found
+the biggest problem. Rule now encoded as the FIRST move of the structural
+arm (RULE THREE): read the diff-stat on every task, ask "does size + file
+set match the task?", and only a MATCH earns the cheap pass. A gate cannot
+see a mismatch because the extra content is valid — it just does not
+belong. Lead with the cheap check; reserve the opus arm for genuinely
+large, genuinely novel surfaces.

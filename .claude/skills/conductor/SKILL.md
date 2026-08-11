@@ -343,7 +343,22 @@ These five rules close that hole. They are MUSTS, not guidance.
    The reviewer ends with SOUND or NEEDS-ROUND, no code blocks over
    three lines. NEEDS-ROUND findings go into the next round-brief as
    numbered items with the reviewer's file:line evidence.
-   **Delegate the reading, keep the driving.** The structural arm on a
+   **FIRST, the diff-stat sanity check — cheapest, highest-yield, run it
+   on EVERY task.** Before deciding whether to delegate a review, read
+   `git diff --stat merge-base..tip` and ask ONE question: does the diff
+   SIZE and FILE SET match what the task was? A two-label fix that touches
+   3012 lines, a getter rename that edits twelve files, a "no visible
+   change" refactor that adds a new module — each is a mismatch that a
+   green gate cannot see, because the extra content is valid, it just does
+   not belong. This one glance caught the highest-value defect of the
+   2026-08-11 wave (a committed 2814-line priming file on a label task)
+   more cheaply than any delegated review found anything. The mismatches
+   to name: a committed dispatcher file (BUILDER-FUNDAMENTALS/AGENTS), a
+   fixture or generated blob that should be gitignored, a file in a module
+   the task had no reason to touch, an insertion count an order of
+   magnitude off the task's shape. A matched diff-stat earns the cheap
+   pass; a mismatch is read in full before anything else.
+   **THEN, delegate the reading, keep the driving.** The structural arm on a
    large diff goes to a background review subagent (opus at medium for
    judgment-heavy reads) returning a compact verdict with file:line
    pointers — the conductor's context is the scarce resource and file
