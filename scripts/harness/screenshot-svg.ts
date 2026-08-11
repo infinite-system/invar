@@ -140,7 +140,9 @@ async function main(): Promise<void> {
     rows: geometry ? Number(geometry[2]) : undefined,
     source:
       preparation +
-      'await app.waitForRepaint();\n' +
+      // No repaint wait here: at quiescence nothing repaints and the wait
+      // would starve; screen() already returns the last COMPLETED frame.
+      'await new Promise((resolve) => setTimeout(resolve, 250));\n' +
       'globalThis.__screenshotCapture(await app.screen());',
   });
   if (captured === null) throw new Error('screenshot-svg: no frame captured');

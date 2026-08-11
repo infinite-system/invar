@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
 - #540 [scrollbar-must-not-hide-content](.invar/tasks/completed/540-scrollbar-must-not-hide-content/task-540-scrollbar-must-not-hide-content.md) — 2080aa1a — The scrollbar reserves its own row — the last visible line is always readable; user ruling implemented and harvested into ui-design chapter 5.
 - #539 [module-constants-to-statics](.invar/tasks/completed/539-module-constants-to-statics/task-539-module-constants-to-statics.md) — dfb74c00 — The source tree's module-variable count reaches true zero: PluginManifest's four constants become class statics (three SCREAMING live knobs per the house table, one $-cached derived set); behavior byte-identical.
