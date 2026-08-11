@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #546 [diff-view-labels-lie-for-commits](.invar/tasks/in-progress/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/546-diff-view-labels-lie-for-commits`
+## IN-PROGRESS (1)
 - #523 [codex-hooks-engine-probe](.invar/tasks/in-progress/523-codex-hooks-engine-probe/task-523-codex-hooks-engine-probe.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/523-codex-hooks-engine-probe`
 
@@ -156,7 +154,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 252 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 253 — full log: project.tasks-completed.md)
+- #546 [diff-view-labels-lie-for-commits](.invar/tasks/completed/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md) — 43ab1277 — Diff labels tell the truth per comparison kind; one provenance source; #548 filed for the committed-priming-file guard.
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
 - #541 [drive-reload-fixture-size](.invar/tasks/completed/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md) — 333720c5 (landed with #522)
@@ -171,4 +170,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #532 [workspace-undo-transaction-core](.invar/tasks/completed/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md) — accf2bc8 — Milestone 2 data core: reverse-patch transactions, interned arena, workspace undo coordinator with lifecycle-safe external references; no visible change, conductor-driven.
 - #531 [scrollbars-grid-timeout-sighting](.invar/tasks/completed/531-scrollbars-grid-timeout-sighting/task-531-scrollbars-grid-timeout-sighting.md) — 17bdd308 — The scrollbars flake mechanism found and killed (bar overlays the last row's text; wait predicate now requires the next line); the scrollbar-hides-last-line design question is queued for the user.
 - #530 [blind-press-suite-census](.invar/tasks/completed/530-blind-press-suite-census/task-530-blind-press-suite-census.md) — d8a4a840 — The lost-gesture class closed suite-wide: 321 presses censused, 39 movable-target sites fixed with hover-verified aim, 20 argued safe; census script committed for re-runs.
-- #529 [panel-chrome-rapid-expand-flake](.invar/tasks/completed/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md) — cef91323 — Gate flake killed: settle-boundary status republish (starved publisher) + hover-verified edge drags (hit-grid race); 20/20 contention green; record refined with the starved-wait impossible-shape.

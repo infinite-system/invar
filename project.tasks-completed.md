@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #546 [diff-view-labels-lie-for-commits](.invar/tasks/completed/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md) — 43ab1277 — Diff labels tell the truth per comparison kind; one provenance source; #548 filed for the committed-priming-file guard.
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
 - #541 [drive-reload-fixture-size](.invar/tasks/completed/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md) — 333720c5 (landed with #522)

@@ -1,7 +1,7 @@
 # 546 — diff view labels lie for commits
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 43ab1277 — Diff labels tell the truth per comparison kind; one provenance source; #548 filed for the committed-priming-file guard.
 Engine: claude
 Environment: linux
 Model: fable-5
