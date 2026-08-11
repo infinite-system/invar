@@ -1,7 +1,7 @@
 # 543 — git log drilldown diff red
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 Engine: claude
 Environment: linux
 Model: fable-5
