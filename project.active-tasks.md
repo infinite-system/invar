@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #540 [scrollbar-must-not-hide-content](.invar/tasks/in-progress/540-scrollbar-must-not-hide-content/task-540-scrollbar-must-not-hide-content.md)  [building]
+- #540 [scrollbar-must-not-hide-content](.invar/tasks/in-progress/540-scrollbar-must-not-hide-content/task-540-scrollbar-must-not-hide-content.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/540-scrollbar-must-not-hide-content`
 
 ## USER-DIRECTED (13)
@@ -107,7 +107,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (43)
+## ARCHITECTURE-HYGIENE (44)
+- #541 [drive-reload-fixture-size](.invar/tasks/active/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md)
 - #527 [harness-modified-key-chords](.invar/tasks/active/527-harness-modified-key-chords/task-527-harness-modified-key-chords.md)
 - #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
 - #525 [shared-lane-rollout-resolver](.invar/tasks/active/525-shared-lane-rollout-resolver/task-525-shared-lane-rollout-resolver.md)
