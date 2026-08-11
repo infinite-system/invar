@@ -1,7 +1,7 @@
 # 523 — codex hooks engine probe
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — b6fa1f5d — Codex hooks engine proven firing (all four, payloads captured, trust-gate solved); adoption proposed, #517 notify path stays fallback.
 Engine: claude
 Environment: linux
 Model: fable-5
