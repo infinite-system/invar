@@ -4,6 +4,36 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 87 — 2026-08-11 17:08 EDT — 18 LANDED; DETERMINISTIC-RED-IN-CONTENTION-TIER FOUND; HOLDING (context deep)
+
+Crons armed (:07, :37). fleet-watch blc4t5ql6 armed. Fleet IDLE, clean.
+
+THE FIND (#550, 0a3e97d0): the "scrollbars contention flake" was a
+DETERMINISTIC red on main (3/3 solo timeout), hiding in the NON-BLOCKING
+contention tier so every gate "passed" while a scrollbar behavior went
+untested. Root cause (by driving): a Quick-Open-Enter race — typed a
+fixture name and pressed Enter before the ranked result was ready. Same
+class as #354's move-line. Fixed via the shared openFileThroughQuickOpen
+helper; conductor-verified 3/3-timeout -> 2/2-pass solo.
+
+TWO FOLLOW-UPS FILED: #551 (Quick-Open-Enter race CENSUS — the class hit
+#354 and #550; sweep the suite, route every site through the helper;
+ALSO proposes a periodic solo-run guard so a deterministic red cannot
+hide in the contention tier again), #552 (the NEXT scrollbars wait
+"100000-line fixture paints its target line" exposed once #550 unblocked
+progress — contention-only, 1 sighting).
+
+SESSION LESSON (the through-line #522 -> #354 -> #550, all in
+project.conductor.md): a red I cannot explain is a HYPOTHESIS to test —
+solo re-run + merge-base + driving — never a "flake" to wave through.
+"Contention" is the answer reached for when one stops looking. The
+contention tier's leniency actively HID a real bug for days.
+
+OTHER OPEN FLAKE HOLDS: #545 (structure scrollbar diag), #549
+(diff-overview). Filed unstarted: #544 #548. Remaining backlog
+user-priority. HOLDING autonomous dispatch — 18 landed, context deep;
+next careful call better made fresh. Loops catch anything inbound.
+
 # RESUME ANCHOR 86 — 2026-08-11 16:06 EDT — #547 LANDED (REAL PRODUCT BUG); 17 THIS SESSION; HOLDING
 
 Crons armed (:07, :37). fleet-watch blc4t5ql6 armed. Fleet IDLE, clean.
