@@ -1,0 +1,15 @@
+{
+  "task": 522,
+  "slug": "drive-scoped-text-click-gesture",
+  "branch": "fleet/522-drive-scoped-text-click-gesture",
+  "worktree": ".invar/worktrees/522-drive-scoped-text-click-gesture",
+  "tmuxSession": "invar/522-drive-scoped-text-click-gesture",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-522-drive-scoped-text-click-gesture.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "bc9439ac79987d9322b75c84b8c4f63e1ae3f2bf",
+  "startedAt": "2026-08-11T11:32:37-04:00"
+}

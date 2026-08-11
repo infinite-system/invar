@@ -1,0 +1,15 @@
+{
+  "task": 524,
+  "slug": "relaunch-resume-last-scoping-probe",
+  "branch": "fleet/524-relaunch-resume-last-scoping-probe",
+  "worktree": ".invar/worktrees/524-relaunch-resume-last-scoping-probe",
+  "tmuxSession": "invar/524-relaunch-resume-last-scoping-probe",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-524-relaunch-resume-last-scoping-probe.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "750b7af5059d75c744ae89a284afb97bc883727d",
+  "startedAt": "2026-08-11T11:33:32-04:00"
+}

@@ -6,11 +6,16 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #543 [git-log-drilldown-diff-red](.invar/tasks/in-progress/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)  [building]
+## IN-PROGRESS (3)
+- #543 [git-log-drilldown-diff-red](.invar/tasks/in-progress/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/543-git-log-drilldown-diff-red`
+- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/in-progress/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/524-relaunch-resume-last-scoping-probe`
+- #522 [drive-scoped-text-click-gesture](.invar/tasks/in-progress/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)  [building]
+  `tmux attach -t invar/522-drive-scoped-text-click-gesture`
 
-## USER-DIRECTED (13)
+## USER-DIRECTED (14)
+- #546 [diff-view-labels-lie-for-commits](.invar/tasks/active/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -25,9 +30,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (33)
+## VERIFICATION-INTEGRITY (32)
 - #528 [padding-check-substring-weakness](.invar/tasks/active/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)
-- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/active/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
@@ -108,14 +112,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (45)
+## ARCHITECTURE-HYGIENE (44)
 - #544 [pane-observation-predicate-distillation](.invar/tasks/active/544-pane-observation-predicate-distillation/task-544-pane-observation-predicate-distillation.md)
 - #541 [drive-reload-fixture-size](.invar/tasks/active/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md)
 - #527 [harness-modified-key-chords](.invar/tasks/active/527-harness-modified-key-chords/task-527-harness-modified-key-chords.md)
 - #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
 - #525 [shared-lane-rollout-resolver](.invar/tasks/active/525-shared-lane-rollout-resolver/task-525-shared-lane-rollout-resolver.md)
 - #523 [codex-hooks-engine-probe](.invar/tasks/active/523-codex-hooks-engine-probe/task-523-codex-hooks-engine-probe.md)
-- #522 [drive-scoped-text-click-gesture](.invar/tasks/active/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)
 - #520 [drive-session-framed-paste-gesture](.invar/tasks/active/520-drive-session-framed-paste-gesture/task-520-drive-session-framed-paste-gesture.md)
 - #463 [panel-list-geometry-published-negative-origin](.invar/tasks/active/463-panel-list-geometry-published-negative-origin/task-463-panel-list-geometry-published-negative-origin.md)
 - #462 [fast-gate-slowest-table-prints-empty-row](.invar/tasks/active/462-fast-gate-slowest-table-prints-empty-row/task-462-fast-gate-slowest-table-prints-empty-row.md)
