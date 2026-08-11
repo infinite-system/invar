@@ -429,14 +429,12 @@ async function proveContinuousScrollbarThumbDrag(
       `${lineCount}-line drag fixture workspace paints`,
       (snapshot) => snapshot.findText('Files') !== null,
     );
-    driver.sendKeys('Control+p');
-    await driver.awaitGridCondition(
-      `${lineCount}-line drag fixture opens Quick Open`,
-      (snapshot) => snapshot.findText('Go to File') !== null,
+    await HarnessSmoke.Class.openFileThroughQuickOpen(
+      driver,
+      statusPath,
+      join(fixtureRoot, 'scrollbar-drag-scale.ts'),
+      60_000,
     );
-    driver.sendText('scrollbar-drag-scale.ts');
-    await driver.awaitScreenChange();
-    driver.sendKeys('Enter');
     await driver.awaitGridCondition(
       `${lineCount}-line drag fixture paints in the editor`,
       (snapshot) => snapshot.findText('symbol000000') !== null,
@@ -693,14 +691,12 @@ async function proveContinuousScrollbarThumbDrag(
       `${lineCount}-line scrollbar drags leave one panel host focused`,
     );
 
-    driver.sendKeys('Control+p');
-    await driver.awaitGridCondition(
-      `${lineCount}-line preview drag fixture opens Quick Open`,
-      (candidate) => candidate.findText('Go to File') !== null,
+    await HarnessSmoke.Class.openFileThroughQuickOpen(
+      driver,
+      statusPath,
+      join(fixtureRoot, 'scrollbar-drag-scale.md'),
+      60_000,
     );
-    driver.sendText('scrollbar-drag-scale.md');
-    await driver.awaitScreenChange();
-    driver.sendKeys('Enter');
     const previewStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
