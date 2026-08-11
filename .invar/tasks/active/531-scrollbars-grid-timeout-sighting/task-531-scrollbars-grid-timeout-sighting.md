@@ -35,3 +35,10 @@ Do not dispatch on one sighting.
   of 3; reruns green). Different wait from sighting 1 but same suspect
   family (starved paint under load). Two sightings now held — one more
   dispatches this task per its own rule.
+
+## Third sighting (2026-08-11, gate-539-r2)
+
+- /tmp/merge-gate-failures.d00124d4d90480a5.1285749/
+  contention-scrollbars-*.log — contention tier, non-blocking, on a
+  branch touching only PluginManifest statics (cannot be the cause).
+  THRESHOLD REACHED: three sightings — dispatch per this task's rule.
