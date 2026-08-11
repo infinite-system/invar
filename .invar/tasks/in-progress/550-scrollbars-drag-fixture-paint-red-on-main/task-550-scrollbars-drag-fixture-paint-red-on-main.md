@@ -1,7 +1,7 @@
 # 550 — scrollbars drag fixture paint red on main
 
 Priority: verification-integrity
-State: ACTIVE
+State: IN-PROGRESS
 Engine: codex
 Environment: linux
 Model: 5.6-sol

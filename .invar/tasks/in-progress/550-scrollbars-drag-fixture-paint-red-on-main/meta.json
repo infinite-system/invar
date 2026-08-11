@@ -1,0 +1,15 @@
+{
+  "task": 550,
+  "slug": "scrollbars-drag-fixture-paint-red-on-main",
+  "branch": "fleet/550-scrollbars-drag-fixture-paint-red-on-main",
+  "worktree": ".invar/worktrees/550-scrollbars-drag-fixture-paint-red-on-main",
+  "tmuxSession": "invar/550-scrollbars-drag-fixture-paint-red-on-main",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-550-scrollbars-drag-fixture-paint-red-on-main.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "b8f844f4cb0116365b868d1ac2a18441a80c6c04",
+  "startedAt": "2026-08-11T16:41:38-04:00"
+}
