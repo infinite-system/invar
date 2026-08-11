@@ -177,8 +177,16 @@ function $key(keyName: string): string {
 
   // Modified Enter/Escape/Backspace (Control+Shift+Enter = find.replaceAll
   // class): the modifyOtherKeys byte form, see modifyOtherKeysCodepoints.
+  // The modifier guard is deliberately explicit even though the unmodified
+  // named-key lookup above already returned: a plain Enter/Escape/Backspace
+  // must NEVER fall through to a modifyOtherKeys frame (parameter 1) — the
+  // bare byte is what a real terminal emits, and this branch must not depend
+  // on the table above for that.
   const modifyOtherKeysCodepoint = modifyOtherKeysCodepoints[baseKey];
-  if (modifyOtherKeysCodepoint !== undefined) {
+  if (
+    modifyOtherKeysCodepoint !== undefined &&
+    (hasShift || hasAlt || hasControl)
+  ) {
     const chordModifierParameter =
       1 + Number(hasShift) + Number(hasAlt) * 2 + Number(hasControl) * 4;
     return `\x1b[27;${chordModifierParameter};${modifyOtherKeysCodepoint}~`;

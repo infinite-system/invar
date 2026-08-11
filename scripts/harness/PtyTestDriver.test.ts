@@ -120,10 +120,16 @@ describe('HarnessInput', () => {
     expect(HarnessInput.Class.key('Alt+Enter')).toBe('\x1b[27;3;13~');
     expect(HarnessInput.Class.key('Shift+Escape')).toBe('\x1b[27;2;27~');
     expect(HarnessInput.Class.key('Control+Backspace')).toBe('\x1b[27;5;127~');
-    // The unmodified keys keep their plain byte forms.
+    // The unmodified keys keep their plain byte forms — byte-identical to the
+    // pre-chord-branch encoder. A plain key must NEVER emit a modifyOtherKeys
+    // frame (a `\x1b[27;1;…~` parameter-1 form is not what a real terminal
+    // sends for a bare press), independent of the named-key table.
     expect(HarnessInput.Class.key('Enter')).toBe('\r');
     expect(HarnessInput.Class.key('Escape')).toBe('\x1b');
     expect(HarnessInput.Class.key('Backspace')).toBe('\x7f');
+    for (const plainKey of ['Enter', 'Escape', 'Backspace']) {
+      expect(HarnessInput.Class.key(plainKey)).not.toContain('\x1b[27;');
+    }
     // An unsupported chord still refuses loudly — never a silent guess.
     expect(() => HarnessInput.Class.key('Control+Bogus')).toThrow(
       'Unknown harness key name',
