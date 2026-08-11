@@ -1,7 +1,7 @@
 # 531 — scrollbars grid timeout sighting
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — 17bdd308 — The scrollbars flake mechanism found and killed (bar overlays the last row's text; wait predicate now requires the next line); the scrollbar-hides-last-line design question is queued for the user.
 Engine: claude
 Environment: linux
 Model: fable-5

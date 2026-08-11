@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #531 [scrollbars-grid-timeout-sighting](.invar/tasks/in-progress/531-scrollbars-grid-timeout-sighting/task-531-scrollbars-grid-timeout-sighting.md)  [building]
-  `tmux attach -t invar/531-scrollbars-grid-timeout-sighting`
-
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -156,7 +152,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 241 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 242 — full log: project.tasks-completed.md)
 - #539 [module-constants-to-statics](.invar/tasks/completed/539-module-constants-to-statics/task-539-module-constants-to-statics.md) — dfb74c00 — The source tree's module-variable count reaches true zero: PluginManifest's four constants become class statics (three SCREAMING live knobs per the house table, one $-cached derived set); behavior byte-identical.
 - #538 [panel-chrome-flake-second-wave](.invar/tasks/completed/538-panel-chrome-flake-second-wave/task-538-panel-chrome-flake-second-wave.md) — 0cd8aab6 — The panel-chrome contention flake's third lost-gesture member killed: hover-verified aim after layout moves the control; 15/15 contention green.
 - #537 [find-replace-doctrine-pass](.invar/tasks/completed/537-find-replace-doctrine-pass/task-537-find-replace-doctrine-pass.md) — 0a2b12f0 — Milestone 6: doctrine pass over both search surfaces — counts pluralize, button state tiers complete, scrollbar proven; the six-milestone Find/Replace build is closed.
@@ -165,10 +161,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #534 [workspace-search-backend](.invar/tasks/completed/534-workspace-search-backend/task-534-workspace-search-backend.md) — 7ab4bbf3 — Milestone 3: bounded streaming workspace search with one query compiler, honest rg-unavailable state, cap/cancel/overlay proven; no visible change, conductor-verified on an rg-less machine.
 - #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/completed/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md) — 129fc4b9 — Tasks header segments without pipes; Open button works headless with tooltip; phase parity via one pure helper; full cell-level parity table; conductor acceptance-driven before landing.
 - #532 [workspace-undo-transaction-core](.invar/tasks/completed/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md) — accf2bc8 — Milestone 2 data core: reverse-patch transactions, interned arena, workspace undo coordinator with lifecycle-safe external references; no visible change, conductor-driven.
+- #531 [scrollbars-grid-timeout-sighting](.invar/tasks/completed/531-scrollbars-grid-timeout-sighting/task-531-scrollbars-grid-timeout-sighting.md) — 17bdd308 — The scrollbars flake mechanism found and killed (bar overlays the last row's text; wait predicate now requires the next line); the scrollbar-hides-last-line design question is queued for the user.
 - #530 [blind-press-suite-census](.invar/tasks/completed/530-blind-press-suite-census/task-530-blind-press-suite-census.md) — d8a4a840 — The lost-gesture class closed suite-wide: 321 presses censused, 39 movable-target sites fixed with hover-verified aim, 20 argued safe; census script committed for re-runs.
 - #529 [panel-chrome-rapid-expand-flake](.invar/tasks/completed/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md) — cef91323 — Gate flake killed: settle-boundary status republish (starved publisher) + hover-verified edge drags (hit-grid race); 20/20 contention green; record refined with the starved-wait impossible-shape.
 - #521 [repair-in-file-replace-all-undo](.invar/tasks/completed/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md) — 2b633367 — Replace All undo repaired through the editor delta path with consent dialogs, toggles, and scale-parity drives; Find/Replace milestone 1 complete.
 - #518 [live-tasks-pane-matches-tasks-watch](.invar/tasks/completed/518-live-tasks-pane-matches-tasks-watch/task-518-live-tasks-pane-matches-tasks-watch.md) — 9aaca56b — Tasks pane and tasks:watch share ONE renderer: overlay hover grammar, segmented LIVE|ACTIVE|DONE, full-line coloring, 60fps one-heartbeat motion; round 2 fixed the global-tooltip-clearing dock bug.
 - #517 [codex-compaction-threshold-steer](.invar/tasks/completed/517-codex-compaction-threshold-steer/task-517-codex-compaction-threshold-steer.md) — 7583d179 — Codex lanes survive compaction: notify-hook threshold warning, post-compaction usage-collapse detection, idempotent doctrine re-send; bycatch converted to #523-#525.
 - #516 [the-ui-design-doctrine](.invar/tasks/completed/516-the-ui-design-doctrine/task-516-the-ui-design-doctrine.md) — ACTIVE
-- #515 [find-replace-research-and-design](.invar/tasks/completed/515-find-replace-research-and-design/task-515-find-replace-research-and-design.md) — b27d892b — Find/Replace full design landed: two surfaces, reverse-patch transactions, dialog copy, four proposed records, six milestones; milestone 1 filed as #521.
