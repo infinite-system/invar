@@ -1,0 +1,15 @@
+{
+  "task": 523,
+  "slug": "codex-hooks-engine-probe",
+  "branch": "fleet/523-codex-hooks-engine-probe",
+  "worktree": ".invar/worktrees/523-codex-hooks-engine-probe",
+  "tmuxSession": "invar/523-codex-hooks-engine-probe",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-523-codex-hooks-engine-probe.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "82f67e3c864b59b2e09a4ab1003610062f7393e7",
+  "startedAt": "2026-08-11T13:35:46-04:00"
+}
