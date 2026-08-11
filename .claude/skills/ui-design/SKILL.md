@@ -101,6 +101,10 @@ doctrine compliance is greppable and driveable.
   #461's border-anchor lesson: measure the pane, never guess cells.)
 - Bottom-follow on fresh output, glide-halt on user intent — the
   terminal scrollback rules generalize to any streaming list.
+- A scrollbar never hides content: the bar reserves its own row/column
+  from the same geometry projection that paints it — the last visible
+  line stays fully readable. (User ruling 2026-08-11; mechanism found
+  by #531's flake autopsy, fix #540.)
 
 ## 6. COPY TEXT CAPABILITY — universal
 
