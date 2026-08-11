@@ -98,7 +98,7 @@ describe('AppStatusProjection', () => {
     };
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const goToLinePrompt = new GoToLinePrompt.Class();
-    const quitConfirmation = new Dialog.Class();
+    const consentDialog = new Dialog.Class();
     const tooltip = new Tooltip.Class();
     const panelContentOrder = ref([
       'saved-missing',
@@ -130,7 +130,7 @@ describe('AppStatusProjection', () => {
       findBar,
       quickOpen,
       goToLinePrompt,
-      quitConfirmation,
+      consentDialog,
       settingsPanel,
       contextMenu,
       boundedListPopup,
@@ -272,20 +272,20 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.quickOpenSelectedIdentifier).toBeNull();
     expect(initialSnapshot.quickOpenFileEnumerationState).toBe('idle');
     expect(initialSnapshot.quickOpenFileEnumerationMessage).toBe('');
-    expect(initialSnapshot.quitConfirmationOpen).toBe(false);
-    expect(initialSnapshot.quitConfirmationFocusedChoice).toBe('no');
-    quitConfirmation.show({
+    expect(initialSnapshot.consentDialogOpen).toBe(false);
+    expect(initialSnapshot.consentDialogFocusedChoice).toBe('no');
+    consentDialog.show({
       identifier: 'quit',
       message: 'Quit?',
       onConfirm: () => {},
     });
-    quitConfirmation.select('yes');
+    consentDialog.select('yes');
     const quitSnapshot = AppStatusProjection.Class.snapshot(ports);
-    expect(quitSnapshot.quitConfirmationOpen).toBe(true);
-    expect(quitSnapshot.quitConfirmationFocusedChoice).toBe('yes');
-    expect(quitSnapshot.inputOverlay).toBe('quitConfirmation');
-    expect(quitSnapshot.openInputOverlays).toEqual(['quitConfirmation']);
-    quitConfirmation.dismiss();
+    expect(quitSnapshot.consentDialogOpen).toBe(true);
+    expect(quitSnapshot.consentDialogFocusedChoice).toBe('yes');
+    expect(quitSnapshot.inputOverlay).toBe('consentDialog');
+    expect(quitSnapshot.openInputOverlays).toEqual(['consentDialog']);
+    consentDialog.dismiss();
     expect(initialSnapshot.pluginPrimaryDockContentIdentifiers).toEqual([
       'git',
       'extensions',

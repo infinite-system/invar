@@ -760,11 +760,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       replaceAllPosition.column + Math.floor('Replace All'.length / 2),
       replaceAllPosition.row,
     );
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      true,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', true);
     await driver.awaitGridCondition(
       `replace scale ${lineCount}: consent names one item and one file`,
       (candidate) =>
@@ -772,11 +768,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
         candidate.findText('Cancel') !== null,
     );
     driver.sendKeys('Escape');
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      false,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', false);
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -831,7 +823,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       );
       await GraphClient.Class.awaitValue(
         statusPath,
-        'quitConfirmation.open',
+        'consentDialog.open',
         true,
       );
       await driver.awaitGridCondition(
@@ -845,7 +837,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       driver.sendKeys('Escape');
       await GraphClient.Class.awaitValue(
         statusPath,
-        'quitConfirmation.open',
+        'consentDialog.open',
         false,
       );
       // #530 blind-press census: await the drift consent text gone before
@@ -893,23 +885,15 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       confirmedReplaceAllPosition.column + Math.floor('Replace All'.length / 2),
       confirmedReplaceAllPosition.row,
     );
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      true,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', true);
     driver.sendKeys('Tab');
     await GraphClient.Class.awaitValue(
       statusPath,
-      'quitConfirmation.focusedChoice',
+      'consentDialog.focusedChoice',
       'yes',
     );
     driver.sendKeys('Enter');
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      false,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', false);
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -932,22 +916,14 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
     const undoPosition = snapshot.findText('Undo');
     if (!undoPosition) throw new Error('FAIL workspace Undo is not visible');
     clickCell(driver, undoPosition.column + 2, undoPosition.row);
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      true,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', true);
     await driver.awaitGridCondition(
       `replace scale ${lineCount}: undo consent names one item and one file`,
       (candidate) =>
         candidate.findText('Undo will revert 1 item across 1 file.') !== null,
     );
     driver.sendKeys('Tab', 'Enter');
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      false,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', false);
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -967,11 +943,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
     const redoPosition = snapshot.findText('Redo');
     if (!redoPosition) throw new Error('FAIL workspace Redo is not visible');
     clickCell(driver, redoPosition.column + 2, redoPosition.row);
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      true,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', true);
     // #530 blind-press census: prove the redo consent text painted while
     // open, so the absence wait after the close is not pre-satisfied.
     await driver.awaitGridCondition(
@@ -980,11 +952,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
         candidate.findText('Redo will replace 1 item across 1 file.') !== null,
     );
     driver.sendKeys('Tab', 'Enter');
-    await GraphClient.Class.awaitValue(
-      statusPath,
-      'quitConfirmation.open',
-      false,
-    );
+    await GraphClient.Class.awaitValue(statusPath, 'consentDialog.open', false);
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -1027,7 +995,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       clickCell(driver, driftUndoPosition.column + 2, driftUndoPosition.row);
       await GraphClient.Class.awaitValue(
         statusPath,
-        'quitConfirmation.open',
+        'consentDialog.open',
         true,
       );
       await driver.awaitGridCondition(
@@ -1043,7 +1011,7 @@ async function driveReplacementScale(lineCount: 10 | 100_000): Promise<void> {
       driver.sendKeys('Escape');
       await GraphClient.Class.awaitValue(
         statusPath,
-        'quitConfirmation.open',
+        'consentDialog.open',
         false,
       );
       // #530 blind-press census: await the undo-drift consent text gone

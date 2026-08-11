@@ -12,7 +12,7 @@ class $OverlayCoordinator {
       'boundedListPopup',
       'completionPopup',
       'shortcutHelp',
-      'quitConfirmation',
+      'consentDialog',
     ];
     return exclusiveOverlayNamesValue;
   }
@@ -50,7 +50,7 @@ export type ExclusiveOverlayName =
   | 'boundedListPopup'
   | 'completionPopup'
   | 'shortcutHelp'
-  | 'quitConfirmation';
+  | 'consentDialog';
 
 export type ExclusiveOverlayCloseActions = Readonly<
   Record<ExclusiveOverlayName, () => void>

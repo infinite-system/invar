@@ -217,12 +217,12 @@ async function driveSharedCloseGlyphTier(
       tierStatusPath,
       `${glyphLevel} terminal frame close removes one instance without a dialog`,
       (status) =>
-        status.quitConfirmationOpen === false &&
+        status.consentDialogOpen === false &&
         Array.isArray(status.panelContentKinds) &&
         !status.panelContentKinds.includes('terminal'),
     );
     HarnessSmoke.Class.requireCondition(
-      closedTerminalStatus.quitConfirmationOpen === false &&
+      closedTerminalStatus.consentDialogOpen === false &&
         tierDriver.snapshot().findText('Close Terminal?') === null,
       `${glyphLevel} instance close paints no confirmation dialog`,
     );
@@ -322,7 +322,7 @@ async function driveSharedCloseGlyphTier(
       tierStatusPath,
       `${glyphLevel} container confirmation states one instance and defaults to No`,
       (status) =>
-        status.quitConfirmationOpen === false &&
+        status.consentDialogOpen === false &&
         Array.isArray(status.panelContentKinds) &&
         status.panelContentKinds.includes('terminal'),
     );
