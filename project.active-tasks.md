@@ -59,7 +59,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (35)
+## FLAKE-EVIDENCE (36)
+- #552 [scrollbars-100k-target-line-flake](.invar/tasks/active/552-scrollbars-100k-target-line-flake/task-552-scrollbars-100k-target-line-flake.md)
 - #549 [diff-overview-smoke-flake](.invar/tasks/active/549-diff-overview-smoke-flake/task-549-diff-overview-smoke-flake.md)
 - #547 [bounded-popup-wheel-wait-flake](.invar/tasks/active/547-bounded-popup-wheel-wait-flake/task-547-bounded-popup-wheel-wait-flake.md)
 - #545 [structure-scrollbar-diagnostic-wait](.invar/tasks/active/545-structure-scrollbar-diagnostic-wait/task-545-structure-scrollbar-diagnostic-wait.md)
