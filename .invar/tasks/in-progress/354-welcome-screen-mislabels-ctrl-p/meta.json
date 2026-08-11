@@ -1,0 +1,15 @@
+{
+  "task": 354,
+  "slug": "welcome-screen-mislabels-ctrl-p",
+  "branch": "fleet/354-welcome-screen-mislabels-ctrl-p",
+  "worktree": ".invar/worktrees/354-welcome-screen-mislabels-ctrl-p",
+  "tmuxSession": "invar/354-welcome-screen-mislabels-ctrl-p",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-354-welcome-screen-mislabels-ctrl-p.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "2c8d4ca734f12b1e855c7232b8b98c6e24a98287",
+  "startedAt": "2026-08-11T14:10:49-04:00"
+}

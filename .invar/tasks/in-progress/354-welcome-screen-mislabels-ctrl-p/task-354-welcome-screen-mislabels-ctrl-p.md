@@ -1,6 +1,6 @@
 # #354 — welcome screen mislabels Ctrl+P as command palette
 
-State: ACTIVE
+State: IN-PROGRESS
 Priority: user-directed
 Engine: codex
 Environment: linux
