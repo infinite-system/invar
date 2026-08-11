@@ -1,8 +1,59 @@
 # READY — brief 522-1: the drive-layer instrument batch (four items)
 
-State: READY
+State: READY (round 2 verdict below: gate red is PRE-EXISTING load flake, not this diff)
 Branch: fleet/522-drive-scoped-text-click-gesture
-Commits: 315672af (code + tests), d575aac1 (skill doc)
+Commits: 315672af (code + tests), d575aac1 (skill doc), + census commit (round 2)
+
+## Round 2 (brief 522-2) — the bounded-list-popup gate red
+
+### In plain words
+
+The gate saw the popup test fail on my branch during a busy window and
+suspected my key-encoding change. I ran the test many times on my branch
+and at the merge base, alone and under load: green everywhere, 18 runs.
+The same test failed the same way on an older branch that has none of my
+code, and a neighbor gate failed it at the same moment mine did. I also
+diffed every key byte form against the merge base by machine: my change
+only added forms that used to throw, it altered none. The red is a
+pre-existing load flake, not my diff.
+
+### Verdict: PRE-EXISTING / load-only. Evidence:
+
+1. My worktree, solo: 4 runs, ALL-PASS (about 6s each).
+2. My worktree, 2x contention (two concurrent runs): both ALL-PASS.
+3. My worktree, 3x contention (matching the 3-gate window), 3 rounds =
+   9 runs: all ALL-PASS. Logs: session scratchpad `popup-*.log`.
+4. Merge base ffe218c7 in a scratch worktree, same conditions: solo
+   ALL-PASS, 2x contention both ALL-PASS.
+5. Cross-branch same-step failure: the IDENTICAL failing wait ("wheel
+   scrolling changes the visible popup list or reveals its tail") is in
+   /tmp/merge-gate-failures.6085f6c39f70467b.1521848/ from worktree
+   542-log-tip-observation-gate-drift — a branch with none of my code
+   (#542, the log-tip observation gate, landed before my dispatch).
+6. Same-window sibling failure: /tmp/merge-gate-failures.e2e6c1b3c871edfe.1638618/
+   (adjacent pid to my window's 1638619) shows worktree
+   543-git-log-drilldown-diff-red failing the SAME smoke at the same
+   moment at a different step (popup never opened) — the contention
+   signature, two branches red on one smoke in one window.
+7. Byte-form census, mechanical: 
+   [census-522-key-byte-forms.ts](census-522-key-byte-forms.ts)
+   enumerates 304 key names against both checkouts. Every diff line is
+   `THROWS -> new modifyOtherKeys form` (modified Enter/Escape/
+   Backspace). Zero existing forms changed. The failing step drives
+   wheel events and unmodified Backspace; both encode through untouched
+   branches (the new branch runs only when a modifier is present).
+
+No timeout was widened; no smoke was edited. The end-state bar is met:
+the smoke is green solo and under 2x contention in my worktree, and the
+merge-base runs plus the cross-branch logs prove the red pre-exists this
+diff. The flake itself (a load-sensitive wheel wait against a
+possibly-stale popup geometry captured before the query cleared —
+`popupWheelGeometry` is fixed at line ~500 of
+[smoke-bounded-list-popup-harness.ts](../../../../scripts/harness/smoke-bounded-list-popup-harness.ts)
+while the popup can re-lay-out after the Backspace clear) is reported as
+bycatch below, not fixed here: the smoke is another task's surface and
+the fix is a design call (re-read geometry from status after the clear).
+
 Tree: clean (only the dispatch-time fundamentals file remains untracked, as delivered)
 
 ## In plain words
@@ -143,6 +194,22 @@ more honest than before, not just bigger.
 
 ## Bycatch
 
+- Suspect (bounded-list-popup smoke flake mechanism): the wheel-scroll
+  phase reuses `popupWheelGeometry` captured from the FILTERED popup
+  state, then clears the query and wheels against that stale rectangle
+  (around line 500 of
+  [smoke-bounded-list-popup-harness.ts](../../../../scripts/harness/smoke-bounded-list-popup-harness.ts)).
+  If the popup re-lays-out after the clear (under load, re-render can
+  land late), the wheel cell and the watched rectangle can miss the live
+  list, and the "wheel scrolling changes the visible popup list" wait
+  times out. Labeled SUSPECT: I could not reproduce it locally in 18
+  runs up to 3x contention, but the same-step red exists on two branches
+  (mine and 542-log-tip-observation-gate-drift) and the phase is the
+  only one in the smoke holding geometry across a state change. A past
+  branch named fix-bounded-list-popup-flake (merge 0b443fb6) shows this
+  smoke has a flake history. Proposed fix for a dispatched task: re-read
+  geometry from the status projection after the query clears, before the
+  wheel loop.
 - FIXED (in-task surface, not separate): none — no out-of-scope edits made.
 - Instrument ask (attach error format): when an attached snippet fails,
   [DriveSession.ts](../../../../scripts/harness/DriveSession.ts)'s
