@@ -4,6 +4,33 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 85 — 2026-08-11 15:08 EDT — #354 + #526 LANDED; FLEET IDLE; 16 LANDED THIS SESSION
+
+Crons armed (:07, :37). fleet-watch blc4t5ql6 armed. Fleet IDLE, checkout
+clean.
+
+LANDED SINCE 84: #526 (quitConfirmation -> consentDialog, atomic rename,
+grep-zero), #354 11edfd37 (welcome names Ctrl+P=Go to File, F1=palette;
+5 gate rounds — the label change exposed+killed a latent move-line smoke
+race, then flaky-smoke tail). SESSION TOTAL: 16 landed.
+
+CONDUCTOR LESSONS THIS SESSION (all committed to project.conductor.md):
+diff-stat sanity check is the FIRST structural-arm move (caught #546
+priming file); "implausibly related" is a hypothesis, the MERGE-BASE
+test (paired, not single-sample) is the arbiter (#354 + #522 double
+errors); read the whole function not the hunk; verify a gate was quiet
+before trusting its verdict.
+
+FLAKE EVIDENCE-HOLDS OPEN (the smoke suite's load-sensitive-wait tail —
+worth a dedicated wave when the user steers less densely): #545 (structure
+scrollbar diag, 2 sightings), #547 (popup wheel, 3), #549 (diff-overview,
+1). Plus filed-this-session: #544 (observation predicate distillation),
+#548 (land refuses committed priming files).
+
+REMAINING BACKLOG large + USER-PRIORITY (12 user-directed + ~30
+verification-integrity, many pre-session). Do NOT bulk-dispatch — user
+picks. #526 rename is DONE (was the last user-decision item pending).
+
 # RESUME ANCHOR 84 — 2026-08-11 14:09 EDT — QUEUE-DRAIN WAVES DONE (14 LANDED THIS SESSION); FLEET IDLE
 
 Crons armed (:07 e0d3f690, :37 db522e11). fleet-watch blc4t5ql6 armed.
