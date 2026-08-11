@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #543 [git-log-drilldown-diff-red](.invar/tasks/in-progress/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)  [building]
+  `tmux attach -t invar/543-git-log-drilldown-diff-red`
+
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -56,9 +60,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (34)
+## FLAKE-EVIDENCE (33)
 - #545 [structure-scrollbar-diagnostic-wait](.invar/tasks/active/545-structure-scrollbar-diagnostic-wait/task-545-structure-scrollbar-diagnostic-wait.md)
-- #543 [git-log-drilldown-diff-red](.invar/tasks/active/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)
 - #519 [terminal-toggle-gesture-flake](.invar/tasks/active/519-terminal-toggle-gesture-flake/task-519-terminal-toggle-gesture-flake.md)
 - #497 [settings-down-key-walk-misses-published-value](.invar/tasks/active/497-settings-down-key-walk-misses-published-value/task-497-settings-down-key-walk-misses-published-value.md)
 - #464 [panel-surfaces-fail-under-contention](.invar/tasks/active/464-panel-surfaces-fail-under-contention/task-464-panel-surfaces-fail-under-contention.md)

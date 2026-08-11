@@ -1,0 +1,15 @@
+{
+  "task": 543,
+  "slug": "git-log-drilldown-diff-red",
+  "branch": "fleet/543-git-log-drilldown-diff-red",
+  "worktree": ".invar/worktrees/543-git-log-drilldown-diff-red",
+  "tmuxSession": "invar/543-git-log-drilldown-diff-red",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-543-git-log-drilldown-diff-red.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "56e24ec89c5ccde6e868ffa12f654161725c1ad6",
+  "startedAt": "2026-08-11T11:30:38-04:00"
+}

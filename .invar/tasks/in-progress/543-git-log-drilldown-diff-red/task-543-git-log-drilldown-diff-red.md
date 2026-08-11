@@ -1,7 +1,7 @@
 # 543 — git log drilldown diff red
 
 Priority: flake-evidence
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5
