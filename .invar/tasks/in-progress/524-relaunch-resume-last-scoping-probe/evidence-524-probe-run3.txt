@@ -1,0 +1,13 @@
+PROBE: launching lane A in /tmp/probe524-lane-a
+PROBE: lane A rollout: /home/parallels/.codex/sessions/2026/08/11/rollout-2026-08-11T11-43-02-019ff17d-d251-76f2-9941-84efab8c6df3.jsonl
+PROBE: killing codex pid 1606213 (cwd-resolved: /tmp/probe524-lane-a)
+PROBE: CONTROL: resume --last in lane A's dir (A is the only/newest session)
+PROBE: CONTROL: PASS — resume --last in lane A replayed LANE-A-TOKEN-524-1606206 (right session, evidence pipeline works)
+PROBE: killing codex pid 1609017 (cwd-resolved: /tmp/probe524-lane-a)
+PROBE: launching lane B in /tmp/probe524-lane-b (after A; B's rollout is globally newest)
+PROBE: lane B rollout: /home/parallels/.codex/sessions/2026/08/11/rollout-2026-08-11T11-43-13-019ff17d-fe2c-75e2-9dd9-fe15cdde0290.jsonl
+PROBE: globally newest rollout now: /home/parallels/.codex/sessions/2026/08/11/rollout-2026-08-11T11-43-13-019ff17d-fe2c-75e2-9dd9-fe15cdde0290.jsonl
+PROBE: CROSSING TEST: resume --last in lane A's dir while lane B is alive and newest
+PROBE: resumed pane in lane A: has TOKEN_A=yes has TOKEN_B=no
+CONTROL: PASS — resume --last in lane A replayed LANE-A-TOKEN-524-1606206 (right session, evidence pipeline works)
+VERDICT: --last is cwd-scoped — crossing REFUTED (lane A resumed its own conversation despite B being globally newest)
