@@ -54,7 +54,7 @@ class $AppStatusProjection {
     const openInputOverlays = [
       ...(ports.findBar.open.value ? ['findBar'] : []),
       ...(ports.goToLinePrompt.open.value ? ['goToLine'] : []),
-      ...(ports.quitConfirmation.open.value ? ['quitConfirmation'] : []),
+      ...(ports.consentDialog.open.value ? ['consentDialog'] : []),
       ...(ports.quickOpen.open.value ? ['quickOpen'] : []),
       ...(ports.commands.open.value ? ['commandPalette'] : []),
       ...(ports.settingsPanel.open.value ? ['settingsPanel'] : []),
@@ -134,11 +134,11 @@ class $AppStatusProjection {
       goToLineOpen: ports.goToLinePrompt.open.value,
       goToLineValue: ports.goToLinePrompt.input.value,
       goToLineNotice: ports.goToLinePrompt.notice.value,
-      quitConfirmationOpen: ports.quitConfirmation.open.value,
-      quitConfirmationFocusedChoice: ports.quitConfirmation.focusedChoice.value,
-      quitConfirmationIdentifier: ports.quitConfirmation.identifier.value,
-      quitConfirmationTitle: ports.quitConfirmation.title.value,
-      quitConfirmationMessage: ports.quitConfirmation.message.value,
+      consentDialogOpen: ports.consentDialog.open.value,
+      consentDialogFocusedChoice: ports.consentDialog.focusedChoice.value,
+      consentDialogIdentifier: ports.consentDialog.identifier.value,
+      consentDialogTitle: ports.consentDialog.title.value,
+      consentDialogMessage: ports.consentDialog.message.value,
       paletteOpen: ports.commands.open.value,
       paletteQuery: ports.commands.open.value ? ports.commands.query.value : '',
       paletteMatches: ports.commands.open.value
@@ -415,7 +415,7 @@ export interface AppStatusProjectionPorts {
     GoToLinePrompt.Model,
     'open' | 'input' | 'notice'
   >;
-  readonly quitConfirmation: Pick<
+  readonly consentDialog: Pick<
     Dialog.Model,
     'open' | 'focusedChoice' | 'identifier' | 'title' | 'message'
   >;

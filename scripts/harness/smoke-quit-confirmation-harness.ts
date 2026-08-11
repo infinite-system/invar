@@ -40,7 +40,7 @@ function quitBounds(status: StatusSnapshot): DialogBounds {
   const bounds = (
     status.overlayDialogBounds as
       Record<string, DialogBounds | null> | undefined
-  )?.quitConfirmation;
+  )?.consentDialog;
   if (!bounds) throw new Error('Quit confirmation bounds were not published');
   return bounds;
 }
@@ -124,8 +124,8 @@ async function awaitQuitOpen(
     statusPath,
     description,
     (status) =>
-      status.quitConfirmationOpen === true &&
-      status.inputOverlay === 'quitConfirmation' &&
+      status.consentDialogOpen === true &&
+      status.inputOverlay === 'consentDialog' &&
       status.inputOverlayCount === 1,
   );
 }
@@ -141,7 +141,7 @@ async function awaitQuitClosed(
     statusPath,
     description,
     (status) =>
-      status.quitConfirmationOpen === false &&
+      status.consentDialogOpen === false &&
       status.activeBuffer === expectedActiveBuffer &&
       status.dirty === true,
   );
@@ -301,7 +301,7 @@ async function driveScale(
       driver,
       statusPath,
       `scale ${lineCount}: Left focuses Yes`,
-      (status) => status.quitConfirmationFocusedChoice === 'yes',
+      (status) => status.consentDialogFocusedChoice === 'yes',
     );
     snapshot = await driver.awaitGridCondition(
       `scale ${lineCount}: Yes focus is visible`,
@@ -332,14 +332,14 @@ async function driveScale(
       driver,
       statusPath,
       `scale ${lineCount}: Right focuses No`,
-      (status) => status.quitConfirmationFocusedChoice === 'no',
+      (status) => status.consentDialogFocusedChoice === 'no',
     );
     driver.sendKeys('Tab');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
       `scale ${lineCount}: Tab focuses Yes`,
-      (status) => status.quitConfirmationFocusedChoice === 'yes',
+      (status) => status.consentDialogFocusedChoice === 'yes',
     );
     driver.sendKeys('Right', 'Enter');
     await awaitQuitClosed(
@@ -440,7 +440,7 @@ async function driveScale(
         driver,
         statusPath,
         `scale ${lineCount}: keyboard Yes is focused before activation`,
-        (status) => status.quitConfirmationFocusedChoice === 'yes',
+        (status) => status.consentDialogFocusedChoice === 'yes',
       );
       driver.sendKeysWithoutFrameExpectation('Enter');
     } else {

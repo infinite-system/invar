@@ -81,11 +81,11 @@ function parseRgbColor(hexColor: string): number {
   return Number.parseInt(hexColor.slice(1), 16);
 }
 
-function quitConfirmationBounds(status: StatusSnapshot): DialogBounds {
+function consentDialogBounds(status: StatusSnapshot): DialogBounds {
   const bounds = (
     status.overlayDialogBounds as
       Record<string, DialogBounds | null> | undefined
-  )?.quitConfirmation;
+  )?.consentDialog;
   if (!bounds)
     throw new Error('FAIL the consent dialog bounds were not published');
   return bounds;
@@ -515,8 +515,8 @@ try {
     statusPath,
     'Replace All waits in the shared dialog with safe focus',
     (status) =>
-      status.quitConfirmationIdentifier === 'replace-all-in-file' &&
-      status.quitConfirmationFocusedChoice === 'no' &&
+      status.consentDialogIdentifier === 'replace-all-in-file' &&
+      status.consentDialogFocusedChoice === 'no' &&
       status.findBulkFlowState === 'awaitingConsent',
   );
   snapshot = await driver.awaitGridCondition(
@@ -530,7 +530,7 @@ try {
     snapshot.findText('Replace 1 item in sample.txt?') !== null,
     'one replacement uses singular item copy',
   );
-  const consentBounds = quitConfirmationBounds(consentStatus);
+  const consentBounds = consentDialogBounds(consentStatus);
   const focusedButtonBackground = parseRgbColor(
     ThemePalettes.Class.DARK.selection,
   );
@@ -557,7 +557,7 @@ try {
     statusPath,
     'Escape cancels Replace All without a mutation',
     (status) =>
-      status.quitConfirmationOpen === false &&
+      status.consentDialogOpen === false &&
       Number(status.bufferRevision) === revisionBeforeReplace,
   );
   driver.sendKeys('Control+h');
@@ -586,7 +586,7 @@ try {
     driver,
     statusPath,
     'the repeated Replace All reaches consent again',
-    (status) => status.quitConfirmationIdentifier === 'replace-all-in-file',
+    (status) => status.consentDialogIdentifier === 'replace-all-in-file',
   );
   driver.sendKeys('Left', 'Enter');
   const replacedStatus = await HarnessSmoke.Class.awaitStatus(
@@ -607,8 +607,8 @@ try {
     statusPath,
     'one undo opens the bulk confirmation',
     (status) =>
-      status.quitConfirmationIdentifier === 'undo-replace-all-in-file' &&
-      status.quitConfirmationFocusedChoice === 'no',
+      status.consentDialogIdentifier === 'undo-replace-all-in-file' &&
+      status.consentDialogFocusedChoice === 'no',
   );
   driver.sendKeys('Left', 'Enter');
   await HarnessSmoke.Class.awaitStatus(
@@ -630,8 +630,8 @@ try {
     statusPath,
     'one redo opens the bulk confirmation',
     (status) =>
-      status.quitConfirmationIdentifier === 'redo-replace-all-in-file' &&
-      status.quitConfirmationFocusedChoice === 'no',
+      status.consentDialogIdentifier === 'redo-replace-all-in-file' &&
+      status.consentDialogFocusedChoice === 'no',
   );
   driver.sendKeys('Left', 'Enter');
   await HarnessSmoke.Class.awaitStatus(

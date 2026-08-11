@@ -14,7 +14,7 @@ const overlayNames: readonly ExclusiveOverlayName[] = [
   'boundedListPopup',
   'completionPopup',
   'shortcutHelp',
-  'quitConfirmation',
+  'consentDialog',
 ];
 
 describe('OverlayCoordinator', () => {
@@ -35,7 +35,7 @@ describe('OverlayCoordinator', () => {
       boundedListPopup: closeOverlay('boundedListPopup'),
       completionPopup: closeOverlay('completionPopup'),
       shortcutHelp: closeOverlay('shortcutHelp'),
-      quitConfirmation: closeOverlay('quitConfirmation'),
+      consentDialog: closeOverlay('consentDialog'),
     };
     const coordinator = new OverlayCoordinator.Class(closeActions);
 
@@ -73,7 +73,7 @@ describe('OverlayCoordinator', () => {
       boundedListPopup: () => {},
       completionPopup: () => {},
       shortcutHelp: () => {},
-      quitConfirmation: () => {},
+      consentDialog: () => {},
     });
 
     coordinator.openExclusiveOverlay('findBar', () => {
