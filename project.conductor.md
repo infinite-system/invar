@@ -937,3 +937,33 @@ the merge-base test (paired, not single-sample — I ran base once) before
 calling any red contention. An unrelated-looking change perturbs timing
 and surfaces dormant races constantly; that is a real regression to fix
 (the race), not flake to wave through.
+
+## 2026-08-11 — diagnose less, verify first; serial gating removes the ambiguity (quality reduction)
+
+Reducing this session's conductor errors to one generator: every wrong
+call was a DIAGNOSIS (guessing WHY a red happened), never an acceptance
+(driving/reading WHAT the code does). "Must be contention" (#354 x2),
+"off-by-one row" (#354), "#540 shifted geometry" (#550), the
+render-context guess (#535) — all wrong; every time a builder DROVE
+instead of guessing, they found the truth. The rule I give builders
+("rank candidates, don't assert one") I did not hold myself to.
+Structural fixes, highest leverage first:
+1. Before forming ANY hypothesis about a red, run the discriminating
+   test (solo re-run / merge-base / drive) and speak AFTER. The
+   merge-base test caught me twice — make it reflexive, pre-hypothesis.
+2. SERIAL GATING over parallel. Parallel gates manufacture ambiguous
+   reds (diff or load?) — that ambiguity ate #354's 5 rounds, caused
+   #522's double-error, and hid #550's DETERMINISTIC bug as "flake" for
+   days. Serial gating means every red is real and examined at once. The
+   wall-clock win never paid for the misdiagnosis cost.
+3. Mechanical guards beat remembered discipline at depth: steer.sh
+   refusing when its named brief is absent (the file-before-steer race);
+   #548 committed-priming-file refusal; #551 solo-run guard so the
+   contention tier cannot hide a deterministic red.
+4. The context gauge is BROKEN (reads a stale session file, reports
+   >200%); blind to my own context I cannot self-pace or hand off before
+   acceptance quality slips. Fixing it is a real quality lever.
+The through-line: highest value is acceptance (drive+read), weakness is
+diagnosis (guessing why); push toward verifying, away from theorizing,
+and toward an environment (serial gates, working gauge) that stops
+manufacturing the ambiguity I then guess wrong about.
