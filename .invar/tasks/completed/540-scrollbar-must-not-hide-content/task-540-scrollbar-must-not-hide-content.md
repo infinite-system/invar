@@ -1,7 +1,7 @@
 # 540 — scrollbar must not hide content
 
 Priority: user-directed
-State: IN-PROGRESS
+State: COMPLETED — 2080aa1a — The scrollbar reserves its own row — the last visible line is always readable; user ruling implemented and harvested into ui-design chapter 5.
 Engine: codex
 Environment: linux
 Model: 5.6-sol
