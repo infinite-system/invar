@@ -1,0 +1,170 @@
+== harness scrollbars: thumb drags advance continuously at both scales ==
+  PASS  500-line drive finds both editor axes and the right-dock bar (editorHorizontal,editorVertical,rightDockVertical)
+  PASS  500-line dark theme exposes both editor scrollbar axes
+  PASS  500-line dark theme horizontal track ends one column before the vertical track
+  PASS  500-line dark theme corner cell paints vertical-bar content
+  PASS  500-line dark theme horizontal and vertical bars use the same track and thumb colours
+  PASS  500-line dark theme uses the live panel and dim pair
+  PASS  500-line editor horizontal bar is lower-half cells only
+  PASS  500-line drive finds the live Theme setting
+  PASS  500-line light theme switch exposes both editor scrollbar axes
+  PASS  500-line light theme switch horizontal track ends one column before the vertical track
+  PASS  500-line light theme switch corner cell paints vertical-bar content
+  PASS  500-line light theme switch horizontal and vertical bars use the same track and thumb colours
+  PASS  500-line light theme switch uses the live panel and dim pair
+  PASS  500-line light theme switch removes the dark pair
+  PASS  500-line returned dark theme exposes both editor scrollbar axes
+  PASS  500-line returned dark theme horizontal track ends one column before the vertical track
+  PASS  500-line returned dark theme corner cell paints vertical-bar content
+  PASS  500-line returned dark theme horizontal and vertical bars use the same track and thumb colours
+  PASS  500-line returned dark theme restores the panel and dim pair
+  PASS  500-line returned dark theme removes the light pair
+  PASS  500-line editorHorizontal drag advances after every pressed-pointer move (0→23→47→70)
+  PASS  500-line editorVertical drag advances after every pressed-pointer move (0→47→94→141)
+  PASS  500-line rightDockVertical drag advances after every pressed-pointer move (0→45→90→136)
+  PASS  500-line scrollbar drags leave one panel host focused
+  PASS  500-line drive finds both Markdown preview bars
+  PASS  500-line Markdown preview horizontal bar is lower-half cells only
+  PASS  500-line markdownPreviewHorizontal drag advances after every pressed-pointer move (0→42→84→127)
+  PASS  500-line horizontal preview bar input claims preview leadership
+  PASS  500-line markdownPreviewVertical drag advances after every pressed-pointer move (0→48→95→143)
+  PASS  500-line preview scrollbar drag claims preview leadership
+  PASS  100000-line drive finds both editor axes and the right-dock bar (editorHorizontal,editorVertical,rightDockVertical)
+  PASS  100000-line dark theme exposes both editor scrollbar axes
+  PASS  100000-line dark theme horizontal track ends one column before the vertical track
+  PASS  100000-line dark theme corner cell paints vertical-bar content
+  PASS  100000-line dark theme horizontal and vertical bars use the same track and thumb colours
+  PASS  100000-line dark theme uses the live panel and dim pair
+  PASS  100000-line editor horizontal bar is lower-half cells only
+  PASS  100000-line drive finds the live Theme setting
+  PASS  100000-line light theme switch exposes both editor scrollbar axes
+  PASS  100000-line light theme switch horizontal track ends one column before the vertical track
+  PASS  100000-line light theme switch corner cell paints vertical-bar content
+  PASS  100000-line light theme switch horizontal and vertical bars use the same track and thumb colours
+  PASS  100000-line light theme switch uses the live panel and dim pair
+  PASS  100000-line light theme switch removes the dark pair
+  PASS  100000-line returned dark theme exposes both editor scrollbar axes
+  PASS  100000-line returned dark theme horizontal track ends one column before the vertical track
+  PASS  100000-line returned dark theme corner cell paints vertical-bar content
+  PASS  100000-line returned dark theme horizontal and vertical bars use the same track and thumb colours
+  PASS  100000-line returned dark theme restores the panel and dim pair
+  PASS  100000-line returned dark theme removes the light pair
+  PASS  100000-line editorHorizontal drag advances after every pressed-pointer move (0→25→50→75)
+  PASS  100000-line editorVertical drag advances after every pressed-pointer move (0→9997→19994→29991)
+  PASS  100000-line rightDockVertical drag advances after every pressed-pointer move (0→45→90→136)
+  PASS  100000-line scrollbar drags leave one panel host focused
+  PASS  100000-line drive finds both Markdown preview bars
+  PASS  100000-line Markdown preview horizontal bar is lower-half cells only
+  PASS  100000-line markdownPreviewHorizontal drag advances after every pressed-pointer move (0→42→84→127)
+  PASS  100000-line horizontal preview bar input claims preview leadership
+  PASS  100000-line markdownPreviewVertical drag advances after every pressed-pointer move (0→9998→19995→29993)
+  PASS  100000-line preview scrollbar drag claims preview leadership
+== harness scrollbars: editor vertical thumb does not breathe with wrap off ==
+  PASS  the visible dock owns 29 reclaimable editor columns
+  PASS  wrap-off overview marks leave track and thumb geometry unchanged
+  PASS  wrap-off wheel drive reaches the document bottom
+  PASS  wrap-off wheel drive observes 64 complete scroll frames
+  PASS  wrap-off viewportRows stays exact and constant (20)
+  PASS  wrap-off totalRows stays exact and constant (502)
+  PASS  wrap-off scrollTop moves through 64 observed positions
+  PASS  wrap-off vertical thumb length is byte-identical through the document (extent 2 across 64 frames)
+== harness scrollbars: editor vertical thumb does not breathe with wrap on ==
+  PASS  the visible dock owns 29 reclaimable editor columns
+  PASS  wrap-on overview marks leave track and thumb geometry unchanged
+  PASS  wrap-on wheel drive reaches the document bottom
+  PASS  wrap-on wheel drive observes 65 complete scroll frames
+  PASS  wrap-on viewportRows stays exact and constant (20)
+  PASS  wrap-on totalRows stays exact and constant (504)
+  PASS  wrap-on scrollTop moves through 65 observed positions
+  PASS  wrap-on vertical thumb length is byte-identical through the document (extent 2 across 65 frames)
+== harness scrollbars: diff vertical thumb inputs and extent stay stable ==
+  PASS  the diff pane horizontal thumb is painted before frame collection begins
+  PASS  diff wheel drive reaches the document bottom
+  PASS  diff wheel drive observes 73 complete scroll frames
+  PASS  diff vertical thumb is present in the wheel-produced frames
+  PASS  diff viewportRows stays exact and constant (20)
+  PASS  diff totalRows stays exact and constant (501)
+  PASS  diff scrollTop moves through 73 observed positions
+  PASS  diff vertical thumb length is byte-identical through the document (extent 2 across 73 frames)
+  PASS  diff horizontal row observes 73 complete scroll frames
+  PASS  diff horizontal scrollbar row cells stay byte-identical during vertical scroll (hashes 5d622322a7f95fe53de646bb9047e8bf02a514e767381c36bfecb349f41cb788)
+  PASS  lengthening the widest line refreshes the diff horizontal bar (28 to 16)
+== harness scrollbars: prove the vertical thumb from cell backgrounds ==
+  PASS  vertical scrollbar is present
+  PASS  thumb is a proportional multi-cell run (8/22)
+  PASS  thumb cell 4 is blank with RGB background 787c99
+  PASS  thumb cell 5 is blank with RGB background 787c99
+  PASS  thumb cell 6 is blank with RGB background 787c99
+  PASS  thumb cell 7 is blank with RGB background 787c99
+  PASS  thumb cell 8 is blank with RGB background 787c99
+  PASS  thumb cell 9 is blank with RGB background 787c99
+  PASS  thumb cell 10 is blank with RGB background 787c99
+  PASS  thumb cell 11 is blank with RGB background 787c99
+  PASS  contiguous BG-color thumb run starts at row 4, column 26
+  PASS  overflowing tree paints one lower-half horizontal bar row
+== harness scrollbars: thumb length stays stable through every scroll frame ==
+  PASS  the visible dock owns 29 reclaimable editor columns
+  PASS  editor horizontal thumb is present
+  PASS  editor horizontal thumb remains present in scroll frame 1
+  PASS  editor horizontal thumb remains present in scroll frame 2
+  PASS  editor horizontal thumb remains present in scroll frame 3
+  PASS  editor horizontal thumb remains present in scroll frame 4
+  PASS  editor horizontal thumb remains present in scroll frame 5
+  PASS  editor horizontal thumb remains present in scroll frame 6
+  PASS  editor horizontal thumb remains present in scroll frame 7
+  PASS  editor horizontal thumb remains present in scroll frame 8
+  PASS  editor horizontal thumb remains present in scroll frame 9
+  PASS  editor horizontal thumb remains present in scroll frame 10
+  PASS  editor horizontal thumb remains present in scroll frame 11
+  PASS  editor horizontal thumb remains present in scroll frame 12
+  PASS  editor horizontal thumb remains present in scroll frame 13
+  PASS  editor horizontal thumb remains present in scroll frame 14
+  PASS  editor horizontal thumb remains present in scroll frame 15
+  PASS  editor horizontal thumb remains present in scroll frame 16
+  PASS  editor horizontal thumb remains present in scroll frame 17
+  PASS  editor horizontal thumb remains present in scroll frame 18
+  PASS  wheel burst emitted 17 observed scroll frames
+  PASS  horizontal thumb length is stable while content size is unchanged (41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41)
+== harness scrollbars: the deep widest line is reachable at the stable extent ==
+  PASS  editor horizontal viewport reaches the full-document right extent
+  PASS  the acknowledged editor click halts coarse scroll momentum
+478 |         return snapshot;
+479 |       }
+480 |       const remainingMilliseconds = deadline - performance.now();
+481 |       if (remainingMilliseconds <= 0) {
+482 |         this.expectedScreenChangeBaseline = undefined;
+483 |         throw this.gridConditionTimeoutError(
+                         ^
+error: Timed out waiting for grid condition: the deep widest line is visible during the wheel drive
+Final grid region rows 0-27, columns 0-119:
+ ● tui-scrollbars-ha…                                                                                                 + 
+   master                                                                                                               
+ ⌕ tui-scrollbars-harness-overflow-m5vSAc                                                                             ▧ 
+╭─Files────────────────────╮│ ❮  ❯   tui-scrollbars-harness-overflow-m5vSAc › horizontal-thumb-stability.ts             
+│                    ↥  ⊙  ││  horizontal-thumb-stability.ts   ×                                                    1/1 
+│ ▸ .git                   ││╭─────────────────────────────────────────────────────────────────────────────────────────╮
+│ ▸ .invar                 │││ 382  xxxxxxxx';                                                                         │
+│ ⑂ .gitignore             │││ 383  xxxxxxxx';                                                                         │
+│ · 000-DIFF-BREATHING.txt │││ 384  xxxxxxxx';                                                                         │
+│ · 000-VERY-LONG-CHANGES- │││ 385  xxxxxxxx';                                                                         │
+│ · base.txt               │││ 386  xxxxxxxx';                                                                         │
+│ ◆ horizontal-thumb-stabi │││ 387  xxxxxxxx';                                                                         │
+│ · short-01.txt           │││ 388  xxxxxxxx';                                                                         │
+│ · short-02.txt           │││ 389  xxxxxxxx';                                                                         │
+│ · short-03.txt           │││ 390  xxxxxxxx';                                                                         │
+│ · short-04.txt           │││ 391  xxxxxxxx';                                                                         │
+│ · short-05.txt           │││ 392  xxxxxxxx';                                                                         │
+│ · short-06.txt           │││ 393  xxxxxxxx';                                                                         │
+│ · short-07.txt           │││ 394  xxxxxxxx';                                                                         │
+│ · short-08.txt           │││ 395  xxxxxxxx';                                                                         │
+│ · short-09.txt           │││ 396  xxxxxxxx';                                                                         │
+│ · short-10.txt           │││ 397  xxxxxxxx';                                                                         │
+│ · short-11.txt           │││ 398  xxxxxxxx';                                                                         │
+│ · short-12.txt           │││ 399  xxxxxxxx';                                                                         │
+│ · short-13.txt           │││ 400  xxxxxxxx';                                                                         │
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄ │││ 401  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄ │
+╰──────────────────────────╯│╰── ↵  ↕  ⇊ ──────────────────────────────────────────────────────────────────────────────╯
+ ♙ scrollbar-harness · just now · base  ·  tui-scrollbars-harness-overflow-m5vSAc  ·  horizontal-     ❯  ⚙  ?  08:51  ▥ 
+      at awaitGridCondition (/home/parallels/dev/invar/.invar/worktrees/539-module-constants-to-statics/scripts/harness/PtyTestDriver.ts:483:20)
+
+Bun v1.3.14 (Linux arm64)

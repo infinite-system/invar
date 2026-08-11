@@ -2474,8 +2474,18 @@ try {
       const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
       const currentScrollTop = Number(currentStatus.editorScrollTop);
       const widestLineNumber = 401;
+      // The horizontal scrollbar paints lower-half blocks over the LAST content
+      // row's text while that row's gutter number still paints (the gate-539-r2
+      // frozen frame in this task's evidence log shows exactly this). A gutter
+      // match on line 401 alone can therefore be true while the line's text —
+      // and its DEEP-WIDEST-END-MARKER tail — is covered by the bar, and the
+      // approach then wheels right forever. Line 401 counts as vertically
+      // visible only when line 402's gutter is also on screen, which places
+      // 401 strictly above the bar row and leaves its text paintable.
+      const currentApproachSnapshot = overflowDriver.snapshot();
       const widestLineIsVerticallyVisible =
-        overflowDriver.snapshot().findText(`${widestLineNumber}  `) !== null;
+        currentApproachSnapshot.findText(`${widestLineNumber}  `) !== null &&
+        currentApproachSnapshot.findText(`${widestLineNumber + 1}  `) !== null;
       const precisionDirection = widestLineIsVerticallyVisible
         ? 'right'
         : currentScrollTop < widestLineNumber - 1
