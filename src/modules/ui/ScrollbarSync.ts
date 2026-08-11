@@ -329,6 +329,7 @@ class $ScrollbarSync {
     const workspace = this.dependencies.workspaceSet.active;
     const editor = workspace.editor;
     const editorHeight = this.dependencies.editorViewportHeight();
+    const editorRegionHeight = this.dependencies.editorRegionHeight();
     const editorWidth = this.dependencies.editorViewportWidth();
     const editorRegion = {
       top: 0,
@@ -337,7 +338,7 @@ class $ScrollbarSync {
         this.dependencies.codeSurface.x - (this.dependencies.editorArea.x + 1),
       ),
       width: Math.max(1, Number(this.dependencies.codeSurface.width)),
-      height: editorHeight,
+      height: editorRegionHeight,
     };
     this.applyBar(this.editorVerticalBar, 'vertical', editorRegion, {
       scrollSize: editor.hasDocument.value ? editor.totalVisualRows() : 0,
@@ -418,6 +419,7 @@ export interface ScrollbarSyncDependencies {
   rightDockHost: import('./PanelHost').PanelHost.Instance;
   tooltip: Tooltip.Instance;
   editorViewportHeight: () => number;
+  editorRegionHeight: () => number;
   editorViewportWidth: () => number;
   scrollbarThicknessCells: () => number;
 }

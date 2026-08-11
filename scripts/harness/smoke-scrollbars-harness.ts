@@ -68,6 +68,145 @@ interface AgentThumbFrame {
   readonly paintedThumbRows: number;
 }
 
+async function proveEditorHorizontalBarReservesContentRow(
+  lineCount: number,
+): Promise<void> {
+  const fixture = await HarnessSmoke.Class.createDriveScaleFixture(lineCount);
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-scrollbar-content-row-home-${lineCount}-`),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixture.workspaceRoot,
+    columns: 220,
+    rows: 60,
+    homeDirectory,
+    environment: { TUI_STATUS_PATH: statusPath },
+  });
+  const targetLineNumber = Math.min(lineCount, 52);
+  const targetLineMarker = `DRIVE-LINE-${String(targetLineNumber).padStart(6, '0')}`;
+  const wideLineTailMarker = 'SCROLLBAR-RESERVATION-END';
+  try {
+    await driver.awaitGridCondition(
+      `${lineCount}-line fixture paints its scale file`,
+      (candidate) => candidate.findText(`scale-${lineCount}.txt`) !== null,
+    );
+    driver.sendKeys('Control+p');
+    await driver.awaitGridCondition(
+      `${lineCount}-line fixture opens Go to File`,
+      (candidate) => candidate.findText('Go to File') !== null,
+    );
+    driver.sendText(`scale-${lineCount}.txt`);
+    await driver.awaitScreenChange();
+    driver.sendKeys('Enter');
+    const initialSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line fixture paints its target line`,
+      (candidate) => candidate.findText(targetLineMarker) !== null,
+    );
+    HarnessSmoke.Class.clickText(
+      driver,
+      initialSnapshot,
+      targetLineMarker,
+      targetLineMarker.length,
+    );
+    driver.sendKeys('End');
+    driver.sendText(` ${'x'.repeat(240)} ${wideLineTailMarker}`);
+    const barVisibleStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line edit shows the horizontal scrollbar`,
+      (candidate) => Number(candidate.editorMaximumScrollLeft) > 0,
+    );
+    const barVisibleViewportHeight = Number(
+      (
+        await GraphClient.Class.query(
+          statusPath,
+          'workspaceSet.active.editor.viewport.height',
+          'settle',
+        )
+      ).value,
+    );
+    const barVisibleSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line widest target remains readable above the horizontal bar`,
+      (candidate) => {
+        const tailPosition = candidate.findText(wideLineTailMarker);
+        return tailPosition !== null && tailPosition.row < candidate.rows - 3;
+      },
+    );
+    const barRow = barVisibleSnapshot.rows - 3;
+    requireCondition(
+      barVisibleSnapshot
+        .rowCells(barRow)
+        .filter((cell) => cell.characters === '▄').length >= 10,
+      `${lineCount}-line edit paints the horizontal bar on its reserved row`,
+    );
+
+    driver.sendKeys('Control+z');
+    const barHiddenStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line undo hides the horizontal scrollbar`,
+      (candidate) => Number(candidate.editorMaximumScrollLeft) === 0,
+    );
+    const barHiddenViewportHeight = Number(
+      (
+        await GraphClient.Class.query(
+          statusPath,
+          'workspaceSet.active.editor.viewport.height',
+          'settle',
+        )
+      ).value,
+    );
+    requireCondition(
+      barHiddenViewportHeight === barVisibleViewportHeight + 1 &&
+        Number(barHiddenStatus.editorScrollTop) ===
+          Number(barVisibleStatus.editorScrollTop),
+      `${lineCount}-line bar removal restores exactly one row without moving scrollTop ` +
+        `(${barVisibleViewportHeight} to ${barHiddenViewportHeight}, ` +
+        `top ${barVisibleStatus.editorScrollTop})`,
+    );
+
+    driver.sendKeys('Control+Shift+z');
+    const barRestoredStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line redo restores the horizontal scrollbar`,
+      (candidate) => Number(candidate.editorMaximumScrollLeft) > 0,
+    );
+    const barRestoredViewportHeight = Number(
+      (
+        await GraphClient.Class.query(
+          statusPath,
+          'workspaceSet.active.editor.viewport.height',
+          'settle',
+        )
+      ).value,
+    );
+    const barRestoredSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line redo keeps the widest target readable above the horizontal bar`,
+      (candidate) => {
+        const tailPosition = candidate.findText(wideLineTailMarker);
+        return tailPosition !== null && tailPosition.row < candidate.rows - 3;
+      },
+    );
+    requireCondition(
+      barRestoredViewportHeight === barVisibleViewportHeight &&
+        Number(barRestoredStatus.editorScrollTop) ===
+          Number(barVisibleStatus.editorScrollTop) &&
+        barRestoredSnapshot
+          .rowCells(barRow)
+          .filter((cell) => cell.characters === '▄').length >= 10,
+      `${lineCount}-line bar restoration removes exactly one row without moving scrollTop ` +
+        `(${barHiddenViewportHeight} to ${barRestoredViewportHeight}, ` +
+        `top ${barRestoredStatus.editorScrollTop})`,
+    );
+  } finally {
+    await driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(fixture.workspaceRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
 interface PanelHeadingGeometryStatus {
   readonly contentId: string;
   readonly row: number;
@@ -346,6 +485,28 @@ async function proveContinuousScrollbarThumbDrag(
           .rowCells(horizontalTarget.pressRow)
           .every((cell) => cell.characters !== '█' && cell.characters !== '▀'),
       `${lineCount}-line editor horizontal bar is lower-half cells only`,
+    );
+    const editorViewportHeight = Number(
+      (
+        await GraphClient.Class.query(
+          statusPath,
+          'workspaceSet.active.editor.viewport.height',
+          'settle',
+        )
+      ).value,
+    );
+    const lastVisibleLineIndex =
+      Number(status.editorScrollTop) + editorViewportHeight - 1;
+    const lastVisibleLineMarker = `symbol${String(lastVisibleLineIndex).padStart(6, '0')}`;
+    const lastVisibleLinePosition = snapshot.findText(lastVisibleLineMarker);
+    requireCondition(
+      horizontalTarget !== undefined &&
+        lastVisibleLinePosition !== null &&
+        lastVisibleLinePosition.row < horizontalTarget.pressRow,
+      `${lineCount}-line editor reserves the horizontal bar row and paints ` +
+        `${lastVisibleLineMarker} above it ` +
+        `(line row ${lastVisibleLinePosition?.row ?? 'absent'}, bar row ` +
+        `${horizontalTarget?.pressRow ?? 'absent'}, viewport ${editorViewportHeight})`,
     );
     driver.sendKeys('Control+,');
     let settingsStatus = await HarnessSmoke.Class.awaitStatus(
@@ -2172,6 +2333,12 @@ const homeDirectory = mkdtempSync(
 );
 
 const statusPath = join(homeDirectory, 'status.json');
+
+console.log(
+  '== harness scrollbars: horizontal bars reserve their content row at both scales ==',
+);
+await proveEditorHorizontalBarReservesContentRow(10);
+await proveEditorHorizontalBarReservesContentRow(100_000);
 
 console.log(
   '== harness scrollbars: thumb drags advance continuously at both scales ==',

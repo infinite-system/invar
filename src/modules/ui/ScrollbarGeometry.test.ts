@@ -30,6 +30,8 @@ describe('track placement', () => {
       expect(geometry!.trackLeft).toBe(region.left + region.width - 1);
       expect(geometry!.trackTop).toBe(region.top);
       expect(geometry!.trackLength).toBe(region.height);
+      expect(geometry!.reservedContentRows).toBe(0);
+      expect(geometry!.reservedContentColumns).toBe(1);
     });
     test(`horizontal track hugs the bottom edge within the region (${name})`, () => {
       const geometry = ScrollbarGeometry.Class.scrollbarGeometry(
@@ -44,6 +46,8 @@ describe('track placement', () => {
       expect(geometry!.trackLeft + geometry!.trackLength).toBe(
         region.left + region.width - 1,
       );
+      expect(geometry!.reservedContentRows).toBe(1);
+      expect(geometry!.reservedContentColumns).toBe(0);
     });
   }
 });

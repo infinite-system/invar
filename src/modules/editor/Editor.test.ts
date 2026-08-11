@@ -418,6 +418,22 @@ test('an explicit reveal places a jump at the reading position', () => {
   expect(editor.viewport.scrollTop.value).toBe(48);
 });
 
+test('a viewport resize keeps the cursor at the nearest visible edge', () => {
+  const editor = openWith(
+    Array.from(
+      { length: 100 },
+      (_unusedValue, lineIndex) => `line ${lineIndex}`,
+    ).join('\n'),
+  );
+  editor.viewport.setSize(80, 10);
+  editor.cursor.set(9, 0);
+
+  editor.viewport.setSize(80, 9);
+  editor.revealCursorAfterViewportResize();
+
+  expect(editor.viewport.scrollTop.value).toBe(1);
+});
+
 test('the viewport top maps between visual rows and document lines without moving the cursor', () => {
   const editor = openWith(
     Array.from(

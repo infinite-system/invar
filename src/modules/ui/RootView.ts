@@ -1653,7 +1653,7 @@ class $RootView {
     // only on USER-initiated changes — a real thumb drag then halts momentum and adopts authority.
     // Interior height of a bordered box = box height - 2 (top+bottom border).
     // invariant: A scrollable pane height is an input not an output (src/modules/ui/ui.invariants.md)
-    const editorViewportHeight = () =>
+    const editorRegionHeight = () =>
       Math.max(1, (editorArea.height as number) - 2);
     // Layout-anchored (never hand-derived): the code renderable's own laid-out width, minus the one
     // column the overlay vertical scrollbar occupies — so the final column of a line is always
@@ -1662,6 +1662,33 @@ class $RootView {
       const laidOut = columnSurface()?.surfaceRegion()?.columns ?? 0;
       if (laidOut > 1) return Math.max(1, laidOut - 1);
       return Math.max(1, (editorArea.width as number) - 2 - 6);
+    };
+    const editorViewportHeight = () => {
+      const editor = workspaceSet.activeEditor;
+      const surfaceRegion = columnSurface()?.surfaceRegion();
+      const horizontalScrollbarGeometry =
+        ScrollbarGeometry.Class.scrollbarGeometry(
+          'horizontal',
+          {
+            top: 0,
+            left: 0,
+            width: Math.max(1, surfaceRegion?.columns ?? editorViewportWidth()),
+            height: editorRegionHeight(),
+          },
+          {
+            scrollSize:
+              editor.hasDocument.value && !editor.wordWrap.value
+                ? editor.document.maximumLineWidth
+                : 0,
+            viewportSize: editorViewportWidth(),
+            scrollPosition: editor.viewport.scrollLeft.value,
+          },
+        );
+      return Math.max(
+        1,
+        editorRegionHeight() -
+          (horizontalScrollbarGeometry?.reservedContentRows ?? 0),
+      );
     };
     // WHERE the caret is belongs to the content that owns the renderable it sits in — and an empty
     // column owns no renderable, so it anchors nothing.
@@ -2379,6 +2406,7 @@ class $RootView {
       rightDockHost,
       tooltip,
       editorViewportHeight,
+      editorRegionHeight,
       editorViewportWidth,
       scrollbarThicknessCells,
     });

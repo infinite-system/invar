@@ -75,6 +75,7 @@ export interface SourceTextView extends LiveBuffer, ExternalUndoHistory {
   // --- movement and selection --------------------------------------------
   placeCursor(lineIndex: number, graphemeColumn: number): void;
   revealCursor(): void;
+  revealCursorAfterViewportResize(): void;
   moveHorizontal(delta: number, extend?: boolean): void;
   moveVertical(delta: number, extend?: boolean): void;
   moveWordHorizontal(direction: -1 | 1, extend?: boolean): void;

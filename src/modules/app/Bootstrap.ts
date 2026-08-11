@@ -1394,10 +1394,16 @@ class $Bootstrap {
     // projection→model write feeding the effect it observes.
     // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
     const syncSize = (): void => {
-      workspaceSet.activeEditor.viewport.setSize(
-        view.editorViewportWidth(),
-        view.editorViewportHeight(),
-      );
+      const editor = workspaceSet.activeEditor;
+      const laidOutWidth = view.editorViewportWidth();
+      const laidOutHeight = view.editorViewportHeight();
+      if (
+        editor.viewport.width.value !== laidOutWidth ||
+        editor.viewport.height.value !== laidOutHeight
+      ) {
+        editor.viewport.setSize(laidOutWidth, laidOutHeight);
+        editor.revealCursorAfterViewportResize();
+      }
     };
 
     // The single coarse reactive frame effect: observe the load-bearing signals and repaint on ANY
@@ -1654,6 +1660,7 @@ class $Bootstrap {
         editorViewport.height.value !== laidOutHeight
       ) {
         editorViewport.setSize(laidOutWidth, laidOutHeight);
+        workspaceSet.activeEditor.revealCursorAfterViewportResize();
         renderer.requestRender(); // one-shot convergence (not an animation — no live request)
       }
       // Converge the terminal's cols×rows with the laid-out panel region (like the editor viewport):
