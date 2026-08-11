@@ -54,6 +54,8 @@ class $ScrollbarGeometry {
       trackTop,
       trackLeft,
       trackLength,
+      reservedContentRows: orientation === 'horizontal' ? 1 : 0,
+      reservedContentColumns: orientation === 'vertical' ? 1 : 0,
       reportedViewportSize,
       reportedPosition,
       reportedToTrueScale,
@@ -86,6 +88,9 @@ export interface BarGeometry {
   trackTop: number;
   trackLeft: number;
   trackLength: number;
+  /** Content cells occupied by this visible bar. Hidden bars return no geometry and reserve none. */
+  reservedContentRows: number;
+  reservedContentColumns: number;
   /** What to REPORT to a proportional scrollbar widget so the thumb never shrinks below the
    *  minimum: reported viewport (inflated) + reported position (scaled). */
   reportedViewportSize: number;

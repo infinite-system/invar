@@ -410,6 +410,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
     this.revealCursorMapped('reading');
   }
 
+  /** Keep the cursor inside the nearest viewport edge after the host changes the viewport size. */
+  revealCursorAfterViewportResize(): void {
+    if (!this.hasDocument.value) return;
+    this.revealCursorMapped('nearest');
+  }
+
   openFile(path: string, readOnly = false): void {
     this.recordOrdinaryEdit();
     this.document.loadFromFile(path);
