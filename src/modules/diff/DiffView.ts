@@ -705,14 +705,16 @@ class $DiffView {
     this.previousPaneRenderables.title.bg = palette.panel;
     this.currentPaneRenderables.title.bg = palette.panel;
     // invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md)
+    // The labels come from the comparison's PROVENANCE (the request that built the texts), never
+    // from this view: a historical commit reads `Base (<sha>^)` / `Commit (<sha>)` here.
     this.previousPaneRenderables.title.content = new StyledText([
       fg(palette.dim)(
-        ` Base (HEAD) — ${this.options.previousVersionPath ?? 'previous version'}`,
+        ` ${this.options.previousVersionLabel} — ${this.options.previousVersionPath ?? 'previous version'}`,
       ),
     ]);
     this.currentPaneRenderables.title.content = new StyledText([
       fg(palette.accent)(
-        ` Current (working) — ${this.options.currentVersionPath ?? 'current version'}`,
+        ` ${this.options.currentVersionLabel} — ${this.options.currentVersionPath ?? 'current version'}`,
       ),
     ]);
     this.headerRenderable.content = this.renderHeader(palette);
@@ -1738,6 +1740,11 @@ export interface DiffViewOptions extends DiffViewCallbacks {
   currentVersionText: string;
   previousVersionPath?: string;
   currentVersionPath?: string;
+  /** Provenance labels for the two pane titles, supplied by whoever built the texts
+   *  (e.g. `Base (HEAD)` / `Current (staged)` / `Commit (<sha>)`). Never hardcoded here.
+   *  invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md) */
+  previousVersionLabel: string;
+  currentVersionLabel: string;
   documentSyntax?: DocumentSyntaxReader;
   parentRenderable?: Renderable;
 }

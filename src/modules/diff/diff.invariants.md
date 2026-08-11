@@ -282,15 +282,21 @@ scripts/harness/smoke-diff-overview-harness.ts`.
 
 ### Base and current stay unambiguous
 
-**Invariant:** If a side-by-side diff is visible, then the left pane is named as the HEAD base, the
-right pane is named as the working current file, and Open current is positioned with the right pane
-and opens that current path; the hidden buffer-tab row is reclaimed, while adjacent theme-owned
-up/down controls navigate changes and identify themselves on hover.
+**Invariant:** If a side-by-side diff is visible, then each pane is named with the provenance of
+the text it shows — the comparison request that built the texts supplies both labels (working tree:
+`Base (HEAD)` / `Current (working)`; staged: `Base (HEAD)` / `Current (staged)`; unstaged with a
+staged sibling: `Base (staged)`; untracked: `Base (empty)`; commit: `Base (<sha>^)` /
+`Commit (<sha>)`), and Open current is positioned with the right pane and opens that current path;
+the hidden buffer-tab row is reclaimed, while adjacent theme-owned up/down controls navigate
+changes and identify themselves on hover.
 
-**Scope:** `DiffView.update`, `DiffView.renderHeader`, header-segment hit-testing and tooltip
-callbacks, `GitComparisonContent` callbacks, and RootView's buffer-tab height.
+**Scope:** `GitWorkspace.openChangeAtRow`, `GitWorkspace.loadCommitFileDiff`, `DiffView.update`,
+`DiffView.renderHeader`, header-segment hit-testing and tooltip callbacks, `GitComparisonContent`
+callbacks, and RootView's buffer-tab height.
 
-**Mechanism:** Pane title rows carry explicit `Base (HEAD)` and `Current (working)` prefixes.
+**Mechanism:** `GitComparisonRequest` carries `previousVersionLabel` / `currentVersionLabel`, built
+at the ONE site that knows which revisions the texts came from (`GitWorkspace`); `DiffView.update`
+renders the supplied labels verbatim and hardcodes nothing.
 `renderHeader` right-aligns the padded `diffPreviousChange` and `diffNextChange` glyph segments
 beside `openFull`; one header hit map dispatches all three, and hover points the shared tooltip at
 the navigation segments. RootView assigns the hidden buffer-tab strip zero rows while a contributed
@@ -304,10 +310,12 @@ previous/next controls with reliable padded hit targets and tooltips; one reclai
 
 **Impossible if true:** Open current appearing over the base pane; clicking Open current leaving the
 diff open or opening the base revision; both panes carrying labels that do not distinguish their
-roles; a blank tab row above the comparison; an unlabeled or reserved navigation mark.
+roles; a historical-commit comparison labeled `Current (working)`; a blank tab row above the
+comparison; an unlabeled or reserved navigation mark.
 
-**Verification:** `bun scripts/harness/smoke-diff-overview-harness.ts`.
+**Verification:** `bun scripts/harness/smoke-diff-overview-harness.ts && bun
+scripts/harness/smoke-git-log-harness.ts`.
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-08-11

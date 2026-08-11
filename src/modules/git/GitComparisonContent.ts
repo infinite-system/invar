@@ -41,6 +41,8 @@ class $GitComparisonContent implements EditorSurfaceContent {
       currentVersionText: request.currentVersionText,
       previousVersionPath: request.previousVersionPath,
       currentVersionPath: request.currentVersionPath,
+      previousVersionLabel: request.previousVersionLabel,
+      currentVersionLabel: request.currentVersionLabel,
       documentSyntax: hostWorkspace.documentSyntax,
       parentRenderable: context.container,
       onOpenFull: () => {
@@ -160,7 +162,8 @@ class $GitComparisonContent implements EditorSurfaceContent {
     this.gitWorkspace.release();
   }
 
-  /** Null: the comparison labels its own panes `Base (HEAD)` / `Current (working)` in its header.
+  /** Null: the comparison labels its own panes with the request's provenance labels
+   *  (`Base (…)` / `Current (…)` / `Commit (…)`) in its header.
    *  invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md) */
   readonly focusedPaneTitle = null;
 

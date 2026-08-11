@@ -229,8 +229,9 @@ try {
   await directoryDriver.awaitGridCondition(
     'the confined symlink comparison is painted after its open action',
     (snapshot) =>
-      snapshot.findText('Base (HEAD) — node_modules') !== null &&
-      snapshot.findText('Current (working) — node_modules') !== null,
+      snapshot.findText('Base (empty) — node_modules') !== null &&
+      snapshot.findText('Current (working) — node_modules') !== null &&
+      snapshot.findText('Base (HEAD)') === null,
   );
   const afterOpenChangedCount = await GraphClient.Class.query(
     directoryStatusPath,

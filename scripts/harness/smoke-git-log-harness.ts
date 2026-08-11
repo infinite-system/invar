@@ -187,7 +187,20 @@ try {
   snapshot = await driver.awaitSnapshot(
     (candidate) =>
       candidate.findText('feat2 content line') !== null &&
-      candidate.findText('Current (working) — feat2.txt') !== null,
+      candidate
+        .textRows()
+        .some(
+          (rowText) =>
+            rowText.includes('Commit (') && rowText.includes(') — feat2.txt'),
+        ) &&
+      candidate
+        .textRows()
+        .some(
+          (rowText) =>
+            rowText.includes('Base (') && rowText.includes('^) — feat2.txt'),
+        ) &&
+      candidate.findText('Current (working)') === null &&
+      candidate.findText('Base (HEAD)') === null,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -239,7 +252,13 @@ try {
 
   driver.sendKeys('Down');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Current (working) — feat1.txt') !== null,
+    (candidate) =>
+      candidate
+        .textRows()
+        .some(
+          (rowText) =>
+            rowText.includes('Commit (') && rowText.includes(') — feat1.txt'),
+        ) && candidate.findText('Current (working)') === null,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -260,7 +279,13 @@ try {
 
   driver.sendKeys('Down');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Current (working) — base.txt') !== null,
+    (candidate) =>
+      candidate
+        .textRows()
+        .some(
+          (rowText) =>
+            rowText.includes('Commit (') && rowText.includes(') — base.txt'),
+        ) && candidate.findText('Current (working)') === null,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,

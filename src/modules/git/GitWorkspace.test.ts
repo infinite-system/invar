@@ -71,6 +71,8 @@ test('forty opened comparisons produce forty distinct history entries', () => {
         currentVersionText: `after ${fileIndex}`,
         previousVersionPath: `file-${fileIndex}.ts @ previous`,
         currentVersionPath: `file-${fileIndex}.ts`,
+        previousVersionLabel: 'Base (HEAD)',
+        currentVersionLabel: 'Current (working)',
       },
       true,
     );

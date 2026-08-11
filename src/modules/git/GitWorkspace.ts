@@ -174,7 +174,9 @@ class $GitWorkspace
       typeof candidate.previousVersionText === 'string' &&
       typeof candidate.currentVersionText === 'string' &&
       typeof candidate.previousVersionPath === 'string' &&
-      typeof candidate.currentVersionPath === 'string'
+      typeof candidate.currentVersionPath === 'string' &&
+      typeof candidate.previousVersionLabel === 'string' &&
+      typeof candidate.currentVersionLabel === 'string'
     );
   }
 
@@ -683,12 +685,15 @@ class $GitWorkspace
     );
     const currentVersionText = await this.fileTextAtReference(sha, filePath);
     if (requestGeneration !== this.diffOpenRequestGeneration) return;
+    const shortSha = sha.slice(0, 7);
     this.showComparison(
       {
         previousVersionText,
         currentVersionText,
-        previousVersionPath: `${filePath} @ ${sha.slice(0, 7)}^`,
+        previousVersionPath: filePath,
         currentVersionPath: filePath,
+        previousVersionLabel: `Base (${shortSha}^)`,
+        currentVersionLabel: `Commit (${shortSha})`,
       },
       transferFocus,
     );
@@ -719,14 +724,24 @@ class $GitWorkspace
     const requestGeneration = ++this.diffOpenRequestGeneration;
     let previousVersionText = '';
     let currentVersionText = '';
+    let previousVersionLabel = 'Base (HEAD)';
+    let currentVersionLabel = 'Current (working)';
     if (row.bucket === 'staged') {
       previousVersionText = await this.fileTextAtReference('HEAD', row.path);
       currentVersionText = await this.fileTextAtReference('', row.path);
+      currentVersionLabel = 'Current (staged)';
     } else if (row.bucket === 'unstaged') {
       previousVersionText = await this.fileTextAtReference('', row.path);
       currentVersionText = this.workingFileText(row.path);
+      // The unstaged base is the INDEX content: name it `staged` only when a staged version of
+      // this same file actually exists — otherwise the index entry IS HEAD and the label says so.
+      const hasStagedVersion = repository.staged.value.some(
+        (fileRecord) => fileRecord.path === row.path,
+      );
+      if (hasStagedVersion) previousVersionLabel = 'Base (staged)';
     } else {
       currentVersionText = this.workingFileText(row.path);
+      previousVersionLabel = 'Base (empty)';
     }
     if (requestGeneration !== this.diffOpenRequestGeneration) return;
     this.showComparison(
@@ -735,6 +750,8 @@ class $GitWorkspace
         currentVersionText,
         previousVersionPath: row.path,
         currentVersionPath: row.path,
+        previousVersionLabel,
+        currentVersionLabel,
       },
       true,
     );
@@ -989,4 +1006,9 @@ export interface GitComparisonRequest {
   currentVersionText: string;
   previousVersionPath: string;
   currentVersionPath: string;
+  /** Pane provenance labels, e.g. `Base (HEAD)` / `Current (staged)`. Built HERE, at the one
+   *  site that knows which revisions the texts came from; DiffView renders them verbatim.
+   *  invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md) */
+  previousVersionLabel: string;
+  currentVersionLabel: string;
 }
