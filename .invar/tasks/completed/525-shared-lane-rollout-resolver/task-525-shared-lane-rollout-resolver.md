@@ -1,7 +1,7 @@
 # 525 — shared lane rollout resolver
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: COMPLETED — 1d7ae96c (landed with #524)
 Engine: claude
 Environment: linux
 Model: fable-5
