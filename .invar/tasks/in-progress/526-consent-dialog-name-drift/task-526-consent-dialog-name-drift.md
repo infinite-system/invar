@@ -1,7 +1,7 @@
 # 526 — consent dialog name drift
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5

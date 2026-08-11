@@ -1,0 +1,15 @@
+{
+  "task": 526,
+  "slug": "consent-dialog-name-drift",
+  "branch": "fleet/526-consent-dialog-name-drift",
+  "worktree": ".invar/worktrees/526-consent-dialog-name-drift",
+  "tmuxSession": "invar/526-consent-dialog-name-drift",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-low-526-consent-dialog-name-drift.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "37b40a7f7288aaceb8c15c9ef3735e25b6da24ec",
+  "startedAt": "2026-08-11T14:12:48-04:00"
+}
