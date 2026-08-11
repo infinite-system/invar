@@ -365,27 +365,31 @@ and while the panel is hidden the tip check spawns no subprocess at all.
 
 **Scope:** `GitWorkspace.reconcileLogTip` and its call sites: the `GitWatcher.onReconciled` hook
 (every completed background reconcile — debounced event flush or the 5s floor) and the panel-open
-catch-up in `GitWorkspace.show` / Bootstrap's `git.togglePanel`.
+catch-up in `GitWorkspace.show` / GitPlugin's `git.togglePanel`.
 
 **Mechanism:** Poll the cheap invariant, never the expensive projection: the check compares the
 viewed ref's real tip SHA against `CommitLog.loadedTipSha` (cache index 0 — what the pane
 displays). Following HEAD reads `git.head`, which the status reconcile already carries (zero extra
 subprocesses); viewing another local branch costs one `git rev-parse refs/heads/<branch>` — LOCAL
 refs only, never a network fetch on a timer. Only a mismatch resets the log cache + the
-index-keyed expansions and refetches the current window. `sidebarView !== 'git'` returns before
-any probe (cost tracks the actively observed set); a stale cache left behind is caught by the
-panel-open catch-up.
+index-keyed expansions and refetches the current window. `GitPlugin.paneIsObserved` — the
+primary dock paints the git pane (split-aware `isContentVisible`) and the workspace is the
+active one — returns before any probe (cost tracks the actively observed set); a stale cache
+left behind is caught by the panel-open catch-up and by the first reconcile tick after reveal.
 
 **Generates:** External commits/pulls/rebases appearing in the history pane without reopening it;
 no per-interval `git log` when nothing moved; no polling cost while the panel is hidden; the same
 freshness for a viewed non-checked-out branch.
 
 **Evidence:** `src/modules/git/GitWorkspace.ts` (`reconcileLogTip`, `activateResources`,
-`showSidebarView`); `src/modules/git/GitWatcher.ts` (`flushRefresh`, `onReconciled` option);
-`src/modules/git/CommitLog.ts` (`loadedTipSha`, `reset`); `onReconciled fires after a completed
-background refresh and never after disposal` in `src/modules/git/GitWatcher.test.ts`;
-driven end-to-end by `scripts/smoke-git-log.sh` (external commit on HEAD and on the viewed
-branch, no in-app action).
+`show`); `src/modules/git/GitPlugin.ts` (`paneIsObserved`); `src/modules/git/GitWatcher.ts`
+(`flushRefresh`, `onReconciled` option); `src/modules/git/CommitLog.ts` (`loadedTipSha`,
+`reset`); `onReconciled fires after a completed background refresh and never after disposal`
+in `src/modules/git/GitWatcher.test.ts`; `a hidden git pane spawns no tip probe; a visible
+one does` in `src/modules/git/GitWorkspace.test.ts`; driven end-to-end by
+`scripts/smoke-git-log.sh` (external commit on HEAD and on the viewed branch, no in-app
+action) and the 2026-08-11 spawn census (git PATH shim: 3 probes/16s hidden pre-fix, 0
+post-fix, probes resume on reveal).
 
 **Impossible if true:** The history pane still showing yesterday's tip after an external commit
 while the panel sits open; a hidden git panel spawning tip probes on the reconcile interval; the
@@ -395,7 +399,7 @@ reconcile timer triggering a network fetch; an unchanged tip refetching the log 
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-08-11
 
 ### The log branch viewer is read-only
 

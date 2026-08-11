@@ -41,7 +41,9 @@ class $GitWorkspace
     readonly workspace: Workspace.Model,
     splitRatioSetting?: RegisteredSetting<number>,
     diffSplitRatioSetting?: RegisteredSetting<number>,
+    paneIsObserved?: () => boolean,
   ) {
+    this.paneIsObserved = paneIsObserved ?? (() => true);
     this.splitRatioSetting =
       splitRatioSetting ?? this.createTransientNumberSetting();
     this.diffSplitRatioSetting =
@@ -54,6 +56,10 @@ class $GitWorkspace
 
   readonly splitRatioSetting: RegisteredSetting<number>;
   readonly diffSplitRatioSetting: RegisteredSetting<number>;
+
+  /** True while this workspace's git pane is on screen. A hidden pane spawns no tip probe;
+   *  bare construction (tests) defaults to observed. */
+  protected readonly paneIsObserved: () => boolean;
 
   protected createTransientNumberSetting(): RegisteredSetting<number> {
     return {
@@ -476,6 +482,10 @@ class $GitWorkspace
   }
 
   async reconcileLogTip(): Promise<void> {
+    // invariant: The commit log follows repository reality (src/modules/git/git.invariants.md)
+    // A hidden pane owns no tip probe: cost tracks the actively observed set. A stale cache
+    // left behind is caught by the panel-open catch-up in show().
+    if (!this.paneIsObserved()) return;
     const repository = this.repository.value;
     const commitLog = this.commitLog.value;
     if (!repository || !commitLog) return;
