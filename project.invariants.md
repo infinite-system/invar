@@ -835,7 +835,12 @@ On focus-in, `TerminalSession.reenterTerminalModes` (OpenTUI suspend/resume)
 re-applies termios raw + mouse + focus reporting + a full repaint, so a
 tab-return never leaves the app frozen or input-dead. During a glide, one
 deadline cadence advances every momentum owner and requests the next frame
-after reactive projection has run.
+after reactive projection has run. A render-delivery watchdog backstops
+`requestRender` itself: OpenTUI silently drops a request in its feed-busy and
+overlapping-async-loop states, so `Bootstrap`'s wrapper re-requests on a
+short timer until a completed frame answers, and disarms on that frame — a
+state change whose only frame request was dropped can no longer stay
+unpainted until the next input (the #547 parked wheel impulse).
 
 **Generates:** the freeze-resilience of the demand-driven loop;
 completed-frame progress during continuous input; the tab-defocus recovery;
@@ -851,7 +856,8 @@ focus handlers, focus-in recovery, animation deadline cadence); the
 **Impossible if true:** a thrown handler stopping the render loop so the app
 freezes while the process is alive; a 200 millisecond rapid-input window with
 zero completed frames; a tab defocus→refocus leaving the screen stale or the
-mouse dead with no recovery.
+mouse dead with no recovery; a requested frame that never completes while the
+app then sits quiescent with the requesting mutation unpainted.
 
 **Verification:** `bash scripts/behavioral-contracts.sh`; `render-progress`
 drives three seconds of continuous wheel input through the real PTY and
@@ -860,7 +866,7 @@ and diff surfaces at 2,000 and 100,000 lines.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-08-11
 
 ### Async results are revision-stamped and stale results discarded
 
