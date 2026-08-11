@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/in-progress/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/524-relaunch-resume-last-scoping-probe`
+## IN-PROGRESS (1)
 - #522 [drive-scoped-text-click-gesture](.invar/tasks/in-progress/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/522-drive-scoped-text-click-gesture`
 
@@ -162,7 +160,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 245 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 246 — full log: project.tasks-completed.md)
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
 - #540 [scrollbar-must-not-hide-content](.invar/tasks/completed/540-scrollbar-must-not-hide-content/task-540-scrollbar-must-not-hide-content.md) — 2080aa1a — The scrollbar reserves its own row — the last visible line is always readable; user ruling implemented and harvested into ui-design chapter 5.
@@ -177,4 +175,4 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #531 [scrollbars-grid-timeout-sighting](.invar/tasks/completed/531-scrollbars-grid-timeout-sighting/task-531-scrollbars-grid-timeout-sighting.md) — 17bdd308 — The scrollbars flake mechanism found and killed (bar overlays the last row's text; wait predicate now requires the next line); the scrollbar-hides-last-line design question is queued for the user.
 - #530 [blind-press-suite-census](.invar/tasks/completed/530-blind-press-suite-census/task-530-blind-press-suite-census.md) — d8a4a840 — The lost-gesture class closed suite-wide: 321 presses censused, 39 movable-target sites fixed with hover-verified aim, 20 argued safe; census script committed for re-runs.
 - #529 [panel-chrome-rapid-expand-flake](.invar/tasks/completed/529-panel-chrome-rapid-expand-flake/task-529-panel-chrome-rapid-expand-flake.md) — cef91323 — Gate flake killed: settle-boundary status republish (starved publisher) + hover-verified edge drags (hit-grid race); 20/20 contention green; record refined with the starved-wait impossible-shape.
-- #521 [repair-in-file-replace-all-undo](.invar/tasks/completed/521-repair-in-file-replace-all-undo/task-521-repair-in-file-replace-all-undo.md) — 2b633367 — Replace All undo repaired through the editor delta path with consent dialogs, toggles, and scale-parity drives; Find/Replace milestone 1 complete.
+- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/completed/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md) — 1d7ae96c — resume --last crossing refuted (cwd-scoped); one shared lane-rollout resolver now serves steer/fleet-watch/notify; #524+#525 landed together.
