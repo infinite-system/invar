@@ -1,7 +1,7 @@
 # 547 — bounded list popup wheel flake
 
 Priority: flake-evidence
-State: IN-PROGRESS
+State: COMPLETED — 22f06fd9 — The popup-wheel flake was a real product bug: dropped render requests parked wheel impulses until the next input; a render-delivery watchdog re-requests until a frame lands. Records refined.
 Engine: claude
 Environment: linux
 Model: fable-5

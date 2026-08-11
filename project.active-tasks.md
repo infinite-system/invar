@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #547 [bounded-list-popup-wheel-flake](.invar/tasks/in-progress/547-bounded-list-popup-wheel-flake/task-547-bounded-list-popup-wheel-flake.md)  [building]
-  `tmux attach -t invar/547-bounded-list-popup-wheel-flake`
-
 ## USER-DIRECTED (12)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -152,7 +148,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 256 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 257 — full log: project.tasks-completed.md)
+- #547 [bounded-list-popup-wheel-flake](.invar/tasks/completed/547-bounded-list-popup-wheel-flake/task-547-bounded-list-popup-wheel-flake.md) — 22f06fd9 — The popup-wheel flake was a real product bug: dropped render requests parked wheel impulses until the next input; a render-delivery watchdog re-requests until a frame lands. Records refined.
 - #546 [diff-view-labels-lie-for-commits](.invar/tasks/completed/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md) — 43ab1277 — Diff labels tell the truth per comparison kind; one provenance source; #548 filed for the committed-priming-file guard.
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
@@ -167,4 +164,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/completed/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md) — 129fc4b9 — Tasks header segments without pipes; Open button works headless with tooltip; phase parity via one pure helper; full cell-level parity table; conductor acceptance-driven before landing.
 - #532 [workspace-undo-transaction-core](.invar/tasks/completed/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md) — accf2bc8 — Milestone 2 data core: reverse-patch transactions, interned arena, workspace undo coordinator with lifecycle-safe external references; no visible change, conductor-driven.
 - #531 [scrollbars-grid-timeout-sighting](.invar/tasks/completed/531-scrollbars-grid-timeout-sighting/task-531-scrollbars-grid-timeout-sighting.md) — 17bdd308 — The scrollbars flake mechanism found and killed (bar overlays the last row's text; wait predicate now requires the next line); the scrollbar-hides-last-line design question is queued for the user.
-- #530 [blind-press-suite-census](.invar/tasks/completed/530-blind-press-suite-census/task-530-blind-press-suite-census.md) — d8a4a840 — The lost-gesture class closed suite-wide: 321 presses censused, 39 movable-target sites fixed with hover-verified aim, 20 argued safe; census script committed for re-runs.
