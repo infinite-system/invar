@@ -1,7 +1,7 @@
 # 522 — drive scoped text click gesture
 
 Priority: architecture-hygiene
-State: IN-PROGRESS
+State: COMPLETED — 333720c5 — Drive-layer instrument batch: scoped clickText + paste gesture + modified chords + honest reload-size; four builder-asks in one seam, all controls planted red-first.
 Engine: claude
 Environment: linux
 Model: fable-5

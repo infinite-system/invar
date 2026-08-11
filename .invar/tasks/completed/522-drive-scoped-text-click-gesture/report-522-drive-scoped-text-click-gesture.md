@@ -1,8 +1,69 @@
 # READY — brief 522-1: the drive-layer instrument batch (four items)
 
-State: READY (round 2 verdict below: gate red is PRE-EXISTING load flake, not this diff)
+State: READY (round 3: premise corrected with evidence; guard applied anyway, commit 434e26fc; shortcut-help green)
 Branch: fleet/522-drive-scoped-text-click-gesture
-Commits: 315672af (code + tests), d575aac1 (skill doc), + census commit (round 2)
+Commits: 315672af (code + tests), d575aac1 (skill doc), 65e5f1a2 (census, round 2), 434e26fc (modifier guard, round 3)
+
+## Round 3 (brief 522-3) — the "plain Escape emits the modified form" diagnosis
+
+### In plain words
+
+The brief said my chord branch fires for a plain Escape and breaks the
+sheet-closing tests. I checked the real bytes: a plain Escape still
+sends the one bare escape byte, at every commit of my branch, and the
+shortcut-help test passes here six times in a row. The claimed broken
+code path cannot run, because the plain-key lookup above it answers
+first. I still added the guard the brief asked for — it is good armor —
+and a test that fails loudly if that path ever opens.
+
+### Premise correction (reported per rule 9, with evidence)
+
+The diagnosed mechanism does not exist on this branch, at any commit:
+
+- Direct byte probe at HEAD: `key('Enter')` = codepoint 13,
+  `key('Escape')` = 27, `key('Backspace')` = 127 — the bare forms, no
+  CSI 27 frame. The claimed `\x1b[27;1;27~` for plain Escape is not
+  producible: in `$key` the unmodified named-key lookup
+  (`namedKeySequences`) RETURNS before the chord branch on every
+  committed version (checked 315672af and HEAD; the branch was
+  introduced after that lookup and never reordered).
+- `bun scripts/harness/smoke-shortcut-help-harness.ts`: ALL-PASS in my
+  worktree, six consecutive runs, including the "sheet shows the Quit
+  action" step named as red.
+- The round-2 census was not modified-only: its 304-entry battery
+  includes the plain forms, and the base-vs-branch diff showed rows
+  `Enter "\r"`, `Escape "\x1b"`, and `Backspace "\x7f"` (the census
+  prints the raw control bytes, which render invisibly; codepoints 27
+  and 127 verified directly) byte-identical
+  (only THROWS -> new-form rows differed). The plain-form comparison the
+  brief asks for therefore already exists;
+  [census-522-key-byte-forms.ts](census-522-key-byte-forms.ts) emits
+  those rows for any two checkouts.
+- Scope of what I can say: every commit of THIS branch is clean and the
+  smoke is green here. I cannot see what tree gate-522-r2 executed; no
+  failure log path was named in the brief, and no shortcut-help failure
+  dir exists under /tmp on this machine. If a log exists, I will gladly
+  diff its bytes against this evidence.
+
+### The fix was still applied (commit 434e26fc)
+
+The explicit guard `modifyOtherKeysCodepoint !== undefined && (hasShift
+|| hasAlt || hasControl)` is now in
+[HarnessInput.ts](../../../../scripts/harness/HarnessInput.ts):
+defense-in-depth, making the no-frame-without-modifiers rule local
+instead of dependent on the named table above. New test in
+[PtyTestDriver.test.ts](../../../../scripts/harness/PtyTestDriver.test.ts)
+pins the plain byte forms and forbids any `\x1b[27;` frame for
+unmodified keys. Positive control: planting the removal of the Escape
+named entry now makes plain Escape THROW loudly (pre-guard it would
+have silently emitted the parameter-1 frame — the exact defect class
+the brief describes); the test went red on the plant and green after
+revert (reverted by re-edit, not git checkout).
+
+### End state
+
+shortcut-help ALL-PASS (x6 pre-guard, x1 post-guard), full `bun test`
+2522 pass, typecheck clean.
 
 ## Round 2 (brief 522-2) — the bounded-list-popup gate red
 
