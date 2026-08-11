@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #539 [module-constants-to-statics](.invar/tasks/in-progress/539-module-constants-to-statics/task-539-module-constants-to-statics.md)  [building]
+  `tmux attach -t invar/539-module-constants-to-statics`
+
 ## USER-DIRECTED (13)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -104,8 +108,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (44)
-- #539 [module-constants-to-statics](.invar/tasks/active/539-module-constants-to-statics/task-539-module-constants-to-statics.md)
+## ARCHITECTURE-HYGIENE (43)
 - #527 [harness-modified-key-chords](.invar/tasks/active/527-harness-modified-key-chords/task-527-harness-modified-key-chords.md)
 - #526 [consent-dialog-name-drift](.invar/tasks/active/526-consent-dialog-name-drift/task-526-consent-dialog-name-drift.md)
 - #525 [shared-lane-rollout-resolver](.invar/tasks/active/525-shared-lane-rollout-resolver/task-525-shared-lane-rollout-resolver.md)

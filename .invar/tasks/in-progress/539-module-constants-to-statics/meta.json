@@ -1,0 +1,15 @@
+{
+  "task": 539,
+  "slug": "module-constants-to-statics",
+  "branch": "fleet/539-module-constants-to-statics",
+  "worktree": ".invar/worktrees/539-module-constants-to-statics",
+  "tmuxSession": "invar/539-module-constants-to-statics",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-539-module-constants-to-statics.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "57359a0d3e82c5557c312368fd3064aeb1dff9e4",
+  "startedAt": "2026-08-11T08:36:10-04:00"
+}

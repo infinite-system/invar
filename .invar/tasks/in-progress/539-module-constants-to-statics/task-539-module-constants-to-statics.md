@@ -1,7 +1,7 @@
 # 539 — module constants to statics
 
 Priority: architecture-hygiene
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5
