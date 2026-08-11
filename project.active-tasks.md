@@ -7,9 +7,9 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
-- #546 [diff-view-labels-lie-for-commits](.invar/tasks/in-progress/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md)  [building]
+- #546 [diff-view-labels-lie-for-commits](.invar/tasks/in-progress/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/546-diff-view-labels-lie-for-commits`
-- #528 [padding-check-substring-weakness](.invar/tasks/in-progress/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)  [building]
+- #528 [padding-check-substring-weakness](.invar/tasks/in-progress/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/528-padding-check-substring-weakness`
 - #523 [codex-hooks-engine-probe](.invar/tasks/in-progress/523-codex-hooks-engine-probe/task-523-codex-hooks-engine-probe.md)  [building]
   `tmux attach -t invar/523-codex-hooks-engine-probe`
@@ -29,7 +29,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (31)
+## VERIFICATION-INTEGRITY (32)
+- #548 [land-refuses-committed-priming-files](.invar/tasks/active/548-land-refuses-committed-priming-files/task-548-land-refuses-committed-priming-files.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
