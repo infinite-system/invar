@@ -1,15 +1,15 @@
 import { Static } from 'ivue/extras';
 
 class $PluginManifest {
-  protected static get $identitySegment(): RegExp {
+  protected static get IDENTITY_SEGMENT(): RegExp {
     return /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
   }
 
-  protected static get $semanticVersion(): RegExp {
+  protected static get SEMANTIC_VERSION(): RegExp {
     return /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
   }
 
-  protected static get $windowsDeviceName(): RegExp {
+  protected static get WINDOWS_DEVICE_NAME(): RegExp {
     return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
   }
 
@@ -40,7 +40,7 @@ class $PluginManifest {
       throw new Error(`plugin vendor is reserved: ${vendor}`);
     }
     const version = this.string(candidate.version, 'version');
-    if (!this.$semanticVersion.test(version)) {
+    if (!this.SEMANTIC_VERSION.test(version)) {
       throw new Error(`plugin version is not semantic: ${version}`);
     }
     if (candidate.invarApi !== 1) {
@@ -65,12 +65,12 @@ class $PluginManifest {
 
   protected static segment(value: unknown, field: string): string {
     const segment = this.string(value, field);
-    if (segment.length > 64 || !this.$identitySegment.test(segment)) {
+    if (segment.length > 64 || !this.IDENTITY_SEGMENT.test(segment)) {
       throw new Error(
         `plugin ${field} is not lowercase kebab-case: ${segment}`,
       );
     }
-    if (this.$windowsDeviceName.test(segment)) {
+    if (this.WINDOWS_DEVICE_NAME.test(segment)) {
       throw new Error(`plugin ${field} is a reserved device name: ${segment}`);
     }
     return segment;
