@@ -1,7 +1,7 @@
 # 524 — relaunch resume last scoping probe
 
 Priority: verification-integrity
-State: ACTIVE
+State: IN-PROGRESS
 Engine: claude
 Environment: linux
 Model: fable-5

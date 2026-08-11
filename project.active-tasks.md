@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #543 [git-log-drilldown-diff-red](.invar/tasks/in-progress/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md)  [building]
   `tmux attach -t invar/543-git-log-drilldown-diff-red`
+- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/in-progress/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)  [building]
+  `tmux attach -t invar/524-relaunch-resume-last-scoping-probe`
 - #522 [drive-scoped-text-click-gesture](.invar/tasks/in-progress/522-drive-scoped-text-click-gesture/task-522-drive-scoped-text-click-gesture.md)  [building]
   `tmux attach -t invar/522-drive-scoped-text-click-gesture`
 
@@ -27,9 +29,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (33)
+## VERIFICATION-INTEGRITY (32)
 - #528 [padding-check-substring-weakness](.invar/tasks/active/528-padding-check-substring-weakness/task-528-padding-check-substring-weakness.md)
-- #524 [relaunch-resume-last-scoping-probe](.invar/tasks/active/524-relaunch-resume-last-scoping-probe/task-524-relaunch-resume-last-scoping-probe.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
 - #496 [ast-query-older-modes-lack-self-test](.invar/tasks/active/496-ast-query-older-modes-lack-self-test/task-496-ast-query-older-modes-lack-self-test.md)
 - #486 [runtime-boot-counter-counts-subjects](.invar/tasks/active/486-runtime-boot-counter-counts-subjects/task-486-runtime-boot-counter-counts-subjects.md)
