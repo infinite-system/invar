@@ -1,0 +1,32 @@
+=== 2026-08-11T13:49:06-04:00 argv=[SessionStart]
+--- stdin:
+{"session_id":"019ff1f1-3463-7a83-bf5d-d1d85243023d","transcript_path":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/sessions/2026/08/11/rollout-2026-08-11T13-49-04-019ff1f1-3463-7a83-bf5d-d1d85243023d.jsonl","cwd":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/cwd","hook_event_name":"SessionStart","model":"gpt-5.6-sol","permission_mode":"bypassPermissions","source":"startup"}
+--- env (CODEX*/CLAUDE*):
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ID=ea76fa00-ea35-4096-90da-3fe97e6a6dba
+CLAUDE_PID=1975870
+CLAUDE_EFFORT=medium
+CLAUDE_CODE_MESSAGING_SOCKET=/run/user/1000/cc-socks/1975870.sock
+CLAUDE_CODE_BRIDGE_SESSION_ID=session_012KVnVZKfU1zDuihaozdPAx
+CLAUDECODE=1
+CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/home/parallels/dev/invar/tmp/conductor-system-prompt-20260809T210558-315692.md
+CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1
+CODEX_HOME=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/parallels/.local/share/claude/versions/2.1.227
+=== 2026-08-11T13:49:09-04:00 argv=[SessionEnd]
+--- stdin:
+{"session_id":"019ff1f1-3463-7a83-bf5d-d1d85243023d","transcript_path":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/sessions/2026/08/11/rollout-2026-08-11T13-49-04-019ff1f1-3463-7a83-bf5d-d1d85243023d.jsonl","cwd":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/cwd","hook_event_name":"SessionEnd","reason":"other"}
+--- env (CODEX*/CLAUDE*):
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ID=ea76fa00-ea35-4096-90da-3fe97e6a6dba
+CLAUDE_PID=1975870
+CLAUDE_EFFORT=medium
+CLAUDE_CODE_MESSAGING_SOCKET=/run/user/1000/cc-socks/1975870.sock
+CLAUDE_CODE_BRIDGE_SESSION_ID=session_012KVnVZKfU1zDuihaozdPAx
+CLAUDECODE=1
+CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/home/parallels/dev/invar/tmp/conductor-system-prompt-20260809T210558-315692.md
+CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1
+CODEX_HOME=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/parallels/.local/share/claude/versions/2.1.227

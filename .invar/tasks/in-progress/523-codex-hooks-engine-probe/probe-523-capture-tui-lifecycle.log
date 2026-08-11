@@ -1,0 +1,70 @@
+=== 2026-08-11T13:49:41-04:00 argv=[SessionStart]
+--- stdin:
+{"session_id":"019ff1f1-9d66-73b1-8883-dc780d634fe1","transcript_path":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/sessions/2026/08/11/rollout-2026-08-11T13-49-31-019ff1f1-9d66-73b1-8883-dc780d634fe1.jsonl","cwd":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/cwd","hook_event_name":"SessionStart","model":"gpt-5.6-sol","permission_mode":"default","source":"startup"}
+--- env (CODEX*/CLAUDE*):
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ID=7d8d1a36-08f3-45f6-a3bf-6f0be5697d45
+CLAUDE_PID=315692
+CLAUDE_EFFORT=medium
+CLAUDE_CODE_BRIDGE_SESSION_ID=session_012KVnVZKfU1zDuihaozdPAx
+CLAUDECODE=1
+CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/home/parallels/dev/invar/tmp/conductor-system-prompt-20260809T210558-315692.md
+CODEX_HOME=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/parallels/.local/share/claude/versions/2.1.224
+=== 2026-08-11T13:49:53-04:00 argv=[PreCompact]
+--- stdin:
+{"session_id":"019ff1f1-9d66-73b1-8883-dc780d634fe1","turn_id":"019ff1f1-f58e-7d51-b576-bce4d11e19a9","transcript_path":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/sessions/2026/08/11/rollout-2026-08-11T13-49-31-019ff1f1-9d66-73b1-8883-dc780d634fe1.jsonl","cwd":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/cwd","hook_event_name":"PreCompact","model":"gpt-5.6-sol","trigger":"manual"}
+--- env (CODEX*/CLAUDE*):
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ID=7d8d1a36-08f3-45f6-a3bf-6f0be5697d45
+CLAUDE_PID=315692
+CLAUDE_EFFORT=medium
+CLAUDE_CODE_BRIDGE_SESSION_ID=session_012KVnVZKfU1zDuihaozdPAx
+CLAUDECODE=1
+CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/home/parallels/dev/invar/tmp/conductor-system-prompt-20260809T210558-315692.md
+CODEX_HOME=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/parallels/.local/share/claude/versions/2.1.224
+=== 2026-08-11T13:49:59-04:00 argv=[PostCompact]
+--- stdin:
+{"session_id":"019ff1f1-9d66-73b1-8883-dc780d634fe1","turn_id":"019ff1f1-f58e-7d51-b576-bce4d11e19a9","transcript_path":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/sessions/2026/08/11/rollout-2026-08-11T13-49-31-019ff1f1-9d66-73b1-8883-dc780d634fe1.jsonl","cwd":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/cwd","hook_event_name":"PostCompact","model":"gpt-5.6-sol","trigger":"manual"}
+--- env (CODEX*/CLAUDE*):
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ID=7d8d1a36-08f3-45f6-a3bf-6f0be5697d45
+CLAUDE_PID=315692
+CLAUDE_EFFORT=medium
+CLAUDE_CODE_BRIDGE_SESSION_ID=session_012KVnVZKfU1zDuihaozdPAx
+CLAUDECODE=1
+CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/home/parallels/dev/invar/tmp/conductor-system-prompt-20260809T210558-315692.md
+CODEX_HOME=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/parallels/.local/share/claude/versions/2.1.224
+=== 2026-08-11T13:50:22-04:00 argv=[SessionStart]
+--- stdin:
+{"session_id":"019ff1f1-9d66-73b1-8883-dc780d634fe1","transcript_path":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/sessions/2026/08/11/rollout-2026-08-11T13-49-31-019ff1f1-9d66-73b1-8883-dc780d634fe1.jsonl","cwd":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/cwd","hook_event_name":"SessionStart","model":"gpt-5.6-sol","permission_mode":"default","source":"compact"}
+--- env (CODEX*/CLAUDE*):
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ID=7d8d1a36-08f3-45f6-a3bf-6f0be5697d45
+CLAUDE_PID=315692
+CLAUDE_EFFORT=medium
+CLAUDE_CODE_BRIDGE_SESSION_ID=session_012KVnVZKfU1zDuihaozdPAx
+CLAUDECODE=1
+CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/home/parallels/dev/invar/tmp/conductor-system-prompt-20260809T210558-315692.md
+CODEX_HOME=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/parallels/.local/share/claude/versions/2.1.224
+=== 2026-08-11T13:50:28-04:00 argv=[SessionEnd]
+--- stdin:
+{"session_id":"019ff1f1-9d66-73b1-8883-dc780d634fe1","transcript_path":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home/sessions/2026/08/11/rollout-2026-08-11T13-49-31-019ff1f1-9d66-73b1-8883-dc780d634fe1.jsonl","cwd":"/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/cwd","hook_event_name":"SessionEnd","reason":"other"}
+--- env (CODEX*/CLAUDE*):
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ID=7d8d1a36-08f3-45f6-a3bf-6f0be5697d45
+CLAUDE_PID=315692
+CLAUDE_EFFORT=medium
+CLAUDE_CODE_BRIDGE_SESSION_ID=session_012KVnVZKfU1zDuihaozdPAx
+CLAUDECODE=1
+CLAUDE_CONDUCTOR_FUNDAMENTALS_FILE=/home/parallels/dev/invar/tmp/conductor-system-prompt-20260809T210558-315692.md
+CODEX_HOME=/tmp/claude-1000/-home-parallels-dev-invar--invar-worktrees-523-codex-hooks-engine-probe/ea76fa00-ea35-4096-90da-3fe97e6a6dba/scratchpad/hooks-probe/codex-home
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/parallels/.local/share/claude/versions/2.1.224
