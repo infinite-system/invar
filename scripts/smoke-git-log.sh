@@ -34,6 +34,14 @@ wait_for_capture() { # <needle> <timeout-s> — poll the pane for text that arri
   done
   return 1
 }
+wait_for_field() { # <field> <expected> <timeout-s> — poll a status field that changes asynchronously
+  local deadline=$(( SECONDS + $3 ))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if [ "$(f "$1")" = "$2" ]; then return 0; fi
+    sleep 0.4
+  done
+  return 1
+}
 
 echo "== fixture: main (3 commits) + feature (branched early, 2 own commits) =="
 REPO="$(mktemp -d /tmp/tui-git-log.XXXXXX)"
@@ -92,16 +100,30 @@ fi
 [ "$(f gitLogTipSha)" = "$feature_external_commit" ] && pass 'viewed tip SHA tracks the viewed ref' \
   || failure "viewed tip '$(f gitLogTipSha)' != feature tip '$feature_external_commit'"
 
-echo "== drill-down by SHA from the viewed branch: expand a commit, open its file diff =="
-# Flat rows now: 0=feat-ext-D (empty), 1=feat-only-2. Select row 1 and expand it (lazy by-SHA fetch).
-"$H" send "$S" Down >/dev/null; "$H" send "$S" Enter >/dev/null; sleep 0.8; "$H" settle "$S" >/dev/null 2>&1
+echo "== drill-down by SHA from the viewed branch: select a commit, its diff previews, Enter activates =="
+# Flat rows now: 0=feat-ext-D (empty), 1=feat-only-2. Down SELECTS row 1, and selection PREVIEWS:
+# the commit expands lazily (by-SHA fetch) and its first changed file's comparison opens while
+# source control keeps focus ("Commit selection previews without focus transfer",
+# src/modules/git/git.invariants.md). Enter then ACTIVATES the same comparison, transferring focus.
+# (A second Down+Enter here would land INSIDE the comparison, where Enter opens the working-tree
+# file full — dismissing the comparison. That was this smoke's pre-2026-08-11 red: the section
+# still assumed the pre-f85e4eaa expand-only Enter and stepped one pair too far.)
+"$H" send "$S" Down >/dev/null
+if wait_for_capture 'feat2.txt' 8; then pass "the expanded commit's changed file renders"; else failure "the expanded commit's changed file never rendered"; fi
 [ "$(f gitLogExpanded)" = "1" ] && pass 'commit on the viewed branch expanded inline' \
   || failure "expansion count '$(f gitLogExpanded)', expected 1"
-expect_capture_contains 'feat2.txt' "the expanded commit's changed file renders"
-"$H" send "$S" Down >/dev/null; "$H" send "$S" Enter >/dev/null; sleep 1.0; "$H" settle "$S" >/dev/null 2>&1
+if wait_for_capture 'feat2 content line' 8; then
+  pass 'selection preview shows the commit content (resolved by SHA)'
+else
+  failure 'selection preview never showed the commit content'
+fi
+if wait_for_field showingDiff true 6; then pass 'the comparison preview opened'; else failure "comparison preview did not open (showingDiff='$(f showingDiff)')"; fi
+[ "$(f focus)" = "git" ] && pass 'preview kept focus in source control' \
+  || failure "preview moved focus to '$(f focus)' (selection must not transfer focus)"
+"$H" send "$S" Enter >/dev/null
+if wait_for_field focus editor 6; then pass 'Enter activated the comparison (focus transferred)'; else failure "Enter did not transfer focus (focus='$(f focus)')"; fi
 [ "$(f showingDiff)" = "true" ] && pass 'file diff of a non-checked-out commit opened (routes by SHA)' \
-  || failure "diff did not open from the viewed branch (showingDiff='$(f showingDiff)')"
-expect_capture_contains 'feat2 content line' 'the diff shows the commit content (resolved by SHA)'
+  || failure "diff did not stay open after activation (showingDiff='$(f showingDiff)')"
 
 echo "== Esc returns the viewer to HEAD (after re-focusing the git panel) =="
 "$H" send "$S" C-g >/dev/null; sleep 0.3   # diff moved focus to the editor; re-enter the panel
