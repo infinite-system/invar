@@ -1330,26 +1330,36 @@ horizontal `Momentum` impulse and calls its injected `renderer.requestRender()` 
 The requested frame reaches `tick`, which advances the impulse and keeps requesting frames while
 momentum remains active. `reconcileExtent` clamps offsets that became invalid without halting a
 fresh impulse merely because its valid starting offset is at the top boundary. `onScroll` remains
-the notification for an offset that actually changed.
+the notification for an offset that actually changed. The request itself is delivery-guaranteed by
+`Bootstrap`'s render-delivery watchdog: OpenTUI's `requestRender` silently drops a request in its
+feed-busy and overlapping-async-loop states, so the wrapper re-requests on a short timer until a
+completed frame answers, which is what keeps a queued impulse from parking with no frame to advance
+it (the #547 bounded-list-popup wheel stall).
 
 **Generates:** One wheel-to-first-frame obligation for every shared viewport consumer; consumer
 handlers that only call `handleWheel`; a demand-driven loop that remains stopped when no impulse was
 added.
 
 **Evidence:** `src/modules/ui/ScrollableTextViewport.ts`;
+`src/modules/app/Bootstrap.ts` (render-delivery watchdog);
 `scripts/harness/smoke-overlay-dialog-harness.ts`; the `idle-quiescence` contract in
-`scripts/behavioral-contracts.sh`.
+`scripts/behavioral-contracts.sh`;
+`.invar/tasks/completed/547-bounded-list-popup-wheel-flake/probe-547-wheel-step-loop.ts` (the
+autopsied parked-impulse reproduction and its post-fix clean runs).
 
 **Impossible if true:** A wheel impulse queued while the app is at rest with no frame to advance it;
-a consumer calling `requestRender()` immediately after `ScrollableTextViewport.handleWheel`; a
-`handleWheel` call that adds no impulse starting the frame loop.
+a wheel notch whose only render request is dropped and never re-issued; a consumer calling
+`requestRender()` immediately after `ScrollableTextViewport.handleWheel`; a `handleWheel` call that
+adds no impulse starting the frame loop.
 
 **Verification:** `bun scripts/harness/smoke-overlay-dialog-harness.ts && bash
-scripts/behavioral-contracts.sh`
+scripts/behavioral-contracts.sh`; `bun
+.invar/tasks/completed/547-bounded-list-popup-wheel-flake/probe-547-wheel-step-loop.ts 30 10000`
+exits 0.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-08-11
 
 ### A fast glide crosses rows in many small steps
 

@@ -189,8 +189,45 @@ class $Bootstrap {
       postProcessFns: pointerTrailEnabled ? [paintPointerTrail] : [],
     });
     const requestRendererFrame = renderer.requestRender.bind(renderer);
+    // Render-delivery watchdog. OpenTUI's requestRender silently DROPS a request in several
+    // states (a native frame skipped for a busy span feed sets feedIdleRenderScheduled /
+    // ordinaryFrameWaitingForFeed and the retry can die against an overlapping async loop()),
+    // and a state mutation whose only frame request is dropped stays unpainted until the NEXT
+    // input — a wheel momentum impulse then sits queued with no frame to advance it (the #547
+    // bounded-list-popup wheel stall; the same starved shape as #529's stale status file).
+    // While any request has not been answered by a completed frame, re-request on a short
+    // timer; the first completed frame disarms it, so the watchdog holds no timer at rest.
+    // invariant: The render loop never wedges (project.invariants.md)
+    // invariant: Wheel impulses start their own frame sequence (src/modules/ui/ui.invariants.md)
+    let renderRequestedSinceLastFrame = false;
+    let renderDeliveryWatchdogTimer: ReturnType<typeof setTimeout> | null =
+      null;
+    const renderDeliveryWatchdogMilliseconds = Math.ceil(
+      2000 / renderer.targetFps,
+    );
+    const armRenderDeliveryWatchdog = (): void => {
+      if (renderDeliveryWatchdogTimer !== null) return;
+      renderDeliveryWatchdogTimer = setTimeout(() => {
+        renderDeliveryWatchdogTimer = null;
+        if (!renderRequestedSinceLastFrame) return;
+        requestRendererFrame();
+        armRenderDeliveryWatchdog();
+      }, renderDeliveryWatchdogMilliseconds);
+    };
+    const markRenderDelivered = (): void => {
+      renderRequestedSinceLastFrame = false;
+    };
+    const stopRenderDeliveryWatchdog = (): void => {
+      if (renderDeliveryWatchdogTimer !== null) {
+        clearTimeout(renderDeliveryWatchdogTimer);
+        renderDeliveryWatchdogTimer = null;
+      }
+      renderRequestedSinceLastFrame = false;
+    };
     renderer.requestRender = () => {
       StatusChannel.Class.markRenderRequested();
+      renderRequestedSinceLastFrame = true;
+      armRenderDeliveryWatchdog();
       requestRendererFrame();
     };
     pointerTrailRenderer = renderer;
@@ -1644,6 +1681,9 @@ class $Bootstrap {
 
     const frameTick = (): void => {
       frame += 1;
+      // A completed frame answers every earlier render request; the delivery
+      // watchdog stands down until the next request goes unanswered.
+      markRenderDelivered();
       // A demand-rendered input frame detects a newly active animation. Once
       // active, the deadline timer owns both physics steps and render requests.
       if (animationFrameCadenceTimer === null && advanceAnimationFrame()) {
@@ -1725,6 +1765,7 @@ class $Bootstrap {
     renderer.on('frame', onFrame);
     app.onDispose(() => renderer.off('frame', onFrame));
     app.onDispose(stopAnimationFrameCadence);
+    app.onDispose(stopRenderDeliveryWatchdog);
     app.onDispose(() => workspaceSet.dispose()); // stop all working-tree watchers + dispose open buffers
 
     // Awaitable render for boot/resize/harness determinism: sync size, paint, then observe the
