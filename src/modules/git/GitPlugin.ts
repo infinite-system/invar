@@ -52,6 +52,7 @@ class $GitPlugin
       workspace,
       this.splitRatioSetting ?? undefined,
       this.diffSplitRatioSetting ?? undefined,
+      () => this.paneIsObserved(workspace),
     );
     this.workspaces.set(workspace, gitWorkspace);
     return gitWorkspace;
@@ -182,6 +183,19 @@ class $GitPlugin
       throw new Error('Source-control application contribution is not active');
     }
     return this.controllerFor(application.workspaceSet.active);
+  }
+
+  /** True while THIS workspace's git pane is on screen: the primary dock paints the git pane
+   *  (split-aware) and the workspace is the active one. The log tip probe gates on this, so a
+   *  hidden git panel spawns no subprocess. */
+  protected paneIsObserved(workspace: Workspace.Model): boolean {
+    const application = this.application;
+    const paneContent = this.paneContent;
+    if (!application || !paneContent) return false;
+    return (
+      application.primaryDockHost.isContentVisible(paneContent.id) &&
+      application.workspaceSet.active === workspace
+    );
   }
 
   segments(context: StatusBarSegmentContext): readonly string[] {
