@@ -1,7 +1,7 @@
 # 528 — padding check substring weakness
 
 Priority: verification-integrity
-State: IN-PROGRESS
+State: COMPLETED — 999b3f67 — The padding check now measures the button's own span, not a row substring; positive control proved the old check blind.
 Engine: claude
 Environment: linux
 Model: fable-5
