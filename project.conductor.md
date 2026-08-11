@@ -920,3 +920,20 @@ set match the task?", and only a MATCH earns the cheap pass. A gate cannot
 see a mismatch because the extra content is valid — it just does not
 belong. Lead with the cheap check; reserve the opus arm for genuinely
 large, genuinely novel surfaces.
+
+## 2026-08-11 — "implausibly related" is a hypothesis; the merge-base test is the arbiter (#354)
+
+Twice in one session I attributed a real red to contention because I could
+not see how the diff reached the failing smoke. #354 (a welcome-TEXT fix)
+broke the move-line smoke; I called it "implausibly related, must be
+contention." Merge base green + branch red (paired 3/3 vs 1/3) proved it
+real. Mechanism: the label change added a 5th welcome row, which perturbed
+frame timing enough to EXPOSE a pre-existing race in the move-line smoke
+(it typed sample+Enter without waiting for the ranked match — a wait that
+was not a condition). The change did not cause the bug; it revealed a
+latent one. Rule (already family 4/5, reinforced): a diff you cannot trace
+to a failing smoke is a HYPOTHESIS that it is unrelated, not a fact. Run
+the merge-base test (paired, not single-sample — I ran base once) before
+calling any red contention. An unrelated-looking change perturbs timing
+and surfaces dormant races constantly; that is a real regression to fix
+(the race), not flake to wave through.
