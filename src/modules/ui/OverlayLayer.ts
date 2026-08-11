@@ -239,8 +239,8 @@ class $OverlayLayer {
       121,
       () => this.cancelConfirmation(),
     );
-    this.quitConfirmationBox = new BoxRenderable(renderer, {
-      id: 'quit-confirmation',
+    this.consentDialogBox = new BoxRenderable(renderer, {
+      id: 'consent-dialog',
       position: 'absolute',
       border: true,
       borderStyle: 'rounded',
@@ -248,79 +248,79 @@ class $OverlayLayer {
       visible: false,
       zIndex: 124,
     });
-    this.quitConfirmationText = new SelectableText.Class(renderer, {
-      id: 'quit-confirmation-text',
+    this.consentDialogText = new SelectableText.Class(renderer, {
+      id: 'consent-dialog-text',
       content: '',
       selectable: false,
     });
-    this.quitConfirmationBox.add(this.quitConfirmationText);
-    root.add(this.quitConfirmationBox);
-    this.quitConfirmationViewport = this.createOverlayViewport(
-      'quit-confirmation',
-      this.quitConfirmationBox,
+    this.consentDialogBox.add(this.consentDialogText);
+    root.add(this.consentDialogBox);
+    this.consentDialogViewport = this.createOverlayViewport(
+      'consent-dialog',
+      this.consentDialogBox,
       () => ({
-        contentRows: this.quitConfirmationRenderedLines.length,
-        contentColumns: this.quitConfirmationViewportColumns,
-        viewportRows: this.quitConfirmationViewportRows,
-        viewportColumns: this.quitConfirmationViewportColumns,
+        contentRows: this.consentDialogRenderedLines.length,
+        contentColumns: this.consentDialogViewportColumns,
+        viewportRows: this.consentDialogViewportRows,
+        viewportColumns: this.consentDialogViewportColumns,
       }),
       () => this.requestPaint(),
       {
         positionAtCell: (screenColumn, screenRow) =>
-          this.quitConfirmationPositionAtCell(screenColumn, screenRow),
-        begin: (position) => this.quitConfirmationSelection.begin(position),
-        extend: (position) => this.quitConfirmationSelection.extend(position),
-        finish: () => this.quitConfirmationSelection.finish(),
+          this.consentDialogPositionAtCell(screenColumn, screenRow),
+        begin: (position) => this.consentDialogSelection.begin(position),
+        extend: (position) => this.consentDialogSelection.extend(position),
+        finish: () => this.consentDialogSelection.finish(),
         lineGraphemeCount: (line) =>
           TextCoordinates.Class.lineWidth(
-            this.quitConfirmationRenderedLines[line] ?? '',
+            this.consentDialogRenderedLines[line] ?? '',
           ),
         viewportRectangle: () => ({
-          leftColumn: Number(this.quitConfirmationText.x),
+          leftColumn: Number(this.consentDialogText.x),
           rightColumn:
-            Number(this.quitConfirmationText.x) +
-            this.quitConfirmationViewportColumns -
+            Number(this.consentDialogText.x) +
+            this.consentDialogViewportColumns -
             1,
-          topRow: Number(this.quitConfirmationText.y),
+          topRow: Number(this.consentDialogText.y),
           bottomRow:
-            Number(this.quitConfirmationText.y) +
-            this.quitConfirmationViewportRows -
+            Number(this.consentDialogText.y) +
+            this.consentDialogViewportRows -
             1,
         }),
       },
     );
-    this.quitConfirmationDismissal = this.createModalDismissal(
-      'quit-confirmation',
+    this.consentDialogDismissal = this.createModalDismissal(
+      'consent-dialog',
       123,
       125,
-      () => dependencies.quitConfirmation.dismiss(),
+      () => dependencies.consentDialog.dismiss(),
     );
-    this.quitConfirmationText.onMouseDown = (event) => {
-      this.quitConfirmationViewport.beginDrag(event.x, event.y);
-      const localRow = event.y - this.quitConfirmationText.y;
-      const localColumn = event.x - this.quitConfirmationText.x;
-      const button = this.quitConfirmationButtonAt(localRow, localColumn);
+    this.consentDialogText.onMouseDown = (event) => {
+      this.consentDialogViewport.beginDrag(event.x, event.y);
+      const localRow = event.y - this.consentDialogText.y;
+      const localColumn = event.x - this.consentDialogText.x;
+      const button = this.consentDialogButtonAt(localRow, localColumn);
       if (!button) return;
-      this.quitConfirmationViewport.endDrag();
-      dependencies.quitConfirmation.select(button.choice);
-      dependencies.quitConfirmation.activateFocusedChoice();
+      this.consentDialogViewport.endDrag();
+      dependencies.consentDialog.select(button.choice);
+      dependencies.consentDialog.activateFocusedChoice();
     };
-    this.quitConfirmationText.onMouseDrag = (event: MouseEvent) =>
-      this.quitConfirmationViewport.dragTo(event.x, event.y);
-    this.quitConfirmationText.onMouseUp = () =>
-      this.quitConfirmationViewport.endDrag();
-    this.quitConfirmationText.onMouseMove = (event) => {
-      const localRow = event.y - this.quitConfirmationText.y;
-      const localColumn = event.x - this.quitConfirmationText.x;
+    this.consentDialogText.onMouseDrag = (event: MouseEvent) =>
+      this.consentDialogViewport.dragTo(event.x, event.y);
+    this.consentDialogText.onMouseUp = () =>
+      this.consentDialogViewport.endDrag();
+    this.consentDialogText.onMouseMove = (event) => {
+      const localRow = event.y - this.consentDialogText.y;
+      const localColumn = event.x - this.consentDialogText.x;
       const hoveredChoice =
-        this.quitConfirmationButtonAt(localRow, localColumn)?.choice ?? null;
-      if (hoveredChoice === this.quitConfirmationHoveredChoice) return;
-      this.quitConfirmationHoveredChoice = hoveredChoice;
+        this.consentDialogButtonAt(localRow, localColumn)?.choice ?? null;
+      if (hoveredChoice === this.consentDialogHoveredChoice) return;
+      this.consentDialogHoveredChoice = hoveredChoice;
       renderer.requestRender();
     };
-    this.quitConfirmationText.onMouseOut = () => {
-      if (this.quitConfirmationHoveredChoice === null) return;
-      this.quitConfirmationHoveredChoice = null;
+    this.consentDialogText.onMouseOut = () => {
+      if (this.consentDialogHoveredChoice === null) return;
+      this.consentDialogHoveredChoice = null;
       renderer.requestRender();
     };
     // Settings panel (Ctrl+,) — overlay over the reactive settings store.
@@ -630,7 +630,7 @@ class $OverlayLayer {
       this.dependencies.boundedListPopup.capturesKeyboard ||
       this.dependencies.settingsPanel.open.value ||
       this.dependencies.shortcutHelp.open.value ||
-      this.dependencies.quitConfirmation.open.value ||
+      this.dependencies.consentDialog.open.value ||
       this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0
     );
   }
@@ -651,9 +651,9 @@ class $OverlayLayer {
   protected readonly confirmBox: BoxRenderable;
   protected readonly confirmText: TextRenderable;
   protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
-  protected readonly quitConfirmationBox: BoxRenderable;
-  protected readonly quitConfirmationText: SelectableText.Model;
-  protected readonly quitConfirmationDismissal: ModalOverlayDismissal.Model;
+  protected readonly consentDialogBox: BoxRenderable;
+  protected readonly consentDialogText: SelectableText.Model;
+  protected readonly consentDialogDismissal: ModalOverlayDismissal.Model;
   protected readonly settingsBox: BoxRenderable;
   protected readonly settingsText: SelectableText.Model;
   protected readonly settingsDismissal: ModalOverlayDismissal.Model;
@@ -667,7 +667,7 @@ class $OverlayLayer {
   protected readonly commandPaletteViewport: ScrollableTextViewport.Instance;
   protected readonly quickOpenViewport: ScrollableTextViewport.Instance;
   protected readonly settingsViewport: ScrollableTextViewport.Instance;
-  protected readonly quitConfirmationViewport: ScrollableTextViewport.Instance;
+  protected readonly consentDialogViewport: ScrollableTextViewport.Instance;
   protected readonly shortcutHelpViewport: ScrollableTextViewport.Instance;
   protected readonly contextMenuViewport: ScrollableTextViewport.Instance;
   protected commandPaletteContentRows = 0;
@@ -689,15 +689,15 @@ class $OverlayLayer {
   protected previousSettingsSelectedIndex = -1;
   protected previousShortcutHelpOpen = false;
   protected previousContextMenuOpen = false;
-  protected previousQuitConfirmationOpen = false;
+  protected previousConsentDialogOpen = false;
   protected previousContextMenuSelectedIndex = -1;
   // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
   // invariant: Seams are drawn at the shared generator (project.invariants.md)
   protected readonly settingsSelection = new TextSelectionModel.Class();
-  protected readonly quitConfirmationSelection = new TextSelectionModel.Class();
-  protected quitConfirmationRenderedLines: readonly string[] = [];
-  protected quitConfirmationViewportRows = 1;
-  protected quitConfirmationViewportColumns = 1;
+  protected readonly consentDialogSelection = new TextSelectionModel.Class();
+  protected consentDialogRenderedLines: readonly string[] = [];
+  protected consentDialogViewportRows = 1;
+  protected consentDialogViewportColumns = 1;
   protected settingsRenderedLines: readonly SettingsRenderedLine[] = [];
   protected readonly dialogBoundsByName = new Map<
     OverlayDialogName,
@@ -710,8 +710,8 @@ class $OverlayLayer {
   // (row, column-range) to a descriptor index + an action, so a mouse click edits the setting like a UI
   // app — steppers for numbers, a toggle for booleans, arrows for enums.
   protected settingsWidgetZones: SettingsWidgetZone[] = [];
-  protected quitConfirmationButtonZones: QuitConfirmationButtonZone[] = [];
-  protected quitConfirmationHoveredChoice: DialogChoice | null = null;
+  protected consentDialogButtonZones: ConsentDialogButtonZone[] = [];
+  protected consentDialogHoveredChoice: DialogChoice | null = null;
   protected commandPaletteRowCount = 0;
   protected commandPaletteFirstVisible = 0;
   protected quickOpenRowCount = 0;
@@ -1097,12 +1097,12 @@ class $OverlayLayer {
     );
     return Math.min(maximumWidth, contentWidth + 2 + horizontalPadding * 2);
   }
-  protected quitConfirmationButtonAt(
+  protected consentDialogButtonAt(
     row: number,
     column: number,
-  ): QuitConfirmationButtonZone | null {
+  ): ConsentDialogButtonZone | null {
     return (
-      this.quitConfirmationButtonZones.find(
+      this.consentDialogButtonZones.find(
         (candidate) =>
           candidate.row === row &&
           column >= candidate.startColumn &&
@@ -1110,20 +1110,20 @@ class $OverlayLayer {
       ) ?? null
     );
   }
-  protected quitConfirmationContent(
+  protected consentDialogContent(
     palette: Palette,
     interiorWidth: number,
   ): {
     text: StyledText;
-    buttonZones: QuitConfirmationButtonZone[];
+    buttonZones: ConsentDialogButtonZone[];
     lines: readonly string[];
   } {
     const questionLines =
-      this.dependencies.quitConfirmation.message.value.split('\n');
-    const hint = this.dependencies.quitConfirmation.hint.value;
-    const singleAction = this.dependencies.quitConfirmation.singleAction.value;
-    const yesLabel = `  ${this.dependencies.quitConfirmation.confirmLabel.value}  `;
-    const noLabel = `  ${this.dependencies.quitConfirmation.cancelLabel.value}  `;
+      this.dependencies.consentDialog.message.value.split('\n');
+    const hint = this.dependencies.consentDialog.hint.value;
+    const singleAction = this.dependencies.consentDialog.singleAction.value;
+    const yesLabel = `  ${this.dependencies.consentDialog.confirmLabel.value}  `;
+    const noLabel = `  ${this.dependencies.consentDialog.cancelLabel.value}  `;
     const buttonGap = '    ';
     const buttonRowWidth =
       TextCoordinates.Class.lineWidth(yesLabel) +
@@ -1137,12 +1137,11 @@ class $OverlayLayer {
     );
     const centeredLine = (line: string): string =>
       `${' '.repeat(Math.max(0, Math.floor((interiorWidth - TextCoordinates.Class.lineWidth(line)) / 2)))}${line}`;
-    const focusedChoice =
-      this.dependencies.quitConfirmation.focusedChoice.value;
+    const focusedChoice = this.dependencies.consentDialog.focusedChoice.value;
     const buttonChunk = (choice: DialogChoice, label: string): TextChunk =>
       focusedChoice === choice
         ? bold(bg(palette.selection)(fg(palette.fg)(label)))
-        : this.quitConfirmationHoveredChoice === choice
+        : this.consentDialogHoveredChoice === choice
           ? bg(palette.cursorLine)(fg(palette.accent)(label))
           : fg(palette.dim)(label);
     const centeredQuestion = questionLines.map(centeredLine).join('\n');
@@ -1199,55 +1198,55 @@ class $OverlayLayer {
     };
   }
 
-  protected quitConfirmationPositionAtCell(
+  protected consentDialogPositionAtCell(
     screenColumn: number,
     screenRow: number,
   ): { line: number; column: number } | null {
-    const localRow = screenRow - Number(this.quitConfirmationText.y);
-    const line = this.quitConfirmationViewport.scrollTop + localRow;
+    const localRow = screenRow - Number(this.consentDialogText.y);
+    const line = this.consentDialogViewport.scrollTop + localRow;
     if (
       localRow < 0 ||
-      localRow >= this.quitConfirmationViewportRows ||
+      localRow >= this.consentDialogViewportRows ||
       line < 0 ||
-      line >= this.quitConfirmationRenderedLines.length
+      line >= this.consentDialogRenderedLines.length
     ) {
       return null;
     }
     return {
       line,
-      column: Math.max(0, screenColumn - Number(this.quitConfirmationText.x)),
+      column: Math.max(0, screenColumn - Number(this.consentDialogText.x)),
     };
   }
 
-  protected paintQuitConfirmationSelection(): void {
-    const span = this.quitConfirmationSelection.normalized();
-    if (!span || !this.dependencies.quitConfirmation.open.value) {
-      this.quitConfirmationText.clearSelectionRange();
+  protected paintConsentDialogSelection(): void {
+    const span = this.consentDialogSelection.normalized();
+    if (!span || !this.dependencies.consentDialog.open.value) {
+      this.consentDialogText.clearSelectionRange();
       return;
     }
     const [start, end] = span;
-    this.quitConfirmationText.setSelectionRange(
-      Math.max(0, Math.min(start.column, this.quitConfirmationViewportColumns)),
-      Math.max(0, Math.min(start.line, this.quitConfirmationViewportRows - 1)),
-      Math.max(0, Math.min(end.column, this.quitConfirmationViewportColumns)),
-      Math.max(0, Math.min(end.line, this.quitConfirmationViewportRows - 1)),
+    this.consentDialogText.setSelectionRange(
+      Math.max(0, Math.min(start.column, this.consentDialogViewportColumns)),
+      Math.max(0, Math.min(start.line, this.consentDialogViewportRows - 1)),
+      Math.max(0, Math.min(end.column, this.consentDialogViewportColumns)),
+      Math.max(0, Math.min(end.line, this.consentDialogViewportRows - 1)),
     );
   }
 
   dialogHasSelection(): boolean {
     return (
-      this.dependencies.quitConfirmation.open.value &&
-      this.quitConfirmationSelection.hasSelection()
+      this.dependencies.consentDialog.open.value &&
+      this.consentDialogSelection.hasSelection()
     );
   }
 
   // invariant: Copy reaches the host terminal (src/modules/system/system.invariants.md)
   async copyDialogSelection(): Promise<number> {
     if (!this.dialogHasSelection()) return 0;
-    const text = this.quitConfirmationSelection.selectedText(
+    const text = this.consentDialogSelection.selectedText(
       (line, startCell, endCell) =>
         WrapText.Class.sliceByDisplayCells(
-          this.quitConfirmationRenderedLines[line] ?? '',
+          this.consentDialogRenderedLines[line] ?? '',
           startCell,
           endCell ?? Number.MAX_SAFE_INTEGER,
         ),
@@ -1293,7 +1292,7 @@ class $OverlayLayer {
       quickOpen: this.dialogBoundsByName.get('quickOpen') ?? null,
       goToLine: this.dialogBoundsByName.get('goToLine') ?? null,
       confirmation: this.dialogBoundsByName.get('confirmation') ?? null,
-      quitConfirmation: this.dialogBoundsByName.get('quitConfirmation') ?? null,
+      consentDialog: this.dialogBoundsByName.get('consentDialog') ?? null,
       settingsPanel: this.dialogBoundsByName.get('settingsPanel') ?? null,
       shortcutHelp: this.dialogBoundsByName.get('shortcutHelp') ?? null,
       contextMenu: this.dialogBoundsByName.get('contextMenu') ?? null,
@@ -1304,7 +1303,7 @@ class $OverlayLayer {
       commandPalette: this.commandPaletteViewport.scrollTop,
       quickOpen: this.quickOpenViewport.scrollTop,
       settingsPanel: this.settingsViewport.scrollTop,
-      quitConfirmation: this.quitConfirmationViewport.scrollTop,
+      consentDialog: this.consentDialogViewport.scrollTop,
       shortcutHelp: this.shortcutHelpViewport.scrollTop,
       contextMenu: this.contextMenuViewport.scrollTop,
     };
@@ -1326,9 +1325,9 @@ class $OverlayLayer {
         contentRows: this.settingsContentRows,
         viewportRows: this.settingsViewportRows,
       },
-      quitConfirmation: {
-        contentRows: this.quitConfirmationRenderedLines.length,
-        viewportRows: this.quitConfirmationViewportRows,
+      consentDialog: {
+        contentRows: this.consentDialogRenderedLines.length,
+        viewportRows: this.consentDialogViewportRows,
       },
       shortcutHelp: {
         contentRows: this.shortcutHelpContentRows,
@@ -1348,8 +1347,8 @@ class $OverlayLayer {
       animating = this.quickOpenViewport.tick(deltaSeconds) || animating;
     if (this.dependencies.settingsPanel.open.value)
       animating = this.settingsViewport.tick(deltaSeconds) || animating;
-    if (this.dependencies.quitConfirmation.open.value)
-      animating = this.quitConfirmationViewport.tick(deltaSeconds) || animating;
+    if (this.dependencies.consentDialog.open.value)
+      animating = this.consentDialogViewport.tick(deltaSeconds) || animating;
     if (this.dependencies.shortcutHelp.open.value)
       animating = this.shortcutHelpViewport.tick(deltaSeconds) || animating;
     if (this.dependencies.contextMenu.open.value)
@@ -1659,27 +1658,27 @@ class $OverlayLayer {
         this.confirmationDismissal,
       );
     }
-    if (this.dependencies.quitConfirmation.open.value) {
+    if (this.dependencies.consentDialog.open.value) {
       const desiredWidth = this.contentDerivedDialogWidth(
         [
-          ...this.dependencies.quitConfirmation.message.value.split('\n'),
-          this.dependencies.quitConfirmation.singleAction.value
-            ? `  ${this.dependencies.quitConfirmation.confirmLabel.value}  `
-            : `  ${this.dependencies.quitConfirmation.confirmLabel.value}      ${this.dependencies.quitConfirmation.cancelLabel.value}  `,
-          this.dependencies.quitConfirmation.hint.value,
+          ...this.dependencies.consentDialog.message.value.split('\n'),
+          this.dependencies.consentDialog.singleAction.value
+            ? `  ${this.dependencies.consentDialog.confirmLabel.value}  `
+            : `  ${this.dependencies.consentDialog.confirmLabel.value}      ${this.dependencies.consentDialog.cancelLabel.value}  `,
+          this.dependencies.consentDialog.hint.value,
         ],
         84,
         2,
       );
       const desiredHeight =
-        8 + this.dependencies.quitConfirmation.message.value.split('\n').length;
+        8 + this.dependencies.consentDialog.message.value.split('\n').length;
       const quitGeometry = this.updateOverlayDialog(
-        this.quitConfirmationBox,
-        this.quitConfirmationDismissal,
+        this.consentDialogBox,
+        this.consentDialogDismissal,
         palette,
         {
-          dialogName: 'quitConfirmation',
-          title: this.dependencies.quitConfirmation.title.value,
+          dialogName: 'consentDialog',
+          title: this.dependencies.consentDialog.title.value,
           desiredTop: Math.max(
             1,
             Math.floor((renderer.height - desiredHeight) / 2),
@@ -1690,28 +1689,25 @@ class $OverlayLayer {
           verticalMargin: 1,
         },
       );
-      const content = this.quitConfirmationContent(
+      const content = this.consentDialogContent(
         palette,
         quitGeometry.interiorWidth,
       );
-      this.quitConfirmationRenderedLines = content.lines;
-      this.quitConfirmationViewportRows = Math.max(
-        1,
-        quitGeometry.interiorHeight,
-      );
-      this.quitConfirmationViewportColumns = Math.max(
+      this.consentDialogRenderedLines = content.lines;
+      this.consentDialogViewportRows = Math.max(1, quitGeometry.interiorHeight);
+      this.consentDialogViewportColumns = Math.max(
         1,
         quitGeometry.interiorWidth,
       );
-      if (!this.previousQuitConfirmationOpen) {
-        this.quitConfirmationViewport.reset();
-        this.quitConfirmationSelection.clear();
+      if (!this.previousConsentDialogOpen) {
+        this.consentDialogViewport.reset();
+        this.consentDialogSelection.clear();
       }
-      this.quitConfirmationText.content = content.text;
-      this.quitConfirmationText.selectionBg = palette.selection;
-      this.paintQuitConfirmationSelection();
-      this.quitConfirmationButtonZones = content.buttonZones;
-      this.quitConfirmationViewport.updateScrollbars({
+      this.consentDialogText.content = content.text;
+      this.consentDialogText.selectionBg = palette.selection;
+      this.paintConsentDialogSelection();
+      this.consentDialogButtonZones = content.buttonZones;
+      this.consentDialogViewport.updateScrollbars({
         top: 0,
         left: 0,
         width: quitGeometry.interiorWidth,
@@ -1719,16 +1715,15 @@ class $OverlayLayer {
       });
     } else {
       this.hideOverlayDialog(
-        'quitConfirmation',
-        this.quitConfirmationBox,
-        this.quitConfirmationDismissal,
-        this.quitConfirmationViewport,
+        'consentDialog',
+        this.consentDialogBox,
+        this.consentDialogDismissal,
+        this.consentDialogViewport,
       );
-      this.quitConfirmationButtonZones = [];
-      this.quitConfirmationHoveredChoice = null;
+      this.consentDialogButtonZones = [];
+      this.consentDialogHoveredChoice = null;
     }
-    this.previousQuitConfirmationOpen =
-      this.dependencies.quitConfirmation.open.value;
+    this.previousConsentDialogOpen = this.dependencies.consentDialog.open.value;
     // Settings panel overlay — sectioned, with a clickable widget per row (steppers / toggle / arrows).
     if (settingsPanel.open.value) {
       const settingsRows = settingsPanel.rows();
@@ -2069,7 +2064,7 @@ type OverlayDialogName =
   | 'quickOpen'
   | 'goToLine'
   | 'confirmation'
-  | 'quitConfirmation'
+  | 'consentDialog'
   | 'settingsPanel'
   | 'shortcutHelp'
   | 'contextMenu';
@@ -2087,7 +2082,7 @@ export interface OverlayLayerDependencies {
   findBar: FindBar.Instance;
   quickOpen: QuickOpen.Instance;
   goToLinePrompt: GoToLinePrompt.Instance;
-  quitConfirmation: Dialog.Model;
+  consentDialog: Dialog.Model;
   contextMenu: ContextMenu.Instance;
   boundedListPopup: BoundedListPopup.Instance;
   settingsPanel: SettingsPanel.Instance;
@@ -2103,7 +2098,7 @@ export interface OverlayLayerDependencies {
   requestFindReplaceAll: () => void;
 }
 
-interface QuitConfirmationButtonZone {
+interface ConsentDialogButtonZone {
   row: number;
   startColumn: number;
   endColumn: number;

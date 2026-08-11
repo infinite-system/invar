@@ -355,7 +355,7 @@ class $Bootstrap {
     const quickOpen = new QuickOpen.Class();
     const goToLinePrompt = new GoToLinePrompt.Class();
     let confirmQuit = (): void => {};
-    const quitConfirmation = new Dialog.Class();
+    const consentDialog = new Dialog.Class();
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     // The bottom panel slot is a generic, content-agnostic host. Its occupants come from contributed
     // runtimes and start lazily on their first content-specific request.
@@ -519,11 +519,11 @@ class $Bootstrap {
       boundedListPopup: () => boundedListPopup.close(),
       completionPopup: dismissCompletion,
       shortcutHelp: () => shortcutHelp.close(),
-      quitConfirmation: () => quitConfirmation.dismiss(),
+      consentDialog: () => consentDialog.dismiss(),
     });
     confirm = (dialogOptions): void => {
-      overlayCoordinator.openExclusiveOverlay('quitConfirmation', () =>
-        quitConfirmation.show(dialogOptions),
+      overlayCoordinator.openExclusiveOverlay('consentDialog', () =>
+        consentDialog.show(dialogOptions),
       );
     };
     const statusBarSegments = new StatusBarSegments.Class();
@@ -560,7 +560,7 @@ class $Bootstrap {
         bottomPanelHost: panelHost,
         contextMenu,
         boundedListPopup,
-        dialog: quitConfirmation,
+        dialog: consentDialog,
         confirm: (dialogOptions) => confirm(dialogOptions),
         findBar,
         overlayCoordinator,
@@ -748,7 +748,7 @@ class $Bootstrap {
       findBar,
       quickOpen,
       goToLinePrompt,
-      quitConfirmation,
+      consentDialog,
       shortcutHelp,
       overlayCoordinator,
       panelHost,
@@ -1322,7 +1322,7 @@ class $Bootstrap {
       quickOpen,
       fileOpenController,
       goToLinePrompt,
-      quitConfirmation,
+      consentDialog,
       settingsPanel,
       contextMenu,
       boundedListPopup,
@@ -1480,8 +1480,8 @@ class $Bootstrap {
       void goToLinePrompt.input.text.value;
       void goToLinePrompt.input.caret.value;
       void goToLinePrompt.input.selectionAnchor.value;
-      void quitConfirmation.open.value;
-      void quitConfirmation.focusedChoice.value;
+      void consentDialog.open.value;
+      void consentDialog.focusedChoice.value;
       void findBar.open.value;
       void findBar.engine?.query.value;
       void findBar.focusedInput?.caret.value;
@@ -1766,8 +1766,8 @@ class $Bootstrap {
         void shutdown();
         return;
       }
-      if (quitConfirmation.open.value) {
-        quitConfirmation.dismiss();
+      if (consentDialog.open.value) {
+        consentDialog.dismiss();
         return;
       }
       if (workspaceSet.active.pendingCloseTabIndex.value >= 0)
@@ -2626,7 +2626,7 @@ class $Bootstrap {
         dispatchAction(reservedGlobalAction, key);
         return;
       }
-      if (quitConfirmation.open.value) {
+      if (consentDialog.open.value) {
         const dialogResolution = keybindings.resolve(
           {
             name: key.name,
@@ -2642,12 +2642,11 @@ class $Bootstrap {
           dispatchAction(dialogResolution.action, key);
           return;
         }
-        if (key.name === 'escape') quitConfirmation.dismiss();
-        else if (key.name === 'left') quitConfirmation.focusPrevious();
+        if (key.name === 'escape') consentDialog.dismiss();
+        else if (key.name === 'left') consentDialog.focusPrevious();
         else if (key.name === 'right' || key.name === 'tab')
-          quitConfirmation.focusNext();
-        else if (key.name === 'return')
-          quitConfirmation.activateFocusedChoice();
+          consentDialog.focusNext();
+        else if (key.name === 'return') consentDialog.activateFocusedChoice();
         return;
       }
       // Same MODAL contract for closing a tab with unsaved edits.
@@ -3401,7 +3400,7 @@ export interface BootedApp extends AppStatusProjectionPorts {
   quickOpen: QuickOpen.Instance;
   fileOpenController: FileOpenController.Model;
   goToLinePrompt: GoToLinePrompt.Model;
-  quitConfirmation: Dialog.Model;
+  consentDialog: Dialog.Model;
   settingsPanel: SettingsPanel.Instance;
   contextMenu: ContextMenu.Instance;
   boundedListPopup: BoundedListPopup.Instance;
