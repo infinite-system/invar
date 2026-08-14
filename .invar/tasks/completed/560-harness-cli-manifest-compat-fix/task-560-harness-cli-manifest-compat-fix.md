@@ -1,7 +1,7 @@
 # 560 — harness cli manifest compat fix
 
 Priority: verification-integrity
-State: ACTIVE
+State: COMPLETED — 376a86cf — CLI no longer crashes against pre-M3 warm servers; 556's structured report file is valid and counted.
 Engine: claude
 Environment: linux
 Model: fable-5

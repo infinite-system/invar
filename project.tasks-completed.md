@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #560 [harness-cli-manifest-compat-fix](.invar/tasks/completed/560-harness-cli-manifest-compat-fix/task-560-harness-cli-manifest-compat-fix.md) — 376a86cf — CLI no longer crashes against pre-M3 warm servers; 556's structured report file is valid and counted.
 - #557 [graph-miss-did-you-mean](.invar/tasks/completed/557-graph-miss-did-you-mean/task-557-graph-miss-did-you-mean.md) — 050eebdf — Graph misses now suggest the intended key: get tasks.count answers Did you mean tasks.counts, copy-ready full path.
 - #556 [iv-harness-script-absorption](.invar/tasks/completed/556-iv-harness-script-absorption/task-556-iv-harness-script-absorption.md) — fe4d59fd — iv-harness M3 landed: structured worker reports + metrics, drift as a graph capability, stale-server warning. This task carries the fleet's first report-meta.json.
 - #555 [iv-harness-warm-graph-server](.invar/tasks/completed/555-iv-harness-warm-graph-server/task-555-iv-harness-warm-graph-server.md) — a1111764 — iv-harness M2 landed: warm graph server — serve/attach/waitFor with disposable-cache contract; driving caught and fixed the GET-stop bug.
