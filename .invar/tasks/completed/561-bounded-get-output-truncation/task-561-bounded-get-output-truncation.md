@@ -1,7 +1,7 @@
 # 561 — bounded get output truncation
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — 49ed5e62 — get tasks now prints a bounded screenful with a loud truncation marker; --limit/--offset/--full page or bypass; large answers no longer cut off mid-print.
 Engine: claude
 Environment: linux
 Model: fable-5
