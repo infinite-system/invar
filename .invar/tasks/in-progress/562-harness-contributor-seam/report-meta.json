@@ -1,0 +1,12 @@
+{
+  "touchedDomains": ["contributors", "graph", "server", "cli", "shapes"],
+  "invariants": {
+    "upheld": [
+      "The harness graph never imports from the app",
+      "A wrapped script keeps its logic in one place"
+    ]
+  },
+  "bycatchCount": 1,
+  "steering": { "needed": false },
+  "evidence": ["/tmp/gate-562.log", "/tmp/562-bm-solo.log"]
+}

@@ -1,0 +1,12 @@
+{
+  "task": 562,
+  "slug": "harness-contributor-seam",
+  "branch": "fleet/562-harness-contributor-seam",
+  "worktree": ".invar/worktrees/562-harness-contributor-seam",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T16:25:00-04:00"
+}

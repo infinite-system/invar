@@ -6,8 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (13)
-- #562 [harness-contributor-seam](.invar/tasks/active/562-harness-contributor-seam/task-562-harness-contributor-seam.md)
+## IN-PROGRESS (1)
+- #562 [harness-contributor-seam](.invar/tasks/in-progress/562-harness-contributor-seam/task-562-harness-contributor-seam.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/562-harness-contributor-seam`
+
+## USER-DIRECTED (12)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -56,7 +59,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #105 [unrun-smokes-cannot-report-rot](.invar/tasks/active/105-unrun-smokes-cannot-report-rot/task-105-unrun-smokes-cannot-report-rot.md)
 - #75 [in-gate-app-crash-undiagnosed](.invar/tasks/active/75-in-gate-app-crash-undiagnosed/task-75-in-gate-app-crash-undiagnosed.md)  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (37)
+## FLAKE-EVIDENCE (38)
+- #563 [bracket-match-contention-flake](.invar/tasks/active/563-bracket-match-contention-flake/task-563-bracket-match-contention-flake.md)
 - #554 [markdown-cjk-table-contention-flake](.invar/tasks/active/554-markdown-cjk-table-contention-flake/task-554-markdown-cjk-table-contention-flake.md)
 - #552 [scrollbars-100k-target-line-flake](.invar/tasks/active/552-scrollbars-100k-target-line-flake/task-552-scrollbars-100k-target-line-flake.md)
 - #549 [diff-overview-smoke-flake](.invar/tasks/active/549-diff-overview-smoke-flake/task-549-diff-overview-smoke-flake.md)
