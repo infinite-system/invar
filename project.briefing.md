@@ -22,6 +22,12 @@ TODAY'S THREE LANDINGS (all conductor self-do, user-directed):
   sent GET to POST route, reported success unverified) — fixed + wire
   test. 24 colocated tests, gate GREEN first run.
 
+ALSO LANDED: #557 (050eebdf) — graph misses suggest the intended key
+(get tasks.count -> Did you mean 'tasks.counts'?). Shapes/describe
+projection discussed: file as #558 AFTER M3 (user discussing, not yet
+filed). TS-over-bash conviction confirmed with user; M3 absorption
+order (tasks-status vs probe vs land first) is a user call at M2 review.
+
 NEXT (user's explicit sequence): USER REVIEWS M2, then M3 (#556, in
 draft/): script absorption per the wrap-ladder + structured TaskReport
 graph nodes. Do NOT start M3 before the user's M2 review verdict.
