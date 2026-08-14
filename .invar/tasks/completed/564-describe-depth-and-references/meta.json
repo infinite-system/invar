@@ -8,5 +8,8 @@
   "model": "fable-5",
   "effort": "medium",
   "conductorSelfDo": true,
-  "startedAt": "2026-08-14T17:20:00-04:00"
+  "startedAt": "2026-08-14T17:20:00-04:00",
+  "landedAt": "2026-08-14T15:59:09-04:00",
+  "durationMinutes": -81,
+  "mergeCommit": "9dc13a81"
 }

@@ -1,7 +1,7 @@
 # 564 — describe depth and references
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — 9dc13a81 — describe answers in verbatim TypeScript with doc comments, names its references, and unpacks depth cycle-safe.
 Engine: claude
 Environment: linux
 Model: fable-5
