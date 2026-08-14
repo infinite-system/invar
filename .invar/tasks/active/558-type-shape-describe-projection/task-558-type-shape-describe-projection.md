@@ -1,7 +1,7 @@
 # 558 — type shape describe projection
 
 Priority: user-directed
-State: DRAFT — enters after M3 lands (user sequence 2026-08-14).
+State: ACTIVE
 Engine: claude
 Environment: linux
 Model: fable-5
@@ -14,7 +14,23 @@ answers which fields exist and what types they take, generated from
 the TypeScript compiler — so agents learn argument shapes from the
 graph instead of reading source.
 
-## Scope seed
+## Scope (rung 1, one session)
+
+1. GENERATOR: `bun iv-harness/generate-shapes.ts` walks
+   iv-harness/src/modules with the TypeScript compiler API and emits
+   `iv-harness/shapes.generated.json` — every exported interface's
+   members (name, type text, doc) and every namespace class's public
+   method signatures. Generated, never authored; machine-owned but
+   checked in.
+2. NO-DRIFT MECHANICALLY: a colocated test regenerates and diffs
+   against the committed file — the gate inherits the check through
+   bun test with zero new wiring.
+3. DESCRIBE: `describe <type-or-path>` (CLI + GET /describe) answers
+   the shape; a small authored path->type map binds graph domains to
+   their root types (tasks.all -> TaskNode, events -> VerbEvent...).
+   Misses list describable names.
+
+## Original scope seed
 
 Build-time pass over the TS compiler API emitting a semantic
 projection (method names, parameter names + types, return types,
