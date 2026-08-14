@@ -967,3 +967,18 @@ The through-line: highest value is acceptance (drive+read), weakness is
 diagnosis (guessing why); push toward verifying, away from theorizing,
 and toward an environment (serial gates, working gauge) that stops
 manufacturing the ambiguity I then guess wrong about.
+
+## 2026-08-14 — git add -A belongs to worktrees, never the user's checkout
+
+Filing #553's record in the MAIN checkout, `git add -A` swept two
+unrelated dirty files (the Aug-12 screenshot iteration) into a
+tasks-only commit (5b9fb9ec). Content was benign and mine; the scope
+violation is the point — the commit message lies about what it carries,
+which is exactly what the diff-stat acceptance rule exists to catch,
+self-inflicted. Rule: in the user's checkout, stage by EXPLICIT PATH
+always; `git add -A` is legal only inside a task worktree the conductor
+owns. Corollary kept from the same day: a new module tree enters every
+ratchet AT BIRTH (iv-harness's five modules went into CONVERTED_MODULES
+with zero legacy allowance — the cheapest moment to be strict is the
+first commit), and test fixtures that mimic real identifiers use a
+range reality cannot reach (990xxx task numbers).
