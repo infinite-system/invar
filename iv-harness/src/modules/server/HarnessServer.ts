@@ -380,6 +380,16 @@ class $HarnessServer {
       if (url.pathname === '/describe') {
         const subject = url.searchParams.get('subject') ?? '';
         const depth = Number(url.searchParams.get('depth') ?? 1);
+        if (url.searchParams.get('form') === 'typescript') {
+          return new Response(
+            HarnessShapes.Class.renderTypeScript(
+              this.options.rootDirectory,
+              subject,
+              depth,
+            ),
+            { headers: { 'content-type': 'text/plain' } },
+          );
+        }
         return json(
           HarnessShapes.Class.describe(
             this.options.rootDirectory,

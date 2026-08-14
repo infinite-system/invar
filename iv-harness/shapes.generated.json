@@ -2,6 +2,7 @@
   "interfaces": {
     "HarnessContributor": {
       "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "source": "export interface HarnessContributor {\n  name: string;\n  contractVersion: number;\n  node(context: ContributorContext): unknown;\n}",
       "members": [
         {
           "name": "name",
@@ -17,6 +18,7 @@
     },
     "ContributorContext": {
       "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "source": "export interface ContributorContext {\n  rootDirectory: string;\n}",
       "members": [
         {
           "name": "rootDirectory",
@@ -27,6 +29,7 @@
     },
     "ContributorLoadResult": {
       "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "source": "export interface ContributorLoadResult {\n  mounted: Record<string, ContributedNodeBuilder>;\n  problems: string[];\n}",
       "members": [
         {
           "name": "mounted",
@@ -42,6 +45,7 @@
     },
     "DriftFinding": {
       "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
+      "source": "export interface DriftFinding {\n  signal: string;\n  taskNumber: number;\n  folder: string;\n  reason: string;\n}",
       "members": [
         {
           "name": "signal",
@@ -67,6 +71,7 @@
     },
     "DriftNode": {
       "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
+      "source": "export interface DriftNode {\n  available: boolean;\n  findings: DriftFinding[];\n  totalsBySignal: Record<string, number>;\n}",
       "members": [
         {
           "name": "available",
@@ -87,6 +92,7 @@
     },
     "HeartbeatNode": {
       "file": "iv-harness/src/modules/fleet/HarnessHeartbeat.ts",
+      "source": "export interface HeartbeatNode {\n  path: string;\n  exists: boolean;\n  ageSeconds: number | null;\n  fresh: boolean;\n}",
       "members": [
         {
           "name": "path",
@@ -112,6 +118,7 @@
     },
     "GateRun": {
       "file": "iv-harness/src/modules/gates/HarnessGateRuns.ts",
+      "source": "export interface GateRun {\n  log: string;\n  exists: boolean;\n  exit: number | null;\n  verdict: 'green' | 'red' | 'running' | 'missing';\n}",
       "members": [
         {
           "name": "log",
@@ -137,6 +144,7 @@
     },
     "HarnessGraphOptions": {
       "file": "iv-harness/src/modules/graph/HarnessGraph.ts",
+      "source": "export interface HarnessGraphOptions {\n  rootDirectory: string;\n  gatesRegistryPath?: string;\n  heartbeatPath?: string;\n  /** Contributor mounts (name -> node builder), loaded BEFORE construction. */\n  contributed?: Record<string, ContributedNodeBuilder>;\n}",
       "members": [
         {
           "name": "rootDirectory",
@@ -162,6 +170,7 @@
     },
     "PrintOptions": {
       "file": "iv-harness/src/modules/graph/HarnessPrint.ts",
+      "source": "export interface PrintOptions {\n  limit?: number;\n  offset?: number;\n  full?: boolean;\n}",
       "members": [
         {
           "name": "limit",
@@ -182,6 +191,7 @@
     },
     "LaneNode": {
       "file": "iv-harness/src/modules/lanes/HarnessLanes.ts",
+      "source": "export interface LaneNode {\n  worktree: string;\n  branch: string | null;\n  head: string | null;\n  taskNumber: number | null;\n  dirty: boolean | null;\n  commitsAheadOfMain: number | null;\n}",
       "members": [
         {
           "name": "worktree",
@@ -217,6 +227,7 @@
     },
     "TaskReportMeta": {
       "file": "iv-harness/src/modules/reports/HarnessTaskReports.ts",
+      "source": "export interface TaskReportMeta {\n  touchedDomains: string[];\n  unexpectedDomains: string[];\n  invariants: Record<VerdictName, string[]>;\n  bycatchCount: number;\n  steering: { needed: boolean; cause: string | null };\n  evidence: string[];\n}",
       "members": [
         {
           "name": "touchedDomains",
@@ -252,6 +263,7 @@
     },
     "TaskReportMetrics": {
       "file": "iv-harness/src/modules/reports/HarnessTaskReports.ts",
+      "source": "export interface TaskReportMetrics {\n  tasksWithReportMeta: number;\n  completedTasks: number;\n  reportCoverage: number;\n  steeringNeeded: number;\n  steeringDensity: number;\n  bycatchTotal: number;\n  invariantVerdicts: Record<VerdictName, number>;\n  touchedDomainCounts: Record<string, number>;\n}",
       "members": [
         {
           "name": "tasksWithReportMeta",
@@ -297,6 +309,7 @@
     },
     "HarnessServerOptions": {
       "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "source": "export interface HarnessServerOptions {\n  rootDirectory: string;\n  rendezvousDirectory: string;\n  gatesRegistryPath?: string;\n  heartbeatPath?: string;\n  contributed?: Record<string, () => unknown>;\n  /** --serve sets this: a wire /stop disposes AND exits the process. */\n  exitProcessOnStop?: boolean;\n}",
       "members": [
         {
           "name": "rootDirectory",
@@ -332,6 +345,7 @@
     },
     "ServerManifest": {
       "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "source": "export interface ServerManifest {\n  pid: number;\n  socketPath: string;\n  rootDirectory: string;\n  startedAt: string;\n  bootCommit: string | null;\n}",
       "members": [
         {
           "name": "pid",
@@ -362,6 +376,7 @@
     },
     "ParkedWaitResult": {
       "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "source": "export interface ParkedWaitResult {\n  timedOut: boolean;\n  value: unknown;\n}",
       "members": [
         {
           "name": "timedOut",
@@ -377,6 +392,7 @@
     },
     "ShapeMember": {
       "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface ShapeMember {\n  name: string;\n  type: string;\n  optional: boolean;\n}",
       "members": [
         {
           "name": "name",
@@ -397,6 +413,7 @@
     },
     "ShapeMethod": {
       "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface ShapeMethod {\n  name: string;\n  parameters: string[];\n  returns: string;\n}",
       "members": [
         {
           "name": "name",
@@ -417,9 +434,15 @@
     },
     "InterfaceShape": {
       "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface InterfaceShape {\n  file: string;\n  /** The declaration verbatim — the authority's own words. */\n  source: string;\n  members: ShapeMember[];\n}",
       "members": [
         {
           "name": "file",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "source",
           "type": "string",
           "optional": false
         },
@@ -432,10 +455,16 @@
     },
     "ClassShape": {
       "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface ClassShape {\n  file: string;\n  /** Classes render from method signatures; no single-declaration source. */\n  source: null;\n  methods: ShapeMethod[];\n}",
       "members": [
         {
           "name": "file",
           "type": "string",
+          "optional": false
+        },
+        {
+          "name": "source",
+          "type": "null",
           "optional": false
         },
         {
@@ -447,6 +476,7 @@
     },
     "ShapeCatalog": {
       "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface ShapeCatalog {\n  interfaces: Record<string, InterfaceShape>;\n  classes: Record<string, ClassShape>;\n}",
       "members": [
         {
           "name": "interfaces",
@@ -462,6 +492,7 @@
     },
     "ShapeAnswer": {
       "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface ShapeAnswer {\n  subject: string;\n  type: string;\n  kind: 'interface' | 'class';\n  shape: InterfaceShape | ClassShape | ExpandedInterfaceShape;\n  /** Catalog types this shape points at — chain describe through them. */\n  references: string[];\n}",
       "members": [
         {
           "name": "subject",
@@ -480,13 +511,51 @@
         },
         {
           "name": "shape",
-          "type": "InterfaceShape | ClassShape",
+          "type": "InterfaceShape | ClassShape | ExpandedInterfaceShape",
+          "optional": false
+        },
+        {
+          "name": "references",
+          "type": "string[]",
+          "optional": false
+        }
+      ]
+    },
+    "ExpandedShapeMember": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface ExpandedShapeMember extends ShapeMember {\n  /** Present at depth > 1: the referenced interface inlined. */\n  expanded?: ExpandedInterfaceShape;\n  /** Present when expansion met a type already on the path. */\n  cycle?: string;\n}",
+      "members": [
+        {
+          "name": "expanded",
+          "type": "ExpandedInterfaceShape",
+          "optional": true
+        },
+        {
+          "name": "cycle",
+          "type": "string",
+          "optional": true
+        }
+      ]
+    },
+    "ExpandedInterfaceShape": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": "export interface ExpandedInterfaceShape {\n  file: string;\n  members: ExpandedShapeMember[];\n}",
+      "members": [
+        {
+          "name": "file",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "members",
+          "type": "ExpandedShapeMember[]",
           "optional": false
         }
       ]
     },
     "TaskNode": {
       "file": "iv-harness/src/modules/tasks/HarnessTaskRecords.ts",
+      "source": "export interface TaskNode {\n  number: number;\n  slug: string;\n  state: string;\n  priority: string | null;\n  stateLine: string | null;\n  engine: string | null;\n  files: string[];\n  hasReport: boolean;\n  steerCount: number;\n  lastSteer: string | null;\n  meta: Record<string, unknown> | null;\n  reportMeta: TaskReportMeta | null;\n}",
       "members": [
         {
           "name": "number",
@@ -552,6 +621,7 @@
     },
     "VerbDefinition": {
       "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "source": "export interface VerbDefinition {\n  script: string;\n  buildArguments: (verbArguments: string[]) => string[];\n  environment?: Record<string, string>;\n  description: string;\n}",
       "members": [
         {
           "name": "script",
@@ -577,6 +647,7 @@
     },
     "VerbListing": {
       "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "source": "export interface VerbListing {\n  name: string;\n  description: string;\n  available: boolean;\n  script: string;\n}",
       "members": [
         {
           "name": "name",
@@ -602,6 +673,7 @@
     },
     "VerbResult": {
       "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "source": "export interface VerbResult {\n  verb: string;\n  arguments: string[];\n  ok: boolean;\n  exitCode: number;\n  lines: string[];\n  startedAt: string;\n  durationMilliseconds: number;\n}",
       "members": [
         {
           "name": "verb",
@@ -642,6 +714,7 @@
     },
     "VerbEvent": {
       "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "source": "export interface VerbEvent {\n  verb: string;\n  arguments: string[];\n  exitCode: number;\n  startedAt: string;\n  durationMilliseconds: number;\n}",
       "members": [
         {
           "name": "verb",
@@ -674,6 +747,7 @@
   "classes": {
     "HarnessContributors": {
       "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "source": null,
       "methods": [
         {
           "name": "contributorFiles",
@@ -692,6 +766,7 @@
     },
     "HarnessDrift": {
       "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
+      "source": null,
       "methods": [
         {
           "name": "read",
@@ -707,6 +782,7 @@
     },
     "HarnessHeartbeat": {
       "file": "iv-harness/src/modules/fleet/HarnessHeartbeat.ts",
+      "source": null,
       "methods": [
         {
           "name": "read",
@@ -717,6 +793,7 @@
     },
     "HarnessGateRuns": {
       "file": "iv-harness/src/modules/gates/HarnessGateRuns.ts",
+      "source": null,
       "methods": [
         {
           "name": "readRegistry",
@@ -732,6 +809,7 @@
     },
     "HarnessPrint": {
       "file": "iv-harness/src/modules/graph/HarnessPrint.ts",
+      "source": null,
       "methods": [
         {
           "name": "boundedClone",
@@ -757,6 +835,7 @@
     },
     "HarnessLanes": {
       "file": "iv-harness/src/modules/lanes/HarnessLanes.ts",
+      "source": null,
       "methods": [
         {
           "name": "git",
@@ -782,6 +861,7 @@
     },
     "HarnessTaskReports": {
       "file": "iv-harness/src/modules/reports/HarnessTaskReports.ts",
+      "source": null,
       "methods": [
         {
           "name": "readReportMeta",
@@ -799,6 +879,7 @@
     },
     "HarnessServer": {
       "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "source": null,
       "methods": [
         {
           "name": "defaultRendezvousDirectory",
@@ -829,6 +910,7 @@
     },
     "HarnessShapes": {
       "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "source": null,
       "methods": [
         {
           "name": "generate",
@@ -857,8 +939,39 @@
         },
         {
           "name": "describe",
-          "parameters": ["rootDirectory: string", "subject: string"],
+          "parameters": [
+            "rootDirectory: string",
+            "subject: string",
+            "depth: number"
+          ],
           "returns": "ShapeAnswer"
+        },
+        {
+          "name": "referencesIn",
+          "parameters": [
+            "catalog: ShapeCatalog",
+            "shape: InterfaceShape | ClassShape"
+          ],
+          "returns": "string[]"
+        },
+        {
+          "name": "expandInterface",
+          "parameters": [
+            "catalog: ShapeCatalog",
+            "typeName: string",
+            "depth: number",
+            "visited: Set<string>"
+          ],
+          "returns": "ExpandedInterfaceShape"
+        },
+        {
+          "name": "renderTypeScript",
+          "parameters": [
+            "rootDirectory: string",
+            "subject: string",
+            "depth: number"
+          ],
+          "returns": "string"
         },
         {
           "name": "sourceFiles",
@@ -869,6 +982,7 @@
     },
     "HarnessTaskRecords": {
       "file": "iv-harness/src/modules/tasks/HarnessTaskRecords.ts",
+      "source": null,
       "methods": [
         {
           "name": "tasksRoot",
@@ -908,6 +1022,7 @@
     },
     "HarnessVerbs": {
       "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "source": null,
       "methods": [
         {
           "name": "availableVerbs",

@@ -56,6 +56,7 @@ class $HarnessShapes {
         ) {
           catalog.interfaces[statement.name.text] = {
             file: relativeFileName,
+            source: statement.getText(sourceFile),
             members: statement.members.flatMap((member) =>
               typescript.isPropertySignature(member) && member.name
                 ? [
@@ -96,6 +97,7 @@ class $HarnessShapes {
           if (methods.length > 0) {
             catalog.classes[statement.name.text.slice(1)] = {
               file: relativeFileName,
+              source: null,
               methods,
             };
           }
@@ -259,6 +261,67 @@ class $HarnessShapes {
     };
   }
 
+  /**
+   * The agent-native form: the declaration verbatim, then referenced
+   * declarations appended to the requested depth — a self-contained
+   * mini d.ts. Cycle-guarded like expansion.
+   */
+  static renderTypeScript(
+    rootDirectory: string,
+    subject: string,
+    depth: number,
+  ): string {
+    const catalog = this.readCatalog(rootDirectory);
+    if (!catalog) {
+      throw new Error(
+        `no shape catalog at ${this.SHAPES_FILE_RELATIVE_PATH} — run: bun iv-harness/generate-shapes.ts`,
+      );
+    }
+    const rootTypeName = this.PATH_TYPE_BINDINGS[subject] ?? subject;
+    if (!catalog.interfaces[rootTypeName] && !catalog.classes[rootTypeName]) {
+      // reuse describe's loud miss
+      this.describe(rootDirectory, subject, 1);
+    }
+    const rendered: string[] = [];
+    const visited = new Set<string>();
+    const queue: [string, number][] = [[rootTypeName, depth]];
+    while (queue.length > 0) {
+      const [typeName, remainingDepth] = queue.shift()!;
+      if (visited.has(typeName)) continue;
+      visited.add(typeName);
+      const interfaceShape = catalog.interfaces[typeName];
+      const classShape = catalog.classes[typeName];
+      const shape = interfaceShape ?? classShape;
+      if (!shape) continue;
+      if (interfaceShape) {
+        rendered.push(`// ${shape.file}\n${interfaceShape.source}`);
+      } else if (classShape) {
+        const methodLines = classShape.methods
+          .map(
+            (method) =>
+              `  static ${method.name}(${method.parameters.join(', ')}): ${method.returns};`,
+          )
+          .join('\n');
+        rendered.push(
+          `// ${shape.file}\nclass ${typeName} {\n${methodLines}\n}`,
+        );
+      }
+      const references = this.referencesIn(catalog, shape).filter(
+        (referenceName) => referenceName !== typeName,
+      );
+      if (remainingDepth > 1) {
+        for (const referenceName of references) {
+          queue.push([referenceName, remainingDepth - 1]);
+        }
+      } else if (references.length > 0) {
+        rendered.push(
+          `// references (raise --depth to inline): ${references.join(', ')}`,
+        );
+      }
+    }
+    return rendered.join('\n\n') + '\n';
+  }
+
   static sourceFiles(directory: string): string[] {
     if (!existsSync(directory)) return [];
     const files: string[] = [];
@@ -292,11 +355,15 @@ export interface ShapeMethod {
 
 export interface InterfaceShape {
   file: string;
+  /** The declaration verbatim — the authority's own words. */
+  source: string;
   members: ShapeMember[];
 }
 
 export interface ClassShape {
   file: string;
+  /** Classes render from method signatures; no single-declaration source. */
+  source: null;
   methods: ShapeMethod[];
 }
 
