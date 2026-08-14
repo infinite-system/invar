@@ -1,5 +1,45 @@
 {
   "interfaces": {
+    "HarnessContributor": {
+      "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "members": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "contractVersion",
+          "type": "number",
+          "optional": false
+        }
+      ]
+    },
+    "ContributorContext": {
+      "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "members": [
+        {
+          "name": "rootDirectory",
+          "type": "string",
+          "optional": false
+        }
+      ]
+    },
+    "ContributorLoadResult": {
+      "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "members": [
+        {
+          "name": "mounted",
+          "type": "Record<string, ContributedNodeBuilder>",
+          "optional": false
+        },
+        {
+          "name": "problems",
+          "type": "string[]",
+          "optional": false
+        }
+      ]
+    },
     "DriftFinding": {
       "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
       "members": [
@@ -111,6 +151,11 @@
         {
           "name": "heartbeatPath",
           "type": "string",
+          "optional": true
+        },
+        {
+          "name": "contributed",
+          "type": "Record<string, ContributedNodeBuilder>",
           "optional": true
         }
       ]
@@ -271,6 +316,11 @@
         {
           "name": "heartbeatPath",
           "type": "string",
+          "optional": true
+        },
+        {
+          "name": "contributed",
+          "type": "Record<string, () => unknown>",
           "optional": true
         },
         {
@@ -622,6 +672,24 @@
     }
   },
   "classes": {
+    "HarnessContributors": {
+      "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
+      "methods": [
+        {
+          "name": "contributorFiles",
+          "parameters": ["rootDirectory: string"],
+          "returns": "string[]"
+        },
+        {
+          "name": "load",
+          "parameters": [
+            "rootDirectory: string",
+            "reservedNames: readonly string[]"
+          ],
+          "returns": "Promise<ContributorLoadResult>"
+        }
+      ]
+    },
     "HarnessDrift": {
       "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
       "methods": [
