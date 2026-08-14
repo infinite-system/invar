@@ -56,6 +56,9 @@ class $HarnessShapes {
         ) {
           catalog.interfaces[statement.name.text] = {
             file: relativeFileName,
+            source:
+              this.leadingDocComment(statement, sourceFile) +
+              statement.getText(sourceFile),
             members: statement.members.flatMap((member) =>
               typescript.isPropertySignature(member) && member.name
                 ? [
@@ -96,6 +99,7 @@ class $HarnessShapes {
           if (methods.length > 0) {
             catalog.classes[statement.name.text.slice(1)] = {
               file: relativeFileName,
+              source: null,
               methods,
             };
           }
@@ -103,6 +107,18 @@ class $HarnessShapes {
       }
     }
     return catalog;
+  }
+
+  /** A declaration's attached JSDoc — leading trivia getText() drops. */
+  static leadingDocComment(
+    statement: typescript.Statement,
+    sourceFile: typescript.SourceFile,
+  ): string {
+    const jsDocNodes = (statement as { jsDoc?: typescript.JSDoc[] }).jsDoc;
+    if (!jsDocNodes || jsDocNodes.length === 0) return '';
+    return (
+      jsDocNodes.map((docNode) => docNode.getText(sourceFile)).join('\n') + '\n'
+    );
   }
 
   static isExported(statement: typescript.Statement): boolean {
@@ -147,7 +163,11 @@ class $HarnessShapes {
   }
 
   /** Answers a type name or a bound graph path; misses teach both namespaces. */
-  static describe(rootDirectory: string, subject: string): ShapeAnswer {
+  static describe(
+    rootDirectory: string,
+    subject: string,
+    depth: number = 1,
+  ): ShapeAnswer {
     const catalog = this.readCatalog(rootDirectory);
     if (!catalog) {
       throw new Error(
@@ -156,11 +176,18 @@ class $HarnessShapes {
     }
     const typeName = this.PATH_TYPE_BINDINGS[subject] ?? subject;
     if (catalog.interfaces[typeName]) {
+      const shape = this.expandInterface(
+        catalog,
+        typeName,
+        depth,
+        new Set([typeName]),
+      );
       return {
         subject,
         type: typeName,
         kind: 'interface',
-        shape: catalog.interfaces[typeName],
+        shape,
+        references: this.referencesIn(catalog, catalog.interfaces[typeName]),
       };
     }
     if (catalog.classes[typeName]) {
@@ -169,6 +196,7 @@ class $HarnessShapes {
         type: typeName,
         kind: 'class',
         shape: catalog.classes[typeName],
+        references: this.referencesIn(catalog, catalog.classes[typeName]),
       };
     }
     const describable = [
@@ -179,6 +207,131 @@ class $HarnessShapes {
     throw new Error(
       `nothing describable named '${subject}'. Describable: ${describable}`,
     );
+  }
+
+  /** Catalog type names appearing in a shape's type texts — the graph's edges. */
+  static referencesIn(
+    catalog: ShapeCatalog,
+    shape: InterfaceShape | ClassShape,
+  ): string[] {
+    const typeTexts: string[] = [];
+    if ('members' in shape) {
+      for (const member of shape.members) typeTexts.push(member.type);
+    } else {
+      for (const method of shape.methods) {
+        typeTexts.push(method.returns, ...method.parameters);
+      }
+    }
+    const knownNames = [
+      ...Object.keys(catalog.interfaces),
+      ...Object.keys(catalog.classes),
+    ];
+    const found = new Set<string>();
+    for (const typeText of typeTexts) {
+      for (const knownName of knownNames) {
+        if (new RegExp(`\\b${knownName}\\b`).test(typeText)) {
+          found.add(knownName);
+        }
+      }
+    }
+    return [...found].sort();
+  }
+
+  /**
+   * Depth expansion: referenced interfaces inline in place until depth
+   * runs out; a type already on the path becomes a reference at the
+   * cut (the cycle guard), never a loop.
+   */
+  static expandInterface(
+    catalog: ShapeCatalog,
+    typeName: string,
+    depth: number,
+    visited: Set<string>,
+  ): ExpandedInterfaceShape {
+    const shape = catalog.interfaces[typeName]!;
+    return {
+      file: shape.file,
+      members: shape.members.map((member) => {
+        if (depth <= 1) return member;
+        const referenced = Object.keys(catalog.interfaces).find((knownName) =>
+          new RegExp(`\\b${knownName}\\b`).test(member.type),
+        );
+        if (referenced === undefined) return member;
+        if (visited.has(referenced)) {
+          return { ...member, cycle: referenced };
+        }
+        return {
+          ...member,
+          expanded: this.expandInterface(
+            catalog,
+            referenced,
+            depth - 1,
+            new Set([...visited, referenced]),
+          ),
+        };
+      }),
+    };
+  }
+
+  /**
+   * The agent-native form: the declaration verbatim, then referenced
+   * declarations appended to the requested depth — a self-contained
+   * mini d.ts. Cycle-guarded like expansion.
+   */
+  static renderTypeScript(
+    rootDirectory: string,
+    subject: string,
+    depth: number,
+  ): string {
+    const catalog = this.readCatalog(rootDirectory);
+    if (!catalog) {
+      throw new Error(
+        `no shape catalog at ${this.SHAPES_FILE_RELATIVE_PATH} — run: bun iv-harness/generate-shapes.ts`,
+      );
+    }
+    const rootTypeName = this.PATH_TYPE_BINDINGS[subject] ?? subject;
+    if (!catalog.interfaces[rootTypeName] && !catalog.classes[rootTypeName]) {
+      // reuse describe's loud miss
+      this.describe(rootDirectory, subject, 1);
+    }
+    const rendered: string[] = [];
+    const visited = new Set<string>();
+    const queue: [string, number][] = [[rootTypeName, depth]];
+    while (queue.length > 0) {
+      const [typeName, remainingDepth] = queue.shift()!;
+      if (visited.has(typeName)) continue;
+      visited.add(typeName);
+      const interfaceShape = catalog.interfaces[typeName];
+      const classShape = catalog.classes[typeName];
+      const shape = interfaceShape ?? classShape;
+      if (!shape) continue;
+      if (interfaceShape) {
+        rendered.push(`// ${shape.file}\n${interfaceShape.source}`);
+      } else if (classShape) {
+        const methodLines = classShape.methods
+          .map(
+            (method) =>
+              `  static ${method.name}(${method.parameters.join(', ')}): ${method.returns};`,
+          )
+          .join('\n');
+        rendered.push(
+          `// ${shape.file}\nclass ${typeName} {\n${methodLines}\n}`,
+        );
+      }
+      const references = this.referencesIn(catalog, shape).filter(
+        (referenceName) => referenceName !== typeName,
+      );
+      if (remainingDepth > 1) {
+        for (const referenceName of references) {
+          queue.push([referenceName, remainingDepth - 1]);
+        }
+      } else if (references.length > 0) {
+        rendered.push(
+          `// references (raise --depth to inline): ${references.join(', ')}`,
+        );
+      }
+    }
+    return rendered.join('\n\n') + '\n';
   }
 
   static sourceFiles(directory: string): string[] {
@@ -214,11 +367,15 @@ export interface ShapeMethod {
 
 export interface InterfaceShape {
   file: string;
+  /** The declaration verbatim — the authority's own words. */
+  source: string;
   members: ShapeMember[];
 }
 
 export interface ClassShape {
   file: string;
+  /** Classes render from method signatures; no single-declaration source. */
+  source: null;
   methods: ShapeMethod[];
 }
 
@@ -231,5 +388,19 @@ export interface ShapeAnswer {
   subject: string;
   type: string;
   kind: 'interface' | 'class';
-  shape: InterfaceShape | ClassShape;
+  shape: InterfaceShape | ClassShape | ExpandedInterfaceShape;
+  /** Catalog types this shape points at — chain describe through them. */
+  references: string[];
+}
+
+export interface ExpandedShapeMember extends ShapeMember {
+  /** Present at depth > 1: the referenced interface inlined. */
+  expanded?: ExpandedInterfaceShape;
+  /** Present when expansion met a type already on the path. */
+  cycle?: string;
+}
+
+export interface ExpandedInterfaceShape {
+  file: string;
+  members: ExpandedShapeMember[];
 }

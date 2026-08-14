@@ -59,8 +59,22 @@ class $HarnessCli {
         return 2;
       }
       try {
-        const answer = HarnessShapes.Class.describe(rootDirectory, subject);
-        process.stdout.write(JSON.stringify(answer, null, 2) + '\n');
+        if (flags.describeJson) {
+          const answer = HarnessShapes.Class.describe(
+            rootDirectory,
+            subject,
+            flags.describeDepth ?? 1,
+          );
+          process.stdout.write(JSON.stringify(answer, null, 2) + '\n');
+        } else {
+          process.stdout.write(
+            HarnessShapes.Class.renderTypeScript(
+              rootDirectory,
+              subject,
+              flags.describeDepth ?? 1,
+            ),
+          );
+        }
         return 0;
       } catch (error) {
         process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
@@ -105,6 +119,12 @@ class $HarnessCli {
           break;
         case '--full':
           flags.printFull = true;
+          break;
+        case '--depth':
+          flags.describeDepth = Number(commandArguments[++index]);
+          break;
+        case '--json':
+          flags.describeJson = true;
           break;
         case '--self-test':
           flags.selfTest = true;
@@ -603,6 +623,8 @@ interface CliFlags {
   printLimit?: number;
   printOffset?: number;
   printFull?: boolean;
+  describeDepth?: number;
+  describeJson?: boolean;
   selfTest: boolean;
   serve: boolean;
   stop: boolean;
