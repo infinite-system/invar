@@ -14,6 +14,7 @@ import {
   type TaskReportMetrics,
 } from '../reports/HarnessTaskReports.ts';
 import { HarnessDrift, type DriftNode } from '../drift/HarnessDrift.ts';
+import type { ContributedNodeBuilder } from '../contributors/HarnessContributors.ts';
 import {
   HarnessVerbs,
   type VerbListing,
@@ -137,6 +138,10 @@ class $HarnessGraph {
     const walkedSegments: string[] = [];
     for (const segment of path.split('.')) {
       walkedSegments.push(segment);
+      if (walkedSegments.length === 1 && this.options.contributed?.[segment]) {
+        currentNode = this.options.contributed[segment]();
+        continue;
+      }
       if (
         currentNode === null ||
         currentNode === undefined ||
@@ -154,7 +159,9 @@ class $HarnessGraph {
   }
 
   rootNamespace(): string[] {
+    const contributedNames = Object.keys(this.options.contributed ?? {});
     return [
+      ...contributedNames,
       'tasks',
       'gates',
       'lanes',
@@ -245,4 +252,6 @@ export interface HarnessGraphOptions {
   rootDirectory: string;
   gatesRegistryPath?: string;
   heartbeatPath?: string;
+  /** Contributor mounts (name -> node builder), loaded BEFORE construction. */
+  contributed?: Record<string, ContributedNodeBuilder>;
 }

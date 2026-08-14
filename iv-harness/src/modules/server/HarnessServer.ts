@@ -116,6 +116,7 @@ class $HarnessServer {
       rootDirectory: this.options.rootDirectory,
       gatesRegistryPath: this.options.gatesRegistryPath,
       heartbeatPath: this.options.heartbeatPath,
+      contributed: this.options.contributed,
     });
   }
 
@@ -410,6 +411,7 @@ export interface HarnessServerOptions {
   rendezvousDirectory: string;
   gatesRegistryPath?: string;
   heartbeatPath?: string;
+  contributed?: Record<string, () => unknown>;
   /** --serve sets this: a wire /stop disposes AND exits the process. */
   exitProcessOnStop?: boolean;
 }

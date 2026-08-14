@@ -27,6 +27,7 @@ import { HarnessGraph } from './src/modules/graph/HarnessGraph.ts';
 import { HarnessPrint } from './src/modules/graph/HarnessPrint.ts';
 import { HarnessServer } from './src/modules/server/HarnessServer.ts';
 import { HarnessVerbs } from './src/modules/verbs/HarnessVerbs.ts';
+import { HarnessContributors } from './src/modules/contributors/HarnessContributors.ts';
 
 class $HarnessCli {
   static async run(commandArguments: string[]): Promise<number> {
@@ -127,11 +128,26 @@ class $HarnessCli {
     );
   }
 
-  static coldGraph(flags: CliFlags, rootDirectory: string) {
+  static async coldGraph(flags: CliFlags, rootDirectory: string) {
+    const loaded = await HarnessContributors.Class.load(rootDirectory, [
+      'tasks',
+      'gates',
+      'lanes',
+      'fleet',
+      'metrics',
+      'drift',
+      'verbs',
+      'events',
+      'rootDirectory',
+    ]);
+    for (const problem of loaded.problems) {
+      process.stderr.write(`iv-harness: contributor problem — ${problem}\n`);
+    }
     return new HarnessGraph.Class({
       rootDirectory,
       gatesRegistryPath: flags.gates,
       heartbeatPath: flags.heartbeat,
+      contributed: loaded.mounted,
     });
   }
 
@@ -204,7 +220,7 @@ class $HarnessCli {
         else process.stdout.write(JSON.stringify(body.value, null, 2) + '\n');
         return 0;
       }
-      const value = this.coldGraph(flags, rootDirectory).resolve(path);
+      const value = (await this.coldGraph(flags, rootDirectory)).resolve(path);
       if (command === 'ls') {
         const keys = Array.isArray(value)
           ? value.map((item) => String(item))
@@ -314,7 +330,7 @@ class $HarnessCli {
     while (Date.now() < deadline) {
       let value: unknown;
       try {
-        value = this.coldGraph(flags, rootDirectory).resolve(path);
+        value = (await this.coldGraph(flags, rootDirectory)).resolve(path);
       } catch {
         value = undefined;
       }
@@ -337,11 +353,26 @@ class $HarnessCli {
     rendezvousDirectory: string,
     flags: CliFlags,
   ): Promise<number> {
+    const loaded = await HarnessContributors.Class.load(rootDirectory, [
+      'tasks',
+      'gates',
+      'lanes',
+      'fleet',
+      'metrics',
+      'drift',
+      'verbs',
+      'events',
+      'rootDirectory',
+    ]);
+    for (const problem of loaded.problems) {
+      process.stderr.write(`iv-harness: contributor problem — ${problem}\n`);
+    }
     const server = new HarnessServer.Class({
       rootDirectory,
       rendezvousDirectory,
       gatesRegistryPath: flags.gates,
       heartbeatPath: flags.heartbeat,
+      contributed: loaded.mounted,
       exitProcessOnStop: true,
     });
     try {
