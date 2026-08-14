@@ -2,45 +2,154 @@
 /**
  * iv-harness — the development-process graph, queryable by path.
  *
- *   bun iv-harness/cli.ts get <path> [--root DIR]     one query, JSON out
- *   bun iv-harness/cli.ts ls [<path>] [--root DIR]    list keys at a node
- *   bun iv-harness/cli.ts --self-test                 both-arms self-test
+ *   bun iv-harness/cli.ts get <path>                 one query, JSON out
+ *   bun iv-harness/cli.ts ls [<path>]                list keys at a node
+ *   bun iv-harness/cli.ts waitFor <path> <json>      wait for a graph condition
+ *   bun iv-harness/cli.ts --serve                    boot the warm server (one per checkout)
+ *   bun iv-harness/cli.ts --stop                     stop this checkout's server
+ *   bun iv-harness/cli.ts --server-status            manifest + live status
+ *   bun iv-harness/cli.ts --self-test                both-arms self-test
  *
- * Examples:
- *   bun iv-harness/cli.ts get tasks.counts
- *   bun iv-harness/cli.ts get tasks.inProgress
- *   bun iv-harness/cli.ts get tasks.byNumber.553
- *   bun iv-harness/cli.ts get gates.last
- *   bun iv-harness/cli.ts get lanes.fleet
- *   bun iv-harness/cli.ts get fleet.heartbeat
+ * Flags: --root DIR, --rendezvous DIR, --gates FILE, --heartbeat FILE,
+ * --timeout MS (waitFor).
  *
- * The graph is a projection of disk (task folders, git, gate logs);
- * it holds nothing a crash could lose. Overrides for foreign roots:
- * --root DIR, --gates FILE, --heartbeat FILE.
+ * `get`/`ls`/`waitFor` AUTO-ATTACH to a live warm server (43ms cold is
+ * fine; the server exists because watchers need a resident process) and
+ * fall back to the cold one-shot read when none is up. The server is a
+ * DISPOSABLE projection cache — disk stays the store; killing it at any
+ * instant loses nothing.
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessGraph } from './src/modules/graph/HarnessGraph.ts';
+import { HarnessServer } from './src/modules/server/HarnessServer.ts';
 
 class $HarnessCli {
-  static run(commandArguments: string[]): number {
+  static async run(commandArguments: string[]): Promise<number> {
     const flags = this.parseFlags(commandArguments);
     if (flags.selfTest) return this.selfTest();
+    const rootDirectory = flags.root ?? this.detectRoot();
+    const rendezvousDirectory =
+      flags.rendezvous ??
+      HarnessServer.$Class.defaultRendezvousDirectory(rootDirectory);
+    if (flags.serve)
+      return this.serve(rootDirectory, rendezvousDirectory, flags);
+    if (flags.stop) return this.stopServer(rendezvousDirectory);
+    if (flags.serverStatus) return this.serverStatus(rendezvousDirectory);
     const command = flags.positional[0];
-    if (command !== 'get' && command !== 'ls') {
-      process.stderr.write(this.usage());
-      return 2;
+    if (command === 'get' || command === 'ls') {
+      return this.query(command, flags, rootDirectory, rendezvousDirectory);
     }
-    const graph = new HarnessGraph.Class({
-      rootDirectory: flags.root ?? this.detectRoot(),
+    if (command === 'waitFor') {
+      return this.waitFor(flags, rootDirectory, rendezvousDirectory);
+    }
+    process.stderr.write(this.usage());
+    return 2;
+  }
+
+  static parseFlags(commandArguments: string[]): CliFlags {
+    const flags: CliFlags = {
+      positional: [],
+      selfTest: false,
+      serve: false,
+      stop: false,
+      serverStatus: false,
+    };
+    for (let index = 0; index < commandArguments.length; index++) {
+      const argument = commandArguments[index]!;
+      if (argument === '--root') flags.root = commandArguments[++index];
+      else if (argument === '--gates') flags.gates = commandArguments[++index];
+      else if (argument === '--heartbeat')
+        flags.heartbeat = commandArguments[++index];
+      else if (argument === '--rendezvous')
+        flags.rendezvous = commandArguments[++index];
+      else if (argument === '--timeout')
+        flags.timeoutMilliseconds = Number(commandArguments[++index]);
+      else if (argument === '--self-test') flags.selfTest = true;
+      else if (argument === '--serve') flags.serve = true;
+      else if (argument === '--stop') flags.stop = true;
+      else if (argument === '--server-status') flags.serverStatus = true;
+      else flags.positional.push(argument);
+    }
+    return flags;
+  }
+
+  static detectRoot(): string {
+    try {
+      return execFileSync('git', ['rev-parse', '--show-toplevel'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+    } catch {
+      return process.cwd();
+    }
+  }
+
+  static usage(): string {
+    return (
+      'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value>) ' +
+      '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS]\n' +
+      '       iv-harness --serve | --stop | --server-status | --self-test\n'
+    );
+  }
+
+  static coldGraph(flags: CliFlags, rootDirectory: string) {
+    return new HarnessGraph.Class({
+      rootDirectory,
       gatesRegistryPath: flags.gates,
       heartbeatPath: flags.heartbeat,
     });
-    const path = flags.positional[1] ?? '';
+  }
+
+  /** Attach to a live server, or null — the caller falls back cold. */
+  static async attachedFetch(
+    rendezvousDirectory: string,
+    pathname: string,
+    parameters: Record<string, string>,
+    method: 'GET' | 'POST' = 'GET',
+  ): Promise<Response | null> {
+    const manifest = HarnessServer.$Class.readLiveManifest(rendezvousDirectory);
+    if (!manifest) return null;
+    const query = new URLSearchParams(parameters).toString();
     try {
-      const value = graph.resolve(path);
+      return await fetch(`http://iv-harness${pathname}?${query}`, {
+        method,
+        unix: manifest.socketPath,
+      });
+    } catch {
+      return null; // dead socket behind a live-looking manifest: fall back cold
+    }
+  }
+
+  static async query(
+    command: 'get' | 'ls',
+    flags: CliFlags,
+    rootDirectory: string,
+    rendezvousDirectory: string,
+  ): Promise<number> {
+    const path = flags.positional[1] ?? '';
+    const attached = await this.attachedFetch(
+      rendezvousDirectory,
+      `/${command}`,
+      { path },
+    );
+    try {
+      if (attached) {
+        const body = (await attached.json()) as {
+          value?: unknown;
+          keys?: string[];
+          error?: string;
+        };
+        if (!attached.ok)
+          throw new Error(body.error ?? `server error ${attached.status}`);
+        if (command === 'ls')
+          process.stdout.write((body.keys ?? []).join('\n') + '\n');
+        else process.stdout.write(JSON.stringify(body.value, null, 2) + '\n');
+        return 0;
+      }
+      const value = this.coldGraph(flags, rootDirectory).resolve(path);
       if (command === 'ls') {
         const keys = Array.isArray(value)
           ? value.map((item) => String(item))
@@ -58,49 +167,137 @@ class $HarnessCli {
     }
   }
 
-  static parseFlags(commandArguments: string[]): {
-    positional: string[];
-    root?: string;
-    gates?: string;
-    heartbeat?: string;
-    selfTest: boolean;
-  } {
-    const positional: string[] = [];
-    let root: string | undefined;
-    let gates: string | undefined;
-    let heartbeat: string | undefined;
-    let selfTest = false;
-    for (let index = 0; index < commandArguments.length; index++) {
-      const argument = commandArguments[index]!;
-      if (argument === '--root') root = commandArguments[++index];
-      else if (argument === '--gates') gates = commandArguments[++index];
-      else if (argument === '--heartbeat')
-        heartbeat = commandArguments[++index];
-      else if (argument === '--self-test') selfTest = true;
-      else positional.push(argument);
+  /** Attached: the server parks the condition on its watchers. Cold: local re-derive poll. */
+  static async waitFor(
+    flags: CliFlags,
+    rootDirectory: string,
+    rendezvousDirectory: string,
+  ): Promise<number> {
+    const path = flags.positional[1];
+    const expectedJson = flags.positional[2];
+    if (path === undefined || expectedJson === undefined) {
+      process.stderr.write(this.usage());
+      return 2;
     }
-    return { positional, root, gates, heartbeat, selfTest };
+    const timeoutMilliseconds =
+      flags.timeoutMilliseconds ??
+      HarnessServer.$Class.DEFAULT_WAIT_TIMEOUT_MILLISECONDS;
+    const attached = await this.attachedFetch(rendezvousDirectory, '/wait', {
+      path,
+      value: expectedJson,
+      timeoutMs: String(timeoutMilliseconds),
+    });
+    if (attached) {
+      const body = (await attached.json()) as {
+        timedOut: boolean;
+        value: unknown;
+      };
+      process.stdout.write(JSON.stringify(body, null, 2) + '\n');
+      return body.timedOut ? 1 : 0;
+    }
+    const deadline = Date.now() + timeoutMilliseconds;
+    while (Date.now() < deadline) {
+      let value: unknown;
+      try {
+        value = this.coldGraph(flags, rootDirectory).resolve(path);
+      } catch {
+        value = undefined;
+      }
+      if (JSON.stringify(value) === expectedJson) {
+        process.stdout.write(
+          JSON.stringify({ timedOut: false, value }, null, 2) + '\n',
+        );
+        return 0;
+      }
+      await new Promise((resolveSleep) => setTimeout(resolveSleep, 250));
+    }
+    process.stdout.write(
+      JSON.stringify({ timedOut: true, value: null }, null, 2) + '\n',
+    );
+    return 1;
   }
 
-  static detectRoot(): string {
+  static async serve(
+    rootDirectory: string,
+    rendezvousDirectory: string,
+    flags: CliFlags,
+  ): Promise<number> {
+    const server = new HarnessServer.Class({
+      rootDirectory,
+      rendezvousDirectory,
+      gatesRegistryPath: flags.gates,
+      heartbeatPath: flags.heartbeat,
+      exitProcessOnStop: true,
+    });
     try {
-      return execFileSync('git', ['rev-parse', '--show-toplevel'], {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
-    } catch {
-      return process.cwd();
+      server.start();
+    } catch (error) {
+      process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
+      return 1;
     }
+    process.stdout.write(
+      `iv-harness: serving ${rootDirectory}\n` +
+        `iv-harness: rendezvous ${rendezvousDirectory} (pid ${process.pid})\n`,
+    );
+    const stopSignal = () => {
+      server.dispose();
+      process.exit(0);
+    };
+    process.on('SIGINT', stopSignal);
+    process.on('SIGTERM', stopSignal);
+    await new Promise(() => {}); // serve until a signal or POST /stop exits us
+    return 0;
   }
 
-  static usage(): string {
-    return 'usage: iv-harness (get <path> | ls [<path>]) [--root DIR] [--gates FILE] [--heartbeat FILE] | --self-test\n';
+  static async stopServer(rendezvousDirectory: string): Promise<number> {
+    const response = await this.attachedFetch(
+      rendezvousDirectory,
+      '/stop',
+      {},
+      'POST',
+    );
+    if (!response || !response.ok) {
+      process.stderr.write('iv-harness: no live server for this checkout\n');
+      return 1;
+    }
+    // Both arms: report stopped only when the manifest is actually gone.
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (!HarnessServer.$Class.readLiveManifest(rendezvousDirectory)) {
+        process.stdout.write('iv-harness: server stopped\n');
+        return 0;
+      }
+      await new Promise((resolveSleep) => setTimeout(resolveSleep, 100));
+    }
+    process.stderr.write(
+      'iv-harness: stop sent but the server still answers\n',
+    );
+    return 1;
+  }
+
+  static async serverStatus(rendezvousDirectory: string): Promise<number> {
+    const manifest = HarnessServer.$Class.readLiveManifest(rendezvousDirectory);
+    if (!manifest) {
+      process.stdout.write('no live server\n');
+      return 1;
+    }
+    const response = await this.attachedFetch(
+      rendezvousDirectory,
+      '/status',
+      {},
+    );
+    if (!response) {
+      process.stdout.write('manifest live but socket dead\n');
+      return 1;
+    }
+    process.stdout.write(JSON.stringify(await response.json(), null, 2) + '\n');
+    return 0;
   }
 
   /**
    * Both-arms self-test (Rule Two): the PRESENT arm proves the graph
    * can see a planted fixture; the ABSENT arm proves a wrong path
    * fails loudly and an empty root reads as empty, not as an error.
+   * (Warm-server arms live in HarnessServer.test.ts.)
    */
   static selfTest(): number {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'iv-harness-selftest-'));
@@ -234,4 +431,17 @@ class $HarnessCli {
   }
 }
 
-process.exit($HarnessCli.run(process.argv.slice(2)));
+interface CliFlags {
+  positional: string[];
+  root?: string;
+  gates?: string;
+  heartbeat?: string;
+  rendezvous?: string;
+  timeoutMilliseconds?: number;
+  selfTest: boolean;
+  serve: boolean;
+  stop: boolean;
+  serverStatus: boolean;
+}
+
+process.exit(await $HarnessCli.run(process.argv.slice(2)));

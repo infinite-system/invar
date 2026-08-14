@@ -131,3 +131,42 @@ against the script for duplicated predicates.
 **Status:** provisional
 
 **Last refined:** 2026-08-14
+
+### A graph server is a disposable cache
+
+**Invariant:** If a warm graph server exists, then it only watches and
+caches — killing it at any instant loses no state, and every client
+falls back to the cold one-shot read with identical answers.
+
+**Scope:** The `server` module and every client of the rendezvous
+protocol (CLI attach, future Observer subscriptions).
+
+**Mechanism:** Watchers only bump version signals; every answer
+re-derives from disk at request time; the CLI attaches only through a
+live-manifest check (pid answers signal 0) and silently falls back cold
+when the manifest or socket is dead. Stands on:
+[Disk is the store and the graph is a projection](#disk-is-the-store-and-the-graph-is-a-projection).
+
+**Generates:** The `--serve`/attach convention (one server per checkout,
+DriveSession's rendezvous pattern); the `waitFor` verb (a parked graph
+condition evaluated on watcher events — a wait is a condition).
+
+**Rejected alternatives:** Server-held state answering queries from
+memory — forks authority from the files the rest of the fleet reads;
+a reboot or crash would silently lose fleet truth.
+
+**Evidence:** `HarnessServer.ts` (bump-only watchers, per-request
+re-derive); `HarnessServer.test.ts` ("the server is a disposable cache:
+killing it loses nothing").
+
+**Impossible if true:** A query answerable only while the server lives;
+a graph answer that differs between attached and cold for the same disk
+state; a client that errors (rather than falls back) when the server
+dies mid-session.
+
+**Verification:** `bun test iv-harness/src/modules/server` — the
+disposable-cache test kills the server and proves cold answers survive.
+
+**Status:** provisional
+
+**Last refined:** 2026-08-14
