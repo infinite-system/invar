@@ -75,3 +75,36 @@ test('the empty path returns the root namespace', () => {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+test('a near-miss path suggests the intended key', () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'harness-graph-suggest-'));
+  try {
+    const graph = plantedGraph(fixtureRoot);
+    expect(() => graph.resolve('tasks.count')).toThrow(
+      /Did you mean 'tasks\.counts'\?/,
+    );
+    expect(() => graph.resolve('task')).toThrow(/Did you mean 'tasks'\?/);
+    expect(() => graph.resolve('gates.lst')).toThrow(
+      /Did you mean 'gates\.last'\?/,
+    );
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('a far miss offers no suggestion but still lists keys', () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'harness-graph-nosuggest-'));
+  try {
+    const graph = plantedGraph(fixtureRoot);
+    let message = '';
+    try {
+      graph.resolve('tasks.zzzqqq');
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).not.toContain('Did you mean');
+    expect(message).toContain('counts');
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
