@@ -1,0 +1,12 @@
+{
+  "task": 557,
+  "slug": "graph-miss-did-you-mean",
+  "branch": "fleet/557-graph-miss-did-you-mean",
+  "worktree": ".invar/worktrees/557-graph-miss-did-you-mean",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T14:20:00-04:00"
+}
