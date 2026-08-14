@@ -1,7 +1,7 @@
 # 558 — type shape describe projection
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — 3b7180be — describe <type-or-path> answers field shapes generated from the TypeScript compiler; drift is mechanically impossible.
 Engine: claude
 Environment: linux
 Model: fable-5
