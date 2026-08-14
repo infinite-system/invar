@@ -35,6 +35,14 @@ census #551. #544 #548 filed. LESSON QUEUE for next sweep: scripted
 edits must assert (556's false switch claim, summary-556); git add -A
 never in user checkout (in conductor md).
 
+ALSO LANDED POST-ANCHOR: #564 describe (9dc13a81) — references +
+--depth mini-dts + VERBATIM TS with doc comments (four gate rounds;
+born-red cycle test exposed behind tail-cropped output — lesson in
+conductor md). FILED #565 conductor action verbs + NIGHT DIGEST
+(fight log, time accounting, claim-vs-evidence — user insight: track
+the conductor so the night is legible by query) — BUILD NEXT, self-do.
+#563 bracket-match flake filed; #549 at 5 sightings (priority).
+
 NEXT (user-queued): the TWO-AXIS NAVIGATION discussion (top bar =
 projects, left rail = worktrees fed by lanes.fleet) — drive current
 tab surfaces + mock per ui-task protocol BEFORE any brief. #559 rung 2

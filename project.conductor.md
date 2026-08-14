@@ -997,3 +997,19 @@ lesson from the same day: a fixture planted in a branch where landing
 writes the same file produces a union-merge with conflict markers
 inside JSON (556's report-meta) — landing-owned files are written on
 main at landing time, never planted in the branch.
+
+## 2026-08-14 — a claim of green must come from parsed counts, not a glance
+
+The #564 cycle test was red from birth for three gate rounds while I
+reported green: my habit of piping bun test through `tail -2` cropped
+the `1 fail` line, leaving only expect-counts and the Ran line. Worse,
+I then MISATTRIBUTED r2's honest red to my own mid-gate edits — a
+wrong story that fit the evidence I had corrupted. Rules: (1) read
+pass AND fail lines explicitly (grep -E "pass|fail"), never a tail
+window; (2) never edit a worktree while its own gate runs — the gate
+reads the live tree, and the confusion cost a full round even though
+the underlying bug was real; (3) the structural fix is #565's test
+verb: exit + parsed counts into the ledger, so a green claim is
+contradictable data. This is the session's third instance of the same
+generator (pipeline-exit, tail-crop, no-op edit): evidence corrupted
+at the action boundary, judgment fine, narration wrong.
