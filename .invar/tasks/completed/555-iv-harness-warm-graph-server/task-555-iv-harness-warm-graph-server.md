@@ -1,7 +1,7 @@
 # 555 — iv-harness warm graph server
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — a1111764 — iv-harness M2 landed: warm graph server — serve/attach/waitFor with disposable-cache contract; driving caught and fixed the GET-stop bug.
 Engine: claude
 Environment: linux
 Model: fable-5
