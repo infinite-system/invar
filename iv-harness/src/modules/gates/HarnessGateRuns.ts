@@ -1,13 +1,6 @@
 import { Static } from 'ivue/extras';
 import { existsSync, readFileSync } from 'node:fs';
 
-export interface GateRun {
-  log: string;
-  exists: boolean;
-  exit: number | null;
-  verdict: 'green' | 'red' | 'running' | 'missing';
-}
-
 /**
  * Reads the registered gate logs (one path per line in the registry
  * file) and extracts each log's GATE_EXIT sentinel. The verdict is
@@ -52,4 +45,11 @@ class $HarnessGateRuns {
 export namespace HarnessGateRuns {
   export const $Class = Static($HarnessGateRuns);
   export let Class = $Class;
+}
+
+export interface GateRun {
+  log: string;
+  exists: boolean;
+  exit: number | null;
+  verdict: 'green' | 'red' | 'running' | 'missing';
 }

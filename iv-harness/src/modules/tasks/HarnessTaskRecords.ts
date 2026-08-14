@@ -2,20 +2,6 @@ import { Static } from 'ivue/extras';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-export interface TaskNode {
-  number: number;
-  slug: string;
-  state: string;
-  priority: string | null;
-  stateLine: string | null;
-  engine: string | null;
-  files: string[];
-  hasReport: boolean;
-  steerCount: number;
-  lastSteer: string | null;
-  meta: Record<string, unknown> | null;
-}
-
 /**
  * Reads the durable task record (.invar/tasks/<state>/<number>-<slug>/)
  * into structured nodes. Pure disk reads: the folders stay the truth.
@@ -136,4 +122,18 @@ class $HarnessTaskRecords {
 export namespace HarnessTaskRecords {
   export const $Class = Static($HarnessTaskRecords);
   export let Class = $Class;
+}
+
+export interface TaskNode {
+  number: number;
+  slug: string;
+  state: string;
+  priority: string | null;
+  stateLine: string | null;
+  engine: string | null;
+  files: string[];
+  hasReport: boolean;
+  steerCount: number;
+  lastSteer: string | null;
+  meta: Record<string, unknown> | null;
 }

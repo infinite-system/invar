@@ -2,15 +2,6 @@ import { Static } from 'ivue/extras';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
-export interface LaneNode {
-  worktree: string;
-  branch: string | null;
-  head: string | null;
-  taskNumber: number | null;
-  dirty: boolean | null;
-  commitsAheadOfMain: number | null;
-}
-
 /**
  * Reads the fleet's lanes from git itself: `git worktree list
  * --porcelain` plus per-worktree status and commit counts. Git is the
@@ -77,4 +68,13 @@ class $HarnessLanes {
 export namespace HarnessLanes {
   export const $Class = Static($HarnessLanes);
   export let Class = $Class;
+}
+
+export interface LaneNode {
+  worktree: string;
+  branch: string | null;
+  head: string | null;
+  taskNumber: number | null;
+  dirty: boolean | null;
+  commitsAheadOfMain: number | null;
 }

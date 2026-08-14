@@ -10,12 +10,6 @@ import {
   type HeartbeatNode,
 } from '../fleet/HarnessHeartbeat.ts';
 
-export interface HarnessGraphOptions {
-  rootDirectory: string;
-  gatesRegistryPath?: string;
-  heartbeatPath?: string;
-}
-
 /**
  * The process-graph root: the development process (tasks, gates,
  * lanes, fleet) addressable by dotted path, mirroring the app's
@@ -152,4 +146,10 @@ export namespace HarnessGraph {
   export const $Class = $HarnessGraph;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export interface HarnessGraphOptions {
+  rootDirectory: string;
+  gatesRegistryPath?: string;
+  heartbeatPath?: string;
 }

@@ -1,13 +1,6 @@
 import { Static } from 'ivue/extras';
 import { existsSync, statSync } from 'node:fs';
 
-export interface HeartbeatNode {
-  path: string;
-  exists: boolean;
-  ageSeconds: number | null;
-  fresh: boolean;
-}
-
 /**
  * Reads the fleet-watch heartbeat stamp. Freshness uses the same
  * threshold dispatch.sh enforces (stale > 3 minutes refuses launches).
@@ -41,4 +34,11 @@ class $HarnessHeartbeat {
 export namespace HarnessHeartbeat {
   export const $Class = Static($HarnessHeartbeat);
   export let Class = $Class;
+}
+
+export interface HeartbeatNode {
+  path: string;
+  exists: boolean;
+  ageSeconds: number | null;
+  fresh: boolean;
 }

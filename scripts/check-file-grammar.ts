@@ -77,6 +77,13 @@ export const CONVERTED_MODULES = new Set<string>([
   'theme',
   'ui',
   'workspace',
+  // iv-harness modules enter the ratchet at birth — a new tree has no
+  // legacy exemption to burn.
+  'iv-harness/tasks',
+  'iv-harness/gates',
+  'iv-harness/lanes',
+  'iv-harness/fleet',
+  'iv-harness/graph',
 ]);
 
 function normalizeFileName(fileName: string): string {
@@ -98,6 +105,15 @@ function moduleNameFor(fileName: string): string {
   const pathParts = normalizeFileName(fileName).split('/');
   if (pathParts[0] === 'src' && pathParts[1] === 'modules') {
     return pathParts[2] ?? '(modules-root)';
+  }
+  if (
+    pathParts[0] === 'iv-harness' &&
+    pathParts[1] === 'src' &&
+    pathParts[2] === 'modules'
+  ) {
+    // Namespaced so iv-harness module names never collide with the app's
+    // (both trees have a 'tasks').
+    return `iv-harness/${pathParts[3] ?? '(modules-root)'}`;
   }
   if (
     pathParts[0] === 'tools' &&

@@ -106,6 +106,10 @@ if ! "$bun_binary" scripts/check-file-grammar.ts; then
   echo "CONVENTIONS FAIL: src/modules file grammar:"
   fail=1
 fi
+if ! "$bun_binary" scripts/check-file-grammar.ts iv-harness/src/modules; then
+  echo "CONVENTIONS FAIL: iv-harness/src/modules file grammar:"
+  fail=1
+fi
 if ! "$bun_binary" scripts/check-file-grammar.ts \
   tools/invariant-field-v2/ui \
   tools/invariant-field-v2/DesignTokens.ts \
