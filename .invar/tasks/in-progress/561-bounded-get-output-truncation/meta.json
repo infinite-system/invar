@@ -1,0 +1,12 @@
+{
+  "task": 561,
+  "slug": "bounded-get-output-truncation",
+  "branch": "fleet/561-bounded-get-output-truncation",
+  "worktree": ".invar/worktrees/561-bounded-get-output-truncation",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T15:20:00-04:00"
+}

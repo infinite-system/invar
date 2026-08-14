@@ -1,0 +1,9 @@
+{
+  "touchedDomains": ["graph", "cli"],
+  "invariants": {
+    "upheld": ["Disk is the store and the graph is a projection"]
+  },
+  "bycatchCount": 2,
+  "steering": { "needed": false },
+  "evidence": ["/tmp/gate-561.log"]
+}
