@@ -1,0 +1,12 @@
+{
+  "touchedDomains": ["verbs", "graph", "server", "cli"],
+  "invariants": {
+    "upheld": [
+      "A wrapped script keeps its logic in one place",
+      "Only the files arbitrate process state"
+    ]
+  },
+  "bycatchCount": 0,
+  "steering": { "needed": false },
+  "evidence": ["/tmp/gate-559-r2.log"]
+}

@@ -1,0 +1,12 @@
+{
+  "task": 559,
+  "slug": "dispatch-land-verb-absorption",
+  "branch": "fleet/559-dispatch-land-verb-absorption",
+  "worktree": ".invar/worktrees/559-dispatch-land-verb-absorption",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T15:40:00-04:00"
+}
