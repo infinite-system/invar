@@ -1,5 +1,99 @@
 {
   "interfaces": {
+    "CommitOptions": {
+      "file": "iv-harness/src/modules/actions/HarnessActions.ts",
+      "source": "export interface CommitOptions {\n  message: string;\n  paths?: string[];\n  skipGate?: boolean;\n}",
+      "members": [
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "paths",
+          "type": "string[]",
+          "optional": true
+        },
+        {
+          "name": "skipGate",
+          "type": "boolean",
+          "optional": true
+        }
+      ]
+    },
+    "CommitResult": {
+      "file": "iv-harness/src/modules/actions/HarnessActions.ts",
+      "source": "export interface CommitResult {\n  commitHash: string;\n  claimedPathsClean: boolean;\n  leftBehind: string[];\n}",
+      "members": [
+        {
+          "name": "commitHash",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "claimedPathsClean",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "leftBehind",
+          "type": "string[]",
+          "optional": false
+        }
+      ]
+    },
+    "TestResult": {
+      "file": "iv-harness/src/modules/actions/HarnessActions.ts",
+      "source": "export interface TestResult {\n  target: string;\n  exitCode: number;\n  passCount: number;\n  failCount: number;\n  green: boolean;\n}",
+      "members": [
+        {
+          "name": "target",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "exitCode",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "passCount",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "failCount",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "green",
+          "type": "boolean",
+          "optional": false
+        }
+      ]
+    },
+    "GateResult": {
+      "file": "iv-harness/src/modules/actions/HarnessActions.ts",
+      "source": "export interface GateResult {\n  log: string;\n  treeTip: string;\n  verdict: string;\n}",
+      "members": [
+        {
+          "name": "log",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "treeTip",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "verdict",
+          "type": "string",
+          "optional": false
+        }
+      ]
+    },
     "HarnessContributor": {
       "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
       "source": "/** THE contract surface — contributors depend on this and nothing else. */\nexport interface HarnessContributor {\n  name: string;\n  contractVersion: number;\n  node(context: ContributorContext): unknown;\n}",
@@ -39,6 +133,110 @@
         {
           "name": "problems",
           "type": "string[]",
+          "optional": false
+        }
+      ]
+    },
+    "VerbTimeSummary": {
+      "file": "iv-harness/src/modules/digest/HarnessDigest.ts",
+      "source": "export interface VerbTimeSummary {\n  runs: number;\n  failures: number;\n  totalDurationMilliseconds: number;\n}",
+      "members": [
+        {
+          "name": "runs",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "failures",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "totalDurationMilliseconds",
+          "type": "number",
+          "optional": false
+        }
+      ]
+    },
+    "Fight": {
+      "file": "iv-harness/src/modules/digest/HarnessDigest.ts",
+      "source": "export interface Fight {\n  subject: string;\n  failingRuns: number;\n  firstAt: string;\n  lastAt: string;\n  resolved: boolean;\n}",
+      "members": [
+        {
+          "name": "subject",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "failingRuns",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "firstAt",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "lastAt",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "resolved",
+          "type": "boolean",
+          "optional": false
+        }
+      ]
+    },
+    "GateDigestRow": {
+      "file": "iv-harness/src/modules/digest/HarnessDigest.ts",
+      "source": "export interface GateDigestRow {\n  log: string;\n  verdict: string;\n  stampedTree: string | null;\n  stampedTip: string | null;\n}",
+      "members": [
+        {
+          "name": "log",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "verdict",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "stampedTree",
+          "type": "string | null",
+          "optional": false
+        },
+        {
+          "name": "stampedTip",
+          "type": "string | null",
+          "optional": false
+        }
+      ]
+    },
+    "DigestNode": {
+      "file": "iv-harness/src/modules/digest/HarnessDigest.ts",
+      "source": "export interface DigestNode {\n  timeByVerb: Record<string, VerbTimeSummary>;\n  fights: Fight[];\n  gates: GateDigestRow[];\n  eventCount: number;\n}",
+      "members": [
+        {
+          "name": "timeByVerb",
+          "type": "Record<string, VerbTimeSummary>",
+          "optional": false
+        },
+        {
+          "name": "fights",
+          "type": "Fight[]",
+          "optional": false
+        },
+        {
+          "name": "gates",
+          "type": "GateDigestRow[]",
+          "optional": false
+        },
+        {
+          "name": "eventCount",
+          "type": "number",
           "optional": false
         }
       ]
@@ -745,6 +943,45 @@
     }
   },
   "classes": {
+    "HarnessActions": {
+      "file": "iv-harness/src/modules/actions/HarnessActions.ts",
+      "source": null,
+      "methods": [
+        {
+          "name": "git",
+          "parameters": ["workingDirectory: string", "gitArguments: string[]"],
+          "returns": "string"
+        },
+        {
+          "name": "commit",
+          "parameters": [
+            "rootDirectory: string",
+            "options: CommitOptions",
+            "gatesRegistryPath: string"
+          ],
+          "returns": "CommitResult"
+        },
+        {
+          "name": "runningGateFor",
+          "parameters": ["rootDirectory: string", "gatesRegistryPath: string"],
+          "returns": "string | null"
+        },
+        {
+          "name": "test",
+          "parameters": ["rootDirectory: string", "target: string"],
+          "returns": "TestResult"
+        },
+        {
+          "name": "gate",
+          "parameters": [
+            "rootDirectory: string",
+            "logPath: string",
+            "gatesRegistryPath: string"
+          ],
+          "returns": "GateResult"
+        }
+      ]
+    },
     "HarnessContributors": {
       "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
       "source": null,
@@ -761,6 +998,32 @@
             "reservedNames: readonly string[]"
           ],
           "returns": "Promise<ContributorLoadResult>"
+        }
+      ]
+    },
+    "HarnessDigest": {
+      "file": "iv-harness/src/modules/digest/HarnessDigest.ts",
+      "source": null,
+      "methods": [
+        {
+          "name": "build",
+          "parameters": ["rootDirectory: string", "gatesRegistryPath: string"],
+          "returns": "DigestNode"
+        },
+        {
+          "name": "timeByVerb",
+          "parameters": ["events: VerbEvent[]"],
+          "returns": "Record<string, VerbTimeSummary>"
+        },
+        {
+          "name": "fights",
+          "parameters": ["events: VerbEvent[]"],
+          "returns": "Fight[]"
+        },
+        {
+          "name": "gateSeries",
+          "parameters": ["gatesRegistryPath: string"],
+          "returns": "GateDigestRow[]"
         }
       ]
     },

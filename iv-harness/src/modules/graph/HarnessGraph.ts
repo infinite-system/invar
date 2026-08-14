@@ -15,6 +15,7 @@ import {
 } from '../reports/HarnessTaskReports.ts';
 import { HarnessDrift, type DriftNode } from '../drift/HarnessDrift.ts';
 import type { ContributedNodeBuilder } from '../contributors/HarnessContributors.ts';
+import { HarnessDigest, type DigestNode } from '../digest/HarnessDigest.ts';
 import {
   HarnessVerbs,
   type VerbListing,
@@ -124,6 +125,15 @@ class $HarnessGraph {
     return HarnessVerbs.Class.readEvents(this.rootDirectory);
   }
 
+  // --- digest domain (what the conductor actually fought with) ---
+
+  get digest(): DigestNode {
+    return HarnessDigest.Class.build(
+      this.rootDirectory,
+      this.gatesRegistryPath,
+    );
+  }
+
   // --- fleet domain ---
 
   get fleet(): { heartbeat: HeartbeatNode } {
@@ -170,6 +180,7 @@ class $HarnessGraph {
       'drift',
       'verbs',
       'events',
+      'digest',
       'rootDirectory',
     ];
   }

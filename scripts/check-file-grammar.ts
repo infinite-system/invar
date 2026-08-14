@@ -90,6 +90,8 @@ export const CONVERTED_MODULES = new Set<string>([
   'iv-harness/verbs',
   'iv-harness/contributors',
   'iv-harness/shapes',
+  'iv-harness/actions',
+  'iv-harness/digest',
 ]);
 
 function normalizeFileName(fileName: string): string {

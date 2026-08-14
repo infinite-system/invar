@@ -28,6 +28,7 @@ import { HarnessPrint } from './src/modules/graph/HarnessPrint.ts';
 import { HarnessServer } from './src/modules/server/HarnessServer.ts';
 import { HarnessVerbs } from './src/modules/verbs/HarnessVerbs.ts';
 import { HarnessContributors } from './src/modules/contributors/HarnessContributors.ts';
+import { HarnessActions } from './src/modules/actions/HarnessActions.ts';
 import { HarnessShapes } from './src/modules/shapes/HarnessShapes.ts';
 
 class $HarnessCli {
@@ -51,6 +52,9 @@ class $HarnessCli {
     }
     if (command === 'run') {
       return this.runVerb(flags, rootDirectory, rendezvousDirectory);
+    }
+    if (command === 'commit' || command === 'test' || command === 'gate') {
+      return this.action(command, flags, rootDirectory);
     }
     if (command === 'describe') {
       const subject = flags.positional[1];
@@ -126,6 +130,9 @@ class $HarnessCli {
         case '--json':
           flags.describeJson = true;
           break;
+        case '--skip-gate':
+          flags.skipGate = true;
+          break;
         case '--self-test':
           flags.selfTest = true;
           break;
@@ -158,7 +165,7 @@ class $HarnessCli {
 
   static usage(): string {
     return (
-      'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value> | run <verb> [args...] | describe <type-or-path>) ' +
+      'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value> | run <verb> [args...] | describe <type-or-path> | commit <message> [path...] | test [target] | gate <log>) ' +
       '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS] [--limit N] [--offset K] [--full]\n' +
       '       iv-harness --serve | --stop | --server-status | --self-test\n'
     );
@@ -268,6 +275,58 @@ class $HarnessCli {
         process.stdout.write(this.renderBounded(value, flags));
       }
       return 0;
+    } catch (error) {
+      process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
+      return 1;
+    }
+  }
+
+  /** Conductor action verbs: guarded, ledgered, contradictable. */
+  static action(
+    command: 'commit' | 'test' | 'gate',
+    flags: CliFlags,
+    rootDirectory: string,
+  ): number {
+    const gatesRegistryPath = flags.gates ?? '/tmp/fleet-watch-gates';
+    try {
+      if (command === 'commit') {
+        const message = flags.positional[1];
+        if (message === undefined) {
+          process.stderr.write(
+            'usage: iv-harness commit <message> [path...] [--skip-gate]\n',
+          );
+          return 2;
+        }
+        const result = HarnessActions.Class.commit(
+          rootDirectory,
+          {
+            message,
+            paths: flags.positional.slice(2),
+            skipGate: flags.skipGate ?? false,
+          },
+          gatesRegistryPath,
+        );
+        process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+        return 0;
+      }
+      if (command === 'test') {
+        const target = flags.positional[1] ?? '.';
+        const result = HarnessActions.Class.test(rootDirectory, target);
+        process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+        return result.green ? 0 : 1;
+      }
+      const logPath = flags.positional[1];
+      if (logPath === undefined) {
+        process.stderr.write('usage: iv-harness gate <log-path>\n');
+        return 2;
+      }
+      const result = HarnessActions.Class.gate(
+        rootDirectory,
+        logPath,
+        gatesRegistryPath,
+      );
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      return result.verdict === 'green' ? 0 : 1;
     } catch (error) {
       process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
       return 1;
@@ -625,6 +684,7 @@ interface CliFlags {
   printFull?: boolean;
   describeDepth?: number;
   describeJson?: boolean;
+  skipGate?: boolean;
   selfTest: boolean;
   serve: boolean;
   stop: boolean;
