@@ -43,6 +43,13 @@ conductor md). FILED #565 conductor action verbs + NIGHT DIGEST
 the conductor so the night is legible by query) — BUILD NEXT, self-do.
 #563 bracket-match flake filed; #549 at 5 sightings (priority).
 
+LANDED: #565 (ad84a7ef) conductor action verbs + night digest —
+commit/test/gate guarded+ledgered, land.sh tip guard (driven both
+arms), digest node (fights/time/gates). First ledgered action on main:
+action.test 71 pass. Observer access ruling: attach warm + waitFor,
+re-derive from disk always; memoize-behind-version-signals is the
+reserved upgrade, profile-gated.
+
 NEXT (user-queued): the TWO-AXIS NAVIGATION discussion (top bar =
 projects, left rail = worktrees fed by lanes.fleet) — drive current
 tab surfaces + mock per ui-task protocol BEFORE any brief. #559 rung 2
