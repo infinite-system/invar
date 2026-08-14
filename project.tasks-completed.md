@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #562 [harness-contributor-seam](.invar/tasks/completed/562-harness-contributor-seam/task-562-harness-contributor-seam.md) — ec7b2a13 — Projects can extend the graph with one dropped file — mounted under their own key, core untouched, failures loud and non-fatal.
 - #561 [bounded-get-output-truncation](.invar/tasks/completed/561-bounded-get-output-truncation/task-561-bounded-get-output-truncation.md) — 49ed5e62 — get tasks now prints a bounded screenful with a loud truncation marker; --limit/--offset/--full page or bypass; large answers no longer cut off mid-print.
 - #560 [harness-cli-manifest-compat-fix](.invar/tasks/completed/560-harness-cli-manifest-compat-fix/task-560-harness-cli-manifest-compat-fix.md) — 376a86cf — CLI no longer crashes against pre-M3 warm servers; 556's structured report file is valid and counted.
 - #559 [dispatch-land-verb-absorption](.invar/tasks/completed/559-dispatch-land-verb-absorption/task-559-dispatch-land-verb-absorption.md) — 7558931a — The graph gained verbs: run probe/dispatch-dry through it, structured results, typed event ledger the Observer can count.

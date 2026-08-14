@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #562 [harness-contributor-seam](.invar/tasks/in-progress/562-harness-contributor-seam/task-562-harness-contributor-seam.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/562-harness-contributor-seam`
-
 ## USER-DIRECTED (12)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -156,7 +152,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 266 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 267 — full log: project.tasks-completed.md)
+- #562 [harness-contributor-seam](.invar/tasks/completed/562-harness-contributor-seam/task-562-harness-contributor-seam.md) — ec7b2a13 — Projects can extend the graph with one dropped file — mounted under their own key, core untouched, failures loud and non-fatal.
 - #561 [bounded-get-output-truncation](.invar/tasks/completed/561-bounded-get-output-truncation/task-561-bounded-get-output-truncation.md) — 49ed5e62 — get tasks now prints a bounded screenful with a loud truncation marker; --limit/--offset/--full page or bypass; large answers no longer cut off mid-print.
 - #560 [harness-cli-manifest-compat-fix](.invar/tasks/completed/560-harness-cli-manifest-compat-fix/task-560-harness-cli-manifest-compat-fix.md) — 376a86cf — CLI no longer crashes against pre-M3 warm servers; 556's structured report file is valid and counted.
 - #559 [dispatch-land-verb-absorption](.invar/tasks/completed/559-dispatch-land-verb-absorption/task-559-dispatch-land-verb-absorption.md) — 7558931a — The graph gained verbs: run probe/dispatch-dry through it, structured results, typed event ledger the Observer can count.
@@ -171,4 +168,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
 - #541 [drive-reload-fixture-size](.invar/tasks/completed/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md) — 333720c5 (landed with #522)
-- #540 [scrollbar-must-not-hide-content](.invar/tasks/completed/540-scrollbar-must-not-hide-content/task-540-scrollbar-must-not-hide-content.md) — 2080aa1a — The scrollbar reserves its own row — the last visible line is always readable; user ruling implemented and harvested into ui-design chapter 5.

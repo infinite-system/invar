@@ -1,7 +1,7 @@
 # 562 — harness contributor seam
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — ec7b2a13 — Projects can extend the graph with one dropped file — mounted under their own key, core untouched, failures loud and non-fatal.
 Engine: claude
 Environment: linux
 Model: fable-5
