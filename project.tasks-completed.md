@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #557 [graph-miss-did-you-mean](.invar/tasks/completed/557-graph-miss-did-you-mean/task-557-graph-miss-did-you-mean.md) — 050eebdf — Graph misses now suggest the intended key: get tasks.count answers Did you mean tasks.counts, copy-ready full path.
 - #555 [iv-harness-warm-graph-server](.invar/tasks/completed/555-iv-harness-warm-graph-server/task-555-iv-harness-warm-graph-server.md) — a1111764 — iv-harness M2 landed: warm graph server — serve/attach/waitFor with disposable-cache contract; driving caught and fixed the GET-stop bug.
 - #553 [iv-harness-semantic-graph](.invar/tasks/completed/553-iv-harness-semantic-graph/task-553-iv-harness-semantic-graph.md) — 9c151355 — iv-harness M1 landed: process graph (tasks/gates/lanes/fleet) queryable by path; own module tree + invariants contract; both-arms self-test; first real catch was the dead post-reboot fleet-watch heartbeat.
 - #550 [scrollbars-drag-fixture-paint-red-on-main](.invar/tasks/completed/550-scrollbars-drag-fixture-paint-red-on-main/task-550-scrollbars-drag-fixture-paint-red-on-main.md) — 0a3e97d0 — The scrollbars smoke was deterministically red on main (a Quick Open race masked in the contention tier); fixed via the shared helper, verified 3/3-timeout-to-2/2-pass solo.

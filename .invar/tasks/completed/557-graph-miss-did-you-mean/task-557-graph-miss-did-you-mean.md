@@ -1,7 +1,7 @@
 # 557 — graph miss did you mean
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — 050eebdf — Graph misses now suggest the intended key: get tasks.count answers Did you mean tasks.counts, copy-ready full path.
 Engine: claude
 Environment: linux
 Model: fable-5
