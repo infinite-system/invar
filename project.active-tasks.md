@@ -6,7 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (12)
+## USER-DIRECTED (13)
+- #561 [bounded-get-output-truncation](.invar/tasks/active/561-bounded-get-output-truncation/task-561-bounded-get-output-truncation.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -20,7 +21,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (33)
+## VERIFICATION-INTEGRITY (34)
+- #560 [harness-cli-manifest-compat-fix](.invar/tasks/active/560-harness-cli-manifest-compat-fix/task-560-harness-cli-manifest-compat-fix.md)
 - #551 [quickopen-enter-race-census](.invar/tasks/active/551-quickopen-enter-race-census/task-551-quickopen-enter-race-census.md)
 - #548 [land-refuses-committed-priming-files](.invar/tasks/active/548-land-refuses-committed-priming-files/task-548-land-refuses-committed-priming-files.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
