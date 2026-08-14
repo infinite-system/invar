@@ -60,19 +60,46 @@ class $HarnessCli {
     };
     for (let index = 0; index < commandArguments.length; index++) {
       const argument = commandArguments[index]!;
-      if (argument === '--root') flags.root = commandArguments[++index];
-      else if (argument === '--gates') flags.gates = commandArguments[++index];
-      else if (argument === '--heartbeat')
-        flags.heartbeat = commandArguments[++index];
-      else if (argument === '--rendezvous')
-        flags.rendezvous = commandArguments[++index];
-      else if (argument === '--timeout')
-        flags.timeoutMilliseconds = Number(commandArguments[++index]);
-      else if (argument === '--self-test') flags.selfTest = true;
-      else if (argument === '--serve') flags.serve = true;
-      else if (argument === '--stop') flags.stop = true;
-      else if (argument === '--server-status') flags.serverStatus = true;
-      else flags.positional.push(argument);
+      switch (argument) {
+        case '--root':
+          flags.root = commandArguments[++index];
+          break;
+        case '--gates':
+          flags.gates = commandArguments[++index];
+          break;
+        case '--heartbeat':
+          flags.heartbeat = commandArguments[++index];
+          break;
+        case '--rendezvous':
+          flags.rendezvous = commandArguments[++index];
+          break;
+        case '--timeout':
+          flags.timeoutMilliseconds = Number(commandArguments[++index]);
+          break;
+        case '--limit':
+          flags.printLimit = Number(commandArguments[++index]);
+          break;
+        case '--offset':
+          flags.printOffset = Number(commandArguments[++index]);
+          break;
+        case '--full':
+          flags.printFull = true;
+          break;
+        case '--self-test':
+          flags.selfTest = true;
+          break;
+        case '--serve':
+          flags.serve = true;
+          break;
+        case '--stop':
+          flags.stop = true;
+          break;
+        case '--server-status':
+          flags.serverStatus = true;
+          break;
+        default:
+          flags.positional.push(argument);
+      }
     }
     return flags;
   }
@@ -478,4 +505,6 @@ interface CliFlags {
   serverStatus: boolean;
 }
 
-process.exit(await $HarnessCli.run(process.argv.slice(2)));
+// exitCode, never exit(): a large --full answer must flush stdout before
+// the process ends (exit() truncates pending writes).
+process.exitCode = await $HarnessCli.run(process.argv.slice(2));
