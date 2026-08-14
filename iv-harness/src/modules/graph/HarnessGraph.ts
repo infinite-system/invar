@@ -14,6 +14,11 @@ import {
   type TaskReportMetrics,
 } from '../reports/HarnessTaskReports.ts';
 import { HarnessDrift, type DriftNode } from '../drift/HarnessDrift.ts';
+import {
+  HarnessVerbs,
+  type VerbListing,
+  type VerbEvent,
+} from '../verbs/HarnessVerbs.ts';
 
 /**
  * The process-graph root: the development process (tasks, gates,
@@ -108,6 +113,16 @@ class $HarnessGraph {
     return HarnessDrift.Class.read(this.rootDirectory);
   }
 
+  // --- verbs domain (the run channel's registry and its typed ledger) ---
+
+  get verbs(): VerbListing[] {
+    return HarnessVerbs.Class.availableVerbs(this.rootDirectory);
+  }
+
+  get events(): VerbEvent[] {
+    return HarnessVerbs.Class.readEvents(this.rootDirectory);
+  }
+
   // --- fleet domain ---
 
   get fleet(): { heartbeat: HeartbeatNode } {
@@ -146,6 +161,8 @@ class $HarnessGraph {
       'fleet',
       'metrics',
       'drift',
+      'verbs',
+      'events',
       'rootDirectory',
     ];
   }

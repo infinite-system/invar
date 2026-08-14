@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { HarnessGraph } from './src/modules/graph/HarnessGraph.ts';
 import { HarnessPrint } from './src/modules/graph/HarnessPrint.ts';
 import { HarnessServer } from './src/modules/server/HarnessServer.ts';
+import { HarnessVerbs } from './src/modules/verbs/HarnessVerbs.ts';
 
 class $HarnessCli {
   static async run(commandArguments: string[]): Promise<number> {
@@ -45,6 +46,9 @@ class $HarnessCli {
     }
     if (command === 'waitFor') {
       return this.waitFor(flags, rootDirectory, rendezvousDirectory);
+    }
+    if (command === 'run') {
+      return this.runVerb(flags, rootDirectory, rendezvousDirectory);
     }
     process.stderr.write(this.usage());
     return 2;
@@ -117,7 +121,7 @@ class $HarnessCli {
 
   static usage(): string {
     return (
-      'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value>) ' +
+      'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value> | run <verb> [args...]) ' +
       '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS] [--limit N] [--offset K] [--full]\n' +
       '       iv-harness --serve | --stop | --server-status | --self-test\n'
     );
@@ -137,11 +141,14 @@ class $HarnessCli {
     pathname: string,
     parameters: Record<string, string>,
     method: 'GET' | 'POST' = 'GET',
+    multiValueParameters?: URLSearchParams,
   ): Promise<Response | null> {
     const manifest = HarnessServer.$Class.readLiveManifest(rendezvousDirectory);
     if (!manifest) return null;
     this.warnIfStale(manifest);
-    const query = new URLSearchParams(parameters).toString();
+    const query = (
+      multiValueParameters ?? new URLSearchParams(parameters)
+    ).toString();
     try {
       return await fetch(`http://iv-harness${pathname}?${query}`, {
         method,
@@ -209,6 +216,56 @@ class $HarnessCli {
         process.stdout.write(this.renderBounded(value, flags));
       }
       return 0;
+    } catch (error) {
+      process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
+      return 1;
+    }
+  }
+
+  /** The run channel: attached goes through the server; cold runs locally. Both record. */
+  static async runVerb(
+    flags: CliFlags,
+    rootDirectory: string,
+    rendezvousDirectory: string,
+  ): Promise<number> {
+    const verbName = flags.positional[1];
+    if (verbName === undefined) {
+      process.stderr.write(this.usage());
+      return 2;
+    }
+    const verbArguments = flags.positional.slice(2);
+    const multiValueParameters = new URLSearchParams([
+      ['verb', verbName],
+      ...verbArguments.map((argument): [string, string] => [
+        'argument',
+        argument,
+      ]),
+    ]);
+    const attached = await this.attachedFetch(
+      rendezvousDirectory,
+      '/run',
+      {},
+      'POST',
+      multiValueParameters,
+    );
+    try {
+      if (attached) {
+        const body = (await attached.json()) as {
+          ok?: boolean;
+          error?: string;
+        };
+        if (attached.status === 400)
+          throw new Error(body.error ?? 'server error');
+        process.stdout.write(JSON.stringify(body, null, 2) + '\n');
+        return body.ok ? 0 : 1;
+      }
+      const result = HarnessVerbs.Class.run(
+        rootDirectory,
+        verbName,
+        verbArguments,
+      );
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      return result.ok ? 0 : 1;
     } catch (error) {
       process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
       return 1;
