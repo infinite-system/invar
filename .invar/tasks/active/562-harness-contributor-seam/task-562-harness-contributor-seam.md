@@ -1,8 +1,7 @@
 # 562 — harness contributor seam
 
 Priority: user-directed
-State: DRAFT — enters after #559 (verbs) so the verb contract exists
-to harvest from. Filed on user order 2026-08-14.
+State: ACTIVE
 Engine: claude
 Environment: linux
 Model: fable-5
