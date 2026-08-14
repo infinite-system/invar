@@ -1,7 +1,7 @@
 # 559 — dispatch and land verb absorption
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — 7558931a — The graph gained verbs: run probe/dispatch-dry through it, structured results, typed event ledger the Observer can count.
 Engine: claude
 Environment: linux
 Model: fable-5
