@@ -128,17 +128,68 @@ class $HarnessGraph {
   missMessage(walkedSegments: string[], deadNode: unknown): string {
     const deadPath = walkedSegments.join('.');
     const parentSegments = walkedSegments.slice(0, -1);
+    const failedSegment = walkedSegments[walkedSegments.length - 1] ?? '';
     let addressable: string[] = [];
     if (parentSegments.length === 0) {
       addressable = this.rootNamespace();
     } else if (deadNode !== null && typeof deadNode === 'object') {
       addressable = Object.keys(deadNode as Record<string, unknown>);
     }
+    const suggestion = this.nearestKey(failedSegment, addressable);
+    const didYouMean =
+      suggestion === null
+        ? ''
+        : ` Did you mean '${[...parentSegments, suggestion].join('.')}'?`;
     const hint =
       addressable.length > 0
         ? ` Addressable here: ${addressable.join(', ')}`
         : '';
-    return `no node at '${deadPath}'.${hint}`;
+    return `no node at '${deadPath}'.${didYouMean}${hint}`;
+  }
+
+  /** The closest addressable key: prefix/containment first, then edit distance <= 2. */
+  nearestKey(failedSegment: string, addressable: string[]): string | null {
+    if (failedSegment.length === 0 || addressable.length === 0) return null;
+    const lowerFailed = failedSegment.toLowerCase();
+    const containmentMatch = addressable.find((key) => {
+      const lowerKey = key.toLowerCase();
+      return (
+        lowerKey.startsWith(lowerFailed) || lowerFailed.startsWith(lowerKey)
+      );
+    });
+    if (containmentMatch) return containmentMatch;
+    let bestKey: string | null = null;
+    let bestDistance = 3; // suggestions beyond distance 2 mislead more than help
+    for (const key of addressable) {
+      const distance = this.editDistance(lowerFailed, key.toLowerCase());
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestKey = key;
+      }
+    }
+    return bestKey;
+  }
+
+  editDistance(first: string, second: string): number {
+    const previousRow = Array.from(
+      { length: second.length + 1 },
+      (_, columnIndex) => columnIndex,
+    );
+    for (let rowIndex = 1; rowIndex <= first.length; rowIndex++) {
+      let previousDiagonal = previousRow[0]!;
+      previousRow[0] = rowIndex;
+      for (let columnIndex = 1; columnIndex <= second.length; columnIndex++) {
+        const savedCell = previousRow[columnIndex]!;
+        previousRow[columnIndex] = Math.min(
+          previousRow[columnIndex]! + 1,
+          previousRow[columnIndex - 1]! + 1,
+          previousDiagonal +
+            (first[rowIndex - 1] === second[columnIndex - 1] ? 0 : 1),
+        );
+        previousDiagonal = savedCell;
+      }
+    }
+    return previousRow[second.length]!;
   }
 }
 
