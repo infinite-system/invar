@@ -440,6 +440,37 @@ DRY_RUN=1 scripts/fleet/dispatch.sh …         # every guard, no side effect
 `pgrep` + `readlink /proc/<pid>/cwd`, `-mmin` (never `-newermt`), and reading a command's own
 exit status are already correct inside `probe.sh`. Typing them fresh is how they go wrong.
 
+### THE ACTION VERBS — the conductor's default instruments (landed #553-#565)
+
+The conductor's fact-producing acts go through iv-harness verbs, NOT raw
+primitives. The verbs carry the guards structurally and ledger every act to
+`.invar/harness-events.jsonl`, so a claim about what happened is
+contradictable data. Raw git/bash for these acts is the legacy path — reach
+for it only when the verb cannot express the case, and say so.
+
+```
+bun iv-harness/cli.ts commit <msg> <path...> [--skip-gate]  # explicit paths in a
+    # primary checkout (pathless only in fleet worktrees); refuses into a tree
+    # whose registered gate is mid-run; verifies claimed paths landed
+bun iv-harness/cli.ts test [target]      # parsed pass/fail counts from BOTH
+    # streams — a green claim is data, never a tail glance
+bun iv-harness/cli.ts gate <log>         # stamps GATE_TREE + GATE_TREE_TIP into
+    # the log and registers it; land.sh REFUSES a stamped log whose tip is not
+    # the branch tip being landed (exit 6)
+bun iv-harness/cli.ts get <path>         # tasks/gates/lanes/fleet/metrics/
+    # drift/verbs/events/digest — bounded output, did-you-mean misses
+bun iv-harness/cli.ts waitFor <p> <json> # parked condition on the warm server
+bun iv-harness/cli.ts describe <type>    # verbatim TS shapes, --depth unpacks
+bun iv-harness/cli.ts get digest         # the night: fights, time-by-verb,
+    # gate rows — the morning report is a QUERY; prose is commentary on top
+```
+
+Rules the verbs encode (do not re-implement them by hand): never edit or
+commit into a worktree while its gate runs; the thing you verified must be
+the thing you land (tip stamps); a claim of green comes from parsed counts.
+The RESUME ANCHOR names the warm-server state; `--serve` once per checkout,
+attach everywhere.
+
 ---
 
 ## Dispatch
@@ -665,7 +696,9 @@ so enumerate builders by `/proc/<pid>/cwd` before committing too (`probe.sh buil
 conductor also holds its OWN heavy work while a gate runs. Take the exception deliberately
 and write down why, or HOLD.
 
-**GATE SERIALLY BY DEFAULT.** One gate at a time. Blocking verdicts are ordering- and
+**GATE SERIALLY BY DEFAULT.** One gate at a time. Launch through
+`bun iv-harness/cli.ts gate <log>` so the log carries GATE_TREE + tip stamps
+(land.sh's tip guard depends on them) and the run is ledgered. Blocking verdicts are ordering- and
 count-based, so overlap does not invalidate them mechanically — but overlap manufactures
 AMBIGUOUS reds (diff or load?), and that ambiguity is the conductor's most expensive input.
 A red I cannot explain becomes a "flake" I wave through, or a wrong diagnosis I defend. It
@@ -711,6 +744,8 @@ authoritative liveness signal, not process topology.
 ## Merge and landing safety
 
 - **Commit before gating.** A green gate on an uncommitted tree is not durable.
+  Commit through `bun iv-harness/cli.ts commit` (the guarded, ledgered path —
+  see THE ACTION VERBS); it enforces the two bullets below structurally.
 - **`commit -a` excludes NEW files, and one pending commit owns the index.** A commit
   that claims to add files runs `git status --short` AFTER committing — zero lines or it
   lied (2026-08-04: three new priming files silently excluded; the feature no-opped in
