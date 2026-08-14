@@ -4,6 +4,35 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 89 — 2026-08-14 14:00 EDT — M2 WARM SERVER LANDED (a1111764); AWAITING USER M2 REVIEW, THEN M3
+
+Crons armed (:07 e0b76439, :37 db522e11). fleet-watch Monitor bkhy5pn2s armed.
+Fleet IDLE. main clean at a1111764 (post-landing).
+
+TODAY'S THREE LANDINGS (all conductor self-do, user-directed):
+- #553 M1 (9c151355): iv-harness process graph — see anchor 88.
+- conventions extension (d11d8f01) + fixture range fix (f6d4578a).
+- #555 M2 (a1111764): WARM GRAPH SERVER — `bun iv-harness/cli.ts
+  --serve` boots once per checkout (fs-watchers bump per-domain version
+  signals; parked waitFor conditions evaluate on watcher events); unix
+  socket + checkout-keyed rendezvous (DriveSession convention);
+  get/ls/waitFor auto-attach, cold fallback identical; --stop verified
+  both-arms; server is a DISPOSABLE projection cache (new contract
+  record, tested). DRIVING CAUGHT the GET-stop bug tests missed (CLI
+  sent GET to POST route, reported success unverified) — fixed + wire
+  test. 24 colocated tests, gate GREEN first run.
+
+NEXT (user's explicit sequence): USER REVIEWS M2, then M3 (#556, in
+draft/): script absorption per the wrap-ladder + structured TaskReport
+graph nodes. Do NOT start M3 before the user's M2 review verdict.
+
+OPEN: flake holds #554 #549 #545 #552; census #551; #544 #548 filed.
+Backlog user-priority; no autonomous dispatch.
+
+WATCHER RE-ARM LINES (verbatim):
+  Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+  CronCreate 7 * * * * + 37 * * * * — prompts verbatim in conductor SKILL.md
+
 # RESUME ANCHOR 88 — 2026-08-14 13:29 EDT — IV-HARNESS BORN AND LANDED; SESSION SPANS REBOOT; CONTEXT DEEP
 
 Crons armed (:07 e0b76439, :37 db522e11 — session-only, re-arm on restart).
@@ -126,36 +155,10 @@ REMAINING BACKLOG large + USER-PRIORITY (12 user-directed + ~30
 verification-integrity, many pre-session). Do NOT bulk-dispatch — user
 picks. #526 rename is DONE (was the last user-decision item pending).
 
-# RESUME ANCHOR 84 — 2026-08-11 14:09 EDT — QUEUE-DRAIN WAVES DONE (14 LANDED THIS SESSION); FLEET IDLE
-
-Crons armed (:07 e0d3f690, :37 db522e11). fleet-watch blc4t5ql6 armed.
-
-LANDED THIS SESSION (14): #539 #531 #540 #542 #543 #524+#525 #522+#520+
-#527+#541 #528 #546 #523. Latest wave 3: #528 (padding check measures
-the button span), #546 (diff labels true per comparison kind — structural
-arm caught a committed 2814-line priming file, removed pre-landing),
-#523 b6fa1f5d (codex hooks proven firing, adoption proposed, notify
-stays fallback).
-
-DOCTRINE HARVESTED THIS SESSION: ui-design ch.5 "a scrollbar never hides
-content"; RULE THREE structural arm now leads with the DIFF-STAT SANITY
-CHECK (cheapest, caught #546); the read-the-whole-function + verify-gate-
-was-quiet lesson (#522 double-error); the delegated-review checklist.
-
-FILED FROM THIS SESSION'S FINDINGS (open): #544 (observation predicate
-distillation), #545/#547 (contention flake evidence-holds — structure
-scrollbar diag, popup wheel), #546-adjacent #548 (land.sh refuse
-committed priming files). #526 rename STILL WAITS FOR USER (naming).
-
-REMAINING BACKLOG is large and USER-PRIORITY (14 user-directed + ~30
-verification-integrity, many pre-session: #199 #205 #256 #341 #349 #352
-#354 #357 #361 #373 #376 #472 etc). Do NOT bulk-dispatch — the user
-picks. #354 (Ctrl+P welcome wording) is a safe standalone if idle
-capacity is wanted. Fleet idle, checkout clean.
-
 
 ## Condensed history (pruned anchors — full text in git)
 
+- # RESUME ANCHOR 84 — 2026-08-11 14:09 EDT — QUEUE-DRAIN WAVES DONE (14 LANDED THIS SESSION); FLEET IDLE
 - # RESUME ANCHOR 83 — 2026-08-11 11:34 EDT — QUEUE RUNNING: 3 LANES; CRONS RE-ARMED BY USER
 - # RESUME ANCHOR 82 — 2026-08-11 09:13 EDT — #539 + #531 LANDED; ALL KNOWN GATE FLAKES CLOSED; IDLE
 - # RESUME ANCHOR 81 — 2026-08-11 08:37 EDT — #539 DISPATCHED; DOCS SPRINT DONE; GAUGE SUSPECT
