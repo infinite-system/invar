@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { HarnessGraph } from '../graph/HarnessGraph.ts';
 import { HarnessGateRuns } from '../gates/HarnessGateRuns.ts';
 import { HarnessVerbs } from '../verbs/HarnessVerbs.ts';
+import { HarnessShapes } from '../shapes/HarnessShapes.ts';
 
 /**
  * The warm graph server: boots the process graph ONCE per checkout,
@@ -374,6 +375,12 @@ class $HarnessServer {
           timeoutMilliseconds,
         );
         return json(result, result.timedOut ? 408 : 200);
+      }
+      if (url.pathname === '/describe') {
+        const subject = url.searchParams.get('subject') ?? '';
+        return json(
+          HarnessShapes.Class.describe(this.options.rootDirectory, subject),
+        );
       }
       if (url.pathname === '/run' && request.method === 'POST') {
         const verbName = url.searchParams.get('verb') ?? '';

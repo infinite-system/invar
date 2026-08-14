@@ -1,0 +1,871 @@
+{
+  "interfaces": {
+    "DriftFinding": {
+      "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
+      "members": [
+        {
+          "name": "signal",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "taskNumber",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "folder",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "optional": false
+        }
+      ]
+    },
+    "DriftNode": {
+      "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
+      "members": [
+        {
+          "name": "available",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "findings",
+          "type": "DriftFinding[]",
+          "optional": false
+        },
+        {
+          "name": "totalsBySignal",
+          "type": "Record<string, number>",
+          "optional": false
+        }
+      ]
+    },
+    "HeartbeatNode": {
+      "file": "iv-harness/src/modules/fleet/HarnessHeartbeat.ts",
+      "members": [
+        {
+          "name": "path",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "exists",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "ageSeconds",
+          "type": "number | null",
+          "optional": false
+        },
+        {
+          "name": "fresh",
+          "type": "boolean",
+          "optional": false
+        }
+      ]
+    },
+    "GateRun": {
+      "file": "iv-harness/src/modules/gates/HarnessGateRuns.ts",
+      "members": [
+        {
+          "name": "log",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "exists",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "exit",
+          "type": "number | null",
+          "optional": false
+        },
+        {
+          "name": "verdict",
+          "type": "'green' | 'red' | 'running' | 'missing'",
+          "optional": false
+        }
+      ]
+    },
+    "HarnessGraphOptions": {
+      "file": "iv-harness/src/modules/graph/HarnessGraph.ts",
+      "members": [
+        {
+          "name": "rootDirectory",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "gatesRegistryPath",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "heartbeatPath",
+          "type": "string",
+          "optional": true
+        }
+      ]
+    },
+    "PrintOptions": {
+      "file": "iv-harness/src/modules/graph/HarnessPrint.ts",
+      "members": [
+        {
+          "name": "limit",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "name": "full",
+          "type": "boolean",
+          "optional": true
+        }
+      ]
+    },
+    "LaneNode": {
+      "file": "iv-harness/src/modules/lanes/HarnessLanes.ts",
+      "members": [
+        {
+          "name": "worktree",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "branch",
+          "type": "string | null",
+          "optional": false
+        },
+        {
+          "name": "head",
+          "type": "string | null",
+          "optional": false
+        },
+        {
+          "name": "taskNumber",
+          "type": "number | null",
+          "optional": false
+        },
+        {
+          "name": "dirty",
+          "type": "boolean | null",
+          "optional": false
+        },
+        {
+          "name": "commitsAheadOfMain",
+          "type": "number | null",
+          "optional": false
+        }
+      ]
+    },
+    "TaskReportMeta": {
+      "file": "iv-harness/src/modules/reports/HarnessTaskReports.ts",
+      "members": [
+        {
+          "name": "touchedDomains",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "unexpectedDomains",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "invariants",
+          "type": "Record<VerdictName, string[]>",
+          "optional": false
+        },
+        {
+          "name": "bycatchCount",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "steering",
+          "type": "{ needed: boolean; cause: string | null }",
+          "optional": false
+        },
+        {
+          "name": "evidence",
+          "type": "string[]",
+          "optional": false
+        }
+      ]
+    },
+    "TaskReportMetrics": {
+      "file": "iv-harness/src/modules/reports/HarnessTaskReports.ts",
+      "members": [
+        {
+          "name": "tasksWithReportMeta",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "completedTasks",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "reportCoverage",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "steeringNeeded",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "steeringDensity",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "bycatchTotal",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "invariantVerdicts",
+          "type": "Record<VerdictName, number>",
+          "optional": false
+        },
+        {
+          "name": "touchedDomainCounts",
+          "type": "Record<string, number>",
+          "optional": false
+        }
+      ]
+    },
+    "HarnessServerOptions": {
+      "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "members": [
+        {
+          "name": "rootDirectory",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "rendezvousDirectory",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "gatesRegistryPath",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "heartbeatPath",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "exitProcessOnStop",
+          "type": "boolean",
+          "optional": true
+        }
+      ]
+    },
+    "ServerManifest": {
+      "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "members": [
+        {
+          "name": "pid",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "socketPath",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "rootDirectory",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "startedAt",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "bootCommit",
+          "type": "string | null",
+          "optional": false
+        }
+      ]
+    },
+    "ParkedWaitResult": {
+      "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "members": [
+        {
+          "name": "timedOut",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "unknown",
+          "optional": false
+        }
+      ]
+    },
+    "ShapeMember": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "members": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "optional",
+          "type": "boolean",
+          "optional": false
+        }
+      ]
+    },
+    "ShapeMethod": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "members": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "parameters",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "returns",
+          "type": "string",
+          "optional": false
+        }
+      ]
+    },
+    "InterfaceShape": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "members": [
+        {
+          "name": "file",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "members",
+          "type": "ShapeMember[]",
+          "optional": false
+        }
+      ]
+    },
+    "ClassShape": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "members": [
+        {
+          "name": "file",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "methods",
+          "type": "ShapeMethod[]",
+          "optional": false
+        }
+      ]
+    },
+    "ShapeCatalog": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "members": [
+        {
+          "name": "interfaces",
+          "type": "Record<string, InterfaceShape>",
+          "optional": false
+        },
+        {
+          "name": "classes",
+          "type": "Record<string, ClassShape>",
+          "optional": false
+        }
+      ]
+    },
+    "ShapeAnswer": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "members": [
+        {
+          "name": "subject",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "kind",
+          "type": "'interface' | 'class'",
+          "optional": false
+        },
+        {
+          "name": "shape",
+          "type": "InterfaceShape | ClassShape",
+          "optional": false
+        }
+      ]
+    },
+    "TaskNode": {
+      "file": "iv-harness/src/modules/tasks/HarnessTaskRecords.ts",
+      "members": [
+        {
+          "name": "number",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "slug",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "state",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "priority",
+          "type": "string | null",
+          "optional": false
+        },
+        {
+          "name": "stateLine",
+          "type": "string | null",
+          "optional": false
+        },
+        {
+          "name": "engine",
+          "type": "string | null",
+          "optional": false
+        },
+        {
+          "name": "files",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "hasReport",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "steerCount",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "lastSteer",
+          "type": "string | null",
+          "optional": false
+        },
+        {
+          "name": "meta",
+          "type": "Record<string, unknown> | null",
+          "optional": false
+        },
+        {
+          "name": "reportMeta",
+          "type": "TaskReportMeta | null",
+          "optional": false
+        }
+      ]
+    },
+    "VerbDefinition": {
+      "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "members": [
+        {
+          "name": "script",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "buildArguments",
+          "type": "(verbArguments: string[]) => string[]",
+          "optional": false
+        },
+        {
+          "name": "environment",
+          "type": "Record<string, string>",
+          "optional": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": false
+        }
+      ]
+    },
+    "VerbListing": {
+      "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "members": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "available",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "script",
+          "type": "string",
+          "optional": false
+        }
+      ]
+    },
+    "VerbResult": {
+      "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "members": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "arguments",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "ok",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "exitCode",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "lines",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "startedAt",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "durationMilliseconds",
+          "type": "number",
+          "optional": false
+        }
+      ]
+    },
+    "VerbEvent": {
+      "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "members": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "arguments",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "exitCode",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "startedAt",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "durationMilliseconds",
+          "type": "number",
+          "optional": false
+        }
+      ]
+    }
+  },
+  "classes": {
+    "HarnessDrift": {
+      "file": "iv-harness/src/modules/drift/HarnessDrift.ts",
+      "methods": [
+        {
+          "name": "read",
+          "parameters": ["rootDirectory: string"],
+          "returns": "DriftNode"
+        },
+        {
+          "name": "parseDriftSection",
+          "parameters": ["output: string"],
+          "returns": "DriftNode"
+        }
+      ]
+    },
+    "HarnessHeartbeat": {
+      "file": "iv-harness/src/modules/fleet/HarnessHeartbeat.ts",
+      "methods": [
+        {
+          "name": "read",
+          "parameters": ["heartbeatPath: string"],
+          "returns": "HeartbeatNode"
+        }
+      ]
+    },
+    "HarnessGateRuns": {
+      "file": "iv-harness/src/modules/gates/HarnessGateRuns.ts",
+      "methods": [
+        {
+          "name": "readRegistry",
+          "parameters": ["registryPath: string"],
+          "returns": "GateRun[]"
+        },
+        {
+          "name": "readGateLog",
+          "parameters": ["logPath: string"],
+          "returns": "GateRun"
+        }
+      ]
+    },
+    "HarnessPrint": {
+      "file": "iv-harness/src/modules/graph/HarnessPrint.ts",
+      "methods": [
+        {
+          "name": "boundedClone",
+          "parameters": ["value: unknown", "options: PrintOptions"],
+          "returns": "unknown"
+        },
+        {
+          "name": "boundNode",
+          "parameters": [
+            "value: unknown",
+            "limit: number",
+            "offset: number",
+            "isRoot: boolean"
+          ],
+          "returns": "unknown"
+        },
+        {
+          "name": "truncationMessage",
+          "parameters": ["total: number", "shown: number", "offset: number"],
+          "returns": "string"
+        }
+      ]
+    },
+    "HarnessLanes": {
+      "file": "iv-harness/src/modules/lanes/HarnessLanes.ts",
+      "methods": [
+        {
+          "name": "git",
+          "parameters": ["rootDirectory: string", "gitArguments: string[]"],
+          "returns": "string | null"
+        },
+        {
+          "name": "listLanes",
+          "parameters": ["rootDirectory: string"],
+          "returns": "LaneNode[]"
+        },
+        {
+          "name": "isDirty",
+          "parameters": ["worktreeDirectory: string"],
+          "returns": "boolean | null"
+        },
+        {
+          "name": "commitsAheadOfMain",
+          "parameters": ["worktreeDirectory: string"],
+          "returns": "number | null"
+        }
+      ]
+    },
+    "HarnessTaskReports": {
+      "file": "iv-harness/src/modules/reports/HarnessTaskReports.ts",
+      "methods": [
+        {
+          "name": "readReportMeta",
+          "parameters": ["taskDirectory: string", "files: string[]"],
+          "returns": "TaskReportMeta | null"
+        },
+        {
+          "name": "aggregateMetrics",
+          "parameters": [
+            "tasks: {\n      state: string;\n      meta: unknown;\n      reportMeta: TaskReportMeta | null;\n    }[]"
+          ],
+          "returns": "TaskReportMetrics"
+        }
+      ]
+    },
+    "HarnessServer": {
+      "file": "iv-harness/src/modules/server/HarnessServer.ts",
+      "methods": [
+        {
+          "name": "defaultRendezvousDirectory",
+          "parameters": ["rootDirectory: string"],
+          "returns": "string"
+        },
+        {
+          "name": "manifestPath",
+          "parameters": ["rendezvousDirectory: string"],
+          "returns": "string"
+        },
+        {
+          "name": "socketPath",
+          "parameters": ["rendezvousDirectory: string"],
+          "returns": "string"
+        },
+        {
+          "name": "readLiveManifest",
+          "parameters": ["rendezvousDirectory: string"],
+          "returns": "ServerManifest | null"
+        },
+        {
+          "name": "currentCommit",
+          "parameters": ["rootDirectory: string"],
+          "returns": "string | null"
+        }
+      ]
+    },
+    "HarnessShapes": {
+      "file": "iv-harness/src/modules/shapes/HarnessShapes.ts",
+      "methods": [
+        {
+          "name": "generate",
+          "parameters": ["rootDirectory: string"],
+          "returns": "ShapeCatalog"
+        },
+        {
+          "name": "isExported",
+          "parameters": ["statement: typescript.Statement"],
+          "returns": "boolean"
+        },
+        {
+          "name": "isStatic",
+          "parameters": ["member: typescript.ClassElement"],
+          "returns": "boolean"
+        },
+        {
+          "name": "isProtected",
+          "parameters": ["member: typescript.ClassElement"],
+          "returns": "boolean"
+        },
+        {
+          "name": "readCatalog",
+          "parameters": ["rootDirectory: string"],
+          "returns": "ShapeCatalog | null"
+        },
+        {
+          "name": "describe",
+          "parameters": ["rootDirectory: string", "subject: string"],
+          "returns": "ShapeAnswer"
+        },
+        {
+          "name": "sourceFiles",
+          "parameters": ["directory: string"],
+          "returns": "string[]"
+        }
+      ]
+    },
+    "HarnessTaskRecords": {
+      "file": "iv-harness/src/modules/tasks/HarnessTaskRecords.ts",
+      "methods": [
+        {
+          "name": "tasksRoot",
+          "parameters": ["rootDirectory: string"],
+          "returns": "string"
+        },
+        {
+          "name": "listTasks",
+          "parameters": ["rootDirectory: string"],
+          "returns": "TaskNode[]"
+        },
+        {
+          "name": "readTask",
+          "parameters": [
+            "taskDirectory: string",
+            "state: string",
+            "folderName: string"
+          ],
+          "returns": "TaskNode | null"
+        },
+        {
+          "name": "readHeader",
+          "parameters": ["taskFilePath: string"],
+          "returns": "{\n    priority: string | null;\n    stateLine: string | null;\n    engine: string | null;\n  }"
+        },
+        {
+          "name": "readSteers",
+          "parameters": ["taskDirectory: string", "files: string[]"],
+          "returns": "{ count: number; last: string | null }"
+        },
+        {
+          "name": "readMeta",
+          "parameters": ["taskDirectory: string", "files: string[]"],
+          "returns": "Record<string, unknown> | null"
+        }
+      ]
+    },
+    "HarnessVerbs": {
+      "file": "iv-harness/src/modules/verbs/HarnessVerbs.ts",
+      "methods": [
+        {
+          "name": "availableVerbs",
+          "parameters": ["rootDirectory: string"],
+          "returns": "VerbListing[]"
+        },
+        {
+          "name": "run",
+          "parameters": [
+            "rootDirectory: string",
+            "verbName: string",
+            "verbArguments: string[]"
+          ],
+          "returns": "VerbResult"
+        },
+        {
+          "name": "appendEvent",
+          "parameters": ["rootDirectory: string", "result: VerbResult"],
+          "returns": "void"
+        },
+        {
+          "name": "readEvents",
+          "parameters": ["rootDirectory: string"],
+          "returns": "VerbEvent[]"
+        }
+      ]
+    }
+  }
+}
