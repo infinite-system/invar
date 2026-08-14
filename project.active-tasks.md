@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #556 [iv-harness-script-absorption](.invar/tasks/in-progress/556-iv-harness-script-absorption/task-556-iv-harness-script-absorption.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/556-iv-harness-script-absorption`
-
 ## USER-DIRECTED (12)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
@@ -155,8 +151,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 261 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 262 — full log: project.tasks-completed.md)
 - #557 [graph-miss-did-you-mean](.invar/tasks/completed/557-graph-miss-did-you-mean/task-557-graph-miss-did-you-mean.md) — 050eebdf — Graph misses now suggest the intended key: get tasks.count answers Did you mean tasks.counts, copy-ready full path.
+- #556 [iv-harness-script-absorption](.invar/tasks/completed/556-iv-harness-script-absorption/task-556-iv-harness-script-absorption.md) — fe4d59fd — iv-harness M3 landed: structured worker reports + metrics, drift as a graph capability, stale-server warning. This task carries the fleet's first report-meta.json.
 - #555 [iv-harness-warm-graph-server](.invar/tasks/completed/555-iv-harness-warm-graph-server/task-555-iv-harness-warm-graph-server.md) — a1111764 — iv-harness M2 landed: warm graph server — serve/attach/waitFor with disposable-cache contract; driving caught and fixed the GET-stop bug.
 - #553 [iv-harness-semantic-graph](.invar/tasks/completed/553-iv-harness-semantic-graph/task-553-iv-harness-semantic-graph.md) — 9c151355 — iv-harness M1 landed: process graph (tasks/gates/lanes/fleet) queryable by path; own module tree + invariants contract; both-arms self-test; first real catch was the dead post-reboot fleet-watch heartbeat.
 - #550 [scrollbars-drag-fixture-paint-red-on-main](.invar/tasks/completed/550-scrollbars-drag-fixture-paint-red-on-main/task-550-scrollbars-drag-fixture-paint-red-on-main.md) — 0a3e97d0 — The scrollbars smoke was deterministically red on main (a Quick Open race masked in the contention tier); fixed via the shared helper, verified 3/3-timeout-to-2/2-pass solo.
@@ -170,4 +167,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #538 [panel-chrome-flake-second-wave](.invar/tasks/completed/538-panel-chrome-flake-second-wave/task-538-panel-chrome-flake-second-wave.md) — 0cd8aab6 — The panel-chrome contention flake's third lost-gesture member killed: hover-verified aim after layout moves the control; 15/15 contention green.
 - #537 [find-replace-doctrine-pass](.invar/tasks/completed/537-find-replace-doctrine-pass/task-537-find-replace-doctrine-pass.md) — 0a2b12f0 — Milestone 6: doctrine pass over both search surfaces — counts pluralize, button state tiers complete, scrollbar proven; the six-milestone Find/Replace build is closed.
 - #536 [workspace-replace-consent-history](.invar/tasks/completed/536-workspace-replace-consent-history/task-536-workspace-replace-consent-history.md) — 3a006e4f — Milestone 5: workspace replace with counted consent, per-item drift, undo/redo through one coordinator; structural round moved the patch engine to workspace/ and split the state machines; conductor-driven twice.
-- #535 [left-dock-search-surface](.invar/tasks/completed/535-left-dock-search-surface/task-535-left-dock-search-surface.md) — 1d759ad5 — Milestone 4: the visible Search — activity icon, left-dock panel, streaming result tree, click-to-line; conductor-driven both arms; structural round closed all reviewer findings.

@@ -1,7 +1,7 @@
 # 556 — iv-harness script absorption and structured task reports
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — fe4d59fd — iv-harness M3 landed: structured worker reports + metrics, drift as a graph capability, stale-server warning. This task carries the fleet's first report-meta.json.
 Engine: claude
 Environment: linux
 Model: fable-5
