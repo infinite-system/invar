@@ -6,9 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (14)
+## USER-DIRECTED (13)
 - #562 [harness-contributor-seam](.invar/tasks/active/562-harness-contributor-seam/task-562-harness-contributor-seam.md)
-- #558 [type-shape-describe-projection](.invar/tasks/active/558-type-shape-describe-projection/task-558-type-shape-describe-projection.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -153,10 +152,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 265 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 266 — full log: project.tasks-completed.md)
 - #561 [bounded-get-output-truncation](.invar/tasks/completed/561-bounded-get-output-truncation/task-561-bounded-get-output-truncation.md) — 49ed5e62 — get tasks now prints a bounded screenful with a loud truncation marker; --limit/--offset/--full page or bypass; large answers no longer cut off mid-print.
 - #560 [harness-cli-manifest-compat-fix](.invar/tasks/completed/560-harness-cli-manifest-compat-fix/task-560-harness-cli-manifest-compat-fix.md) — 376a86cf — CLI no longer crashes against pre-M3 warm servers; 556's structured report file is valid and counted.
 - #559 [dispatch-land-verb-absorption](.invar/tasks/completed/559-dispatch-land-verb-absorption/task-559-dispatch-land-verb-absorption.md) — 7558931a — The graph gained verbs: run probe/dispatch-dry through it, structured results, typed event ledger the Observer can count.
+- #558 [type-shape-describe-projection](.invar/tasks/completed/558-type-shape-describe-projection/task-558-type-shape-describe-projection.md) — 3b7180be — describe <type-or-path> answers field shapes generated from the TypeScript compiler; drift is mechanically impossible.
 - #557 [graph-miss-did-you-mean](.invar/tasks/completed/557-graph-miss-did-you-mean/task-557-graph-miss-did-you-mean.md) — 050eebdf — Graph misses now suggest the intended key: get tasks.count answers Did you mean tasks.counts, copy-ready full path.
 - #556 [iv-harness-script-absorption](.invar/tasks/completed/556-iv-harness-script-absorption/task-556-iv-harness-script-absorption.md) — fe4d59fd — iv-harness M3 landed: structured worker reports + metrics, drift as a graph capability, stale-server warning. This task carries the fleet's first report-meta.json.
 - #555 [iv-harness-warm-graph-server](.invar/tasks/completed/555-iv-harness-warm-graph-server/task-555-iv-harness-warm-graph-server.md) — a1111764 — iv-harness M2 landed: warm graph server — serve/attach/waitFor with disposable-cache contract; driving caught and fixed the GET-stop bug.
@@ -168,4 +168,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.
 - #541 [drive-reload-fixture-size](.invar/tasks/completed/541-drive-reload-fixture-size/task-541-drive-reload-fixture-size.md) — 333720c5 (landed with #522)
 - #540 [scrollbar-must-not-hide-content](.invar/tasks/completed/540-scrollbar-must-not-hide-content/task-540-scrollbar-must-not-hide-content.md) — 2080aa1a — The scrollbar reserves its own row — the last visible line is always readable; user ruling implemented and harvested into ui-design chapter 5.
-- #539 [module-constants-to-statics](.invar/tasks/completed/539-module-constants-to-statics/task-539-module-constants-to-statics.md) — dfb74c00 — The source tree's module-variable count reaches true zero: PluginManifest's four constants become class statics (three SCREAMING live knobs per the house table, one $-cached derived set); behavior byte-identical.

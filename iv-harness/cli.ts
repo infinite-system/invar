@@ -28,6 +28,7 @@ import { HarnessPrint } from './src/modules/graph/HarnessPrint.ts';
 import { HarnessServer } from './src/modules/server/HarnessServer.ts';
 import { HarnessVerbs } from './src/modules/verbs/HarnessVerbs.ts';
 import { HarnessContributors } from './src/modules/contributors/HarnessContributors.ts';
+import { HarnessShapes } from './src/modules/shapes/HarnessShapes.ts';
 
 class $HarnessCli {
   static async run(commandArguments: string[]): Promise<number> {
@@ -50,6 +51,21 @@ class $HarnessCli {
     }
     if (command === 'run') {
       return this.runVerb(flags, rootDirectory, rendezvousDirectory);
+    }
+    if (command === 'describe') {
+      const subject = flags.positional[1];
+      if (subject === undefined) {
+        process.stderr.write(this.usage());
+        return 2;
+      }
+      try {
+        const answer = HarnessShapes.Class.describe(rootDirectory, subject);
+        process.stdout.write(JSON.stringify(answer, null, 2) + '\n');
+        return 0;
+      } catch (error) {
+        process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
+        return 1;
+      }
     }
     process.stderr.write(this.usage());
     return 2;
@@ -122,7 +138,7 @@ class $HarnessCli {
 
   static usage(): string {
     return (
-      'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value> | run <verb> [args...]) ' +
+      'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value> | run <verb> [args...] | describe <type-or-path>) ' +
       '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS] [--limit N] [--offset K] [--full]\n' +
       '       iv-harness --serve | --stop | --server-status | --self-test\n'
     );
