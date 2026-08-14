@@ -58,6 +58,20 @@ elif [ -n "${GATE_LOG:-}" ]; then
     exit 6
   fi
   echo "land: gate verdict read: GATE_EXIT=0 (${GATE_LOG})"
+  # Tip-stamp guard (#565): a stamped log must match the branch tip being
+  # landed — "the thing you verified must be the thing you land", mechanized.
+  # Old logs without a stamp pass unchecked (backward compatible).
+  stamped_tip="$(grep -m1 '^GATE_TREE_TIP=' "$GATE_LOG" 2>/dev/null | cut -d= -f2 || true)"
+  if [ -n "$stamped_tip" ]; then
+    landing_tip="$(git rev-parse "fleet/${task_number}-${slug}" 2>/dev/null || true)"
+    if [ -n "$landing_tip" ] && [ "$stamped_tip" != "$landing_tip" ]; then
+      echo "land: REFUSING — the gate log is stamped for tip ${stamped_tip:0:12} but" >&2
+      echo "  branch fleet/${task_number}-${slug} is at ${landing_tip:0:12}. The tree moved" >&2
+      echo "  after the gate ran. Re-gate the current tip, or GATE_OVERRIDE with the reason." >&2
+      exit 6
+    fi
+    echo "land: tip stamp verified (${stamped_tip:0:12})"
+  fi
 else
   echo "land: REFUSING — no gate verdict supplied. Pass GATE_LOG=<log with GATE_EXIT=0>" >&2
   echo "  or GATE_OVERRIDE='<written reason>' to take the exception deliberately." >&2
