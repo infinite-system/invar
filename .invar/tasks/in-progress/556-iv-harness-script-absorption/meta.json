@@ -1,0 +1,12 @@
+{
+  "task": 556,
+  "slug": "iv-harness-script-absorption",
+  "branch": "fleet/556-iv-harness-script-absorption",
+  "worktree": ".invar/worktrees/556-iv-harness-script-absorption",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T14:40:00-04:00"
+}
