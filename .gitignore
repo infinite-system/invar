@@ -41,3 +41,4 @@ tmp/
 
 # personal workspace task config — never tracked (breaks harness drives: folder-open tasks run in every PTY smoke; see #314)
 /.invar/tasks.json
+.invar/harness-events.jsonl

@@ -87,6 +87,7 @@ export const CONVERTED_MODULES = new Set<string>([
   'iv-harness/server',
   'iv-harness/reports',
   'iv-harness/drift',
+  'iv-harness/verbs',
 ]);
 
 function normalizeFileName(fileName: string): string {
