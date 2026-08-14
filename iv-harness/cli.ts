@@ -24,6 +24,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessGraph } from './src/modules/graph/HarnessGraph.ts';
+import { HarnessPrint } from './src/modules/graph/HarnessPrint.ts';
 import { HarnessServer } from './src/modules/server/HarnessServer.ts';
 
 class $HarnessCli {
@@ -90,7 +91,7 @@ class $HarnessCli {
   static usage(): string {
     return (
       'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value>) ' +
-      '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS]\n' +
+      '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS] [--limit N] [--offset K] [--full]\n' +
       '       iv-harness --serve | --stop | --server-status | --self-test\n'
     );
   }
@@ -176,13 +177,23 @@ class $HarnessCli {
             : [];
         process.stdout.write(keys.join('\n') + '\n');
       } else {
-        process.stdout.write(JSON.stringify(value, null, 2) + '\n');
+        process.stdout.write(this.renderBounded(value, flags));
       }
       return 0;
     } catch (error) {
       process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
       return 1;
     }
+  }
+
+  /** Bounded by default: big containers truncate loudly (the graph stays whole). */
+  static renderBounded(value: unknown, flags: CliFlags): string {
+    const bounded = HarnessPrint.Class.boundedClone(value, {
+      limit: flags.printLimit,
+      offset: flags.printOffset,
+      full: flags.printFull,
+    });
+    return JSON.stringify(bounded, null, 2) + '\n';
   }
 
   /** Attached: the server parks the condition on its watchers. Cold: local re-derive poll. */
@@ -456,6 +467,9 @@ interface CliFlags {
   heartbeat?: string;
   rendezvous?: string;
   timeoutMilliseconds?: number;
+  printLimit?: number;
+  printOffset?: number;
+  printFull?: boolean;
   selfTest: boolean;
   serve: boolean;
   stop: boolean;
