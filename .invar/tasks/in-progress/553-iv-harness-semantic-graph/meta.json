@@ -1,0 +1,12 @@
+{
+  "task": 553,
+  "slug": "iv-harness-semantic-graph",
+  "branch": "fleet/553-iv-harness-semantic-graph",
+  "worktree": ".invar/worktrees/553-iv-harness-semantic-graph",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T13:05:00-04:00"
+}

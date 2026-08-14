@@ -27,3 +27,9 @@ manual runs. A new smoke with a latent load-sensitive wait.
 (which clock each side reads), reproduce under 3-4x contention, fix the
 wait or publisher, never the timeout. This is a NEW smoke — its own
 race, not the panel/scrollbar/popup families.
+
+- gate-553-r2 (2026-08-14, /tmp/merge-gate-failures.6c717759369dd38e.566755/):
+  same timeout ("unstaged comparison labels the staged text as base and
+  working as current"), branch adds only the new iv-harness/ directory —
+  no diff code touched. Solo in the same worktree: green. Third sighting,
+  all under gate load, never solo.

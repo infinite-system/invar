@@ -94,6 +94,109 @@ function dim(hex: string): string {
   );
 }
 
+// Box-drawing and block glyphs render as vector shapes, not text: a font
+// glyph does not span the full cell, so splitters and panel borders come
+// out dashed. Real terminals special-case these characters the same way.
+const LINE_STROKE = 1.5;
+
+function boxShape(
+  character: string,
+  x: number,
+  top: number,
+  fill: string,
+): string | null {
+  const cx = x + CELL_WIDTH / 2;
+  const cy = top + CELL_HEIGHT / 2;
+  const right = x + CELL_WIDTH;
+  const bottom = top + CELL_HEIGHT;
+  const radius = CELL_WIDTH / 2;
+  const half = LINE_STROKE / 2;
+  const tall = CELL_HEIGHT;
+  const rect = (rx: number, ry: number, rw: number, rh: number) =>
+    `<rect x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" width="${rw.toFixed(2)}" height="${rh.toFixed(2)}" fill="${fill}" shape-rendering="crispEdges"/>`;
+  const path = (d: string) =>
+    `<path d="${d}" fill="none" stroke="${fill}" stroke-width="${LINE_STROKE}"/>`;
+  switch (character) {
+    case '─':
+      return rect(x, cy - half, CELL_WIDTH, LINE_STROKE);
+    case '│':
+      return rect(cx - half, top, LINE_STROKE, tall);
+    case '╭':
+      return path(
+        `M${right} ${cy} H${cx + radius} Q${cx} ${cy} ${cx} ${cy + radius} V${bottom}`,
+      );
+    case '╮':
+      return path(
+        `M${x} ${cy} H${cx - radius} Q${cx} ${cy} ${cx} ${cy + radius} V${bottom}`,
+      );
+    case '╰':
+      return path(
+        `M${cx} ${top} V${cy - radius} Q${cx} ${cy} ${cx + radius} ${cy} H${right}`,
+      );
+    case '╯':
+      return path(
+        `M${cx} ${top} V${cy - radius} Q${cx} ${cy} ${cx - radius} ${cy} H${x}`,
+      );
+    case '┌':
+      return path(`M${right} ${cy} H${cx} V${bottom}`);
+    case '┐':
+      return path(`M${x} ${cy} H${cx} V${bottom}`);
+    case '└':
+      return path(`M${cx} ${top} V${cy} H${right}`);
+    case '┘':
+      return path(`M${cx} ${top} V${cy} H${x}`);
+    case '├':
+      return (
+        rect(cx - half, top, LINE_STROKE, tall) +
+        rect(cx, cy - half, right - cx, LINE_STROKE)
+      );
+    case '┤':
+      return (
+        rect(cx - half, top, LINE_STROKE, tall) +
+        rect(x, cy - half, cx - x, LINE_STROKE)
+      );
+    case '┬':
+      return (
+        rect(x, cy - half, CELL_WIDTH, LINE_STROKE) +
+        rect(cx - half, cy, LINE_STROKE, bottom - cy)
+      );
+    case '┴':
+      return (
+        rect(x, cy - half, CELL_WIDTH, LINE_STROKE) +
+        rect(cx - half, top, LINE_STROKE, cy - top)
+      );
+    case '┼':
+      return (
+        rect(x, cy - half, CELL_WIDTH, LINE_STROKE) +
+        rect(cx - half, top, LINE_STROKE, tall)
+      );
+    case '█':
+      return rect(x, top, CELL_WIDTH, tall);
+    case '▀':
+      return rect(x, top, CELL_WIDTH, CELL_HEIGHT / 2);
+    case '▄':
+      return rect(x, cy, CELL_WIDTH, bottom - cy);
+    case '▌':
+      return rect(x, top, CELL_WIDTH / 2, tall);
+    case '▐':
+      return rect(cx, top, CELL_WIDTH / 2, tall);
+    case '▏':
+      return rect(x, top, CELL_WIDTH / 8, tall);
+    case '▎':
+      return rect(x, top, CELL_WIDTH / 4, tall);
+    case '▍':
+      return rect(x, top, CELL_WIDTH * 0.375, tall);
+    case '▋':
+      return rect(x, top, CELL_WIDTH * 0.625, tall);
+    case '▊':
+      return rect(x, top, CELL_WIDTH * 0.75, tall);
+    case '▉':
+      return rect(x, top, CELL_WIDTH * 0.875, tall);
+    default:
+      return null; // not a line/block glyph — render as text
+  }
+}
+
 function escapeXml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -208,6 +311,20 @@ function renderSvg(snapshot: HarnessSnapshot.Model): {
     for (let column = 0; column < cells.length; column++) {
       const cell = cells[column]!;
       const characters = cell.characters || ' ';
+      const shape =
+        characters.length === 1
+          ? boxShape(
+              characters,
+              column * CELL_WIDTH,
+              row * CELL_HEIGHT,
+              foregroundOf(cell),
+            )
+          : null;
+      if (shape) {
+        flushText();
+        textRuns.push(shape);
+        continue;
+      }
       const style =
         ` fill="${foregroundOf(cell)}"` +
         (cell.isBold ? ' font-weight="700"' : '') +
@@ -230,8 +347,9 @@ function renderSvg(snapshot: HarnessSnapshot.Model): {
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" ` +
     `font-family="${FONT_FAMILY}" font-size="${FONT_SIZE}">\n` +
     `<rect width="${width}" height="${height}" fill="${DEFAULT_BACKGROUND}"/>\n` +
+    `<g shape-rendering="crispEdges">\n` +
     backgroundRects.join('\n') +
-    '\n' +
+    '\n</g>\n' +
     textRuns.join('\n') +
     '\n</svg>\n';
   return { markup, columns, rows };
