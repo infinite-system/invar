@@ -16,6 +16,21 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ## The instruments
 
+### [iv-harness — the development-process graph](iv-harness/cli.ts)
+
+`bun iv-harness/cli.ts get <path>` answers process-state questions
+structurally instead of by grepping logs: `tasks.counts`,
+`tasks.inProgress`, `tasks.byNumber.<n>`, `gates.last` / `gates.red`,
+`lanes.fleet` / `lanes.dirty`, `fleet.heartbeat`. `ls [<path>]` lists a
+node's keys; misses print the addressable keys (poke to explore). Works
+against any checkout via `--root DIR`; `--gates FILE` / `--heartbeat FILE`
+override the fleet defaults. The graph is a projection of disk (task
+folders, git, gate logs) — it holds nothing, so answers are always
+current. `--self-test` proves both arms (planted fixture seen; wrong
+path loud; empty root reads empty). Gotcha: `gates.*` reads the
+`/tmp/fleet-watch-gates` registry, which a reboot wipes — empty gates
+after a reboot is a true reading, not a defect.
+
 ### [Drive — one-command UI sightings](scripts/harness/drive.md)
 
 `bun run drive` (alias of DriveSession.ts — warm server + fluent snippets; one-shot flags REMOVED 2026-08-03) boots the real app in the PTY harness, runs chained input
