@@ -253,10 +253,8 @@ class $HarnessShapes {
       file: shape.file,
       members: shape.members.map((member) => {
         if (depth <= 1) return member;
-        const referenced = Object.keys(catalog.interfaces).find(
-          (knownName) =>
-            new RegExp(`\\b${knownName}\\b`).test(member.type) &&
-            knownName !== typeName,
+        const referenced = Object.keys(catalog.interfaces).find((knownName) =>
+          new RegExp(`\\b${knownName}\\b`).test(member.type),
         );
         if (referenced === undefined) return member;
         if (visited.has(referenced)) {
