@@ -1,0 +1,12 @@
+{
+  "task": 555,
+  "slug": "iv-harness-warm-graph-server",
+  "branch": "fleet/555-iv-harness-warm-graph-server",
+  "worktree": ".invar/worktrees/555-iv-harness-warm-graph-server",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T13:45:00-04:00"
+}
