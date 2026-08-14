@@ -1,0 +1,12 @@
+{
+  "touchedDomains": ["shapes", "cli", "server"],
+  "invariants": {
+    "upheld": ["The harness graph never imports from the app"]
+  },
+  "bycatchCount": 2,
+  "steering": {
+    "needed": true,
+    "cause": "user steered describe toward verbatim TS + doc comments mid-task; gate r2/r3 exposed a born-red test behind cropped output"
+  },
+  "evidence": ["/tmp/gate-564-r4.log"]
+}

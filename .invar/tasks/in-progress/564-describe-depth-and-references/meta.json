@@ -1,0 +1,12 @@
+{
+  "task": 564,
+  "slug": "describe-depth-and-references",
+  "branch": "fleet/564-describe-depth-and-references",
+  "worktree": ".invar/worktrees/564-describe-depth-and-references",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T17:20:00-04:00"
+}
