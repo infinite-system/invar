@@ -700,6 +700,49 @@ scripts/harness/smoke-agent-pane-ux-harness.ts && bun scripts/harness/smoke-data
 
 **Last refined:** 2026-07-29
 
+### The app runs where the files are
+
+**Invariant:** If Invar serves a repository, then the app process runs on the
+machine holding that repository's filesystem, PTYs, git, and language
+servers — remote use streams the terminal (PTY bytes over ssh/mosh), never
+the filesystem.
+
+**Scope:** Deployment shape. Binds the app and iv-harness alike (iv-harness
+records the same rule as "remote access goes through the server").
+
+**Mechanism:** A TUI already has the local/remote split GUI editors must
+build: the terminal emulator is the thin client (fonts, GPU, clipboard via
+OSC 52 live host-side) and only cell updates cross the wire — while every
+latency-sensitive thing the app does (fs, PTYs, git, LSP) happens next to
+the data. Programs travel to data; meaning comes back, not file bytes.
+
+**Generates:** The graph-client remote story (GraphChannel and iv-harness
+answer over sockets; forward the socket to read any machine's semantic
+state); no async-fs infection through the codebase.
+
+**Rejected alternatives:** Host-based Invar with remote fs (VS Code's
+split) — rebuilds sshfs inside the app, forces async fs through every
+module, and solves a problem the TUI shape does not have (rejected
+2026-08-14). Revisit trigger: typing latency over real links becomes a
+felt complaint — the answer then is predictive echo at the terminal seam
+(mosh-style), still never remote fs.
+
+**Evidence:** Remote use today is exactly ssh streaming the PTY; OSC 52
+copy reaches the host terminal; iv-harness M2 answers over a forwarded
+socket.
+
+**Impossible if true:** An app build that mounts a remote filesystem to
+edit a repository it does not run beside; a UI thread awaiting a network
+round-trip to answer a keystroke's filesystem read.
+
+**Verification:** Inspection — no remote-fs mount layer exists in src/;
+remote workflows documented and driven through ssh/mosh + socket
+forwarding only.
+
+**Status:** established
+
+**Last refined:** 2026-08-14
+
 ### The app is built only after the kernel is sealed
 
 **Invariant:** If the application is constructed, then plugin class-graph composition has already
