@@ -1,6 +1,6 @@
 import { Static } from 'ivue/extras';
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -17,7 +17,7 @@ class $HarnessVerbs {
     return '.invar/harness-events.jsonl';
   }
 
-  static get VERB_REGISTRY(): Record<string, VerbDefinition> {
+  static get verbRegistry(): Record<string, VerbDefinition> {
     return {
       'probe.selfTest': {
         script: 'scripts/fleet/probe.sh',
@@ -44,7 +44,7 @@ class $HarnessVerbs {
   }
 
   static availableVerbs(rootDirectory: string): VerbListing[] {
-    return Object.entries(this.VERB_REGISTRY).map(([name, definition]) => ({
+    return Object.entries(this.verbRegistry).map(([name, definition]) => ({
       name,
       description: definition.description,
       available: existsSync(join(rootDirectory, definition.script)),
@@ -57,9 +57,9 @@ class $HarnessVerbs {
     verbName: string,
     verbArguments: string[],
   ): VerbResult {
-    const definition = this.VERB_REGISTRY[verbName];
+    const definition = this.verbRegistry[verbName];
     if (!definition) {
-      const verbNames = Object.keys(this.VERB_REGISTRY).join(', ');
+      const verbNames = Object.keys(this.verbRegistry).join(', ');
       throw new Error(`no verb '${verbName}'. Registered verbs: ${verbNames}`);
     }
     const scriptPath = join(rootDirectory, definition.script);
@@ -107,6 +107,7 @@ class $HarnessVerbs {
 
   /** One typed line per run — the steering ledger the Observer counts. */
   static appendEvent(rootDirectory: string, result: VerbResult): void {
+    mkdirSync(join(rootDirectory, '.invar'), { recursive: true });
     const event = {
       verb: result.verb,
       arguments: result.arguments,
