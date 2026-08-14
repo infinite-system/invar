@@ -34,6 +34,15 @@ the builders' work.
    from output — a claim of green becomes contradictable data (the
    tail-cropped 1-fail incident).
 Each guard ships with a planted-defect test (fires AND stays silent).
+5. THE NIGHT DIGEST (the capstone — user insight 2026-08-14: "what was
+   the conductor actually fighting with"): a derived view over the
+   event ledger + registered gate logs + landings. The FIGHT LOG
+   (consecutive non-zero-exit events on one subject: gate-564 red x3
+   over 40min, causes, resolution), TIME ACCOUNTING (durations by verb
+   and task), and CLAIM-VS-EVIDENCE contradictions. The morning report
+   becomes a query the user runs, not an essay the survivor writes;
+   conductor prose becomes commentary on top, never the source of
+   truth. `get digest` or `run report.night`.
 
 ## Invariants in scope
 
