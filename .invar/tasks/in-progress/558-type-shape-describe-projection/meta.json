@@ -1,0 +1,12 @@
+{
+  "task": 558,
+  "slug": "type-shape-describe-projection",
+  "branch": "fleet/558-type-shape-describe-projection",
+  "worktree": ".invar/worktrees/558-type-shape-describe-projection",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T16:10:00-04:00"
+}

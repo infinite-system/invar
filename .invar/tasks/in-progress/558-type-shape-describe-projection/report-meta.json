@@ -1,0 +1,9 @@
+{
+  "touchedDomains": ["shapes", "graph", "server", "cli"],
+  "invariants": {
+    "upheld": ["The harness graph never imports from the app"]
+  },
+  "bycatchCount": 1,
+  "steering": { "needed": false },
+  "evidence": ["/tmp/gate-558.log"]
+}
