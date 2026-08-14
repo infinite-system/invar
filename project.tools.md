@@ -26,7 +26,11 @@ node's keys; misses print the addressable keys (poke to explore). One warm serve
 unix socket in a checkout-keyed rendezvous, the DriveSession
 convention), `get`/`ls` auto-attach and fall back cold, `waitFor
 <path> <json>` parks a graph condition on the watchers (`--timeout MS`),
-`--stop` / `--server-status` manage it. The server is a DISPOSABLE
+`--stop` / `--server-status` manage it; the manifest carries the BOOT
+COMMIT and attaching past a landing warns the server runs old code.
+`get metrics` tallies structured report-meta.json worker reports
+(steering density, invariant verdicts); `get drift` wraps
+tasks-status.ts output into structured findings. The server is a DISPOSABLE
 projection cache — killing it loses nothing. Works
 against any checkout via `--root DIR`; `--gates FILE` / `--heartbeat FILE`
 override the fleet defaults. The graph is a projection of disk (task

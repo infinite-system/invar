@@ -11,6 +11,7 @@ import {
   type FSWatcher,
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { HarnessGraph } from '../graph/HarnessGraph.ts';
 import { HarnessGateRuns } from '../gates/HarnessGateRuns.ts';
 
@@ -67,6 +68,18 @@ class $HarnessServer {
 
   static get DEFAULT_WAIT_TIMEOUT_MILLISECONDS(): number {
     return 10000;
+  }
+
+  /** The commit a server booted from, or null outside git — the staleness anchor. */
+  static currentCommit(rootDirectory: string): string | null {
+    try {
+      return execFileSync('git', ['-C', rootDirectory, 'rev-parse', 'HEAD'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+    } catch {
+      return null;
+    }
   }
 
   constructor(public options: HarnessServerOptions) {}
@@ -151,6 +164,7 @@ class $HarnessServer {
           socketPath,
           rootDirectory: this.options.rootDirectory,
           startedAt: new Date().toISOString(),
+          bootCommit: $HarnessServer.currentCommit(this.options.rootDirectory),
         },
         null,
         2,
@@ -323,6 +337,9 @@ class $HarnessServer {
         return json({
           pid: process.pid,
           rootDirectory: this.options.rootDirectory,
+          bootCommit:
+            $HarnessServer.readLiveManifest(this.rendezvousDirectory)
+              ?.bootCommit ?? null,
           watchers: this.fileWatchers.length,
           parkedWaits: this.parkedWaits.size,
           versions: {
@@ -391,6 +408,7 @@ export interface ServerManifest {
   socketPath: string;
   rootDirectory: string;
   startedAt: string;
+  bootCommit: string | null;
 }
 
 export interface ParkedWaitResult {

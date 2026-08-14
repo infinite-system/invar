@@ -1,6 +1,10 @@
 import { Static } from 'ivue/extras';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  HarnessTaskReports,
+  type TaskReportMeta,
+} from '../reports/HarnessTaskReports.ts';
 
 /**
  * Reads the durable task record (.invar/tasks/<state>/<number>-<slug>/)
@@ -66,6 +70,7 @@ class $HarnessTaskRecords {
       steerCount: steers.count,
       lastSteer: steers.last,
       meta: this.readMeta(taskDirectory, files),
+      reportMeta: HarnessTaskReports.Class.readReportMeta(taskDirectory, files),
     };
   }
 
@@ -136,4 +141,5 @@ export interface TaskNode {
   steerCount: number;
   lastSteer: string | null;
   meta: Record<string, unknown> | null;
+  reportMeta: TaskReportMeta | null;
 }

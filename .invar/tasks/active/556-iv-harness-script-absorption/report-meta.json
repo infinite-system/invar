@@ -1,0 +1,9 @@
+{
+  "touchedDomains": ["reports", "drift", "server", "graph"],
+  "invariants": {
+    "upheld": ["A wrapped script keeps its logic in one place"],
+    "discovered": []
+  },
+  "bycatchCount": 0,
+  "steering": { "needed": false }
+}

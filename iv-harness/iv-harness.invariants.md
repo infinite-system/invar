@@ -139,7 +139,11 @@ caches — killing it at any instant loses no state, and every client
 falls back to the cold one-shot read with identical answers.
 
 **Scope:** The `server` module and every client of the rendezvous
-protocol (CLI attach, future Observer subscriptions).
+protocol (CLI attach, future Observer subscriptions). Remote access
+goes THROUGH the server — the graph travels to the files (run --serve
+where the repo lives, forward the socket), never the files to the
+graph over a remote fs; synchronous derivation is load-bearing for
+ivue getter composition.
 
 **Mechanism:** Watchers only bump version signals; every answer
 re-derives from disk at request time; the CLI attaches only through a
