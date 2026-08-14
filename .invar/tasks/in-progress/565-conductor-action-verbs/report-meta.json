@@ -1,0 +1,15 @@
+{
+  "touchedDomains": ["actions", "digest", "graph", "cli", "fleet-scripts"],
+  "invariants": {
+    "upheld": [
+      "A wrapped script keeps its logic in one place",
+      "Only the files arbitrate process state"
+    ]
+  },
+  "bycatchCount": 1,
+  "steering": {
+    "needed": true,
+    "cause": "user insight shaped the night digest: track the conductor so the night is legible"
+  },
+  "evidence": ["/tmp/gate-565.log"]
+}

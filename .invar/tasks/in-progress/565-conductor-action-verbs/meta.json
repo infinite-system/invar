@@ -1,0 +1,12 @@
+{
+  "task": 565,
+  "slug": "conductor-action-verbs",
+  "branch": "fleet/565-conductor-action-verbs",
+  "worktree": ".invar/worktrees/565-conductor-action-verbs",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "high",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T17:50:00-04:00"
+}
