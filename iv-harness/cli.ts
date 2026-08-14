@@ -24,6 +24,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessGraph } from './src/modules/graph/HarnessGraph.ts';
+import { HarnessPrint } from './src/modules/graph/HarnessPrint.ts';
 import { HarnessServer } from './src/modules/server/HarnessServer.ts';
 
 class $HarnessCli {
@@ -59,19 +60,46 @@ class $HarnessCli {
     };
     for (let index = 0; index < commandArguments.length; index++) {
       const argument = commandArguments[index]!;
-      if (argument === '--root') flags.root = commandArguments[++index];
-      else if (argument === '--gates') flags.gates = commandArguments[++index];
-      else if (argument === '--heartbeat')
-        flags.heartbeat = commandArguments[++index];
-      else if (argument === '--rendezvous')
-        flags.rendezvous = commandArguments[++index];
-      else if (argument === '--timeout')
-        flags.timeoutMilliseconds = Number(commandArguments[++index]);
-      else if (argument === '--self-test') flags.selfTest = true;
-      else if (argument === '--serve') flags.serve = true;
-      else if (argument === '--stop') flags.stop = true;
-      else if (argument === '--server-status') flags.serverStatus = true;
-      else flags.positional.push(argument);
+      switch (argument) {
+        case '--root':
+          flags.root = commandArguments[++index];
+          break;
+        case '--gates':
+          flags.gates = commandArguments[++index];
+          break;
+        case '--heartbeat':
+          flags.heartbeat = commandArguments[++index];
+          break;
+        case '--rendezvous':
+          flags.rendezvous = commandArguments[++index];
+          break;
+        case '--timeout':
+          flags.timeoutMilliseconds = Number(commandArguments[++index]);
+          break;
+        case '--limit':
+          flags.printLimit = Number(commandArguments[++index]);
+          break;
+        case '--offset':
+          flags.printOffset = Number(commandArguments[++index]);
+          break;
+        case '--full':
+          flags.printFull = true;
+          break;
+        case '--self-test':
+          flags.selfTest = true;
+          break;
+        case '--serve':
+          flags.serve = true;
+          break;
+        case '--stop':
+          flags.stop = true;
+          break;
+        case '--server-status':
+          flags.serverStatus = true;
+          break;
+        default:
+          flags.positional.push(argument);
+      }
     }
     return flags;
   }
@@ -90,7 +118,7 @@ class $HarnessCli {
   static usage(): string {
     return (
       'usage: iv-harness (get <path> | ls [<path>] | waitFor <path> <json-value>) ' +
-      '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS]\n' +
+      '[--root DIR] [--rendezvous DIR] [--gates FILE] [--heartbeat FILE] [--timeout MS] [--limit N] [--offset K] [--full]\n' +
       '       iv-harness --serve | --stop | --server-status | --self-test\n'
     );
   }
@@ -178,13 +206,23 @@ class $HarnessCli {
             : [];
         process.stdout.write(keys.join('\n') + '\n');
       } else {
-        process.stdout.write(JSON.stringify(value, null, 2) + '\n');
+        process.stdout.write(this.renderBounded(value, flags));
       }
       return 0;
     } catch (error) {
       process.stderr.write(`iv-harness: ${(error as Error).message}\n`);
       return 1;
     }
+  }
+
+  /** Bounded by default: big containers truncate loudly (the graph stays whole). */
+  static renderBounded(value: unknown, flags: CliFlags): string {
+    const bounded = HarnessPrint.Class.boundedClone(value, {
+      limit: flags.printLimit,
+      offset: flags.printOffset,
+      full: flags.printFull,
+    });
+    return JSON.stringify(bounded, null, 2) + '\n';
   }
 
   /** Attached: the server parks the condition on its watchers. Cold: local re-derive poll. */
@@ -458,10 +496,15 @@ interface CliFlags {
   heartbeat?: string;
   rendezvous?: string;
   timeoutMilliseconds?: number;
+  printLimit?: number;
+  printOffset?: number;
+  printFull?: boolean;
   selfTest: boolean;
   serve: boolean;
   stop: boolean;
   serverStatus: boolean;
 }
 
-process.exit(await $HarnessCli.run(process.argv.slice(2)));
+// exitCode, never exit(): a large --full answer must flush stdout before
+// the process ends (exit() truncates pending writes).
+process.exitCode = await $HarnessCli.run(process.argv.slice(2));
