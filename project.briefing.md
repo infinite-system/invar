@@ -4,6 +4,46 @@ line to the Condensed history below. Durable lessons never live here — they
 go to project.conductor.md (families) and the skills; this file is the
 CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
+# RESUME ANCHOR 90 — 2026-08-14 16:45 EDT — IV-HARNESS COMPLETE THROUGH #562; GOAL DONE; TEN LANDINGS TODAY
+
+Crons armed (:07 e0b76439, :37 db522e11). fleet-watch Monitor bb2l40462
+armed. Fleet IDLE. main clean at 3a9ec712.
+
+TODAY'S TEN LANDINGS (all conductor self-do, serial gates):
+#553 M1 process graph (9c151355) · conventions ext (d11d8f01) ·
+fixture range (f6d4578a) · #555 M2 warm server (a1111764) · #557
+did-you-mean (050eebdf) · #556 M3 reports+drift+staleness (fe4d59fd) ·
+#560 compat fix (376a86cf) · #561 bounded output (49ed5e62) · #559
+verb contract rung 1 (7558931a) · #558 describe shapes (3b7180be) ·
+#562 contributor seam (ec7b2a13).
+
+IV-HARNESS NOW: graph (tasks/gates/lanes/fleet/metrics/drift/verbs/
+events) · warm server + waitFor + stale-warning · bounded printing ·
+did-you-mean · run channel + event ledger (.invar/harness-events.jsonl,
+gitignored) · describe (shapes.generated.json, no-drift test — FIRED
+cross-branch at 562's merge, proving itself) · contributor seam
+(.invar/harness/*.harness.ts, contract v1, skew/collision/breakage
+loud + non-fatal). All modules ratcheted; ~54 iv-harness tests.
+
+RECORDED: "The app runs where the files are" (07225a04) — streaming
+PTY is the remote shape; host-based-Invar-with-remote-fs REJECTED,
+revisit trigger = felt typing latency -> predictive echo.
+
+OPEN FLAKES: #563 bracket-match (NEW, first sighting, solo-green) ·
+#554 markdown CJK · #549 diff-overview (4 sightings) · #545 · #552 ·
+census #551. #544 #548 filed. LESSON QUEUE for next sweep: scripted
+edits must assert (556's false switch claim, summary-556); git add -A
+never in user checkout (in conductor md).
+
+NEXT (user-queued): the TWO-AXIS NAVIGATION discussion (top bar =
+projects, left rail = worktrees fed by lanes.fleet) — drive current
+tab surfaces + mock per ui-task protocol BEFORE any brief. #559 rung 2
+(land face) and M2-watch-mode extras unfiled.
+
+WATCHER RE-ARM LINES (verbatim):
+  Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)
+  CronCreate 7 * * * * + 37 * * * * — prompts verbatim in conductor SKILL.md
+
 # RESUME ANCHOR 89 — 2026-08-14 14:00 EDT — M2 WARM SERVER LANDED (a1111764); AWAITING USER M2 REVIEW, THEN M3
 
 Crons armed (:07 e0b76439, :37 db522e11). fleet-watch Monitor bkhy5pn2s armed.
@@ -134,36 +174,10 @@ CONDUCTOR CONTEXT is very large after a long session — held further
 autonomous builder spawns rather than drop attention quality. Remaining
 backlog user-priority; no user-decision items pending.
 
-# RESUME ANCHOR 85 — 2026-08-11 15:08 EDT — #354 + #526 LANDED; FLEET IDLE; 16 LANDED THIS SESSION
-
-Crons armed (:07, :37). fleet-watch blc4t5ql6 armed. Fleet IDLE, checkout
-clean.
-
-LANDED SINCE 84: #526 (quitConfirmation -> consentDialog, atomic rename,
-grep-zero), #354 11edfd37 (welcome names Ctrl+P=Go to File, F1=palette;
-5 gate rounds — the label change exposed+killed a latent move-line smoke
-race, then flaky-smoke tail). SESSION TOTAL: 16 landed.
-
-CONDUCTOR LESSONS THIS SESSION (all committed to project.conductor.md):
-diff-stat sanity check is the FIRST structural-arm move (caught #546
-priming file); "implausibly related" is a hypothesis, the MERGE-BASE
-test (paired, not single-sample) is the arbiter (#354 + #522 double
-errors); read the whole function not the hunk; verify a gate was quiet
-before trusting its verdict.
-
-FLAKE EVIDENCE-HOLDS OPEN (the smoke suite's load-sensitive-wait tail —
-worth a dedicated wave when the user steers less densely): #545 (structure
-scrollbar diag, 2 sightings), #547 (popup wheel, 3), #549 (diff-overview,
-1). Plus filed-this-session: #544 (observation predicate distillation),
-#548 (land refuses committed priming files).
-
-REMAINING BACKLOG large + USER-PRIORITY (12 user-directed + ~30
-verification-integrity, many pre-session). Do NOT bulk-dispatch — user
-picks. #526 rename is DONE (was the last user-decision item pending).
-
 
 ## Condensed history (pruned anchors — full text in git)
 
+- # RESUME ANCHOR 85 — 2026-08-11 15:08 EDT — #354 + #526 LANDED; FLEET IDLE; 16 LANDED THIS SESSION
 - # RESUME ANCHOR 84 — 2026-08-11 14:09 EDT — QUEUE-DRAIN WAVES DONE (14 LANDED THIS SESSION); FLEET IDLE
 - # RESUME ANCHOR 83 — 2026-08-11 11:34 EDT — QUEUE RUNNING: 3 LANES; CRONS RE-ARMED BY USER
 - # RESUME ANCHOR 82 — 2026-08-11 09:13 EDT — #539 + #531 LANDED; ALL KNOWN GATE FLAKES CLOSED; IDLE

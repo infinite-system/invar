@@ -982,3 +982,18 @@ ratchet AT BIRTH (iv-harness's five modules went into CONVERTED_MODULES
 with zero legacy allowance — the cheapest moment to be strict is the
 first commit), and test fixtures that mimic real identifiers use a
 range reality cannot reach (990xxx task numbers).
+
+## 2026-08-14 — a scripted edit without an assert is a done that lies
+
+The #556 report claimed "parseFlags -> switch"; the python replace had
+no assert, prettier's reformat broke the match, the edit silently
+no-opped, and the report shipped the claim. Discovered two tasks later
+when the "merge-lost" switch turned out never to have existed. Rule:
+every scripted string-replace asserts its match and re-asserts the
+result, or it refuses — the same both-arms law applied to edits. The
+practice paid within the hour: an asserted edit refused loudly when
+rootNamespace had been reformatted, and nothing half-applied. Sibling
+lesson from the same day: a fixture planted in a branch where landing
+writes the same file produces a union-merge with conflict markers
+inside JSON (556's report-meta) — landing-owned files are written on
+main at landing time, never planted in the branch.
