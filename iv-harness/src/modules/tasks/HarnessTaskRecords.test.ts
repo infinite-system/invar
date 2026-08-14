@@ -11,12 +11,12 @@ function plantedRoot(): string {
     '.invar',
     'tasks',
     'in-progress',
-    '901-planted-task-fixture',
+    '990001-planted-task-fixture',
   );
   mkdirSync(taskDirectory, { recursive: true });
   writeFileSync(
-    join(taskDirectory, 'task-901-planted-task-fixture.md'),
-    '# 901\n\nPriority: flake-evidence\nState: ACTIVE\nEngine: codex\n',
+    join(taskDirectory, 'task-990001-planted-task-fixture.md'),
+    '# 990001\n\nPriority: flake-evidence\nState: ACTIVE\nEngine: codex\n',
   );
   writeFileSync(join(taskDirectory, 'steers.log'), 'first steer\n');
   writeFileSync(join(taskDirectory, 'meta.json'), '{"round": 3}\n');
@@ -29,7 +29,7 @@ test('a planted task folder becomes a full node', () => {
     const tasks = HarnessTaskRecords.Class.listTasks(fixtureRoot);
     expect(tasks).toHaveLength(1);
     const node = tasks[0]!;
-    expect(node.number).toBe(901);
+    expect(node.number).toBe(990001);
     expect(node.state).toBe('in-progress');
     expect(node.priority).toBe('flake-evidence');
     expect(node.engine).toBe('codex');

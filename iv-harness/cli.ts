@@ -116,15 +116,15 @@ class $HarnessCli {
         '.invar',
         'tasks',
         'in-progress',
-        '901-selftest-planted-task',
+        '990001-selftest-planted-task',
       );
       mkdirSync(taskDirectory, { recursive: true });
       writeFileSync(
-        join(taskDirectory, 'task-901-selftest-planted-task.md'),
-        '# 901 — selftest planted task\n\nPriority: verification-integrity\nState: ACTIVE\nEngine: claude\n',
+        join(taskDirectory, 'task-990001-selftest-planted-task.md'),
+        '# 990001 — selftest planted task\n\nPriority: verification-integrity\nState: ACTIVE\nEngine: claude\n',
       );
       writeFileSync(
-        join(taskDirectory, 'report-901-selftest-planted-task.md'),
+        join(taskDirectory, 'report-990001-selftest-planted-task.md'),
         'READY\n',
       );
       writeFileSync(
@@ -133,7 +133,7 @@ class $HarnessCli {
       );
       writeFileSync(
         join(taskDirectory, 'meta.json'),
-        '{"task": 901, "round": 2}\n',
+        '{"task": 990001, "round": 2}\n',
       );
       const greenLog = join(fixtureRoot, 'gate-green.log');
       const redLog = join(fixtureRoot, 'gate-red.log');
@@ -156,7 +156,7 @@ class $HarnessCli {
       // PRESENT arm — the graph sees what was planted.
       const counts = graph.resolve('tasks.counts') as Record<string, number>;
       check('planted task counted in-progress', counts['in-progress'] === 1);
-      const planted = graph.resolve('tasks.byNumber.901') as Record<
+      const planted = graph.resolve('tasks.byNumber.990001') as Record<
         string,
         unknown
       >;

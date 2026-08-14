@@ -30,20 +30,20 @@ function plantedRepository(): string {
 test('a fleet worktree appears as a lane with its task number', () => {
   const repositoryDirectory = plantedRepository();
   try {
-    const worktreeDirectory = join(repositoryDirectory, 'wt-902');
+    const worktreeDirectory = join(repositoryDirectory, 'wt-990002');
     git(repositoryDirectory, [
       'worktree',
       'add',
       '-b',
-      'fleet/902-planted-lane-fixture',
+      'fleet/990002-planted-lane-fixture',
       worktreeDirectory,
       'main',
     ]);
     writeFileSync(join(worktreeDirectory, 'dirty.txt'), 'uncommitted\n');
     const lanes = HarnessLanes.Class.listLanes(repositoryDirectory);
     expect(lanes.length).toBe(2);
-    const fleetLane = lanes.find((lane) => lane.taskNumber === 902)!;
-    expect(fleetLane.branch).toBe('fleet/902-planted-lane-fixture');
+    const fleetLane = lanes.find((lane) => lane.taskNumber === 990002)!;
+    expect(fleetLane.branch).toBe('fleet/990002-planted-lane-fixture');
     expect(fleetLane.dirty).toBe(true);
     expect(fleetLane.commitsAheadOfMain).toBe(0);
   } finally {

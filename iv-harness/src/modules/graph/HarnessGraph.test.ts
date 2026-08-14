@@ -12,12 +12,12 @@ function plantedGraph(
     '.invar',
     'tasks',
     'active',
-    '903-planted-graph-fixture',
+    '990003-planted-graph-fixture',
   );
   mkdirSync(taskDirectory, { recursive: true });
   writeFileSync(
-    join(taskDirectory, 'task-903-planted-graph-fixture.md'),
-    '# 903\n\nPriority: user-directed\nState: ACTIVE\n',
+    join(taskDirectory, 'task-990003-planted-graph-fixture.md'),
+    '# 990003\n\nPriority: user-directed\nState: ACTIVE\n',
   );
   const gateLog = join(fixtureRoot, 'gate.log');
   writeFileSync(gateLog, 'GATE_EXIT=0\n');
@@ -40,7 +40,7 @@ test('dotted paths resolve across every domain', () => {
       (graph.resolve('tasks.counts') as Record<string, number>)['active'],
     ).toBe(1);
     expect(
-      (graph.resolve('tasks.byNumber.903') as Record<string, unknown>)[
+      (graph.resolve('tasks.byNumber.990003') as Record<string, unknown>)[
         'priority'
       ],
     ).toBe('user-directed');
