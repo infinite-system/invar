@@ -379,8 +379,13 @@ class $HarnessServer {
       }
       if (url.pathname === '/describe') {
         const subject = url.searchParams.get('subject') ?? '';
+        const depth = Number(url.searchParams.get('depth') ?? 1);
         return json(
-          HarnessShapes.Class.describe(this.options.rootDirectory, subject),
+          HarnessShapes.Class.describe(
+            this.options.rootDirectory,
+            subject,
+            depth,
+          ),
         );
       }
       if (url.pathname === '/run' && request.method === 'POST') {

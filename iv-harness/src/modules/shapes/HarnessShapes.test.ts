@@ -48,3 +48,55 @@ test('an undescribable subject fails loudly listing describables', () => {
     /Describable: .*TaskNode/,
   );
 });
+
+test('every answer names its references', () => {
+  const answer = HarnessShapes.Class.describe(rootDirectory, 'tasks.all');
+  expect(answer.references).toContain('TaskReportMeta');
+  const verbAnswer = HarnessShapes.Class.describe(
+    rootDirectory,
+    'HarnessVerbs',
+  );
+  expect(verbAnswer.references).toContain('VerbResult');
+});
+
+test('depth 2 inlines a referenced interface in place', () => {
+  const answer = HarnessShapes.Class.describe(rootDirectory, 'tasks.all', 2);
+  const members = (answer.shape as { members: Record<string, unknown>[] })
+    .members;
+  const reportMetaMember = members.find(
+    (member) => member['name'] === 'reportMeta',
+  )!;
+  const expanded = reportMetaMember['expanded'] as {
+    members: { name: string }[];
+  };
+  expect(expanded.members.map((member) => member.name)).toContain('steering');
+});
+
+test('depth 1 stays flat (silent arm)', () => {
+  const answer = HarnessShapes.Class.describe(rootDirectory, 'tasks.all', 1);
+  const members = (answer.shape as { members: Record<string, unknown>[] })
+    .members;
+  expect(members.every((member) => member['expanded'] === undefined)).toBe(
+    true,
+  );
+});
+
+test('a self-referential chain stops at a cycle marker, never loops', () => {
+  const catalog = {
+    interfaces: {
+      LoopNode: {
+        file: 'fixture.ts',
+        members: [{ name: 'next', type: 'LoopNode | null', optional: false }],
+      },
+    },
+    classes: {},
+  };
+  const expanded = HarnessShapes.Class.expandInterface(
+    catalog,
+    'LoopNode',
+    5,
+    new Set(['LoopNode']),
+  );
+  expect(expanded.members[0]!['cycle']).toBe('LoopNode');
+  expect(expanded.members[0]!['expanded']).toBeUndefined();
+});

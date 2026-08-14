@@ -59,7 +59,11 @@ class $HarnessCli {
         return 2;
       }
       try {
-        const answer = HarnessShapes.Class.describe(rootDirectory, subject);
+        const answer = HarnessShapes.Class.describe(
+          rootDirectory,
+          subject,
+          flags.describeDepth ?? 1,
+        );
         process.stdout.write(JSON.stringify(answer, null, 2) + '\n');
         return 0;
       } catch (error) {
@@ -105,6 +109,9 @@ class $HarnessCli {
           break;
         case '--full':
           flags.printFull = true;
+          break;
+        case '--depth':
+          flags.describeDepth = Number(commandArguments[++index]);
           break;
         case '--self-test':
           flags.selfTest = true;
@@ -603,6 +610,7 @@ interface CliFlags {
   printLimit?: number;
   printOffset?: number;
   printFull?: boolean;
+  describeDepth?: number;
   selfTest: boolean;
   serve: boolean;
   stop: boolean;

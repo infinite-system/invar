@@ -147,7 +147,11 @@ class $HarnessShapes {
   }
 
   /** Answers a type name or a bound graph path; misses teach both namespaces. */
-  static describe(rootDirectory: string, subject: string): ShapeAnswer {
+  static describe(
+    rootDirectory: string,
+    subject: string,
+    depth: number = 1,
+  ): ShapeAnswer {
     const catalog = this.readCatalog(rootDirectory);
     if (!catalog) {
       throw new Error(
@@ -156,11 +160,18 @@ class $HarnessShapes {
     }
     const typeName = this.PATH_TYPE_BINDINGS[subject] ?? subject;
     if (catalog.interfaces[typeName]) {
+      const shape = this.expandInterface(
+        catalog,
+        typeName,
+        depth,
+        new Set([typeName]),
+      );
       return {
         subject,
         type: typeName,
         kind: 'interface',
-        shape: catalog.interfaces[typeName],
+        shape,
+        references: this.referencesIn(catalog, catalog.interfaces[typeName]),
       };
     }
     if (catalog.classes[typeName]) {
@@ -169,6 +180,7 @@ class $HarnessShapes {
         type: typeName,
         kind: 'class',
         shape: catalog.classes[typeName],
+        references: this.referencesIn(catalog, catalog.classes[typeName]),
       };
     }
     const describable = [
@@ -179,6 +191,72 @@ class $HarnessShapes {
     throw new Error(
       `nothing describable named '${subject}'. Describable: ${describable}`,
     );
+  }
+
+  /** Catalog type names appearing in a shape's type texts — the graph's edges. */
+  static referencesIn(
+    catalog: ShapeCatalog,
+    shape: InterfaceShape | ClassShape,
+  ): string[] {
+    const typeTexts: string[] = [];
+    if ('members' in shape) {
+      for (const member of shape.members) typeTexts.push(member.type);
+    } else {
+      for (const method of shape.methods) {
+        typeTexts.push(method.returns, ...method.parameters);
+      }
+    }
+    const knownNames = [
+      ...Object.keys(catalog.interfaces),
+      ...Object.keys(catalog.classes),
+    ];
+    const found = new Set<string>();
+    for (const typeText of typeTexts) {
+      for (const knownName of knownNames) {
+        if (new RegExp(`\\b${knownName}\\b`).test(typeText)) {
+          found.add(knownName);
+        }
+      }
+    }
+    return [...found].sort();
+  }
+
+  /**
+   * Depth expansion: referenced interfaces inline in place until depth
+   * runs out; a type already on the path becomes a reference at the
+   * cut (the cycle guard), never a loop.
+   */
+  static expandInterface(
+    catalog: ShapeCatalog,
+    typeName: string,
+    depth: number,
+    visited: Set<string>,
+  ): ExpandedInterfaceShape {
+    const shape = catalog.interfaces[typeName]!;
+    return {
+      file: shape.file,
+      members: shape.members.map((member) => {
+        if (depth <= 1) return member;
+        const referenced = Object.keys(catalog.interfaces).find(
+          (knownName) =>
+            new RegExp(`\\b${knownName}\\b`).test(member.type) &&
+            knownName !== typeName,
+        );
+        if (referenced === undefined) return member;
+        if (visited.has(referenced)) {
+          return { ...member, cycle: referenced };
+        }
+        return {
+          ...member,
+          expanded: this.expandInterface(
+            catalog,
+            referenced,
+            depth - 1,
+            new Set([...visited, referenced]),
+          ),
+        };
+      }),
+    };
   }
 
   static sourceFiles(directory: string): string[] {
@@ -231,5 +309,19 @@ export interface ShapeAnswer {
   subject: string;
   type: string;
   kind: 'interface' | 'class';
-  shape: InterfaceShape | ClassShape;
+  shape: InterfaceShape | ClassShape | ExpandedInterfaceShape;
+  /** Catalog types this shape points at — chain describe through them. */
+  references: string[];
+}
+
+export interface ExpandedShapeMember extends ShapeMember {
+  /** Present at depth > 1: the referenced interface inlined. */
+  expanded?: ExpandedInterfaceShape;
+  /** Present when expansion met a type already on the path. */
+  cycle?: string;
+}
+
+export interface ExpandedInterfaceShape {
+  file: string;
+  members: ExpandedShapeMember[];
 }
