@@ -1,7 +1,7 @@
 # 553 — iv-harness semantic graph
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — 9c151355 — iv-harness M1 landed: process graph (tasks/gates/lanes/fleet) queryable by path; own module tree + invariants contract; both-arms self-test; first real catch was the dead post-reboot fleet-watch heartbeat.
 Engine: claude
 Environment: linux
 Model: fable-5

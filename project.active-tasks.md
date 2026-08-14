@@ -6,8 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (13)
-- #553 [iv-harness-semantic-graph](.invar/tasks/active/553-iv-harness-semantic-graph/task-553-iv-harness-semantic-graph.md)
+## USER-DIRECTED (12)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -152,7 +151,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 258 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 259 — full log: project.tasks-completed.md)
+- #553 [iv-harness-semantic-graph](.invar/tasks/completed/553-iv-harness-semantic-graph/task-553-iv-harness-semantic-graph.md) — 9c151355 — iv-harness M1 landed: process graph (tasks/gates/lanes/fleet) queryable by path; own module tree + invariants contract; both-arms self-test; first real catch was the dead post-reboot fleet-watch heartbeat.
 - #550 [scrollbars-drag-fixture-paint-red-on-main](.invar/tasks/completed/550-scrollbars-drag-fixture-paint-red-on-main/task-550-scrollbars-drag-fixture-paint-red-on-main.md) — 0a3e97d0 — The scrollbars smoke was deterministically red on main (a Quick Open race masked in the contention tier); fixed via the shared helper, verified 3/3-timeout-to-2/2-pass solo.
 - #547 [bounded-list-popup-wheel-flake](.invar/tasks/completed/547-bounded-list-popup-wheel-flake/task-547-bounded-list-popup-wheel-flake.md) — 22f06fd9 — The popup-wheel flake was a real product bug: dropped render requests parked wheel impulses until the next input; a render-delivery watchdog re-requests until a frame lands. Records refined.
 - #546 [diff-view-labels-lie-for-commits](.invar/tasks/completed/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md) — 43ab1277 — Diff labels tell the truth per comparison kind; one provenance source; #548 filed for the committed-priming-file guard.
@@ -167,4 +167,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #535 [left-dock-search-surface](.invar/tasks/completed/535-left-dock-search-surface/task-535-left-dock-search-surface.md) — 1d759ad5 — Milestone 4: the visible Search — activity icon, left-dock panel, streaming result tree, click-to-line; conductor-driven both arms; structural round closed all reviewer findings.
 - #534 [workspace-search-backend](.invar/tasks/completed/534-workspace-search-backend/task-534-workspace-search-backend.md) — 7ab4bbf3 — Milestone 3: bounded streaming workspace search with one query compiler, honest rg-unavailable state, cap/cancel/overlay proven; no visible change, conductor-verified on an rg-less machine.
 - #533 [tasks-header-pipes-and-dead-open-button](.invar/tasks/completed/533-tasks-header-pipes-and-dead-open-button/task-533-tasks-header-pipes-and-dead-open-button.md) — 129fc4b9 — Tasks header segments without pipes; Open button works headless with tooltip; phase parity via one pure helper; full cell-level parity table; conductor acceptance-driven before landing.
-- #532 [workspace-undo-transaction-core](.invar/tasks/completed/532-workspace-undo-transaction-core/task-532-workspace-undo-transaction-core.md) — accf2bc8 — Milestone 2 data core: reverse-patch transactions, interned arena, workspace undo coordinator with lifecycle-safe external references; no visible change, conductor-driven.
