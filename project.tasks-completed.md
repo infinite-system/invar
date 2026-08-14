@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #565 [conductor-action-verbs](.invar/tasks/completed/565-conductor-action-verbs/task-565-conductor-action-verbs.md) — ad84a7ef — The conductor's actions are now traced: guarded commit/test/gate, tip-stamped landings, and a night digest answering what was fought with.
 - #564 [describe-depth-and-references](.invar/tasks/completed/564-describe-depth-and-references/task-564-describe-depth-and-references.md) — 9dc13a81 — describe answers in verbatim TypeScript with doc comments, names its references, and unpacks depth cycle-safe.
 - #562 [harness-contributor-seam](.invar/tasks/completed/562-harness-contributor-seam/task-562-harness-contributor-seam.md) — ec7b2a13 — Projects can extend the graph with one dropped file — mounted under their own key, core untouched, failures loud and non-fatal.
 - #561 [bounded-get-output-truncation](.invar/tasks/completed/561-bounded-get-output-truncation/task-561-bounded-get-output-truncation.md) — 49ed5e62 — get tasks now prints a bounded screenful with a loud truncation marker; --limit/--offset/--full page or bypass; large answers no longer cut off mid-print.

@@ -6,8 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (13)
-- #565 [conductor-action-verbs](.invar/tasks/active/565-conductor-action-verbs/task-565-conductor-action-verbs.md)
+## USER-DIRECTED (12)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)
 - #373 [one-cell-hole-bottom-border-dual-scrollbar](.invar/tasks/active/373-one-cell-hole-bottom-border-dual-scrollbar/task-373-one-cell-hole-bottom-border-dual-scrollbar.md)
@@ -153,7 +152,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 268 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 269 — full log: project.tasks-completed.md)
+- #565 [conductor-action-verbs](.invar/tasks/completed/565-conductor-action-verbs/task-565-conductor-action-verbs.md) — ad84a7ef — The conductor's actions are now traced: guarded commit/test/gate, tip-stamped landings, and a night digest answering what was fought with.
 - #564 [describe-depth-and-references](.invar/tasks/completed/564-describe-depth-and-references/task-564-describe-depth-and-references.md) — 9dc13a81 — describe answers in verbatim TypeScript with doc comments, names its references, and unpacks depth cycle-safe.
 - #562 [harness-contributor-seam](.invar/tasks/completed/562-harness-contributor-seam/task-562-harness-contributor-seam.md) — ec7b2a13 — Projects can extend the graph with one dropped file — mounted under their own key, core untouched, failures loud and non-fatal.
 - #561 [bounded-get-output-truncation](.invar/tasks/completed/561-bounded-get-output-truncation/task-561-bounded-get-output-truncation.md) — 49ed5e62 — get tasks now prints a bounded screenful with a loud truncation marker; --limit/--offset/--full page or bypass; large answers no longer cut off mid-print.
@@ -168,4 +168,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #547 [bounded-list-popup-wheel-flake](.invar/tasks/completed/547-bounded-list-popup-wheel-flake/task-547-bounded-list-popup-wheel-flake.md) — 22f06fd9 — The popup-wheel flake was a real product bug: dropped render requests parked wheel impulses until the next input; a render-delivery watchdog re-requests until a frame lands. Records refined.
 - #546 [diff-view-labels-lie-for-commits](.invar/tasks/completed/546-diff-view-labels-lie-for-commits/task-546-diff-view-labels-lie-for-commits.md) — 43ab1277 — Diff labels tell the truth per comparison kind; one provenance source; #548 filed for the committed-priming-file guard.
 - #543 [git-log-drilldown-diff-red](.invar/tasks/completed/543-git-log-drilldown-diff-red/task-543-git-log-drilldown-diff-red.md) — 9c6d8992 — The drill-down red resolved: app faithful to its recorded invariant, smoke spoke the old dialect; bycatch #546 filed (diff labels lie for commits).
-- #542 [log-tip-observation-gate-drift](.invar/tasks/completed/542-log-tip-observation-gate-drift/task-542-log-tip-observation-gate-drift.md) — 2f012ed8 — Hidden git panel costs zero again: observation gate restored with both arms driven; contract's stale wording refined; bycatch converted to #543/#544.

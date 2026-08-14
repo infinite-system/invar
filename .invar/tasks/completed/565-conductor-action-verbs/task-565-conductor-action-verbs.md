@@ -1,7 +1,7 @@
 # 565 — conductor action verbs
 
 Priority: user-directed
-State: ACTIVE
+State: COMPLETED — ad84a7ef — The conductor's actions are now traced: guarded commit/test/gate, tip-stamped landings, and a night digest answering what was fought with.
 Engine: claude
 Environment: linux
 Model: fable-5
