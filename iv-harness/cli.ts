@@ -129,7 +129,9 @@ class $HarnessCli {
   static warnIfStale(
     manifest: import('./src/modules/server/HarnessServer.ts').ServerManifest,
   ): void {
-    if (manifest.bootCommit === null) return;
+    // == null also covers manifests written before the field existed
+    // (a pre-M3 server must degrade to no warning, never crash).
+    if (manifest.bootCommit == null) return;
     const currentCommit = HarnessServer.$Class.currentCommit(
       manifest.rootDirectory,
     );

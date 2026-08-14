@@ -1,21 +1,19 @@
 {
-<<<<<<< HEAD:.invar/tasks/in-progress/556-iv-harness-script-absorption/report-meta.json
   "touchedDomains": ["reports", "drift", "tasks", "graph", "server", "cli"],
   "invariants": {
-    "upheld": ["Disk is the store and the graph is a projection", "The harness graph never imports from the app", "Only the files arbitrate process state"],
+    "upheld": [
+      "Disk is the store and the graph is a projection",
+      "The harness graph never imports from the app",
+      "Only the files arbitrate process state",
+      "A wrapped script keeps its logic in one place"
+    ],
     "refined": ["A graph server is a disposable cache"],
     "discovered": []
   },
   "bycatchCount": 1,
   "steering": { "needed": false },
-  "evidence": ["/tmp/gate-556.log", "iv-harness/src/modules/drift/HarnessDrift.test.ts"]
-=======
-  "touchedDomains": ["reports", "drift", "server", "graph"],
-  "invariants": {
-    "upheld": ["A wrapped script keeps its logic in one place"],
-    "discovered": []
-  },
-  "bycatchCount": 0,
-  "steering": { "needed": false }
->>>>>>> fleet/556-iv-harness-script-absorption:.invar/tasks/active/556-iv-harness-script-absorption/report-meta.json
+  "evidence": [
+    "/tmp/gate-556.log",
+    "iv-harness/src/modules/drift/HarnessDrift.test.ts"
+  ]
 }

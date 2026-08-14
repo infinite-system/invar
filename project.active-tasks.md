@@ -21,8 +21,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (34)
-- #560 [harness-cli-manifest-compat-fix](.invar/tasks/active/560-harness-cli-manifest-compat-fix/task-560-harness-cli-manifest-compat-fix.md)
+## VERIFICATION-INTEGRITY (33)
 - #551 [quickopen-enter-race-census](.invar/tasks/active/551-quickopen-enter-race-census/task-551-quickopen-enter-race-census.md)
 - #548 [land-refuses-committed-priming-files](.invar/tasks/active/548-land-refuses-committed-priming-files/task-548-land-refuses-committed-priming-files.md)
 - #512 [ffmpeg-mkfifo-bypasses-launch-policy](.invar/tasks/active/512-ffmpeg-mkfifo-bypasses-launch-policy/task-512-ffmpeg-mkfifo-bypasses-launch-policy.md)
@@ -153,7 +152,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 - #314 [314-harness-drives-must-isolate-workspace-task-config](.invar/tasks/active/314-harness-drives-must-isolate-workspace-task-config/task-314-harness-drives-must-isolate-workspace-task-config.md)
 
-## RECENTLY COMPLETED (last 15 of 262 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 263 — full log: project.tasks-completed.md)
+- #560 [harness-cli-manifest-compat-fix](.invar/tasks/completed/560-harness-cli-manifest-compat-fix/task-560-harness-cli-manifest-compat-fix.md) — 376a86cf — CLI no longer crashes against pre-M3 warm servers; 556's structured report file is valid and counted.
 - #557 [graph-miss-did-you-mean](.invar/tasks/completed/557-graph-miss-did-you-mean/task-557-graph-miss-did-you-mean.md) — 050eebdf — Graph misses now suggest the intended key: get tasks.count answers Did you mean tasks.counts, copy-ready full path.
 - #556 [iv-harness-script-absorption](.invar/tasks/completed/556-iv-harness-script-absorption/task-556-iv-harness-script-absorption.md) — fe4d59fd — iv-harness M3 landed: structured worker reports + metrics, drift as a graph capability, stale-server warning. This task carries the fleet's first report-meta.json.
 - #555 [iv-harness-warm-graph-server](.invar/tasks/completed/555-iv-harness-warm-graph-server/task-555-iv-harness-warm-graph-server.md) — a1111764 — iv-harness M2 landed: warm graph server — serve/attach/waitFor with disposable-cache contract; driving caught and fixed the GET-stop bug.
@@ -168,4 +168,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #539 [module-constants-to-statics](.invar/tasks/completed/539-module-constants-to-statics/task-539-module-constants-to-statics.md) — dfb74c00 — The source tree's module-variable count reaches true zero: PluginManifest's four constants become class statics (three SCREAMING live knobs per the house table, one $-cached derived set); behavior byte-identical.
 - #538 [panel-chrome-flake-second-wave](.invar/tasks/completed/538-panel-chrome-flake-second-wave/task-538-panel-chrome-flake-second-wave.md) — 0cd8aab6 — The panel-chrome contention flake's third lost-gesture member killed: hover-verified aim after layout moves the control; 15/15 contention green.
 - #537 [find-replace-doctrine-pass](.invar/tasks/completed/537-find-replace-doctrine-pass/task-537-find-replace-doctrine-pass.md) — 0a2b12f0 — Milestone 6: doctrine pass over both search surfaces — counts pluralize, button state tiers complete, scrollbar proven; the six-milestone Find/Replace build is closed.
-- #536 [workspace-replace-consent-history](.invar/tasks/completed/536-workspace-replace-consent-history/task-536-workspace-replace-consent-history.md) — 3a006e4f — Milestone 5: workspace replace with counted consent, per-item drift, undo/redo through one coordinator; structural round moved the patch engine to workspace/ and split the state machines; conductor-driven twice.

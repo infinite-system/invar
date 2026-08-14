@@ -244,3 +244,25 @@ test('a wire POST /stop disposes the server (GET must not)', async () => {
     cleanup(fixtureRoot, rendezvousDirectory);
   }
 });
+
+test('a pre-M3 manifest without bootCommit is live and harmless', () => {
+  const rendezvousDirectory = mkdtempSync(
+    join(tmpdir(), 'harness-server-old-'),
+  );
+  try {
+    writeFileSync(
+      HarnessServer.$Class.manifestPath(rendezvousDirectory),
+      JSON.stringify({
+        pid: process.pid,
+        socketPath: join(rendezvousDirectory, 'server.sock'),
+        rootDirectory: '/somewhere',
+        startedAt: 'earlier',
+      }),
+    );
+    const manifest = HarnessServer.$Class.readLiveManifest(rendezvousDirectory);
+    expect(manifest).not.toBeNull();
+    expect(manifest!.bootCommit ?? null).toBeNull();
+  } finally {
+    rmSync(rendezvousDirectory, { recursive: true, force: true });
+  }
+});
