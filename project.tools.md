@@ -22,7 +22,12 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 structurally instead of by grepping logs: `tasks.counts`,
 `tasks.inProgress`, `tasks.byNumber.<n>`, `gates.last` / `gates.red`,
 `lanes.fleet` / `lanes.dirty`, `fleet.heartbeat`. `ls [<path>]` lists a
-node's keys; misses print the addressable keys (poke to explore). Works
+node's keys; misses print the addressable keys (poke to explore). One warm server per checkout: `--serve` boots once (fs-watchers +
+unix socket in a checkout-keyed rendezvous, the DriveSession
+convention), `get`/`ls` auto-attach and fall back cold, `waitFor
+<path> <json>` parks a graph condition on the watchers (`--timeout MS`),
+`--stop` / `--server-status` manage it. The server is a DISPOSABLE
+projection cache — killing it loses nothing. Works
 against any checkout via `--root DIR`; `--gates FILE` / `--heartbeat FILE`
 override the fleet defaults. The graph is a projection of disk (task
 folders, git, gate logs) — it holds nothing, so answers are always
