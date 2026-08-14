@@ -6,8 +6,9 @@ CURRENT STATE pointer only. Git is the archive for every pruned anchor. -->
 
 # RESUME ANCHOR 90 — 2026-08-14 16:45 EDT — IV-HARNESS COMPLETE THROUGH #562; GOAL DONE; TEN LANDINGS TODAY
 
-Crons armed (:07 e0b76439, :37 db522e11). fleet-watch Monitor bb2l40462
-armed. Fleet IDLE. main clean at 3a9ec712.
+CRONS DISARMED BY USER 2026-08-14 18:36 (the :37 sweep had already
+expired from the list). fleet-watch Monitor bb2l40462 STAYS armed
+(event watcher, not a cron). Re-arm lines below when asked. Fleet IDLE. main clean at 3a9ec712.
 
 TODAY'S TEN LANDINGS (all conductor self-do, serial gates):
 #553 M1 process graph (9c151355) · conventions ext (d11d8f01) ·
