@@ -9,6 +9,11 @@ import {
   HarnessHeartbeat,
   type HeartbeatNode,
 } from '../fleet/HarnessHeartbeat.ts';
+import {
+  HarnessTaskReports,
+  type TaskReportMetrics,
+} from '../reports/HarnessTaskReports.ts';
+import { HarnessDrift, type DriftNode } from '../drift/HarnessDrift.ts';
 
 /**
  * The process-graph root: the development process (tasks, gates,
@@ -91,6 +96,18 @@ class $HarnessGraph {
     };
   }
 
+  // --- reports domain (worker-as-sensor metrics) ---
+
+  get metrics(): TaskReportMetrics {
+    return HarnessTaskReports.Class.aggregateMetrics(this.tasks.all);
+  }
+
+  // --- drift domain (wrapped tasks-status output) ---
+
+  get drift(): DriftNode {
+    return HarnessDrift.Class.read(this.rootDirectory);
+  }
+
   // --- fleet domain ---
 
   get fleet(): { heartbeat: HeartbeatNode } {
@@ -122,7 +139,15 @@ class $HarnessGraph {
   }
 
   rootNamespace(): string[] {
-    return ['tasks', 'gates', 'lanes', 'fleet', 'rootDirectory'];
+    return [
+      'tasks',
+      'gates',
+      'lanes',
+      'fleet',
+      'metrics',
+      'drift',
+      'rootDirectory',
+    ];
   }
 
   missMessage(walkedSegments: string[], deadNode: unknown): string {

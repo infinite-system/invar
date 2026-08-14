@@ -112,6 +112,7 @@ class $HarnessCli {
   ): Promise<Response | null> {
     const manifest = HarnessServer.$Class.readLiveManifest(rendezvousDirectory);
     if (!manifest) return null;
+    this.warnIfStale(manifest);
     const query = new URLSearchParams(parameters).toString();
     try {
       return await fetch(`http://iv-harness${pathname}?${query}`, {
@@ -120,6 +121,23 @@ class $HarnessCli {
       });
     } catch {
       return null; // dead socket behind a live-looking manifest: fall back cold
+    }
+  }
+
+  /** A server booted before the current HEAD answers from old code — warn, still answer. */
+  static warnIfStale(
+    manifest: import('./src/modules/server/HarnessServer.ts').ServerManifest,
+  ): void {
+    if (manifest.bootCommit === null) return;
+    const currentCommit = HarnessServer.$Class.currentCommit(
+      manifest.rootDirectory,
+    );
+    if (currentCommit !== null && currentCommit !== manifest.bootCommit) {
+      process.stderr.write(
+        `iv-harness: warning — the warm server booted at ${manifest.bootCommit.slice(0, 8)} ` +
+          `but HEAD is ${currentCommit.slice(0, 8)}; answers may run old code. ` +
+          `Restart: --stop then --serve\n`,
+      );
     }
   }
 
