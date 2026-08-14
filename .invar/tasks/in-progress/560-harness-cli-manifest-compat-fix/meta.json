@@ -1,0 +1,12 @@
+{
+  "task": 560,
+  "slug": "harness-cli-manifest-compat-fix",
+  "branch": "fleet/560-harness-cli-manifest-compat-fix",
+  "worktree": ".invar/worktrees/560-harness-cli-manifest-compat-fix",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "low",
+  "conductorSelfDo": true,
+  "startedAt": "2026-08-14T15:05:00-04:00"
+}
