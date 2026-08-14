@@ -12,5 +12,8 @@
   },
   "bycatchCount": 1,
   "steering": { "needed": false },
-  "evidence": ["/tmp/gate-556.log", "iv-harness/src/modules/drift/HarnessDrift.test.ts"]
+  "evidence": [
+    "/tmp/gate-556.log",
+    "iv-harness/src/modules/drift/HarnessDrift.test.ts"
+  ]
 }
