@@ -6,7 +6,8 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## USER-DIRECTED (13)
+## USER-DIRECTED (14)
+- #565 [conductor-action-verbs](.invar/tasks/active/565-conductor-action-verbs/task-565-conductor-action-verbs.md)
 - #564 [describe-depth-and-references](.invar/tasks/active/564-describe-depth-and-references/task-564-describe-depth-and-references.md)
 - #472 [one-warm-app-serves-the-harness](.invar/tasks/active/472-one-warm-app-serves-the-harness/task-472-one-warm-app-serves-the-harness.md)  [ACTIVE — case 1 SHIPPED (see Delivered below); case 2 deprioritized by measurement]
 - #376 [instances-watch-live-cpu-memory](.invar/tasks/active/376-instances-watch-live-cpu-memory/task-376-instances-watch-live-cpu-memory.md)

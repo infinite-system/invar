@@ -33,3 +33,7 @@ race, not the panel/scrollbar/popup families.
   working as current"), branch adds only the new iv-harness/ directory —
   no diff code touched. Solo in the same worktree: green. Third sighting,
   all under gate load, never solo.
+
+- gate-564 r1 (2026-08-14): fifth sighting, same timeout class, branch
+  touches only iv-harness shapes/cli. Frequency now 5 gates in 3 days —
+  priority case for the wait-census fix.
