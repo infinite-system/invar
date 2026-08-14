@@ -125,3 +125,13 @@ test('the typescript form at depth 2 appends referenced declarations', () => {
   expect(rendered).toContain('export interface TaskNode {');
   expect(rendered).toContain('export interface TaskReportMeta {');
 });
+
+test('a type with a doc comment carries it in the verbatim source', () => {
+  const rendered = HarnessShapes.Class.renderTypeScript(
+    rootDirectory,
+    'HarnessContributor',
+    1,
+  );
+  expect(rendered).toContain('THE contract surface');
+  expect(rendered).toContain('export interface HarnessContributor {');
+});

@@ -56,7 +56,9 @@ class $HarnessShapes {
         ) {
           catalog.interfaces[statement.name.text] = {
             file: relativeFileName,
-            source: statement.getText(sourceFile),
+            source:
+              this.leadingDocComment(statement, sourceFile) +
+              statement.getText(sourceFile),
             members: statement.members.flatMap((member) =>
               typescript.isPropertySignature(member) && member.name
                 ? [
@@ -105,6 +107,18 @@ class $HarnessShapes {
       }
     }
     return catalog;
+  }
+
+  /** A declaration's attached JSDoc — leading trivia getText() drops. */
+  static leadingDocComment(
+    statement: typescript.Statement,
+    sourceFile: typescript.SourceFile,
+  ): string {
+    const jsDocNodes = (statement as { jsDoc?: typescript.JSDoc[] }).jsDoc;
+    if (!jsDocNodes || jsDocNodes.length === 0) return '';
+    return (
+      jsDocNodes.map((docNode) => docNode.getText(sourceFile)).join('\n') + '\n'
+    );
   }
 
   static isExported(statement: typescript.Statement): boolean {

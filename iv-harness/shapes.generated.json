@@ -2,7 +2,7 @@
   "interfaces": {
     "HarnessContributor": {
       "file": "iv-harness/src/modules/contributors/HarnessContributors.ts",
-      "source": "export interface HarnessContributor {\n  name: string;\n  contractVersion: number;\n  node(context: ContributorContext): unknown;\n}",
+      "source": "/** THE contract surface — contributors depend on this and nothing else. */\nexport interface HarnessContributor {\n  name: string;\n  contractVersion: number;\n  node(context: ContributorContext): unknown;\n}",
       "members": [
         {
           "name": "name",
@@ -916,6 +916,14 @@
           "name": "generate",
           "parameters": ["rootDirectory: string"],
           "returns": "ShapeCatalog"
+        },
+        {
+          "name": "leadingDocComment",
+          "parameters": [
+            "statement: typescript.Statement",
+            "sourceFile: typescript.SourceFile"
+          ],
+          "returns": "string"
         },
         {
           "name": "isExported",
